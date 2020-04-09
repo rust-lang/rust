@@ -2,7 +2,7 @@
 
 #[allow(unused_imports)]
 use crate::{
-    ast::{self, AstChildren, AstNode, AstToken},
+    ast::{self, support, AstChildren, AstNode, AstToken},
     NodeOrToken, SyntaxElement,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken,
@@ -2600,6 +2600,33 @@ impl AstToken for UnionKw {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RawKw {
+    pub(crate) syntax: SyntaxToken,
+}
+impl std::fmt::Display for RawKw {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.syntax, f)
+    }
+}
+impl AstToken for RawKw {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RAW_KW => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxToken {
+        &self.syntax
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IntNumber {
     pub(crate) syntax: SyntaxToken,
 }
@@ -3060,9 +3087,10 @@ impl AstNode for SourceFile {
 }
 impl ast::ModuleItemOwner for SourceFile {}
 impl ast::FnDefOwner for SourceFile {}
+impl ast::AttrsOwner for SourceFile {}
 impl SourceFile {
     pub fn modules(&self) -> AstChildren<Module> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3098,14 +3126,35 @@ impl ast::TypeParamsOwner for FnDef {}
 impl ast::DocCommentsOwner for FnDef {}
 impl ast::AttrsOwner for FnDef {}
 impl FnDef {
+    pub fn abi(&self) -> Option<Abi> {
+        support::child(&self.syntax)
+    }
+    pub fn const_kw(&self) -> Option<ConstKw> {
+        support::token(&self.syntax)
+    }
+    pub fn default_kw(&self) -> Option<DefaultKw> {
+        support::token(&self.syntax)
+    }
+    pub fn async_kw(&self) -> Option<AsyncKw> {
+        support::token(&self.syntax)
+    }
+    pub fn unsafe_kw(&self) -> Option<UnsafeKw> {
+        support::token(&self.syntax)
+    }
+    pub fn fn_kw(&self) -> Option<FnKw> {
+        support::token(&self.syntax)
+    }
     pub fn param_list(&self) -> Option<ParamList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn ret_type(&self) -> Option<RetType> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn body(&self) -> Option<BlockExpr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn semi(&self) -> Option<Semi> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3136,8 +3185,11 @@ impl AstNode for RetType {
     }
 }
 impl RetType {
+    pub fn thin_arrow(&self) -> Option<ThinArrow> {
+        support::token(&self.syntax)
+    }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3172,7 +3224,17 @@ impl ast::NameOwner for StructDef {}
 impl ast::TypeParamsOwner for StructDef {}
 impl ast::AttrsOwner for StructDef {}
 impl ast::DocCommentsOwner for StructDef {}
-impl StructDef {}
+impl StructDef {
+    pub fn struct_kw(&self) -> Option<StructKw> {
+        support::token(&self.syntax)
+    }
+    pub fn field_def_list(&self) -> Option<FieldDefList> {
+        support::child(&self.syntax)
+    }
+    pub fn semi(&self) -> Option<Semi> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnionDef {
     pub(crate) syntax: SyntaxNode,
@@ -3206,8 +3268,11 @@ impl ast::TypeParamsOwner for UnionDef {}
 impl ast::AttrsOwner for UnionDef {}
 impl ast::DocCommentsOwner for UnionDef {}
 impl UnionDef {
+    pub fn union_kw(&self) -> Option<UnionKw> {
+        support::token(&self.syntax)
+    }
     pub fn record_field_def_list(&self) -> Option<RecordFieldDefList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3238,8 +3303,14 @@ impl AstNode for RecordFieldDefList {
     }
 }
 impl RecordFieldDefList {
+    pub fn l_curly(&self) -> Option<LCurly> {
+        support::token(&self.syntax)
+    }
     pub fn fields(&self) -> AstChildren<RecordFieldDef> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_curly(&self) -> Option<RCurly> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3303,8 +3374,14 @@ impl AstNode for TupleFieldDefList {
     }
 }
 impl TupleFieldDefList {
+    pub fn l_paren(&self) -> Option<LParen> {
+        support::token(&self.syntax)
+    }
     pub fn fields(&self) -> AstChildren<TupleFieldDef> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_paren(&self) -> Option<RParen> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3338,7 +3415,7 @@ impl ast::VisibilityOwner for TupleFieldDef {}
 impl ast::AttrsOwner for TupleFieldDef {}
 impl TupleFieldDef {
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3374,8 +3451,11 @@ impl ast::TypeParamsOwner for EnumDef {}
 impl ast::AttrsOwner for EnumDef {}
 impl ast::DocCommentsOwner for EnumDef {}
 impl EnumDef {
+    pub fn enum_kw(&self) -> Option<EnumKw> {
+        support::token(&self.syntax)
+    }
     pub fn variant_list(&self) -> Option<EnumVariantList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3406,8 +3486,14 @@ impl AstNode for EnumVariantList {
     }
 }
 impl EnumVariantList {
+    pub fn l_curly(&self) -> Option<LCurly> {
+        support::token(&self.syntax)
+    }
     pub fn variants(&self) -> AstChildren<EnumVariant> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_curly(&self) -> Option<RCurly> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3437,12 +3523,19 @@ impl AstNode for EnumVariant {
         &self.syntax
     }
 }
+impl ast::VisibilityOwner for EnumVariant {}
 impl ast::NameOwner for EnumVariant {}
 impl ast::DocCommentsOwner for EnumVariant {}
 impl ast::AttrsOwner for EnumVariant {}
 impl EnumVariant {
+    pub fn field_def_list(&self) -> Option<FieldDefList> {
+        support::child(&self.syntax)
+    }
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
+    }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3479,8 +3572,17 @@ impl ast::DocCommentsOwner for TraitDef {}
 impl ast::TypeParamsOwner for TraitDef {}
 impl ast::TypeBoundsOwner for TraitDef {}
 impl TraitDef {
+    pub fn unsafe_kw(&self) -> Option<UnsafeKw> {
+        support::token(&self.syntax)
+    }
+    pub fn auto_kw(&self) -> Option<AutoKw> {
+        support::token(&self.syntax)
+    }
+    pub fn trait_kw(&self) -> Option<TraitKw> {
+        support::token(&self.syntax)
+    }
     pub fn item_list(&self) -> Option<ItemList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3515,8 +3617,14 @@ impl ast::NameOwner for Module {}
 impl ast::AttrsOwner for Module {}
 impl ast::DocCommentsOwner for Module {}
 impl Module {
+    pub fn mod_kw(&self) -> Option<ModKw> {
+        support::token(&self.syntax)
+    }
     pub fn item_list(&self) -> Option<ItemList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn semi(&self) -> Option<Semi> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3549,8 +3657,14 @@ impl AstNode for ItemList {
 impl ast::FnDefOwner for ItemList {}
 impl ast::ModuleItemOwner for ItemList {}
 impl ItemList {
+    pub fn l_curly(&self) -> Option<LCurly> {
+        support::token(&self.syntax)
+    }
     pub fn impl_items(&self) -> AstChildren<ImplItem> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_curly(&self) -> Option<RCurly> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3587,8 +3701,20 @@ impl ast::AttrsOwner for ConstDef {}
 impl ast::DocCommentsOwner for ConstDef {}
 impl ast::TypeAscriptionOwner for ConstDef {}
 impl ConstDef {
+    pub fn default_kw(&self) -> Option<DefaultKw> {
+        support::token(&self.syntax)
+    }
+    pub fn const_kw(&self) -> Option<ConstKw> {
+        support::token(&self.syntax)
+    }
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
+    }
     pub fn body(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn semi(&self) -> Option<Semi> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3625,8 +3751,20 @@ impl ast::AttrsOwner for StaticDef {}
 impl ast::DocCommentsOwner for StaticDef {}
 impl ast::TypeAscriptionOwner for StaticDef {}
 impl StaticDef {
+    pub fn static_kw(&self) -> Option<StaticKw> {
+        support::token(&self.syntax)
+    }
+    pub fn mut_kw(&self) -> Option<MutKw> {
+        support::token(&self.syntax)
+    }
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
+    }
     pub fn body(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn semi(&self) -> Option<Semi> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3663,8 +3801,20 @@ impl ast::AttrsOwner for TypeAliasDef {}
 impl ast::DocCommentsOwner for TypeAliasDef {}
 impl ast::TypeBoundsOwner for TypeAliasDef {}
 impl TypeAliasDef {
+    pub fn default_kw(&self) -> Option<DefaultKw> {
+        support::token(&self.syntax)
+    }
+    pub fn type_kw(&self) -> Option<TypeKw> {
+        support::token(&self.syntax)
+    }
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
+    }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn semi(&self) -> Option<Semi> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3697,8 +3847,26 @@ impl AstNode for ImplDef {
 impl ast::TypeParamsOwner for ImplDef {}
 impl ast::AttrsOwner for ImplDef {}
 impl ImplDef {
+    pub fn default_kw(&self) -> Option<DefaultKw> {
+        support::token(&self.syntax)
+    }
+    pub fn const_kw(&self) -> Option<ConstKw> {
+        support::token(&self.syntax)
+    }
+    pub fn unsafe_kw(&self) -> Option<UnsafeKw> {
+        support::token(&self.syntax)
+    }
+    pub fn impl_kw(&self) -> Option<ImplKw> {
+        support::token(&self.syntax)
+    }
+    pub fn excl(&self) -> Option<Excl> {
+        support::token(&self.syntax)
+    }
+    pub fn for_kw(&self) -> Option<ForKw> {
+        support::token(&self.syntax)
+    }
     pub fn item_list(&self) -> Option<ItemList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3729,8 +3897,14 @@ impl AstNode for ParenType {
     }
 }
 impl ParenType {
+    pub fn l_paren(&self) -> Option<LParen> {
+        support::token(&self.syntax)
+    }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn r_paren(&self) -> Option<RParen> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3761,8 +3935,14 @@ impl AstNode for TupleType {
     }
 }
 impl TupleType {
+    pub fn l_paren(&self) -> Option<LParen> {
+        support::token(&self.syntax)
+    }
     pub fn fields(&self) -> AstChildren<TypeRef> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_paren(&self) -> Option<RParen> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3792,7 +3972,11 @@ impl AstNode for NeverType {
         &self.syntax
     }
 }
-impl NeverType {}
+impl NeverType {
+    pub fn excl(&self) -> Option<Excl> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathType {
     pub(crate) syntax: SyntaxNode,
@@ -3822,7 +4006,7 @@ impl AstNode for PathType {
 }
 impl PathType {
     pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3853,8 +4037,14 @@ impl AstNode for PointerType {
     }
 }
 impl PointerType {
+    pub fn star(&self) -> Option<Star> {
+        support::token(&self.syntax)
+    }
+    pub fn const_kw(&self) -> Option<ConstKw> {
+        support::token(&self.syntax)
+    }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3885,11 +4075,20 @@ impl AstNode for ArrayType {
     }
 }
 impl ArrayType {
+    pub fn l_brack(&self) -> Option<LBrack> {
+        support::token(&self.syntax)
+    }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn semi(&self) -> Option<Semi> {
+        support::token(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn r_brack(&self) -> Option<RBrack> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3920,8 +4119,14 @@ impl AstNode for SliceType {
     }
 }
 impl SliceType {
+    pub fn l_brack(&self) -> Option<LBrack> {
+        support::token(&self.syntax)
+    }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn r_brack(&self) -> Option<RBrack> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3952,8 +4157,17 @@ impl AstNode for ReferenceType {
     }
 }
 impl ReferenceType {
+    pub fn amp(&self) -> Option<Amp> {
+        support::token(&self.syntax)
+    }
+    pub fn lifetime(&self) -> Option<Lifetime> {
+        support::token(&self.syntax)
+    }
+    pub fn mut_kw(&self) -> Option<MutKw> {
+        support::token(&self.syntax)
+    }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3983,7 +4197,11 @@ impl AstNode for PlaceholderType {
         &self.syntax
     }
 }
-impl PlaceholderType {}
+impl PlaceholderType {
+    pub fn underscore(&self) -> Option<Underscore> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnPointerType {
     pub(crate) syntax: SyntaxNode,
@@ -4012,11 +4230,20 @@ impl AstNode for FnPointerType {
     }
 }
 impl FnPointerType {
+    pub fn abi(&self) -> Option<Abi> {
+        support::child(&self.syntax)
+    }
+    pub fn unsafe_kw(&self) -> Option<UnsafeKw> {
+        support::token(&self.syntax)
+    }
+    pub fn fn_kw(&self) -> Option<FnKw> {
+        support::token(&self.syntax)
+    }
     pub fn param_list(&self) -> Option<ParamList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn ret_type(&self) -> Option<RetType> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4047,8 +4274,14 @@ impl AstNode for ForType {
     }
 }
 impl ForType {
+    pub fn for_kw(&self) -> Option<ForKw> {
+        support::token(&self.syntax)
+    }
+    pub fn type_param_list(&self) -> Option<TypeParamList> {
+        support::child(&self.syntax)
+    }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4079,7 +4312,11 @@ impl AstNode for ImplTraitType {
     }
 }
 impl ast::TypeBoundsOwner for ImplTraitType {}
-impl ImplTraitType {}
+impl ImplTraitType {
+    pub fn impl_kw(&self) -> Option<ImplKw> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynTraitType {
     pub(crate) syntax: SyntaxNode,
@@ -4108,7 +4345,11 @@ impl AstNode for DynTraitType {
     }
 }
 impl ast::TypeBoundsOwner for DynTraitType {}
-impl DynTraitType {}
+impl DynTraitType {
+    pub fn dyn_kw(&self) -> Option<DynKw> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleExpr {
     pub(crate) syntax: SyntaxNode,
@@ -4136,9 +4377,16 @@ impl AstNode for TupleExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for TupleExpr {}
 impl TupleExpr {
+    pub fn l_paren(&self) -> Option<LParen> {
+        support::token(&self.syntax)
+    }
     pub fn exprs(&self) -> AstChildren<Expr> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_paren(&self) -> Option<RParen> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4168,9 +4416,19 @@ impl AstNode for ArrayExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for ArrayExpr {}
 impl ArrayExpr {
+    pub fn l_brack(&self) -> Option<LBrack> {
+        support::token(&self.syntax)
+    }
     pub fn exprs(&self) -> AstChildren<Expr> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn semi(&self) -> Option<Semi> {
+        support::token(&self.syntax)
+    }
+    pub fn r_brack(&self) -> Option<RBrack> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4200,9 +4458,16 @@ impl AstNode for ParenExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for ParenExpr {}
 impl ParenExpr {
+    pub fn l_paren(&self) -> Option<LParen> {
+        support::token(&self.syntax)
+    }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn r_paren(&self) -> Option<RParen> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4234,7 +4499,7 @@ impl AstNode for PathExpr {
 }
 impl PathExpr {
     pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4264,15 +4529,25 @@ impl AstNode for LambdaExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for LambdaExpr {}
 impl LambdaExpr {
+    pub fn static_kw(&self) -> Option<StaticKw> {
+        support::token(&self.syntax)
+    }
+    pub fn async_kw(&self) -> Option<AsyncKw> {
+        support::token(&self.syntax)
+    }
+    pub fn move_kw(&self) -> Option<MoveKw> {
+        support::token(&self.syntax)
+    }
     pub fn param_list(&self) -> Option<ParamList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn ret_type(&self) -> Option<RetType> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn body(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4302,9 +4577,13 @@ impl AstNode for IfExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for IfExpr {}
 impl IfExpr {
+    pub fn if_kw(&self) -> Option<IfKw> {
+        support::token(&self.syntax)
+    }
     pub fn condition(&self) -> Option<Condition> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4334,8 +4613,13 @@ impl AstNode for LoopExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for LoopExpr {}
 impl ast::LoopBodyOwner for LoopExpr {}
-impl LoopExpr {}
+impl LoopExpr {
+    pub fn loop_kw(&self) -> Option<LoopKw> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TryBlockExpr {
     pub(crate) syntax: SyntaxNode,
@@ -4363,9 +4647,13 @@ impl AstNode for TryBlockExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for TryBlockExpr {}
 impl TryBlockExpr {
+    pub fn try_kw(&self) -> Option<TryKw> {
+        support::token(&self.syntax)
+    }
     pub fn body(&self) -> Option<BlockExpr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4395,13 +4683,20 @@ impl AstNode for ForExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for ForExpr {}
 impl ast::LoopBodyOwner for ForExpr {}
 impl ForExpr {
+    pub fn for_kw(&self) -> Option<ForKw> {
+        support::token(&self.syntax)
+    }
     pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn in_kw(&self) -> Option<InKw> {
+        support::token(&self.syntax)
     }
     pub fn iterable(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4431,10 +4726,14 @@ impl AstNode for WhileExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for WhileExpr {}
 impl ast::LoopBodyOwner for WhileExpr {}
 impl WhileExpr {
+    pub fn while_kw(&self) -> Option<WhileKw> {
+        support::token(&self.syntax)
+    }
     pub fn condition(&self) -> Option<Condition> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4464,7 +4763,15 @@ impl AstNode for ContinueExpr {
         &self.syntax
     }
 }
-impl ContinueExpr {}
+impl ast::AttrsOwner for ContinueExpr {}
+impl ContinueExpr {
+    pub fn continue_kw(&self) -> Option<ContinueKw> {
+        support::token(&self.syntax)
+    }
+    pub fn lifetime(&self) -> Option<Lifetime> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BreakExpr {
     pub(crate) syntax: SyntaxNode,
@@ -4492,9 +4799,16 @@ impl AstNode for BreakExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for BreakExpr {}
 impl BreakExpr {
+    pub fn break_kw(&self) -> Option<BreakKw> {
+        support::token(&self.syntax)
+    }
+    pub fn lifetime(&self) -> Option<Lifetime> {
+        support::token(&self.syntax)
+    }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4524,7 +4838,11 @@ impl AstNode for Label {
         &self.syntax
     }
 }
-impl Label {}
+impl Label {
+    pub fn lifetime(&self) -> Option<Lifetime> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BlockExpr {
     pub(crate) syntax: SyntaxNode,
@@ -4552,9 +4870,16 @@ impl AstNode for BlockExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for BlockExpr {}
 impl BlockExpr {
+    pub fn label(&self) -> Option<Label> {
+        support::child(&self.syntax)
+    }
+    pub fn unsafe_kw(&self) -> Option<UnsafeKw> {
+        support::token(&self.syntax)
+    }
     pub fn block(&self) -> Option<Block> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4584,9 +4909,10 @@ impl AstNode for ReturnExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for ReturnExpr {}
 impl ReturnExpr {
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4619,7 +4945,7 @@ impl AstNode for CallExpr {
 impl ast::ArgListOwner for CallExpr {}
 impl CallExpr {
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4649,16 +4975,20 @@ impl AstNode for MethodCallExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for MethodCallExpr {}
 impl ast::ArgListOwner for MethodCallExpr {}
 impl MethodCallExpr {
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn dot(&self) -> Option<Dot> {
+        support::token(&self.syntax)
     }
     pub fn name_ref(&self) -> Option<NameRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn type_arg_list(&self) -> Option<TypeArgList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4688,7 +5018,15 @@ impl AstNode for IndexExpr {
         &self.syntax
     }
 }
-impl IndexExpr {}
+impl ast::AttrsOwner for IndexExpr {}
+impl IndexExpr {
+    pub fn l_brack(&self) -> Option<LBrack> {
+        support::token(&self.syntax)
+    }
+    pub fn r_brack(&self) -> Option<RBrack> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldExpr {
     pub(crate) syntax: SyntaxNode,
@@ -4716,12 +5054,16 @@ impl AstNode for FieldExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for FieldExpr {}
 impl FieldExpr {
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn dot(&self) -> Option<Dot> {
+        support::token(&self.syntax)
     }
     pub fn name_ref(&self) -> Option<NameRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4751,9 +5093,16 @@ impl AstNode for AwaitExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for AwaitExpr {}
 impl AwaitExpr {
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn dot(&self) -> Option<Dot> {
+        support::token(&self.syntax)
+    }
+    pub fn await_kw(&self) -> Option<AwaitKw> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4783,9 +5132,13 @@ impl AstNode for TryExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for TryExpr {}
 impl TryExpr {
+    pub fn try_kw(&self) -> Option<TryKw> {
+        support::token(&self.syntax)
+    }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4815,12 +5168,16 @@ impl AstNode for CastExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for CastExpr {}
 impl CastExpr {
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn as_kw(&self) -> Option<AsKw> {
+        support::token(&self.syntax)
     }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4850,9 +5207,19 @@ impl AstNode for RefExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for RefExpr {}
 impl RefExpr {
+    pub fn amp(&self) -> Option<Amp> {
+        support::token(&self.syntax)
+    }
+    pub fn raw_kw(&self) -> Option<RawKw> {
+        support::token(&self.syntax)
+    }
+    pub fn mut_kw(&self) -> Option<MutKw> {
+        support::token(&self.syntax)
+    }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4882,9 +5249,13 @@ impl AstNode for PrefixExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for PrefixExpr {}
 impl PrefixExpr {
+    pub fn prefix_op(&self) -> Option<PrefixOp> {
+        support::token(&self.syntax)
+    }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4914,9 +5285,13 @@ impl AstNode for BoxExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for BoxExpr {}
 impl BoxExpr {
+    pub fn box_kw(&self) -> Option<BoxKw> {
+        support::token(&self.syntax)
+    }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4946,7 +5321,12 @@ impl AstNode for RangeExpr {
         &self.syntax
     }
 }
-impl RangeExpr {}
+impl ast::AttrsOwner for RangeExpr {}
+impl RangeExpr {
+    pub fn range_op(&self) -> Option<RangeOp> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BinExpr {
     pub(crate) syntax: SyntaxNode,
@@ -4974,7 +5354,12 @@ impl AstNode for BinExpr {
         &self.syntax
     }
 }
-impl BinExpr {}
+impl ast::AttrsOwner for BinExpr {}
+impl BinExpr {
+    pub fn bin_op(&self) -> Option<BinOp> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Literal {
     pub(crate) syntax: SyntaxNode,
@@ -5002,7 +5387,11 @@ impl AstNode for Literal {
         &self.syntax
     }
 }
-impl Literal {}
+impl Literal {
+    pub fn literal_token(&self) -> Option<LiteralToken> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchExpr {
     pub(crate) syntax: SyntaxNode,
@@ -5030,12 +5419,16 @@ impl AstNode for MatchExpr {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for MatchExpr {}
 impl MatchExpr {
+    pub fn match_kw(&self) -> Option<MatchKw> {
+        support::token(&self.syntax)
+    }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn match_arm_list(&self) -> Option<MatchArmList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5067,8 +5460,14 @@ impl AstNode for MatchArmList {
 }
 impl ast::AttrsOwner for MatchArmList {}
 impl MatchArmList {
+    pub fn l_curly(&self) -> Option<LCurly> {
+        support::token(&self.syntax)
+    }
     pub fn arms(&self) -> AstChildren<MatchArm> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_curly(&self) -> Option<RCurly> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5101,13 +5500,16 @@ impl AstNode for MatchArm {
 impl ast::AttrsOwner for MatchArm {}
 impl MatchArm {
     pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn guard(&self) -> Option<MatchGuard> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn fat_arrow(&self) -> Option<FatArrow> {
+        support::token(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5138,8 +5540,11 @@ impl AstNode for MatchGuard {
     }
 }
 impl MatchGuard {
+    pub fn if_kw(&self) -> Option<IfKw> {
+        support::token(&self.syntax)
+    }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5171,10 +5576,10 @@ impl AstNode for RecordLit {
 }
 impl RecordLit {
     pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn record_field_list(&self) -> Option<RecordFieldList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5205,11 +5610,20 @@ impl AstNode for RecordFieldList {
     }
 }
 impl RecordFieldList {
+    pub fn l_curly(&self) -> Option<LCurly> {
+        support::token(&self.syntax)
+    }
     pub fn fields(&self) -> AstChildren<RecordField> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn dotdot(&self) -> Option<Dotdot> {
+        support::token(&self.syntax)
     }
     pub fn spread(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn r_curly(&self) -> Option<RCurly> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5239,12 +5653,16 @@ impl AstNode for RecordField {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for RecordField {}
 impl RecordField {
     pub fn name_ref(&self) -> Option<NameRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn colon(&self) -> Option<Colon> {
+        support::token(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5276,7 +5694,7 @@ impl AstNode for OrPat {
 }
 impl OrPat {
     pub fn pats(&self) -> AstChildren<Pat> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5307,8 +5725,14 @@ impl AstNode for ParenPat {
     }
 }
 impl ParenPat {
+    pub fn l_paren(&self) -> Option<LParen> {
+        support::token(&self.syntax)
+    }
     pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn r_paren(&self) -> Option<RParen> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5339,8 +5763,14 @@ impl AstNode for RefPat {
     }
 }
 impl RefPat {
+    pub fn amp(&self) -> Option<Amp> {
+        support::token(&self.syntax)
+    }
+    pub fn mut_kw(&self) -> Option<MutKw> {
+        support::token(&self.syntax)
+    }
     pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5371,8 +5801,11 @@ impl AstNode for BoxPat {
     }
 }
 impl BoxPat {
+    pub fn box_kw(&self) -> Option<BoxKw> {
+        support::token(&self.syntax)
+    }
     pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5402,10 +5835,17 @@ impl AstNode for BindPat {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for BindPat {}
 impl ast::NameOwner for BindPat {}
 impl BindPat {
+    pub fn ref_kw(&self) -> Option<RefKw> {
+        support::token(&self.syntax)
+    }
+    pub fn mut_kw(&self) -> Option<MutKw> {
+        support::token(&self.syntax)
+    }
     pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5435,7 +5875,11 @@ impl AstNode for PlaceholderPat {
         &self.syntax
     }
 }
-impl PlaceholderPat {}
+impl PlaceholderPat {
+    pub fn underscore(&self) -> Option<Underscore> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DotDotPat {
     pub(crate) syntax: SyntaxNode,
@@ -5463,7 +5907,11 @@ impl AstNode for DotDotPat {
         &self.syntax
     }
 }
-impl DotDotPat {}
+impl DotDotPat {
+    pub fn dotdot(&self) -> Option<Dotdot> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathPat {
     pub(crate) syntax: SyntaxNode,
@@ -5493,7 +5941,7 @@ impl AstNode for PathPat {
 }
 impl PathPat {
     pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5524,8 +5972,14 @@ impl AstNode for SlicePat {
     }
 }
 impl SlicePat {
+    pub fn l_brack(&self) -> Option<LBrack> {
+        support::token(&self.syntax)
+    }
     pub fn args(&self) -> AstChildren<Pat> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_brack(&self) -> Option<RBrack> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5555,7 +6009,11 @@ impl AstNode for RangePat {
         &self.syntax
     }
 }
-impl RangePat {}
+impl RangePat {
+    pub fn range_separator(&self) -> Option<RangeSeparator> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LiteralPat {
     pub(crate) syntax: SyntaxNode,
@@ -5585,7 +6043,7 @@ impl AstNode for LiteralPat {
 }
 impl LiteralPat {
     pub fn literal(&self) -> Option<Literal> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5617,7 +6075,7 @@ impl AstNode for MacroPat {
 }
 impl MacroPat {
     pub fn macro_call(&self) -> Option<MacroCall> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5649,10 +6107,10 @@ impl AstNode for RecordPat {
 }
 impl RecordPat {
     pub fn record_field_pat_list(&self) -> Option<RecordFieldPatList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5683,11 +6141,23 @@ impl AstNode for RecordFieldPatList {
     }
 }
 impl RecordFieldPatList {
+    pub fn l_curly(&self) -> Option<LCurly> {
+        support::token(&self.syntax)
+    }
+    pub fn pats(&self) -> AstChildren<RecordInnerPat> {
+        support::children(&self.syntax)
+    }
     pub fn record_field_pats(&self) -> AstChildren<RecordFieldPat> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
     }
     pub fn bind_pats(&self) -> AstChildren<BindPat> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn dotdot(&self) -> Option<Dotdot> {
+        support::token(&self.syntax)
+    }
+    pub fn r_curly(&self) -> Option<RCurly> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5717,10 +6187,14 @@ impl AstNode for RecordFieldPat {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for RecordFieldPat {}
 impl ast::NameOwner for RecordFieldPat {}
 impl RecordFieldPat {
+    pub fn colon(&self) -> Option<Colon> {
+        support::token(&self.syntax)
+    }
     pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5752,10 +6226,16 @@ impl AstNode for TupleStructPat {
 }
 impl TupleStructPat {
     pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn l_paren(&self) -> Option<LParen> {
+        support::token(&self.syntax)
     }
     pub fn args(&self) -> AstChildren<Pat> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_paren(&self) -> Option<RParen> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5786,8 +6266,14 @@ impl AstNode for TuplePat {
     }
 }
 impl TuplePat {
+    pub fn l_paren(&self) -> Option<LParen> {
+        support::token(&self.syntax)
+    }
     pub fn args(&self) -> AstChildren<Pat> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_paren(&self) -> Option<RParen> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5817,7 +6303,20 @@ impl AstNode for Visibility {
         &self.syntax
     }
 }
-impl Visibility {}
+impl Visibility {
+    pub fn pub_kw(&self) -> Option<PubKw> {
+        support::token(&self.syntax)
+    }
+    pub fn super_kw(&self) -> Option<SuperKw> {
+        support::token(&self.syntax)
+    }
+    pub fn self_kw(&self) -> Option<SelfKw> {
+        support::token(&self.syntax)
+    }
+    pub fn crate_kw(&self) -> Option<CrateKw> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     pub(crate) syntax: SyntaxNode,
@@ -5845,7 +6344,11 @@ impl AstNode for Name {
         &self.syntax
     }
 }
-impl Name {}
+impl Name {
+    pub fn ident(&self) -> Option<Ident> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NameRef {
     pub(crate) syntax: SyntaxNode,
@@ -5873,7 +6376,11 @@ impl AstNode for NameRef {
         &self.syntax
     }
 }
-impl NameRef {}
+impl NameRef {
+    pub fn name_ref_token(&self) -> Option<NameRefToken> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
@@ -5905,11 +6412,17 @@ impl ast::NameOwner for MacroCall {}
 impl ast::AttrsOwner for MacroCall {}
 impl ast::DocCommentsOwner for MacroCall {}
 impl MacroCall {
-    pub fn token_tree(&self) -> Option<TokenTree> {
-        AstChildren::new(&self.syntax).next()
-    }
     pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn excl(&self) -> Option<Excl> {
+        support::token(&self.syntax)
+    }
+    pub fn token_tree(&self) -> Option<TokenTree> {
+        support::child(&self.syntax)
+    }
+    pub fn semi(&self) -> Option<Semi> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -5940,11 +6453,26 @@ impl AstNode for Attr {
     }
 }
 impl Attr {
+    pub fn pound(&self) -> Option<Pound> {
+        support::token(&self.syntax)
+    }
+    pub fn excl(&self) -> Option<Excl> {
+        support::token(&self.syntax)
+    }
+    pub fn l_brack(&self) -> Option<LBrack> {
+        support::token(&self.syntax)
+    }
     pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
     }
     pub fn input(&self) -> Option<AttrInput> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn r_brack(&self) -> Option<RBrack> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6003,11 +6531,23 @@ impl AstNode for TypeParamList {
     }
 }
 impl TypeParamList {
+    pub fn l_angle(&self) -> Option<LAngle> {
+        support::token(&self.syntax)
+    }
+    pub fn generic_params(&self) -> AstChildren<GenericParam> {
+        support::children(&self.syntax)
+    }
     pub fn type_params(&self) -> AstChildren<TypeParam> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
     }
     pub fn lifetime_params(&self) -> AstChildren<LifetimeParam> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn const_params(&self) -> AstChildren<ConstParam> {
+        support::children(&self.syntax)
+    }
+    pub fn r_angle(&self) -> Option<RAngle> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6041,8 +6581,11 @@ impl ast::NameOwner for TypeParam {}
 impl ast::AttrsOwner for TypeParam {}
 impl ast::TypeBoundsOwner for TypeParam {}
 impl TypeParam {
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
+    }
     pub fn default_type(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6076,8 +6619,11 @@ impl ast::NameOwner for ConstParam {}
 impl ast::AttrsOwner for ConstParam {}
 impl ast::TypeAscriptionOwner for ConstParam {}
 impl ConstParam {
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
+    }
     pub fn default_val(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6108,7 +6654,11 @@ impl AstNode for LifetimeParam {
     }
 }
 impl ast::AttrsOwner for LifetimeParam {}
-impl LifetimeParam {}
+impl LifetimeParam {
+    pub fn lifetime(&self) -> Option<Lifetime> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBound {
     pub(crate) syntax: SyntaxNode,
@@ -6137,8 +6687,14 @@ impl AstNode for TypeBound {
     }
 }
 impl TypeBound {
+    pub fn lifetime(&self) -> Option<Lifetime> {
+        support::token(&self.syntax)
+    }
+    pub fn const_kw(&self) -> Option<ConstKw> {
+        support::token(&self.syntax)
+    }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6170,7 +6726,7 @@ impl AstNode for TypeBoundList {
 }
 impl TypeBoundList {
     pub fn bounds(&self) -> AstChildren<TypeBound> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6202,8 +6758,11 @@ impl AstNode for WherePred {
 }
 impl ast::TypeBoundsOwner for WherePred {}
 impl WherePred {
+    pub fn lifetime(&self) -> Option<Lifetime> {
+        support::token(&self.syntax)
+    }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6234,8 +6793,43 @@ impl AstNode for WhereClause {
     }
 }
 impl WhereClause {
+    pub fn where_kw(&self) -> Option<WhereKw> {
+        support::token(&self.syntax)
+    }
     pub fn predicates(&self) -> AstChildren<WherePred> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Abi {
+    pub(crate) syntax: SyntaxNode,
+}
+impl std::fmt::Display for Abi {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for Abi {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            ABI => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl Abi {
+    pub fn string(&self) -> Option<String> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6265,9 +6859,13 @@ impl AstNode for ExprStmt {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for ExprStmt {}
 impl ExprStmt {
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn semi(&self) -> Option<Semi> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6297,13 +6895,20 @@ impl AstNode for LetStmt {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for LetStmt {}
 impl ast::TypeAscriptionOwner for LetStmt {}
 impl LetStmt {
+    pub fn let_kw(&self) -> Option<LetKw> {
+        support::token(&self.syntax)
+    }
     pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
     }
     pub fn initializer(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6334,11 +6939,17 @@ impl AstNode for Condition {
     }
 }
 impl Condition {
+    pub fn let_kw(&self) -> Option<LetKw> {
+        support::token(&self.syntax)
+    }
     pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6371,11 +6982,17 @@ impl AstNode for Block {
 impl ast::AttrsOwner for Block {}
 impl ast::ModuleItemOwner for Block {}
 impl Block {
+    pub fn l_curly(&self) -> Option<LCurly> {
+        support::token(&self.syntax)
+    }
     pub fn statements(&self) -> AstChildren<Stmt> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn r_curly(&self) -> Option<RCurly> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6406,11 +7023,17 @@ impl AstNode for ParamList {
     }
 }
 impl ParamList {
+    pub fn l_paren(&self) -> Option<LParen> {
+        support::token(&self.syntax)
+    }
     pub fn self_param(&self) -> Option<SelfParam> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn params(&self) -> AstChildren<Param> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_paren(&self) -> Option<RParen> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6442,7 +7065,17 @@ impl AstNode for SelfParam {
 }
 impl ast::TypeAscriptionOwner for SelfParam {}
 impl ast::AttrsOwner for SelfParam {}
-impl SelfParam {}
+impl SelfParam {
+    pub fn amp(&self) -> Option<Amp> {
+        support::token(&self.syntax)
+    }
+    pub fn lifetime(&self) -> Option<Lifetime> {
+        support::token(&self.syntax)
+    }
+    pub fn self_kw(&self) -> Option<SelfKw> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Param {
     pub(crate) syntax: SyntaxNode,
@@ -6474,7 +7107,10 @@ impl ast::TypeAscriptionOwner for Param {}
 impl ast::AttrsOwner for Param {}
 impl Param {
     pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn dotdotdot(&self) -> Option<Dotdotdot> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6507,8 +7143,11 @@ impl AstNode for UseItem {
 impl ast::AttrsOwner for UseItem {}
 impl ast::VisibilityOwner for UseItem {}
 impl UseItem {
+    pub fn use_kw(&self) -> Option<UseKw> {
+        support::token(&self.syntax)
+    }
     pub fn use_tree(&self) -> Option<UseTree> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6540,13 +7179,16 @@ impl AstNode for UseTree {
 }
 impl UseTree {
     pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn star(&self) -> Option<Star> {
+        support::token(&self.syntax)
     }
     pub fn use_tree_list(&self) -> Option<UseTreeList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn alias(&self) -> Option<Alias> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6577,7 +7219,11 @@ impl AstNode for Alias {
     }
 }
 impl ast::NameOwner for Alias {}
-impl Alias {}
+impl Alias {
+    pub fn as_kw(&self) -> Option<AsKw> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTreeList {
     pub(crate) syntax: SyntaxNode,
@@ -6606,8 +7252,14 @@ impl AstNode for UseTreeList {
     }
 }
 impl UseTreeList {
+    pub fn l_curly(&self) -> Option<LCurly> {
+        support::token(&self.syntax)
+    }
     pub fn use_trees(&self) -> AstChildren<UseTree> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_curly(&self) -> Option<RCurly> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6640,11 +7292,17 @@ impl AstNode for ExternCrateItem {
 impl ast::AttrsOwner for ExternCrateItem {}
 impl ast::VisibilityOwner for ExternCrateItem {}
 impl ExternCrateItem {
+    pub fn extern_kw(&self) -> Option<ExternKw> {
+        support::token(&self.syntax)
+    }
+    pub fn crate_kw(&self) -> Option<CrateKw> {
+        support::token(&self.syntax)
+    }
     pub fn name_ref(&self) -> Option<NameRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn alias(&self) -> Option<Alias> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6675,8 +7333,14 @@ impl AstNode for ArgList {
     }
 }
 impl ArgList {
+    pub fn l_paren(&self) -> Option<LParen> {
+        support::token(&self.syntax)
+    }
     pub fn args(&self) -> AstChildren<Expr> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
+    }
+    pub fn r_paren(&self) -> Option<RParen> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6708,10 +7372,10 @@ impl AstNode for Path {
 }
 impl Path {
     pub fn segment(&self) -> Option<PathSegment> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn qualifier(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6742,20 +7406,29 @@ impl AstNode for PathSegment {
     }
 }
 impl PathSegment {
+    pub fn coloncolon(&self) -> Option<Coloncolon> {
+        support::token(&self.syntax)
+    }
+    pub fn l_angle(&self) -> Option<LAngle> {
+        support::token(&self.syntax)
+    }
     pub fn name_ref(&self) -> Option<NameRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn type_arg_list(&self) -> Option<TypeArgList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn param_list(&self) -> Option<ParamList> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn ret_type(&self) -> Option<RetType> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
     pub fn path_type(&self) -> Option<PathType> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn r_angle(&self) -> Option<RAngle> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6786,17 +7459,29 @@ impl AstNode for TypeArgList {
     }
 }
 impl TypeArgList {
+    pub fn coloncolon(&self) -> Option<Coloncolon> {
+        support::token(&self.syntax)
+    }
+    pub fn l_angle(&self) -> Option<LAngle> {
+        support::token(&self.syntax)
+    }
+    pub fn generic_args(&self) -> AstChildren<GenericArg> {
+        support::children(&self.syntax)
+    }
     pub fn type_args(&self) -> AstChildren<TypeArg> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
     }
     pub fn lifetime_args(&self) -> AstChildren<LifetimeArg> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
     }
     pub fn assoc_type_args(&self) -> AstChildren<AssocTypeArg> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
     }
-    pub fn const_arg(&self) -> AstChildren<ConstArg> {
-        AstChildren::new(&self.syntax)
+    pub fn const_args(&self) -> AstChildren<ConstArg> {
+        support::children(&self.syntax)
+    }
+    pub fn r_angle(&self) -> Option<RAngle> {
+        support::token(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6828,7 +7513,7 @@ impl AstNode for TypeArg {
 }
 impl TypeArg {
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6858,12 +7543,16 @@ impl AstNode for AssocTypeArg {
         &self.syntax
     }
 }
+impl ast::TypeBoundsOwner for AssocTypeArg {}
 impl AssocTypeArg {
     pub fn name_ref(&self) -> Option<NameRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
     }
     pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6893,7 +7582,11 @@ impl AstNode for LifetimeArg {
         &self.syntax
     }
 }
-impl LifetimeArg {}
+impl LifetimeArg {
+    pub fn lifetime(&self) -> Option<Lifetime> {
+        support::token(&self.syntax)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstArg {
     pub(crate) syntax: SyntaxNode,
@@ -6923,10 +7616,13 @@ impl AstNode for ConstArg {
 }
 impl ConstArg {
     pub fn literal(&self) -> Option<Literal> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
     }
     pub fn block_expr(&self) -> Option<BlockExpr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -6988,10 +7684,161 @@ impl AstNode for MacroStmts {
 }
 impl MacroStmts {
     pub fn statements(&self) -> AstChildren<Stmt> {
-        AstChildren::new(&self.syntax)
+        support::children(&self.syntax)
     }
     pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
+        support::child(&self.syntax)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ExternItemList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl std::fmt::Display for ExternItemList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for ExternItemList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            EXTERN_ITEM_LIST => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl ast::FnDefOwner for ExternItemList {}
+impl ast::ModuleItemOwner for ExternItemList {}
+impl ExternItemList {
+    pub fn l_curly(&self) -> Option<LCurly> {
+        support::token(&self.syntax)
+    }
+    pub fn extern_items(&self) -> AstChildren<ExternItem> {
+        support::children(&self.syntax)
+    }
+    pub fn r_curly(&self) -> Option<RCurly> {
+        support::token(&self.syntax)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ExternBlock {
+    pub(crate) syntax: SyntaxNode,
+}
+impl std::fmt::Display for ExternBlock {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for ExternBlock {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            EXTERN_BLOCK => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl ExternBlock {
+    pub fn abi(&self) -> Option<Abi> {
+        support::child(&self.syntax)
+    }
+    pub fn extern_item_list(&self) -> Option<ExternItemList> {
+        support::child(&self.syntax)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MetaItem {
+    pub(crate) syntax: SyntaxNode,
+}
+impl std::fmt::Display for MetaItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for MetaItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            META_ITEM => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl MetaItem {
+    pub fn path(&self) -> Option<Path> {
+        support::child(&self.syntax)
+    }
+    pub fn eq(&self) -> Option<Eq> {
+        support::token(&self.syntax)
+    }
+    pub fn attr_input(&self) -> Option<AttrInput> {
+        support::child(&self.syntax)
+    }
+    pub fn nested_meta_items(&self) -> AstChildren<MetaItem> {
+        support::children(&self.syntax)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl std::fmt::Display for MacroDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for MacroDef {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            MACRO_DEF => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl MacroDef {
+    pub fn name(&self) -> Option<Name> {
+        support::child(&self.syntax)
+    }
+    pub fn token_tree(&self) -> Option<TokenTree> {
+        support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -7047,6 +7894,114 @@ impl AstNode for NominalDef {
 impl ast::NameOwner for NominalDef {}
 impl ast::TypeParamsOwner for NominalDef {}
 impl ast::AttrsOwner for NominalDef {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GenericParam {
+    LifetimeParam(LifetimeParam),
+    TypeParam(TypeParam),
+    ConstParam(ConstParam),
+}
+impl From<LifetimeParam> for GenericParam {
+    fn from(node: LifetimeParam) -> GenericParam {
+        GenericParam::LifetimeParam(node)
+    }
+}
+impl From<TypeParam> for GenericParam {
+    fn from(node: TypeParam) -> GenericParam {
+        GenericParam::TypeParam(node)
+    }
+}
+impl From<ConstParam> for GenericParam {
+    fn from(node: ConstParam) -> GenericParam {
+        GenericParam::ConstParam(node)
+    }
+}
+impl std::fmt::Display for GenericParam {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for GenericParam {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            LIFETIME_PARAM | TYPE_PARAM | CONST_PARAM => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            LIFETIME_PARAM => GenericParam::LifetimeParam(LifetimeParam { syntax }),
+            TYPE_PARAM => GenericParam::TypeParam(TypeParam { syntax }),
+            CONST_PARAM => GenericParam::ConstParam(ConstParam { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            GenericParam::LifetimeParam(it) => &it.syntax,
+            GenericParam::TypeParam(it) => &it.syntax,
+            GenericParam::ConstParam(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GenericArg {
+    LifetimeArg(LifetimeArg),
+    TypeArg(TypeArg),
+    ConstArg(ConstArg),
+    AssocTypeArg(AssocTypeArg),
+}
+impl From<LifetimeArg> for GenericArg {
+    fn from(node: LifetimeArg) -> GenericArg {
+        GenericArg::LifetimeArg(node)
+    }
+}
+impl From<TypeArg> for GenericArg {
+    fn from(node: TypeArg) -> GenericArg {
+        GenericArg::TypeArg(node)
+    }
+}
+impl From<ConstArg> for GenericArg {
+    fn from(node: ConstArg) -> GenericArg {
+        GenericArg::ConstArg(node)
+    }
+}
+impl From<AssocTypeArg> for GenericArg {
+    fn from(node: AssocTypeArg) -> GenericArg {
+        GenericArg::AssocTypeArg(node)
+    }
+}
+impl std::fmt::Display for GenericArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for GenericArg {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            LIFETIME_ARG | TYPE_ARG | CONST_ARG | ASSOC_TYPE_ARG => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            LIFETIME_ARG => GenericArg::LifetimeArg(LifetimeArg { syntax }),
+            TYPE_ARG => GenericArg::TypeArg(TypeArg { syntax }),
+            CONST_ARG => GenericArg::ConstArg(ConstArg { syntax }),
+            ASSOC_TYPE_ARG => GenericArg::AssocTypeArg(AssocTypeArg { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            GenericArg::LifetimeArg(it) => &it.syntax,
+            GenericArg::TypeArg(it) => &it.syntax,
+            GenericArg::ConstArg(it) => &it.syntax,
+            GenericArg::AssocTypeArg(it) => &it.syntax,
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeRef {
     ParenType(ParenType),
@@ -7194,6 +8149,7 @@ pub enum ModuleItem {
     StaticDef(StaticDef),
     Module(Module),
     MacroCall(MacroCall),
+    ExternBlock(ExternBlock),
 }
 impl From<StructDef> for ModuleItem {
     fn from(node: StructDef) -> ModuleItem {
@@ -7260,6 +8216,11 @@ impl From<MacroCall> for ModuleItem {
         ModuleItem::MacroCall(node)
     }
 }
+impl From<ExternBlock> for ModuleItem {
+    fn from(node: ExternBlock) -> ModuleItem {
+        ModuleItem::ExternBlock(node)
+    }
+}
 impl std::fmt::Display for ModuleItem {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -7269,7 +8230,8 @@ impl AstNode for ModuleItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             STRUCT_DEF | UNION_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | IMPL_DEF
-            | USE_ITEM | EXTERN_CRATE_ITEM | CONST_DEF | STATIC_DEF | MODULE | MACRO_CALL => true,
+            | USE_ITEM | EXTERN_CRATE_ITEM | CONST_DEF | STATIC_DEF | MODULE | MACRO_CALL
+            | EXTERN_BLOCK => true,
             _ => false,
         }
     }
@@ -7288,6 +8250,7 @@ impl AstNode for ModuleItem {
             STATIC_DEF => ModuleItem::StaticDef(StaticDef { syntax }),
             MODULE => ModuleItem::Module(Module { syntax }),
             MACRO_CALL => ModuleItem::MacroCall(MacroCall { syntax }),
+            EXTERN_BLOCK => ModuleItem::ExternBlock(ExternBlock { syntax }),
             _ => return None,
         };
         Some(res)
@@ -7307,9 +8270,11 @@ impl AstNode for ModuleItem {
             ModuleItem::StaticDef(it) => &it.syntax,
             ModuleItem::Module(it) => &it.syntax,
             ModuleItem::MacroCall(it) => &it.syntax,
+            ModuleItem::ExternBlock(it) => &it.syntax,
         }
     }
 }
+impl ast::NameOwner for ModuleItem {}
 impl ast::AttrsOwner for ModuleItem {}
 impl ast::VisibilityOwner for ModuleItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -7362,7 +8327,53 @@ impl AstNode for ImplItem {
         }
     }
 }
+impl ast::NameOwner for ImplItem {}
 impl ast::AttrsOwner for ImplItem {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ExternItem {
+    FnDef(FnDef),
+    StaticDef(StaticDef),
+}
+impl From<FnDef> for ExternItem {
+    fn from(node: FnDef) -> ExternItem {
+        ExternItem::FnDef(node)
+    }
+}
+impl From<StaticDef> for ExternItem {
+    fn from(node: StaticDef) -> ExternItem {
+        ExternItem::StaticDef(node)
+    }
+}
+impl std::fmt::Display for ExternItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for ExternItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            FN_DEF | STATIC_DEF => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            FN_DEF => ExternItem::FnDef(FnDef { syntax }),
+            STATIC_DEF => ExternItem::StaticDef(StaticDef { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            ExternItem::FnDef(it) => &it.syntax,
+            ExternItem::StaticDef(it) => &it.syntax,
+        }
+    }
+}
+impl ast::NameOwner for ExternItem {}
+impl ast::AttrsOwner for ExternItem {}
+impl ast::VisibilityOwner for ExternItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     TupleExpr(TupleExpr),
@@ -7642,6 +8653,7 @@ impl AstNode for Expr {
         }
     }
 }
+impl ast::AttrsOwner for Expr {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
     OrPat(OrPat),
@@ -7791,6 +8803,48 @@ impl AstNode for Pat {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RecordInnerPat {
+    RecordFieldPat(RecordFieldPat),
+    BindPat(BindPat),
+}
+impl From<RecordFieldPat> for RecordInnerPat {
+    fn from(node: RecordFieldPat) -> RecordInnerPat {
+        RecordInnerPat::RecordFieldPat(node)
+    }
+}
+impl From<BindPat> for RecordInnerPat {
+    fn from(node: BindPat) -> RecordInnerPat {
+        RecordInnerPat::BindPat(node)
+    }
+}
+impl std::fmt::Display for RecordInnerPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for RecordInnerPat {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_FIELD_PAT | BIND_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            RECORD_FIELD_PAT => RecordInnerPat::RecordFieldPat(RecordFieldPat { syntax }),
+            BIND_PAT => RecordInnerPat::BindPat(BindPat { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            RecordInnerPat::RecordFieldPat(it) => &it.syntax,
+            RecordInnerPat::BindPat(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttrInput {
     Literal(Literal),
     TokenTree(TokenTree),
@@ -7834,17 +8888,17 @@ impl AstNode for AttrInput {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
-    ExprStmt(ExprStmt),
     LetStmt(LetStmt),
-}
-impl From<ExprStmt> for Stmt {
-    fn from(node: ExprStmt) -> Stmt {
-        Stmt::ExprStmt(node)
-    }
+    ExprStmt(ExprStmt),
 }
 impl From<LetStmt> for Stmt {
     fn from(node: LetStmt) -> Stmt {
         Stmt::LetStmt(node)
+    }
+}
+impl From<ExprStmt> for Stmt {
+    fn from(node: ExprStmt) -> Stmt {
+        Stmt::ExprStmt(node)
     }
 }
 impl std::fmt::Display for Stmt {
@@ -7855,22 +8909,717 @@ impl std::fmt::Display for Stmt {
 impl AstNode for Stmt {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            EXPR_STMT | LET_STMT => true,
+            LET_STMT | EXPR_STMT => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            EXPR_STMT => Stmt::ExprStmt(ExprStmt { syntax }),
             LET_STMT => Stmt::LetStmt(LetStmt { syntax }),
+            EXPR_STMT => Stmt::ExprStmt(ExprStmt { syntax }),
             _ => return None,
         };
         Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            Stmt::ExprStmt(it) => &it.syntax,
             Stmt::LetStmt(it) => &it.syntax,
+            Stmt::ExprStmt(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LeftDelimiter {
+    LParen(LParen),
+    LBrack(LBrack),
+    LCurly(LCurly),
+}
+impl From<LParen> for LeftDelimiter {
+    fn from(node: LParen) -> LeftDelimiter {
+        LeftDelimiter::LParen(node)
+    }
+}
+impl From<LBrack> for LeftDelimiter {
+    fn from(node: LBrack) -> LeftDelimiter {
+        LeftDelimiter::LBrack(node)
+    }
+}
+impl From<LCurly> for LeftDelimiter {
+    fn from(node: LCurly) -> LeftDelimiter {
+        LeftDelimiter::LCurly(node)
+    }
+}
+impl std::fmt::Display for LeftDelimiter {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstToken for LeftDelimiter {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            L_PAREN | L_BRACK | L_CURLY => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        let res = match syntax.kind() {
+            L_PAREN => LeftDelimiter::LParen(LParen { syntax }),
+            L_BRACK => LeftDelimiter::LBrack(LBrack { syntax }),
+            L_CURLY => LeftDelimiter::LCurly(LCurly { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxToken {
+        match self {
+            LeftDelimiter::LParen(it) => &it.syntax,
+            LeftDelimiter::LBrack(it) => &it.syntax,
+            LeftDelimiter::LCurly(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RightDelimiter {
+    RParen(RParen),
+    RBrack(RBrack),
+    RCurly(RCurly),
+}
+impl From<RParen> for RightDelimiter {
+    fn from(node: RParen) -> RightDelimiter {
+        RightDelimiter::RParen(node)
+    }
+}
+impl From<RBrack> for RightDelimiter {
+    fn from(node: RBrack) -> RightDelimiter {
+        RightDelimiter::RBrack(node)
+    }
+}
+impl From<RCurly> for RightDelimiter {
+    fn from(node: RCurly) -> RightDelimiter {
+        RightDelimiter::RCurly(node)
+    }
+}
+impl std::fmt::Display for RightDelimiter {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstToken for RightDelimiter {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            R_PAREN | R_BRACK | R_CURLY => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        let res = match syntax.kind() {
+            R_PAREN => RightDelimiter::RParen(RParen { syntax }),
+            R_BRACK => RightDelimiter::RBrack(RBrack { syntax }),
+            R_CURLY => RightDelimiter::RCurly(RCurly { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxToken {
+        match self {
+            RightDelimiter::RParen(it) => &it.syntax,
+            RightDelimiter::RBrack(it) => &it.syntax,
+            RightDelimiter::RCurly(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RangeSeparator {
+    Dotdot(Dotdot),
+    Dotdotdot(Dotdotdot),
+    Dotdoteq(Dotdoteq),
+}
+impl From<Dotdot> for RangeSeparator {
+    fn from(node: Dotdot) -> RangeSeparator {
+        RangeSeparator::Dotdot(node)
+    }
+}
+impl From<Dotdotdot> for RangeSeparator {
+    fn from(node: Dotdotdot) -> RangeSeparator {
+        RangeSeparator::Dotdotdot(node)
+    }
+}
+impl From<Dotdoteq> for RangeSeparator {
+    fn from(node: Dotdoteq) -> RangeSeparator {
+        RangeSeparator::Dotdoteq(node)
+    }
+}
+impl std::fmt::Display for RangeSeparator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstToken for RangeSeparator {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            DOTDOT | DOTDOTDOT | DOTDOTEQ => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        let res = match syntax.kind() {
+            DOTDOT => RangeSeparator::Dotdot(Dotdot { syntax }),
+            DOTDOTDOT => RangeSeparator::Dotdotdot(Dotdotdot { syntax }),
+            DOTDOTEQ => RangeSeparator::Dotdoteq(Dotdoteq { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxToken {
+        match self {
+            RangeSeparator::Dotdot(it) => &it.syntax,
+            RangeSeparator::Dotdotdot(it) => &it.syntax,
+            RangeSeparator::Dotdoteq(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BinOp {
+    Pipepipe(Pipepipe),
+    Ampamp(Ampamp),
+    Eqeq(Eqeq),
+    Neq(Neq),
+    Lteq(Lteq),
+    Gteq(Gteq),
+    LAngle(LAngle),
+    RAngle(RAngle),
+    Plus(Plus),
+    Star(Star),
+    Minus(Minus),
+    Slash(Slash),
+    Percent(Percent),
+    Shl(Shl),
+    Shr(Shr),
+    Caret(Caret),
+    Pipe(Pipe),
+    Amp(Amp),
+    Eq(Eq),
+    Pluseq(Pluseq),
+    Slasheq(Slasheq),
+    Stareq(Stareq),
+    Percenteq(Percenteq),
+    Shreq(Shreq),
+    Shleq(Shleq),
+    Minuseq(Minuseq),
+    Pipeeq(Pipeeq),
+    Ampeq(Ampeq),
+    Careteq(Careteq),
+}
+impl From<Pipepipe> for BinOp {
+    fn from(node: Pipepipe) -> BinOp {
+        BinOp::Pipepipe(node)
+    }
+}
+impl From<Ampamp> for BinOp {
+    fn from(node: Ampamp) -> BinOp {
+        BinOp::Ampamp(node)
+    }
+}
+impl From<Eqeq> for BinOp {
+    fn from(node: Eqeq) -> BinOp {
+        BinOp::Eqeq(node)
+    }
+}
+impl From<Neq> for BinOp {
+    fn from(node: Neq) -> BinOp {
+        BinOp::Neq(node)
+    }
+}
+impl From<Lteq> for BinOp {
+    fn from(node: Lteq) -> BinOp {
+        BinOp::Lteq(node)
+    }
+}
+impl From<Gteq> for BinOp {
+    fn from(node: Gteq) -> BinOp {
+        BinOp::Gteq(node)
+    }
+}
+impl From<LAngle> for BinOp {
+    fn from(node: LAngle) -> BinOp {
+        BinOp::LAngle(node)
+    }
+}
+impl From<RAngle> for BinOp {
+    fn from(node: RAngle) -> BinOp {
+        BinOp::RAngle(node)
+    }
+}
+impl From<Plus> for BinOp {
+    fn from(node: Plus) -> BinOp {
+        BinOp::Plus(node)
+    }
+}
+impl From<Star> for BinOp {
+    fn from(node: Star) -> BinOp {
+        BinOp::Star(node)
+    }
+}
+impl From<Minus> for BinOp {
+    fn from(node: Minus) -> BinOp {
+        BinOp::Minus(node)
+    }
+}
+impl From<Slash> for BinOp {
+    fn from(node: Slash) -> BinOp {
+        BinOp::Slash(node)
+    }
+}
+impl From<Percent> for BinOp {
+    fn from(node: Percent) -> BinOp {
+        BinOp::Percent(node)
+    }
+}
+impl From<Shl> for BinOp {
+    fn from(node: Shl) -> BinOp {
+        BinOp::Shl(node)
+    }
+}
+impl From<Shr> for BinOp {
+    fn from(node: Shr) -> BinOp {
+        BinOp::Shr(node)
+    }
+}
+impl From<Caret> for BinOp {
+    fn from(node: Caret) -> BinOp {
+        BinOp::Caret(node)
+    }
+}
+impl From<Pipe> for BinOp {
+    fn from(node: Pipe) -> BinOp {
+        BinOp::Pipe(node)
+    }
+}
+impl From<Amp> for BinOp {
+    fn from(node: Amp) -> BinOp {
+        BinOp::Amp(node)
+    }
+}
+impl From<Eq> for BinOp {
+    fn from(node: Eq) -> BinOp {
+        BinOp::Eq(node)
+    }
+}
+impl From<Pluseq> for BinOp {
+    fn from(node: Pluseq) -> BinOp {
+        BinOp::Pluseq(node)
+    }
+}
+impl From<Slasheq> for BinOp {
+    fn from(node: Slasheq) -> BinOp {
+        BinOp::Slasheq(node)
+    }
+}
+impl From<Stareq> for BinOp {
+    fn from(node: Stareq) -> BinOp {
+        BinOp::Stareq(node)
+    }
+}
+impl From<Percenteq> for BinOp {
+    fn from(node: Percenteq) -> BinOp {
+        BinOp::Percenteq(node)
+    }
+}
+impl From<Shreq> for BinOp {
+    fn from(node: Shreq) -> BinOp {
+        BinOp::Shreq(node)
+    }
+}
+impl From<Shleq> for BinOp {
+    fn from(node: Shleq) -> BinOp {
+        BinOp::Shleq(node)
+    }
+}
+impl From<Minuseq> for BinOp {
+    fn from(node: Minuseq) -> BinOp {
+        BinOp::Minuseq(node)
+    }
+}
+impl From<Pipeeq> for BinOp {
+    fn from(node: Pipeeq) -> BinOp {
+        BinOp::Pipeeq(node)
+    }
+}
+impl From<Ampeq> for BinOp {
+    fn from(node: Ampeq) -> BinOp {
+        BinOp::Ampeq(node)
+    }
+}
+impl From<Careteq> for BinOp {
+    fn from(node: Careteq) -> BinOp {
+        BinOp::Careteq(node)
+    }
+}
+impl std::fmt::Display for BinOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstToken for BinOp {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            PIPEPIPE | AMPAMP | EQEQ | NEQ | LTEQ | GTEQ | L_ANGLE | R_ANGLE | PLUS | STAR
+            | MINUS | SLASH | PERCENT | SHL | SHR | CARET | PIPE | AMP | EQ | PLUSEQ | SLASHEQ
+            | STAREQ | PERCENTEQ | SHREQ | SHLEQ | MINUSEQ | PIPEEQ | AMPEQ | CARETEQ => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        let res = match syntax.kind() {
+            PIPEPIPE => BinOp::Pipepipe(Pipepipe { syntax }),
+            AMPAMP => BinOp::Ampamp(Ampamp { syntax }),
+            EQEQ => BinOp::Eqeq(Eqeq { syntax }),
+            NEQ => BinOp::Neq(Neq { syntax }),
+            LTEQ => BinOp::Lteq(Lteq { syntax }),
+            GTEQ => BinOp::Gteq(Gteq { syntax }),
+            L_ANGLE => BinOp::LAngle(LAngle { syntax }),
+            R_ANGLE => BinOp::RAngle(RAngle { syntax }),
+            PLUS => BinOp::Plus(Plus { syntax }),
+            STAR => BinOp::Star(Star { syntax }),
+            MINUS => BinOp::Minus(Minus { syntax }),
+            SLASH => BinOp::Slash(Slash { syntax }),
+            PERCENT => BinOp::Percent(Percent { syntax }),
+            SHL => BinOp::Shl(Shl { syntax }),
+            SHR => BinOp::Shr(Shr { syntax }),
+            CARET => BinOp::Caret(Caret { syntax }),
+            PIPE => BinOp::Pipe(Pipe { syntax }),
+            AMP => BinOp::Amp(Amp { syntax }),
+            EQ => BinOp::Eq(Eq { syntax }),
+            PLUSEQ => BinOp::Pluseq(Pluseq { syntax }),
+            SLASHEQ => BinOp::Slasheq(Slasheq { syntax }),
+            STAREQ => BinOp::Stareq(Stareq { syntax }),
+            PERCENTEQ => BinOp::Percenteq(Percenteq { syntax }),
+            SHREQ => BinOp::Shreq(Shreq { syntax }),
+            SHLEQ => BinOp::Shleq(Shleq { syntax }),
+            MINUSEQ => BinOp::Minuseq(Minuseq { syntax }),
+            PIPEEQ => BinOp::Pipeeq(Pipeeq { syntax }),
+            AMPEQ => BinOp::Ampeq(Ampeq { syntax }),
+            CARETEQ => BinOp::Careteq(Careteq { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxToken {
+        match self {
+            BinOp::Pipepipe(it) => &it.syntax,
+            BinOp::Ampamp(it) => &it.syntax,
+            BinOp::Eqeq(it) => &it.syntax,
+            BinOp::Neq(it) => &it.syntax,
+            BinOp::Lteq(it) => &it.syntax,
+            BinOp::Gteq(it) => &it.syntax,
+            BinOp::LAngle(it) => &it.syntax,
+            BinOp::RAngle(it) => &it.syntax,
+            BinOp::Plus(it) => &it.syntax,
+            BinOp::Star(it) => &it.syntax,
+            BinOp::Minus(it) => &it.syntax,
+            BinOp::Slash(it) => &it.syntax,
+            BinOp::Percent(it) => &it.syntax,
+            BinOp::Shl(it) => &it.syntax,
+            BinOp::Shr(it) => &it.syntax,
+            BinOp::Caret(it) => &it.syntax,
+            BinOp::Pipe(it) => &it.syntax,
+            BinOp::Amp(it) => &it.syntax,
+            BinOp::Eq(it) => &it.syntax,
+            BinOp::Pluseq(it) => &it.syntax,
+            BinOp::Slasheq(it) => &it.syntax,
+            BinOp::Stareq(it) => &it.syntax,
+            BinOp::Percenteq(it) => &it.syntax,
+            BinOp::Shreq(it) => &it.syntax,
+            BinOp::Shleq(it) => &it.syntax,
+            BinOp::Minuseq(it) => &it.syntax,
+            BinOp::Pipeeq(it) => &it.syntax,
+            BinOp::Ampeq(it) => &it.syntax,
+            BinOp::Careteq(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PrefixOp {
+    Minus(Minus),
+    Excl(Excl),
+    Star(Star),
+}
+impl From<Minus> for PrefixOp {
+    fn from(node: Minus) -> PrefixOp {
+        PrefixOp::Minus(node)
+    }
+}
+impl From<Excl> for PrefixOp {
+    fn from(node: Excl) -> PrefixOp {
+        PrefixOp::Excl(node)
+    }
+}
+impl From<Star> for PrefixOp {
+    fn from(node: Star) -> PrefixOp {
+        PrefixOp::Star(node)
+    }
+}
+impl std::fmt::Display for PrefixOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstToken for PrefixOp {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            MINUS | EXCL | STAR => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        let res = match syntax.kind() {
+            MINUS => PrefixOp::Minus(Minus { syntax }),
+            EXCL => PrefixOp::Excl(Excl { syntax }),
+            STAR => PrefixOp::Star(Star { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxToken {
+        match self {
+            PrefixOp::Minus(it) => &it.syntax,
+            PrefixOp::Excl(it) => &it.syntax,
+            PrefixOp::Star(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RangeOp {
+    Dotdot(Dotdot),
+    Dotdoteq(Dotdoteq),
+}
+impl From<Dotdot> for RangeOp {
+    fn from(node: Dotdot) -> RangeOp {
+        RangeOp::Dotdot(node)
+    }
+}
+impl From<Dotdoteq> for RangeOp {
+    fn from(node: Dotdoteq) -> RangeOp {
+        RangeOp::Dotdoteq(node)
+    }
+}
+impl std::fmt::Display for RangeOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstToken for RangeOp {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            DOTDOT | DOTDOTEQ => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        let res = match syntax.kind() {
+            DOTDOT => RangeOp::Dotdot(Dotdot { syntax }),
+            DOTDOTEQ => RangeOp::Dotdoteq(Dotdoteq { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxToken {
+        match self {
+            RangeOp::Dotdot(it) => &it.syntax,
+            RangeOp::Dotdoteq(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LiteralToken {
+    IntNumber(IntNumber),
+    FloatNumber(FloatNumber),
+    String(String),
+    RawString(RawString),
+    TrueKw(TrueKw),
+    FalseKw(FalseKw),
+    ByteString(ByteString),
+    RawByteString(RawByteString),
+    Char(Char),
+    Byte(Byte),
+}
+impl From<IntNumber> for LiteralToken {
+    fn from(node: IntNumber) -> LiteralToken {
+        LiteralToken::IntNumber(node)
+    }
+}
+impl From<FloatNumber> for LiteralToken {
+    fn from(node: FloatNumber) -> LiteralToken {
+        LiteralToken::FloatNumber(node)
+    }
+}
+impl From<String> for LiteralToken {
+    fn from(node: String) -> LiteralToken {
+        LiteralToken::String(node)
+    }
+}
+impl From<RawString> for LiteralToken {
+    fn from(node: RawString) -> LiteralToken {
+        LiteralToken::RawString(node)
+    }
+}
+impl From<TrueKw> for LiteralToken {
+    fn from(node: TrueKw) -> LiteralToken {
+        LiteralToken::TrueKw(node)
+    }
+}
+impl From<FalseKw> for LiteralToken {
+    fn from(node: FalseKw) -> LiteralToken {
+        LiteralToken::FalseKw(node)
+    }
+}
+impl From<ByteString> for LiteralToken {
+    fn from(node: ByteString) -> LiteralToken {
+        LiteralToken::ByteString(node)
+    }
+}
+impl From<RawByteString> for LiteralToken {
+    fn from(node: RawByteString) -> LiteralToken {
+        LiteralToken::RawByteString(node)
+    }
+}
+impl From<Char> for LiteralToken {
+    fn from(node: Char) -> LiteralToken {
+        LiteralToken::Char(node)
+    }
+}
+impl From<Byte> for LiteralToken {
+    fn from(node: Byte) -> LiteralToken {
+        LiteralToken::Byte(node)
+    }
+}
+impl std::fmt::Display for LiteralToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstToken for LiteralToken {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            INT_NUMBER | FLOAT_NUMBER | STRING | RAW_STRING | TRUE_KW | FALSE_KW | BYTE_STRING
+            | RAW_BYTE_STRING | CHAR | BYTE => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        let res = match syntax.kind() {
+            INT_NUMBER => LiteralToken::IntNumber(IntNumber { syntax }),
+            FLOAT_NUMBER => LiteralToken::FloatNumber(FloatNumber { syntax }),
+            STRING => LiteralToken::String(String { syntax }),
+            RAW_STRING => LiteralToken::RawString(RawString { syntax }),
+            TRUE_KW => LiteralToken::TrueKw(TrueKw { syntax }),
+            FALSE_KW => LiteralToken::FalseKw(FalseKw { syntax }),
+            BYTE_STRING => LiteralToken::ByteString(ByteString { syntax }),
+            RAW_BYTE_STRING => LiteralToken::RawByteString(RawByteString { syntax }),
+            CHAR => LiteralToken::Char(Char { syntax }),
+            BYTE => LiteralToken::Byte(Byte { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxToken {
+        match self {
+            LiteralToken::IntNumber(it) => &it.syntax,
+            LiteralToken::FloatNumber(it) => &it.syntax,
+            LiteralToken::String(it) => &it.syntax,
+            LiteralToken::RawString(it) => &it.syntax,
+            LiteralToken::TrueKw(it) => &it.syntax,
+            LiteralToken::FalseKw(it) => &it.syntax,
+            LiteralToken::ByteString(it) => &it.syntax,
+            LiteralToken::RawByteString(it) => &it.syntax,
+            LiteralToken::Char(it) => &it.syntax,
+            LiteralToken::Byte(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum NameRefToken {
+    Ident(Ident),
+    IntNumber(IntNumber),
+}
+impl From<Ident> for NameRefToken {
+    fn from(node: Ident) -> NameRefToken {
+        NameRefToken::Ident(node)
+    }
+}
+impl From<IntNumber> for NameRefToken {
+    fn from(node: IntNumber) -> NameRefToken {
+        NameRefToken::IntNumber(node)
+    }
+}
+impl std::fmt::Display for NameRefToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstToken for NameRefToken {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            IDENT | INT_NUMBER => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxToken) -> Option<Self> {
+        let res = match syntax.kind() {
+            IDENT => NameRefToken::Ident(Ident { syntax }),
+            INT_NUMBER => NameRefToken::IntNumber(IntNumber { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxToken {
+        match self {
+            NameRefToken::Ident(it) => &it.syntax,
+            NameRefToken::IntNumber(it) => &it.syntax,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum FieldDefList {
+    RecordFieldDefList(RecordFieldDefList),
+    TupleFieldDefList(TupleFieldDefList),
+}
+impl From<RecordFieldDefList> for FieldDefList {
+    fn from(node: RecordFieldDefList) -> FieldDefList {
+        FieldDefList::RecordFieldDefList(node)
+    }
+}
+impl From<TupleFieldDefList> for FieldDefList {
+    fn from(node: TupleFieldDefList) -> FieldDefList {
+        FieldDefList::TupleFieldDefList(node)
+    }
+}
+impl std::fmt::Display for FieldDefList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl AstNode for FieldDefList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_FIELD_DEF_LIST | TUPLE_FIELD_DEF_LIST => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            RECORD_FIELD_DEF_LIST => {
+                FieldDefList::RecordFieldDefList(RecordFieldDefList { syntax })
+            }
+            TUPLE_FIELD_DEF_LIST => FieldDefList::TupleFieldDefList(TupleFieldDefList { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            FieldDefList::RecordFieldDefList(it) => &it.syntax,
+            FieldDefList::TupleFieldDefList(it) => &it.syntax,
         }
     }
 }

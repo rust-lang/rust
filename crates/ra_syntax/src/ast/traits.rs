@@ -5,7 +5,7 @@
 use itertools::Itertools;
 
 use crate::{
-    ast::{self, child_opt, children, AstChildren, AstNode, AstToken},
+    ast::{self, child_opt, children, support, AstChildren, AstNode, AstToken},
     syntax_node::SyntaxElementChildren,
 };
 
@@ -29,6 +29,10 @@ pub trait VisibilityOwner: AstNode {
 
 pub trait LoopBodyOwner: AstNode {
     fn loop_body(&self) -> Option<ast::BlockExpr> {
+        child_opt(self)
+    }
+
+    fn label(&self) -> Option<ast::Label> {
         child_opt(self)
     }
 }
@@ -64,6 +68,10 @@ pub trait TypeParamsOwner: AstNode {
 pub trait TypeBoundsOwner: AstNode {
     fn type_bound_list(&self) -> Option<ast::TypeBoundList> {
         child_opt(self)
+    }
+
+    fn colon(&self) -> Option<ast::Colon> {
+        support::token(self.syntax())
     }
 }
 

@@ -4,7 +4,9 @@
 use itertools::Itertools;
 
 use crate::{
-    ast::{self, child_opt, children, AstNode, AttrInput, NameOwner, SyntaxNode},
+    ast::{
+        self, child_opt, children, support, AstNode, AstToken, AttrInput, NameOwner, SyntaxNode,
+    },
     SmolStr, SyntaxElement,
     SyntaxKind::*,
     SyntaxToken, T,
@@ -130,13 +132,6 @@ impl ast::PathSegment {
         };
         Some(res)
     }
-
-    pub fn has_colon_colon(&self) -> bool {
-        match self.syntax.first_child_or_token().map(|s| s.kind()) {
-            Some(T![::]) => true,
-            _ => false,
-        }
-    }
 }
 
 impl ast::Path {
@@ -154,32 +149,12 @@ impl ast::Module {
     }
 }
 
-impl ast::UseTree {
-    pub fn has_star(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![*])
-    }
-}
-
 impl ast::UseTreeList {
     pub fn parent_use_tree(&self) -> ast::UseTree {
         self.syntax()
             .parent()
             .and_then(ast::UseTree::cast)
             .expect("UseTreeLists are always nested in UseTrees")
-    }
-    pub fn l_curly(&self) -> Option<SyntaxToken> {
-        self.token(T!['{'])
-    }
-
-    pub fn r_curly(&self) -> Option<SyntaxToken> {
-        self.token(T!['}'])
-    }
-
-    fn token(&self, kind: SyntaxKind) -> Option<SyntaxToken> {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == kind)
     }
 }
 
@@ -387,24 +362,9 @@ pub enum SelfParamKind {
 }
 
 impl ast::SelfParam {
-    pub fn self_kw_token(&self) -> SyntaxToken {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == T![self])
-            .expect("invalid tree: self param must have self")
-    }
-
     pub fn kind(&self) -> SelfParamKind {
-        let borrowed = self.syntax().children_with_tokens().any(|n| n.kind() == T![&]);
-        if borrowed {
-            // check for a `mut` coming after the & -- `mut &self` != `&mut self`
-            if self
-                .syntax()
-                .children_with_tokens()
-                .skip_while(|n| n.kind() != T![&])
-                .any(|n| n.kind() == T![mut])
-            {
+        if self.amp().is_some() {
+            if self.amp_mut_kw().is_some() {
                 SelfParamKind::MutRef
             } else {
                 SelfParamKind::Ref
@@ -413,32 +373,23 @@ impl ast::SelfParam {
             SelfParamKind::Owned
         }
     }
-}
 
-impl ast::LifetimeParam {
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+    /// the "mut" in "mut self", not the one in "&mut self"
+    pub fn mut_kw(&self) -> Option<ast::MutKw> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == LIFETIME)
+            .take_while(|it| it.kind() != T![&])
+            .find_map(ast::MutKw::cast)
     }
-}
 
-impl ast::TypeParam {
-    pub fn colon_token(&self) -> Option<SyntaxToken> {
+    /// the "mut" in "&mut self", not the one in "mut self"
+    pub fn amp_mut_kw(&self) -> Option<ast::MutKw> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == T![:])
-    }
-}
-
-impl ast::WherePred {
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == LIFETIME)
+            .skip_while(|it| it.kind() != T![&])
+            .find_map(ast::MutKw::cast)
     }
 }
 
@@ -449,7 +400,7 @@ pub enum TypeBoundKind {
     /// for<'a> ...
     ForType(ast::ForType),
     /// 'a
-    Lifetime(ast::SyntaxToken),
+    Lifetime(ast::Lifetime),
 }
 
 impl ast::TypeBound {
@@ -465,21 +416,28 @@ impl ast::TypeBound {
         }
     }
 
-    fn lifetime(&self) -> Option<SyntaxToken> {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == LIFETIME)
+    pub fn has_question_mark(&self) -> bool {
+        self.question().is_some()
     }
 
-    pub fn question_mark_token(&self) -> Option<SyntaxToken> {
+    pub fn const_question(&self) -> Option<ast::Question> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == T![?])
+            .take_while(|it| it.kind() != T![const])
+            .find_map(ast::Question::cast)
     }
-    pub fn has_question_mark(&self) -> bool {
-        self.question_mark_token().is_some()
+
+    pub fn question(&self) -> Option<ast::Question> {
+        if self.const_kw().is_some() {
+            self.syntax()
+                .children_with_tokens()
+                .filter_map(|it| it.into_token())
+                .skip_while(|it| it.kind() != T![const])
+                .find_map(ast::Question::cast)
+        } else {
+            support::token(&self.syntax)
+        }
     }
 }
 
@@ -493,6 +451,7 @@ pub enum VisibilityKind {
     In(ast::Path),
     PubCrate,
     PubSuper,
+    PubSelf,
     Pub,
 }
 
@@ -503,6 +462,8 @@ impl ast::Visibility {
         } else if self.is_pub_crate() {
             VisibilityKind::PubCrate
         } else if self.is_pub_super() {
+            VisibilityKind::PubSuper
+        } else if self.is_pub_self() {
             VisibilityKind::PubSuper
         } else {
             VisibilityKind::Pub
@@ -516,6 +477,10 @@ impl ast::Visibility {
     fn is_pub_super(&self) -> bool {
         self.syntax().children_with_tokens().any(|it| it.kind() == T![super])
     }
+
+    fn is_pub_self(&self) -> bool {
+        self.syntax().children_with_tokens().any(|it| it.kind() == T![self])
+    }
 }
 
 impl ast::MacroCall {
@@ -526,5 +491,43 @@ impl ast::MacroCall {
         } else {
             None
         }
+    }
+}
+
+impl ast::LifetimeParam {
+    pub fn lifetime_bounds(&self) -> impl Iterator<Item = ast::Lifetime> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .skip_while(|x| x.kind() != T![:])
+            .filter_map(ast::Lifetime::cast)
+    }
+}
+
+impl ast::RangePat {
+    pub fn start(&self) -> Option<ast::Pat> {
+        self.syntax()
+            .children_with_tokens()
+            .take_while(|it| !ast::RangeSeparator::can_cast(it.kind()))
+            .filter_map(|it| it.into_node())
+            .find_map(ast::Pat::cast)
+    }
+
+    pub fn end(&self) -> Option<ast::Pat> {
+        self.syntax()
+            .children_with_tokens()
+            .skip_while(|it| !ast::RangeSeparator::can_cast(it.kind()))
+            .filter_map(|it| it.into_node())
+            .find_map(ast::Pat::cast)
+    }
+}
+
+impl ast::TokenTree {
+    pub fn left_delimiter(&self) -> Option<ast::LeftDelimiter> {
+        self.syntax().first_child_or_token()?.into_token().and_then(ast::LeftDelimiter::cast)
+    }
+
+    pub fn right_delimiter(&self) -> Option<ast::RightDelimiter> {
+        self.syntax().last_child_or_token()?.into_token().and_then(ast::RightDelimiter::cast)
     }
 }
