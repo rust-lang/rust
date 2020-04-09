@@ -315,11 +315,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_region(current, r, contra);
 
                 if let Some(poly_trait_ref) = data.principal() {
-                    let poly_trait_ref =
-                        poly_trait_ref.with_self_ty(self.tcx(), self.tcx().types.err);
-                    self.add_constraints_from_trait_ref(
+                    self.add_constraints_from_invariant_substs(
                         current,
-                        *poly_trait_ref.skip_binder(),
+                        poly_trait_ref.skip_binder().substs,
                         variance,
                     );
                 }

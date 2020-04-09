@@ -1,21 +1,21 @@
-error[E0597]: `prefix` does not live long enough
-  --> $DIR/does-not-live-long-enough.rs:6:51
+error[E0373]: closure may outlive the current function, but it borrows `prefix`, which is owned by the current function
+  --> $DIR/does-not-live-long-enough.rs:6:33
+   |
+LL |         self.data.iter().filter(|s| s.starts_with(prefix)).map(|s| s.as_ref())
+   |                                 ^^^               ------ `prefix` is borrowed here
+   |                                 |
+   |                                 may outlive borrowed value `prefix`
+   |
+note: closure is returned here
+  --> $DIR/does-not-live-long-enough.rs:5:55
    |
 LL |     fn started_with<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item=&'a str> {
-   |                     -- lifetime `'a` defined here     --------------------------- opaque type requires that `prefix` is borrowed for `'a`
-LL |         self.data.iter().filter(|s| s.starts_with(prefix)).map(|s| s.as_ref())
-   |                                 ---               ^^^^^^ borrowed value does not live long enough
-   |                                 |
-   |                                 value captured here
-LL |
-LL |     }
-   |     - `prefix` dropped here while still borrowed
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `prefix` (and any other referenced variables), use the `move` keyword
    |
-help: you can add a bound to the opaque type to make it last less than `'static` and match `'a`
-   |
-LL |     fn started_with<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item=&'a str> + 'a {
-   |                                                                                   ^^^^
+LL |         self.data.iter().filter(move |s| s.starts_with(prefix)).map(|s| s.as_ref())
+   |                                 ^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0373`.

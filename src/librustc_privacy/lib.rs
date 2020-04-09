@@ -1238,7 +1238,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         if !self.in_body {
             // Avoid calling `hir_trait_to_predicates` in bodies, it will ICE.
             // The traits' privacy in bodies is already checked as a part of trait object types.
-            let bounds = rustc_typeck::hir_trait_to_predicates(self.tcx, trait_ref);
+            let bounds = rustc_typeck::hir_trait_to_predicates(
+                self.tcx,
+                trait_ref,
+                // NOTE: This isn't really right, but the actual type doesn't matter here. It's
+                // just required by `ty::TraitRef`.
+                self.tcx.types.never,
+            );
 
             for (trait_predicate, _, _) in bounds.trait_bounds {
                 if self.visit_trait(*trait_predicate.skip_binder()) {

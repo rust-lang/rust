@@ -1936,6 +1936,7 @@ impl Clean<Span> for rustc_span::Span {
         let hi = sm.lookup_char_pos(self.hi());
         Span {
             filename,
+            cnum: lo.file.cnum,
             loline: lo.line,
             locol: lo.col.to_usize(),
             hiline: hi.line,
