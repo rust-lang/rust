@@ -472,6 +472,9 @@ pub enum NLLRegionVariableOrigin {
     /// from a `for<'a> T` binder). Meant to represent "any region".
     Placeholder(ty::PlaceholderRegion),
 
+    /// The variable we create to represent `'empty(U0)`.
+    RootEmptyRegion,
+
     Existential {
         /// If this is true, then this variable was created to represent a lifetime
         /// bound in a `for` binder. For example, it might have been created to
@@ -493,6 +496,7 @@ impl NLLRegionVariableOrigin {
             NLLRegionVariableOrigin::FreeRegion => true,
             NLLRegionVariableOrigin::Placeholder(..) => true,
             NLLRegionVariableOrigin::Existential { .. } => false,
+            NLLRegionVariableOrigin::RootEmptyRegion => false,
         }
     }
 
