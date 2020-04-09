@@ -298,7 +298,7 @@ macro_rules! ast_enums {
 
 pub(crate) const AST_SRC: AstSrc = AstSrc {
     nodes: &ast_nodes! {
-        struct SourceFile: ModuleItemOwner, FnDefOwner, AttrsOwner {
+        struct SourceFile: ModuleItemOwner, AttrsOwner {
             modules: [Module],
         }
 
@@ -364,7 +364,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             Semi
         }
 
-        struct ItemList: FnDefOwner, ModuleItemOwner {
+        struct ItemList: ModuleItemOwner {
             LCurly,
             impl_items: [ImplItem],
             RCurly
@@ -604,14 +604,14 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct LifetimeArg { Lifetime }
         struct ConstArg { Literal, Eq, BlockExpr }
 
-        struct MacroItems: ModuleItemOwner, FnDefOwner { }
+        struct MacroItems: ModuleItemOwner{ }
 
         struct MacroStmts {
             statements: [Stmt],
             Expr,
         }
 
-        struct ExternItemList: FnDefOwner, ModuleItemOwner {
+        struct ExternItemList: ModuleItemOwner {
             LCurly,
             extern_items: [ExternItem],
             RCurly

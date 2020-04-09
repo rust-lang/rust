@@ -43,12 +43,6 @@ pub trait ArgListOwner: AstNode {
     }
 }
 
-pub trait FnDefOwner: AstNode {
-    fn functions(&self) -> AstChildren<ast::FnDef> {
-        support::children(self.syntax())
-    }
-}
-
 pub trait ModuleItemOwner: AstNode {
     fn items(&self) -> AstChildren<ast::ModuleItem> {
         support::children(self.syntax())

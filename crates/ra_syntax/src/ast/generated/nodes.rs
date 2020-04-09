@@ -22,7 +22,6 @@ impl AstNode for SourceFile {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ast::ModuleItemOwner for SourceFile {}
-impl ast::FnDefOwner for SourceFile {}
 impl ast::AttrsOwner for SourceFile {}
 impl SourceFile {
     pub fn modules(&self) -> AstChildren<Module> { support::children(&self.syntax) }
@@ -344,7 +343,6 @@ impl AstNode for ItemList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl ast::FnDefOwner for ItemList {}
 impl ast::ModuleItemOwner for ItemList {}
 impl ItemList {
     pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
@@ -2512,7 +2510,6 @@ impl AstNode for MacroItems {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ast::ModuleItemOwner for MacroItems {}
-impl ast::FnDefOwner for MacroItems {}
 impl MacroItems {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroStmts {
@@ -2548,7 +2545,6 @@ impl AstNode for ExternItemList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl ast::FnDefOwner for ExternItemList {}
 impl ast::ModuleItemOwner for ExternItemList {}
 impl ExternItemList {
     pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
