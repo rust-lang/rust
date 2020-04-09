@@ -91,8 +91,7 @@ fn load_library(file: &Path) -> Result<Library, libloading::Error> {
 
 struct ProcMacroLibraryLibloading {
     // Hold the dylib to prevent it for unloadeding
-    #[allow(dead_code)]
-    lib: Library,
+    _lib: Library,
     exported_macros: Vec<bridge::client::ProcMacro>,
 }
 
@@ -110,7 +109,7 @@ impl ProcMacroLibraryLibloading {
             macros.to_vec()
         };
 
-        Ok(ProcMacroLibraryLibloading { lib, exported_macros })
+        Ok(ProcMacroLibraryLibloading { _lib: lib, exported_macros })
     }
 }
 
