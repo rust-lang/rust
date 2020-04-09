@@ -21,7 +21,7 @@ pub use self::{
         AttrKind, FieldKind, PathSegmentKind, SelfParamKind, SlicePatComponents, StructKind,
         TypeBoundKind, VisibilityKind,
     },
-    generated::nodes::*,
+    generated::{nodes::*, tokens::*},
     tokens::*,
     traits::*,
 };

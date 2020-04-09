@@ -23,11 +23,11 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
     let ast_nodes_file = project_root().join(codegen::AST_NODES);
-    let contents = generate_ast(KINDS_SRC, AST_SRC)?;
+    let contents = generate_nodes(KINDS_SRC, AST_SRC)?;
     update(ast_nodes_file.as_path(), &contents, mode)?;
 
     let ast_tokens_file = project_root().join(codegen::AST_TOKENS);
-    let contents = "//! Generated file, do not edit by hand, see `xtask/src/codegen`";
+    let contents = generate_tokens(KINDS_SRC, AST_SRC)?;
     update(ast_tokens_file.as_path(), &contents, mode)?;
 
     Ok(())
@@ -40,7 +40,62 @@ struct ElementKinds {
     has_tokens: bool,
 }
 
-fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
+fn generate_tokens(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
+    let all_token_kinds: Vec<_> = kinds
+        .punct
+        .into_iter()
+        .map(|(_, kind)| kind)
+        .copied()
+        .map(|x| x.into())
+        .chain(
+            kinds
+                .keywords
+                .into_iter()
+                .chain(kinds.contextual_keywords.into_iter())
+                .map(|name| Cow::Owned(format!("{}_KW", to_upper_snake_case(&name)))),
+        )
+        .chain(kinds.literals.into_iter().copied().map(|x| x.into()))
+        .chain(kinds.tokens.into_iter().copied().map(|x| x.into()))
+        .collect();
+    let tokens = all_token_kinds.iter().map(|kind_str| {
+        let kind_str = &**kind_str;
+        let kind = format_ident!("{}", kind_str);
+        let name = format_ident!("{}", to_pascal_case(kind_str));
+        quote! {
+            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+            pub struct #name {
+                pub(crate) syntax: SyntaxToken,
+            }
+
+            impl std::fmt::Display for #name {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    std::fmt::Display::fmt(&self.syntax, f)
+                }
+            }
+
+            impl AstToken for #name {
+                fn can_cast(kind: SyntaxKind) -> bool {
+                    match kind {
+                        #kind => true,
+                        _ => false,
+                    }
+                }
+                fn cast(syntax: SyntaxToken) -> Option<Self> {
+                    if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+                }
+                fn syntax(&self) -> &SyntaxToken { &self.syntax }
+            }
+        }
+    });
+
+    crate::reformat(quote! {
+        use crate::{SyntaxToken, SyntaxKind::{self, *}, ast::AstToken};
+
+        #(#tokens)*
+    })
+}
+
+fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
     let all_token_kinds: Vec<_> = kinds
         .punct
         .into_iter()
@@ -97,37 +152,6 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         }
         element_kinds_map.insert(en.name.to_string(), element_kinds);
     }
-
-    let tokens = all_token_kinds.iter().map(|kind_str| {
-        let kind_str = &**kind_str;
-        let kind = format_ident!("{}", kind_str);
-        let name = format_ident!("{}", to_pascal_case(kind_str));
-        quote! {
-            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-            pub struct #name {
-                pub(crate) syntax: SyntaxToken,
-            }
-
-            impl std::fmt::Display for #name {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    std::fmt::Display::fmt(&self.syntax, f)
-                }
-            }
-
-            impl AstToken for #name {
-                fn can_cast(kind: SyntaxKind) -> bool {
-                    match kind {
-                        #kind => true,
-                        _ => false,
-                    }
-                }
-                fn cast(syntax: SyntaxToken) -> Option<Self> {
-                    if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-                }
-                fn syntax(&self) -> &SyntaxToken { &self.syntax }
-            }
-        }
-    });
 
     let nodes = grammar.nodes.iter().map(|node| {
         let name = format_ident!("{}", node.name);
@@ -301,13 +325,13 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
     }
 
     let ast = quote! {
-        #[allow(unused_imports)]
         use crate::{
-            SyntaxNode, SyntaxToken, SyntaxElement, NodeOrToken, SyntaxKind::{self, *},
+            SyntaxNode, SyntaxToken, SyntaxKind::{self, *},
             ast::{self, AstNode, AstToken, AstChildren, support},
         };
 
-        #(#tokens)*
+        use super::tokens::*;
+
         #(#nodes)*
         #(#enums)*
     };
