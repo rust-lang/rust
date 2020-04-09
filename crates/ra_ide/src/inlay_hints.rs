@@ -254,12 +254,17 @@ fn should_show_param_hint(
 }
 
 fn is_argument_similar_to_param(argument: &ast::Expr, param_name: &str) -> bool {
-    let argument_string = if let ast::Expr::RefExpr(ref_expr) = argument {
-        ref_expr.syntax().last_token().expect("RefExpr should have a last_token").to_string()
-    } else {
-        argument.syntax().to_string()
-    };
+    let argument_string = remove_ref(argument.clone()).syntax().to_string();
     argument_string.starts_with(&param_name) || argument_string.ends_with(&param_name)
+}
+
+fn remove_ref(expr: ast::Expr) -> ast::Expr {
+    if let ast::Expr::RefExpr(ref_expr) = &expr {
+        if let Some(inner) = ref_expr.expr() {
+            return inner;
+        }
+    }
+    expr
 }
 
 fn is_obvious_param(param_name: &str) -> bool {
