@@ -230,12 +230,6 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                 pub(crate) syntax: SyntaxNode,
             }
 
-            impl std::fmt::Display for #name {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    std::fmt::Display::fmt(self.syntax(), f)
-                }
-            }
-
             impl AstNode for #name {
                 fn can_cast(kind: SyntaxKind) -> bool {
                     kind == #kind
@@ -280,12 +274,6 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
             }
             )*
 
-            impl std::fmt::Display for #name {
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    std::fmt::Display::fmt(self.syntax(), f)
-                }
-            }
-
             impl AstNode for #name {
                 fn can_cast(kind: SyntaxKind) -> bool {
                     match kind {
@@ -315,6 +303,21 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         }
     });
 
+    let displays = grammar
+        .enums
+        .iter()
+        .map(|it| format_ident!("{}", it.name))
+        .chain(grammar.nodes.iter().map(|it| format_ident!("{}", it.name)))
+        .map(|name| {
+            quote! {
+                impl std::fmt::Display for #name {
+                    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                        std::fmt::Display::fmt(self.syntax(), f)
+                    }
+                }
+            }
+        });
+
     let defined_nodes: HashSet<_> = grammar.nodes.iter().map(|node| node.name).collect();
 
     for node in kinds
@@ -336,6 +339,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
 
         #(#nodes)*
         #(#enums)*
+        #(#displays)*
     };
 
     let pretty = crate::reformat(ast)?;

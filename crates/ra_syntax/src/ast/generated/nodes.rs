@@ -10,11 +10,6 @@ use crate::{
 pub struct SourceFile {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for SourceFile {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for SourceFile {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SOURCE_FILE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -35,11 +30,6 @@ impl SourceFile {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnDef {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for FnDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for FnDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FN_DEF }
@@ -73,11 +63,6 @@ impl FnDef {
 pub struct RetType {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for RetType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for RetType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RET_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -96,11 +81,6 @@ impl RetType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructDef {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for StructDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for StructDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == STRUCT_DEF }
@@ -126,11 +106,6 @@ impl StructDef {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnionDef {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for UnionDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for UnionDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == UNION_DEF }
@@ -158,11 +133,6 @@ impl UnionDef {
 pub struct RecordFieldDefList {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for RecordFieldDefList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for RecordFieldDefList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_DEF_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -182,11 +152,6 @@ impl RecordFieldDefList {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldDef {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for RecordFieldDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for RecordFieldDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_DEF }
@@ -209,11 +174,6 @@ impl RecordFieldDef {}
 pub struct TupleFieldDefList {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for TupleFieldDefList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for TupleFieldDefList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_FIELD_DEF_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -234,11 +194,6 @@ impl TupleFieldDefList {
 pub struct TupleFieldDef {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for TupleFieldDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for TupleFieldDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_FIELD_DEF }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -258,11 +213,6 @@ impl TupleFieldDef {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumDef {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for EnumDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for EnumDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_DEF }
@@ -288,11 +238,6 @@ impl EnumDef {
 pub struct EnumVariantList {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for EnumVariantList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for EnumVariantList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_VARIANT_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -312,11 +257,6 @@ impl EnumVariantList {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for EnumVariant {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for EnumVariant {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_VARIANT }
@@ -341,11 +281,6 @@ impl EnumVariant {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitDef {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for TraitDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for TraitDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT_DEF }
@@ -374,11 +309,6 @@ impl TraitDef {
 pub struct Module {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for Module {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Module {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MODULE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -403,11 +333,6 @@ impl Module {
 pub struct ItemList {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ItemList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ITEM_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -429,11 +354,6 @@ impl ItemList {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstDef {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ConstDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ConstDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_DEF }
@@ -463,11 +383,6 @@ impl ConstDef {
 pub struct StaticDef {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for StaticDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for StaticDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == STATIC_DEF }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -495,11 +410,6 @@ impl StaticDef {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAliasDef {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for TypeAliasDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for TypeAliasDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ALIAS_DEF }
@@ -529,11 +439,6 @@ impl TypeAliasDef {
 pub struct ImplDef {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ImplDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ImplDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL_DEF }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -560,11 +465,6 @@ impl ImplDef {
 pub struct ParenType {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ParenType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ParenType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -584,11 +484,6 @@ impl ParenType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleType {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for TupleType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for TupleType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_TYPE }
@@ -610,11 +505,6 @@ impl TupleType {
 pub struct NeverType {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for NeverType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for NeverType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NEVER_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -633,11 +523,6 @@ impl NeverType {
 pub struct PathType {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for PathType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for PathType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -655,11 +540,6 @@ impl PathType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PointerType {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for PointerType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for PointerType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == POINTER_TYPE }
@@ -680,11 +560,6 @@ impl PointerType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayType {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ArrayType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ArrayType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ARRAY_TYPE }
@@ -708,11 +583,6 @@ impl ArrayType {
 pub struct SliceType {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for SliceType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for SliceType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SLICE_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -732,11 +602,6 @@ impl SliceType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReferenceType {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ReferenceType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ReferenceType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == REFERENCE_TYPE }
@@ -759,11 +624,6 @@ impl ReferenceType {
 pub struct PlaceholderType {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for PlaceholderType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for PlaceholderType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PLACEHOLDER_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -781,11 +641,6 @@ impl PlaceholderType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnPointerType {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for FnPointerType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for FnPointerType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FN_POINTER_TYPE }
@@ -809,11 +664,6 @@ impl FnPointerType {
 pub struct ForType {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ForType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ForType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FOR_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -834,11 +684,6 @@ impl ForType {
 pub struct ImplTraitType {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ImplTraitType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ImplTraitType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL_TRAIT_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -858,11 +703,6 @@ impl ImplTraitType {
 pub struct DynTraitType {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for DynTraitType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for DynTraitType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == DYN_TRAIT_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -881,11 +721,6 @@ impl DynTraitType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for TupleExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for TupleExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_EXPR }
@@ -907,11 +742,6 @@ impl TupleExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ArrayExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ArrayExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ARRAY_EXPR }
@@ -935,11 +765,6 @@ impl ArrayExpr {
 pub struct ParenExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ParenExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ParenExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -961,11 +786,6 @@ impl ParenExpr {
 pub struct PathExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for PathExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for PathExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -983,11 +803,6 @@ impl PathExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LambdaExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for LambdaExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for LambdaExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LAMBDA_EXPR }
@@ -1013,11 +828,6 @@ impl LambdaExpr {
 pub struct IfExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for IfExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for IfExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == IF_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1037,11 +847,6 @@ impl IfExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoopExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for LoopExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for LoopExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LOOP_EXPR }
@@ -1063,11 +868,6 @@ impl LoopExpr {
 pub struct TryBlockExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for TryBlockExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for TryBlockExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TRY_BLOCK_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1087,11 +887,6 @@ impl TryBlockExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ForExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ForExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ForExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FOR_EXPR }
@@ -1116,11 +911,6 @@ impl ForExpr {
 pub struct WhileExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for WhileExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for WhileExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == WHILE_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1142,11 +932,6 @@ impl WhileExpr {
 pub struct ContinueExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ContinueExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ContinueExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONTINUE_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1166,11 +951,6 @@ impl ContinueExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BreakExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for BreakExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for BreakExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BREAK_EXPR }
@@ -1193,11 +973,6 @@ impl BreakExpr {
 pub struct Label {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for Label {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Label {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LABEL }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1215,11 +990,6 @@ impl Label {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BlockExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for BlockExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for BlockExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BLOCK_EXPR }
@@ -1242,11 +1012,6 @@ impl BlockExpr {
 pub struct ReturnExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ReturnExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ReturnExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RETURN_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1266,11 +1031,6 @@ impl ReturnExpr {
 pub struct CallExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for CallExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for CallExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CALL_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1289,11 +1049,6 @@ impl CallExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MethodCallExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for MethodCallExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for MethodCallExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == METHOD_CALL_EXPR }
@@ -1318,11 +1073,6 @@ impl MethodCallExpr {
 pub struct IndexExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for IndexExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for IndexExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == INDEX_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1342,11 +1092,6 @@ impl IndexExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for FieldExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for FieldExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FIELD_EXPR }
@@ -1369,11 +1114,6 @@ impl FieldExpr {
 pub struct AwaitExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for AwaitExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for AwaitExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == AWAIT_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1395,11 +1135,6 @@ impl AwaitExpr {
 pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for TryExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for TryExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TRY_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1419,11 +1154,6 @@ impl TryExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CastExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for CastExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for CastExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CAST_EXPR }
@@ -1445,11 +1175,6 @@ impl CastExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for RefExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for RefExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == REF_EXPR }
@@ -1473,11 +1198,6 @@ impl RefExpr {
 pub struct PrefixExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for PrefixExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for PrefixExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PREFIX_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1497,11 +1217,6 @@ impl PrefixExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BoxExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for BoxExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for BoxExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BOX_EXPR }
@@ -1523,11 +1238,6 @@ impl BoxExpr {
 pub struct RangeExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for RangeExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for RangeExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RANGE_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1546,11 +1256,6 @@ impl RangeExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BinExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for BinExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for BinExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BIN_EXPR }
@@ -1571,11 +1276,6 @@ impl BinExpr {
 pub struct Literal {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for Literal {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Literal {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LITERAL }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1593,11 +1293,6 @@ impl Literal {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchExpr {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for MatchExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for MatchExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_EXPR }
@@ -1620,11 +1315,6 @@ impl MatchExpr {
 pub struct MatchArmList {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for MatchArmList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for MatchArmList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_ARM_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1645,11 +1335,6 @@ impl MatchArmList {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchArm {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for MatchArm {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for MatchArm {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_ARM }
@@ -1673,11 +1358,6 @@ impl MatchArm {
 pub struct MatchGuard {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for MatchGuard {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for MatchGuard {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_GUARD }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1697,11 +1377,6 @@ impl MatchGuard {
 pub struct RecordLit {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for RecordLit {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for RecordLit {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_LIT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1720,11 +1395,6 @@ impl RecordLit {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldList {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for RecordFieldList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for RecordFieldList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_LIST }
@@ -1748,11 +1418,6 @@ impl RecordFieldList {
 pub struct RecordField {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for RecordField {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for RecordField {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1774,11 +1439,6 @@ impl RecordField {
 pub struct OrPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for OrPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for OrPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == OR_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1796,11 +1456,6 @@ impl OrPat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenPat {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ParenPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ParenPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_PAT }
@@ -1822,11 +1477,6 @@ impl ParenPat {
 pub struct RefPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for RefPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for RefPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == REF_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1847,11 +1497,6 @@ impl RefPat {
 pub struct BoxPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for BoxPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for BoxPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BOX_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1870,11 +1515,6 @@ impl BoxPat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BindPat {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for BindPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for BindPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BIND_PAT }
@@ -1898,11 +1538,6 @@ impl BindPat {
 pub struct PlaceholderPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for PlaceholderPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for PlaceholderPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PLACEHOLDER_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1920,11 +1555,6 @@ impl PlaceholderPat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DotDotPat {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for DotDotPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for DotDotPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == DOT_DOT_PAT }
@@ -1944,11 +1574,6 @@ impl DotDotPat {
 pub struct PathPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for PathPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for PathPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1966,11 +1591,6 @@ impl PathPat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SlicePat {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for SlicePat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for SlicePat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SLICE_PAT }
@@ -1992,11 +1612,6 @@ impl SlicePat {
 pub struct RangePat {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for RangePat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for RangePat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RANGE_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2014,11 +1629,6 @@ impl RangePat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LiteralPat {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for LiteralPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for LiteralPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LITERAL_PAT }
@@ -2038,11 +1648,6 @@ impl LiteralPat {
 pub struct MacroPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for MacroPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for MacroPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2060,11 +1665,6 @@ impl MacroPat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPat {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for RecordPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for RecordPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT }
@@ -2086,11 +1686,6 @@ impl RecordPat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldPatList {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for RecordFieldPatList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for RecordFieldPatList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_PAT_LIST }
@@ -2117,11 +1712,6 @@ impl RecordFieldPatList {
 pub struct RecordFieldPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for RecordFieldPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for RecordFieldPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2142,11 +1732,6 @@ impl RecordFieldPat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleStructPat {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for TupleStructPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for TupleStructPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_STRUCT_PAT }
@@ -2169,11 +1754,6 @@ impl TupleStructPat {
 pub struct TuplePat {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for TuplePat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for TuplePat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2193,11 +1773,6 @@ impl TuplePat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Visibility {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for Visibility {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for Visibility {
     fn can_cast(kind: SyntaxKind) -> bool { kind == VISIBILITY }
@@ -2220,11 +1795,6 @@ impl Visibility {
 pub struct Name {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for Name {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Name {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NAME }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2243,11 +1813,6 @@ impl Name {
 pub struct NameRef {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for NameRef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for NameRef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NAME_REF }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2265,11 +1830,6 @@ impl NameRef {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for MacroCall {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for MacroCall {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_CALL }
@@ -2295,11 +1855,6 @@ impl MacroCall {
 pub struct Attr {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for Attr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Attr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ATTR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2324,11 +1879,6 @@ impl Attr {
 pub struct TokenTree {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for TokenTree {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for TokenTree {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TOKEN_TREE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2344,11 +1894,6 @@ impl TokenTree {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParamList {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for TypeParamList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for TypeParamList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_PARAM_LIST }
@@ -2373,11 +1918,6 @@ impl TypeParamList {
 pub struct TypeParam {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for TypeParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for TypeParam {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_PARAM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2399,11 +1939,6 @@ impl TypeParam {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstParam {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ConstParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ConstParam {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_PARAM }
@@ -2427,11 +1962,6 @@ impl ConstParam {
 pub struct LifetimeParam {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for LifetimeParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for LifetimeParam {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME_PARAM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2450,11 +1980,6 @@ impl LifetimeParam {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBound {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for TypeBound {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for TypeBound {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND }
@@ -2476,11 +2001,6 @@ impl TypeBound {
 pub struct TypeBoundList {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for TypeBoundList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for TypeBoundList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2498,11 +2018,6 @@ impl TypeBoundList {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WherePred {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for WherePred {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for WherePred {
     fn can_cast(kind: SyntaxKind) -> bool { kind == WHERE_PRED }
@@ -2524,11 +2039,6 @@ impl WherePred {
 pub struct WhereClause {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for WhereClause {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for WhereClause {
     fn can_cast(kind: SyntaxKind) -> bool { kind == WHERE_CLAUSE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2548,11 +2058,6 @@ impl WhereClause {
 pub struct Abi {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for Abi {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Abi {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ABI }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2570,11 +2075,6 @@ impl Abi {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExprStmt {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ExprStmt {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ExprStmt {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXPR_STMT }
@@ -2595,11 +2095,6 @@ impl ExprStmt {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LetStmt {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for LetStmt {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for LetStmt {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LET_STMT }
@@ -2624,11 +2119,6 @@ impl LetStmt {
 pub struct Condition {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for Condition {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Condition {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONDITION }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2649,11 +2139,6 @@ impl Condition {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Block {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for Block {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for Block {
     fn can_cast(kind: SyntaxKind) -> bool { kind == BLOCK }
@@ -2678,11 +2163,6 @@ impl Block {
 pub struct ParamList {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ParamList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ParamList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PARAM_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2703,11 +2183,6 @@ impl ParamList {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SelfParam {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for SelfParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for SelfParam {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SELF_PARAM }
@@ -2731,11 +2206,6 @@ impl SelfParam {
 pub struct Param {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for Param {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Param {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PARAM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2756,11 +2226,6 @@ impl Param {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseItem {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for UseItem {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for UseItem {
     fn can_cast(kind: SyntaxKind) -> bool { kind == USE_ITEM }
@@ -2783,11 +2248,6 @@ impl UseItem {
 pub struct UseTree {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for UseTree {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for UseTree {
     fn can_cast(kind: SyntaxKind) -> bool { kind == USE_TREE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2809,11 +2269,6 @@ impl UseTree {
 pub struct Alias {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for Alias {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Alias {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ALIAS }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2832,11 +2287,6 @@ impl Alias {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTreeList {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for UseTreeList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for UseTreeList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == USE_TREE_LIST }
@@ -2857,11 +2307,6 @@ impl UseTreeList {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternCrateItem {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ExternCrateItem {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ExternCrateItem {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_CRATE_ITEM }
@@ -2886,11 +2331,6 @@ impl ExternCrateItem {
 pub struct ArgList {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ArgList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ArgList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ARG_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2911,11 +2351,6 @@ impl ArgList {
 pub struct Path {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for Path {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Path {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2934,11 +2369,6 @@ impl Path {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathSegment {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for PathSegment {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for PathSegment {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_SEGMENT }
@@ -2965,11 +2395,6 @@ impl PathSegment {
 pub struct TypeArgList {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for TypeArgList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for TypeArgList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ARG_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2995,11 +2420,6 @@ impl TypeArgList {
 pub struct TypeArg {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for TypeArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for TypeArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ARG }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3017,11 +2437,6 @@ impl TypeArg {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AssocTypeArg {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for AssocTypeArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for AssocTypeArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASSOC_TYPE_ARG }
@@ -3044,11 +2459,6 @@ impl AssocTypeArg {
 pub struct LifetimeArg {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for LifetimeArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for LifetimeArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME_ARG }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3066,11 +2476,6 @@ impl LifetimeArg {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstArg {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ConstArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ConstArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_ARG }
@@ -3092,11 +2497,6 @@ impl ConstArg {
 pub struct MacroItems {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for MacroItems {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for MacroItems {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_ITEMS }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3114,11 +2514,6 @@ impl MacroItems {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroStmts {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for MacroStmts {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for MacroStmts {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_STMTS }
@@ -3138,11 +2533,6 @@ impl MacroStmts {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternItemList {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for ExternItemList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ExternItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_ITEM_LIST }
@@ -3166,11 +2556,6 @@ impl ExternItemList {
 pub struct ExternBlock {
     pub(crate) syntax: SyntaxNode,
 }
-impl std::fmt::Display for ExternBlock {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ExternBlock {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_BLOCK }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3189,11 +2574,6 @@ impl ExternBlock {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MetaItem {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for MetaItem {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for MetaItem {
     fn can_cast(kind: SyntaxKind) -> bool { kind == META_ITEM }
@@ -3215,11 +2595,6 @@ impl MetaItem {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroDef {
     pub(crate) syntax: SyntaxNode,
-}
-impl std::fmt::Display for MacroDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for MacroDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_DEF }
@@ -3250,11 +2625,6 @@ impl From<EnumDef> for NominalDef {
 }
 impl From<UnionDef> for NominalDef {
     fn from(node: UnionDef) -> NominalDef { NominalDef::UnionDef(node) }
-}
-impl std::fmt::Display for NominalDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for NominalDef {
     fn can_cast(kind: SyntaxKind) -> bool {
@@ -3298,11 +2668,6 @@ impl From<TypeParam> for GenericParam {
 impl From<ConstParam> for GenericParam {
     fn from(node: ConstParam) -> GenericParam { GenericParam::ConstParam(node) }
 }
-impl std::fmt::Display for GenericParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for GenericParam {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -3345,11 +2710,6 @@ impl From<ConstArg> for GenericArg {
 }
 impl From<AssocTypeArg> for GenericArg {
     fn from(node: AssocTypeArg) -> GenericArg { GenericArg::AssocTypeArg(node) }
-}
-impl std::fmt::Display for GenericArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for GenericArg {
     fn can_cast(kind: SyntaxKind) -> bool {
@@ -3431,11 +2791,6 @@ impl From<ImplTraitType> for TypeRef {
 }
 impl From<DynTraitType> for TypeRef {
     fn from(node: DynTraitType) -> TypeRef { TypeRef::DynTraitType(node) }
-}
-impl std::fmt::Display for TypeRef {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for TypeRef {
     fn can_cast(kind: SyntaxKind) -> bool {
@@ -3542,11 +2897,6 @@ impl From<MacroCall> for ModuleItem {
 impl From<ExternBlock> for ModuleItem {
     fn from(node: ExternBlock) -> ModuleItem { ModuleItem::ExternBlock(node) }
 }
-impl std::fmt::Display for ModuleItem {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ModuleItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -3613,11 +2963,6 @@ impl From<TypeAliasDef> for ImplItem {
 impl From<ConstDef> for ImplItem {
     fn from(node: ConstDef) -> ImplItem { ImplItem::ConstDef(node) }
 }
-impl std::fmt::Display for ImplItem {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for ImplItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -3654,11 +2999,6 @@ impl From<FnDef> for ExternItem {
 }
 impl From<StaticDef> for ExternItem {
     fn from(node: StaticDef) -> ExternItem { ExternItem::StaticDef(node) }
-}
-impl std::fmt::Display for ExternItem {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for ExternItem {
     fn can_cast(kind: SyntaxKind) -> bool {
@@ -3812,11 +3152,6 @@ impl From<MacroCall> for Expr {
 impl From<BoxExpr> for Expr {
     fn from(node: BoxExpr) -> Expr { Expr::BoxExpr(node) }
 }
-impl std::fmt::Display for Expr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Expr {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -3966,11 +3301,6 @@ impl From<LiteralPat> for Pat {
 impl From<MacroPat> for Pat {
     fn from(node: MacroPat) -> Pat { Pat::MacroPat(node) }
 }
-impl std::fmt::Display for Pat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -4032,11 +3362,6 @@ impl From<RecordFieldPat> for RecordInnerPat {
 impl From<BindPat> for RecordInnerPat {
     fn from(node: BindPat) -> RecordInnerPat { RecordInnerPat::BindPat(node) }
 }
-impl std::fmt::Display for RecordInnerPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for RecordInnerPat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -4069,11 +3394,6 @@ impl From<Literal> for AttrInput {
 }
 impl From<TokenTree> for AttrInput {
     fn from(node: TokenTree) -> AttrInput { AttrInput::TokenTree(node) }
-}
-impl std::fmt::Display for AttrInput {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
 }
 impl AstNode for AttrInput {
     fn can_cast(kind: SyntaxKind) -> bool {
@@ -4108,11 +3428,6 @@ impl From<LetStmt> for Stmt {
 impl From<ExprStmt> for Stmt {
     fn from(node: ExprStmt) -> Stmt { Stmt::ExprStmt(node) }
 }
-impl std::fmt::Display for Stmt {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for Stmt {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -4146,11 +3461,6 @@ impl From<RecordFieldDefList> for FieldDefList {
 impl From<TupleFieldDefList> for FieldDefList {
     fn from(node: TupleFieldDefList) -> FieldDefList { FieldDefList::TupleFieldDefList(node) }
 }
-impl std::fmt::Display for FieldDefList {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl AstNode for FieldDefList {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -4173,5 +3483,695 @@ impl AstNode for FieldDefList {
             FieldDefList::RecordFieldDefList(it) => &it.syntax,
             FieldDefList::TupleFieldDefList(it) => &it.syntax,
         }
+    }
+}
+impl std::fmt::Display for NominalDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for GenericParam {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for GenericArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ModuleItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ImplItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ExternItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Pat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RecordInnerPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AttrInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Stmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for FieldDefList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for SourceFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for FnDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RetType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for StructDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for UnionDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RecordFieldDefList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RecordFieldDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TupleFieldDefList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TupleFieldDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for EnumDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for EnumVariantList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for EnumVariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TraitDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Module {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ItemList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ConstDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for StaticDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeAliasDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ImplDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ParenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TupleType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for NeverType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PathType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PointerType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ArrayType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for SliceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ReferenceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PlaceholderType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for FnPointerType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ForType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ImplTraitType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for DynTraitType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TupleExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ArrayExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ParenExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PathExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for LambdaExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for IfExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for LoopExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TryBlockExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ForExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for WhileExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ContinueExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for BreakExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Label {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for BlockExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ReturnExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for CallExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MethodCallExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for IndexExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for FieldExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AwaitExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TryExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for CastExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RefExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PrefixExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for BoxExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RangeExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for BinExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MatchExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MatchArmList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MatchArm {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MatchGuard {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RecordLit {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RecordFieldList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RecordField {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for OrPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ParenPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RefPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for BoxPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for BindPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PlaceholderPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for DotDotPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PathPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for SlicePat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RangePat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for LiteralPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RecordPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RecordFieldPatList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RecordFieldPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TupleStructPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TuplePat {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Visibility {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for NameRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroCall {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Attr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TokenTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeParamList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeParam {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ConstParam {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for LifetimeParam {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeBound {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeBoundList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for WherePred {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for WhereClause {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Abi {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ExprStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for LetStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Condition {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Block {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ParamList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for SelfParam {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Param {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for UseItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for UseTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Alias {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for UseTreeList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ExternCrateItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ArgList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Path {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PathSegment {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeArgList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AssocTypeArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for LifetimeArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ConstArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroItems {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroStmts {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ExternItemList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ExternBlock {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MetaItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
     }
 }
