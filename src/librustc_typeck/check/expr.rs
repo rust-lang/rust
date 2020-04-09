@@ -1618,7 +1618,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn point_at_param_definition(&self, err: &mut DiagnosticBuilder<'_>, param: ty::ParamTy) {
-        let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
+        let generics = self.tcx.generics_of(self.body_id.owner);
         let generic_param = generics.type_param(&param, self.tcx);
         if let ty::GenericParamDefKind::Type { synthetic: Some(..), .. } = generic_param.kind {
             return;

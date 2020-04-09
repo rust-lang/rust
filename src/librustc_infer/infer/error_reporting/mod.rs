@@ -1773,7 +1773,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             (Some(ref table), GenericKind::Param(ref param)) => {
                 let table_owner = table.borrow().hir_owner;
                 table_owner.and_then(|table_owner| {
-                    let generics = self.tcx.generics_of(table_owner.to_def_id());
+                    let generics = self.tcx.generics_of(table_owner);
                     // Account for the case where `param` corresponds to `Self`,
                     // which doesn't have the expected type argument.
                     if !(generics.has_self && param.index == 0) {

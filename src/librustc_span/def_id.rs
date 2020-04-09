@@ -195,6 +195,12 @@ impl fmt::Debug for DefId {
     }
 }
 
+impl From<LocalDefId> for DefId {
+    fn from(local_def_id: LocalDefId) -> DefId {
+        local_def_id.to_def_id()
+    }
+}
+
 rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefId);
 
 /// A LocalDefId is equivalent to a DefId with `krate == LOCAL_CRATE`. Since

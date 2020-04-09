@@ -2242,7 +2242,7 @@ impl<'tcx> Const<'tcx> {
 
         let expr = &tcx.hir().body(body_id).value;
 
-        let ty = tcx.type_of(def_id.to_def_id());
+        let ty = tcx.type_of(def_id);
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
