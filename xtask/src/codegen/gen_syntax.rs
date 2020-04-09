@@ -97,11 +97,13 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         let name = format_ident!("{}", to_pascal_case(kind_str));
         quote! {
             #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-            pub struct #name(SyntaxToken);
+            pub struct #name {
+                pub(crate) syntax: SyntaxToken,
+            }
 
             impl std::fmt::Display for #name {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    std::fmt::Display::fmt(self.syntax(), f)
+                    std::fmt::Display::fmt(&self.syntax, f)
                 }
             }
 
@@ -112,29 +114,10 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                         _ => false,
                     }
                 }
-                fn cast_or_return(syntax: SyntaxToken) -> Result<Self, SyntaxToken> {
-                    if Self::can_cast(syntax.kind()) { Ok(Self(syntax)) } else { Err(syntax) }
+                fn cast(syntax: SyntaxToken) -> Option<Self> {
+                    if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
                 }
-                fn syntax(&self) -> &SyntaxToken { &self.0 }
-                fn into_syntax(self) -> SyntaxToken { self.0 }
-            }
-
-            impl AstElement for #name {
-                fn can_cast_element(kind: SyntaxKind) -> bool {
-                    match kind {
-                        #kind => true,
-                        _ => false,
-                    }
-                }
-                fn cast_or_return_element(syntax: SyntaxElement) -> Result<Self, SyntaxElement> {
-                    if Self::can_cast_element(syntax.kind()) { Ok(Self(syntax.into_token().unwrap())) } else { Err(syntax) }
-                }
-                fn syntax_element(&self) -> NodeOrToken<&SyntaxNode, &SyntaxToken> {
-                    NodeOrToken::Token(&self.0)
-                }
-                fn into_syntax_element(self) -> SyntaxElement {
-                    NodeOrToken::Token(self.0)
-                }
+                fn syntax(&self) -> &SyntaxToken { &self.syntax }
             }
         }
     });
@@ -156,28 +139,21 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                 FieldSrc::Optional(ty) | FieldSrc::Many(ty) => ty,
                 FieldSrc::Shorthand => name,
             };
-            let element_kinds = &element_kinds_map.get(*ty).unwrap_or_else(|| panic!("type not found: {}", *ty));
-            let iter = if !element_kinds.has_tokens {
-                format_ident!("AstChildren")
-            } else if !element_kinds.has_nodes {
-                format_ident!("AstChildTokens")
-            } else {
-                format_ident!("AstChildElements")
-            };
+
             let ty = format_ident!("{}", ty);
 
             match field {
                 FieldSrc::Many(_) => {
                     quote! {
-                        pub fn #method_name(&self) -> #iter<#ty> {
-                            #iter::new(&self.syntax)
+                        pub fn #method_name(&self) -> AstChildren<#ty> {
+                            AstChildren::new(&self.syntax)
                         }
                     }
                 }
                 FieldSrc::Optional(_) | FieldSrc::Shorthand => {
                     quote! {
                         pub fn #method_name(&self) -> Option<#ty> {
-                            #iter::new(&self.syntax).next()
+                            AstChildren::new(&self.syntax).next()
                         }
                     }
                 }
@@ -203,29 +179,10 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                         _ => false,
                     }
                 }
-                fn cast_or_return(syntax: SyntaxNode) -> Result<Self, SyntaxNode> {
-                    if Self::can_cast(syntax.kind()) { Ok(Self { syntax }) } else { Err(syntax) }
+                fn cast(syntax: SyntaxNode) -> Option<Self> {
+                    if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
                 }
                 fn syntax(&self) -> &SyntaxNode { &self.syntax }
-                fn into_syntax(self) -> SyntaxNode { self.syntax }
-            }
-
-            impl AstElement for #name {
-                fn can_cast_element(kind: SyntaxKind) -> bool {
-                    match kind {
-                        #kind => true,
-                        _ => false,
-                    }
-                }
-                fn cast_or_return_element(syntax: SyntaxElement) -> Result<Self, SyntaxElement> {
-                    if Self::can_cast_element(syntax.kind()) { Ok(Self { syntax: syntax.into_node().unwrap() }) } else { Err(syntax) }
-                }
-                fn syntax_element(&self) -> NodeOrToken<&SyntaxNode, &SyntaxToken> {
-                    NodeOrToken::Node(&self.syntax)
-                }
-                fn into_syntax_element(self) -> SyntaxElement {
-                    NodeOrToken::Node(self.syntax)
-                }
             }
 
             #(#traits)*
@@ -238,70 +195,15 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
 
     let enums = grammar.enums.iter().map(|en| {
         let variants = en.variants.iter().map(|var| format_ident!("{}", var)).collect::<Vec<_>>();
-        let element_kinds = &element_kinds_map[&en.name.to_string()];
         let name = format_ident!("{}", en.name);
-        let kinds = en.variants
+        let kinds = variants
             .iter()
-            .map(|name| {
-                element_kinds_map[*name].kinds.iter().collect::<Vec<_>>()
-            })
+            .map(|name| format_ident!("{}", to_upper_snake_case(&name.to_string())))
             .collect::<Vec<_>>();
         let traits = en.traits.iter().map(|trait_name| {
             let trait_name = format_ident!("{}", trait_name);
             quote!(impl ast::#trait_name for #name {})
         });
-
-        let all_kinds = &element_kinds.kinds;
-
-        let specific_ast_trait = if element_kinds.has_nodes != element_kinds.has_tokens {
-            let (ast_trait, syntax_type) = if element_kinds.has_tokens {
-                (
-                    quote!(AstToken),
-                    quote!(SyntaxToken),
-                )
-            } else {
-                (
-                    quote!(AstNode),
-                    quote!(SyntaxNode),
-                )
-            };
-
-            quote! {
-                impl #ast_trait for #name {
-                    fn can_cast(kind: SyntaxKind) -> bool {
-                        match kind {
-                            #(#all_kinds)|* => true,
-                            _ => false,
-                        }
-                    }
-                    #[allow(unreachable_patterns)]
-                    fn cast_or_return(syntax: #syntax_type) -> Result<Self, #syntax_type> {
-                        match syntax.kind() {
-                            #(
-                            #(#kinds)|* => #variants::cast_or_return(syntax).map(|x| #name::#variants(x)),
-                            )*
-                            _ => Err(syntax),
-                        }
-                    }
-                    fn syntax(&self) -> &#syntax_type {
-                        match self {
-                            #(
-                            #name::#variants(it) => it.syntax(),
-                            )*
-                        }
-                    }
-                    fn into_syntax(self) -> #syntax_type {
-                        match self {
-                            #(
-                            #name::#variants(it) => it.into_syntax(),
-                            )*
-                        }
-                    }
-                }
-            }
-        } else {
-            Default::default()
-        };
 
         quote! {
             #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -319,48 +221,34 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
 
             impl std::fmt::Display for #name {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    match self {
-                        #(
-                        #name::#variants(it) => std::fmt::Display::fmt(it, f),
-                        )*
-                    }
+                    std::fmt::Display::fmt(self.syntax(), f)
                 }
             }
 
-            #specific_ast_trait
-
-            impl AstElement for #name {
-                fn can_cast_element(kind: SyntaxKind) -> bool {
+            impl AstNode for #name {
+                fn can_cast(kind: SyntaxKind) -> bool {
                     match kind {
-                        #(#all_kinds)|* => true,
+                        #(#kinds)|* => true,
                         _ => false,
                     }
                 }
-                #[allow(unreachable_patterns)]
-                fn cast_or_return_element(syntax: SyntaxElement) -> Result<Self, SyntaxElement> {
-                    match syntax.kind() {
+                fn cast(syntax: SyntaxNode) -> Option<Self> {
+                    let res = match syntax.kind() {
                         #(
-                        #(#kinds)|* => #variants::cast_or_return_element(syntax).map(|x| #name::#variants(x)),
+                        #kinds => #name::#variants(#variants { syntax }),
                         )*
-                        _ => Err(syntax),
-                    }
+                        _ => return None,
+                    };
+                    Some(res)
                 }
-                fn syntax_element(&self) -> NodeOrToken<&SyntaxNode, &SyntaxToken> {
+                fn syntax(&self) -> &SyntaxNode {
                     match self {
                         #(
-                        #name::#variants(it) => it.syntax_element(),
-                        )*
-                    }
-                }
-                fn into_syntax_element(self) -> SyntaxElement {
-                    match self {
-                        #(
-                        #name::#variants(it) => it.into_syntax_element(),
+                        #name::#variants(it) => &it.syntax,
                         )*
                     }
                 }
             }
-
             #(#traits)*
         }
     });
@@ -380,7 +268,7 @@ fn generate_ast(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         #[allow(unused_imports)]
         use crate::{
             SyntaxNode, SyntaxToken, SyntaxElement, NodeOrToken, SyntaxKind::{self, *},
-            ast::{self, AstNode, AstToken, AstElement, AstChildren, AstChildTokens, AstChildElements},
+            ast::{self, AstNode, AstToken, AstChildren},
         };
 
         #(#tokens)*
