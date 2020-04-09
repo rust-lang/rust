@@ -24,7 +24,7 @@ use crate::{call_info::call_info_for_token, Analysis, FileId};
 pub(crate) use html::highlight_as_html;
 pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HighlightedRange {
     pub range: TextRange,
     pub highlight: Highlight,
@@ -55,13 +55,55 @@ pub(crate) fn highlight(
     };
 
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
-    let mut res = Vec::new();
+    // We use a stack for the DFS traversal below.
+    // When we leave a node, the we use it to flatten the highlighted ranges.
+    let mut res: Vec<Vec<HighlightedRange>> = vec![Vec::new()];
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
     for event in root.preorder_with_tokens() {
+        match &event {
+            WalkEvent::Enter(_) => res.push(Vec::new()),
+            WalkEvent::Leave(_) => {
+                /* Flattens the highlighted ranges.
+                 *
+                 * For example `#[cfg(feature = "foo")]` contains the nested ranges:
+                 * 1) parent-range: Attribute [0, 23)
+                 * 2) child-range: String [16, 21)
+                 *
+                 * The following code implements the flattening, for our example this results to:
+                 * `[Attribute [0, 16), String [16, 21), Attribute [21, 23)]`
+                 */
+                let children = res.pop().unwrap();
+                let prev = res.last_mut().unwrap();
+                let needs_flattening = !children.is_empty()
+                    && !prev.is_empty()
+                    && children.first().unwrap().range.is_subrange(&prev.last().unwrap().range);
+                if !needs_flattening {
+                    prev.extend(children);
+                } else {
+                    let mut parent = prev.pop().unwrap();
+                    for ele in children {
+                        assert!(ele.range.is_subrange(&parent.range));
+                        let mut cloned = parent.clone();
+                        parent.range = TextRange::from_to(parent.range.start(), ele.range.start());
+                        cloned.range = TextRange::from_to(ele.range.end(), cloned.range.end());
+                        if !parent.range.is_empty() {
+                            prev.push(parent);
+                        }
+                        prev.push(ele);
+                        parent = cloned;
+                    }
+                    if !parent.range.is_empty() {
+                        prev.push(parent);
+                    }
+                }
+            }
+        };
+        let current = res.last_mut().expect("during DFS traversal, the stack must not be empty");
+
         let event_range = match &event {
             WalkEvent::Enter(it) => it.text_range(),
             WalkEvent::Leave(it) => it.text_range(),
@@ -77,7 +119,7 @@ pub(crate) fn highlight(
             WalkEvent::Enter(Some(mc)) => {
                 current_macro_call = Some(mc.clone());
                 if let Some(range) = macro_call_range(&mc) {
-                    res.push(HighlightedRange {
+                    current.push(HighlightedRange {
                         range,
                         highlight: HighlightTag::Macro.into(),
                         binding_hash: None,
@@ -119,7 +161,7 @@ pub(crate) fn highlight(
 
         if let Some(token) = element.as_token().cloned().and_then(ast::RawString::cast) {
             let expanded = element_to_highlight.as_token().unwrap().clone();
-            if highlight_injection(&mut res, &sema, token, expanded).is_some() {
+            if highlight_injection(current, &sema, token, expanded).is_some() {
                 continue;
             }
         }
@@ -127,10 +169,17 @@ pub(crate) fn highlight(
         if let Some((highlight, binding_hash)) =
             highlight_element(&sema, &mut bindings_shadow_count, element_to_highlight)
         {
-            res.push(HighlightedRange { range, highlight, binding_hash });
+            current.push(HighlightedRange { range, highlight, binding_hash });
         }
     }
 
+    assert_eq!(res.len(), 1, "after DFS traversal, the stack should only contain a single element");
+    let res = res.pop().unwrap();
+    // Check that ranges are sorted and disjoint
+    assert!(res
+        .iter()
+        .zip(res.iter().skip(1))
+        .all(|(left, right)| left.range.end() <= right.range.start()));
     res
 }
 

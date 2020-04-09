@@ -1,65 +1,24 @@
 //! Complete fields in record literals and patterns.
-use ra_syntax::{ast, ast::NameOwner, SmolStr};
-
 use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let (ty, variant, already_present_fields) =
-        match (ctx.record_lit_pat.as_ref(), ctx.record_lit_syntax.as_ref()) {
-            (None, None) => return None,
-            (Some(_), Some(_)) => unreachable!("A record cannot be both a literal and a pattern"),
-            (Some(record_pat), _) => (
-                ctx.sema.type_of_pat(&record_pat.clone().into())?,
-                ctx.sema.resolve_record_pattern(record_pat)?,
-                pattern_ascribed_fields(record_pat),
-            ),
-            (_, Some(record_lit)) => (
-                ctx.sema.type_of_expr(&record_lit.clone().into())?,
-                ctx.sema.resolve_record_literal(record_lit)?,
-                literal_ascribed_fields(record_lit),
-            ),
-        };
+    let missing_fields = match (ctx.record_lit_pat.as_ref(), ctx.record_lit_syntax.as_ref()) {
+        (None, None) => return None,
+        (Some(_), Some(_)) => unreachable!("A record cannot be both a literal and a pattern"),
+        (Some(record_pat), _) => ctx.sema.record_pattern_missing_fields(record_pat),
+        (_, Some(record_lit)) => ctx.sema.record_literal_missing_fields(record_lit),
+    };
 
-    for (field, field_ty) in ty.variant_fields(ctx.db, variant).into_iter().filter(|(field, _)| {
-        // FIXME: already_present_names better be `Vec<hir::Name>`
-        !already_present_fields.contains(&SmolStr::from(field.name(ctx.db).to_string()))
-    }) {
-        acc.add_field(ctx, field, &field_ty);
+    for (field, ty) in missing_fields {
+        acc.add_field(ctx, field, &ty)
     }
+
     Some(())
-}
-
-fn literal_ascribed_fields(record_lit: &ast::RecordLit) -> Vec<SmolStr> {
-    record_lit
-        .record_field_list()
-        .map(|field_list| field_list.fields())
-        .map(|fields| {
-            fields
-                .into_iter()
-                .filter_map(|field| field.name_ref())
-                .map(|name_ref| name_ref.text().clone())
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-fn pattern_ascribed_fields(record_pat: &ast::RecordPat) -> Vec<SmolStr> {
-    record_pat
-        .record_field_pat_list()
-        .map(|pat_list| {
-            pat_list
-                .record_field_pats()
-                .filter_map(|fild_pat| fild_pat.name())
-                .chain(pat_list.bind_pats().filter_map(|bind_pat| bind_pat.name()))
-                .map(|name| name.text().clone())
-                .collect()
-        })
-        .unwrap_or_default()
 }
 
 #[cfg(test)]
 mod tests {
-    mod record_lit_tests {
+    mod record_pat_tests {
         use insta::assert_debug_snapshot;
 
         use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
@@ -205,7 +164,7 @@ mod tests {
         }
     }
 
-    mod record_pat_tests {
+    mod record_lit_tests {
         use insta::assert_debug_snapshot;
 
         use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
@@ -404,6 +363,39 @@ mod tests {
                 source_range: [302; 302),
                 delete: [302; 302),
                 insert: "baz",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###);
+        }
+
+        #[test]
+        fn completes_functional_update() {
+            let completions = complete(
+                r"
+            struct S {
+                foo1: u32,
+                foo2: u32,
+            }
+
+            fn main() {
+                let foo1 = 1;
+                let s = S {
+                    foo1,
+                    <|>
+                    .. loop {}
+                }
+            }
+            ",
+            );
+            assert_debug_snapshot!(completions, @r###"
+        [
+            CompletionItem {
+                label: "foo2",
+                source_range: [221; 221),
+                delete: [221; 221),
+                insert: "foo2",
                 kind: Field,
                 detail: "u32",
             },

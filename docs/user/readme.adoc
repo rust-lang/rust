@@ -187,30 +187,7 @@ Prerequisites:
 
 `LSP` package.
 
-Installation:
-
-1. Invoke the command palette with <kbd>Ctrl+Shift+P</kbd>
-2. Type `LSP Settings` to open the LSP preferences editor
-3. Add the following LSP client definition to your settings:
-+
-[source,json]
-----
-"rust-analyzer": {
-    "command": ["rust-analyzer"],
-    "languageId": "rust",
-    "scopes": ["source.rust"],
-    "syntaxes": [
-        "Packages/Rust/Rust.sublime-syntax",
-        "Packages/Rust Enhanced/RustEnhanced.sublime-syntax"
-    ],
-    "initializationOptions": {
-      "featureFlags": {
-      }
-    },
-}
-----
-
-4. You can now invoke the command palette and type LSP enable to locally/globally enable the rust-analyzer LSP (type LSP enable, then choose either locally or globally, then select rust-analyzer)
+Invoke the command palette (`ctrl+shift+p`) and type LSP enable to locally/globally enable the rust-analyzer LSP (type LSP enable, then choose either locally or globally, then select rust-analyzer)
 
 == Usage
 

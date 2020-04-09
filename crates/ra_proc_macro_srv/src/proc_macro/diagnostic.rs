@@ -54,12 +54,14 @@ pub struct Diagnostic {
 }
 
 macro_rules! diagnostic_child_methods {
-    ($spanned:ident, $regular:ident, $level:expr) => (
+    ($spanned:ident, $regular:ident, $level:expr) => {
         /// Adds a new child diagnostic message to `self` with the level
         /// identified by this method's name with the given `spans` and
         /// `message`.
         pub fn $spanned<S, T>(mut self, spans: S, message: T) -> Diagnostic
-            where S: MultiSpan, T: Into<String>
+        where
+            S: MultiSpan,
+            T: Into<String>,
         {
             self.children.push(Diagnostic::spanned(spans, $level, message));
             self
@@ -71,7 +73,7 @@ macro_rules! diagnostic_child_methods {
             self.children.push(Diagnostic::new($level, message));
             self
         }
-    )
+    };
 }
 
 /// Iterator over the children diagnostics of a `Diagnostic`.

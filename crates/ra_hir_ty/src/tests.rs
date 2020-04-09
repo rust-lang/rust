@@ -336,7 +336,7 @@ fn no_such_field_with_feature_flag_diagnostics() {
             pub(crate) fn new(my_val: usize, bar: bool) -> Self {
                 Self { my_val, bar }
             }
-        
+
             #[cfg(not(feature = "foo"))]
             pub(crate) fn new(my_val: usize, _bar: bool) -> Self {
                 Self { my_val }

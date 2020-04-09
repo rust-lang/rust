@@ -2,12 +2,8 @@
 
 use std::sync::Arc;
 
-use hir_def::{
-    path::{path, Path},
-    resolver::HasResolver,
-    AdtId, FunctionId,
-};
-use hir_expand::{diagnostics::DiagnosticSink, name::Name};
+use hir_def::{path::path, resolver::HasResolver, AdtId, FunctionId};
+use hir_expand::diagnostics::DiagnosticSink;
 use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashSet;
 
@@ -28,7 +24,7 @@ pub use hir_def::{
         ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
         MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement, UnaryOp,
     },
-    VariantId,
+    LocalStructFieldId, VariantId,
 };
 
 pub struct ExprValidator<'a, 'b: 'a> {
@@ -49,14 +45,37 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     pub fn validate_body(&mut self, db: &dyn HirDatabase) {
         let body = db.body(self.func.into());
 
-        for e in body.exprs.iter() {
-            if let (id, Expr::RecordLit { path, fields, spread }) = e {
-                self.validate_record_literal(id, path, fields, *spread, db);
-            } else if let (id, Expr::Match { expr, arms }) = e {
+        for (id, expr) in body.exprs.iter() {
+            if let Some((variant_def, missed_fields, true)) =
+                record_literal_missing_fields(db, &self.infer, id, expr)
+            {
+                // XXX: only look at source_map if we do have missing fields
+                let (_, source_map) = db.body_with_source_map(self.func.into());
+
+                if let Ok(source_ptr) = source_map.expr_syntax(id) {
+                    if let Some(expr) = source_ptr.value.left() {
+                        let root = source_ptr.file_syntax(db.upcast());
+                        if let ast::Expr::RecordLit(record_lit) = expr.to_node(&root) {
+                            if let Some(field_list) = record_lit.record_field_list() {
+                                let variant_data = variant_data(db.upcast(), variant_def);
+                                let missed_fields = missed_fields
+                                    .into_iter()
+                                    .map(|idx| variant_data.fields()[idx].name.clone())
+                                    .collect();
+                                self.sink.push(MissingFields {
+                                    file: source_ptr.file_id,
+                                    field_list: AstPtr::new(&field_list),
+                                    missed_fields,
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+            if let Expr::Match { expr, arms } = expr {
                 self.validate_match(id, *expr, arms, db, self.infer.clone());
             }
         }
-
         let body_expr = &body[body.body_expr];
         if let Expr::Block { tail: Some(t), .. } = body_expr {
             self.validate_results_in_tail_expr(body.body_expr, *t, db);
@@ -145,61 +164,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
     }
 
-    fn validate_record_literal(
-        &mut self,
-        id: ExprId,
-        _path: &Option<Path>,
-        fields: &[RecordLitField],
-        spread: Option<ExprId>,
-        db: &dyn HirDatabase,
-    ) {
-        if spread.is_some() {
-            return;
-        };
-        let variant_def: VariantId = match self.infer.variant_resolution_for_expr(id) {
-            Some(VariantId::UnionId(_)) | None => return,
-            Some(it) => it,
-        };
-        if let VariantId::UnionId(_) = variant_def {
-            return;
-        }
-
-        let variant_data = variant_data(db.upcast(), variant_def);
-
-        let lit_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
-        let missed_fields: Vec<Name> = variant_data
-            .fields()
-            .iter()
-            .filter_map(|(_f, d)| {
-                let name = d.name.clone();
-                if lit_fields.contains(&name) {
-                    None
-                } else {
-                    Some(name)
-                }
-            })
-            .collect();
-        if missed_fields.is_empty() {
-            return;
-        }
-        let (_, source_map) = db.body_with_source_map(self.func.into());
-
-        if let Ok(source_ptr) = source_map.expr_syntax(id) {
-            if let Some(expr) = source_ptr.value.left() {
-                let root = source_ptr.file_syntax(db.upcast());
-                if let ast::Expr::RecordLit(record_lit) = expr.to_node(&root) {
-                    if let Some(field_list) = record_lit.record_field_list() {
-                        self.sink.push(MissingFields {
-                            file: source_ptr.file_id,
-                            field_list: AstPtr::new(&field_list),
-                            missed_fields,
-                        })
-                    }
-                }
-            }
-        }
-    }
-
     fn validate_results_in_tail_expr(&mut self, body_id: ExprId, id: ExprId, db: &dyn HirDatabase) {
         // the mismatch will be on the whole block currently
         let mismatch = match self.infer.type_mismatch_for_expr(body_id) {
@@ -231,4 +195,64 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             }
         }
     }
+}
+
+pub fn record_literal_missing_fields(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
+    id: ExprId,
+    expr: &Expr,
+) -> Option<(VariantId, Vec<LocalStructFieldId>, /*exhaustive*/ bool)> {
+    let (fields, exhausitve) = match expr {
+        Expr::RecordLit { path: _, fields, spread } => (fields, spread.is_none()),
+        _ => return None,
+    };
+
+    let variant_def = infer.variant_resolution_for_expr(id)?;
+    if let VariantId::UnionId(_) = variant_def {
+        return None;
+    }
+
+    let variant_data = variant_data(db.upcast(), variant_def);
+
+    let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
+    let missed_fields: Vec<LocalStructFieldId> = variant_data
+        .fields()
+        .iter()
+        .filter_map(|(f, d)| if specified_fields.contains(&d.name) { None } else { Some(f) })
+        .collect();
+    if missed_fields.is_empty() {
+        return None;
+    }
+    Some((variant_def, missed_fields, exhausitve))
+}
+
+pub fn record_pattern_missing_fields(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
+    id: PatId,
+    pat: &Pat,
+) -> Option<(VariantId, Vec<LocalStructFieldId>)> {
+    let fields = match pat {
+        Pat::Record { path: _, args } => args,
+        _ => return None,
+    };
+
+    let variant_def = infer.variant_resolution_for_pat(id)?;
+    if let VariantId::UnionId(_) = variant_def {
+        return None;
+    }
+
+    let variant_data = variant_data(db.upcast(), variant_def);
+
+    let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
+    let missed_fields: Vec<LocalStructFieldId> = variant_data
+        .fields()
+        .iter()
+        .filter_map(|(f, d)| if specified_fields.contains(&d.name) { None } else { Some(f) })
+        .collect();
+    if missed_fields.is_empty() {
+        return None;
+    }
+    Some((variant_def, missed_fields))
 }

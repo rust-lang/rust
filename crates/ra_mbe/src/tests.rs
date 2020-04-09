@@ -1615,6 +1615,23 @@ fn test_issue_2520() {
 }
 
 #[test]
+fn test_issue_3861() {
+    let macro_fixture = parse_macro(
+        r#"
+        macro_rules! rgb_color {
+            ($p:expr, $t: ty) => {
+                pub fn new() {
+                    let _ = 0 as $t << $p;
+                }
+            };
+        }
+    "#,
+    );
+
+    macro_fixture.expand_items(r#"rgb_color!(8 + 8, u32);"#);
+}
+
+#[test]
 fn test_repeat_bad_var() {
     // FIXME: the second rule of the macro should be removed and an error about
     // `$( $c )+` raised
