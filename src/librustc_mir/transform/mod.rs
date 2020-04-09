@@ -7,7 +7,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
-use rustc_middle::ty::{InstanceDef, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, InstanceDef, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use std::borrow::Cow;
 
@@ -186,10 +186,13 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
 
     // No need to const-check a non-const `fn`.
     if const_kind.is_none() {
-        // Run the dataflow analyses used for const-checking on all functions to get an idea of the
-        // performance hit.
-        let item = check_consts::Item::new(tcx, def_id, body.unwrap_read_only());
-        std::hint::black_box(check_consts::validation::Validator::new(&item));
+        // Run the dataflow analyses used for const-checking on all functions (except those with
+        // RPIT) to get an idea of the performance hit. RPIT causes query cycles.
+        if !matches!(body.return_ty().kind, ty::Opaque(..)) {
+            let item = check_consts::Item::new(tcx, def_id, body.unwrap_read_only());
+            std::hint::black_box(check_consts::validation::Validator::new(&item));
+        }
+
         return Default::default();
     }
 
