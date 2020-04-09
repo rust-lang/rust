@@ -131,4 +131,22 @@ trait Bar {
     }
 }
 
+// Do not trigger on functions that may diverge instead of self-recursing (#54444)
+
+pub fn loops(x: bool) {
+    if x {
+        loops(x);
+    } else {
+        loop {}
+    }
+}
+
+pub fn panics(x: bool) {
+    if x {
+        panics(!x);
+    } else {
+        panic!("panics");
+    }
+}
+
 fn main() {}

@@ -170,7 +170,7 @@ The order of these command line arguments is taken into account. The following a
 $ rustc lib.rs --crate-type=lib -D unused-variables -A unused-variables
 ```
 
-You can make use of this behavior by overriding the level of one specific lint out of a group of lints. The following example denies all the lints in the `unused` group, but explicitly allows the `unused-variables` lint in that group:
+You can make use of this behavior by overriding the level of one specific lint out of a group of lints. The following example denies all the lints in the `unused` group, but explicitly allows the `unused-variables` lint in that group (forbid still trumps everything regardless of ordering):
 
 ```bash
 $ rustc lib.rs --crate-type=lib -D unused -A unused-variables

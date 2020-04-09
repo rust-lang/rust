@@ -416,7 +416,6 @@ E0734: include_str!("./error_codes/E0734.md"),
 E0735: include_str!("./error_codes/E0735.md"),
 E0736: include_str!("./error_codes/E0736.md"),
 E0737: include_str!("./error_codes/E0737.md"),
-E0738: include_str!("./error_codes/E0738.md"),
 E0739: include_str!("./error_codes/E0739.md"),
 E0740: include_str!("./error_codes/E0740.md"),
 E0741: include_str!("./error_codes/E0741.md"),
@@ -614,4 +613,5 @@ E0751: include_str!("./error_codes/E0751.md"),
     E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
+//  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
 }
