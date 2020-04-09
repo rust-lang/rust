@@ -28,9 +28,7 @@ impl AstToken for Semi {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Comma {
@@ -55,9 +53,7 @@ impl AstToken for Comma {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LParen {
@@ -82,9 +78,7 @@ impl AstToken for LParen {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RParen {
@@ -109,9 +103,7 @@ impl AstToken for RParen {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LCurly {
@@ -136,9 +128,7 @@ impl AstToken for LCurly {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RCurly {
@@ -163,9 +153,7 @@ impl AstToken for RCurly {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LBrack {
@@ -190,9 +178,7 @@ impl AstToken for LBrack {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RBrack {
@@ -217,9 +203,7 @@ impl AstToken for RBrack {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LAngle {
@@ -244,9 +228,7 @@ impl AstToken for LAngle {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RAngle {
@@ -271,9 +253,7 @@ impl AstToken for RAngle {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct At {
@@ -298,9 +278,7 @@ impl AstToken for At {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pound {
@@ -325,9 +303,7 @@ impl AstToken for Pound {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Tilde {
@@ -352,9 +328,7 @@ impl AstToken for Tilde {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Question {
@@ -379,9 +353,7 @@ impl AstToken for Question {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dollar {
@@ -406,9 +378,7 @@ impl AstToken for Dollar {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Amp {
@@ -433,9 +403,7 @@ impl AstToken for Amp {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pipe {
@@ -460,9 +428,7 @@ impl AstToken for Pipe {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Plus {
@@ -487,9 +453,7 @@ impl AstToken for Plus {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Star {
@@ -514,9 +478,7 @@ impl AstToken for Star {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Slash {
@@ -541,9 +503,7 @@ impl AstToken for Slash {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Caret {
@@ -568,9 +528,7 @@ impl AstToken for Caret {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Percent {
@@ -595,9 +553,7 @@ impl AstToken for Percent {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Underscore {
@@ -622,9 +578,7 @@ impl AstToken for Underscore {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dot {
@@ -649,9 +603,7 @@ impl AstToken for Dot {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dotdot {
@@ -676,9 +628,7 @@ impl AstToken for Dotdot {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dotdotdot {
@@ -703,9 +653,7 @@ impl AstToken for Dotdotdot {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dotdoteq {
@@ -730,9 +678,7 @@ impl AstToken for Dotdoteq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Colon {
@@ -757,9 +703,7 @@ impl AstToken for Colon {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Coloncolon {
@@ -784,9 +728,7 @@ impl AstToken for Coloncolon {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Eq {
@@ -811,9 +753,7 @@ impl AstToken for Eq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Eqeq {
@@ -838,9 +778,7 @@ impl AstToken for Eqeq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FatArrow {
@@ -865,9 +803,7 @@ impl AstToken for FatArrow {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Excl {
@@ -892,9 +828,7 @@ impl AstToken for Excl {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Neq {
@@ -919,9 +853,7 @@ impl AstToken for Neq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Minus {
@@ -946,9 +878,7 @@ impl AstToken for Minus {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ThinArrow {
@@ -973,9 +903,7 @@ impl AstToken for ThinArrow {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Lteq {
@@ -1000,9 +928,7 @@ impl AstToken for Lteq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Gteq {
@@ -1027,9 +953,7 @@ impl AstToken for Gteq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pluseq {
@@ -1054,9 +978,7 @@ impl AstToken for Pluseq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Minuseq {
@@ -1081,9 +1003,7 @@ impl AstToken for Minuseq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pipeeq {
@@ -1108,9 +1028,7 @@ impl AstToken for Pipeeq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ampeq {
@@ -1135,9 +1053,7 @@ impl AstToken for Ampeq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Careteq {
@@ -1162,9 +1078,7 @@ impl AstToken for Careteq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Slasheq {
@@ -1189,9 +1103,7 @@ impl AstToken for Slasheq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Stareq {
@@ -1216,9 +1128,7 @@ impl AstToken for Stareq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Percenteq {
@@ -1243,9 +1153,7 @@ impl AstToken for Percenteq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ampamp {
@@ -1270,9 +1178,7 @@ impl AstToken for Ampamp {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Pipepipe {
@@ -1297,9 +1203,7 @@ impl AstToken for Pipepipe {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Shl {
@@ -1324,9 +1228,7 @@ impl AstToken for Shl {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Shr {
@@ -1351,9 +1253,7 @@ impl AstToken for Shr {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Shleq {
@@ -1378,9 +1278,7 @@ impl AstToken for Shleq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Shreq {
@@ -1405,9 +1303,7 @@ impl AstToken for Shreq {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AsKw {
@@ -1432,9 +1328,7 @@ impl AstToken for AsKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AsyncKw {
@@ -1459,9 +1353,7 @@ impl AstToken for AsyncKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AwaitKw {
@@ -1486,9 +1378,7 @@ impl AstToken for AwaitKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BoxKw {
@@ -1513,9 +1403,7 @@ impl AstToken for BoxKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BreakKw {
@@ -1540,9 +1428,7 @@ impl AstToken for BreakKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstKw {
@@ -1567,9 +1453,7 @@ impl AstToken for ConstKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ContinueKw {
@@ -1594,9 +1478,7 @@ impl AstToken for ContinueKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateKw {
@@ -1621,9 +1503,7 @@ impl AstToken for CrateKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynKw {
@@ -1648,9 +1528,7 @@ impl AstToken for DynKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ElseKw {
@@ -1675,9 +1553,7 @@ impl AstToken for ElseKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumKw {
@@ -1702,9 +1578,7 @@ impl AstToken for EnumKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternKw {
@@ -1729,9 +1603,7 @@ impl AstToken for ExternKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FalseKw {
@@ -1756,9 +1628,7 @@ impl AstToken for FalseKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnKw {
@@ -1783,9 +1653,7 @@ impl AstToken for FnKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ForKw {
@@ -1810,9 +1678,7 @@ impl AstToken for ForKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IfKw {
@@ -1837,9 +1703,7 @@ impl AstToken for IfKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplKw {
@@ -1864,9 +1728,7 @@ impl AstToken for ImplKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct InKw {
@@ -1891,9 +1753,7 @@ impl AstToken for InKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LetKw {
@@ -1918,9 +1778,7 @@ impl AstToken for LetKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoopKw {
@@ -1945,9 +1803,7 @@ impl AstToken for LoopKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroKw {
@@ -1972,9 +1828,7 @@ impl AstToken for MacroKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchKw {
@@ -1999,9 +1853,7 @@ impl AstToken for MatchKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ModKw {
@@ -2026,9 +1878,7 @@ impl AstToken for ModKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MoveKw {
@@ -2053,9 +1903,7 @@ impl AstToken for MoveKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MutKw {
@@ -2080,9 +1928,7 @@ impl AstToken for MutKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PubKw {
@@ -2107,9 +1953,7 @@ impl AstToken for PubKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefKw {
@@ -2134,9 +1978,7 @@ impl AstToken for RefKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReturnKw {
@@ -2161,9 +2003,7 @@ impl AstToken for ReturnKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SelfKw {
@@ -2188,9 +2028,7 @@ impl AstToken for SelfKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StaticKw {
@@ -2215,9 +2053,7 @@ impl AstToken for StaticKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StructKw {
@@ -2242,9 +2078,7 @@ impl AstToken for StructKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SuperKw {
@@ -2269,9 +2103,7 @@ impl AstToken for SuperKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitKw {
@@ -2296,9 +2128,7 @@ impl AstToken for TraitKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TrueKw {
@@ -2323,9 +2153,7 @@ impl AstToken for TrueKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TryKw {
@@ -2350,9 +2178,7 @@ impl AstToken for TryKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeKw {
@@ -2377,9 +2203,7 @@ impl AstToken for TypeKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnsafeKw {
@@ -2404,9 +2228,7 @@ impl AstToken for UnsafeKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseKw {
@@ -2431,9 +2253,7 @@ impl AstToken for UseKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhereKw {
@@ -2458,9 +2278,7 @@ impl AstToken for WhereKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhileKw {
@@ -2485,9 +2303,7 @@ impl AstToken for WhileKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AutoKw {
@@ -2512,9 +2328,7 @@ impl AstToken for AutoKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DefaultKw {
@@ -2539,9 +2353,7 @@ impl AstToken for DefaultKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExistentialKw {
@@ -2566,9 +2378,7 @@ impl AstToken for ExistentialKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnionKw {
@@ -2593,9 +2403,7 @@ impl AstToken for UnionKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RawKw {
@@ -2620,9 +2428,7 @@ impl AstToken for RawKw {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IntNumber {
@@ -2647,9 +2453,7 @@ impl AstToken for IntNumber {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FloatNumber {
@@ -2674,9 +2478,7 @@ impl AstToken for FloatNumber {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Char {
@@ -2701,9 +2503,7 @@ impl AstToken for Char {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Byte {
@@ -2728,9 +2528,7 @@ impl AstToken for Byte {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct String {
@@ -2755,9 +2553,7 @@ impl AstToken for String {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RawString {
@@ -2782,9 +2578,7 @@ impl AstToken for RawString {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ByteString {
@@ -2809,9 +2603,7 @@ impl AstToken for ByteString {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RawByteString {
@@ -2836,9 +2628,7 @@ impl AstToken for RawByteString {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Error {
@@ -2863,9 +2653,7 @@ impl AstToken for Error {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
@@ -2890,9 +2678,7 @@ impl AstToken for Ident {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Whitespace {
@@ -2917,9 +2703,7 @@ impl AstToken for Whitespace {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Lifetime {
@@ -2944,9 +2728,7 @@ impl AstToken for Lifetime {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Comment {
@@ -2971,9 +2753,7 @@ impl AstToken for Comment {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Shebang {
@@ -2998,9 +2778,7 @@ impl AstToken for Shebang {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LDollar {
@@ -3025,9 +2803,7 @@ impl AstToken for LDollar {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RDollar {
@@ -3052,9 +2828,7 @@ impl AstToken for RDollar {
             None
         }
     }
-    fn syntax(&self) -> &SyntaxToken {
-        &self.syntax
-    }
+    fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LeftDelimiter {
@@ -3063,19 +2837,13 @@ pub enum LeftDelimiter {
     LCurly(LCurly),
 }
 impl From<LParen> for LeftDelimiter {
-    fn from(node: LParen) -> LeftDelimiter {
-        LeftDelimiter::LParen(node)
-    }
+    fn from(node: LParen) -> LeftDelimiter { LeftDelimiter::LParen(node) }
 }
 impl From<LBrack> for LeftDelimiter {
-    fn from(node: LBrack) -> LeftDelimiter {
-        LeftDelimiter::LBrack(node)
-    }
+    fn from(node: LBrack) -> LeftDelimiter { LeftDelimiter::LBrack(node) }
 }
 impl From<LCurly> for LeftDelimiter {
-    fn from(node: LCurly) -> LeftDelimiter {
-        LeftDelimiter::LCurly(node)
-    }
+    fn from(node: LCurly) -> LeftDelimiter { LeftDelimiter::LCurly(node) }
 }
 impl std::fmt::Display for LeftDelimiter {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3113,19 +2881,13 @@ pub enum RightDelimiter {
     RCurly(RCurly),
 }
 impl From<RParen> for RightDelimiter {
-    fn from(node: RParen) -> RightDelimiter {
-        RightDelimiter::RParen(node)
-    }
+    fn from(node: RParen) -> RightDelimiter { RightDelimiter::RParen(node) }
 }
 impl From<RBrack> for RightDelimiter {
-    fn from(node: RBrack) -> RightDelimiter {
-        RightDelimiter::RBrack(node)
-    }
+    fn from(node: RBrack) -> RightDelimiter { RightDelimiter::RBrack(node) }
 }
 impl From<RCurly> for RightDelimiter {
-    fn from(node: RCurly) -> RightDelimiter {
-        RightDelimiter::RCurly(node)
-    }
+    fn from(node: RCurly) -> RightDelimiter { RightDelimiter::RCurly(node) }
 }
 impl std::fmt::Display for RightDelimiter {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3163,19 +2925,13 @@ pub enum RangeSeparator {
     Dotdoteq(Dotdoteq),
 }
 impl From<Dotdot> for RangeSeparator {
-    fn from(node: Dotdot) -> RangeSeparator {
-        RangeSeparator::Dotdot(node)
-    }
+    fn from(node: Dotdot) -> RangeSeparator { RangeSeparator::Dotdot(node) }
 }
 impl From<Dotdotdot> for RangeSeparator {
-    fn from(node: Dotdotdot) -> RangeSeparator {
-        RangeSeparator::Dotdotdot(node)
-    }
+    fn from(node: Dotdotdot) -> RangeSeparator { RangeSeparator::Dotdotdot(node) }
 }
 impl From<Dotdoteq> for RangeSeparator {
-    fn from(node: Dotdoteq) -> RangeSeparator {
-        RangeSeparator::Dotdoteq(node)
-    }
+    fn from(node: Dotdoteq) -> RangeSeparator { RangeSeparator::Dotdoteq(node) }
 }
 impl std::fmt::Display for RangeSeparator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3239,149 +2995,91 @@ pub enum BinOp {
     Careteq(Careteq),
 }
 impl From<Pipepipe> for BinOp {
-    fn from(node: Pipepipe) -> BinOp {
-        BinOp::Pipepipe(node)
-    }
+    fn from(node: Pipepipe) -> BinOp { BinOp::Pipepipe(node) }
 }
 impl From<Ampamp> for BinOp {
-    fn from(node: Ampamp) -> BinOp {
-        BinOp::Ampamp(node)
-    }
+    fn from(node: Ampamp) -> BinOp { BinOp::Ampamp(node) }
 }
 impl From<Eqeq> for BinOp {
-    fn from(node: Eqeq) -> BinOp {
-        BinOp::Eqeq(node)
-    }
+    fn from(node: Eqeq) -> BinOp { BinOp::Eqeq(node) }
 }
 impl From<Neq> for BinOp {
-    fn from(node: Neq) -> BinOp {
-        BinOp::Neq(node)
-    }
+    fn from(node: Neq) -> BinOp { BinOp::Neq(node) }
 }
 impl From<Lteq> for BinOp {
-    fn from(node: Lteq) -> BinOp {
-        BinOp::Lteq(node)
-    }
+    fn from(node: Lteq) -> BinOp { BinOp::Lteq(node) }
 }
 impl From<Gteq> for BinOp {
-    fn from(node: Gteq) -> BinOp {
-        BinOp::Gteq(node)
-    }
+    fn from(node: Gteq) -> BinOp { BinOp::Gteq(node) }
 }
 impl From<LAngle> for BinOp {
-    fn from(node: LAngle) -> BinOp {
-        BinOp::LAngle(node)
-    }
+    fn from(node: LAngle) -> BinOp { BinOp::LAngle(node) }
 }
 impl From<RAngle> for BinOp {
-    fn from(node: RAngle) -> BinOp {
-        BinOp::RAngle(node)
-    }
+    fn from(node: RAngle) -> BinOp { BinOp::RAngle(node) }
 }
 impl From<Plus> for BinOp {
-    fn from(node: Plus) -> BinOp {
-        BinOp::Plus(node)
-    }
+    fn from(node: Plus) -> BinOp { BinOp::Plus(node) }
 }
 impl From<Star> for BinOp {
-    fn from(node: Star) -> BinOp {
-        BinOp::Star(node)
-    }
+    fn from(node: Star) -> BinOp { BinOp::Star(node) }
 }
 impl From<Minus> for BinOp {
-    fn from(node: Minus) -> BinOp {
-        BinOp::Minus(node)
-    }
+    fn from(node: Minus) -> BinOp { BinOp::Minus(node) }
 }
 impl From<Slash> for BinOp {
-    fn from(node: Slash) -> BinOp {
-        BinOp::Slash(node)
-    }
+    fn from(node: Slash) -> BinOp { BinOp::Slash(node) }
 }
 impl From<Percent> for BinOp {
-    fn from(node: Percent) -> BinOp {
-        BinOp::Percent(node)
-    }
+    fn from(node: Percent) -> BinOp { BinOp::Percent(node) }
 }
 impl From<Shl> for BinOp {
-    fn from(node: Shl) -> BinOp {
-        BinOp::Shl(node)
-    }
+    fn from(node: Shl) -> BinOp { BinOp::Shl(node) }
 }
 impl From<Shr> for BinOp {
-    fn from(node: Shr) -> BinOp {
-        BinOp::Shr(node)
-    }
+    fn from(node: Shr) -> BinOp { BinOp::Shr(node) }
 }
 impl From<Caret> for BinOp {
-    fn from(node: Caret) -> BinOp {
-        BinOp::Caret(node)
-    }
+    fn from(node: Caret) -> BinOp { BinOp::Caret(node) }
 }
 impl From<Pipe> for BinOp {
-    fn from(node: Pipe) -> BinOp {
-        BinOp::Pipe(node)
-    }
+    fn from(node: Pipe) -> BinOp { BinOp::Pipe(node) }
 }
 impl From<Amp> for BinOp {
-    fn from(node: Amp) -> BinOp {
-        BinOp::Amp(node)
-    }
+    fn from(node: Amp) -> BinOp { BinOp::Amp(node) }
 }
 impl From<Eq> for BinOp {
-    fn from(node: Eq) -> BinOp {
-        BinOp::Eq(node)
-    }
+    fn from(node: Eq) -> BinOp { BinOp::Eq(node) }
 }
 impl From<Pluseq> for BinOp {
-    fn from(node: Pluseq) -> BinOp {
-        BinOp::Pluseq(node)
-    }
+    fn from(node: Pluseq) -> BinOp { BinOp::Pluseq(node) }
 }
 impl From<Slasheq> for BinOp {
-    fn from(node: Slasheq) -> BinOp {
-        BinOp::Slasheq(node)
-    }
+    fn from(node: Slasheq) -> BinOp { BinOp::Slasheq(node) }
 }
 impl From<Stareq> for BinOp {
-    fn from(node: Stareq) -> BinOp {
-        BinOp::Stareq(node)
-    }
+    fn from(node: Stareq) -> BinOp { BinOp::Stareq(node) }
 }
 impl From<Percenteq> for BinOp {
-    fn from(node: Percenteq) -> BinOp {
-        BinOp::Percenteq(node)
-    }
+    fn from(node: Percenteq) -> BinOp { BinOp::Percenteq(node) }
 }
 impl From<Shreq> for BinOp {
-    fn from(node: Shreq) -> BinOp {
-        BinOp::Shreq(node)
-    }
+    fn from(node: Shreq) -> BinOp { BinOp::Shreq(node) }
 }
 impl From<Shleq> for BinOp {
-    fn from(node: Shleq) -> BinOp {
-        BinOp::Shleq(node)
-    }
+    fn from(node: Shleq) -> BinOp { BinOp::Shleq(node) }
 }
 impl From<Minuseq> for BinOp {
-    fn from(node: Minuseq) -> BinOp {
-        BinOp::Minuseq(node)
-    }
+    fn from(node: Minuseq) -> BinOp { BinOp::Minuseq(node) }
 }
 impl From<Pipeeq> for BinOp {
-    fn from(node: Pipeeq) -> BinOp {
-        BinOp::Pipeeq(node)
-    }
+    fn from(node: Pipeeq) -> BinOp { BinOp::Pipeeq(node) }
 }
 impl From<Ampeq> for BinOp {
-    fn from(node: Ampeq) -> BinOp {
-        BinOp::Ampeq(node)
-    }
+    fn from(node: Ampeq) -> BinOp { BinOp::Ampeq(node) }
 }
 impl From<Careteq> for BinOp {
-    fn from(node: Careteq) -> BinOp {
-        BinOp::Careteq(node)
-    }
+    fn from(node: Careteq) -> BinOp { BinOp::Careteq(node) }
 }
 impl std::fmt::Display for BinOp {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3473,19 +3171,13 @@ pub enum PrefixOp {
     Star(Star),
 }
 impl From<Minus> for PrefixOp {
-    fn from(node: Minus) -> PrefixOp {
-        PrefixOp::Minus(node)
-    }
+    fn from(node: Minus) -> PrefixOp { PrefixOp::Minus(node) }
 }
 impl From<Excl> for PrefixOp {
-    fn from(node: Excl) -> PrefixOp {
-        PrefixOp::Excl(node)
-    }
+    fn from(node: Excl) -> PrefixOp { PrefixOp::Excl(node) }
 }
 impl From<Star> for PrefixOp {
-    fn from(node: Star) -> PrefixOp {
-        PrefixOp::Star(node)
-    }
+    fn from(node: Star) -> PrefixOp { PrefixOp::Star(node) }
 }
 impl std::fmt::Display for PrefixOp {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3522,14 +3214,10 @@ pub enum RangeOp {
     Dotdoteq(Dotdoteq),
 }
 impl From<Dotdot> for RangeOp {
-    fn from(node: Dotdot) -> RangeOp {
-        RangeOp::Dotdot(node)
-    }
+    fn from(node: Dotdot) -> RangeOp { RangeOp::Dotdot(node) }
 }
 impl From<Dotdoteq> for RangeOp {
-    fn from(node: Dotdoteq) -> RangeOp {
-        RangeOp::Dotdoteq(node)
-    }
+    fn from(node: Dotdoteq) -> RangeOp { RangeOp::Dotdoteq(node) }
 }
 impl std::fmt::Display for RangeOp {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3572,54 +3260,34 @@ pub enum LiteralToken {
     Byte(Byte),
 }
 impl From<IntNumber> for LiteralToken {
-    fn from(node: IntNumber) -> LiteralToken {
-        LiteralToken::IntNumber(node)
-    }
+    fn from(node: IntNumber) -> LiteralToken { LiteralToken::IntNumber(node) }
 }
 impl From<FloatNumber> for LiteralToken {
-    fn from(node: FloatNumber) -> LiteralToken {
-        LiteralToken::FloatNumber(node)
-    }
+    fn from(node: FloatNumber) -> LiteralToken { LiteralToken::FloatNumber(node) }
 }
 impl From<String> for LiteralToken {
-    fn from(node: String) -> LiteralToken {
-        LiteralToken::String(node)
-    }
+    fn from(node: String) -> LiteralToken { LiteralToken::String(node) }
 }
 impl From<RawString> for LiteralToken {
-    fn from(node: RawString) -> LiteralToken {
-        LiteralToken::RawString(node)
-    }
+    fn from(node: RawString) -> LiteralToken { LiteralToken::RawString(node) }
 }
 impl From<TrueKw> for LiteralToken {
-    fn from(node: TrueKw) -> LiteralToken {
-        LiteralToken::TrueKw(node)
-    }
+    fn from(node: TrueKw) -> LiteralToken { LiteralToken::TrueKw(node) }
 }
 impl From<FalseKw> for LiteralToken {
-    fn from(node: FalseKw) -> LiteralToken {
-        LiteralToken::FalseKw(node)
-    }
+    fn from(node: FalseKw) -> LiteralToken { LiteralToken::FalseKw(node) }
 }
 impl From<ByteString> for LiteralToken {
-    fn from(node: ByteString) -> LiteralToken {
-        LiteralToken::ByteString(node)
-    }
+    fn from(node: ByteString) -> LiteralToken { LiteralToken::ByteString(node) }
 }
 impl From<RawByteString> for LiteralToken {
-    fn from(node: RawByteString) -> LiteralToken {
-        LiteralToken::RawByteString(node)
-    }
+    fn from(node: RawByteString) -> LiteralToken { LiteralToken::RawByteString(node) }
 }
 impl From<Char> for LiteralToken {
-    fn from(node: Char) -> LiteralToken {
-        LiteralToken::Char(node)
-    }
+    fn from(node: Char) -> LiteralToken { LiteralToken::Char(node) }
 }
 impl From<Byte> for LiteralToken {
-    fn from(node: Byte) -> LiteralToken {
-        LiteralToken::Byte(node)
-    }
+    fn from(node: Byte) -> LiteralToken { LiteralToken::Byte(node) }
 }
 impl std::fmt::Display for LiteralToken {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -3671,14 +3339,10 @@ pub enum NameRefToken {
     IntNumber(IntNumber),
 }
 impl From<Ident> for NameRefToken {
-    fn from(node: Ident) -> NameRefToken {
-        NameRefToken::Ident(node)
-    }
+    fn from(node: Ident) -> NameRefToken { NameRefToken::Ident(node) }
 }
 impl From<IntNumber> for NameRefToken {
-    fn from(node: IntNumber) -> NameRefToken {
-        NameRefToken::IntNumber(node)
-    }
+    fn from(node: IntNumber) -> NameRefToken { NameRefToken::IntNumber(node) }
 }
 impl std::fmt::Display for NameRefToken {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

@@ -67,6 +67,7 @@ fn reformat(text: impl std::fmt::Display) -> Result<String> {
     let mut rustfmt = Command::new("rustup")
         .args(&["run", TOOLCHAIN, "--", "rustfmt", "--config-path"])
         .arg(project_root().join("rustfmt.toml"))
+        .args(&["--config", "fn_single_line=true"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()?;
