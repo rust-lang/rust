@@ -900,24 +900,73 @@ impl<'hir> LoweringContext<'_, 'hir> {
         eq_sign_span: Span,
         assignments: &mut Vec<hir::Stmt<'hir>>,
     ) -> &'hir hir::Pat<'hir> {
+        // TODO: Handle `..` and `_`
         match &lhs.kind {
+            // slices:
+            ExprKind::Array(elements) => {
+                let pats = self.arena.alloc_from_iter(
+                    elements.iter().map(|e| self.destructure_assign(e, eq_sign_span, assignments)),
+                );
+                let slice_pat = hir::PatKind::Slice(pats, None, &[]);
+                return self.pat(lhs.span, slice_pat);
+            }
+            // tuple structs:
+            ExprKind::Call(callee, args) => {
+                if let ExprKind::Path(qself, path) = &callee.kind {
+                    let pats = self.arena.alloc_from_iter(
+                        args.iter().map(|e| self.destructure_assign(e, eq_sign_span, assignments)),
+                    );
+                    let qpath = self.lower_qpath(
+                        callee.id,
+                        qself,
+                        path,
+                        ParamMode::Optional,
+                        ImplTraitContext::disallowed(),
+                    );
+                    let tuple_struct_pat = hir::PatKind::TupleStruct(qpath, pats, None);
+                    return self.pat(lhs.span, tuple_struct_pat);
+                }
+            }
+            // structs:
+            ExprKind::Struct(path, fields, _rest) => {
+                let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
+                    let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
+                    hir::FieldPat {
+                        hir_id: self.next_id(),
+                        ident: f.ident,
+                        pat,
+                        is_shorthand: f.is_shorthand,
+                        span: f.span,
+                    }
+                }));
+                let qpath = self.lower_qpath(
+                    lhs.id,
+                    &None,
+                    path,
+                    ParamMode::Optional,
+                    ImplTraitContext::disallowed(),
+                );
+                let struct_pat = hir::PatKind::Struct(qpath, field_pats, false);
+                return self.pat(lhs.span, struct_pat);
+            }
+            // tuples:
             ExprKind::Tup(elements) => {
                 let pats = self.arena.alloc_from_iter(
                     elements.iter().map(|e| self.destructure_assign(e, eq_sign_span, assignments)),
                 );
                 let tuple_pat = hir::PatKind::Tuple(pats, None);
-                self.pat(lhs.span, tuple_pat)
+                return self.pat(lhs.span, tuple_pat);
             }
-            _ => {
-                let ident = Ident::new(sym::lhs, lhs.span);
-                let (pat, binding) = self.pat_ident(lhs.span, ident);
-                let ident = self.expr_ident(lhs.span, ident, binding);
-                let assign = hir::ExprKind::Assign(self.lower_expr(lhs), ident, eq_sign_span);
-                let expr = self.expr(lhs.span, assign, ThinVec::new());
-                assignments.push(self.stmt_expr(lhs.span, expr));
-                pat
-            }
+            _ => {}
         }
+        // Treat all other cases as normal lvalue.
+        let ident = Ident::new(sym::lhs, lhs.span);
+        let (pat, binding) = self.pat_ident(lhs.span, ident);
+        let ident = self.expr_ident(lhs.span, ident, binding);
+        let assign = hir::ExprKind::Assign(self.lower_expr(lhs), ident, eq_sign_span);
+        let expr = self.expr(lhs.span, assign, ThinVec::new());
+        assignments.push(self.stmt_expr(lhs.span, expr));
+        pat
     }
 
     /// Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.
