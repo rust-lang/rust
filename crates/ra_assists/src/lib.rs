@@ -132,13 +132,12 @@ mod handlers {
 
     pub(crate) fn all() -> &'static [AssistHandler] {
         &[
+            // These are alphabetic for the foolish consistency
             add_custom_impl::add_custom_impl,
             add_derive::add_derive,
             add_explicit_type::add_explicit_type,
             add_function::add_function,
             add_impl::add_impl,
-            add_missing_impl_members::add_missing_default_members,
-            add_missing_impl_members::add_missing_impl_members,
             add_new::add_new,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
@@ -168,6 +167,9 @@ mod handlers {
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
             add_from_impl_for_enum::add_from_impl_for_enum,
+            // These are manually sorted for better priorities
+            add_missing_impl_members::add_missing_impl_members,
+            add_missing_impl_members::add_missing_default_members,
         ]
     }
 }
