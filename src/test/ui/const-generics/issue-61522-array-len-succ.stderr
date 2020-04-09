@@ -1,0 +1,26 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/issue-61522-array-len-succ.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-61522-array-len-succ.rs:4:40
+   |
+LL | pub struct MyArray<const COUNT: usize>([u8; COUNT + 1]);
+   |                                        ^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-61522-array-len-succ.rs:8:24
+   |
+LL |     fn inner(&self) -> &[u8; COUNT + 1] {
+   |                        ^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 2 previous errors
+
