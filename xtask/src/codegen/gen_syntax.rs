@@ -3,10 +3,13 @@
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `ra_syntax::AstNode`.
 
+use std::{
+    borrow::Cow,
+    collections::{BTreeSet, HashMap, HashSet},
+};
+
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
-use std::borrow::Cow;
-use std::collections::{BTreeSet, HashMap, HashSet};
 
 use crate::{
     ast_src::{AstSrc, FieldSrc, KindsSrc, AST_SRC, KINDS_SRC},
