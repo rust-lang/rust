@@ -26,7 +26,13 @@
       }
   
       bb1: {
-          _0 = ();                         // bb1[0]: scope 0 at $DIR/simplify_if.rs:6:5: 8:6
+          _0 = const ();                   // bb1[0]: scope 0 at $DIR/simplify_if.rs:6:5: 8:6
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_if.rs:6:5: 8:6
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb4;                     // bb1[1]: scope 0 at $DIR/simplify_if.rs:6:5: 8:6
       }
   
@@ -43,7 +49,13 @@
   
       bb3: {
           StorageDead(_2);                 // bb3[0]: scope 0 at $DIR/simplify_if.rs:7:15: 7:16
-          _0 = ();                         // bb3[1]: scope 0 at $DIR/simplify_if.rs:6:14: 8:6
+          _0 = const ();                   // bb3[1]: scope 0 at $DIR/simplify_if.rs:6:14: 8:6
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_if.rs:6:14: 8:6
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb4;                     // bb3[2]: scope 0 at $DIR/simplify_if.rs:6:5: 8:6
       }
   

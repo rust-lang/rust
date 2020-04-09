@@ -83,7 +83,13 @@ fn move_out_by_subslice() -> () {
         FakeRead(ForLet, _1);            // bb9[1]: scope 0 at $DIR/uniform_array_move_out.rs:11:9: 11:10
         StorageLive(_6);                 // bb9[2]: scope 1 at $DIR/uniform_array_move_out.rs:12:10: 12:17
         _6 = move _1[0..2];              // bb9[3]: scope 1 at $DIR/uniform_array_move_out.rs:12:10: 12:17
-        _0 = ();                         // bb9[4]: scope 0 at $DIR/uniform_array_move_out.rs:10:27: 13:2
+        _0 = const ();                   // bb9[4]: scope 0 at $DIR/uniform_array_move_out.rs:10:27: 13:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/uniform_array_move_out.rs:10:27: 13:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         drop(_6) -> [return: bb12, unwind: bb10]; // bb9[5]: scope 1 at $DIR/uniform_array_move_out.rs:13:1: 13:2
     }
 

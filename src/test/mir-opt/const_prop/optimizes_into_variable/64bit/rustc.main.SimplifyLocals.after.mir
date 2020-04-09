@@ -80,9 +80,16 @@ fn main() -> () {
                                          // mir::Constant
                                          // + span: $DIR/optimizes_into_variable.rs:14:13: 14:38
                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
-        StorageDead(_4);                 // bb0[9]: scope 2 at $DIR/optimizes_into_variable.rs:15:1: 15:2
-        StorageDead(_2);                 // bb0[10]: scope 1 at $DIR/optimizes_into_variable.rs:15:1: 15:2
-        StorageDead(_1);                 // bb0[11]: scope 0 at $DIR/optimizes_into_variable.rs:15:1: 15:2
-        return;                          // bb0[12]: scope 0 at $DIR/optimizes_into_variable.rs:15:2: 15:2
+        _0 = const ();                   // bb0[9]: scope 0 at $DIR/optimizes_into_variable.rs:11:11: 15:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/optimizes_into_variable.rs:11:11: 15:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
+        StorageDead(_4);                 // bb0[10]: scope 2 at $DIR/optimizes_into_variable.rs:15:1: 15:2
+        StorageDead(_2);                 // bb0[11]: scope 1 at $DIR/optimizes_into_variable.rs:15:1: 15:2
+        StorageDead(_1);                 // bb0[12]: scope 0 at $DIR/optimizes_into_variable.rs:15:1: 15:2
+        return;                          // bb0[13]: scope 0 at $DIR/optimizes_into_variable.rs:15:2: 15:2
     }
 }

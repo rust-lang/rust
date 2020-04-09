@@ -182,7 +182,13 @@ fn main() -> () {
     bb15: {
         StorageDead(_2);                 // bb15[0]: scope 0 at $DIR/match_false_edges.rs:40:6: 40:7
         StorageDead(_1);                 // bb15[1]: scope 0 at $DIR/match_false_edges.rs:40:6: 40:7
-        _0 = ();                         // bb15[2]: scope 0 at $DIR/match_false_edges.rs:34:11: 41:2
+        _0 = const ();                   // bb15[2]: scope 0 at $DIR/match_false_edges.rs:34:11: 41:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/match_false_edges.rs:34:11: 41:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         return;                          // bb15[3]: scope 0 at $DIR/match_false_edges.rs:41:2: 41:2
     }
 }

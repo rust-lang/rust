@@ -298,7 +298,13 @@ fn address_of_reborrow() -> () {
         StorageDead(_48);                // bb0[157]: scope 13 at $DIR/address-of.rs:36:25: 36:26
         FakeRead(ForLet, _47);           // bb0[158]: scope 13 at $DIR/address-of.rs:36:9: 36:10
         AscribeUserType(_47, o, UserTypeProjection { base: UserType(29), projs: [] }); // bb0[159]: scope 13 at $DIR/address-of.rs:36:12: 36:22
-        _0 = ();                         // bb0[160]: scope 0 at $DIR/address-of.rs:3:26: 37:2
+        _0 = const ();                   // bb0[160]: scope 0 at $DIR/address-of.rs:3:26: 37:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/address-of.rs:3:26: 37:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_47);                // bb0[161]: scope 13 at $DIR/address-of.rs:37:1: 37:2
         StorageDead(_45);                // bb0[162]: scope 12 at $DIR/address-of.rs:37:1: 37:2
         StorageDead(_44);                // bb0[163]: scope 11 at $DIR/address-of.rs:37:1: 37:2

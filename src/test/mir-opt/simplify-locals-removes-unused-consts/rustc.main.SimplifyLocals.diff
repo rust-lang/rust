@@ -124,9 +124,17 @@
       bb2: {
 -         StorageDead(_11);                // bb2[0]: scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36
 -         StorageDead(_8);                 // bb2[1]: scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36
--         return;                          // bb2[2]: scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:17:2: 17:2
+-         _0 = const ();                   // bb2[2]: scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:12:11: 17:2
 +         StorageDead(_2);                 // bb2[0]: scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36
-+         return;                          // bb2[1]: scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:17:2: 17:2
++         _0 = const ();                   // bb2[1]: scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:12:11: 17:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify-locals-removes-unused-consts.rs:12:11: 17:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
+-         return;                          // bb2[3]: scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:17:2: 17:2
++         return;                          // bb2[2]: scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:17:2: 17:2
       }
   }
   

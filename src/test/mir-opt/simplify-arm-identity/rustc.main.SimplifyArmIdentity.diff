@@ -57,8 +57,15 @@
   
       bb4: {
           StorageDead(_2);                 // bb4[0]: scope 1 at $DIR/simplify-arm-identity.rs:21:6: 21:7
-          StorageDead(_1);                 // bb4[1]: scope 0 at $DIR/simplify-arm-identity.rs:22:1: 22:2
-          return;                          // bb4[2]: scope 0 at $DIR/simplify-arm-identity.rs:22:2: 22:2
+          _0 = const ();                   // bb4[1]: scope 0 at $DIR/simplify-arm-identity.rs:16:11: 22:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify-arm-identity.rs:16:11: 22:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
+          StorageDead(_1);                 // bb4[2]: scope 0 at $DIR/simplify-arm-identity.rs:22:1: 22:2
+          return;                          // bb4[3]: scope 0 at $DIR/simplify-arm-identity.rs:22:2: 22:2
       }
   }
   

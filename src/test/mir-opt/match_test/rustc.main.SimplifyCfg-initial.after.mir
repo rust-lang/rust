@@ -158,7 +158,13 @@ fn main() -> () {
 
     bb14: {
         StorageDead(_3);                 // bb14[0]: scope 2 at $DIR/match_test.rs:17:6: 17:7
-        _0 = ();                         // bb14[1]: scope 0 at $DIR/match_test.rs:6:11: 18:2
+        _0 = const ();                   // bb14[1]: scope 0 at $DIR/match_test.rs:6:11: 18:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/match_test.rs:6:11: 18:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_2);                 // bb14[2]: scope 1 at $DIR/match_test.rs:18:1: 18:2
         StorageDead(_1);                 // bb14[3]: scope 0 at $DIR/match_test.rs:18:1: 18:2
         return;                          // bb14[4]: scope 0 at $DIR/match_test.rs:18:2: 18:2

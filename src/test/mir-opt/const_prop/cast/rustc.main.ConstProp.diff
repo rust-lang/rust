@@ -39,7 +39,13 @@
 +                                          // mir::Constant
 +                                          // + span: $DIR/cast.rs:6:13: 6:24
 +                                          // + literal: Const { ty: u8, val: Value(Scalar(0x2a)) }
-          _0 = ();                         // bb0[4]: scope 0 at $DIR/cast.rs:3:11: 7:2
+          _0 = const ();                   // bb0[4]: scope 0 at $DIR/cast.rs:3:11: 7:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/cast.rs:3:11: 7:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_2);                 // bb0[5]: scope 1 at $DIR/cast.rs:7:1: 7:2
           StorageDead(_1);                 // bb0[6]: scope 0 at $DIR/cast.rs:7:1: 7:2
           return;                          // bb0[7]: scope 0 at $DIR/cast.rs:7:2: 7:2
