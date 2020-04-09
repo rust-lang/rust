@@ -74,7 +74,7 @@ impl FunctionData {
             TypeRef::unit()
         };
 
-        let ret_type = if src.value.async_kw_token().is_some() {
+        let ret_type = if src.value.async_token().is_some() {
             let future_impl = desugar_future_path(ret_type);
             let ty_bound = TypeBound::Path(future_impl);
             TypeRef::ImplTrait(vec![ty_bound])
@@ -135,7 +135,7 @@ impl TraitData {
     pub(crate) fn trait_data_query(db: &dyn DefDatabase, tr: TraitId) -> Arc<TraitData> {
         let src = tr.lookup(db).source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
-        let auto = src.value.auto_kw_token().is_some();
+        let auto = src.value.auto_token().is_some();
         let ast_id_map = db.ast_id_map(src.file_id);
 
         let container = AssocContainerId::TraitId(tr);

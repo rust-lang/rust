@@ -29,7 +29,7 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
         ast::Pat::BindPat(pat) => pat,
         _ => return None,
     };
-    if bind_pat.mut_kw_token().is_some() {
+    if bind_pat.mut_token().is_some() {
         tested_by!(test_not_inline_mut_variable);
         return None;
     }

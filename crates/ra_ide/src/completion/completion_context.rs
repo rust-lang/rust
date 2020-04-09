@@ -191,8 +191,8 @@ impl<'a> CompletionContext<'a> {
             if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
                 self.is_pat_binding_or_const = true;
                 if bind_pat.at_token().is_some()
-                    || bind_pat.ref_kw_token().is_some()
-                    || bind_pat.mut_kw_token().is_some()
+                    || bind_pat.ref_token().is_some()
+                    || bind_pat.mut_token().is_some()
                 {
                     self.is_pat_binding_or_const = false;
                 }

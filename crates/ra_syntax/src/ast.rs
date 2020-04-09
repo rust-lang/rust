@@ -80,7 +80,7 @@ impl<N: AstNode> Iterator for AstChildren<N> {
 }
 
 mod support {
-    use super::{AstChildren, AstNode, AstToken, SyntaxNode};
+    use super::{AstChildren, AstNode, AstToken, SyntaxKind, SyntaxNode, SyntaxToken};
 
     pub(super) fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
         parent.children().find_map(N::cast)
@@ -92,6 +92,10 @@ mod support {
 
     pub(super) fn token<T: AstToken>(parent: &SyntaxNode) -> Option<T> {
         parent.children_with_tokens().filter_map(|it| it.into_token()).find_map(T::cast)
+    }
+
+    pub(super) fn token2(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
+        parent.children_with_tokens().filter_map(|it| it.into_token()).find(|it| it.kind() == kind)
     }
 }
 
