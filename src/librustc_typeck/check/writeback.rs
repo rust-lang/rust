@@ -365,8 +365,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (&local_id, c_ty) in fcx_tables.user_provided_types().iter() {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
 
-            if cfg!(debug_assertions) && c_ty.has_local_value() {
-                span_bug!(hir_id.to_span(self.fcx.tcx), "writeback: `{:?}` is a local value", c_ty);
+            if cfg!(debug_assertions) && c_ty.needs_infer() {
+                span_bug!(
+                    hir_id.to_span(self.fcx.tcx),
+                    "writeback: `{:?}` has inference variables",
+                    c_ty
+                );
             };
 
             self.tables.user_provided_types_mut().insert(hir_id, c_ty.clone());
@@ -399,10 +403,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
 
         for (&def_id, c_sig) in fcx_tables.user_provided_sigs.iter() {
-            if cfg!(debug_assertions) && c_sig.has_local_value() {
+            if cfg!(debug_assertions) && c_sig.needs_infer() {
                 span_bug!(
                     self.fcx.tcx.hir().span_if_local(def_id).unwrap(),
-                    "writeback: `{:?}` is a local value",
+                    "writeback: `{:?}` has inference variables",
                     c_sig
                 );
             };
@@ -457,7 +461,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
 
-            if !opaque_defn.substs.has_local_value() {
+            if !opaque_defn.substs.needs_infer() {
                 // We only want to add an entry into `concrete_opaque_types`
                 // if we actually found a defining usage of this opaque type.
                 // Otherwise, we do nothing - we'll either find a defining usage
@@ -485,7 +489,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     }
                 }
             } else {
-                self.tcx().sess.delay_span_bug(span, "`opaque_defn` is a local value");
+                self.tcx().sess.delay_span_bug(span, "`opaque_defn` has inference variables");
             }
         }
     }
@@ -579,8 +583,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         let x = x.fold_with(&mut Resolver::new(self.fcx, span, self.body));
-        if cfg!(debug_assertions) && x.has_local_value() {
-            span_bug!(span.to_span(self.fcx.tcx), "writeback: `{:?}` is a local value", x);
+        if cfg!(debug_assertions) && x.needs_infer() {
+            span_bug!(span.to_span(self.fcx.tcx), "writeback: `{:?}` has inference variables", x);
         }
         x
     }

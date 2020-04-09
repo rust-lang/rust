@@ -71,7 +71,7 @@ pub use crate::ty::diagnostics::*;
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 
-pub use self::context::{keep_local, tls, FreeRegionInfo, TyCtxt};
+pub use self::context::{tls, FreeRegionInfo, TyCtxt};
 pub use self::context::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, ResolvedOpaqueTy,
     UserType, UserTypeAnnotationIndex,
@@ -577,27 +577,23 @@ bitflags! {
                                           | TypeFlags::HAS_TY_OPAQUE.bits
                                           | TypeFlags::HAS_CT_PROJECTION.bits;
 
-        /// Present if the type belongs in a local type context.
-        /// Set for placeholders and inference variables that are not "Fresh".
-        const KEEP_IN_LOCAL_TCX           = 1 << 13;
-
         /// Is an error type reachable?
-        const HAS_TY_ERR                  = 1 << 14;
+        const HAS_TY_ERR                  = 1 << 13;
 
         /// Does this have any region that "appears free" in the type?
         /// Basically anything but [ReLateBound] and [ReErased].
-        const HAS_FREE_REGIONS            = 1 << 15;
+        const HAS_FREE_REGIONS            = 1 << 14;
 
         /// Does this have any [ReLateBound] regions? Used to check
         /// if a global bound is safe to evaluate.
-        const HAS_RE_LATE_BOUND           = 1 << 16;
+        const HAS_RE_LATE_BOUND           = 1 << 15;
 
         /// Does this have any [ReErased] regions?
-        const HAS_RE_ERASED               = 1 << 17;
+        const HAS_RE_ERASED               = 1 << 16;
 
         /// Does this value have parameters/placeholders/inference variables which could be
         /// replaced later, in a way that would change the results of `impl` specialization?
-        const STILL_FURTHER_SPECIALIZABLE = 1 << 18;
+        const STILL_FURTHER_SPECIALIZABLE = 1 << 17;
     }
 }
 

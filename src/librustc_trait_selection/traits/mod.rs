@@ -259,8 +259,8 @@ fn do_normalize_predicates<'tcx>(
                 return Err(ErrorReported);
             }
         };
-        if predicates.has_local_value() {
-            // FIXME: shouldn't we, you know, actually report an error here? or an ICE?
+        if predicates.needs_infer() {
+            tcx.sess.delay_span_bug(span, "encountered inference variables after `fully_resolve`");
             Err(ErrorReported)
         } else {
             Ok(predicates)

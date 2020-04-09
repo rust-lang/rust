@@ -1605,7 +1605,6 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
-                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
                 flags = flags | TypeFlags::STILL_FURTHER_SPECIALIZABLE;
             }
             ty::RePlaceholder(..) => {
@@ -2361,8 +2360,8 @@ impl<'tcx> Const<'tcx> {
         let try_const_eval = |did, param_env: ParamEnv<'tcx>, substs, promoted| {
             let param_env_and_substs = param_env.with_reveal_all().and(substs);
 
-            // Avoid querying `tcx.const_eval(...)` with any e.g. inference vars.
-            if param_env_and_substs.has_local_value() {
+            // Avoid querying `tcx.const_eval(...)` with any inference vars.
+            if param_env_and_substs.needs_infer() {
                 return None;
             }
 
@@ -2377,12 +2376,12 @@ impl<'tcx> Const<'tcx> {
 
         match self.val {
             ConstKind::Unevaluated(did, substs, promoted) => {
-                // HACK(eddyb) when substs contain e.g. inference variables,
+                // HACK(eddyb) when substs contain inference variables,
                 // attempt using identity substs instead, that will succeed
                 // when the expression doesn't depend on any parameters.
                 // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
                 // we can call `infcx.const_eval_resolve` which handles inference variables.
-                if substs.has_local_value() {
+                if substs.needs_infer() {
                     let identity_substs = InternalSubsts::identity_for_item(tcx, did);
                     // The `ParamEnv` needs to match the `identity_substs`.
                     let identity_param_env = tcx.param_env(did);

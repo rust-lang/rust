@@ -510,7 +510,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     let tcx = relation.tcx();
 
     let eagerly_eval = |x: &'tcx ty::Const<'tcx>| {
-        if !x.val.has_local_value() {
+        if !x.val.needs_infer() {
             return x.eval(tcx, relation.param_env()).val;
         }
         x.val

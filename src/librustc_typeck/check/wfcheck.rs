@@ -369,7 +369,7 @@ fn check_type_defn<'tcx, F>(
                 packed && {
                     let ty = variant.fields.last().unwrap().ty;
                     let ty = fcx.tcx.erase_regions(&ty);
-                    if ty.has_local_value() {
+                    if ty.needs_infer() {
                         fcx_tcx
                             .sess
                             .delay_span_bug(item.span, &format!("inference variables in {:?}", ty));
