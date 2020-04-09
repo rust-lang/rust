@@ -7,7 +7,7 @@ use std::{
 
 use itertools::Itertools;
 use ra_text_edit::TextEditBuilder;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::{
     AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken,
@@ -72,8 +72,18 @@ pub fn find_covering_element(root: &SyntaxNode, range: TextRange) -> SyntaxEleme
 }
 
 pub fn least_common_ancestor(u: &SyntaxNode, v: &SyntaxNode) -> Option<SyntaxNode> {
-    let u_ancestors = u.ancestors().collect::<FxHashSet<SyntaxNode>>();
-    v.ancestors().find(|it| u_ancestors.contains(it))
+    if u == v {
+        return Some(u.clone());
+    }
+
+    let u_depth = u.ancestors().count();
+    let v_depth = v.ancestors().count();
+    let keep = u_depth.min(v_depth);
+
+    let u_candidates = u.ancestors().skip(u_depth - keep);
+    let v_canidates = v.ancestors().skip(v_depth - keep);
+    let (res, _) = u_candidates.zip(v_canidates).find(|(x, y)| x == y)?;
+    Some(res)
 }
 
 pub fn neighbor<T: AstNode>(me: &T, direction: Direction) -> Option<T> {
