@@ -380,8 +380,8 @@ macro_rules! define_queries_inner {
         impl TyCtxtEnsure<$tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: $K) {
-                ensure_query::<queries::$name<'_>, _>(self.tcx, key)
+            pub fn $name(self, key: impl Into<$K>) {
+                ensure_query::<queries::$name<'_>, _>(self.tcx, key.into())
             })*
         }
 
@@ -421,7 +421,7 @@ macro_rules! define_queries_inner {
 
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: $K) -> $V {
+            pub fn $name(self, key: impl Into<$K>) -> $V {
                 self.at(DUMMY_SP).$name(key)
             })*
 
@@ -458,8 +458,8 @@ macro_rules! define_queries_inner {
         impl TyCtxtAt<$tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: $K) -> $V {
-                get_query::<queries::$name<'_>, _>(self.tcx, self.span, key)
+            pub fn $name(self, key: impl Into<$K>) -> $V {
+                get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into())
             })*
         }
 
