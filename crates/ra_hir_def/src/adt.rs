@@ -54,6 +54,7 @@ pub struct StructFieldData {
 impl StructData {
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
         let src = id.lookup(db).source(db);
+
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let variant_data = VariantData::new(db, src.map(|s| s.kind()));
         let variant_data = Arc::new(variant_data);

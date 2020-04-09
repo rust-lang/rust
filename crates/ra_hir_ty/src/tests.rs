@@ -319,3 +319,33 @@ fn no_such_field_diagnostics() {
     "###
     );
 }
+
+#[test]
+fn no_such_field_with_feature_flag_diagnostics() {
+    let diagnostics = TestDB::with_files(
+        r#"
+        //- /lib.rs crate:foo cfg:feature=foo
+        struct MyStruct {
+            my_val: usize,
+            #[cfg(feature = "foo")]
+            bar: bool,
+        }
+
+        impl MyStruct {
+            #[cfg(feature = "foo")]
+            pub(crate) fn new(my_val: usize, bar: bool) -> Self {
+                Self { my_val, bar }
+            }
+
+            #[cfg(not(feature = "foo"))]
+            pub(crate) fn new(my_val: usize, _bar: bool) -> Self {
+                Self { my_val }
+            }
+        }
+        "#,
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r###""###);
+}
