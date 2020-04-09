@@ -465,7 +465,6 @@ pub mod path;
 pub mod process;
 pub mod sync;
 pub mod time;
-pub mod coverage;
 
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {

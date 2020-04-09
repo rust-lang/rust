@@ -16,7 +16,6 @@ use rustc_middle::util::common::ErrorReported;
 use rustc_session::config::{OutputFilenames, OutputType};
 use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
-
 use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
 use std::mem;
@@ -75,8 +74,6 @@ pub struct Queries<'tcx> {
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
-    unresolved_expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
-    instrument: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     lower_to_hir: Query<(&'tcx Crate<'tcx>, Steal<ResolverOutputs>)>,
@@ -96,9 +93,7 @@ impl<'tcx> Queries<'tcx> {
             parse: Default::default(),
             crate_name: Default::default(),
             register_plugins: Default::default(),
-            unresolved_expansion: Default::default(),
             expansion: Default::default(),
-            instrument: Default::default(),
             dep_graph: Default::default(),
             lower_to_hir: Default::default(),
             prepare_outputs: Default::default(),
@@ -171,12 +166,10 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    /// Expands built-ins and other macros, but does not perform name resolution, pending potential
-    /// instrumentation.
-    pub fn unresolved_expansion(
+    pub fn expansion(
         &self,
     ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
-        self.unresolved_expansion.compute(|| {
+        self.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, lint_store) = self.register_plugins()?.take();
             let _timer = self.session().timer("configure_and_expand");
@@ -190,46 +183,6 @@ impl<'tcx> Queries<'tcx> {
             .map(|(krate, resolver)| {
                 (krate, Steal::new(Rc::new(RefCell::new(resolver))), lint_store)
             })
-        })
-    }
-
-    /// Returns a modified ast::Crate with injected instrumentation code, if requested by command
-    /// line option.
-    ///
-    /// The `instrument` pass/query depends on (and implies) `unresolved_expansion`.
-    pub fn instrument(
-        &self,
-    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
-        self.instrument.compute(|| {
-            let (krate, boxed_resolver, lint_store) = self.unresolved_expansion()?.take();
-            let instrument_coverage = match self.session().opts.debugging_opts.instrument_coverage {
-                Some(opt) => opt,
-                None => false,
-            };
-            if instrument_coverage {
-                boxed_resolver.borrow().borrow_mut().access(|resolver| {
-                    let _timer = self.session().timer("instrument_coverage");
-                    passes::instrument(krate, resolver)
-                })
-            } else {
-                Ok(krate)
-            }
-            .map(|krate| (krate, boxed_resolver, lint_store))
-        })
-    }
-
-    /// Updates the ast::Crate, first querying `instrument`, which queries `unresolved_expansion`.
-    /// After all expansions and instrumentation, performs name resolution on the final AST.
-    pub fn expansion(
-        &self,
-    ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
-        self.expansion.compute(|| {
-            let (krate, boxed_resolver, lint_store) = self.instrument()?.take();
-            let result = boxed_resolver.borrow().borrow_mut().access(|resolver| {
-                let _timer = self.session().timer("resolve_expansion");
-                passes::resolve_crate(self.session().clone(), krate, resolver)
-            });
-            result.map(|krate| (krate, boxed_resolver, lint_store))
         })
     }
 

@@ -483,6 +483,7 @@ dependencies = [
  "if_chain",
  "itertools 0.9.0",
  "lazy_static 1.4.0",
+ "matches",
  "pulldown-cmark 0.7.0",
  "quine-mc_cluskey",
  "regex-syntax",
@@ -3625,8 +3626,8 @@ name = "rustc_coverage"
 version = "0.0.0"
 dependencies = [
  "log",
- "rustc",
  "rustc_ast",
+ "rustc_errors",
  "rustc_resolve",
  "rustc_span",
  "smallvec 1.0.0",

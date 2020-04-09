@@ -1,10 +1,10 @@
 //! Injects code coverage instrumentation into the AST.
 
-use rustc::util::common::ErrorReported;
 use rustc_ast::ast::*;
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
+use rustc_errors::ErrorReported;
 use rustc_resolve::Resolver;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
@@ -150,11 +150,8 @@ impl CoverageVisitor<'_, '_> {
     }
 
     fn is_visiting_main(&self) -> bool {
-        if let Some(current_fn) = self.function_stack.last() {
-            *current_fn == sym::main
-        } else {
-            false
-        }
+        // len == 1 ensures a function is being visited and the function is not a nested function
+        self.function_stack.len() == 1 && *self.function_stack.last().unwrap() == sym::main
     }
 
     fn empty_tuple(&mut self, span: Span) -> P<Expr> {
@@ -165,7 +162,6 @@ impl CoverageVisitor<'_, '_> {
             id: self.next_ast_node_id(),
         })
     }
-}
 
     fn wrap_and_count_expr(
         &mut self,
@@ -321,6 +317,9 @@ impl MutVisitor for CoverageVisitor<'_, '_> {
     //        Rust calls parentheticals "Grouped expressions"
     // `?` operator which can invoke the equivalent of an early return (of `Err(...)`).
     //   * {expr_possibly_in_block}?   ->   coverage::counter(n, {expr_possibly_in_block})?
+    //   * Expression initializers for const/static values (where legal to invoke a function?) or
+    //     assign a coverage region to the entire file, and increment a counter if/when it's known
+    //     that the consts and statics were initialized for the file/mod.
     // Any others?
     //   * NOT let var: type = expr (since there's no branching to worry about)
     //   * NOT for or while loop expressions because they aren't optionally executed
