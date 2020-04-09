@@ -57,10 +57,28 @@ fn is_derive_registrar_symbol(symbol: &str) -> bool {
     symbol.contains(NEW_REGISTRAR_SYMBOL)
 }
 
+#[cfg(not(target_os = "macos"))]
+fn adjust_symbol_name(name: &str) -> String {
+    name.to_string()
+}
+
+#[cfg(target_os = "macos")]
+fn adjust_symbol_name(s: &str) -> String {
+    // In macos doc:
+    // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html
+    // Unlike other dyld API's, the symbol name passed to dlsym() must NOT be
+    // prepended with an underscore.
+    if s.starts_with("_") {
+        s[1..s.len()].to_string()
+    } else {
+        s.to_string()
+    }
+}
+
 fn find_registrar_symbol(file: &Path) -> Option<String> {
     let symbols = get_symbols_from_lib(file)?;
 
-    symbols.iter().find(|s| is_derive_registrar_symbol(s)).map(|s| s.to_string())
+    symbols.iter().find(|s| is_derive_registrar_symbol(s)).map(|s| adjust_symbol_name(&s))
 }
 
 /// Loads dynamic library in platform dependent manner.
