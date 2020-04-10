@@ -19,6 +19,10 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC)?;
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
+    let ast_tokens_file = project_root().join(codegen::AST_TOKENS);
+    let contents = generate_tokens(KINDS_SRC, AST_SRC)?;
+    update(ast_tokens_file.as_path(), &contents, mode)?;
+
     let ast_nodes_file = project_root().join(codegen::AST_NODES);
     let contents = generate_nodes(KINDS_SRC, AST_SRC)?;
     update(ast_nodes_file.as_path(), &contents, mode)?;
@@ -31,6 +35,37 @@ struct ElementKinds {
     kinds: BTreeSet<proc_macro2::Ident>,
     has_nodes: bool,
     has_tokens: bool,
+}
+
+fn generate_tokens(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
+    let tokens = grammar.tokens.iter().map(|token| {
+        let name = format_ident!("{}", token);
+        let kind = format_ident!("{}", to_upper_snake_case(token));
+        quote! {
+            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+            pub struct #name {
+                pub(crate) syntax: SyntaxToken,
+            }
+            impl std::fmt::Display for #name {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    std::fmt::Display::fmt(&self.syntax, f)
+                }
+            }
+            impl AstToken for #name {
+                fn can_cast(kind: SyntaxKind) -> bool { kind == #kind }
+                fn cast(syntax: SyntaxToken) -> Option<Self> {
+                    if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+                }
+                fn syntax(&self) -> &SyntaxToken { &self.syntax }
+            }
+        }
+    });
+
+    let pretty = crate::reformat(quote! {
+        use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
+        #(#tokens)*
+    })?;
+    Ok(pretty)
 }
 
 fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {

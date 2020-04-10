@@ -5,7 +5,7 @@ use itertools::Itertools;
 use ra_parser::SyntaxKind;
 
 use crate::{
-    ast::{self, support, AstNode, AstToken, AttrInput, NameOwner, SyntaxNode},
+    ast::{self, support, AstNode, AttrInput, NameOwner, SyntaxNode},
     SmolStr, SyntaxElement, SyntaxToken, T,
 };
 
@@ -327,23 +327,23 @@ impl ast::TypeBound {
         }
     }
 
-    pub fn const_question_token(&self) -> Option<ast::Question> {
+    pub fn const_question_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .take_while(|it| it.kind() != T![const])
-            .find_map(ast::Question::cast)
+            .find(|it| it.kind() == T![?])
     }
 
-    pub fn question_token(&self) -> Option<ast::Question> {
+    pub fn question_token(&self) -> Option<SyntaxToken> {
         if self.const_token().is_some() {
             self.syntax()
                 .children_with_tokens()
                 .filter_map(|it| it.into_token())
                 .skip_while(|it| it.kind() != T![const])
-                .find_map(ast::Question::cast)
+                .find(|it| it.kind() == T![?])
         } else {
-            support::token(&self.syntax)
+            support::token2(&self.syntax, T![?])
         }
     }
 }
@@ -384,12 +384,12 @@ impl ast::MacroCall {
 }
 
 impl ast::LifetimeParam {
-    pub fn lifetime_bounds(&self) -> impl Iterator<Item = ast::Lifetime> {
+    pub fn lifetime_bounds(&self) -> impl Iterator<Item = SyntaxToken> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .skip_while(|x| x.kind() != T![:])
-            .filter_map(ast::Lifetime::cast)
+            .filter(|it| it.kind() == T![lifetime])
     }
 }
 

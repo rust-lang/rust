@@ -225,6 +225,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
 };
 
 pub(crate) struct AstSrc<'a> {
+    pub(crate) tokens: &'a [&'a str],
     pub(crate) nodes: &'a [AstNodeSrc<'a>],
     pub(crate) enums: &'a [AstEnumSrc<'a>],
 }
@@ -303,6 +304,7 @@ macro_rules! ast_enums {
 }
 
 pub(crate) const AST_SRC: AstSrc = AstSrc {
+    tokens: &["Whitespace", "Comment", "String", "RawString"],
     nodes: &ast_nodes! {
         struct SourceFile: ModuleItemOwner, AttrsOwner {
             modules: [Module],
