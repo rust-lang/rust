@@ -98,7 +98,7 @@ impl ast::ItemList {
             None => match self.l_curly_token() {
                 Some(it) => (
                     "    ".to_string() + &leading_indent(self.syntax()).unwrap_or_default(),
-                    InsertPosition::After(it.syntax().clone().into()),
+                    InsertPosition::After(it.into()),
                 ),
                 None => return self.clone(),
             },
@@ -142,7 +142,7 @@ impl ast::RecordFieldList {
         macro_rules! after_l_curly {
             () => {{
                 let anchor = match self.l_curly_token() {
-                    Some(it) => it.syntax().clone().into(),
+                    Some(it) => it.into(),
                     None => return self.clone(),
                 };
                 InsertPosition::After(anchor)

@@ -335,7 +335,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             RecordFieldDefList,
         }
 
-        struct RecordFieldDefList { LCurly, fields: [RecordFieldDef], RCurly }
+        struct RecordFieldDefList { T!['{'], fields: [RecordFieldDef], T!['}'] }
         struct RecordFieldDef: VisibilityOwner, NameOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner { }
 
         struct TupleFieldDefList { LParen, fields: [TupleFieldDef], RParen }
@@ -348,9 +348,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             variant_list: EnumVariantList,
         }
         struct EnumVariantList {
-            LCurly,
+            T!['{'],
             variants: [EnumVariant],
-            RCurly
+            T!['}']
         }
         struct EnumVariant: VisibilityOwner, NameOwner, DocCommentsOwner, AttrsOwner {
             FieldDefList,
@@ -372,9 +372,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
 
         struct ItemList: ModuleItemOwner {
-            LCurly,
+            T!['{'],
             impl_items: [ImplItem],
-            RCurly
+            T!['}']
         }
 
         struct ConstDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner {
@@ -469,7 +469,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct Literal { LiteralToken }
 
         struct MatchExpr: AttrsOwner { T![match], Expr, MatchArmList }
-        struct MatchArmList: AttrsOwner { LCurly, arms: [MatchArm], RCurly }
+        struct MatchArmList: AttrsOwner { T!['{'], arms: [MatchArm], T!['}'] }
         struct MatchArm: AttrsOwner {
             pat: Pat,
             guard: MatchGuard,
@@ -480,11 +480,11 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
 
         struct RecordLit { Path, RecordFieldList}
         struct RecordFieldList {
-            LCurly,
+            T!['{'],
             fields: [RecordField],
             Dotdot,
             spread: Expr,
-            RCurly
+            T!['}']
         }
         struct RecordField: AttrsOwner { NameRef, Colon, Expr }
 
@@ -503,12 +503,12 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
 
         struct RecordPat { RecordFieldPatList, Path }
         struct RecordFieldPatList {
-            LCurly,
+            T!['{'],
             pats: [RecordInnerPat],
             record_field_pats: [RecordFieldPat],
             bind_pats: [BindPat],
             Dotdot,
-            RCurly
+            T!['}']
         }
         struct RecordFieldPat: AttrsOwner, NameOwner { Colon, Pat }
 
@@ -556,10 +556,10 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
         struct Condition { T![let], Pat, Eq, Expr }
         struct Block: AttrsOwner, ModuleItemOwner {
-            LCurly,
+            T!['{'],
             statements: [Stmt],
             Expr,
-            RCurly,
+            T!['}'],
         }
         struct ParamList {
             LParen,
@@ -580,7 +580,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             Path, Star, UseTreeList, Alias
         }
         struct Alias: NameOwner { T![as] }
-        struct UseTreeList { LCurly, use_trees: [UseTree], RCurly }
+        struct UseTreeList { T!['{'], use_trees: [UseTree], T!['}'] }
         struct ExternCrateItem: AttrsOwner, VisibilityOwner {
             T![extern], T![crate], NameRef, Alias,
         }
@@ -619,9 +619,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
 
         struct ExternItemList: ModuleItemOwner {
-            LCurly,
+            T!['{'],
             extern_items: [ExternItem],
-            RCurly
+            T!['}']
         }
 
         struct ExternBlock {
@@ -769,8 +769,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
     },
 
     token_enums: &ast_enums! {
-        enum LeftDelimiter { LParen, LBrack, LCurly }
-        enum RightDelimiter { RParen, RBrack, RCurly }
         enum RangeSeparator { Dotdot, Dotdotdot, Dotdoteq}
 
         enum BinOp {

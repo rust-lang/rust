@@ -146,9 +146,9 @@ impl AstNode for RecordFieldDefList {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl RecordFieldDefList {
-    pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['{']) }
     pub fn fields(&self) -> AstChildren<RecordFieldDef> { support::children(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<RCurly> { support::token(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldDef {
@@ -251,9 +251,9 @@ impl AstNode for EnumVariantList {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl EnumVariantList {
-    pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['{']) }
     pub fn variants(&self) -> AstChildren<EnumVariant> { support::children(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<RCurly> { support::token(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumVariant {
@@ -347,9 +347,9 @@ impl AstNode for ItemList {
 }
 impl ast::ModuleItemOwner for ItemList {}
 impl ItemList {
-    pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['{']) }
     pub fn impl_items(&self) -> AstChildren<ImplItem> { support::children(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<RCurly> { support::token(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstDef {
@@ -1337,9 +1337,9 @@ impl AstNode for MatchArmList {
 }
 impl ast::AttrsOwner for MatchArmList {}
 impl MatchArmList {
-    pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['{']) }
     pub fn arms(&self) -> AstChildren<MatchArm> { support::children(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<RCurly> { support::token(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchArm {
@@ -1417,11 +1417,11 @@ impl AstNode for RecordFieldList {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl RecordFieldList {
-    pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['{']) }
     pub fn fields(&self) -> AstChildren<RecordField> { support::children(&self.syntax) }
     pub fn dotdot_token(&self) -> Option<Dotdot> { support::token(&self.syntax) }
     pub fn spread(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<RCurly> { support::token(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordField {
@@ -1709,14 +1709,14 @@ impl AstNode for RecordFieldPatList {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl RecordFieldPatList {
-    pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['{']) }
     pub fn pats(&self) -> AstChildren<RecordInnerPat> { support::children(&self.syntax) }
     pub fn record_field_pats(&self) -> AstChildren<RecordFieldPat> {
         support::children(&self.syntax)
     }
     pub fn bind_pats(&self) -> AstChildren<BindPat> { support::children(&self.syntax) }
     pub fn dotdot_token(&self) -> Option<Dotdot> { support::token(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<RCurly> { support::token(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldPat {
@@ -2165,10 +2165,10 @@ impl AstNode for Block {
 impl ast::AttrsOwner for Block {}
 impl ast::ModuleItemOwner for Block {}
 impl Block {
-    pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['{']) }
     pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<RCurly> { support::token(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParamList {
@@ -2311,9 +2311,9 @@ impl AstNode for UseTreeList {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl UseTreeList {
-    pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['{']) }
     pub fn use_trees(&self) -> AstChildren<UseTree> { support::children(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<RCurly> { support::token(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternCrateItem {
@@ -2557,9 +2557,9 @@ impl AstNode for ExternItemList {
 }
 impl ast::ModuleItemOwner for ExternItemList {}
 impl ExternItemList {
-    pub fn l_curly_token(&self) -> Option<LCurly> { support::token(&self.syntax) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['{']) }
     pub fn extern_items(&self) -> AstChildren<ExternItem> { support::children(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<RCurly> { support::token(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternBlock {
