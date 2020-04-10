@@ -290,7 +290,14 @@ impl<'tcx> Instance<'tcx> {
     ) -> Option<Instance<'tcx>> {
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
-        tcx.resolve_instance((tcx.erase_regions(&param_env), def_id, tcx.erase_regions(&substs)))
+
+        // HACK(eddyb) erase regions in `substs` first, so that `param_env.and(...)`
+        // below is more likely to ignore the bounds in scope (e.g. if the only
+        // generic parameters mentioned by `substs` were lifetime ones).
+        let substs = tcx.erase_regions(&substs);
+
+        // FIXME(eddyb) should this always use `param_env.with_reveal_all()`?
+        tcx.resolve_instance(tcx.erase_regions(&param_env.and((def_id, substs))))
     }
 
     pub fn resolve_for_fn_ptr(

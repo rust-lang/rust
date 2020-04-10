@@ -9,10 +9,12 @@ use traits::{translate_substs, Reveal};
 
 use log::debug;
 
-pub fn resolve_instance<'tcx>(
+fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (param_env, def_id, substs): (ty::ParamEnv<'tcx>, DefId, SubstsRef<'tcx>),
+    key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
 ) -> Option<Instance<'tcx>> {
+    let (param_env, (def_id, substs)) = key.into_parts();
+
     debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);

@@ -1258,8 +1258,10 @@ rustc_queries! {
             desc { "looking up enabled feature gates" }
         }
 
-        query resolve_instance(key: (ty::ParamEnv<'tcx>, DefId, SubstsRef<'tcx>)) -> Option<ty::Instance<'tcx>> {
-            desc { "resolving instance `{:?}` `{:?}` with {:?}", key.1, key.2, key.0 }
+        query resolve_instance(
+            key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>
+        ) -> Option<ty::Instance<'tcx>> {
+            desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
         }
     }
 }
