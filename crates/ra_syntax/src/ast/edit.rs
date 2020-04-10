@@ -32,9 +32,9 @@ impl ast::FnDef {
         let mut to_insert: ArrayVec<[SyntaxElement; 2]> = ArrayVec::new();
         let old_body_or_semi: SyntaxElement = if let Some(old_body) = self.body() {
             old_body.syntax().clone().into()
-        } else if let Some(semi) = self.semi_token() {
+        } else if let Some(semi) = self.semicolon_token() {
             to_insert.push(make::tokens::single_space().into());
-            semi.syntax.clone().into()
+            semi.into()
         } else {
             to_insert.push(make::tokens::single_space().into());
             to_insert.push(body.syntax().clone().into());

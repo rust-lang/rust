@@ -58,7 +58,9 @@ impl FnDef {
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn body(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RetType {
@@ -102,7 +104,9 @@ impl ast::DocCommentsOwner for StructDef {}
 impl StructDef {
     pub fn struct_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![struct]) }
     pub fn field_def_list(&self) -> Option<FieldDefList> { support::child(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnionDef {
@@ -328,7 +332,9 @@ impl ast::DocCommentsOwner for Module {}
 impl Module {
     pub fn mod_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mod]) }
     pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ItemList {
@@ -379,7 +385,9 @@ impl ConstDef {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![const]) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StaticDef {
@@ -407,7 +415,9 @@ impl StaticDef {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAliasDef {
@@ -437,7 +447,9 @@ impl TypeAliasDef {
     pub fn type_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![type]) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplDef {
@@ -582,7 +594,9 @@ impl AstNode for ArrayType {
 impl ArrayType {
     pub fn l_brack_token(&self) -> Option<LBrack> { support::token(&self.syntax) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<RBrack> { support::token(&self.syntax) }
 }
@@ -765,7 +779,9 @@ impl ast::AttrsOwner for ArrayExpr {}
 impl ArrayExpr {
     pub fn l_brack_token(&self) -> Option<LBrack> { support::token(&self.syntax) }
     pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
     pub fn r_brack_token(&self) -> Option<RBrack> { support::token(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1859,7 +1875,9 @@ impl MacroCall {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn excl_token(&self) -> Option<Excl> { support::token(&self.syntax) }
     pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Attr {
@@ -2100,7 +2118,9 @@ impl AstNode for ExprStmt {
 impl ast::AttrsOwner for ExprStmt {}
 impl ExprStmt {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LetStmt {
@@ -2124,7 +2144,9 @@ impl LetStmt {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn initializer(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T ! [ ; ])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Condition {

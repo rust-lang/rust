@@ -515,7 +515,7 @@ impl Field<'_> {
     fn token_kind(&self) -> Option<proc_macro2::TokenStream> {
         let res = match self {
             Field::Token(token) => {
-                let token = format_ident!("{}", token);
+                let token: proc_macro2::TokenStream = token.parse().unwrap();
                 quote! { T![#token] }
             }
             _ => return None,
@@ -524,7 +524,13 @@ impl Field<'_> {
     }
     fn method_name(&self) -> proc_macro2::Ident {
         match self {
-            Field::Token(name) => format_ident!("{}_token", name),
+            Field::Token(name) => {
+                let name = match *name {
+                    ";" => "semicolon",
+                    _ => name,
+                };
+                format_ident!("{}_token", name)
+            }
             Field::Node { name, src } => match src {
                 FieldSrc::Shorthand => format_ident!("{}", to_lower_snake_case(name)),
                 _ => format_ident!("{}", name),

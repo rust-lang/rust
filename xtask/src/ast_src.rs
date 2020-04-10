@@ -319,7 +319,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             ParamList,
             RetType,
             body: BlockExpr,
-            Semi
+            T![;]
         }
 
         struct RetType { ThinArrow, TypeRef }
@@ -327,7 +327,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct StructDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner {
             T![struct],
             FieldDefList,
-            Semi
+            T![;]
         }
 
         struct UnionDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner {
@@ -368,7 +368,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct Module: VisibilityOwner, NameOwner, AttrsOwner, DocCommentsOwner {
             T![mod],
             ItemList,
-            Semi
+            T![;]
         }
 
         struct ItemList: ModuleItemOwner {
@@ -382,7 +382,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![const],
             Eq,
             body: Expr,
-            Semi
+            T![;]
         }
 
         struct StaticDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner {
@@ -390,7 +390,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![mut],
             Eq,
             body: Expr,
-            Semi
+            T![;]
         }
 
         struct TypeAliasDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeBoundsOwner {
@@ -398,7 +398,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![type],
             Eq,
             TypeRef,
-            Semi
+            T![;]
         }
 
         struct ImplDef: TypeParamsOwner, AttrsOwner {
@@ -416,7 +416,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct NeverType { Excl }
         struct PathType { Path }
         struct PointerType { Star, T![const], T![mut], TypeRef }
-        struct ArrayType { LBrack, TypeRef, Semi, Expr, RBrack }
+        struct ArrayType { LBrack, TypeRef, T![;], Expr, RBrack }
         struct SliceType { LBrack, TypeRef, RBrack }
         struct ReferenceType { Amp, Lifetime, T![mut], TypeRef }
         struct PlaceholderType { Underscore }
@@ -426,7 +426,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct DynTraitType: TypeBoundsOwner { T![dyn] }
 
         struct TupleExpr: AttrsOwner { LParen, exprs: [Expr], RParen }
-        struct ArrayExpr: AttrsOwner { LBrack, exprs: [Expr], Semi, RBrack }
+        struct ArrayExpr: AttrsOwner { LBrack, exprs: [Expr], T![;], RBrack }
         struct ParenExpr: AttrsOwner { LParen, Expr, RParen }
         struct PathExpr  { Path }
         struct LambdaExpr: AttrsOwner {
@@ -520,7 +520,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct NameRef { NameRefToken }
 
         struct MacroCall: NameOwner, AttrsOwner,DocCommentsOwner {
-            Path, Excl, TokenTree, Semi
+            Path, Excl, TokenTree, T![;]
         }
         struct Attr { Pound, Excl, LBrack, Path, Eq, input: AttrInput, RBrack }
         struct TokenTree {}
@@ -546,13 +546,13 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct WherePred: TypeBoundsOwner { Lifetime, TypeRef }
         struct WhereClause { T![where], predicates: [WherePred] }
         struct Abi { String }
-        struct ExprStmt: AttrsOwner { Expr, Semi }
+        struct ExprStmt: AttrsOwner { Expr, T![;] }
         struct LetStmt: AttrsOwner, TypeAscriptionOwner {
             T![let],
             Pat,
             Eq,
             initializer: Expr,
-            Semi,
+            T![;],
         }
         struct Condition { T![let], Pat, Eq, Expr }
         struct Block: AttrsOwner, ModuleItemOwner {

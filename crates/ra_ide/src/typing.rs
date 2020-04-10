@@ -63,7 +63,7 @@ fn on_char_typed_inner(
 fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange> {
     assert_eq!(file.syntax().text().char_at(offset), Some('='));
     let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
-    if let_stmt.semi_token().is_some() {
+    if let_stmt.semicolon_token().is_some() {
         return None;
     }
     if let Some(expr) = let_stmt.initializer() {
