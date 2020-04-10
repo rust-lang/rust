@@ -1,6 +1,6 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 // compile-flags: -Z mir-opt-level=3
-// only-64bit FIXME: the mir representation of RawVec depends on ptr size
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
 #![feature(box_syntax)]
 
 // EMIT_MIR rustc.main.Inline.diff
