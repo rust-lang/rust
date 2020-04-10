@@ -87,6 +87,53 @@ fn int_xor() {
     assert_eq!(x.load(SeqCst), 0xf731 ^ 0x137f);
 }
 
+#[test]
+fn atomic_ptr() {
+    // This test assumes a contiguous memory layout for a (tuple) pair of usize
+    unsafe {
+        let mut mem: (usize, usize) = (1, 2);
+        let mut ptr = &mut mem.0 as *mut usize;
+        // ptr points to .0
+        let atomic = AtomicPtr::new(ptr);
+        // atomic points to .0
+        assert_eq!(atomic.fetch_add(core::mem::size_of::<usize>(), SeqCst), ptr);
+        // atomic points to .1
+        ptr = atomic.load(SeqCst);
+        // ptr points to .1
+        assert_eq!(*ptr, 2);
+        atomic.fetch_sub(core::mem::size_of::<usize>(), SeqCst);
+        // atomic points to .0
+        ptr = atomic.load(SeqCst);
+        // ptr points to .0
+        assert_eq!(*ptr, 1);
+
+        // now try xor and back
+        assert_eq!(atomic.fetch_xor(ptr as usize, SeqCst), ptr);
+        // atomic is NULL
+        assert_eq!(atomic.fetch_xor(ptr as usize, SeqCst), std::ptr::null_mut());
+        // atomic points to .0
+        ptr = atomic.load(SeqCst);
+        // ptr points to .0
+        assert_eq!(*ptr, 1);
+
+        // then and with all 1s
+        assert_eq!(atomic.fetch_and(!0, SeqCst), ptr);
+        assert_eq!(atomic.load(SeqCst), ptr);
+
+        // then or with all 0s
+        assert_eq!(atomic.fetch_or(0, SeqCst), ptr);
+        assert_eq!(atomic.load(SeqCst), ptr);
+
+        // then or with all 1s
+        assert_eq!(atomic.fetch_or(!0, SeqCst), ptr);
+        assert_eq!(atomic.load(SeqCst), !0 as *mut _);
+
+        // then and with all 0s
+        assert_eq!(atomic.fetch_and(0, SeqCst), !0 as *mut _);
+        assert_eq!(atomic.load(SeqCst), 0 as *mut _);
+    }
+}
+
 static S_FALSE: AtomicBool = AtomicBool::new(false);
 static S_TRUE: AtomicBool = AtomicBool::new(true);
 static S_INT: AtomicIsize = AtomicIsize::new(0);

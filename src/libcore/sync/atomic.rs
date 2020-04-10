@@ -1166,6 +1166,216 @@ impl<T> AtomicPtr<T> {
             }
         }
     }
+
+    /// Adds to the current pointer, returning the previous pointer.
+    ///
+    /// Unlike other pointer additions, `fetch_add` increments directly by the provided value,
+    /// rather than interpreting it as a multiple of `size_of<T>`.
+    ///
+    /// This operation wraps around on overflow.
+    ///
+    /// `fetch_add` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_ptr_fetch_op)]
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let foo = AtomicPtr::new(0 as *mut ());
+    /// assert_eq!(foo.fetch_add(10, Ordering::SeqCst), 0 as *mut _);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 10 as *mut _);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "atomic_ptr_fetch_op", issue = "none")]
+    pub fn fetch_add(&self, val: usize, order: Ordering) -> *mut T {
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe { crate::mem::transmute(atomic_add(self.p.get() as *mut usize, val, order)) }
+    }
+
+    /// Subtracts from the current pointer, returning the previous pointer.
+    ///
+    /// Unlike other pointer subtractions, `fetch_sub` decrements directly by the provided value,
+    /// rather than interpreting it as a multiple of `size_of<T>`.
+    ///
+    /// This operation wraps around on overflow.
+    ///
+    /// `fetch_sub` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_ptr_fetch_op)]
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let foo = AtomicPtr::new(20 as *mut ());
+    /// assert_eq!(foo.fetch_sub(10, Ordering::SeqCst), 20 as *mut _);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 10 as *mut _);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "atomic_ptr_fetch_op", issue = "none")]
+    pub fn fetch_sub(&self, val: usize, order: Ordering) -> *mut T {
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe { crate::mem::transmute(atomic_sub(self.p.get() as *mut usize, val, order)) }
+    }
+
+    /// Bitwise "and" with the current value.
+    ///
+    /// Performs a bitwise "and" operation on the current pointer and the argument `val`, and
+    /// sets the new pointer to the result.
+    ///
+    /// Returns the previous pointer.
+    ///
+    /// `fetch_and` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_ptr_fetch_op)]
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let foo = AtomicPtr::new(0b101101 as *mut ());
+    /// assert_eq!(foo.fetch_and(0b110011, Ordering::SeqCst), 0b101101 as *mut _);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 0b100001 as *mut _);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "atomic_ptr_fetch_op", issue = "none")]
+    pub fn fetch_and(&self, val: usize, order: Ordering) -> *mut T {
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe { crate::mem::transmute(atomic_and(self.p.get() as *mut usize, val, order)) }
+    }
+
+    /// Bitwise "nand" with the current value.
+    ///
+    /// Performs a bitwise "nand" operation on the current pointer and the argument `val`, and
+    /// sets the new pointer to the result.
+    ///
+    /// Returns the previous pointer.
+    ///
+    /// `fetch_nand` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_ptr_fetch_op)]
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let foo = AtomicPtr::new(0x13 as *mut ());
+    /// assert_eq!(foo.fetch_nand(0x31, Ordering::SeqCst), 0x13 as *mut _);
+    /// assert_eq!(foo.load(Ordering::SeqCst), !(0x13 & 0x31) as *mut _);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "atomic_ptr_fetch_op", issue = "none")]
+    pub fn fetch_nand(&self, val: usize, order: Ordering) -> *mut T {
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe { crate::mem::transmute(atomic_nand(self.p.get() as *mut usize, val, order)) }
+    }
+
+    /// Bitwise "or" with the current value.
+    ///
+    /// Performs a bitwise "or" operation on the current pointer and the argument `val`, and
+    /// sets the new pointer to the result.
+    ///
+    /// Returns the previous pointer.
+    ///
+    /// `fetch_or` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_ptr_fetch_op)]
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let foo = AtomicPtr::new(0b101101 as *mut ());
+    /// assert_eq!(foo.fetch_or(0b110011, Ordering::SeqCst), 0b101101 as *mut _);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 0b111111 as *mut _);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "atomic_ptr_fetch_op", issue = "none")]
+    pub fn fetch_or(&self, val: usize, order: Ordering) -> *mut T {
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe { crate::mem::transmute(atomic_or(self.p.get() as *mut usize, val, order)) }
+    }
+
+    /// Bitwise "xor" with the current value.
+    ///
+    /// Performs a bitwise "xor" operation on the current pointer and the argument `val`, and
+    /// sets the new pointer to the result.
+    ///
+    /// Returns the previous pointer.
+    ///
+    /// `fetch_xor` takes an [`Ordering`] argument which describes the memory ordering
+    /// of this operation. All ordering modes are possible. Note that using
+    /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+    /// using [`Release`] makes the load part [`Relaxed`].
+    ///
+    /// [`Ordering`]: enum.Ordering.html
+    /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+    /// [`Release`]: enum.Ordering.html#variant.Release
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_ptr_fetch_op)]
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let foo = AtomicPtr::new(0b101101 as *mut ());
+    /// assert_eq!(foo.fetch_xor(0b110011, Ordering::SeqCst), 0b101101 as *mut _);
+    /// assert_eq!(foo.load(Ordering::SeqCst), 0b011110 as *mut _);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic = "ptr")]
+    #[unstable(feature = "atomic_ptr_fetch_op", issue = "none")]
+    pub fn fetch_xor(&self, val: usize, order: Ordering) -> *mut T {
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe { crate::mem::transmute(atomic_xor(self.p.get() as *mut usize, val, order)) }
+    }
 }
 
 #[cfg(target_has_atomic_load_store = "8")]

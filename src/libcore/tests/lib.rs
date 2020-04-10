@@ -1,4 +1,5 @@
 #![feature(alloc_layout_extra)]
+#![feature(atomic_ptr_fetch_op)]
 #![feature(bool_to_option)]
 #![feature(bound_cloned)]
 #![feature(box_syntax)]
