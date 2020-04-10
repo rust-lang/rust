@@ -568,7 +568,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             params: [Param],
             T![')']
         }
-        struct SelfParam: TypeAscriptionOwner, AttrsOwner { T![&], T![lifetime], T![self] }
+        struct SelfParam: TypeAscriptionOwner, AttrsOwner { T![&], T![mut], T![lifetime], T![self] }
         struct Param: TypeAscriptionOwner, AttrsOwner {
             Pat,
             T![...]

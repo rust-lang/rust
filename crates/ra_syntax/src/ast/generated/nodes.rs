@@ -2307,6 +2307,7 @@ impl ast::TypeAscriptionOwner for SelfParam {}
 impl ast::AttrsOwner for SelfParam {}
 impl SelfParam {
     pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![lifetime])
     }
