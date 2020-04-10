@@ -461,6 +461,7 @@ impl Step for Rustc {
 
 pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: Interned<String>) {
     cargo
+        .arg("--no-default-features")
         .arg("--features")
         .arg(builder.rustc_features())
         .arg("--manifest-path")
