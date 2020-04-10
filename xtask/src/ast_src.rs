@@ -233,13 +233,13 @@ pub(crate) struct AstSrc<'a> {
 pub(crate) struct AstNodeSrc<'a> {
     pub(crate) name: &'a str,
     pub(crate) traits: &'a [&'a str],
-    pub(crate) fields: &'a [(&'a str, FieldSrc<&'a str>)],
+    pub(crate) fields: &'a [(&'a str, FieldSrc<'a>)],
 }
 
-pub(crate) enum FieldSrc<T> {
+pub(crate) enum FieldSrc<'a> {
     Shorthand,
-    Optional(T),
-    Many(T),
+    Optional(&'a str),
+    Many(&'a str),
 }
 
 pub(crate) struct AstEnumSrc<'a> {
