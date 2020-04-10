@@ -1829,14 +1829,9 @@ bitflags! {
         const IS_BOX              = 1 << 6;
         /// Indicates whether the type is `ManuallyDrop`.
         const IS_MANUALLY_DROP    = 1 << 7;
-        // FIXME(matthewjasper) replace these with diagnostic items
-        /// Indicates whether the type is an `Arc`.
-        const IS_ARC              = 1 << 8;
-        /// Indicates whether the type is an `Rc`.
-        const IS_RC               = 1 << 9;
         /// Indicates whether the variant list of this ADT is `#[non_exhaustive]`.
         /// (i.e., this flag is never set unless this ADT is an enum).
-        const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 10;
+        const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
     }
 }
 
@@ -2221,12 +2216,6 @@ impl<'tcx> AdtDef {
         if Some(did) == tcx.lang_items().manually_drop() {
             flags |= AdtFlags::IS_MANUALLY_DROP;
         }
-        if Some(did) == tcx.lang_items().arc() {
-            flags |= AdtFlags::IS_ARC;
-        }
-        if Some(did) == tcx.lang_items().rc() {
-            flags |= AdtFlags::IS_RC;
-        }
 
         AdtDef { did, variants, flags, repr }
     }
@@ -2303,16 +2292,6 @@ impl<'tcx> AdtDef {
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
         self.flags.contains(AdtFlags::IS_PHANTOM_DATA)
-    }
-
-    /// Returns `true` if this is `Arc<T>`.
-    pub fn is_arc(&self) -> bool {
-        self.flags.contains(AdtFlags::IS_ARC)
-    }
-
-    /// Returns `true` if this is `Rc<T>`.
-    pub fn is_rc(&self) -> bool {
-        self.flags.contains(AdtFlags::IS_RC)
     }
 
     /// Returns `true` if this is Box<T>.

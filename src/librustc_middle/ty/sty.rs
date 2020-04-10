@@ -1864,24 +1864,6 @@ impl<'tcx> TyS<'tcx> {
         self.is_region_ptr() || self.is_unsafe_ptr() || self.is_fn_ptr()
     }
 
-    /// Returns `true` if this type is an `Arc<T>`.
-    #[inline]
-    pub fn is_arc(&self) -> bool {
-        match self.kind {
-            Adt(def, _) => def.is_arc(),
-            _ => false,
-        }
-    }
-
-    /// Returns `true` if this type is an `Rc<T>`.
-    #[inline]
-    pub fn is_rc(&self) -> bool {
-        match self.kind {
-            Adt(def, _) => def.is_rc(),
-            _ => false,
-        }
-    }
-
     #[inline]
     pub fn is_box(&self) -> bool {
         match self.kind {
