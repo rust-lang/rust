@@ -106,7 +106,7 @@ impl ExprCollector<'_> {
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
         let ptr = Either::Left(ptr);
         let src = self.expander.to_source(ptr);
-        let id = self.make_expr(expr, Ok(src));
+        let id = self.make_expr(expr, Ok(src.clone()));
         self.source_map.expr_map.insert(src, id);
         id
     }
@@ -118,7 +118,7 @@ impl ExprCollector<'_> {
     fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
         let ptr = Either::Right(ptr);
         let src = self.expander.to_source(ptr);
-        let id = self.make_expr(expr, Ok(src));
+        let id = self.make_expr(expr, Ok(src.clone()));
         self.source_map.expr_map.insert(src, id);
         id
     }
@@ -136,7 +136,7 @@ impl ExprCollector<'_> {
 
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let src = self.expander.to_source(ptr);
-        let id = self.make_pat(pat, Ok(src));
+        let id = self.make_pat(pat, Ok(src.clone()));
         self.source_map.pat_map.insert(src, id);
         id
     }

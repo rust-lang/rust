@@ -89,7 +89,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let (_, source_map) = db.body_with_source_map(self.func.into());
 
         if let Ok(source_ptr) = source_map.expr_syntax(id) {
-            if let Some(expr) = source_ptr.value.left() {
+            if let Some(expr) = source_ptr.value.as_ref().left() {
                 let root = source_ptr.file_syntax(db.upcast());
                 if let ast::Expr::RecordLit(record_lit) = expr.to_node(&root) {
                     if let Some(field_list) = record_lit.record_field_list() {
@@ -120,7 +120,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let (_, source_map) = db.body_with_source_map(self.func.into());
 
         if let Ok(source_ptr) = source_map.pat_syntax(id) {
-            if let Some(expr) = source_ptr.value.left() {
+            if let Some(expr) = source_ptr.value.as_ref().left() {
                 let root = source_ptr.file_syntax(db.upcast());
                 if let ast::Pat::RecordPat(record_pat) = expr.to_node(&root) {
                     if let Some(field_list) = record_pat.record_field_pat_list() {
@@ -205,7 +205,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
 
         if let Ok(source_ptr) = source_map.expr_syntax(id) {
-            if let Some(expr) = source_ptr.value.left() {
+            if let Some(expr) = source_ptr.value.as_ref().left() {
                 let root = source_ptr.file_syntax(db.upcast());
                 if let ast::Expr::MatchExpr(match_expr) = expr.to_node(&root) {
                     if let (Some(match_expr), Some(arms)) =
