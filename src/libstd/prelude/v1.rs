@@ -36,6 +36,7 @@ pub use crate::result::Result::{self, Err, Ok};
 
 // Re-exported built-in macros
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow(deprecated)]
 #[doc(no_inline)]
 pub use core::prelude::v1::{
     asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
