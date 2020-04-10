@@ -44,6 +44,19 @@ macro_rules! fuse {
     };
 }
 
+// NOTE: for `I: FusedIterator`, we assume that the iterator is always `Some`.
+// Implementing this as a directly-expanded macro helps codegen performance.
+macro_rules! unchecked {
+    ($self:ident) => {
+        match $self {
+            Fuse { iter: Some(iter) } => iter,
+            // SAFETY: the specialized iterator never sets `None`
+            Fuse { iter: None } => unsafe { intrinsics::unreachable() },
+        }
+    };
+}
+
+// Any implementation here is made internal to avoid exposing default fns outside this trait
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Fuse<I>
 where
@@ -159,27 +172,6 @@ where
     }
 }
 
-// NOTE: for `I: FusedIterator`, we assume that the iterator is always `Some`.
-// Implementing this as a directly-expanded macro helps codegen performance.
-macro_rules! unchecked {
-    ($self:ident) => {
-        match $self {
-            Fuse { iter: Some(iter) } => iter,
-            // SAFETY: the specialized iterator never sets `None`
-            Fuse { iter: None } => unsafe { intrinsics::unreachable() },
-        }
-    };
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<I> Iterator for Fuse<I> where I: FusedIterator {}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator + FusedIterator {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator + FusedIterator {}
-
 unsafe impl<I> TrustedRandomAccess for Fuse<I>
 where
     I: TrustedRandomAccess,
@@ -198,6 +190,9 @@ where
 }
 
 // Fuse specialization trait
+// Iterators and DoubleEndedIterators cannot be overlapped successfully
+// So, they're separated into each it's own trait to provide internal implementations
+// Similarly, ExactSizeIterators cannot be overlapped, so requires its own trait
 #[doc(hidden)]
 trait FuseIteratorImpl<I> {
     type Item;
