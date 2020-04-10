@@ -175,7 +175,7 @@ trait Trait<T> {
 }
 
 impl Trait<u32> for () {
-    fn foo(&self) -> u32 { unimplemented!() }
+    fn foo(&self) -> u32 { todo!() }
 
 }
 ```

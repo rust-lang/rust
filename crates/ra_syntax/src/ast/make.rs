@@ -100,6 +100,9 @@ pub fn expr_empty_block() -> ast::Expr {
 pub fn expr_unimplemented() -> ast::Expr {
     expr_from_text("unimplemented!()")
 }
+pub fn expr_todo() -> ast::Expr {
+    expr_from_text("todo!()")
+}
 pub fn expr_path(path: ast::Path) -> ast::Expr {
     expr_from_text(&path.to_string())
 }
