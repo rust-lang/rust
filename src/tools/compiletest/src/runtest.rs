@@ -1958,6 +1958,12 @@ impl<'test> TestCx<'test> {
             None => {}
         }
 
+        // Add `-A unused` before `config` flags and in-test (`props`) flags, so that they can
+        // overwrite this.
+        if let AllowUnused::Yes = allow_unused {
+            rustc.args(&["-A", "unused"]);
+        }
+
         if self.props.force_host {
             self.maybe_add_external_args(
                 &mut rustc,
@@ -1978,10 +1984,6 @@ impl<'test> TestCx<'test> {
         // Use dynamic musl for tests because static doesn't allow creating dylibs
         if self.config.host.contains("musl") || self.is_vxworks_pure_dynamic() {
             rustc.arg("-Ctarget-feature=-crt-static");
-        }
-
-        if let AllowUnused::Yes = allow_unused {
-            rustc.args(&["-A", "unused"]);
         }
 
         rustc.args(&self.props.compile_flags);
