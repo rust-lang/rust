@@ -2,10 +2,10 @@ use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
-    let pre_args = vec!["/NOLOGO".to_string(), "/NXCOMPAT".to_string()];
-    let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Msvc, pre_args.clone());
-    args.insert(LinkerFlavor::Lld(LldFlavor::Link), pre_args);
+    let pre_link_args_msvc = vec!["/NOLOGO".to_string(), "/NXCOMPAT".to_string()];
+    let mut pre_link_args = LinkArgs::new();
+    pre_link_args.insert(LinkerFlavor::Msvc, pre_link_args_msvc.clone());
+    pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Link), pre_link_args_msvc);
 
     TargetOptions {
         function_sections: true,
@@ -24,7 +24,7 @@ pub fn opts() -> TargetOptions {
         // messages if a link error occurred.
         link_env: vec![("VSLANG".to_string(), "1033".to_string())],
         lld_flavor: LldFlavor::Link,
-        pre_link_args: args,
+        pre_link_args,
         crt_static_allows_dylibs: true,
         crt_static_respected: true,
         abi_return_struct_as_int: true,

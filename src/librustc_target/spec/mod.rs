@@ -322,6 +322,7 @@ macro_rules! supported_targets {
                     // Target on this testing platform (i.e., checking the iOS targets
                     // only on a Mac test platform).
                     let _ = $module::target().map(|original| {
+                        original.check_consistency();
                         let as_json = original.to_json();
                         let parsed = Target::from_json(as_json).unwrap();
                         assert_eq!(original, parsed);
@@ -538,7 +539,8 @@ pub struct Target {
     pub arch: String,
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: String,
-    /// Linker flavor
+    /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
+    /// on the command line.
     pub linker_flavor: LinkerFlavor,
     /// Optional settings with defaults.
     pub options: TargetOptions,
@@ -566,7 +568,8 @@ pub struct TargetOptions {
     /// Linker to invoke
     pub linker: Option<String>,
 
-    /// LLD flavor
+    /// LLD flavor used if `lld` (or `rust-lld`) is specified as a linker
+    /// without clarifying its flavor in any way.
     pub lld_flavor: LldFlavor,
 
     /// Linker arguments that are passed *before* any user-defined libraries.
@@ -1283,6 +1286,34 @@ impl Target {
                     return load_file(&target_path);
                 }
                 Err(format!("Target path {:?} is not a valid file", target_path))
+            }
+        }
+    }
+
+    #[cfg(test)]
+    fn check_consistency(&self) {
+        // Check that LLD with the given flavor is treated identically to the linker it emulates.
+        // If you target really needs to deviate from the rules below, whitelist it
+        // and document the reasons.
+        assert_eq!(
+            self.linker_flavor == LinkerFlavor::Msvc
+                || self.linker_flavor == LinkerFlavor::Lld(LldFlavor::Link),
+            self.options.lld_flavor == LldFlavor::Link,
+        );
+        for args in &[
+            &self.options.pre_link_args,
+            &self.options.pre_link_args_crt,
+            &self.options.late_link_args,
+            &self.options.late_link_args_dynamic,
+            &self.options.late_link_args_static,
+            &self.options.post_link_args,
+        ] {
+            assert_eq!(
+                args.get(&LinkerFlavor::Msvc),
+                args.get(&LinkerFlavor::Lld(LldFlavor::Link)),
+            );
+            if args.contains_key(&LinkerFlavor::Msvc) {
+                assert_eq!(self.options.lld_flavor, LldFlavor::Link);
             }
         }
     }
