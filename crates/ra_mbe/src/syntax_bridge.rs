@@ -137,21 +137,23 @@ impl TokenMap {
         token_id: tt::TokenId,
         open_relative_range: TextRange,
         close_relative_range: TextRange,
-    ) {
+    ) -> usize {
+        let res = self.entries.len();
         self.entries
             .push((token_id, TokenTextRange::Delimiter(open_relative_range, close_relative_range)));
+        res
     }
 
-    fn update_close_delim(&mut self, token_id: tt::TokenId, close_relative_range: TextRange) {
-        if let Some(entry) = self.entries.iter_mut().find(|(tid, _)| *tid == token_id) {
-            if let TokenTextRange::Delimiter(dim, _) = entry.1 {
-                entry.1 = TokenTextRange::Delimiter(dim, close_relative_range);
-            }
+    fn update_close_delim(&mut self, idx: usize, close_relative_range: TextRange) {
+        let (_, token_text_range) = &mut self.entries[idx];
+        if let TokenTextRange::Delimiter(dim, _) = token_text_range {
+            *token_text_range = TokenTextRange::Delimiter(*dim, close_relative_range);
         }
     }
 
-    fn remove_delim(&mut self, token_id: tt::TokenId) {
-        self.entries.retain(|(tid, _)| *tid != token_id);
+    fn remove_delim(&mut self, idx: usize) {
+        // FIXME: This could be accidently quadratic
+        self.entries.remove(idx);
     }
 }
 
@@ -238,24 +240,24 @@ impl TokenIdAlloc {
         token_id
     }
 
-    fn open_delim(&mut self, open_abs_range: TextRange) -> tt::TokenId {
+    fn open_delim(&mut self, open_abs_range: TextRange) -> (tt::TokenId, usize) {
         let token_id = tt::TokenId(self.next_id);
         self.next_id += 1;
-        self.map.insert_delim(
+        let idx = self.map.insert_delim(
             token_id,
             open_abs_range - self.global_offset,
             open_abs_range - self.global_offset,
         );
-        token_id
+        (token_id, idx)
     }
 
-    fn close_delim(&mut self, id: tt::TokenId, close_abs_range: Option<TextRange>) {
+    fn close_delim(&mut self, idx: usize, close_abs_range: Option<TextRange>) {
         match close_abs_range {
             None => {
-                self.map.remove_delim(id);
+                self.map.remove_delim(idx);
             }
             Some(close) => {
-                self.map.update_close_delim(id, close - self.global_offset);
+                self.map.update_close_delim(idx, close - self.global_offset);
             }
         }
     }
@@ -322,7 +324,7 @@ trait TokenConvertor {
 
             if let Some((kind, closed)) = delim {
                 let mut subtree = tt::Subtree::default();
-                let id = self.id_alloc().open_delim(range);
+                let (id, idx) = self.id_alloc().open_delim(range);
                 subtree.delimiter = Some(tt::Delimiter { kind, id });
 
                 while self.peek().map(|it| it.kind() != closed).unwrap_or(false) {
@@ -331,7 +333,7 @@ trait TokenConvertor {
                 let last_range = match self.bump() {
                     None => {
                         // For error resilience, we insert an char punct for the opening delim here
-                        self.id_alloc().close_delim(id, None);
+                        self.id_alloc().close_delim(idx, None);
                         let leaf: tt::Leaf = tt::Punct {
                             id: self.id_alloc().alloc(range),
                             char: token.to_char().unwrap(),
@@ -344,7 +346,7 @@ trait TokenConvertor {
                     }
                     Some(it) => it.1,
                 };
-                self.id_alloc().close_delim(id, Some(last_range));
+                self.id_alloc().close_delim(idx, Some(last_range));
                 subtree.into()
             } else {
                 let spacing = match self.peek() {
