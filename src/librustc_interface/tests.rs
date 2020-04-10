@@ -1,5 +1,3 @@
-extern crate getopts;
-
 use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -9,6 +7,7 @@ use rustc_session::config::{build_configuration, build_session_options, to_crate
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
 use rustc_session::config::{ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::config::{Externs, OutputType, OutputTypes, SymbolManglingVersion};
+use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::{build_session, Session};

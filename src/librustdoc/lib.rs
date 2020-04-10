@@ -15,7 +15,6 @@
 #![recursion_limit = "256"]
 
 extern crate env_logger;
-extern crate getopts;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
@@ -51,6 +50,7 @@ use std::panic;
 use std::process;
 
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
+use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
 
 #[macro_use]

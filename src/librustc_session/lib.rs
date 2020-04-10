@@ -3,7 +3,6 @@
 
 // Use the test crate here so we depend on getopts through it. This allow tools to link to both
 // librustc_session and libtest.
-extern crate getopts;
 extern crate test as _;
 
 pub mod cgu_reuse_tracker;
@@ -23,3 +22,5 @@ mod session;
 pub use session::*;
 
 pub mod output;
+
+pub use getopts;
