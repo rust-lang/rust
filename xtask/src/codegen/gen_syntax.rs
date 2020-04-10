@@ -345,6 +345,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         #(#displays)*
     };
 
+    let ast = ast.to_string().replace("T ! [ ", "T![").replace(" ] )", "])");
     let pretty = crate::reformat(ast)?;
     Ok(pretty)
 }
@@ -527,6 +528,9 @@ impl Field<'_> {
             Field::Token(name) => {
                 let name = match *name {
                     ";" => "semicolon",
+                    "->" => "thin_arrow",
+                    "'{'" => "l_curly",
+                    "'}'" => "r_curly",
                     _ => name,
                 };
                 format_ident!("{}_token", name)

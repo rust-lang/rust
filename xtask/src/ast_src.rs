@@ -322,7 +322,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![;]
         }
 
-        struct RetType { ThinArrow, TypeRef }
+        struct RetType { T![->], TypeRef }
 
         struct StructDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner {
             T![struct],
