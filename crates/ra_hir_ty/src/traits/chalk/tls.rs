@@ -5,7 +5,7 @@ use chalk_ir::{AliasTy, Goal, Goals, Lifetime, Parameter, ProgramClauseImplicati
 
 use super::{from_chalk, Interner};
 use crate::{db::HirDatabase, CallableDef, TypeCtor};
-use hir_def::{AdtId, AssocContainerId, Lookup, TypeAliasId};
+use hir_def::{AdtId, AssocContainerId, DefWithBodyId, Lookup, TypeAliasId};
 
 pub use unsafe_tls::{set_current_program, with_current_program};
 
@@ -69,7 +69,27 @@ impl DebugContext<'_> {
                 write!(f, "{}::{}", trait_name, name)?;
             }
             TypeCtor::Closure { def, expr } => {
-                write!(f, "{{closure {:?} in {:?}}}", expr.into_raw(), def)?;
+                write!(f, "{{closure {:?} in ", expr.into_raw())?;
+                match def {
+                    DefWithBodyId::FunctionId(func) => {
+                        write!(f, "fn {}", self.0.function_data(func).name)?
+                    }
+                    DefWithBodyId::StaticId(s) => {
+                        if let Some(name) = self.0.static_data(s).name.as_ref() {
+                            write!(f, "body of static {}", name)?;
+                        } else {
+                            write!(f, "body of unnamed static {:?}", s)?;
+                        }
+                    }
+                    DefWithBodyId::ConstId(c) => {
+                        if let Some(name) = self.0.const_data(c).name.as_ref() {
+                            write!(f, "body of const {}", name)?;
+                        } else {
+                            write!(f, "body of unnamed const {:?}", c)?;
+                        }
+                    }
+                };
+                write!(f, "}}")?;
             }
         }
         Ok(())
