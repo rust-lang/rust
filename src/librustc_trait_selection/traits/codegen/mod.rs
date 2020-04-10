@@ -7,6 +7,7 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::{
     FulfillmentContext, Obligation, ObligationCause, SelectionContext, TraitEngine, Vtable,
 };
+use rustc_errors::ErrorReported;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -19,7 +20,7 @@ use rustc_middle::ty::{self, TyCtxt};
 pub fn codegen_fulfill_obligation<'tcx>(
     ty: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
-) -> Option<Vtable<'tcx, ()>> {
+) -> Result<Vtable<'tcx, ()>, ErrorReported> {
     // Remove any references to regions; this helps improve caching.
     let trait_ref = ty.erase_regions(&trait_ref);
 
@@ -55,7 +56,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
                         trait_ref
                     ),
                 );
-                return None;
+                return Err(ErrorReported);
             }
             Err(e) => {
                 bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
@@ -75,7 +76,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
         let vtable = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, &vtable);
 
         info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
-        Some(vtable)
+        Ok(vtable)
     })
 }
 

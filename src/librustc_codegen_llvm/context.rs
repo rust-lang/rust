@@ -376,6 +376,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     def_id,
                     tcx.intern_substs(&[]),
                 )
+                .unwrap()
                 .unwrap(),
             ),
             _ => {
