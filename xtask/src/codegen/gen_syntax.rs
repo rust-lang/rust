@@ -535,6 +535,8 @@ impl Field<'_> {
                     "')'" => "r_paren",
                     "'['" => "l_brack",
                     "']'" => "r_brack",
+                    "=" => "eq",
+                    "!" => "excl",
                     _ => name,
                 };
                 format_ident!("{}_token", name)

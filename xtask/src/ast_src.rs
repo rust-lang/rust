@@ -354,7 +354,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
         struct EnumVariant: VisibilityOwner, NameOwner, DocCommentsOwner, AttrsOwner {
             FieldDefList,
-            Eq,
+            T![=],
             Expr
         }
 
@@ -380,7 +380,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct ConstDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner {
             T![default],
             T![const],
-            Eq,
+            T![=],
             body: Expr,
             T![;]
         }
@@ -388,7 +388,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct StaticDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner {
             T![static],
             T![mut],
-            Eq,
+            T![=],
             body: Expr,
             T![;]
         }
@@ -396,7 +396,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct TypeAliasDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeBoundsOwner {
             T![default],
             T![type],
-            Eq,
+            T![=],
             TypeRef,
             T![;]
         }
@@ -406,14 +406,14 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![const],
             T![unsafe],
             T![impl],
-            Excl,
+            T![!],
             T![for],
             ItemList,
         }
 
         struct ParenType { T!['('], TypeRef, T![')'] }
         struct TupleType { T!['('], fields: [TypeRef], T![')'] }
-        struct NeverType { Excl }
+        struct NeverType { T![!] }
         struct PathType { Path }
         struct PointerType { Star, T![const], T![mut], TypeRef }
         struct ArrayType { T!['['], TypeRef, T![;], Expr, T![']'] }
@@ -465,7 +465,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct PrefixExpr: AttrsOwner { PrefixOp, Expr }
         struct BoxExpr: AttrsOwner { T![box], Expr }
         struct RangeExpr: AttrsOwner { RangeOp }
-        struct BinExpr: AttrsOwner { BinOp }
+        struct BinExpr: AttrsOwner { /*BinOp*/ }
         struct Literal { LiteralToken }
 
         struct MatchExpr: AttrsOwner { T![match], Expr, MatchArmList }
@@ -520,9 +520,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct NameRef { NameRefToken }
 
         struct MacroCall: NameOwner, AttrsOwner,DocCommentsOwner {
-            Path, Excl, TokenTree, T![;]
+            Path, T![!], TokenTree, T![;]
         }
-        struct Attr { Pound, Excl, T!['['], Path, Eq, input: AttrInput, T![']'] }
+        struct Attr { Pound, T![!], T!['['], Path, T![=], input: AttrInput, T![']'] }
         struct TokenTree {}
         struct TypeParamList {
             LAngle,
@@ -533,11 +533,11 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             RAngle
         }
         struct TypeParam: NameOwner, AttrsOwner, TypeBoundsOwner {
-            Eq,
+            T![=],
             default_type: TypeRef,
         }
         struct ConstParam: NameOwner, AttrsOwner, TypeAscriptionOwner {
-            Eq,
+            T![=],
             default_val: Expr,
         }
         struct LifetimeParam: AttrsOwner { Lifetime}
@@ -550,11 +550,11 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct LetStmt: AttrsOwner, TypeAscriptionOwner {
             T![let],
             Pat,
-            Eq,
+            T![=],
             initializer: Expr,
             T![;],
         }
-        struct Condition { T![let], Pat, Eq, Expr }
+        struct Condition { T![let], Pat, T![=], Expr }
         struct Block: AttrsOwner, ModuleItemOwner {
             T!['{'],
             statements: [Stmt],
@@ -607,9 +607,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             RAngle
         }
         struct TypeArg { TypeRef }
-        struct AssocTypeArg : TypeBoundsOwner { NameRef, Eq, TypeRef }
+        struct AssocTypeArg : TypeBoundsOwner { NameRef, T![=], TypeRef }
         struct LifetimeArg { Lifetime }
-        struct ConstArg { Literal, Eq, BlockExpr }
+        struct ConstArg { Literal, T![=], BlockExpr }
 
         struct MacroItems: ModuleItemOwner{ }
 
@@ -630,7 +630,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
 
         struct MetaItem {
-            Path, Eq, AttrInput, nested_meta_items: [MetaItem]
+            Path, T![=], AttrInput, nested_meta_items: [MetaItem]
         }
 
         struct MacroDef {
@@ -771,41 +771,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
     token_enums: &ast_enums! {
         enum RangeSeparator { Dotdot, Dotdotdot, Dotdoteq}
 
-        enum BinOp {
-            Pipepipe,
-            Ampamp,
-            Eqeq,
-            Neq,
-            Lteq,
-            Gteq,
-            LAngle,
-            RAngle,
-            Plus,
-            Star,
-            Minus,
-            Slash,
-            Percent,
-            Shl,
-            Shr,
-            Caret,
-            Pipe,
-            Amp,
-            Eq,
-            Pluseq,
-            Slasheq,
-            Stareq,
-            Percenteq,
-            Shreq,
-            Shleq,
-            Minuseq,
-            Pipeeq,
-            Ampeq,
-            Careteq,
-        }
-
         enum PrefixOp {
             Minus,
-            Excl,
+            T![!],
             Star
         }
 

@@ -276,7 +276,7 @@ impl ast::DocCommentsOwner for EnumVariant {}
 impl ast::AttrsOwner for EnumVariant {}
 impl EnumVariant {
     pub fn field_def_list(&self) -> Option<FieldDefList> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -377,7 +377,7 @@ impl ConstDef {
         support::token2(&self.syntax, T![default])
     }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![const]) }
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![;]) }
 }
@@ -405,7 +405,7 @@ impl ast::TypeAscriptionOwner for StaticDef {}
 impl StaticDef {
     pub fn static_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![static]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![;]) }
 }
@@ -435,7 +435,7 @@ impl TypeAliasDef {
         support::token2(&self.syntax, T![default])
     }
     pub fn type_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![type]) }
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![;]) }
 }
@@ -1278,9 +1278,7 @@ impl AstNode for BinExpr {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ast::AttrsOwner for BinExpr {}
-impl BinExpr {
-    pub fn bin_op_token(&self) -> Option<BinOp> { support::token(&self.syntax) }
-}
+impl BinExpr {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Literal {
     pub(crate) syntax: SyntaxNode,
@@ -1881,7 +1879,7 @@ impl Attr {
     pub fn excl_token(&self) -> Option<Excl> { support::token(&self.syntax) }
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['[']) }
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn input(&self) -> Option<AttrInput> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![']']) }
 }
@@ -1943,7 +1941,7 @@ impl ast::NameOwner for TypeParam {}
 impl ast::AttrsOwner for TypeParam {}
 impl ast::TypeBoundsOwner for TypeParam {}
 impl TypeParam {
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn default_type(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1965,7 +1963,7 @@ impl ast::NameOwner for ConstParam {}
 impl ast::AttrsOwner for ConstParam {}
 impl ast::TypeAscriptionOwner for ConstParam {}
 impl ConstParam {
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn default_val(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2122,7 +2120,7 @@ impl ast::TypeAscriptionOwner for LetStmt {}
 impl LetStmt {
     pub fn let_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![let]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn initializer(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![;]) }
 }
@@ -2144,7 +2142,7 @@ impl AstNode for Condition {
 impl Condition {
     pub fn let_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![let]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2463,7 +2461,7 @@ impl AstNode for AssocTypeArg {
 impl ast::TypeBoundsOwner for AssocTypeArg {}
 impl AssocTypeArg {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2501,7 +2499,7 @@ impl AstNode for ConstArg {
 }
 impl ConstArg {
     pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2597,7 +2595,7 @@ impl AstNode for MetaItem {
 }
 impl MetaItem {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
     pub fn attr_input(&self) -> Option<AttrInput> { support::child(&self.syntax) }
     pub fn nested_meta_items(&self) -> AstChildren<MetaItem> { support::children(&self.syntax) }
 }
