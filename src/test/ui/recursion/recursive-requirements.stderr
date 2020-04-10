@@ -2,7 +2,7 @@ error[E0277]: `*const Bar` cannot be shared between threads safely
   --> $DIR/recursive-requirements.rs:16:12
    |
 LL | struct AssertSync<T: Sync>(PhantomData<T>);
-   | ------------------------------------------- required by `AssertSync`
+   |                      ---- required by this bound in `AssertSync`
 ...
 LL |     let _: AssertSync<Foo> = unimplemented!();
    |            ^^^^^^^^^^^^^^^ `*const Bar` cannot be shared between threads safely
@@ -14,7 +14,7 @@ error[E0277]: `*const Foo` cannot be shared between threads safely
   --> $DIR/recursive-requirements.rs:16:12
    |
 LL | struct AssertSync<T: Sync>(PhantomData<T>);
-   | ------------------------------------------- required by `AssertSync`
+   |                      ---- required by this bound in `AssertSync`
 ...
 LL |     let _: AssertSync<Foo> = unimplemented!();
    |            ^^^^^^^^^^^^^^^ `*const Foo` cannot be shared between threads safely

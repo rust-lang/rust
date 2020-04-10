@@ -2,7 +2,7 @@ error[E0284]: type annotations needed
   --> $DIR/associated-types-overridden-binding.rs:4:12
    |
 LL | trait Foo: Iterator<Item = i32> {}
-   | ------------------------------- required by `Foo`
+   |                     ---------- required by this bound in `Foo`
 LL | trait Bar: Foo<Item = u32> {}
    |            ^^^^^^^^^^^^^^^ cannot infer type for type parameter `Self`
    |
@@ -12,7 +12,7 @@ error[E0284]: type annotations needed
   --> $DIR/associated-types-overridden-binding.rs:7:21
    |
 LL | trait I32Iterator = Iterator<Item = i32>;
-   | ----------------------------------------- required by `I32Iterator`
+   |                              ---------- required by this bound in `I32Iterator`
 LL | trait U32Iterator = I32Iterator<Item = u32>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `Self`
    |

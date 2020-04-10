@@ -2,7 +2,7 @@ error[E0277]: the trait bound `T: Bound` is not satisfied
   --> $DIR/issue-21837.rs:8:9
    |
 LL | pub struct Foo<T: Bound>(T);
-   | ---------------------------- required by `Foo`
+   |                   ----- required by this bound in `Foo`
 ...
 LL | impl<T> Trait2 for Foo<T> {}
    |         ^^^^^^ the trait `Bound` is not implemented for `T`

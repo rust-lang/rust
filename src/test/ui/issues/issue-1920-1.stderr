@@ -2,7 +2,7 @@ error[E0277]: the trait bound `foo::issue_1920::S: std::clone::Clone` is not sat
   --> $DIR/issue-1920-1.rs:12:20
    |
 LL | fn assert_clone<T>() where T : Clone { }
-   |    ------------                ----- required by this bound in `assert_clone`
+   |                                ----- required by this bound in `assert_clone`
 ...
 LL |     assert_clone::<foo::issue_1920::S>();
    |                    ^^^^^^^^^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `foo::issue_1920::S`

@@ -2,7 +2,7 @@ error[E0277]: the trait bound `usize: Trait` is not satisfied
   --> $DIR/trait-bounds-on-structs-and-enums-locals.rs:15:14
    |
 LL | struct Foo<T:Trait> {
-   | ------------------- required by `Foo`
+   |              ----- required by this bound in `Foo`
 ...
 LL |     let baz: Foo<usize> = loop { };
    |              ^^^^^^^^^^ the trait `Trait` is not implemented for `usize`

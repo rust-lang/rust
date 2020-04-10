@@ -20,7 +20,10 @@ error[E0277]: `<<T as Case1>::C as std::iter::Iterator>::Item` cannot be sent be
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:36:20
    |
 LL | trait Case1 {
-   | ----------- required by `Case1`
+   |       -----
+LL |     type C: Clone + Iterator<Item:
+LL |         Send + Iterator<Item:
+   |         ---- required by this bound in `Case1`
 ...
 LL | fn assume_case1<T: Case1>() {
    |                    ^^^^^   - help: consider further restricting the associated type: `where <<T as Case1>::C as std::iter::Iterator>::Item: std::marker::Send`
@@ -33,7 +36,10 @@ error[E0277]: `<<T as Case1>::C as std::iter::Iterator>::Item` cannot be shared 
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:36:20
    |
 LL | trait Case1 {
-   | ----------- required by `Case1`
+   |       -----
+...
+LL |         > + Sync>;
+   |             ---- required by this bound in `Case1`
 ...
 LL | fn assume_case1<T: Case1>() {
    |                    ^^^^^   - help: consider further restricting the associated type: `where <<T as Case1>::C as std::iter::Iterator>::Item: std::marker::Sync`
@@ -46,7 +52,10 @@ error[E0277]: `<_ as Lam<&'a u8>>::App` doesn't implement `std::fmt::Debug`
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:36:20
    |
 LL | trait Case1 {
-   | ----------- required by `Case1`
+   |       -----
+...
+LL |                 Debug
+   |                 ----- required by this bound in `Case1`
 ...
 LL | fn assume_case1<T: Case1>() {
    |                    ^^^^^ `<_ as Lam<&'a u8>>::App` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`

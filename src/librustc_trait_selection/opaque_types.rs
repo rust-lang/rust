@@ -1255,8 +1255,8 @@ crate fn required_region_bounds(
     assert!(!erased_self_ty.has_escaping_bound_vars());
 
     traits::elaborate_predicates(tcx, predicates)
-        .filter_map(|predicate| {
-            match predicate {
+        .filter_map(|obligation| {
+            match obligation.predicate {
                 ty::Predicate::Projection(..)
                 | ty::Predicate::Trait(..)
                 | ty::Predicate::Subtype(..)

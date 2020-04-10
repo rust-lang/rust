@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
   --> $DIR/issue-20005.rs:10:49
    |
 LL | trait From<Src> {
-   | --------------- required by `From`
+   |            --- required by this bound in `From`
 ...
 LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
    |                                                 ^^^^^^^^^^- help: consider further restricting `Self`: `, Self: std::marker::Sized`

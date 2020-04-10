@@ -948,7 +948,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ///   --> $DIR/issue-64130-2-send.rs:21:5
     ///    |
     /// LL | fn is_send<T: Send>(t: T) { }
-    ///    |    -------    ---- required by this bound in `is_send`
+    ///    |               ---- required by this bound in `is_send`
     /// ...
     /// LL |     is_send(bar());
     ///    |     ^^^^^^^ future returned by `bar` is not send
@@ -1345,7 +1345,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::ItemObligation(item_def_id) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let msg = format!("required by `{}`", item_name);
-
                 if let Some(sp) = tcx.hir().span_if_local(item_def_id) {
                     let sp = tcx.sess.source_map().guess_head_span(sp);
                     err.span_label(sp, &msg);
@@ -1357,7 +1356,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let item_name = tcx.def_path_str(item_def_id);
                 let msg = format!("required by this bound in `{}`", item_name);
                 if let Some(ident) = tcx.opt_item_name(item_def_id) {
-                    err.span_label(ident.span, "");
+                    let sm = self.tcx.sess.source_map();
+                    let same_line =
+                        match (sm.lookup_line(ident.span.hi()), sm.lookup_line(span.lo())) {
+                            (Ok(l), Ok(r)) => l.line == r.line,
+                            _ => true,
+                        };
+                    if !ident.span.overlaps(span) && !same_line {
+                        err.span_label(ident.span, "");
+                    }
                 }
                 if span != DUMMY_SP {
                     err.span_label(span, &msg);

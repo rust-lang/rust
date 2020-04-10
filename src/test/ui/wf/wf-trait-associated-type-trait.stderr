@@ -2,7 +2,7 @@ error[E0277]: the trait bound `<Self as SomeTrait>::Type1: std::marker::Copy` is
   --> $DIR/wf-trait-associated-type-trait.rs:11:5
    |
 LL | struct IsCopy<T:Copy> { x: T }
-   | --------------------- required by `IsCopy`
+   |                 ---- required by this bound in `IsCopy`
 LL | 
 LL | trait SomeTrait {
    |                - help: consider further restricting the associated type: `where <Self as SomeTrait>::Type1: std::marker::Copy`

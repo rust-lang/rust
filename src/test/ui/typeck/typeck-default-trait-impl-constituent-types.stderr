@@ -2,7 +2,7 @@ error[E0277]: the trait bound `MyS2: MyTrait` is not satisfied
   --> $DIR/typeck-default-trait-impl-constituent-types.rs:21:18
    |
 LL | fn is_mytrait<T: MyTrait>() {}
-   |    ----------    ------- required by this bound in `is_mytrait`
+   |                  ------- required by this bound in `is_mytrait`
 ...
 LL |     is_mytrait::<MyS2>();
    |                  ^^^^ the trait `MyTrait` is not implemented for `MyS2`

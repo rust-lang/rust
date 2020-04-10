@@ -2,7 +2,7 @@ error[E0277]: the trait bound `&S: Trait` is not satisfied
   --> $DIR/imm-ref-trait-object-literal.rs:12:7
    |
 LL | fn foo<X: Trait>(_: X) {}
-   |    ---    ----- required by this bound in `foo`
+   |           ----- required by this bound in `foo`
 ...
 LL |   foo(&s);
    |       ^^ the trait `Trait` is not implemented for `&S`
@@ -18,7 +18,7 @@ error[E0277]: the trait bound `S: Trait` is not satisfied
   --> $DIR/imm-ref-trait-object-literal.rs:13:7
    |
 LL | fn foo<X: Trait>(_: X) {}
-   |    ---    ----- required by this bound in `foo`
+   |           ----- required by this bound in `foo`
 ...
 LL |   foo(s);
    |       ^ the trait `Trait` is not implemented for `S`

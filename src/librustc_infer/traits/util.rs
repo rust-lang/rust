@@ -1,8 +1,10 @@
 use smallvec::smallvec;
 
+use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, TyCtxt, WithConstness};
+use rustc_span::Span;
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -87,7 +89,7 @@ impl<T: AsRef<ty::Predicate<'tcx>>> Extend<T> for PredicateSet<'tcx> {
 /// holds as well. Similarly, if we have `trait Foo: 'static`, and we know that
 /// `T: Foo`, then we know that `T: 'static`.
 pub struct Elaborator<'tcx> {
-    stack: Vec<ty::Predicate<'tcx>>,
+    stack: Vec<PredicateObligation<'tcx>>,
     visited: PredicateSet<'tcx>,
 }
 
@@ -112,7 +114,29 @@ pub fn elaborate_predicates<'tcx>(
 ) -> Elaborator<'tcx> {
     let mut visited = PredicateSet::new(tcx);
     predicates.retain(|pred| visited.insert(pred));
-    Elaborator { stack: predicates, visited }
+    let obligations: Vec<_> =
+        predicates.into_iter().map(|predicate| predicate_obligation(predicate, None)).collect();
+    elaborate_obligations(tcx, obligations)
+}
+
+pub fn elaborate_obligations<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mut obligations: Vec<PredicateObligation<'tcx>>,
+) -> Elaborator<'tcx> {
+    let mut visited = PredicateSet::new(tcx);
+    obligations.retain(|obligation| visited.insert(&obligation.predicate));
+    Elaborator { stack: obligations, visited }
+}
+
+fn predicate_obligation<'tcx>(
+    predicate: ty::Predicate<'tcx>,
+    span: Option<Span>,
+) -> PredicateObligation<'tcx> {
+    let mut cause = ObligationCause::dummy();
+    if let Some(span) = span {
+        cause.span = span;
+    }
+    Obligation { cause, param_env: ty::ParamEnv::empty(), recursion_depth: 0, predicate }
 }
 
 impl Elaborator<'tcx> {
@@ -120,27 +144,30 @@ impl Elaborator<'tcx> {
         FilterToTraits::new(self)
     }
 
-    fn elaborate(&mut self, predicate: &ty::Predicate<'tcx>) {
+    fn elaborate(&mut self, obligation: &PredicateObligation<'tcx>) {
         let tcx = self.visited.tcx;
-        match *predicate {
+        match obligation.predicate {
             ty::Predicate::Trait(ref data, _) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let predicates = predicates
-                    .predicates
-                    .iter()
-                    .map(|(pred, _)| pred.subst_supertrait(tcx, &data.to_poly_trait_ref()));
-                debug!("super_predicates: data={:?} predicates={:?}", data, predicates.clone());
+                let obligations = predicates.predicates.iter().map(|(pred, span)| {
+                    predicate_obligation(
+                        pred.subst_supertrait(tcx, &data.to_poly_trait_ref()),
+                        Some(*span),
+                    )
+                });
+                debug!("super_predicates: data={:?} predicates={:?}", data, &obligations);
 
                 // Only keep those bounds that we haven't already seen.
                 // This is necessary to prevent infinite recursion in some
                 // cases. One common case is when people define
                 // `trait Sized: Sized { }` rather than `trait Sized { }`.
                 let visited = &mut self.visited;
-                let predicates = predicates.filter(|pred| visited.insert(pred));
+                let obligations =
+                    obligations.filter(|obligation| visited.insert(&obligation.predicate));
 
-                self.stack.extend(predicates);
+                self.stack.extend(obligations);
             }
             ty::Predicate::WellFormed(..) => {
                 // Currently, we do not elaborate WF predicates,
@@ -221,7 +248,8 @@ impl Elaborator<'tcx> {
                                 None
                             }
                         })
-                        .filter(|p| visited.insert(p)),
+                        .filter(|p| visited.insert(p))
+                        .map(|p| predicate_obligation(p, None)),
                 );
             }
         }
@@ -229,17 +257,17 @@ impl Elaborator<'tcx> {
 }
 
 impl Iterator for Elaborator<'tcx> {
-    type Item = ty::Predicate<'tcx>;
+    type Item = PredicateObligation<'tcx>;
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.stack.len(), None)
     }
 
-    fn next(&mut self) -> Option<ty::Predicate<'tcx>> {
+    fn next(&mut self) -> Option<Self::Item> {
         // Extract next item from top-most stack frame, if any.
-        if let Some(pred) = self.stack.pop() {
-            self.elaborate(&pred);
-            Some(pred)
+        if let Some(obligation) = self.stack.pop() {
+            self.elaborate(&obligation);
+            Some(obligation)
         } else {
             None
         }
@@ -282,12 +310,12 @@ impl<I> FilterToTraits<I> {
     }
 }
 
-impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
+impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToTraits<I> {
     type Item = ty::PolyTraitRef<'tcx>;
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
-        while let Some(pred) = self.base_iterator.next() {
-            if let ty::Predicate::Trait(data, _) = pred {
+        while let Some(obligation) = self.base_iterator.next() {
+            if let ty::Predicate::Trait(data, _) = obligation.predicate {
                 return Some(data.to_poly_trait_ref());
             }
         }

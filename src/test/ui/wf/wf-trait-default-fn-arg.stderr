@@ -2,7 +2,7 @@ error[E0277]: the trait bound `Self: std::cmp::Eq` is not satisfied
   --> $DIR/wf-trait-default-fn-arg.rs:11:22
    |
 LL | struct Bar<T:Eq+?Sized> { value: Box<T> }
-   | ----------------------- required by `Bar`
+   |              -- required by this bound in `Bar`
 ...
 LL |     fn bar(&self, x: &Bar<Self>) {
    |                      ^^^^^^^^^^ - help: consider further restricting `Self`: `where Self: std::cmp::Eq`

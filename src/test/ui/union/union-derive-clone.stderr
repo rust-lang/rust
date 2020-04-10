@@ -3,8 +3,12 @@ error[E0277]: the trait bound `U1: std::marker::Copy` is not satisfied
    |
 LL | #[derive(Clone)]
    |          ^^^^^ the trait `std::marker::Copy` is not implemented for `U1`
+   | 
+  ::: $SRC_DIR/libcore/clone.rs:LL:COL
    |
-   = note: required by `std::clone::AssertParamIsCopy`
+LL | pub struct AssertParamIsCopy<T: Copy + ?Sized> {
+   |                                 ---- required by this bound in `std::clone::AssertParamIsCopy`
+   |
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0599]: no method named `clone` found for union `U5<CloneNoCopy>` in the current scope

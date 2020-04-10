@@ -348,7 +348,10 @@ fn check_predicates<'tcx>(
                 .extend(obligations.into_iter().map(|obligation| obligation.predicate))
         }
     }
-    impl2_predicates.predicates.extend(traits::elaborate_predicates(tcx, always_applicable_traits));
+    impl2_predicates.predicates.extend(
+        traits::elaborate_predicates(tcx, always_applicable_traits)
+            .map(|obligation| obligation.predicate),
+    );
 
     for predicate in impl1_predicates.predicates {
         if !impl2_predicates.predicates.contains(&predicate) {

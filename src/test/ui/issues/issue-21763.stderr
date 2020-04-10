@@ -2,7 +2,7 @@ error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
   --> $DIR/issue-21763.rs:9:5
    |
 LL | fn foo<T: Send>() {}
-   |    ---    ---- required by this bound in `foo`
+   |           ---- required by this bound in `foo`
 ...
 LL |     foo::<HashMap<Rc<()>, Rc<()>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely

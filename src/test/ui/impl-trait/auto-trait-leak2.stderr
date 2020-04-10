@@ -5,7 +5,7 @@ LL | fn before() -> impl Fn(i32) {
    |                ------------ within this `impl std::ops::Fn<(i32,)>`
 ...
 LL | fn send<T: Send>(_: T) {}
-   |    ----    ---- required by this bound in `send`
+   |            ---- required by this bound in `send`
 ...
 LL |     send(before());
    |     ^^^^ `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
@@ -18,7 +18,7 @@ error[E0277]: `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads
   --> $DIR/auto-trait-leak2.rs:16:5
    |
 LL | fn send<T: Send>(_: T) {}
-   |    ----    ---- required by this bound in `send`
+   |            ---- required by this bound in `send`
 ...
 LL |     send(after());
    |     ^^^^ `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely

@@ -2,7 +2,7 @@ error[E0631]: type mismatch in function arguments
   --> $DIR/resume-arg-late-bound.rs:15:10
    |
 LL | fn test(a: impl for<'a> Generator<&'a mut bool>) {}
-   |    ----         ------------------------------- required by this bound in `test`
+   |                 ------------------------------- required by this bound in `test`
 ...
 LL |     test(gen);
    |          ^^^
