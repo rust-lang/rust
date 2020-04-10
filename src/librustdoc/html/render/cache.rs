@@ -697,11 +697,11 @@ fn get_generics(clean_type: &clean::Type) -> Option<Vec<Generic>> {
         let r = types
             .iter()
             .filter_map(|t| {
-                if let Some(name) = get_index_type_name(t, false) {
-                    Some(Generic { name: name.to_ascii_lowercase(), defid: t.def_id(), idx: None })
-                } else {
-                    None
-                }
+                get_index_type_name(t, false).map(|name| Generic {
+                    name: name.to_ascii_lowercase(),
+                    defid: t.def_id(),
+                    idx: None,
+                })
             })
             .collect::<Vec<_>>();
         if r.is_empty() { None } else { Some(r) }

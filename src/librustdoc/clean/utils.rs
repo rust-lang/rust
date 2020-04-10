@@ -208,10 +208,10 @@ pub fn get_real_types(
                             if !adds.is_empty() {
                                 res.extend(adds);
                             } else if !ty.is_full_generic() {
-                                if let Some(did) = ty.def_id() {
-                                    if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                                        res.insert((ty, kind));
-                                    }
+                                if let Some(kind) =
+                                    ty.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx))
+                                {
+                                    res.insert((ty, kind));
                                 }
                             }
                         }
@@ -226,20 +226,18 @@ pub fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     } else if !ty.is_full_generic() {
-                        if let Some(did) = ty.def_id() {
-                            if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                                res.insert((ty.clone(), kind));
-                            }
+                        if let Some(kind) =
+                            ty.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx))
+                        {
+                            res.insert((ty.clone(), kind));
                         }
                     }
                 }
             }
         }
     } else {
-        if let Some(did) = arg.def_id() {
-            if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                res.insert((arg.clone(), kind));
-            }
+        if let Some(kind) = arg.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx)) {
+            res.insert((arg.clone(), kind));
         }
         if let Some(gens) = arg.generics() {
             for gen in gens.iter() {
@@ -248,10 +246,10 @@ pub fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     }
-                } else if let Some(did) = gen.def_id() {
-                    if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                        res.insert((gen.clone(), kind));
-                    }
+                } else if let Some(kind) =
+                    gen.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx))
+                {
+                    res.insert((gen.clone(), kind));
                 }
             }
         }
@@ -277,10 +275,8 @@ pub fn get_all_types(
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            if let Some(did) = arg.type_.def_id() {
-                if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                    all_types.insert((arg.type_.clone(), kind));
-                }
+            if let Some(kind) = arg.type_.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx)) {
+                all_types.insert((arg.type_.clone(), kind));
             }
         }
     }
@@ -289,10 +285,10 @@ pub fn get_all_types(
         FnRetTy::Return(ref return_type) => {
             let mut ret = get_real_types(generics, &return_type, cx, 0);
             if ret.is_empty() {
-                if let Some(did) = return_type.def_id() {
-                    if let Some(kind) = cx.tcx.def_kind(did).clean(cx) {
-                        ret.insert((return_type.clone(), kind));
-                    }
+                if let Some(kind) =
+                    return_type.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx))
+                {
+                    ret.insert((return_type.clone(), kind));
                 }
             }
             ret.into_iter().collect()
