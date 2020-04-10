@@ -347,7 +347,7 @@ impl Types {
                             );
                             return; // don't recurse into the type
                         }
-                    } else if Some(def_id) == cx.tcx.lang_items().rc() {
+                    } else if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
                         if let Some(span) = match_type_parameter(cx, qpath, &paths::RC) {
                             span_lint_and_sugg(
                                 cx,
