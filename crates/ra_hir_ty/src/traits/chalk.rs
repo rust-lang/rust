@@ -20,6 +20,8 @@ use crate::{
     ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
 
+pub(super) mod tls;
+
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Interner;
 
@@ -33,90 +35,85 @@ impl chalk_ir::interner::Interner for Interner {
     type Identifier = TypeAliasId;
     type DefId = InternId;
 
-    // FIXME: implement these
     fn debug_struct_id(
-        _type_kind_id: chalk_ir::StructId<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
+        type_kind_id: StructId,
+        fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        None
+        tls::with_current_program(|prog| Some(prog?.debug_struct_id(type_kind_id, fmt)))
     }
 
-    fn debug_trait_id(
-        _type_kind_id: chalk_ir::TraitId<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
-    ) -> Option<fmt::Result> {
-        None
+    fn debug_trait_id(type_kind_id: TraitId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_trait_id(type_kind_id, fmt)))
     }
 
-    fn debug_assoc_type_id(
-        _id: chalk_ir::AssocTypeId<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
-    ) -> Option<fmt::Result> {
-        None
+    fn debug_assoc_type_id(id: AssocTypeId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_assoc_type_id(id, fmt)))
     }
 
     fn debug_alias(
-        _projection: &chalk_ir::AliasTy<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
+        alias: &chalk_ir::AliasTy<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        None
+        tls::with_current_program(|prog| Some(prog?.debug_alias(alias, fmt)))
     }
 
-    fn debug_ty(_ty: &chalk_ir::Ty<Self>, _fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
-        None
+    fn debug_ty(ty: &chalk_ir::Ty<Interner>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_ty(ty, fmt)))
     }
 
     fn debug_lifetime(
-        _lifetime: &chalk_ir::Lifetime<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
+        lifetime: &chalk_ir::Lifetime<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        None
+        tls::with_current_program(|prog| Some(prog?.debug_lifetime(lifetime, fmt)))
     }
 
     fn debug_parameter(
-        _parameter: &Parameter<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
+        parameter: &Parameter<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        None
+        tls::with_current_program(|prog| Some(prog?.debug_parameter(parameter, fmt)))
     }
 
-    fn debug_goal(_goal: &Goal<Self>, _fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
-        None
+    fn debug_goal(goal: &Goal<Interner>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_goal(goal, fmt)))
     }
 
     fn debug_goals(
-        _goals: &chalk_ir::Goals<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
+        goals: &chalk_ir::Goals<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        None
+        tls::with_current_program(|prog| Some(prog?.debug_goals(goals, fmt)))
     }
 
     fn debug_program_clause_implication(
-        _pci: &chalk_ir::ProgramClauseImplication<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
+        pci: &chalk_ir::ProgramClauseImplication<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        None
+        tls::with_current_program(|prog| Some(prog?.debug_program_clause_implication(pci, fmt)))
     }
 
     fn debug_application_ty(
-        _application_ty: &chalk_ir::ApplicationTy<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
+        application_ty: &chalk_ir::ApplicationTy<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        None
+        tls::with_current_program(|prog| Some(prog?.debug_application_ty(application_ty, fmt)))
     }
 
     fn debug_substitution(
-        _substitution: &chalk_ir::Substitution<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
+        substitution: &chalk_ir::Substitution<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        None
+        tls::with_current_program(|prog| Some(prog?.debug_substitution(substitution, fmt)))
     }
 
     fn debug_separator_trait_ref(
-        _separator_trait_ref: &chalk_ir::SeparatorTraitRef<Self>,
-        _fmt: &mut fmt::Formatter<'_>,
+        separator_trait_ref: &chalk_ir::SeparatorTraitRef<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        None
+        tls::with_current_program(|prog| {
+            Some(prog?.debug_separator_trait_ref(separator_trait_ref, fmt))
+        })
     }
 
     fn intern_ty(&self, ty: chalk_ir::TyData<Self>) -> Box<chalk_ir::TyData<Self>> {

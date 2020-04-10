@@ -177,7 +177,7 @@ fn solve(
 
     let fuel = std::cell::Cell::new(CHALK_SOLVER_FUEL);
 
-    let solution = solver.solve_limited(&context, goal, || {
+    let should_continue = || {
         context.db.check_canceled();
         let remaining = fuel.get();
         fuel.set(remaining - 1);
@@ -185,10 +185,19 @@ fn solve(
             log::debug!("fuel exhausted");
         }
         remaining > 0
-    });
+    };
+    let mut solve = || solver.solve_limited(&context, goal, should_continue);
+    // don't set the TLS for Chalk unless Chalk debugging is active, to make
+    // extra sure we only use it for debugging
+    let solution =
+        if is_chalk_debug() { chalk::tls::set_current_program(db, solve) } else { solve() };
 
     log::debug!("solve({:?}) => {:?}", goal, solution);
     solution
+}
+
+fn is_chalk_debug() -> bool {
+    std::env::var("CHALK_DEBUG").is_ok()
 }
 
 fn solution_from_chalk(

@@ -995,6 +995,7 @@ dependencies = [
  "ra_prof",
  "ra_syntax",
  "rustc-hash",
+ "scoped-tls",
  "smallvec",
  "stdx",
  "test_utils",
@@ -1389,6 +1390,12 @@ checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
 ]
+
+[[package]]
+name = "scoped-tls"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
 
 [[package]]
 name = "scopeguard"
