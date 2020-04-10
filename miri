@@ -141,8 +141,10 @@ run|run-debug)
     exec cargo run $CARGO_BUILD_FLAGS -- --sysroot "$MIRI_SYSROOT" "$@"
     ;;
 *)
-    echo "Unknown command: $COMMAND"
-    echo
+    if [ -n "$COMMAND" ]; then
+      echo "Unknown command: $COMMAND"
+      echo
+    fi
     echo "$USAGE"
     exit 1
 esac
