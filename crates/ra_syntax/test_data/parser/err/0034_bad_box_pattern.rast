@@ -34,7 +34,7 @@ SOURCE_FILE@[0; 91)
             TUPLE_EXPR@[32; 34)
               L_PAREN@[32; 33) "("
               R_PAREN@[33; 34) ")"
-          SEMI@[34; 35) ";"
+          SEMICOLON@[34; 35) ";"
         WHITESPACE@[35; 40) "\n    "
         LET_STMT@[40; 51)
           LET_KW@[40; 43) "let"
@@ -58,7 +58,7 @@ SOURCE_FILE@[0; 91)
             TUPLE_EXPR@[56; 58)
               L_PAREN@[56; 57) "("
               R_PAREN@[57; 58) ")"
-          SEMI@[58; 59) ";"
+          SEMICOLON@[58; 59) ";"
         WHITESPACE@[59; 64) "\n    "
         LET_STMT@[64; 79)
           LET_KW@[64; 67) "let"
@@ -84,13 +84,13 @@ SOURCE_FILE@[0; 91)
             TUPLE_EXPR@[84; 86)
               L_PAREN@[84; 85) "("
               R_PAREN@[85; 86) ")"
-          SEMI@[86; 87) ";"
+          SEMICOLON@[86; 87) ";"
         WHITESPACE@[87; 88) "\n"
         R_CURLY@[88; 89) "}"
   WHITESPACE@[89; 91) "\n\n"
 error [24; 24): expected a name
-error [27; 27): expected SEMI
+error [27; 27): expected SEMICOLON
 error [48; 48): expected a name
-error [51; 51): expected SEMI
+error [51; 51): expected SEMICOLON
 error [76; 76): expected a name
-error [79; 79): expected SEMI
+error [79; 79): expected SEMICOLON

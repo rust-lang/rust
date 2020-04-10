@@ -32,7 +32,7 @@ SOURCE_FILE@[0; 46)
             WHITESPACE@[28; 29) " "
             LITERAL@[29; 30)
               INT_NUMBER@[29; 30) "2"
-          SEMI@[30; 31) ";"
+          SEMICOLON@[30; 31) ";"
         WHITESPACE@[31; 36) "\n    "
         EXPR_STMT@[36; 39)
           BLOCK_EXPR@[36; 39)
@@ -47,7 +47,7 @@ SOURCE_FILE@[0; 46)
             AMP@[40; 41) "&"
             LITERAL@[41; 42)
               INT_NUMBER@[41; 42) "2"
-          SEMI@[42; 43) ";"
+          SEMICOLON@[42; 43) ";"
         WHITESPACE@[43; 44) "\n"
         R_CURLY@[44; 45) "}"
   WHITESPACE@[45; 46) "\n"

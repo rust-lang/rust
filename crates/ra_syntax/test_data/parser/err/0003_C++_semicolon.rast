@@ -34,6 +34,6 @@ SOURCE_FILE@[0; 40)
       WHITESPACE@[37; 38) "\n"
       R_CURLY@[38; 39) "}"
   ERROR@[39; 40)
-    SEMI@[39; 40) ";"
+    SEMICOLON@[39; 40) ";"
 error [39; 39): expected item, found `;`
 consider removing this semicolon

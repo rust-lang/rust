@@ -18,12 +18,12 @@ SOURCE_FILE@[0; 55)
                 PATH_SEGMENT@[14; 17)
                   NAME_REF@[14; 17)
                     IDENT@[14; 17) "Bar"
-              COLONCOLON@[17; 19) "::"
+              COLON2@[17; 19) "::"
               PATH_SEGMENT@[19; 22)
                 NAME_REF@[19; 22)
                   IDENT@[19; 22) "Baz"
         R_PAREN@[22; 23) ")"
-    SEMI@[23; 24) ";"
+    SEMICOLON@[23; 24) ";"
   WHITESPACE@[24; 25) "\n"
   TYPE_ALIAS_DEF@[25; 54)
     TYPE_KW@[25; 29) "type"
@@ -49,10 +49,10 @@ SOURCE_FILE@[0; 55)
                 PATH_SEGMENT@[44; 47)
                   NAME_REF@[44; 47)
                     IDENT@[44; 47) "Bar"
-              COLONCOLON@[47; 49) "::"
+              COLON2@[47; 49) "::"
               PATH_SEGMENT@[49; 52)
                 NAME_REF@[49; 52)
                   IDENT@[49; 52) "Baz"
         R_PAREN@[52; 53) ")"
-    SEMI@[53; 54) ";"
+    SEMICOLON@[53; 54) ";"
   WHITESPACE@[54; 55) "\n"

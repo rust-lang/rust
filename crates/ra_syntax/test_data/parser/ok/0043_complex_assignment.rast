@@ -22,7 +22,7 @@ SOURCE_FILE@[0; 160)
               PATH_SEGMENT@[82; 84)
                 NAME_REF@[82; 84)
                   IDENT@[82; 84) "u8"
-          SEMI@[84; 85) ";"
+          SEMICOLON@[84; 85) ";"
           WHITESPACE@[85; 86) " "
           LITERAL@[86; 87)
             INT_NUMBER@[86; 87) "1"
@@ -80,7 +80,7 @@ SOURCE_FILE@[0; 160)
             WHITESPACE@[133; 134) " "
             LITERAL@[134; 135)
               INT_NUMBER@[134; 135) "0"
-          SEMI@[135; 136) ";"
+          SEMICOLON@[135; 136) ";"
         WHITESPACE@[136; 141) "\n    "
         EXPR_STMT@[141; 157)
           CALL_EXPR@[141; 156)
@@ -104,7 +104,7 @@ SOURCE_FILE@[0; 160)
             ARG_LIST@[154; 156)
               L_PAREN@[154; 155) "("
               R_PAREN@[155; 156) ")"
-          SEMI@[156; 157) ";"
+          SEMICOLON@[156; 157) ";"
         WHITESPACE@[157; 158) "\n"
         R_CURLY@[158; 159) "}"
   WHITESPACE@[159; 160) "\n"

@@ -10,7 +10,7 @@ SOURCE_FILE@[0; 250)
         NAME@[9; 10)
           IDENT@[9; 10) "T"
       R_ANGLE@[10; 11) ">"
-    SEMI@[11; 12) ";"
+    SEMICOLON@[11; 12) ";"
   WHITESPACE@[12; 13) "\n"
   STRUCT_DEF@[13; 26)
     STRUCT_KW@[13; 19) "struct"
@@ -25,7 +25,7 @@ SOURCE_FILE@[0; 250)
         COLON@[23; 24) ":"
         TYPE_BOUND_LIST@[24; 24)
       R_ANGLE@[24; 25) ">"
-    SEMI@[25; 26) ";"
+    SEMICOLON@[25; 26) ";"
   WHITESPACE@[26; 27) "\n"
   STRUCT_DEF@[27; 43)
     STRUCT_KW@[27; 33) "struct"
@@ -43,7 +43,7 @@ SOURCE_FILE@[0; 250)
           TYPE_BOUND@[39; 41)
             LIFETIME@[39; 41) "\'a"
       R_ANGLE@[41; 42) ">"
-    SEMI@[42; 43) ";"
+    SEMICOLON@[42; 43) ";"
   WHITESPACE@[43; 44) "\n"
   STRUCT_DEF@[44; 63)
     STRUCT_KW@[44; 50) "struct"
@@ -64,7 +64,7 @@ SOURCE_FILE@[0; 250)
           PLUS@[59; 60) "+"
       WHITESPACE@[60; 61) " "
       R_ANGLE@[61; 62) ">"
-    SEMI@[62; 63) ";"
+    SEMICOLON@[62; 63) ";"
   WHITESPACE@[63; 64) "\n"
   STRUCT_DEF@[64; 86)
     STRUCT_KW@[64; 70) "struct"
@@ -88,7 +88,7 @@ SOURCE_FILE@[0; 250)
             LIFETIME@[81; 83) "\'d"
       WHITESPACE@[83; 84) " "
       R_ANGLE@[84; 85) ">"
-    SEMI@[85; 86) ";"
+    SEMICOLON@[85; 86) ";"
   WHITESPACE@[86; 87) "\n"
   STRUCT_DEF@[87; 116)
     STRUCT_KW@[87; 93) "struct"
@@ -120,7 +120,7 @@ SOURCE_FILE@[0; 250)
                   NAME_REF@[109; 114)
                     IDENT@[109; 114) "Clone"
       R_ANGLE@[114; 115) ">"
-    SEMI@[115; 116) ";"
+    SEMICOLON@[115; 116) ";"
   WHITESPACE@[116; 117) "\n"
   STRUCT_DEF@[117; 143)
     STRUCT_KW@[117; 123) "struct"
@@ -151,7 +151,7 @@ SOURCE_FILE@[0; 250)
                   NAME_REF@[137; 141)
                     IDENT@[137; 141) "Copy"
       R_ANGLE@[141; 142) ">"
-    SEMI@[142; 143) ";"
+    SEMICOLON@[142; 143) ";"
   WHITESPACE@[143; 144) "\n"
   STRUCT_DEF@[144; 180)
     STRUCT_KW@[144; 150) "struct"
@@ -170,7 +170,7 @@ SOURCE_FILE@[0; 250)
             PATH_TYPE@[156; 161)
               PATH@[156; 161)
                 PATH_SEGMENT@[156; 161)
-                  COLONCOLON@[156; 158) "::"
+                  COLON2@[156; 158) "::"
                   NAME_REF@[158; 161)
                     IDENT@[158; 161) "Foo"
           WHITESPACE@[161; 162) " "
@@ -182,7 +182,7 @@ SOURCE_FILE@[0; 250)
                 PATH@[164; 168)
                   PATH_SEGMENT@[164; 168)
                     SELF_KW@[164; 168) "self"
-                COLONCOLON@[168; 170) "::"
+                COLON2@[168; 170) "::"
                 PATH_SEGMENT@[170; 173)
                   NAME_REF@[170; 173)
                     IDENT@[170; 173) "Bar"
@@ -192,7 +192,7 @@ SOURCE_FILE@[0; 250)
           TYPE_BOUND@[176; 178)
             LIFETIME@[176; 178) "\'a"
       R_ANGLE@[178; 179) ">"
-    SEMI@[179; 180) ";"
+    SEMICOLON@[179; 180) ";"
   WHITESPACE@[180; 181) "\n"
   STRUCT_DEF@[181; 199)
     STRUCT_KW@[181; 187) "struct"
@@ -215,7 +215,7 @@ SOURCE_FILE@[0; 250)
         TYPE_BOUND_LIST@[196; 196)
       COMMA@[196; 197) ","
       R_ANGLE@[197; 198) ">"
-    SEMI@[198; 199) ";"
+    SEMICOLON@[198; 199) ";"
   WHITESPACE@[199; 200) "\n"
   STRUCT_DEF@[200; 250)
     STRUCT_KW@[200; 206) "struct"
@@ -265,4 +265,4 @@ SOURCE_FILE@[0; 250)
                   NAME_REF@[243; 248)
                     IDENT@[243; 248) "Clone"
       R_ANGLE@[248; 249) ">"
-    SEMI@[249; 250) ";"
+    SEMICOLON@[249; 250) ";"

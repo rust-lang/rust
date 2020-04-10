@@ -395,7 +395,7 @@ pub fn skip_slow_tests() -> bool {
     should_skip
 }
 
-const REWRITE: bool = false;
+const REWRITE: bool = true;
 
 /// Asserts that `expected` and `actual` strings are equal. If they differ only
 /// in trailing or leading whitespace the test won't fail and

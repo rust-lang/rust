@@ -31,7 +31,7 @@ SOURCE_FILE@[0; 79)
             WHITESPACE@[24; 25) " "
             LITERAL@[25; 26)
               INT_NUMBER@[25; 26) "3"
-          SEMI@[26; 27) ";"
+          SEMICOLON@[26; 27) ";"
         WHITESPACE@[27; 32) "\n    "
         EXPR_STMT@[32; 43)
           CAST_EXPR@[32; 42)
@@ -49,7 +49,7 @@ SOURCE_FILE@[0; 79)
                 PATH_SEGMENT@[39; 42)
                   NAME_REF@[39; 42)
                     IDENT@[39; 42) "u64"
-          SEMI@[42; 43) ";"
+          SEMICOLON@[42; 43) ";"
         WHITESPACE@[43; 48) "\n    "
         EXPR_STMT@[48; 54)
           PREFIX_EXPR@[48; 53)
@@ -65,7 +65,7 @@ SOURCE_FILE@[0; 79)
                 LITERAL@[51; 52)
                   INT_NUMBER@[51; 52) "1"
                 R_PAREN@[52; 53) ")"
-          SEMI@[53; 54) ";"
+          SEMICOLON@[53; 54) ";"
         WHITESPACE@[54; 59) "\n    "
         EXPR_STMT@[59; 65)
           REF_EXPR@[59; 64)
@@ -80,7 +80,7 @@ SOURCE_FILE@[0; 79)
               LITERAL@[62; 63)
                 INT_NUMBER@[62; 63) "1"
               R_BRACK@[63; 64) "]"
-          SEMI@[64; 65) ";"
+          SEMICOLON@[64; 65) ";"
         WHITESPACE@[65; 70) "\n    "
         EXPR_STMT@[70; 76)
           RANGE_EXPR@[70; 75)
@@ -88,10 +88,10 @@ SOURCE_FILE@[0; 79)
               MINUS@[70; 71) "-"
               LITERAL@[71; 72)
                 INT_NUMBER@[71; 72) "1"
-            DOTDOT@[72; 74) ".."
+            DOT2@[72; 74) ".."
             LITERAL@[74; 75)
               INT_NUMBER@[74; 75) "2"
-          SEMI@[75; 76) ";"
+          SEMICOLON@[75; 76) ";"
         WHITESPACE@[76; 77) "\n"
         R_CURLY@[77; 78) "}"
   WHITESPACE@[78; 79) "\n"

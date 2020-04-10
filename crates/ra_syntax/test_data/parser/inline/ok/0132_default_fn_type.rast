@@ -34,7 +34,7 @@ SOURCE_FILE@[0; 69)
             PATH_SEGMENT@[38; 41)
               NAME_REF@[38; 41)
                 IDENT@[38; 41) "Bar"
-        SEMI@[41; 42) ";"
+        SEMICOLON@[41; 42) ";"
       WHITESPACE@[42; 47) "\n    "
       FN_DEF@[47; 66)
         DEFAULT_KW@[47; 54) "default"

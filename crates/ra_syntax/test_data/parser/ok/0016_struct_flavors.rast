@@ -4,7 +4,7 @@ SOURCE_FILE@[0; 97)
     WHITESPACE@[6; 7) " "
     NAME@[7; 8)
       IDENT@[7; 8) "A"
-    SEMI@[8; 9) ";"
+    SEMICOLON@[8; 9) ";"
   WHITESPACE@[9; 10) "\n"
   STRUCT_DEF@[10; 21)
     STRUCT_KW@[10; 16) "struct"
@@ -24,7 +24,7 @@ SOURCE_FILE@[0; 97)
     TUPLE_FIELD_DEF_LIST@[30; 32)
       L_PAREN@[30; 31) "("
       R_PAREN@[31; 32) ")"
-    SEMI@[32; 33) ";"
+    SEMICOLON@[32; 33) ";"
   WHITESPACE@[33; 35) "\n\n"
   STRUCT_DEF@[35; 74)
     STRUCT_KW@[35; 41) "struct"
@@ -89,5 +89,5 @@ SOURCE_FILE@[0; 97)
                 IDENT@[92; 93) "y"
       COMMA@[93; 94) ","
       R_PAREN@[94; 95) ")"
-    SEMI@[95; 96) ";"
+    SEMICOLON@[95; 96) ";"
   WHITESPACE@[96; 97) "\n"

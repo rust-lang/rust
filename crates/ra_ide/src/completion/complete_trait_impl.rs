@@ -35,7 +35,7 @@ use hir::{self, Docs, HasSource};
 use ra_assists::utils::get_missing_impl_items;
 use ra_syntax::{
     ast::{self, edit, ImplDef},
-    AstNode, SyntaxKind, SyntaxNode, TextRange,
+    AstNode, SyntaxKind, SyntaxNode, TextRange, T,
 };
 use ra_text_edit::TextEdit;
 
@@ -204,7 +204,7 @@ fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
     let end = const_
         .syntax()
         .children_with_tokens()
-        .find(|s| s.kind() == SyntaxKind::SEMI || s.kind() == SyntaxKind::EQ)
+        .find(|s| s.kind() == T![;] || s.kind() == T![=])
         .map_or(const_end, |f| f.text_range().start());
 
     let len = end - start;

@@ -16,5 +16,5 @@ SOURCE_FILE@[0; 21)
     TUPLE_TYPE@[17; 19)
       L_PAREN@[17; 18) "("
       R_PAREN@[18; 19) ")"
-    SEMI@[19; 20) ";"
+    SEMICOLON@[19; 20) ";"
   WHITESPACE@[20; 21) "\n"

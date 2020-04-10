@@ -64,7 +64,7 @@ SOURCE_FILE@[0; 83)
             NAME_REF@[67; 70)
               IDENT@[67; 70) "max"
             TYPE_ARG_LIST@[70; 77)
-              COLONCOLON@[70; 72) "::"
+              COLON2@[70; 72) "::"
               L_ANGLE@[72; 73) "<"
               TYPE_ARG@[73; 76)
                 PATH_TYPE@[73; 76)
@@ -76,7 +76,7 @@ SOURCE_FILE@[0; 83)
             ARG_LIST@[77; 79)
               L_PAREN@[77; 78) "("
               R_PAREN@[78; 79) ")"
-          SEMI@[79; 80) ";"
+          SEMICOLON@[79; 80) ";"
         WHITESPACE@[80; 81) "\n"
         R_CURLY@[81; 82) "}"
   WHITESPACE@[82; 83) "\n"

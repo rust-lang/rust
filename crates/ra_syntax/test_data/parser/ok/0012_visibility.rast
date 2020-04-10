@@ -82,11 +82,11 @@ SOURCE_FILE@[0; 98)
             PATH_SEGMENT@[73; 76)
               NAME_REF@[73; 76)
                 IDENT@[73; 76) "foo"
-          COLONCOLON@[76; 78) "::"
+          COLON2@[76; 78) "::"
           PATH_SEGMENT@[78; 81)
             NAME_REF@[78; 81)
               IDENT@[78; 81) "bar"
-        COLONCOLON@[81; 83) "::"
+        COLON2@[81; 83) "::"
         PATH_SEGMENT@[83; 86)
           NAME_REF@[83; 86)
             IDENT@[83; 86) "baz"

@@ -78,7 +78,7 @@ SOURCE_FILE@[0; 575)
           WHITESPACE@[183; 184) " "
           LITERAL@[184; 185)
             INT_NUMBER@[184; 185) "1"
-          SEMI@[185; 186) ";"
+          SEMICOLON@[185; 186) ";"
         WHITESPACE@[186; 191) "\n    "
         ENUM_DEF@[191; 223)
           ENUM_KW@[191; 195) "enum"
@@ -185,7 +185,7 @@ SOURCE_FILE@[0; 575)
           WHITESPACE@[507; 508) " "
           ERROR@[508; 509)
             UNDERSCORE@[508; 509) "_"
-          SEMI@[509; 510) ";"
+          SEMICOLON@[509; 510) ";"
         WHITESPACE@[510; 511) " "
         COMMENT@[511; 572) "//~ ERROR: expected e ..."
         WHITESPACE@[572; 573) "\n"

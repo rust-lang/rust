@@ -8,6 +8,6 @@ SOURCE_FILE@[0; 19)
     WHITESPACE@[13; 14) " "
     NAME@[14; 17)
       IDENT@[14; 17) "Foo"
-    SEMI@[17; 18) ";"
+    SEMICOLON@[17; 18) ";"
   WHITESPACE@[18; 19) "\n"
 error [6; 6): expected existential, fn, trait or impl

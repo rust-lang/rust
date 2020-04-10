@@ -18,5 +18,5 @@ SOURCE_FILE@[0; 19)
               NAME_REF@[13; 16)
                 IDENT@[13; 16) "i32"
       R_ANGLE@[16; 17) ">"
-    SEMI@[17; 18) ";"
+    SEMICOLON@[17; 18) ";"
   WHITESPACE@[18; 19) "\n"

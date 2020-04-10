@@ -10,7 +10,7 @@ SOURCE_FILE@[0; 49)
     TUPLE_TYPE@[9; 11)
       L_PAREN@[9; 10) "("
       R_PAREN@[10; 11) ")"
-    SEMI@[11; 12) ";"
+    SEMICOLON@[11; 12) ";"
   WHITESPACE@[12; 14) "\n\n"
   FN_DEF@[14; 48)
     FN_KW@[14; 16) "fn"
@@ -35,7 +35,7 @@ SOURCE_FILE@[0; 49)
           PATH_TYPE@[37; 40)
             PATH@[37; 40)
               PATH_SEGMENT@[37; 40)
-                COLONCOLON@[37; 39) "::"
+                COLON2@[37; 39) "::"
                 NAME_REF@[39; 40)
                   IDENT@[39; 40) "X"
           WHITESPACE@[40; 41) " "
@@ -44,7 +44,7 @@ SOURCE_FILE@[0; 49)
           TUPLE_EXPR@[43; 45)
             L_PAREN@[43; 44) "("
             R_PAREN@[44; 45) ")"
-          SEMI@[45; 46) ";"
+          SEMICOLON@[45; 46) ";"
         WHITESPACE@[46; 47) "\n"
         R_CURLY@[47; 48) "}"
   WHITESPACE@[48; 49) "\n"

@@ -43,7 +43,7 @@ SOURCE_FILE@[0; 506)
                   ARG_LIST@[98; 100)
                     L_PAREN@[98; 99) "("
                     R_PAREN@[99; 100) ")"
-                SEMI@[100; 101) ";"
+                SEMICOLON@[100; 101) ";"
               WHITESPACE@[101; 110) "\n        "
               EXPR_STMT@[110; 170)
                 IF_EXPR@[110; 170)
@@ -69,7 +69,7 @@ SOURCE_FILE@[0; 506)
                           BREAK_KW@[147; 152) "break"
                           WHITESPACE@[152; 153) " "
                           LIFETIME@[153; 159) "\'block"
-                        SEMI@[159; 160) ";"
+                        SEMICOLON@[159; 160) ";"
                       WHITESPACE@[160; 169) "\n        "
                       R_CURLY@[169; 170) "}"
               WHITESPACE@[170; 179) "\n        "
@@ -83,7 +83,7 @@ SOURCE_FILE@[0; 506)
                   ARG_LIST@[192; 194)
                     L_PAREN@[192; 193) "("
                     R_PAREN@[193; 194) ")"
-                SEMI@[194; 195) ";"
+                SEMICOLON@[194; 195) ";"
               WHITESPACE@[195; 204) "\n        "
               EXPR_STMT@[204; 264)
                 IF_EXPR@[204; 264)
@@ -109,7 +109,7 @@ SOURCE_FILE@[0; 506)
                           BREAK_KW@[241; 246) "break"
                           WHITESPACE@[246; 247) " "
                           LIFETIME@[247; 253) "\'block"
-                        SEMI@[253; 254) ";"
+                        SEMICOLON@[253; 254) ";"
                       WHITESPACE@[254; 263) "\n        "
                       R_CURLY@[263; 264) "}"
               WHITESPACE@[264; 273) "\n        "
@@ -123,7 +123,7 @@ SOURCE_FILE@[0; 506)
                   ARG_LIST@[286; 288)
                     L_PAREN@[286; 287) "("
                     R_PAREN@[287; 288) ")"
-                SEMI@[288; 289) ";"
+                SEMICOLON@[288; 289) ";"
               WHITESPACE@[289; 294) "\n    "
               R_CURLY@[294; 295) "}"
         WHITESPACE@[295; 301) "\n\n    "
@@ -173,7 +173,7 @@ SOURCE_FILE@[0; 506)
                           WHITESPACE@[390; 391) " "
                           LITERAL@[391; 392)
                             INT_NUMBER@[391; 392) "1"
-                        SEMI@[392; 393) ";"
+                        SEMICOLON@[392; 393) ";"
                       WHITESPACE@[393; 402) "\n        "
                       R_CURLY@[402; 403) "}"
               WHITESPACE@[403; 412) "\n        "
@@ -206,7 +206,7 @@ SOURCE_FILE@[0; 506)
                           WHITESPACE@[473; 474) " "
                           LITERAL@[474; 475)
                             INT_NUMBER@[474; 475) "2"
-                        SEMI@[475; 476) ";"
+                        SEMICOLON@[475; 476) ";"
                       WHITESPACE@[476; 485) "\n        "
                       R_CURLY@[485; 486) "}"
               WHITESPACE@[486; 495) "\n        "
@@ -214,7 +214,7 @@ SOURCE_FILE@[0; 506)
                 INT_NUMBER@[495; 496) "3"
               WHITESPACE@[496; 501) "\n    "
               R_CURLY@[501; 502) "}"
-          SEMI@[502; 503) ";"
+          SEMICOLON@[502; 503) ";"
         WHITESPACE@[503; 504) "\n"
         R_CURLY@[504; 505) "}"
   WHITESPACE@[505; 506) "\n"

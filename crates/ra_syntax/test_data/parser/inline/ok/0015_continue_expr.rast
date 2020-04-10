@@ -22,14 +22,14 @@ SOURCE_FILE@[0; 69)
               EXPR_STMT@[30; 39)
                 CONTINUE_EXPR@[30; 38)
                   CONTINUE_KW@[30; 38) "continue"
-                SEMI@[38; 39) ";"
+                SEMICOLON@[38; 39) ";"
               WHITESPACE@[39; 48) "\n        "
               EXPR_STMT@[48; 60)
                 CONTINUE_EXPR@[48; 59)
                   CONTINUE_KW@[48; 56) "continue"
                   WHITESPACE@[56; 57) " "
                   LIFETIME@[57; 59) "\'l"
-                SEMI@[59; 60) ";"
+                SEMICOLON@[59; 60) ";"
               WHITESPACE@[60; 65) "\n    "
               R_CURLY@[65; 66) "}"
         WHITESPACE@[66; 67) "\n"

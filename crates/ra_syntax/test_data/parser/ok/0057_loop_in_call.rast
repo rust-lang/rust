@@ -54,6 +54,6 @@ SOURCE_FILE@[0; 50)
                     L_CURLY@[44; 45) "{"
                     R_CURLY@[45; 46) "}"
               R_PAREN@[46; 47) ")"
-          SEMI@[47; 48) ";"
+          SEMICOLON@[47; 48) ";"
         WHITESPACE@[48; 49) "\n"
         R_CURLY@[49; 50) "}"

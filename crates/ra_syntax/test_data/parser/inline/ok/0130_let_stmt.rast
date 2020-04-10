@@ -18,7 +18,7 @@ SOURCE_FILE@[0; 135)
           BIND_PAT@[19; 20)
             NAME@[19; 20)
               IDENT@[19; 20) "a"
-          SEMI@[20; 21) ";"
+          SEMICOLON@[20; 21) ";"
         WHITESPACE@[21; 26) "\n    "
         LET_STMT@[26; 37)
           LET_KW@[26; 29) "let"
@@ -33,7 +33,7 @@ SOURCE_FILE@[0; 135)
               PATH_SEGMENT@[33; 36)
                 NAME_REF@[33; 36)
                   IDENT@[33; 36) "i32"
-          SEMI@[36; 37) ";"
+          SEMICOLON@[36; 37) ";"
         WHITESPACE@[37; 42) "\n    "
         LET_STMT@[42; 53)
           LET_KW@[42; 45) "let"
@@ -46,7 +46,7 @@ SOURCE_FILE@[0; 135)
           WHITESPACE@[49; 50) " "
           LITERAL@[50; 52)
             INT_NUMBER@[50; 52) "92"
-          SEMI@[52; 53) ";"
+          SEMICOLON@[52; 53) ";"
         WHITESPACE@[53; 58) "\n    "
         LET_STMT@[58; 74)
           LET_KW@[58; 61) "let"
@@ -66,7 +66,7 @@ SOURCE_FILE@[0; 135)
           WHITESPACE@[70; 71) " "
           LITERAL@[71; 73)
             INT_NUMBER@[71; 73) "92"
-          SEMI@[73; 74) ";"
+          SEMICOLON@[73; 74) ";"
         WHITESPACE@[74; 79) "\n    "
         LET_STMT@[79; 88)
           LET_KW@[79; 82) "let"
@@ -77,8 +77,8 @@ SOURCE_FILE@[0; 135)
           COLON@[84; 85) ":"
           WHITESPACE@[85; 86) " "
           NEVER_TYPE@[86; 87)
-            EXCL@[86; 87) "!"
-          SEMI@[87; 88) ";"
+            BANG@[86; 87) "!"
+          SEMICOLON@[87; 88) ";"
         WHITESPACE@[88; 93) "\n    "
         LET_STMT@[93; 107)
           LET_KW@[93; 96) "let"
@@ -88,7 +88,7 @@ SOURCE_FILE@[0; 135)
           COLON@[98; 99) ":"
           WHITESPACE@[99; 100) " "
           NEVER_TYPE@[100; 101)
-            EXCL@[100; 101) "!"
+            BANG@[100; 101) "!"
           WHITESPACE@[101; 102) " "
           EQ@[102; 103) "="
           WHITESPACE@[103; 104) " "
@@ -96,7 +96,7 @@ SOURCE_FILE@[0; 135)
             BLOCK@[104; 106)
               L_CURLY@[104; 105) "{"
               R_CURLY@[105; 106) "}"
-          SEMI@[106; 107) ";"
+          SEMICOLON@[106; 107) ";"
         WHITESPACE@[107; 112) "\n    "
         LET_STMT@[112; 132)
           LET_KW@[112; 115) "let"
@@ -123,7 +123,7 @@ SOURCE_FILE@[0; 135)
               BLOCK@[129; 131)
                 L_CURLY@[129; 130) "{"
                 R_CURLY@[130; 131) "}"
-          SEMI@[131; 132) ";"
+          SEMICOLON@[131; 132) ";"
         WHITESPACE@[132; 133) "\n"
         R_CURLY@[133; 134) "}"
   WHITESPACE@[134; 135) "\n"

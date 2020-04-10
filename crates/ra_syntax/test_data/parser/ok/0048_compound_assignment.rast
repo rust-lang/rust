@@ -27,7 +27,7 @@ SOURCE_FILE@[0; 257)
           WHITESPACE@[102; 103) " "
           LITERAL@[103; 104)
             INT_NUMBER@[103; 104) "0"
-          SEMI@[104; 105) ";"
+          SEMICOLON@[104; 105) ";"
         WHITESPACE@[105; 110) "\n    "
         EXPR_STMT@[110; 117)
           BIN_EXPR@[110; 116)
@@ -41,7 +41,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[114; 115) " "
             LITERAL@[115; 116)
               INT_NUMBER@[115; 116) "1"
-          SEMI@[116; 117) ";"
+          SEMICOLON@[116; 117) ";"
         WHITESPACE@[117; 122) "\n    "
         EXPR_STMT@[122; 129)
           BIN_EXPR@[122; 128)
@@ -55,7 +55,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[126; 127) " "
             LITERAL@[127; 128)
               INT_NUMBER@[127; 128) "2"
-          SEMI@[128; 129) ";"
+          SEMICOLON@[128; 129) ";"
         WHITESPACE@[129; 134) "\n    "
         EXPR_STMT@[134; 141)
           BIN_EXPR@[134; 140)
@@ -69,7 +69,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[138; 139) " "
             LITERAL@[139; 140)
               INT_NUMBER@[139; 140) "3"
-          SEMI@[140; 141) ";"
+          SEMICOLON@[140; 141) ";"
         WHITESPACE@[141; 146) "\n    "
         EXPR_STMT@[146; 153)
           BIN_EXPR@[146; 152)
@@ -83,7 +83,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[150; 151) " "
             LITERAL@[151; 152)
               INT_NUMBER@[151; 152) "4"
-          SEMI@[152; 153) ";"
+          SEMICOLON@[152; 153) ";"
         WHITESPACE@[153; 158) "\n    "
         EXPR_STMT@[158; 165)
           BIN_EXPR@[158; 164)
@@ -97,7 +97,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[162; 163) " "
             LITERAL@[163; 164)
               INT_NUMBER@[163; 164) "5"
-          SEMI@[164; 165) ";"
+          SEMICOLON@[164; 165) ";"
         WHITESPACE@[165; 170) "\n    "
         EXPR_STMT@[170; 177)
           BIN_EXPR@[170; 176)
@@ -111,7 +111,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[174; 175) " "
             LITERAL@[175; 176)
               INT_NUMBER@[175; 176) "6"
-          SEMI@[176; 177) ";"
+          SEMICOLON@[176; 177) ";"
         WHITESPACE@[177; 182) "\n    "
         EXPR_STMT@[182; 189)
           BIN_EXPR@[182; 188)
@@ -125,7 +125,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[186; 187) " "
             LITERAL@[187; 188)
               INT_NUMBER@[187; 188) "7"
-          SEMI@[188; 189) ";"
+          SEMICOLON@[188; 189) ";"
         WHITESPACE@[189; 194) "\n    "
         EXPR_STMT@[194; 201)
           BIN_EXPR@[194; 200)
@@ -139,7 +139,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[198; 199) " "
             LITERAL@[199; 200)
               INT_NUMBER@[199; 200) "8"
-          SEMI@[200; 201) ";"
+          SEMICOLON@[200; 201) ";"
         WHITESPACE@[201; 206) "\n    "
         EXPR_STMT@[206; 213)
           BIN_EXPR@[206; 212)
@@ -153,7 +153,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[210; 211) " "
             LITERAL@[211; 212)
               INT_NUMBER@[211; 212) "9"
-          SEMI@[212; 213) ";"
+          SEMICOLON@[212; 213) ";"
         WHITESPACE@[213; 218) "\n    "
         EXPR_STMT@[218; 226)
           BIN_EXPR@[218; 225)
@@ -167,7 +167,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[222; 223) " "
             LITERAL@[223; 225)
               INT_NUMBER@[223; 225) "10"
-          SEMI@[225; 226) ";"
+          SEMICOLON@[225; 226) ";"
         WHITESPACE@[226; 231) "\n    "
         EXPR_STMT@[231; 240)
           BIN_EXPR@[231; 239)
@@ -181,7 +181,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[236; 237) " "
             LITERAL@[237; 239)
               INT_NUMBER@[237; 239) "11"
-          SEMI@[239; 240) ";"
+          SEMICOLON@[239; 240) ";"
         WHITESPACE@[240; 245) "\n    "
         EXPR_STMT@[245; 254)
           BIN_EXPR@[245; 253)
@@ -195,7 +195,7 @@ SOURCE_FILE@[0; 257)
             WHITESPACE@[250; 251) " "
             LITERAL@[251; 253)
               INT_NUMBER@[251; 253) "12"
-          SEMI@[253; 254) ";"
+          SEMICOLON@[253; 254) ";"
         WHITESPACE@[254; 255) "\n"
         R_CURLY@[255; 256) "}"
   WHITESPACE@[256; 257) "\n"

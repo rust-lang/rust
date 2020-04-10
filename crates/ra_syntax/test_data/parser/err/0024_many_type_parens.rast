@@ -144,7 +144,7 @@ SOURCE_FILE@[0; 240)
         EXPR_STMT@[121; 123)
           ERROR@[121; 122)
             R_ANGLE@[121; 122) ">"
-          SEMI@[122; 123) ";"
+          SEMICOLON@[122; 123) ";"
         WHITESPACE@[123; 128) "\n    "
         LET_STMT@[128; 141)
           LET_KW@[128; 131) "let"
@@ -219,7 +219,7 @@ SOURCE_FILE@[0; 240)
                   R_PAREN@[177; 178) ")"
               R_ANGLE@[178; 179) ">"
               ERROR@[179; 180)
-                SEMI@[179; 180) ";"
+                SEMICOLON@[179; 180) ";"
         WHITESPACE@[180; 185) "\n    "
         LET_STMT@[185; 235)
           LET_KW@[185; 188) "let"
@@ -286,24 +286,24 @@ SOURCE_FILE@[0; 240)
         EXPR_STMT@[235; 237)
           ERROR@[235; 236)
             R_ANGLE@[235; 236) ">"
-          SEMI@[236; 237) ";"
+          SEMICOLON@[236; 237) ";"
         WHITESPACE@[237; 238) "\n"
         R_CURLY@[238; 239) "}"
   WHITESPACE@[239; 240) "\n"
 error [88; 88): expected COMMA
 error [88; 88): expected R_ANGLE
-error [121; 121): expected SEMI
+error [121; 121): expected SEMICOLON
 error [121; 121): expected expression
 error [140; 140): expected type
 error [141; 141): expected R_PAREN
 error [141; 141): expected COMMA
 error [141; 141): expected R_ANGLE
-error [141; 141): expected SEMI
-error [146; 146): expected SEMI
+error [141; 141): expected SEMICOLON
+error [146; 146): expected SEMICOLON
 error [146; 146): expected expression
-error [147; 147): expected SEMI
+error [147; 147): expected SEMICOLON
 error [148; 148): expected expression
-error [149; 149): expected SEMI
+error [149; 149): expected SEMICOLON
 error [154; 154): expected pattern
 error [155; 155): expected IN_KW
 error [155; 155): expected expression
@@ -314,8 +314,8 @@ error [179; 179): expected expression
 error [180; 180): expected COMMA
 error [180; 180): expected expression
 error [180; 180): expected R_PAREN
-error [180; 180): expected SEMI
+error [180; 180): expected SEMICOLON
 error [215; 215): expected COMMA
 error [215; 215): expected R_ANGLE
-error [235; 235): expected SEMI
+error [235; 235): expected SEMICOLON
 error [235; 235): expected expression

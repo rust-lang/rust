@@ -17,7 +17,7 @@ SOURCE_FILE@[0; 94)
             PATH_SEGMENT@[16; 19)
               NAME_REF@[16; 19)
                 IDENT@[16; 19) "foo"
-          EXCL@[19; 20) "!"
+          BANG@[19; 20) "!"
           WHITESPACE@[20; 21) " "
           TOKEN_TREE@[21; 49)
             L_PAREN@[21; 22) "("

@@ -38,7 +38,7 @@ SOURCE_FILE@[0; 52)
                 LITERAL@[31; 32)
                   INT_NUMBER@[31; 32) "5"
               R_CURLY@[32; 33) "}"
-          SEMI@[33; 34) ";"
+          SEMICOLON@[33; 34) ";"
         WHITESPACE@[34; 38) "\n   "
         EXPR_STMT@[38; 49)
           BIN_EXPR@[38; 48)
@@ -60,7 +60,7 @@ SOURCE_FILE@[0; 52)
             WHITESPACE@[45; 46) " "
             LITERAL@[46; 48)
               INT_NUMBER@[46; 48) "10"
-          SEMI@[48; 49) ";"
+          SEMICOLON@[48; 49) ";"
         WHITESPACE@[49; 50) "\n"
         R_CURLY@[50; 51) "}"
   WHITESPACE@[51; 52) "\n"

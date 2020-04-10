@@ -32,7 +32,7 @@ SOURCE_FILE@[0; 111)
             COMMA@[68; 69) ","
             WHITESPACE@[69; 74) "\n    "
             R_CURLY@[74; 75) "}"
-        SEMI@[75; 76) ";"
+        SEMICOLON@[75; 76) ";"
         WHITESPACE@[76; 81) "\n    "
         FN_DEF@[81; 90)
           FN_KW@[81; 83) "fn"
@@ -47,7 +47,7 @@ SOURCE_FILE@[0; 111)
             BLOCK@[88; 90)
               L_CURLY@[88; 89) "{"
               R_CURLY@[89; 90) "}"
-        SEMI@[90; 91) ";"
+        SEMICOLON@[90; 91) ";"
         WHITESPACE@[91; 96) "\n    "
         STRUCT_DEF@[96; 107)
           STRUCT_KW@[96; 102) "struct"
@@ -58,7 +58,7 @@ SOURCE_FILE@[0; 111)
           RECORD_FIELD_DEF_LIST@[105; 107)
             L_CURLY@[105; 106) "{"
             R_CURLY@[106; 107) "}"
-        SEMI@[107; 108) ";"
+        SEMICOLON@[107; 108) ";"
         WHITESPACE@[108; 109) "\n"
         R_CURLY@[109; 110) "}"
   WHITESPACE@[110; 111) "\n"

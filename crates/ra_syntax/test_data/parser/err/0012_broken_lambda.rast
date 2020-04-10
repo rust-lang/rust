@@ -106,7 +106,7 @@ SOURCE_FILE@[0; 389)
         WHITESPACE@[122; 123)
         LITERAL@[123; 124)
           INT_NUMBER@[123; 124) "0"
-        SEMI@[124; 125)
+        SEMICOLON@[124; 125)
       WHITESPACE@[125; 130)
       LET_STMT@[130; 389)
         LET_KW@[130; 133)
@@ -226,7 +226,7 @@ SOURCE_FILE@[0; 389)
             err: `expected pattern`
             PARAM@[236; 237)
               ERROR@[236; 237)
-                EXCL@[236; 237)
+                BANG@[236; 237)
                 err: `expected COMMA`
             PARAM@[237; 242)
               BIND_PAT@[237; 242)
@@ -272,7 +272,7 @@ SOURCE_FILE@[0; 389)
                   err: `expected pattern`
             PARAM@[283; 284)
               ERROR@[283; 284)
-                SEMI@[283; 284)
+                SEMICOLON@[283; 284)
                 err: `expected COMMA`
             WHITESPACE@[284; 297)
             err: `expected pattern`
@@ -327,7 +327,7 @@ SOURCE_FILE@[0; 389)
                 err: `expected pattern`
             PARAM@[346; 347)
               ERROR@[346; 347)
-                SEMI@[346; 347)
+                SEMICOLON@[346; 347)
                 err: `expected COMMA`
             WHITESPACE@[347; 360)
             err: `expected pattern`
@@ -371,7 +371,7 @@ SOURCE_FILE@[0; 389)
                 err: `expected pattern`
             PARAM@[385; 386)
               ERROR@[385; 386)
-                SEMI@[385; 386)
+                SEMICOLON@[385; 386)
                 err: `expected COMMA`
             WHITESPACE@[386; 387)
             err: `expected pattern`

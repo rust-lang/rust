@@ -13,5 +13,5 @@ SOURCE_FILE@[0; 15)
         L_PAREN@[10; 11) "("
         R_PAREN@[11; 12) ")"
       R_BRACK@[12; 13) "]"
-    SEMI@[13; 14) ";"
+    SEMICOLON@[13; 14) ";"
   WHITESPACE@[14; 15) "\n"

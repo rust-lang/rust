@@ -26,7 +26,7 @@ SOURCE_FILE@[0; 106)
             WHITESPACE@[26; 27) " "
             LITERAL@[27; 31)
               INT_NUMBER@[27; 31) "1i32"
-          SEMI@[31; 32) ";"
+          SEMICOLON@[31; 32) ";"
         WHITESPACE@[32; 37) "\n    "
         LET_STMT@[37; 66)
           LET_KW@[37; 40) "let"
@@ -52,7 +52,7 @@ SOURCE_FILE@[0; 106)
               LITERAL@[60; 64)
                 INT_NUMBER@[60; 64) "2i32"
             R_PAREN@[64; 65) ")"
-          SEMI@[65; 66) ";"
+          SEMICOLON@[65; 66) ";"
         WHITESPACE@[66; 71) "\n    "
         LET_STMT@[71; 103)
           LET_KW@[71; 74) "let"
@@ -84,7 +84,7 @@ SOURCE_FILE@[0; 106)
                 LITERAL@[97; 101)
                   INT_NUMBER@[97; 101) "2i32"
               R_PAREN@[101; 102) ")"
-          SEMI@[102; 103) ";"
+          SEMICOLON@[102; 103) ";"
         WHITESPACE@[103; 104) "\n"
         R_CURLY@[104; 105) "}"
   WHITESPACE@[105; 106) "\n"

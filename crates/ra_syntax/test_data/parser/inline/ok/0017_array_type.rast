@@ -12,10 +12,10 @@ SOURCE_FILE@[0; 19)
       TUPLE_TYPE@[10; 12)
         L_PAREN@[10; 11) "("
         R_PAREN@[11; 12) ")"
-      SEMI@[12; 13) ";"
+      SEMICOLON@[12; 13) ";"
       WHITESPACE@[13; 14) " "
       LITERAL@[14; 16)
         INT_NUMBER@[14; 16) "92"
       R_BRACK@[16; 17) "]"
-    SEMI@[17; 18) ";"
+    SEMICOLON@[17; 18) ";"
   WHITESPACE@[18; 19) "\n"

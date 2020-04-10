@@ -34,7 +34,7 @@ SOURCE_FILE@[0; 47)
           WHITESPACE@[32; 33) " "
           LITERAL@[33; 35)
             INT_NUMBER@[33; 35) "92"
-          SEMI@[35; 36) ";"
+          SEMICOLON@[35; 36) ";"
         WHITESPACE@[36; 41) "\n    "
         BIN_EXPR@[41; 44)
           LITERAL@[41; 42)

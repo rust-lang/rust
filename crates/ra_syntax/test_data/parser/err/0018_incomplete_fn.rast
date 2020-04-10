@@ -60,7 +60,7 @@ SOURCE_FILE@[0; 183)
                 ARG_LIST@[82; 84)
                   L_PAREN@[82; 83) "("
                   R_PAREN@[83; 84) ")"
-              SEMI@[84; 85) ";"
+              SEMICOLON@[84; 85) ";"
             WHITESPACE@[85; 94) "\n        "
             METHOD_CALL_EXPR@[94; 155)
               FIELD_EXPR@[94; 105)
@@ -107,7 +107,7 @@ SOURCE_FILE@[0; 183)
                           PATH_SEGMENT@[146; 149)
                             NAME_REF@[146; 149)
                               IDENT@[146; 149) "vec"
-                        EXCL@[149; 150) "!"
+                        BANG@[149; 150) "!"
                         TOKEN_TREE@[150; 152)
                           L_BRACK@[150; 151) "["
                           R_BRACK@[151; 152) "]"

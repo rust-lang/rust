@@ -27,5 +27,5 @@ SOURCE_FILE@[0; 37)
                     PATH_SEGMENT@[30; 35)
                       NAME_REF@[30; 35)
                         IDENT@[30; 35) "usize"
-    SEMI@[35; 36) ";"
+    SEMICOLON@[35; 36) ";"
   WHITESPACE@[36; 37) "\n"

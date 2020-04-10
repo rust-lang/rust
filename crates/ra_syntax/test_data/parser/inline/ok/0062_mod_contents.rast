@@ -18,7 +18,7 @@ SOURCE_FILE@[0; 70)
       PATH_SEGMENT@[12; 23)
         NAME_REF@[12; 23)
           IDENT@[12; 23) "macro_rules"
-    EXCL@[23; 24) "!"
+    BANG@[23; 24) "!"
     WHITESPACE@[24; 25) " "
     NAME@[25; 28)
       IDENT@[25; 28) "foo"
@@ -33,26 +33,26 @@ SOURCE_FILE@[0; 70)
         PATH_SEGMENT@[32; 35)
           NAME_REF@[32; 35)
             IDENT@[32; 35) "foo"
-      COLONCOLON@[35; 37) "::"
+      COLON2@[35; 37) "::"
       PATH_SEGMENT@[37; 40)
         NAME_REF@[37; 40)
           IDENT@[37; 40) "bar"
-    EXCL@[40; 41) "!"
+    BANG@[40; 41) "!"
     TOKEN_TREE@[41; 43)
       L_PAREN@[41; 42) "("
       R_PAREN@[42; 43) ")"
-    SEMI@[43; 44) ";"
+    SEMICOLON@[43; 44) ";"
   WHITESPACE@[44; 45) "\n"
   MACRO_CALL@[45; 59)
     PATH@[45; 55)
       PATH@[45; 50)
         PATH_SEGMENT@[45; 50)
           SUPER_KW@[45; 50) "super"
-      COLONCOLON@[50; 52) "::"
+      COLON2@[50; 52) "::"
       PATH_SEGMENT@[52; 55)
         NAME_REF@[52; 55)
           IDENT@[52; 55) "baz"
-    EXCL@[55; 56) "!"
+    BANG@[55; 56) "!"
     WHITESPACE@[56; 57) " "
     TOKEN_TREE@[57; 59)
       L_CURLY@[57; 58) "{"
@@ -63,5 +63,5 @@ SOURCE_FILE@[0; 70)
     WHITESPACE@[66; 67) " "
     NAME@[67; 68)
       IDENT@[67; 68) "S"
-    SEMI@[68; 69) ";"
+    SEMICOLON@[68; 69) ";"
   WHITESPACE@[69; 70) "\n"

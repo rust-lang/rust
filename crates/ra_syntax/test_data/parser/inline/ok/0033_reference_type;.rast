@@ -12,7 +12,7 @@ SOURCE_FILE@[0; 54)
       TUPLE_TYPE@[10; 12)
         L_PAREN@[10; 11) "("
         R_PAREN@[11; 12) ")"
-    SEMI@[12; 13) ";"
+    SEMICOLON@[12; 13) ";"
   WHITESPACE@[13; 14) "\n"
   TYPE_ALIAS_DEF@[14; 35)
     TYPE_KW@[14; 18) "type"
@@ -29,7 +29,7 @@ SOURCE_FILE@[0; 54)
       TUPLE_TYPE@[32; 34)
         L_PAREN@[32; 33) "("
         R_PAREN@[33; 34) ")"
-    SEMI@[34; 35) ";"
+    SEMICOLON@[34; 35) ";"
   WHITESPACE@[35; 36) "\n"
   TYPE_ALIAS_DEF@[36; 53)
     TYPE_KW@[36; 40) "type"
@@ -46,5 +46,5 @@ SOURCE_FILE@[0; 54)
       TUPLE_TYPE@[50; 52)
         L_PAREN@[50; 51) "("
         R_PAREN@[51; 52) ")"
-    SEMI@[52; 53) ";"
+    SEMICOLON@[52; 53) ";"
   WHITESPACE@[53; 54) "\n"

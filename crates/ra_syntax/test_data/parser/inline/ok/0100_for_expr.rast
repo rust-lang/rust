@@ -30,7 +30,7 @@ SOURCE_FILE@[0; 33)
               BLOCK@[27; 29)
                 L_CURLY@[27; 28) "{"
                 R_CURLY@[28; 29) "}"
-          SEMI@[29; 30) ";"
+          SEMICOLON@[29; 30) ";"
         WHITESPACE@[30; 31) "\n"
         R_CURLY@[31; 32) "}"
   WHITESPACE@[32; 33) "\n"

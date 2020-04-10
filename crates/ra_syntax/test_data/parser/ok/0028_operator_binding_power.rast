@@ -53,7 +53,7 @@ SOURCE_FILE@[0; 248)
               WHITESPACE@[52; 53) " "
               LITERAL@[53; 54)
                 INT_NUMBER@[53; 54) "6"
-          SEMI@[54; 55) ";"
+          SEMICOLON@[54; 55) ";"
         WHITESPACE@[55; 60) "\n    "
         EXPR_STMT@[60; 70)
           BIN_EXPR@[60; 69)
@@ -70,7 +70,7 @@ SOURCE_FILE@[0; 248)
               WHITESPACE@[67; 68) " "
               LITERAL@[68; 69)
                 INT_NUMBER@[68; 69) "3"
-          SEMI@[69; 70) ";"
+          SEMICOLON@[69; 70) ";"
         WHITESPACE@[70; 75) "\n    "
         EXPR_STMT@[75; 86)
           BIN_EXPR@[75; 85)
@@ -87,7 +87,7 @@ SOURCE_FILE@[0; 248)
               WHITESPACE@[83; 84) " "
               LITERAL@[84; 85)
                 INT_NUMBER@[84; 85) "3"
-          SEMI@[85; 86) ";"
+          SEMICOLON@[85; 86) ";"
         WHITESPACE@[86; 91) "\n    "
         EXPR_STMT@[91; 102)
           BIN_EXPR@[91; 101)
@@ -104,7 +104,7 @@ SOURCE_FILE@[0; 248)
               WHITESPACE@[99; 100) " "
               LITERAL@[100; 101)
                 INT_NUMBER@[100; 101) "3"
-          SEMI@[101; 102) ";"
+          SEMICOLON@[101; 102) ";"
         WHITESPACE@[102; 107) "\n    "
         EXPR_STMT@[107; 117)
           BIN_EXPR@[107; 116)
@@ -121,7 +121,7 @@ SOURCE_FILE@[0; 248)
               WHITESPACE@[114; 115) " "
               LITERAL@[115; 116)
                 INT_NUMBER@[115; 116) "3"
-          SEMI@[116; 117) ";"
+          SEMICOLON@[116; 117) ";"
         WHITESPACE@[117; 122) "\n    "
         EXPR_STMT@[122; 132)
           BIN_EXPR@[122; 131)
@@ -138,14 +138,14 @@ SOURCE_FILE@[0; 248)
               WHITESPACE@[129; 130) " "
               LITERAL@[130; 131)
                 INT_NUMBER@[130; 131) "3"
-          SEMI@[131; 132) ";"
+          SEMICOLON@[131; 132) ";"
         WHITESPACE@[132; 137) "\n    "
         EXPR_STMT@[137; 148)
           BIN_EXPR@[137; 147)
             LITERAL@[137; 138)
               INT_NUMBER@[137; 138) "1"
             WHITESPACE@[138; 139) " "
-            EQEQ@[139; 141) "=="
+            EQ2@[139; 141) "=="
             WHITESPACE@[141; 142) " "
             BIN_EXPR@[142; 147)
               LITERAL@[142; 143)
@@ -155,24 +155,24 @@ SOURCE_FILE@[0; 248)
               WHITESPACE@[145; 146) " "
               LITERAL@[146; 147)
                 INT_NUMBER@[146; 147) "3"
-          SEMI@[147; 148) ";"
+          SEMICOLON@[147; 148) ";"
         WHITESPACE@[148; 153) "\n    "
         EXPR_STMT@[153; 165)
           BIN_EXPR@[153; 164)
             LITERAL@[153; 154)
               INT_NUMBER@[153; 154) "1"
             WHITESPACE@[154; 155) " "
-            AMPAMP@[155; 157) "&&"
+            AMP2@[155; 157) "&&"
             WHITESPACE@[157; 158) " "
             BIN_EXPR@[158; 164)
               LITERAL@[158; 159)
                 INT_NUMBER@[158; 159) "2"
               WHITESPACE@[159; 160) " "
-              EQEQ@[160; 162) "=="
+              EQ2@[160; 162) "=="
               WHITESPACE@[162; 163) " "
               LITERAL@[163; 164)
                 INT_NUMBER@[163; 164) "3"
-          SEMI@[164; 165) ";"
+          SEMICOLON@[164; 165) ";"
         WHITESPACE@[165; 170) "\n    "
         COMMENT@[170; 184) "//1 || 2 && 2;"
         WHITESPACE@[184; 189) "\n    "

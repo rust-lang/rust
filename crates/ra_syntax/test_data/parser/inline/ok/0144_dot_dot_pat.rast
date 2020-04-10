@@ -16,14 +16,14 @@ SOURCE_FILE@[0; 555)
           LET_KW@[16; 19) "let"
           WHITESPACE@[19; 20) " "
           DOT_DOT_PAT@[20; 22)
-            DOTDOT@[20; 22) ".."
+            DOT2@[20; 22) ".."
           WHITESPACE@[22; 23) " "
           EQ@[23; 24) "="
           WHITESPACE@[24; 25) " "
           TUPLE_EXPR@[25; 27)
             L_PAREN@[25; 26) "("
             R_PAREN@[26; 27) ")"
-          SEMI@[27; 28) ";"
+          SEMICOLON@[27; 28) ";"
         WHITESPACE@[28; 33) "\n    "
         COMMENT@[33; 35) "//"
         WHITESPACE@[35; 40) "\n    "
@@ -42,7 +42,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[67; 68) ","
             WHITESPACE@[68; 69) " "
             DOT_DOT_PAT@[69; 71)
-              DOTDOT@[69; 71) ".."
+              DOT2@[69; 71) ".."
             R_PAREN@[71; 72) ")"
           WHITESPACE@[72; 73) " "
           EQ@[73; 74) "="
@@ -50,7 +50,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[75; 77)
             L_PAREN@[75; 76) "("
             R_PAREN@[76; 77) ")"
-          SEMI@[77; 78) ";"
+          SEMICOLON@[77; 78) ";"
         WHITESPACE@[78; 83) "\n    "
         LET_STMT@[83; 101)
           LET_KW@[83; 86) "let"
@@ -63,7 +63,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[89; 90) ","
             WHITESPACE@[90; 91) " "
             DOT_DOT_PAT@[91; 93)
-              DOTDOT@[91; 93) ".."
+              DOT2@[91; 93) ".."
             COMMA@[93; 94) ","
             R_PAREN@[94; 95) ")"
           WHITESPACE@[95; 96) " "
@@ -72,7 +72,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[98; 100)
             L_PAREN@[98; 99) "("
             R_PAREN@[99; 100) ")"
-          SEMI@[100; 101) ";"
+          SEMICOLON@[100; 101) ";"
         WHITESPACE@[101; 106) "\n    "
         LET_STMT@[106; 128)
           LET_KW@[106; 109) "let"
@@ -89,7 +89,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[117; 118) ","
             WHITESPACE@[118; 119) " "
             DOT_DOT_PAT@[119; 121)
-              DOTDOT@[119; 121) ".."
+              DOT2@[119; 121) ".."
             R_PAREN@[121; 122) ")"
           WHITESPACE@[122; 123) " "
           EQ@[123; 124) "="
@@ -97,7 +97,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[125; 127)
             L_PAREN@[125; 126) "("
             R_PAREN@[126; 127) ")"
-          SEMI@[127; 128) ";"
+          SEMICOLON@[127; 128) ";"
         WHITESPACE@[128; 133) "\n    "
         LET_STMT@[133; 156)
           LET_KW@[133; 136) "let"
@@ -114,7 +114,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[144; 145) ","
             WHITESPACE@[145; 146) " "
             DOT_DOT_PAT@[146; 148)
-              DOTDOT@[146; 148) ".."
+              DOT2@[146; 148) ".."
             COMMA@[148; 149) ","
             R_PAREN@[149; 150) ")"
           WHITESPACE@[150; 151) " "
@@ -123,7 +123,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[153; 155)
             L_PAREN@[153; 154) "("
             R_PAREN@[154; 155) ")"
-          SEMI@[155; 156) ";"
+          SEMICOLON@[155; 156) ";"
         WHITESPACE@[156; 161) "\n    "
         LET_STMT@[161; 179)
           LET_KW@[161; 164) "let"
@@ -131,11 +131,11 @@ SOURCE_FILE@[0; 555)
           TUPLE_PAT@[165; 173)
             L_PAREN@[165; 166) "("
             DOT_DOT_PAT@[166; 168)
-              DOTDOT@[166; 168) ".."
+              DOT2@[166; 168) ".."
             COMMA@[168; 169) ","
             WHITESPACE@[169; 170) " "
             DOT_DOT_PAT@[170; 172)
-              DOTDOT@[170; 172) ".."
+              DOT2@[170; 172) ".."
             R_PAREN@[172; 173) ")"
           WHITESPACE@[173; 174) " "
           EQ@[174; 175) "="
@@ -143,7 +143,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[176; 178)
             L_PAREN@[176; 177) "("
             R_PAREN@[177; 178) ")"
-          SEMI@[178; 179) ";"
+          SEMICOLON@[178; 179) ";"
         WHITESPACE@[179; 184) "\n    "
         LET_STMT@[184; 207)
           LET_KW@[184; 187) "let"
@@ -155,11 +155,11 @@ SOURCE_FILE@[0; 555)
                   IDENT@[188; 193) "Tuple"
             L_PAREN@[193; 194) "("
             DOT_DOT_PAT@[194; 196)
-              DOTDOT@[194; 196) ".."
+              DOT2@[194; 196) ".."
             COMMA@[196; 197) ","
             WHITESPACE@[197; 198) " "
             DOT_DOT_PAT@[198; 200)
-              DOTDOT@[198; 200) ".."
+              DOT2@[198; 200) ".."
             R_PAREN@[200; 201) ")"
           WHITESPACE@[201; 202) " "
           EQ@[202; 203) "="
@@ -167,7 +167,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[204; 206)
             L_PAREN@[204; 205) "("
             R_PAREN@[205; 206) ")"
-          SEMI@[206; 207) ";"
+          SEMICOLON@[206; 207) ";"
         WHITESPACE@[207; 212) "\n    "
         LET_STMT@[212; 233)
           LET_KW@[212; 215) "let"
@@ -175,7 +175,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_PAT@[216; 227)
             L_PAREN@[216; 217) "("
             DOT_DOT_PAT@[217; 219)
-              DOTDOT@[217; 219) ".."
+              DOT2@[217; 219) ".."
             COMMA@[219; 220) ","
             WHITESPACE@[220; 221) " "
             BIND_PAT@[221; 222)
@@ -184,7 +184,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[222; 223) ","
             WHITESPACE@[223; 224) " "
             DOT_DOT_PAT@[224; 226)
-              DOTDOT@[224; 226) ".."
+              DOT2@[224; 226) ".."
             R_PAREN@[226; 227) ")"
           WHITESPACE@[227; 228) " "
           EQ@[228; 229) "="
@@ -192,7 +192,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[230; 232)
             L_PAREN@[230; 231) "("
             R_PAREN@[231; 232) ")"
-          SEMI@[232; 233) ";"
+          SEMICOLON@[232; 233) ";"
         WHITESPACE@[233; 238) "\n    "
         LET_STMT@[238; 264)
           LET_KW@[238; 241) "let"
@@ -204,7 +204,7 @@ SOURCE_FILE@[0; 555)
                   IDENT@[242; 247) "Tuple"
             L_PAREN@[247; 248) "("
             DOT_DOT_PAT@[248; 250)
-              DOTDOT@[248; 250) ".."
+              DOT2@[248; 250) ".."
             COMMA@[250; 251) ","
             WHITESPACE@[251; 252) " "
             BIND_PAT@[252; 253)
@@ -213,7 +213,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[253; 254) ","
             WHITESPACE@[254; 255) " "
             DOT_DOT_PAT@[255; 257)
-              DOTDOT@[255; 257) ".."
+              DOT2@[255; 257) ".."
             R_PAREN@[257; 258) ")"
           WHITESPACE@[258; 259) " "
           EQ@[259; 260) "="
@@ -221,7 +221,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[261; 263)
             L_PAREN@[261; 262) "("
             R_PAREN@[262; 263) ")"
-          SEMI@[263; 264) ";"
+          SEMICOLON@[263; 264) ";"
         WHITESPACE@[264; 269) "\n    "
         COMMENT@[269; 271) "//"
         WHITESPACE@[271; 276) "\n    "
@@ -235,7 +235,7 @@ SOURCE_FILE@[0; 555)
           SLICE_PAT@[301; 305)
             L_BRACK@[301; 302) "["
             DOT_DOT_PAT@[302; 304)
-              DOTDOT@[302; 304) ".."
+              DOT2@[302; 304) ".."
             R_BRACK@[304; 305) "]"
           WHITESPACE@[305; 306) " "
           EQ@[306; 307) "="
@@ -243,7 +243,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[308; 310)
             L_PAREN@[308; 309) "("
             R_PAREN@[309; 310) ")"
-          SEMI@[310; 311) ";"
+          SEMICOLON@[310; 311) ";"
         WHITESPACE@[311; 316) "\n    "
         LET_STMT@[316; 336)
           LET_KW@[316; 319) "let"
@@ -256,7 +256,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[325; 326) ","
             WHITESPACE@[326; 327) " "
             DOT_DOT_PAT@[327; 329)
-              DOTDOT@[327; 329) ".."
+              DOT2@[327; 329) ".."
             R_BRACK@[329; 330) "]"
           WHITESPACE@[330; 331) " "
           EQ@[331; 332) "="
@@ -264,7 +264,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[333; 335)
             L_PAREN@[333; 334) "("
             R_PAREN@[334; 335) ")"
-          SEMI@[335; 336) ";"
+          SEMICOLON@[335; 336) ";"
         WHITESPACE@[336; 341) "\n    "
         LET_STMT@[341; 368)
           LET_KW@[341; 344) "let"
@@ -283,7 +283,7 @@ SOURCE_FILE@[0; 555)
               AT@[357; 358) "@"
               WHITESPACE@[358; 359) " "
               DOT_DOT_PAT@[359; 361)
-                DOTDOT@[359; 361) ".."
+                DOT2@[359; 361) ".."
             R_BRACK@[361; 362) "]"
           WHITESPACE@[362; 363) " "
           EQ@[363; 364) "="
@@ -291,7 +291,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[365; 367)
             L_PAREN@[365; 366) "("
             R_PAREN@[366; 367) ")"
-          SEMI@[367; 368) ";"
+          SEMICOLON@[367; 368) ";"
         WHITESPACE@[368; 373) "\n    "
         LET_STMT@[373; 399)
           LET_KW@[373; 376) "let"
@@ -304,7 +304,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[382; 383) ","
             WHITESPACE@[383; 384) " "
             DOT_DOT_PAT@[384; 386)
-              DOTDOT@[384; 386) ".."
+              DOT2@[384; 386) ".."
             COMMA@[386; 387) ","
             WHITESPACE@[387; 388) " "
             BIND_PAT@[388; 392)
@@ -317,7 +317,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[396; 398)
             L_PAREN@[396; 397) "("
             R_PAREN@[397; 398) ")"
-          SEMI@[398; 399) ";"
+          SEMICOLON@[398; 399) ";"
         WHITESPACE@[399; 404) "\n    "
         LET_STMT@[404; 436)
           LET_KW@[404; 407) "let"
@@ -336,7 +336,7 @@ SOURCE_FILE@[0; 555)
               AT@[419; 420) "@"
               WHITESPACE@[420; 421) " "
               DOT_DOT_PAT@[421; 423)
-                DOTDOT@[421; 423) ".."
+                DOT2@[421; 423) ".."
             COMMA@[423; 424) ","
             WHITESPACE@[424; 425) " "
             BIND_PAT@[425; 429)
@@ -349,7 +349,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[433; 435)
             L_PAREN@[433; 434) "("
             R_PAREN@[434; 435) ")"
-          SEMI@[435; 436) ";"
+          SEMICOLON@[435; 436) ";"
         WHITESPACE@[436; 441) "\n    "
         LET_STMT@[441; 471)
           LET_KW@[441; 444) "let"
@@ -362,11 +362,11 @@ SOURCE_FILE@[0; 555)
             COMMA@[450; 451) ","
             WHITESPACE@[451; 452) " "
             DOT_DOT_PAT@[452; 454)
-              DOTDOT@[452; 454) ".."
+              DOT2@[452; 454) ".."
             COMMA@[454; 455) ","
             WHITESPACE@[455; 456) " "
             DOT_DOT_PAT@[456; 458)
-              DOTDOT@[456; 458) ".."
+              DOT2@[456; 458) ".."
             COMMA@[458; 459) ","
             WHITESPACE@[459; 460) " "
             BIND_PAT@[460; 464)
@@ -379,7 +379,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[468; 470)
             L_PAREN@[468; 469) "("
             R_PAREN@[469; 470) ")"
-          SEMI@[470; 471) ";"
+          SEMICOLON@[470; 471) ";"
         WHITESPACE@[471; 476) "\n    "
         LET_STMT@[476; 512)
           LET_KW@[476; 479) "let"
@@ -392,7 +392,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[485; 486) ","
             WHITESPACE@[486; 487) " "
             DOT_DOT_PAT@[487; 489)
-              DOTDOT@[487; 489) ".."
+              DOT2@[487; 489) ".."
             COMMA@[489; 490) ","
             WHITESPACE@[490; 491) " "
             BIND_PAT@[491; 494)
@@ -407,7 +407,7 @@ SOURCE_FILE@[0; 555)
               AT@[501; 502) "@"
               WHITESPACE@[502; 503) " "
               DOT_DOT_PAT@[503; 505)
-                DOTDOT@[503; 505) ".."
+                DOT2@[503; 505) ".."
             R_BRACK@[505; 506) "]"
           WHITESPACE@[506; 507) " "
           EQ@[507; 508) "="
@@ -415,7 +415,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[509; 511)
             L_PAREN@[509; 510) "("
             R_PAREN@[510; 511) ")"
-          SEMI@[511; 512) ";"
+          SEMICOLON@[511; 512) ";"
         WHITESPACE@[512; 517) "\n    "
         LET_STMT@[517; 552)
           LET_KW@[517; 520) "let"
@@ -428,7 +428,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[526; 527) ","
             WHITESPACE@[527; 528) " "
             DOT_DOT_PAT@[528; 530)
-              DOTDOT@[528; 530) ".."
+              DOT2@[528; 530) ".."
             COMMA@[530; 531) ","
             WHITESPACE@[531; 532) " "
             BIND_PAT@[532; 535)
@@ -437,7 +437,7 @@ SOURCE_FILE@[0; 555)
             COMMA@[535; 536) ","
             WHITESPACE@[536; 537) " "
             DOT_DOT_PAT@[537; 539)
-              DOTDOT@[537; 539) ".."
+              DOT2@[537; 539) ".."
             COMMA@[539; 540) ","
             WHITESPACE@[540; 541) " "
             BIND_PAT@[541; 545)
@@ -450,7 +450,7 @@ SOURCE_FILE@[0; 555)
           TUPLE_EXPR@[549; 551)
             L_PAREN@[549; 550) "("
             R_PAREN@[550; 551) ")"
-          SEMI@[551; 552) ";"
+          SEMICOLON@[551; 552) ";"
         WHITESPACE@[552; 553) "\n"
         R_CURLY@[553; 554) "}"
   WHITESPACE@[554; 555) "\n"

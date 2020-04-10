@@ -8,6 +8,6 @@ SOURCE_FILE@[0; 16)
     EQ@[11; 12) "="
     WHITESPACE@[12; 13) " "
     NEVER_TYPE@[13; 14)
-      EXCL@[13; 14) "!"
-    SEMI@[14; 15) ";"
+      BANG@[13; 14) "!"
+    SEMICOLON@[14; 15) ";"
   WHITESPACE@[15; 16) "\n"

@@ -27,7 +27,7 @@ SOURCE_FILE@[0; 118)
           TUPLE_EXPR@[28; 30)
             L_PAREN@[28; 29) "("
             R_PAREN@[29; 30) ")"
-          SEMI@[30; 31) ";"
+          SEMICOLON@[30; 31) ";"
         WHITESPACE@[31; 36) "\n    "
         LET_STMT@[36; 87)
           LET_KW@[36; 39) "let"
@@ -83,7 +83,7 @@ SOURCE_FILE@[0; 118)
           TUPLE_EXPR@[84; 86)
             L_PAREN@[84; 85) "("
             R_PAREN@[85; 86) ")"
-          SEMI@[86; 87) ";"
+          SEMICOLON@[86; 87) ";"
         WHITESPACE@[87; 92) "\n    "
         LET_STMT@[92; 115)
           LET_KW@[92; 95) "let"
@@ -104,7 +104,7 @@ SOURCE_FILE@[0; 118)
           TUPLE_EXPR@[112; 114)
             L_PAREN@[112; 113) "("
             R_PAREN@[113; 114) ")"
-          SEMI@[114; 115) ";"
+          SEMICOLON@[114; 115) ";"
         WHITESPACE@[115; 116) "\n"
         R_CURLY@[116; 117) "}"
   WHITESPACE@[117; 118) "\n"
