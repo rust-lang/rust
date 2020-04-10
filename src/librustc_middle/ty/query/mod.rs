@@ -190,22 +190,28 @@ pub(crate) fn try_load_from_on_disk_cache<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &De
     rustc_dep_node_try_load_from_on_disk_cache!(dep_node, tcx)
 }
 
-/// An analogue of the `Into` trait that's intended only for query paramaters.
-///
-/// This exists to allow queries to accept either `DefId` or `LocalDefId` while requiring that the
-/// user call `to_def_id` to convert between them everywhere else.
-pub trait IntoQueryParam<P> {
-    fn into_query_param(self) -> P;
-}
+mod sealed {
+    use super::{DefId, LocalDefId};
 
-impl<P> IntoQueryParam<P> for P {
-    fn into_query_param(self) -> P {
-        self
+    /// An analogue of the `Into` trait that's intended only for query paramaters.
+    ///
+    /// This exists to allow queries to accept either `DefId` or `LocalDefId` while requiring that the
+    /// user call `to_def_id` to convert between them everywhere else.
+    pub trait IntoQueryParam<P> {
+        fn into_query_param(self) -> P;
+    }
+
+    impl<P> IntoQueryParam<P> for P {
+        fn into_query_param(self) -> P {
+            self
+        }
+    }
+
+    impl IntoQueryParam<DefId> for LocalDefId {
+        fn into_query_param(self) -> DefId {
+            self.to_def_id()
+        }
     }
 }
 
-impl IntoQueryParam<DefId> for LocalDefId {
-    fn into_query_param(self) -> DefId {
-        self.to_def_id()
-    }
-}
+use sealed::IntoQueryParam;
