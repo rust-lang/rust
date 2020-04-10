@@ -755,6 +755,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Int(ref exp), &ty::Int(ref found)) => {
                     let is_fallible = match (found.bit_width(), exp.bit_width()) {
                         (Some(found), Some(exp)) if found > exp => true,
+                        (None, Some(8 | 16)) | (Some(8 | 16), None) => false,
                         (None, _) | (_, None) => true,
                         _ => false,
                     };
@@ -764,6 +765,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Uint(ref exp), &ty::Uint(ref found)) => {
                     let is_fallible = match (found.bit_width(), exp.bit_width()) {
                         (Some(found), Some(exp)) if found > exp => true,
+                        (None, Some(8 | 16)) | (Some(8 | 16), None) => false,
                         (None, _) | (_, None) => true,
                         _ => false,
                     };
