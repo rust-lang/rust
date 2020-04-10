@@ -24,3 +24,5 @@ warning: Trait bound for<'b> &'b mut i32: std::marker::Copy does not depend on a
 LL | fn copy_mut<'a>(t: &&'a mut i32) -> &'a mut i32 where for<'b> &'b mut i32: Copy {
    |                                                                            ^^^^
 
+warning: 4 warnings emitted
+

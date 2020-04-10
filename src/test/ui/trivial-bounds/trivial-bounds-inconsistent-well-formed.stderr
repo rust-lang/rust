@@ -12,3 +12,5 @@ warning: Trait bound str: std::marker::Copy does not depend on any type or lifet
 LL | pub fn foo() where Vec<str>: Debug, str: Copy {
    |                                          ^^^^
 
+warning: 2 warnings emitted
+

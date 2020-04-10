@@ -76,3 +76,5 @@ warning: this operation will panic at runtime
 LL |     let _x = 1 / (false as u32);
    |              ^^^^^^^^^^^^^^^^^^ attempt to divide by zero
 
+warning: 10 warnings emitted
+

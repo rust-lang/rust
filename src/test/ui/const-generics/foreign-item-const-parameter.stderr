@@ -22,6 +22,6 @@ LL |     fn bar<T, const X: usize>(_: T);
    |
    = help: replace the type or const parameters with concrete types or consts
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0044`.

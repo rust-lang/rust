@@ -12,6 +12,6 @@ error[E0741]: the types of const generic parameters must derive `PartialEq` and 
 LL | struct D<const X: C>;
    |                   ^ `C` doesn't derive both `PartialEq` and `Eq`
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0741`.

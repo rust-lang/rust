@@ -17,6 +17,6 @@ LL |     let _: Const<{ 15 as *const _ }> = Const::<{ 10 as *const _ }>;
    = note: expected struct `Const<{0xf as *const u32}>`
               found struct `Const<{0xa as *const u32}>`
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0308`.

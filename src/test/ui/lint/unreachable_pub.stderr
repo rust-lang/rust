@@ -144,3 +144,5 @@ LL |         pub fn catalyze() -> bool;
    |
    = help: or consider exporting it for use by other crates
 
+warning: 14 warnings emitted
+

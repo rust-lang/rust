@@ -6,3 +6,5 @@ LL | fn equal_regions_static<'a: 'static>(x: &'a i32) -> impl Sized {
    |
    = help: you can use the `'static` lifetime directly, in place of `'a`
 
+warning: 1 warning emitted
+

@@ -63,5 +63,5 @@ LL |         #![warn(nonstandard_style)]
    |                 ^^^^^^^^^^^^^^^^^
    = note: `#[warn(non_snake_case)]` implied by `#[warn(nonstandard_style)]`
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 2 warnings emitted
 

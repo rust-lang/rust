@@ -12,6 +12,6 @@ error[E0158]: const parameters cannot be referenced in patterns
 LL |         N => {}
    |         ^
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0158`.

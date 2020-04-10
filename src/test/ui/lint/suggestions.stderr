@@ -105,5 +105,5 @@ LL |     #[no_mangle] pub(crate) fn crossfield<T>() {}
    |     |
    |     help: remove this attribute
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 8 warnings emitted
 

@@ -35,6 +35,6 @@ LL |     v.push(shared.len());
    = warning: this borrowing pattern was not meant to be accepted, and may become a hard error in the future
    = note: for more information, see issue #59159 <https://github.com/rust-lang/rust/issues/59159>
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0502`.

@@ -18,3 +18,5 @@ warning: unknown lint: `Warnings`
 LL | #[deny(Warnings)]
    |        ^^^^^^^^ help: did you mean (notice the capitalization): `warnings`
 
+warning: 3 warnings emitted
+

@@ -89,7 +89,7 @@ LL |     trait PrivTr {}
 LL |         type Exist = impl PrivTr;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private trait
 
-error: aborting due to 5 previous errors
+error: aborting due to 5 previous errors; 3 warnings emitted
 
 Some errors have detailed explanations: E0445, E0446.
 For more information about an error, try `rustc --explain E0445`.

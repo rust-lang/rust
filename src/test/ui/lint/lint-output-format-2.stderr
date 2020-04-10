@@ -12,3 +12,5 @@ warning: use of deprecated item 'lint_output_format::foo': text
 LL |     let _x = foo();
    |              ^^^
 
+warning: 2 warnings emitted
+

@@ -63,3 +63,5 @@ LL | |         println!("irrefutable pattern");
 LL | |     }
    | |_____^
 
+warning: 6 warnings emitted
+

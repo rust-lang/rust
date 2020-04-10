@@ -14,5 +14,5 @@ LL | fn lintme() { }
    |
    = note: requested on the command line with `-D test-lint`
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

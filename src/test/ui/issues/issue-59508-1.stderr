@@ -12,5 +12,5 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

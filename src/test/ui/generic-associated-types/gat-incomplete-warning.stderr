@@ -6,3 +6,5 @@ LL | #![feature(generic_associated_types)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
+warning: 1 warning emitted
+

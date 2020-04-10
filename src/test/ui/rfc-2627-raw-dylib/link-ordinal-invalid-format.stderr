@@ -14,5 +14,5 @@ LL |     #[link_ordinal("JustMonika")]
    |
    = note: an unsuffixed integer value, e.g., `1`, is expected
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

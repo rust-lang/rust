@@ -17,3 +17,5 @@ LL | use regex;
    |
    = note: `#[warn(unused_imports)]` on by default
 
+warning: 2 warnings emitted
+

@@ -24,6 +24,6 @@ error[E0599]: no method named `count_ones` found for opaque type `impl std::mark
 LL |     let _ = foo.count_ones();
    |                 ^^^^^^^^^^ method not found in `impl std::marker::Copy`
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0599`.

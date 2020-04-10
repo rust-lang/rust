@@ -6,3 +6,5 @@ LL | #![feature(let_chains)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
+warning: 1 warning emitted
+

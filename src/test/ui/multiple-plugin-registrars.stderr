@@ -25,5 +25,5 @@ note: one is here
 LL | pub fn two() {}
    | ^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error; 2 warnings emitted
 

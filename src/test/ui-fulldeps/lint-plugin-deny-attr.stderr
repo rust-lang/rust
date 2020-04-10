@@ -18,5 +18,5 @@ note: the lint level is defined here
 LL | #![deny(test_lint)]
    |         ^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
