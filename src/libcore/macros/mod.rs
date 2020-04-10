@@ -1316,9 +1316,13 @@ pub(crate) mod builtin {
         issue = "70173",
         reason = "inline assembly is not stable enough for use and is subject to change"
     )]
-    #[rustc_deprecated(
-        since = "1.44.0",
-        reason = "the syntax of asm! will change soon, use llvm_asm! to avoid breakage"
+    #[cfg_attr(
+        not(bootstrap),
+        rustc_deprecated(
+            since = "1.44.0",
+            reason = "the syntax of asm! will change soon, use llvm_asm! to avoid breakage",
+            suggestion = "llvm_asm",
+        )
     )]
     #[rustc_builtin_macro]
     #[macro_export]
