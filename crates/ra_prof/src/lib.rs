@@ -113,21 +113,6 @@ pub fn profile(label: Label) -> Profiler {
     })
 }
 
-pub fn print_time(label: Label) -> impl Drop {
-    struct Guard {
-        label: Label,
-        start: Instant,
-    }
-
-    impl Drop for Guard {
-        fn drop(&mut self) {
-            eprintln!("{}: {:?}", self.label, self.start.elapsed())
-        }
-    }
-
-    Guard { label, start: Instant::now() }
-}
-
 pub struct Profiler {
     label: Option<Label>,
     detail: Option<String>,
