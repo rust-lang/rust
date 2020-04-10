@@ -125,7 +125,7 @@ pub fn get_or_default_sysroot() -> PathBuf {
         })
     }
 
-    match env::current_exe() {
+    let mut sysroot = match env::current_exe() {
         Ok(exe) => match canonicalize(Some(exe)) {
             Some(mut p) => {
                 p.pop();
@@ -135,7 +135,15 @@ pub fn get_or_default_sysroot() -> PathBuf {
             None => panic!("can't determine value for sysroot"),
         },
         Err(ref e) => panic!(format!("failed to get current_exe: {}", e)),
+    };
+
+    if let Some(default_sysroot) = option_env!("CFG_DEFAULT_SYSROOT") {
+        if !Path::new(&*find_libdir(&sysroot)).exists() {
+            sysroot = PathBuf::from(default_sysroot);
+        }
     }
+
+    sysroot
 }
 
 // The name of the directory rustc expects libraries to be located.

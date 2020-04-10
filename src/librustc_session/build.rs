@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::ffi::OsString;
 use std::process::Command;
 
 fn output(cmd: &mut Command) -> Result<String, Box<dyn Error>> {
@@ -141,6 +142,17 @@ fn default_build_triple() -> Result<String, Box<dyn Error>> {
     Ok(format!("{}-{}", cputype, ostype))
 }
 
+fn get_rustc_sysroot() -> Result<String, Box<dyn Error>> {
+    Ok(String::from_utf8(
+        Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| OsString::from("rustc")))
+            .arg("--print=sysroot")
+            .output()?
+            .stdout,
+    )?
+    .trim()
+    .into())
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=CFG_RELEASE");
@@ -152,6 +164,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CFG_VIRTUAL_RUST_SOURCE_BASE_DIR");
     println!("cargo:rerun-if-env-changed=CFG_COMPILER_HOST_TRIPLE");
     println!("cargo:rerun-if-env-changed=CFG_LIBDIR_RELATIVE");
+    println!("cargo:rerun-if-env-changed=RUSTC_STAGE");
 
     if std::env::var_os("CFG_COMPILER_HOST_TRIPLE").is_none() {
         println!(
@@ -159,4 +172,17 @@ fn main() {
             default_build_triple().expect("Unable to determine build triple not found")
         )
     };
+
+    if std::env::var_os("RUSTC_STAGE").is_none() {
+        match get_rustc_sysroot() {
+            Ok(sysroot) => println!("cargo:rustc-env=CFG_DEFAULT_SYSROOT={}", sysroot),
+            Err(err) => {
+                println!("\"
+                    cargo:warning=ERROR: unable to get rustc sysroot: {}\n\
+                    cargo:warning=You will need to pass --sysroot= manually to the compiler that will be built",
+                    err
+                );
+            }
+        };
+    }
 }
