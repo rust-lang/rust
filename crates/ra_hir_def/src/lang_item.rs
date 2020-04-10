@@ -4,6 +4,7 @@
 //! features, such as Fn family of traits.
 use std::sync::Arc;
 
+use ra_prof::profile;
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashMap;
 
@@ -78,6 +79,8 @@ impl LangItems {
 
     /// Salsa query. This will look for lang items in a specific crate.
     pub(crate) fn crate_lang_items_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<LangItems> {
+        let _p = profile("crate_lang_items_query");
+
         let mut lang_items = LangItems::default();
 
         let crate_def_map = db.crate_def_map(krate);
@@ -95,6 +98,7 @@ impl LangItems {
         db: &dyn DefDatabase,
         module: ModuleId,
     ) -> Option<Arc<LangItems>> {
+        let _p = profile("module_lang_items_query");
         let mut lang_items = LangItems::default();
         lang_items.collect_lang_items(db, module);
         if lang_items.items.is_empty() {
@@ -111,6 +115,7 @@ impl LangItems {
         start_crate: CrateId,
         item: SmolStr,
     ) -> Option<LangItemTarget> {
+        let _p = profile("lang_item_query");
         let lang_items = db.crate_lang_items(start_crate);
         let start_crate_target = lang_items.items.get(&item);
         if let Some(target) = start_crate_target {
