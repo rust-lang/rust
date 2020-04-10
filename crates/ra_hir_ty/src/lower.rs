@@ -8,6 +8,8 @@
 use std::iter;
 use std::sync::Arc;
 
+use smallvec::SmallVec;
+
 use hir_def::{
     adt::StructKind,
     builtin_type::BuiltinType,
@@ -596,21 +598,35 @@ fn assoc_type_bindings_from_type_bound<'a>(
         .into_iter()
         .flat_map(|segment| segment.args_and_bindings.into_iter())
         .flat_map(|args_and_bindings| args_and_bindings.bindings.iter())
-        .map(move |(name, type_ref)| {
+        .flat_map(move |binding| {
             let associated_ty = associated_type_by_name_including_super_traits(
                 ctx.db.upcast(),
                 trait_ref.trait_,
-                &name,
+                &binding.name,
             );
             let associated_ty = match associated_ty {
-                None => return GenericPredicate::Error,
+                None => return SmallVec::<[GenericPredicate; 1]>::new(),
                 Some(t) => t,
             };
             let projection_ty =
                 ProjectionTy { associated_ty, parameters: trait_ref.substs.clone() };
-            let ty = Ty::from_hir(ctx, type_ref);
-            let projection_predicate = ProjectionPredicate { projection_ty, ty };
-            GenericPredicate::Projection(projection_predicate)
+            let mut preds = SmallVec::with_capacity(
+                binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
+            );
+            if let Some(type_ref) = &binding.type_ref {
+                let ty = Ty::from_hir(ctx, type_ref);
+                let projection_predicate =
+                    ProjectionPredicate { projection_ty: projection_ty.clone(), ty };
+                preds.push(GenericPredicate::Projection(projection_predicate));
+            }
+            for bound in &binding.bounds {
+                preds.extend(GenericPredicate::from_type_bound(
+                    ctx,
+                    bound,
+                    Ty::Projection(projection_ty.clone()),
+                ));
+            }
+            preds
         })
 }
 

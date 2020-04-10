@@ -1924,6 +1924,53 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
 }
 
 #[test]
+fn inline_assoc_type_bounds_1() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Iterator {
+    type Item;
+}
+trait OtherTrait<T> {
+    fn foo(&self) -> T;
+}
+
+// workaround for Chalk assoc type normalization problems
+pub struct S<T>;
+impl<T: Iterator> Iterator for S<T> {
+    type Item = <T as Iterator>::Item;
+}
+
+fn test<I: Iterator<Item: OtherTrait<u32>>>() {
+    let x: <S<I> as Iterator>::Item;
+    x.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
+fn inline_assoc_type_bounds_2() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Iterator {
+    type Item;
+}
+
+fn test<I: Iterator<Item: Iterator<Item = u32>>>() {
+    let x: <<I as Iterator>::Item as Iterator>::Item;
+    x<|>;
+}
+"#,
+    );
+    // assert_eq!(t, "u32");
+    // doesn't currently work, Chalk #234
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
 fn unify_impl_trait() {
     assert_snapshot!(
         infer_with_mismatches(r#"

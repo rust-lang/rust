@@ -9,11 +9,12 @@ use hir_expand::{
     hygiene::Hygiene,
     name::{name, AsName},
 };
-use ra_syntax::ast::{self, AstNode, TypeAscriptionOwner};
+use ra_syntax::ast::{self, AstNode, TypeAscriptionOwner, TypeBoundsOwner};
 
+use super::AssociatedTypeBinding;
 use crate::{
     path::{GenericArg, GenericArgs, ModPath, Path, PathKind},
-    type_ref::TypeRef,
+    type_ref::{TypeBound, TypeRef},
 };
 
 pub(super) use lower_use::lower_use_tree;
@@ -136,10 +137,16 @@ pub(super) fn lower_generic_args(node: ast::TypeArgList) -> Option<GenericArgs> 
     // lifetimes ignored for now
     let mut bindings = Vec::new();
     for assoc_type_arg in node.assoc_type_args() {
+        let assoc_type_arg: ast::AssocTypeArg = assoc_type_arg;
         if let Some(name_ref) = assoc_type_arg.name_ref() {
             let name = name_ref.as_name();
-            let type_ref = TypeRef::from_ast_opt(assoc_type_arg.type_ref());
-            bindings.push((name, type_ref));
+            let type_ref = assoc_type_arg.type_ref().map(TypeRef::from_ast);
+            let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
+                l.bounds().map(TypeBound::from_ast).collect()
+            } else {
+                Vec::new()
+            };
+            bindings.push(AssociatedTypeBinding { name, type_ref, bounds });
         }
     }
     if args.is_empty() && bindings.is_empty() {
@@ -168,7 +175,11 @@ fn lower_generic_args_from_fn_path(
     }
     if let Some(ret_type) = ret_type {
         let type_ref = TypeRef::from_ast_opt(ret_type.type_ref());
-        bindings.push((name![Output], type_ref))
+        bindings.push(AssociatedTypeBinding {
+            name: name![Output],
+            type_ref: Some(type_ref),
+            bounds: Vec::new(),
+        });
     }
     if args.is_empty() && bindings.is_empty() {
         None
