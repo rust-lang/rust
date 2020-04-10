@@ -1,0 +1,100 @@
+warning: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
+  --> $DIR/issue-53114-safety-checks.rs:23:13
+   |
+LL |     let _ = &p.b;
+   |             ^^^^
+   |
+   = note: `#[warn(safe_packed_borrows)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+   = note: fields of packed structs might be misaligned: dereferencing a misaligned pointer or even just creating a misaligned reference is undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/issue-53114-safety-checks.rs:26:13
+   |
+LL |     let _ = &u2.a;
+   |             ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+warning: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
+  --> $DIR/issue-53114-safety-checks.rs:29:17
+   |
+LL |     let (_,) = (&p.b,);
+   |                 ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+   = note: fields of packed structs might be misaligned: dereferencing a misaligned pointer or even just creating a misaligned reference is undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/issue-53114-safety-checks.rs:31:17
+   |
+LL |     let (_,) = (u1.a,);
+   |                 ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/issue-53114-safety-checks.rs:32:17
+   |
+LL |     let (_,) = (&u2.a,);
+   |                 ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+warning: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
+  --> $DIR/issue-53114-safety-checks.rs:39:11
+   |
+LL |     match &p.b  { _ => { } }
+   |           ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+   = note: fields of packed structs might be misaligned: dereferencing a misaligned pointer or even just creating a misaligned reference is undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/issue-53114-safety-checks.rs:41:11
+   |
+LL |     match u1.a  { _ => { } }
+   |           ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/issue-53114-safety-checks.rs:42:11
+   |
+LL |     match &u2.a { _ => { } }
+   |           ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+warning: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
+  --> $DIR/issue-53114-safety-checks.rs:45:12
+   |
+LL |     match (&p.b,)  { (_,) => { } }
+   |            ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+   = note: fields of packed structs might be misaligned: dereferencing a misaligned pointer or even just creating a misaligned reference is undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/issue-53114-safety-checks.rs:47:12
+   |
+LL |     match (u1.a,)  { (_,) => { } }
+   |            ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/issue-53114-safety-checks.rs:48:12
+   |
+LL |     match (&u2.a,) { (_,) => { } }
+   |            ^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0133`.
