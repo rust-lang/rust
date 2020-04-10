@@ -706,18 +706,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         self.super_place(place, context, location)
     }
 
-    fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
-        if let PlaceElem::Index(local) = elem {
-            let new_local = self.make_integrate_local(*local);
-
-            if new_local != *local {
-                return Some(PlaceElem::Index(new_local));
-            }
-        }
-
-        None
-    }
-
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
         self.in_cleanup_block = data.is_cleanup;
         self.super_basic_block_data(block, data);
