@@ -243,7 +243,7 @@ macro_rules! define_queries {
 }
 
 macro_rules! query_helper_param_ty {
-    (DefId) => { impl Into<DefId> };
+    (DefId) => { impl IntoQueryParam<DefId> };
     ($K:ty) => { $K };
 }
 
@@ -386,7 +386,7 @@ macro_rules! define_queries_inner {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
-                ensure_query::<queries::$name<'_>, _>(self.tcx, key.into())
+                ensure_query::<queries::$name<'_>, _>(self.tcx, key.into_query_param())
             })*
         }
 
@@ -464,7 +464,7 @@ macro_rules! define_queries_inner {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V {
-                get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into())
+                get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into_query_param())
             })*
         }
 
