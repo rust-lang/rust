@@ -275,7 +275,7 @@ pub enum SelfParamKind {
 impl ast::SelfParam {
     pub fn kind(&self) -> SelfParamKind {
         if self.amp_token().is_some() {
-            if self.amp_mut_token().is_some() {
+            if self.mut_token().is_some() {
                 SelfParamKind::MutRef
             } else {
                 SelfParamKind::Ref
@@ -283,24 +283,6 @@ impl ast::SelfParam {
         } else {
             SelfParamKind::Owned
         }
-    }
-
-    /// the "mut" in "mut self", not the one in "&mut self"
-    pub fn mut_token(&self) -> Option<SyntaxToken> {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .take_while(|it| it.kind() != T![&])
-            .find(|it| it.kind() == T![mut])
-    }
-
-    /// the "mut" in "&mut self", not the one in "mut self"
-    pub fn amp_mut_token(&self) -> Option<SyntaxToken> {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .skip_while(|it| it.kind() != T![&])
-            .find(|it| it.kind() == T![mut])
     }
 }
 
