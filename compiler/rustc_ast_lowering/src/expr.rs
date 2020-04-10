@@ -871,8 +871,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ExprKind<'hir> {
         // Return early in case of an ordinary assignment.
         match lhs.kind {
-            ExprKind::Array(..) | ExprKind::Call(..) | ExprKind::Struct(..) | ExprKind::Tup(..) => {
-            }
+            ExprKind::Array(..)
+            | ExprKind::Call(..)
+            | ExprKind::Struct(_, _, None)
+            | ExprKind::Tup(..) => {}
             _ => {
                 return hir::ExprKind::Assign(
                     self.lower_expr(lhs),
@@ -959,7 +961,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             // structs:
             // FIXME: support `..` here, requires changes to the parser
-            ExprKind::Struct(path, fields, _rest) => {
+            ExprKind::Struct(path, fields, None) => {
                 let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
                     hir::FieldPat {
