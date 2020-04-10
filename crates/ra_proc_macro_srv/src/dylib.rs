@@ -1,54 +1,50 @@
 //! Handles dynamic library loading for proc macro
 
 use crate::{proc_macro::bridge, rustc_server::TokenStream};
-use std::fs::File;
-use std::io::Read;
 use std::path::Path;
 
 use goblin::{mach::Mach, Object};
 use libloading::Library;
 use ra_proc_macro::ProcMacroKind;
 
-static NEW_REGISTRAR_SYMBOL: &str = "__rustc_proc_macro_decls_";
-static _OLD_REGISTRAR_SYMBOL: &str = "__rustc_derive_registrar_";
-
-fn read_bytes(file: &Path) -> Option<Vec<u8>> {
-    let mut fd = File::open(file).ok()?;
-    let mut buffer = Vec::new();
-    fd.read_to_end(&mut buffer).ok()?;
-
-    Some(buffer)
-}
+static NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
 
 fn get_symbols_from_lib(file: &Path) -> Option<Vec<String>> {
-    let buffer = read_bytes(file)?;
+    let buffer = std::fs::read(file).ok()?;
     let object = Object::parse(&buffer).ok()?;
 
     return match object {
         Object::Elf(elf) => {
             let symbols = elf.dynstrtab.to_vec().ok()?;
             let names = symbols.iter().map(|s| s.to_string()).collect();
-
             Some(names)
         }
-
         Object::PE(pe) => {
             let symbol_names =
                 pe.exports.iter().flat_map(|s| s.name).map(|n| n.to_string()).collect();
             Some(symbol_names)
         }
-
         Object::Mach(mach) => match mach {
             Mach::Binary(binary) => {
                 let exports = binary.exports().ok()?;
-                let names = exports.iter().map(|s| s.name.clone()).collect();
-
+                let names = exports
+                    .iter()
+                    .map(|s| {
+                        // In macos doc:
+                        // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html
+                        // Unlike other dyld API's, the symbol name passed to dlsym() must NOT be
+                        // prepended with an underscore.
+                        if s.name.starts_with("_") {
+                            s.name[1..].to_string()
+                        } else {
+                            s.name.to_string()
+                        }
+                    })
+                    .collect();
                 Some(names)
             }
-
             Mach::Fat(_) => None,
         },
-
         Object::Archive(_) | Object::Unknown(_) => None,
     };
 }
@@ -57,28 +53,10 @@ fn is_derive_registrar_symbol(symbol: &str) -> bool {
     symbol.contains(NEW_REGISTRAR_SYMBOL)
 }
 
-#[cfg(not(target_os = "macos"))]
-fn adjust_symbol_name(name: &str) -> String {
-    name.to_string()
-}
-
-#[cfg(target_os = "macos")]
-fn adjust_symbol_name(s: &str) -> String {
-    // In macos doc:
-    // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html
-    // Unlike other dyld API's, the symbol name passed to dlsym() must NOT be
-    // prepended with an underscore.
-    if s.starts_with("_") {
-        s[1..s.len()].to_string()
-    } else {
-        s.to_string()
-    }
-}
-
 fn find_registrar_symbol(file: &Path) -> Option<String> {
     let symbols = get_symbols_from_lib(file)?;
 
-    symbols.iter().find(|s| is_derive_registrar_symbol(s)).map(|s| adjust_symbol_name(&s))
+    symbols.iter().find(|s| is_derive_registrar_symbol(s)).map(|s| s.clone())
 }
 
 /// Loads dynamic library in platform dependent manner.
@@ -119,11 +97,9 @@ impl ProcMacroLibraryLibloading {
             .ok_or(format!("Cannot find registrar symbol in file {:?}", file))?;
 
         let lib = load_library(file).map_err(|e| e.to_string())?;
-
         let exported_macros = {
             let macros: libloading::Symbol<&&[bridge::client::ProcMacro]> =
                 unsafe { lib.get(symbol_name.as_bytes()) }.map_err(|e| e.to_string())?;
-
             macros.to_vec()
         };
 
@@ -140,7 +116,6 @@ pub struct Expander {
 impl Expander {
     pub fn new<P: AsRef<Path>>(lib: &P) -> Result<Expander, String> {
         let mut libs = vec![];
-
         /* Some libraries for dynamic loading require canonicalized path (even when it is
         already absolute
         */
@@ -177,20 +152,16 @@ impl Expander {
                             crate::rustc_server::Rustc::default(),
                             parsed_body,
                         );
-
                         return res.map(|it| it.subtree);
                     }
-
                     bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
                         let res = client.run(
                             &crate::proc_macro::bridge::server::SameThread,
                             crate::rustc_server::Rustc::default(),
                             parsed_body,
                         );
-
                         return res.map(|it| it.subtree);
                     }
-
                     bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
                         let res = client.run(
                             &crate::proc_macro::bridge::server::SameThread,
@@ -201,10 +172,7 @@ impl Expander {
 
                         return res.map(|it| it.subtree);
                     }
-
-                    _ => {
-                        continue;
-                    }
+                    _ => continue,
                 }
             }
         }
