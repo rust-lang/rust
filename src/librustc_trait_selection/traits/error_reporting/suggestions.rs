@@ -826,12 +826,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             .iter()
             .filter_map(|expr| tables.node_type_opt(expr.hir_id))
             .map(|ty| self.resolve_vars_if_possible(&ty));
-        let (last_ty, all_returns_have_same_type) = ret_types.clone().fold(
-            (None, true),
-            |(last_ty, mut same): (std::option::Option<Ty<'_>>, bool), ty| {
+        let (last_ty, all_returns_have_same_type, count) = ret_types.clone().fold(
+            (None, true, 0),
+            |(last_ty, mut same, count): (std::option::Option<Ty<'_>>, bool, usize), ty| {
                 let ty = self.resolve_vars_if_possible(&ty);
                 same &= last_ty.map_or(true, |last_ty| last_ty == ty) && ty.kind != ty::Error;
-                (Some(ty), same)
+                (Some(ty), same, count + 1)
             },
         );
         let all_returns_conform_to_trait =
@@ -846,7 +846,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 let obl = Obligation::new(cause.clone(), param_env, pred);
                                 self.predicate_may_hold(&obl)
                             })
-                        })
+                        }) || count == 0
                     }
                     _ => false,
                 }
@@ -855,21 +855,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             };
 
         let sm = self.tcx.sess.source_map();
-        let (snippet, last_ty) =
-            if let (true, hir::TyKind::TraitObject(..), Ok(snippet), true, Some(last_ty)) = (
-                // Verify that we're dealing with a return `dyn Trait`
-                ret_ty.span.overlaps(span),
-                &ret_ty.kind,
-                sm.span_to_snippet(ret_ty.span),
-                // If any of the return types does not conform to the trait, then we can't
-                // suggest `impl Trait` nor trait objects, it is a type mismatch error.
-                all_returns_conform_to_trait,
-                last_ty,
-            ) {
-                (snippet, last_ty)
-            } else {
-                return false;
-            };
+        let snippet = if let (true, hir::TyKind::TraitObject(..), Ok(snippet), true) = (
+            // Verify that we're dealing with a return `dyn Trait`
+            ret_ty.span.overlaps(span),
+            &ret_ty.kind,
+            sm.span_to_snippet(ret_ty.span),
+            // If any of the return types does not conform to the trait, then we can't
+            // suggest `impl Trait` nor trait objects, it is a type mismatch error.
+            all_returns_conform_to_trait,
+        ) {
+            snippet
+        } else {
+            return false;
+        };
         err.code(error_code!(E0746));
         err.set_primary_message("return type cannot have an unboxed trait object");
         err.children.clear();
@@ -881,13 +879,50 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             #using-trait-objects-that-allow-for-values-of-different-types>";
         let has_dyn = snippet.split_whitespace().next().map_or(false, |s| s == "dyn");
         let trait_obj = if has_dyn { &snippet[4..] } else { &snippet[..] };
-        if all_returns_have_same_type {
+        if count == 0 {
+            // No return paths. Suggest `-> T`, `-> impl Trait`, and if `Trait` is object safe,
+            // `-> Box<dyn Trait>`.
+            err.note(
+                "currently nothing is being returned, depending on the final implementation \
+                 you could change the return type in different ways",
+            );
+            err.span_suggestion(
+                ret_ty.span,
+                "you could use some type `T` that is `T: Sized` as the return type if all return \
+                 paths will have the same type",
+                "T".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+            err.span_suggestion(
+                ret_ty.span,
+                &format!(
+                    "you could use `impl {}` as the return type if all return paths will have the \
+                     same type but you want to expose only the trait in the signature",
+                    trait_obj,
+                ),
+                format!("impl {}", trait_obj),
+                Applicability::MaybeIncorrect,
+            );
+            err.note(impl_trait_msg);
+            if is_object_safe {
+                err.span_suggestion(
+                    ret_ty.span,
+                    &format!(
+                        "you could use a boxed trait object if all return paths `impl` trait `{}`",
+                        trait_obj,
+                    ),
+                    format!("Box<dyn {}>", trait_obj),
+                    Applicability::MaybeIncorrect,
+                );
+                err.note(trait_obj_msg);
+            }
+        } else if let (Some(last_ty), true) = (last_ty, all_returns_have_same_type) {
             // Suggest `-> impl Trait`.
             err.span_suggestion(
                 ret_ty.span,
                 &format!(
-                    "return `impl {1}` instead, as all return paths are of type `{}`, \
-                        which implements `{1}`",
+                    "use `impl {1}` as the return type, as all return paths are of type `{}`, \
+                     which implements `{1}`",
                     last_ty, trait_obj,
                 ),
                 format!("impl {}", trait_obj),
@@ -925,8 +960,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             err.note(trait_obj_msg);
             err.note(&format!(
-                "if all the returned values were of the same type you could use \
-                    `impl {}` as the return type",
+                "if all the returned values were of the same type you could use `impl {}` as the \
+                 return type",
                 trait_obj,
             ));
             err.note(impl_trait_msg);

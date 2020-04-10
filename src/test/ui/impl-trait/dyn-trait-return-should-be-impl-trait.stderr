@@ -49,7 +49,7 @@ LL | fn bap() -> Trait { Struct }
    |             ^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: return `impl Trait` instead, as all return paths are of type `Struct`, which implements `Trait`
+help: use `impl Trait` as the return type, as all return paths are of type `Struct`, which implements `Trait`
    |
 LL | fn bap() -> impl Trait { Struct }
    |             ^^^^^^^^^^
@@ -61,20 +61,32 @@ LL | fn ban() -> dyn Trait { Struct }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: return `impl Trait` instead, as all return paths are of type `Struct`, which implements `Trait`
+help: use `impl Trait` as the return type, as all return paths are of type `Struct`, which implements `Trait`
    |
 LL | fn ban() -> impl Trait { Struct }
    |             ^^^^^^^^^^
 
-error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
+error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:17:13
    |
 LL | fn bak() -> dyn Trait { unimplemented!() }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn Trait + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: the return type of a function must have a statically known size
+   = note: currently nothing is being returned, depending on the final implementation you could change the return type in different ways
+   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
+   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
+help: you could use some type `T` that is `T: Sized` as the return type if all return paths will have the same type
+   |
+LL | fn bak() -> T { unimplemented!() }
+   |             ^
+help: you could use `impl Trait` as the return type if all return paths will have the same type but you want to expose only the trait in the signature
+   |
+LL | fn bak() -> impl Trait { unimplemented!() }
+   |             ^^^^^^^^^^
+help: you could use a boxed trait object if all return paths `impl` trait `Trait`
+   |
+LL | fn bak() -> Box<dyn Trait> { unimplemented!() }
+   |             ^^^^^^^^^^^^^^
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:19:13
@@ -249,7 +261,7 @@ LL | fn bat() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: return `impl Trait` instead, as all return paths are of type `{integer}`, which implements `Trait`
+help: use `impl Trait` as the return type, as all return paths are of type `{integer}`, which implements `Trait`
    |
 LL | fn bat() -> impl Trait {
    |             ^^^^^^^^^^
@@ -261,7 +273,7 @@ LL | fn bay() -> dyn Trait {
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-help: return `impl Trait` instead, as all return paths are of type `{integer}`, which implements `Trait`
+help: use `impl Trait` as the return type, as all return paths are of type `{integer}`, which implements `Trait`
    |
 LL | fn bay() -> impl Trait {
    |             ^^^^^^^^^^
