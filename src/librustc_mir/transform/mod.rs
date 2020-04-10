@@ -1,7 +1,7 @@
 use crate::{shim, util};
 use rustc_ast::ast;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
@@ -62,7 +62,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
     let mut set = DefIdSet::default();
 
     // All body-owners have MIR associated with them.
-    set.extend(tcx.body_owners());
+    set.extend(tcx.body_owners().map(LocalDefId::to_def_id));
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.

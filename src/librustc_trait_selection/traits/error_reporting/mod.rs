@@ -358,7 +358,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         tcx.hir().body_owner_def_id(hir::BodyId {
                                             hir_id: obligation.cause.body_id,
                                         })
-                                    }),
+                                    })
+                                    .to_def_id(),
                             );
 
                             err.span_label(enclosing_scope_span, s.as_str());

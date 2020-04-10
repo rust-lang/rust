@@ -2371,7 +2371,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let parent_def_id = def_id
                 .and_then(|def_id| tcx.hir().as_local_hir_id(def_id))
-                .map(|hir_id| tcx.hir().get_parent_did(hir_id));
+                .map(|hir_id| tcx.hir().get_parent_did(hir_id).to_def_id());
 
             debug!("qpath_to_ty: parent_def_id={:?}", parent_def_id);
 

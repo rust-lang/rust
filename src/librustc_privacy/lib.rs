@@ -248,7 +248,7 @@ fn def_id_visibility<'tcx>(
                     }
                 }
                 Node::TraitItem(..) | Node::Variant(..) => {
-                    return def_id_visibility(tcx, tcx.hir().get_parent_did(hir_id));
+                    return def_id_visibility(tcx, tcx.hir().get_parent_did(hir_id).to_def_id());
                 }
                 Node::ImplItem(impl_item) => {
                     match tcx.hir().get(tcx.hir().get_parent_item(hir_id)) {
@@ -270,7 +270,7 @@ fn def_id_visibility<'tcx>(
                             let (mut ctor_vis, mut span, mut descr) =
                                 def_id_visibility(tcx, parent_did);
 
-                            let adt_def = tcx.adt_def(tcx.hir().get_parent_did(hir_id));
+                            let adt_def = tcx.adt_def(tcx.hir().get_parent_did(hir_id).to_def_id());
                             let ctor_did = tcx.hir().local_def_id(vdata.ctor_hir_id().unwrap());
                             let variant = adt_def.variant_with_ctor_id(ctor_did);
 
@@ -309,7 +309,8 @@ fn def_id_visibility<'tcx>(
                             // If the structure is marked as non_exhaustive then lower the
                             // visibility to within the crate.
                             if ctor_vis == ty::Visibility::Public {
-                                let adt_def = tcx.adt_def(tcx.hir().get_parent_did(hir_id));
+                                let adt_def =
+                                    tcx.adt_def(tcx.hir().get_parent_did(hir_id).to_def_id());
                                 if adt_def.non_enum_variant().is_field_list_non_exhaustive() {
                                     ctor_vis =
                                         ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));

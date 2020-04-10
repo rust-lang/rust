@@ -146,7 +146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());
+        let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id()).to_def_id();
         assert_eq!(body_owner_def_id, closure_def_id);
         let mut delegate = InferBorrowKind {
             fcx: self,

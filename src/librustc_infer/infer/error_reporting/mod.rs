@@ -1594,7 +1594,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 self.tcx.hir().body_owner_def_id(hir::BodyId { hir_id: cause.body_id })
             });
         self.check_and_note_conflicting_crates(diag, terr);
-        self.tcx.note_and_explain_type_err(diag, terr, span, body_owner_def_id);
+        self.tcx.note_and_explain_type_err(diag, terr, span, body_owner_def_id.to_def_id());
 
         // It reads better to have the error origin as the final
         // thing.

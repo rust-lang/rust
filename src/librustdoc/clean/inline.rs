@@ -451,7 +451,11 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                         name: None,
                         attrs: clean::Attributes::default(),
                         source: clean::Span::empty(),
-                        def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID),
+                        def_id: cx
+                            .tcx
+                            .hir()
+                            .local_def_id_from_node_id(ast::CRATE_NODE_ID)
+                            .to_def_id(),
                         visibility: clean::Public,
                         stability: None,
                         deprecation: None,

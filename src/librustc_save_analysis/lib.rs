@@ -130,7 +130,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
     pub fn get_extern_item_data(&self, item: &ast::ForeignItem) -> Option<Data> {
         let qualname = format!(
             "::{}",
-            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
+            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id())
         );
         match item.kind {
             ast::ForeignItemKind::Fn(_, ref sig, ref generics, _) => {
@@ -183,7 +183,9 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             ast::ItemKind::Fn(_, ref sig, .., ref generics, _) => {
                 let qualname = format!(
                     "::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
+                    self.tcx.def_path_str(
+                        self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id()
+                    )
                 );
                 filter!(self.span_utils, item.ident.span);
                 Some(Data::DefData(Def {
@@ -204,7 +206,9 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             ast::ItemKind::Static(ref typ, ..) => {
                 let qualname = format!(
                     "::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
+                    self.tcx.def_path_str(
+                        self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id()
+                    )
                 );
 
                 filter!(self.span_utils, item.ident.span);
@@ -230,7 +234,9 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             ast::ItemKind::Const(_, ref typ, _) => {
                 let qualname = format!(
                     "::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
+                    self.tcx.def_path_str(
+                        self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id()
+                    )
                 );
                 filter!(self.span_utils, item.ident.span);
 
@@ -255,7 +261,9 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             ast::ItemKind::Mod(ref m) => {
                 let qualname = format!(
                     "::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
+                    self.tcx.def_path_str(
+                        self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id()
+                    )
                 );
 
                 let sm = self.tcx.sess.source_map();
@@ -282,7 +290,9 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 let name = item.ident.to_string();
                 let qualname = format!(
                     "::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
+                    self.tcx.def_path_str(
+                        self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id()
+                    )
                 );
                 filter!(self.span_utils, item.ident.span);
                 let variants_str =
@@ -363,11 +373,11 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             let name = ident.to_string();
             let qualname = format!(
                 "::{}::{}",
-                self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(scope)),
+                self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(scope).to_def_id()),
                 ident
             );
             filter!(self.span_utils, ident.span);
-            let def_id = self.tcx.hir().local_def_id_from_node_id(field.id);
+            let def_id = self.tcx.hir().local_def_id_from_node_id(field.id).to_def_id();
             let typ = self.tcx.type_of(def_id).to_string();
 
             let id = id_from_node_id(field.id, self);
@@ -399,7 +409,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         // which the method is declared in, followed by the method's name.
         let (qualname, parent_scope, decl_id, docs, attributes) = match self
             .tcx
-            .impl_of_method(self.tcx.hir().local_def_id_from_node_id(id))
+            .impl_of_method(self.tcx.hir().local_def_id_from_node_id(id).to_def_id())
         {
             Some(impl_id) => match self.tcx.hir().get_if_local(impl_id) {
                 Some(Node::Item(item)) => match item.kind {
@@ -448,7 +458,10 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     );
                 }
             },
-            None => match self.tcx.trait_of_item(self.tcx.hir().local_def_id_from_node_id(id)) {
+            None => match self
+                .tcx
+                .trait_of_item(self.tcx.hir().local_def_id_from_node_id(id).to_def_id())
+            {
                 Some(def_id) => {
                     let mut docs = String::new();
                     let mut attrs = vec![];
@@ -1073,7 +1086,7 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
 
 fn id_from_node_id(id: NodeId, scx: &SaveContext<'_, '_>) -> rls_data::Id {
     let def_id = scx.tcx.hir().opt_local_def_id_from_node_id(id);
-    def_id.map(id_from_def_id).unwrap_or_else(|| {
+    def_id.map(|id| id_from_def_id(id.to_def_id())).unwrap_or_else(|| {
         // Create a *fake* `DefId` out of a `NodeId` by subtracting the `NodeId`
         // out of the maximum u32 value. This will work unless you have *billions*
         // of definitions in a single crate (very unlikely to actually happen).

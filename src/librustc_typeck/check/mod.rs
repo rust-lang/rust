@@ -751,7 +751,7 @@ fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: DefId) {
 fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
     debug_assert!(crate_num == LOCAL_CRATE);
     tcx.par_body_owners(|body_owner_def_id| {
-        tcx.ensure().typeck_tables_of(body_owner_def_id);
+        tcx.ensure().typeck_tables_of(body_owner_def_id.to_def_id());
     });
 }
 

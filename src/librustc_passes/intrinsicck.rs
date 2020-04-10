@@ -131,8 +131,8 @@ impl Visitor<'tcx> for ItemVisitor<'tcx> {
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let owner_def_id = self.tcx.hir().body_owner_def_id(body_id);
         let body = self.tcx.hir().body(body_id);
-        let param_env = self.tcx.param_env(owner_def_id);
-        let tables = self.tcx.typeck_tables_of(owner_def_id);
+        let param_env = self.tcx.param_env(owner_def_id.to_def_id());
+        let tables = self.tcx.typeck_tables_of(owner_def_id.to_def_id());
         ExprVisitor { tcx: self.tcx, param_env, tables }.visit_body(body);
         self.visit_body(body);
     }
