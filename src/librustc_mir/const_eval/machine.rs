@@ -360,18 +360,18 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
         } else {
             // Read access. These are usually allowed, with some exceptions.
             if memory_extra.can_access_statics {
-                // This is allowed to read from anything.
+                // Machine configuration allows us read from anything (e.g., `static` initializer).
                 Ok(())
-            } else if allocation.mutability == Mutability::Mut || static_def_id.is_some() {
-                // This is a potentially dangerous read.
-                // We *must* error on any access to a mutable global here, as the content of
-                // this allocation may be different now and at run-time, so if we permit reading
-                // now we might return the wrong value.
-                // We conservatively also reject all statics here, but that could be relaxed
-                // in the future.
+            } else if static_def_id.is_some() {
+                // Machine configuration does not allow us to read statics
+                // (e.g., `const` initializer).
                 Err(ConstEvalErrKind::ConstAccessesStatic.into())
             } else {
                 // Immutable global, this read is fine.
+                // But make sure we never accept a read from something mutable, that would be
+                // unsound. The reason is that as the content of this allocation may be different
+                // now and at run-time, so if we permit reading now we might return the wrong value.
+                assert_eq!(allocation.mutability, Mutability::Not);
                 Ok(())
             }
         }
