@@ -39,11 +39,12 @@ macro_rules! t {
 pub fn restore_library_path() {
     println!("cargo:rerun-if-env-changed=REAL_LIBRARY_PATH_VAR");
     println!("cargo:rerun-if-env-changed=REAL_LIBRARY_PATH");
-    let key = env::var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
-    if let Some(env) = env::var_os("REAL_LIBRARY_PATH") {
-        env::set_var(&key, &env);
-    } else {
-        env::remove_var(&key);
+    if let Some(key) = env::var_os("REAL_LIBRARY_PATH_VAR") {
+        if let Some(env) = env::var_os("REAL_LIBRARY_PATH") {
+            env::set_var(&key, &env);
+        } else {
+            env::remove_var(&key);
+        }
     }
 }
 
