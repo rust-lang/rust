@@ -18,7 +18,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use std::sync::Mutex;
     ///
     /// async fn foo(x: &Mutex<u32>) {
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```rust,ignore
     /// use std::sync::Mutex;
     ///
     /// async fn foo(x: &Mutex<u32>) {
