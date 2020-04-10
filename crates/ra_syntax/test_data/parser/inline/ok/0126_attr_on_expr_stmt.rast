@@ -31,7 +31,7 @@ SOURCE_FILE@[0; 82)
             ARG_LIST@[23; 25)
               L_PAREN@[23; 24) "("
               R_PAREN@[24; 25) ")"
-          SEMI@[25; 26) ";"
+          SEMICOLON@[25; 26) ";"
         WHITESPACE@[26; 31) "\n    "
         EXPR_STMT@[31; 42)
           ATTR@[31; 35)
@@ -48,7 +48,7 @@ SOURCE_FILE@[0; 82)
               PATH_SEGMENT@[36; 39)
                 NAME_REF@[36; 39)
                   IDENT@[36; 39) "bar"
-            EXCL@[39; 40) "!"
+            BANG@[39; 40) "!"
             TOKEN_TREE@[40; 42)
               L_CURLY@[40; 41) "{"
               R_CURLY@[41; 42) "}"
@@ -93,7 +93,7 @@ SOURCE_FILE@[0; 82)
             TUPLE_EXPR@[76; 78)
               L_PAREN@[76; 77) "("
               R_PAREN@[77; 78) ")"
-          SEMI@[78; 79) ";"
+          SEMICOLON@[78; 79) ";"
         WHITESPACE@[79; 80) "\n"
         R_CURLY@[80; 81) "}"
   WHITESPACE@[81; 82) "\n"

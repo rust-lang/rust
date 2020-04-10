@@ -14,7 +14,7 @@ SOURCE_FILE@[0; 36)
       TUPLE_TYPE@[14; 16)
         L_PAREN@[14; 15) "("
         R_PAREN@[15; 16) ")"
-    SEMI@[16; 17) ";"
+    SEMICOLON@[16; 17) ";"
   WHITESPACE@[17; 18) "\n"
   TYPE_ALIAS_DEF@[18; 35)
     TYPE_KW@[18; 22) "type"
@@ -31,5 +31,5 @@ SOURCE_FILE@[0; 36)
       TUPLE_TYPE@[32; 34)
         L_PAREN@[32; 33) "("
         R_PAREN@[33; 34) ")"
-    SEMI@[34; 35) ";"
+    SEMICOLON@[34; 35) ";"
   WHITESPACE@[35; 36) "\n"

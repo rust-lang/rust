@@ -25,7 +25,7 @@ SOURCE_FILE@[0; 83)
                 PATH_SEGMENT@[21; 26)
                   NAME_REF@[21; 26)
                     IDENT@[21; 26) "Clone"
-        SEMI@[26; 27) ";"
+        SEMICOLON@[26; 27) ";"
       WHITESPACE@[27; 32) "\n    "
       CONST_DEF@[32; 45)
         CONST_KW@[32; 37) "const"
@@ -39,7 +39,7 @@ SOURCE_FILE@[0; 83)
             PATH_SEGMENT@[41; 44)
               NAME_REF@[41; 44)
                 IDENT@[41; 44) "i32"
-        SEMI@[44; 45) ";"
+        SEMICOLON@[44; 45) ";"
       WHITESPACE@[45; 50) "\n    "
       FN_DEF@[50; 61)
         FN_KW@[50; 52) "fn"
@@ -66,7 +66,7 @@ SOURCE_FILE@[0; 83)
             AMP@[73; 74) "&"
             SELF_KW@[74; 78) "self"
           R_PAREN@[78; 79) ")"
-        SEMI@[79; 80) ";"
+        SEMICOLON@[79; 80) ";"
       WHITESPACE@[80; 81) "\n"
       R_CURLY@[81; 82) "}"
   WHITESPACE@[82; 83) "\n"

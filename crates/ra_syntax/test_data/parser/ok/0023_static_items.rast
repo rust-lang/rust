@@ -16,7 +16,7 @@ SOURCE_FILE@[0; 47)
     WHITESPACE@[17; 18) " "
     LITERAL@[18; 19)
       INT_NUMBER@[18; 19) "1"
-    SEMI@[19; 20) ";"
+    SEMICOLON@[19; 20) ";"
   WHITESPACE@[20; 21) "\n"
   STATIC_DEF@[21; 46)
     STATIC_KW@[21; 27) "static"
@@ -37,5 +37,5 @@ SOURCE_FILE@[0; 47)
     WHITESPACE@[42; 43) " "
     LITERAL@[43; 45)
       INT_NUMBER@[43; 45) "92"
-    SEMI@[45; 46) ";"
+    SEMICOLON@[45; 46) ";"
   WHITESPACE@[46; 47) "\n"

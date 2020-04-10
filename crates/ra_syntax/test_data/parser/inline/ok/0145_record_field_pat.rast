@@ -39,7 +39,7 @@ SOURCE_FILE@[0; 63)
           TUPLE_EXPR@[32; 34)
             L_PAREN@[32; 33) "("
             R_PAREN@[33; 34) ")"
-          SEMI@[34; 35) ";"
+          SEMICOLON@[34; 35) ";"
         WHITESPACE@[35; 40) "\n    "
         LET_STMT@[40; 60)
           LET_KW@[40; 43) "let"
@@ -69,7 +69,7 @@ SOURCE_FILE@[0; 63)
           TUPLE_EXPR@[57; 59)
             L_PAREN@[57; 58) "("
             R_PAREN@[58; 59) ")"
-          SEMI@[59; 60) ";"
+          SEMICOLON@[59; 60) ";"
         WHITESPACE@[60; 61) "\n"
         R_CURLY@[61; 62) "}"
   WHITESPACE@[62; 63) "\n"

@@ -26,11 +26,11 @@ SOURCE_FILE@[0; 71)
                   NAME_REF@[15; 16)
                     IDENT@[15; 16) "B"
             R_ANGLE@[16; 17) ">"
-        COLONCOLON@[17; 19) "::"
+        COLON2@[17; 19) "::"
         PATH_SEGMENT@[19; 25)
           NAME_REF@[19; 25)
             IDENT@[19; 25) "Output"
-    SEMI@[25; 26) ";"
+    SEMICOLON@[25; 26) ";"
   WHITESPACE@[26; 27) "\n"
   FN_DEF@[27; 70)
     FN_KW@[27; 29) "fn"
@@ -66,14 +66,14 @@ SOURCE_FILE@[0; 71)
                           NAME_REF@[48; 55)
                             IDENT@[48; 55) "Default"
                     R_ANGLE@[55; 56) ">"
-                COLONCOLON@[56; 58) "::"
+                COLON2@[56; 58) "::"
                 PATH_SEGMENT@[58; 65)
                   NAME_REF@[58; 65)
                     IDENT@[58; 65) "default"
             ARG_LIST@[65; 67)
               L_PAREN@[65; 66) "("
               R_PAREN@[66; 67) ")"
-          SEMI@[67; 68) ";"
+          SEMICOLON@[67; 68) ";"
         WHITESPACE@[68; 69) " "
         R_CURLY@[69; 70) "}"
   WHITESPACE@[70; 71) "\n"

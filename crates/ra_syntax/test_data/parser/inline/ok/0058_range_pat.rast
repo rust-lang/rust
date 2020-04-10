@@ -27,7 +27,7 @@ SOURCE_FILE@[0; 112)
                   LITERAL@[35; 36)
                     INT_NUMBER@[35; 36) "0"
                 WHITESPACE@[36; 37) " "
-                DOTDOTDOT@[37; 40) "..."
+                DOT3@[37; 40) "..."
                 WHITESPACE@[40; 41) " "
                 LITERAL_PAT@[41; 44)
                   LITERAL@[41; 44)
@@ -46,7 +46,7 @@ SOURCE_FILE@[0; 112)
                   LITERAL@[60; 63)
                     INT_NUMBER@[60; 63) "101"
                 WHITESPACE@[63; 64) " "
-                DOTDOTEQ@[64; 67) "..="
+                DOT2EQ@[64; 67) "..="
                 WHITESPACE@[67; 68) " "
                 LITERAL_PAT@[68; 71)
                   LITERAL@[68; 71)
@@ -65,7 +65,7 @@ SOURCE_FILE@[0; 112)
                   LITERAL@[87; 90)
                     INT_NUMBER@[87; 90) "200"
                 WHITESPACE@[90; 91) " "
-                DOTDOT@[91; 93) ".."
+                DOT2@[91; 93) ".."
                 WHITESPACE@[93; 94) " "
                 LITERAL_PAT@[94; 97)
                   LITERAL@[94; 97)

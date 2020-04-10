@@ -12,7 +12,7 @@ SOURCE_FILE@[0; 113)
       PARAM_LIST@[11; 13)
         L_PAREN@[11; 12) "("
         R_PAREN@[12; 13) ")"
-    SEMI@[13; 14) ";"
+    SEMICOLON@[13; 14) ";"
   WHITESPACE@[14; 15) "\n"
   TYPE_ALIAS_DEF@[15; 36)
     TYPE_KW@[15; 19) "type"
@@ -29,7 +29,7 @@ SOURCE_FILE@[0; 113)
       PARAM_LIST@[33; 35)
         L_PAREN@[33; 34) "("
         R_PAREN@[34; 35) ")"
-    SEMI@[35; 36) ";"
+    SEMICOLON@[35; 36) ";"
   WHITESPACE@[36; 37) "\n"
   TYPE_ALIAS_DEF@[37; 69)
     TYPE_KW@[37; 41) "type"
@@ -51,7 +51,7 @@ SOURCE_FILE@[0; 113)
       PARAM_LIST@[66; 68)
         L_PAREN@[66; 67) "("
         R_PAREN@[67; 68) ")"
-    SEMI@[68; 69) ";"
+    SEMICOLON@[68; 69) ";"
   WHITESPACE@[69; 70) "\n"
   TYPE_ALIAS_DEF@[70; 112)
     TYPE_KW@[70; 74) "type"
@@ -82,7 +82,7 @@ SOURCE_FILE@[0; 113)
         COMMA@[98; 99) ","
         WHITESPACE@[99; 100) " "
         PARAM@[100; 103)
-          DOTDOTDOT@[100; 103) "..."
+          DOT3@[100; 103) "..."
         WHITESPACE@[103; 104) " "
         R_PAREN@[104; 105) ")"
       WHITESPACE@[105; 106) " "
@@ -94,5 +94,5 @@ SOURCE_FILE@[0; 113)
             PATH_SEGMENT@[109; 111)
               NAME_REF@[109; 111)
                 IDENT@[109; 111) "u8"
-    SEMI@[111; 112) ";"
+    SEMICOLON@[111; 112) ";"
   WHITESPACE@[112; 113) "\n"

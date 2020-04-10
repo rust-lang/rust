@@ -25,7 +25,7 @@ SOURCE_FILE@[0; 91)
               PATH_SEGMENT@[23; 24)
                 NAME_REF@[23; 24)
                   IDENT@[23; 24) "a"
-          SEMI@[24; 25) ";"
+          SEMICOLON@[24; 25) ";"
         WHITESPACE@[25; 30) "\n    "
         LET_STMT@[30; 43)
           LET_KW@[30; 33) "let"
@@ -41,11 +41,11 @@ SOURCE_FILE@[0; 91)
                 PATH_SEGMENT@[38; 39)
                   NAME_REF@[38; 39)
                     IDENT@[38; 39) "a"
-              COLONCOLON@[39; 41) "::"
+              COLON2@[39; 41) "::"
               PATH_SEGMENT@[41; 42)
                 NAME_REF@[41; 42)
                   IDENT@[41; 42) "b"
-          SEMI@[42; 43) ";"
+          SEMICOLON@[42; 43) ";"
         WHITESPACE@[43; 48) "\n    "
         LET_STMT@[48; 65)
           LET_KW@[48; 51) "let"
@@ -58,11 +58,11 @@ SOURCE_FILE@[0; 91)
           PATH_EXPR@[56; 64)
             PATH@[56; 64)
               PATH_SEGMENT@[56; 64)
-                COLONCOLON@[56; 58) "::"
+                COLON2@[56; 58) "::"
                 NAME_REF@[58; 59)
                   IDENT@[58; 59) "a"
                 TYPE_ARG_LIST@[59; 64)
-                  COLONCOLON@[59; 61) "::"
+                  COLON2@[59; 61) "::"
                   L_ANGLE@[61; 62) "<"
                   TYPE_ARG@[62; 63)
                     PATH_TYPE@[62; 63)
@@ -71,7 +71,7 @@ SOURCE_FILE@[0; 91)
                           NAME_REF@[62; 63)
                             IDENT@[62; 63) "b"
                   R_ANGLE@[63; 64) ">"
-          SEMI@[64; 65) ";"
+          SEMICOLON@[64; 65) ";"
         WHITESPACE@[65; 70) "\n    "
         LET_STMT@[70; 88)
           LET_KW@[70; 73) "let"
@@ -86,11 +86,11 @@ SOURCE_FILE@[0; 91)
               PATH_SEGMENT@[78; 84)
                 NAME_REF@[78; 84)
                   IDENT@[78; 84) "format"
-            EXCL@[84; 85) "!"
+            BANG@[84; 85) "!"
             TOKEN_TREE@[85; 87)
               L_PAREN@[85; 86) "("
               R_PAREN@[86; 87) ")"
-          SEMI@[87; 88) ";"
+          SEMICOLON@[87; 88) ";"
         WHITESPACE@[88; 89) "\n"
         R_CURLY@[89; 90) "}"
   WHITESPACE@[90; 91) "\n"

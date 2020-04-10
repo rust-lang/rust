@@ -36,5 +36,5 @@ SOURCE_FILE@[0; 35)
                     IDENT@[27; 31) "Copy"
             R_PAREN@[31; 32) ")"
       R_ANGLE@[32; 33) ">"
-    SEMI@[33; 34) ";"
+    SEMICOLON@[33; 34) ";"
   WHITESPACE@[34; 35) "\n"

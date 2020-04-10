@@ -22,7 +22,7 @@ SOURCE_FILE@[0; 48)
             DOT@[16; 17) "."
             NAME_REF@[17; 20)
               IDENT@[17; 20) "foo"
-          SEMI@[20; 21) ";"
+          SEMICOLON@[20; 21) ";"
         WHITESPACE@[21; 26) "\n    "
         EXPR_STMT@[26; 34)
           FIELD_EXPR@[26; 33)
@@ -38,7 +38,7 @@ SOURCE_FILE@[0; 48)
             DOT@[29; 30) "."
             NAME_REF@[30; 33)
               IDENT@[30; 33) "bar"
-          SEMI@[33; 34) ";"
+          SEMICOLON@[33; 34) ";"
         WHITESPACE@[34; 39) "\n    "
         EXPR_STMT@[39; 45)
           CALL_EXPR@[39; 44)
@@ -54,7 +54,7 @@ SOURCE_FILE@[0; 48)
             ARG_LIST@[42; 44)
               L_PAREN@[42; 43) "("
               R_PAREN@[43; 44) ")"
-          SEMI@[44; 45) ";"
+          SEMICOLON@[44; 45) ";"
         WHITESPACE@[45; 46) "\n"
         R_CURLY@[46; 47) "}"
   WHITESPACE@[47; 48) "\n"

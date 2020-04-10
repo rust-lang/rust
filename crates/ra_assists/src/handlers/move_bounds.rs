@@ -2,6 +2,7 @@ use ra_syntax::{
     ast::{self, edit::AstNodeEdit, make, AstNode, NameOwner, TypeBoundsOwner},
     match_ast,
     SyntaxKind::*,
+    T,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -42,7 +43,7 @@ pub(crate) fn move_bounds_to_where_clause(ctx: AssistCtx) -> Option<Assist> {
             ast::EnumDef(it) => it.variant_list()?.syntax().clone().into(),
             ast::StructDef(it) => {
                 it.syntax().children_with_tokens()
-                    .find(|it| it.kind() == RECORD_FIELD_DEF_LIST || it.kind() == SEMI)?
+                    .find(|it| it.kind() == RECORD_FIELD_DEF_LIST || it.kind() == T![;])?
             },
             _ => return None
         }

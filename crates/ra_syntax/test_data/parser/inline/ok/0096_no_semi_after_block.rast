@@ -95,7 +95,7 @@ SOURCE_FILE@[0; 167)
               PATH_SEGMENT@[109; 120)
                 NAME_REF@[109; 120)
                   IDENT@[109; 120) "macro_rules"
-            EXCL@[120; 121) "!"
+            BANG@[120; 121) "!"
             WHITESPACE@[121; 122) " "
             NAME@[122; 126)
               IDENT@[122; 126) "test"
@@ -121,7 +121,7 @@ SOURCE_FILE@[0; 167)
             PATH_SEGMENT@[157; 161)
               NAME_REF@[157; 161)
                 IDENT@[157; 161) "test"
-          EXCL@[161; 162) "!"
+          BANG@[161; 162) "!"
           TOKEN_TREE@[162; 164)
             L_CURLY@[162; 163) "{"
             R_CURLY@[163; 164) "}"

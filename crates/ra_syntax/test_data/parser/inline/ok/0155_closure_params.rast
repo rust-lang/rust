@@ -55,7 +55,7 @@ SOURCE_FILE@[0; 63)
                       PATH_SEGMENT@[46; 49)
                         NAME_REF@[46; 49)
                           IDENT@[46; 49) "Qux"
-                    COLONCOLON@[49; 51) "::"
+                    COLON2@[49; 51) "::"
                     PATH_SEGMENT@[51; 55)
                       NAME_REF@[51; 55)
                         IDENT@[51; 55) "Quux"
@@ -64,7 +64,7 @@ SOURCE_FILE@[0; 63)
             TUPLE_EXPR@[57; 59)
               L_PAREN@[57; 58) "("
               R_PAREN@[58; 59) ")"
-          SEMI@[59; 60) ";"
+          SEMICOLON@[59; 60) ";"
         WHITESPACE@[60; 61) "\n"
         R_CURLY@[61; 62) "}"
   WHITESPACE@[62; 63) "\n"

@@ -339,7 +339,8 @@ fn expr_bp(p: &mut Parser, mut r: Restrictions, bp: u8) -> (Option<CompletedMark
     (Some(lhs), BlockLike::NotBlock)
 }
 
-const LHS_FIRST: TokenSet = atom::ATOM_EXPR_FIRST.union(token_set![AMP, STAR, EXCL, DOT, MINUS]);
+const LHS_FIRST: TokenSet =
+    atom::ATOM_EXPR_FIRST.union(token_set![T![&], T![*], T![!], T![.], T![-]]);
 
 fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     let m;

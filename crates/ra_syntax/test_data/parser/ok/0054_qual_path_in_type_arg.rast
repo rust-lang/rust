@@ -25,7 +25,7 @@ SOURCE_FILE@[0; 88)
                       PATH_SEGMENT@[14; 17)
                         NAME_REF@[14; 17)
                           IDENT@[14; 17) "bar"
-                    COLONCOLON@[17; 19) "::"
+                    COLON2@[17; 19) "::"
                     PATH_SEGMENT@[19; 22)
                       NAME_REF@[19; 22)
                         IDENT@[19; 22) "Baz"
@@ -67,7 +67,7 @@ SOURCE_FILE@[0; 88)
                               PATH_SEGMENT@[47; 48)
                                 NAME_REF@[47; 48)
                                   IDENT@[47; 48) "x"
-                            COLONCOLON@[48; 50) "::"
+                            COLON2@[48; 50) "::"
                             PATH_SEGMENT@[50; 51)
                               NAME_REF@[50; 51)
                                 IDENT@[50; 51) "Y"
@@ -112,7 +112,7 @@ SOURCE_FILE@[0; 88)
                                 PATH_SEGMENT@[78; 79)
                                   NAME_REF@[78; 79)
                                     IDENT@[78; 79) "x"
-                              COLONCOLON@[79; 81) "::"
+                              COLON2@[79; 81) "::"
                               PATH_SEGMENT@[81; 82)
                                 NAME_REF@[81; 82)
                                   IDENT@[81; 82) "Y"

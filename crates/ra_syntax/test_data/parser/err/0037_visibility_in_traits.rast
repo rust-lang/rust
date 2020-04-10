@@ -65,7 +65,7 @@ SOURCE_FILE@[0; 118)
         TUPLE_TYPE@[78; 80)
           L_PAREN@[78; 79) "("
           R_PAREN@[79; 80) ")"
-        SEMI@[80; 81) ";"
+        SEMICOLON@[80; 81) ";"
       WHITESPACE@[81; 86) "\n    "
       CONST_DEF@[86; 115)
         VISIBILITY@[86; 96)
@@ -90,7 +90,7 @@ SOURCE_FILE@[0; 118)
         WHITESPACE@[111; 112) " "
         LITERAL@[112; 114)
           INT_NUMBER@[112; 114) "92"
-        SEMI@[114; 115) ";"
+        SEMICOLON@[114; 115) ";"
       WHITESPACE@[115; 116) "\n"
       R_CURLY@[116; 117) "}"
   WHITESPACE@[117; 118) "\n"

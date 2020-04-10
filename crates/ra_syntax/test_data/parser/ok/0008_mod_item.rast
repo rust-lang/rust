@@ -4,7 +4,7 @@ SOURCE_FILE@[0; 118)
     WHITESPACE@[3; 4) " "
     NAME@[4; 5)
       IDENT@[4; 5) "a"
-    SEMI@[5; 6) ";"
+    SEMICOLON@[5; 6) ";"
   WHITESPACE@[6; 8) "\n\n"
   MODULE@[8; 17)
     MOD_KW@[8; 11) "mod"
@@ -64,7 +64,7 @@ SOURCE_FILE@[0; 118)
       WHITESPACE@[74; 79) "\n    "
       ATTR@[79; 87)
         POUND@[79; 80) "#"
-        EXCL@[80; 81) "!"
+        BANG@[80; 81) "!"
         L_BRACK@[81; 82) "["
         PATH@[82; 86)
           PATH_SEGMENT@[82; 86)
@@ -77,7 +77,7 @@ SOURCE_FILE@[0; 118)
         WHITESPACE@[95; 96) " "
         NAME@[96; 97)
           IDENT@[96; 97) "e"
-        SEMI@[97; 98) ";"
+        SEMICOLON@[97; 98) ";"
       WHITESPACE@[98; 103) "\n    "
       MODULE@[103; 116)
         MOD_KW@[103; 106) "mod"

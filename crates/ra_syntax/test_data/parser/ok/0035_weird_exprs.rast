@@ -9,7 +9,7 @@ SOURCE_FILE@[0; 3813)
   WHITESPACE@[269; 271) "\n\n"
   ATTR@[271; 302)
     POUND@[271; 272) "#"
-    EXCL@[272; 273) "!"
+    BANG@[272; 273) "!"
     L_BRACK@[273; 274) "["
     PATH@[274; 279)
       PATH_SEGMENT@[274; 279)
@@ -23,7 +23,7 @@ SOURCE_FILE@[0; 3813)
   WHITESPACE@[302; 303) "\n"
   ATTR@[303; 323)
     POUND@[303; 304) "#"
-    EXCL@[304; 305) "!"
+    BANG@[304; 305) "!"
     L_BRACK@[305; 306) "["
     PATH@[306; 311)
       PATH_SEGMENT@[306; 311)
@@ -37,7 +37,7 @@ SOURCE_FILE@[0; 3813)
   WHITESPACE@[323; 324) "\n"
   ATTR@[324; 351)
     POUND@[324; 325) "#"
-    EXCL@[325; 326) "!"
+    BANG@[325; 326) "!"
     L_BRACK@[326; 327) "["
     PATH@[327; 332)
       PATH_SEGMENT@[327; 332)
@@ -51,7 +51,7 @@ SOURCE_FILE@[0; 3813)
   WHITESPACE@[351; 352) "\n"
   ATTR@[352; 376)
     POUND@[352; 353) "#"
-    EXCL@[353; 354) "!"
+    BANG@[353; 354) "!"
     L_BRACK@[354; 355) "["
     PATH@[355; 360)
       PATH_SEGMENT@[355; 360)
@@ -65,7 +65,7 @@ SOURCE_FILE@[0; 3813)
   WHITESPACE@[376; 378) "\n\n"
   ATTR@[378; 405)
     POUND@[378; 379) "#"
-    EXCL@[379; 380) "!"
+    BANG@[379; 380) "!"
     L_BRACK@[380; 381) "["
     PATH@[381; 396)
       PATH_SEGMENT@[381; 396)
@@ -88,15 +88,15 @@ SOURCE_FILE@[0; 3813)
             PATH_SEGMENT@[411; 414)
               NAME_REF@[411; 414)
                 IDENT@[411; 414) "std"
-          COLONCOLON@[414; 416) "::"
+          COLON2@[414; 416) "::"
           PATH_SEGMENT@[416; 420)
             NAME_REF@[416; 420)
               IDENT@[416; 420) "cell"
-        COLONCOLON@[420; 422) "::"
+        COLON2@[420; 422) "::"
         PATH_SEGMENT@[422; 426)
           NAME_REF@[422; 426)
             IDENT@[422; 426) "Cell"
-    SEMI@[426; 427) ";"
+    SEMICOLON@[426; 427) ";"
   WHITESPACE@[427; 428) "\n"
   USE_ITEM@[428; 447)
     USE_KW@[428; 431) "use"
@@ -108,15 +108,15 @@ SOURCE_FILE@[0; 3813)
             PATH_SEGMENT@[432; 435)
               NAME_REF@[432; 435)
                 IDENT@[432; 435) "std"
-          COLONCOLON@[435; 437) "::"
+          COLON2@[435; 437) "::"
           PATH_SEGMENT@[437; 440)
             NAME_REF@[437; 440)
               IDENT@[437; 440) "mem"
-        COLONCOLON@[440; 442) "::"
+        COLON2@[440; 442) "::"
         PATH_SEGMENT@[442; 446)
           NAME_REF@[442; 446)
             IDENT@[442; 446) "swap"
-    SEMI@[446; 447) ";"
+    SEMICOLON@[446; 447) ";"
   WHITESPACE@[447; 449) "\n\n"
   COMMENT@[449; 518) "// Just a grab bag of ..."
   WHITESPACE@[518; 520) "\n\n"
@@ -163,7 +163,7 @@ SOURCE_FILE@[0; 3813)
             WHITESPACE@[564; 565) " "
             LITERAL@[565; 569)
               TRUE_KW@[565; 569) "true"
-          SEMI@[569; 570) ";"
+          SEMICOLON@[569; 570) ";"
         WHITESPACE@[570; 571) " "
         R_CURLY@[571; 572) "}"
   WHITESPACE@[572; 574) "\n\n"
@@ -216,7 +216,7 @@ SOURCE_FILE@[0; 3813)
               RETURN_EXPR@[614; 620)
                 RETURN_KW@[614; 620) "return"
               R_PAREN@[620; 621) ")"
-          SEMI@[621; 622) ";"
+          SEMICOLON@[621; 622) ";"
         WHITESPACE@[622; 623) "\n"
         R_CURLY@[623; 624) "}"
   WHITESPACE@[624; 626) "\n\n"
@@ -277,7 +277,7 @@ SOURCE_FILE@[0; 3813)
                     WHITESPACE@[687; 688) " "
                     CONDITION@[688; 696)
                       PREFIX_EXPR@[688; 696)
-                        EXCL@[688; 689) "!"
+                        BANG@[688; 689) "!"
                         METHOD_CALL_EXPR@[689; 696)
                           PATH_EXPR@[689; 690)
                             PATH@[689; 690)
@@ -310,10 +310,10 @@ SOURCE_FILE@[0; 3813)
                               LITERAL@[705; 709)
                                 TRUE_KW@[705; 709) "true"
                               R_PAREN@[709; 710) ")"
-                          SEMI@[710; 711) ";"
+                          SEMICOLON@[710; 711) ";"
                         WHITESPACE@[711; 712) " "
                         R_CURLY@[712; 713) "}"
-                SEMI@[713; 714) ";"
+                SEMICOLON@[713; 714) ";"
               WHITESPACE@[714; 719) "\n    "
               R_CURLY@[719; 720) "}"
         WHITESPACE@[720; 725) "\n    "
@@ -335,7 +335,7 @@ SOURCE_FILE@[0; 3813)
                     PATH_SEGMENT@[734; 738)
                       NAME_REF@[734; 738)
                         IDENT@[734; 738) "Cell"
-                  COLONCOLON@[738; 740) "::"
+                  COLON2@[738; 740) "::"
                   PATH_SEGMENT@[740; 743)
                     NAME_REF@[740; 743)
                       IDENT@[740; 743) "new"
@@ -344,7 +344,7 @@ SOURCE_FILE@[0; 3813)
                 LITERAL@[744; 749)
                   FALSE_KW@[744; 749) "false"
                 R_PAREN@[749; 750) ")"
-          SEMI@[750; 751) ";"
+          SEMICOLON@[750; 751) ";"
         WHITESPACE@[751; 756) "\n    "
         LET_STMT@[756; 778)
           LET_KW@[756; 759) "let"
@@ -377,7 +377,7 @@ SOURCE_FILE@[0; 3813)
                             IDENT@[774; 775) "i"
                     R_PAREN@[775; 776) ")"
               R_CURLY@[776; 777) "}"
-          SEMI@[777; 778) ";"
+          SEMICOLON@[777; 778) ";"
         WHITESPACE@[778; 783) "\n    "
         EXPR_STMT@[783; 790)
           CALL_EXPR@[783; 789)
@@ -389,7 +389,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[787; 789)
               L_PAREN@[787; 788) "("
               R_PAREN@[788; 789) ")"
-          SEMI@[789; 790) ";"
+          SEMICOLON@[789; 790) ";"
         WHITESPACE@[790; 795) "\n    "
         EXPR_STMT@[795; 814)
           MACRO_CALL@[795; 813)
@@ -397,7 +397,7 @@ SOURCE_FILE@[0; 3813)
               PATH_SEGMENT@[795; 801)
                 NAME_REF@[795; 801)
                   IDENT@[795; 801) "assert"
-            EXCL@[801; 802) "!"
+            BANG@[801; 802) "!"
             TOKEN_TREE@[802; 813)
               L_PAREN@[802; 803) "("
               TOKEN_TREE@[803; 812)
@@ -410,7 +410,7 @@ SOURCE_FILE@[0; 3813)
                   R_PAREN@[810; 811) ")"
                 R_PAREN@[811; 812) ")"
               R_PAREN@[812; 813) ")"
-          SEMI@[813; 814) ";"
+          SEMICOLON@[813; 814) ";"
         WHITESPACE@[814; 815) "\n"
         R_CURLY@[815; 816) "}"
   WHITESPACE@[816; 818) "\n\n"
@@ -535,7 +535,7 @@ SOURCE_FILE@[0; 3813)
                                         R_CURLY@[1182; 1183) "}"
                                   WHITESPACE@[1183; 1200) "\n                "
                                   R_CURLY@[1200; 1201) "}"
-                              SEMI@[1201; 1202) ";"
+                              SEMICOLON@[1201; 1202) ";"
                             WHITESPACE@[1202; 1215) "\n            "
                             R_CURLY@[1215; 1216) "}"
                         WHITESPACE@[1216; 1217) " "
@@ -558,7 +558,7 @@ SOURCE_FILE@[0; 3813)
                               EXPR_STMT@[1252; 1259)
                                 RETURN_EXPR@[1252; 1258)
                                   RETURN_KW@[1252; 1258) "return"
-                                SEMI@[1258; 1259) ";"
+                                SEMICOLON@[1258; 1259) ";"
                               WHITESPACE@[1259; 1272) "\n            "
                               R_CURLY@[1272; 1273) "}"
                       WHITESPACE@[1273; 1282) "\n        "
@@ -581,7 +581,7 @@ SOURCE_FILE@[0; 3813)
                     EXPR_STMT@[1306; 1312)
                       BREAK_EXPR@[1306; 1311)
                         BREAK_KW@[1306; 1311) "break"
-                      SEMI@[1311; 1312) ";"
+                      SEMICOLON@[1311; 1312) ";"
                     WHITESPACE@[1312; 1313) " "
                     R_CURLY@[1313; 1314) "}"
               WHITESPACE@[1314; 1319) "\n    "
@@ -617,7 +617,7 @@ SOURCE_FILE@[0; 3813)
               PATH_SEGMENT@[1355; 1360)
                 NAME_REF@[1355; 1360)
                   IDENT@[1355; 1360) "isize"
-          SEMI@[1360; 1361) ";"
+          SEMICOLON@[1360; 1361) ";"
         WHITESPACE@[1361; 1366) "\n    "
         LET_STMT@[1366; 1400)
           LET_KW@[1366; 1369) "let"
@@ -646,7 +646,7 @@ SOURCE_FILE@[0; 3813)
                   INT_NUMBER@[1385; 1386) "0"
               R_PAREN@[1386; 1387) ")"
             WHITESPACE@[1387; 1388) " "
-            EQEQ@[1388; 1390) "=="
+            EQ2@[1388; 1390) "=="
             WHITESPACE@[1390; 1391) " "
             PAREN_EXPR@[1391; 1399)
               L_PAREN@[1391; 1392) "("
@@ -662,7 +662,7 @@ SOURCE_FILE@[0; 3813)
                 LITERAL@[1397; 1398)
                   INT_NUMBER@[1397; 1398) "0"
               R_PAREN@[1398; 1399) ")"
-          SEMI@[1399; 1400) ";"
+          SEMICOLON@[1399; 1400) ";"
         WHITESPACE@[1400; 1405) "\n    "
         LET_STMT@[1405; 1438)
           LET_KW@[1405; 1408) "let"
@@ -707,7 +707,7 @@ SOURCE_FILE@[0; 3813)
                 LITERAL@[1435; 1436)
                   INT_NUMBER@[1435; 1436) "0"
               R_PAREN@[1436; 1437) ")"
-          SEMI@[1437; 1438) ";"
+          SEMICOLON@[1437; 1438) ";"
         WHITESPACE@[1438; 1443) "\n    "
         LET_STMT@[1443; 1474)
           LET_KW@[1443; 1446) "let"
@@ -734,7 +734,7 @@ SOURCE_FILE@[0; 3813)
                   INT_NUMBER@[1459; 1460) "0"
               R_PAREN@[1460; 1461) ")"
             WHITESPACE@[1461; 1462) " "
-            EQEQ@[1462; 1464) "=="
+            EQ2@[1462; 1464) "=="
             WHITESPACE@[1464; 1465) " "
             PAREN_EXPR@[1465; 1473)
               L_PAREN@[1465; 1466) "("
@@ -750,7 +750,7 @@ SOURCE_FILE@[0; 3813)
                 LITERAL@[1471; 1472)
                   INT_NUMBER@[1471; 1472) "0"
               R_PAREN@[1472; 1473) ")"
-          SEMI@[1473; 1474) ";"
+          SEMICOLON@[1473; 1474) ";"
         WHITESPACE@[1474; 1479) "\n    "
         LET_STMT@[1479; 1537)
           LET_KW@[1479; 1482) "let"
@@ -792,7 +792,7 @@ SOURCE_FILE@[0; 3813)
                           IDENT@[1507; 1509) "_z"
                 R_PAREN@[1509; 1510) ")"
             WHITESPACE@[1510; 1511) " "
-            EQEQ@[1511; 1513) "=="
+            EQ2@[1511; 1513) "=="
             WHITESPACE@[1513; 1514) " "
             CALL_EXPR@[1514; 1536)
               PATH_EXPR@[1514; 1518)
@@ -823,7 +823,7 @@ SOURCE_FILE@[0; 3813)
                         NAME_REF@[1533; 1535)
                           IDENT@[1533; 1535) "_z"
                 R_PAREN@[1535; 1536) ")"
-          SEMI@[1536; 1537) ";"
+          SEMICOLON@[1536; 1537) ";"
         WHITESPACE@[1537; 1538) "\n"
         R_CURLY@[1538; 1539) "}"
   WHITESPACE@[1539; 1541) "\n\n"
@@ -893,7 +893,7 @@ SOURCE_FILE@[0; 3813)
                   PATH_SEGMENT@[1613; 1619)
                     NAME_REF@[1613; 1619)
                       IDENT@[1613; 1619) "assert"
-                EXCL@[1619; 1620) "!"
+                BANG@[1619; 1620) "!"
                 TOKEN_TREE@[1620; 1628)
                   L_PAREN@[1620; 1621) "("
                   TOKEN_TREE@[1621; 1627)
@@ -902,7 +902,7 @@ SOURCE_FILE@[0; 3813)
                     R_PAREN@[1626; 1627) ")"
                   R_PAREN@[1627; 1628) ")"
               WHITESPACE@[1628; 1629) " "
-              EQEQ@[1629; 1631) "=="
+              EQ2@[1629; 1631) "=="
               WHITESPACE@[1631; 1632) " "
               PAREN_EXPR@[1632; 1646)
                 L_PAREN@[1632; 1633) "("
@@ -911,7 +911,7 @@ SOURCE_FILE@[0; 3813)
                     PATH_SEGMENT@[1633; 1639)
                       NAME_REF@[1633; 1639)
                         IDENT@[1633; 1639) "assert"
-                  EXCL@[1639; 1640) "!"
+                  BANG@[1639; 1640) "!"
                   TOKEN_TREE@[1640; 1645)
                     L_PAREN@[1640; 1641) "("
                     IDENT@[1641; 1642) "p"
@@ -921,7 +921,7 @@ SOURCE_FILE@[0; 3813)
                     R_PAREN@[1644; 1645) ")"
                 R_PAREN@[1645; 1646) ")"
             R_PAREN@[1646; 1647) ")"
-          SEMI@[1647; 1648) ";"
+          SEMICOLON@[1647; 1648) ";"
         WHITESPACE@[1648; 1653) "\n    "
         LET_STMT@[1653; 1685)
           LET_KW@[1653; 1656) "let"
@@ -940,7 +940,7 @@ SOURCE_FILE@[0; 3813)
                   PATH_SEGMENT@[1663; 1669)
                     NAME_REF@[1663; 1669)
                       IDENT@[1663; 1669) "assert"
-                EXCL@[1669; 1670) "!"
+                BANG@[1669; 1670) "!"
                 TOKEN_TREE@[1670; 1677)
                   L_PAREN@[1670; 1671) "("
                   TOKEN_TREE@[1671; 1676)
@@ -952,13 +952,13 @@ SOURCE_FILE@[0; 3813)
                     R_PAREN@[1675; 1676) ")"
                   R_PAREN@[1676; 1677) ")"
               WHITESPACE@[1677; 1678) " "
-              EQEQ@[1678; 1680) "=="
+              EQ2@[1678; 1680) "=="
               WHITESPACE@[1680; 1681) " "
               TUPLE_EXPR@[1681; 1683)
                 L_PAREN@[1681; 1682) "("
                 R_PAREN@[1682; 1683) ")"
             R_PAREN@[1683; 1684) ")"
-          SEMI@[1684; 1685) ";"
+          SEMICOLON@[1684; 1685) ";"
         WHITESPACE@[1685; 1690) "\n    "
         LET_STMT@[1690; 1739)
           LET_KW@[1690; 1693) "let"
@@ -984,7 +984,7 @@ SOURCE_FILE@[0; 3813)
                   PATH_SEGMENT@[1706; 1713)
                     NAME_REF@[1706; 1713)
                       IDENT@[1706; 1713) "println"
-                EXCL@[1713; 1714) "!"
+                BANG@[1713; 1714) "!"
                 TOKEN_TREE@[1714; 1723)
                   L_PAREN@[1714; 1715) "("
                   STRING@[1715; 1719) "\"{}\""
@@ -993,7 +993,7 @@ SOURCE_FILE@[0; 3813)
                   INT_NUMBER@[1721; 1722) "0"
                   R_PAREN@[1722; 1723) ")"
               WHITESPACE@[1723; 1724) " "
-              EQEQ@[1724; 1726) "=="
+              EQ2@[1724; 1726) "=="
               WHITESPACE@[1726; 1727) " "
               PAREN_EXPR@[1727; 1737)
                 L_PAREN@[1727; 1728) "("
@@ -1004,7 +1004,7 @@ SOURCE_FILE@[0; 3813)
                     INT_NUMBER@[1735; 1736) "0"
                 R_PAREN@[1736; 1737) ")"
             R_PAREN@[1737; 1738) ")"
-          SEMI@[1738; 1739) ";"
+          SEMICOLON@[1738; 1739) ";"
         WHITESPACE@[1739; 1740) "\n"
         R_CURLY@[1740; 1741) "}"
   WHITESPACE@[1741; 1743) "\n\n"
@@ -1057,7 +1057,7 @@ SOURCE_FILE@[0; 3813)
           WHITESPACE@[1801; 1802) " "
           LITERAL@[1802; 1803)
             INT_NUMBER@[1802; 1803) "0"
-          SEMI@[1803; 1804) ";"
+          SEMICOLON@[1803; 1804) ";"
         WHITESPACE@[1804; 1809) "\n    "
         LOOP_EXPR@[1809; 1902)
           LOOP_KW@[1809; 1813) "loop"
@@ -1078,7 +1078,7 @@ SOURCE_FILE@[0; 3813)
                   WHITESPACE@[1820; 1821) " "
                   LITERAL@[1821; 1822)
                     INT_NUMBER@[1821; 1822) "1"
-                SEMI@[1822; 1823) ";"
+                SEMICOLON@[1822; 1823) ";"
               WHITESPACE@[1823; 1824) " "
               EXPR_STMT@[1824; 1887)
                 IF_EXPR@[1824; 1887)
@@ -1092,7 +1092,7 @@ SOURCE_FILE@[0; 3813)
                             NAME_REF@[1827; 1828)
                               IDENT@[1827; 1828) "i"
                       WHITESPACE@[1828; 1829) " "
-                      EQEQ@[1829; 1831) "=="
+                      EQ2@[1829; 1831) "=="
                       WHITESPACE@[1831; 1832) " "
                       LITERAL@[1832; 1833)
                         INT_NUMBER@[1832; 1833) "1"
@@ -1138,7 +1138,7 @@ SOURCE_FILE@[0; 3813)
                                 PATH_SEGMENT@[1870; 1875)
                                   NAME_REF@[1870; 1875)
                                     IDENT@[1870; 1875) "panic"
-                              EXCL@[1875; 1876) "!"
+                              BANG@[1875; 1876) "!"
                               TOKEN_TREE@[1876; 1883)
                                 L_PAREN@[1876; 1877) "("
                                 STRING@[1877; 1882) "\"wat\""
@@ -1151,7 +1151,7 @@ SOURCE_FILE@[0; 3813)
               EXPR_STMT@[1894; 1900)
                 BREAK_EXPR@[1894; 1899)
                   BREAK_KW@[1894; 1899) "break"
-                SEMI@[1899; 1900) ";"
+                SEMICOLON@[1899; 1900) ";"
               WHITESPACE@[1900; 1901) " "
               R_CURLY@[1901; 1902) "}"
         WHITESPACE@[1902; 1903) "\n"
@@ -1184,12 +1184,12 @@ SOURCE_FILE@[0; 3813)
               PATH_SEGMENT@[1938; 1945)
                 NAME_REF@[1938; 1945)
                   IDENT@[1938; 1945) "println"
-            EXCL@[1945; 1946) "!"
+            BANG@[1945; 1946) "!"
             TOKEN_TREE@[1946; 1957)
               L_PAREN@[1946; 1947) "("
               STRING@[1947; 1956) "\"lincoln\""
               R_PAREN@[1956; 1957) ")"
-          SEMI@[1957; 1958) ";"
+          SEMICOLON@[1957; 1958) ";"
         WHITESPACE@[1958; 1959) " "
         R_CURLY@[1959; 1960) "}"
   WHITESPACE@[1960; 1962) "\n\n"
@@ -1212,7 +1212,7 @@ SOURCE_FILE@[0; 3813)
               PATH_SEGMENT@[1978; 1987)
                 NAME_REF@[1978; 1987)
                   IDENT@[1978; 1987) "assert_eq"
-            EXCL@[1987; 1988) "!"
+            BANG@[1987; 1988) "!"
             TOKEN_TREE@[1988; 2195)
               L_PAREN@[1988; 1989) "("
               IDENT@[1989; 1995) "String"
@@ -1226,7 +1226,7 @@ SOURCE_FILE@[0; 3813)
               COMMA@[2055; 2056) ","
               WHITESPACE@[2056; 2072) "\n               "
               IDENT@[2072; 2078) "format"
-              EXCL@[2078; 2079) "!"
+              BANG@[2078; 2079) "!"
               TOKEN_TREE@[2079; 2194)
                 L_PAREN@[2079; 2080) "("
                 STRING@[2080; 2086) "\"{:?}\""
@@ -1308,7 +1308,7 @@ SOURCE_FILE@[0; 3813)
                 DOT@[2192; 2193) "."
                 R_PAREN@[2193; 2194) ")"
               R_PAREN@[2194; 2195) ")"
-          SEMI@[2195; 2196) ";"
+          SEMICOLON@[2195; 2196) ";"
         WHITESPACE@[2196; 2197) "\n"
         R_CURLY@[2197; 2198) "}"
   WHITESPACE@[2198; 2200) "\n\n"
@@ -1362,7 +1362,7 @@ SOURCE_FILE@[0; 3813)
                     PATH_SEGMENT@[2243; 2252)
                       NAME_REF@[2243; 2252)
                         IDENT@[2243; 2252) "assert_eq"
-                  EXCL@[2252; 2253) "!"
+                  BANG@[2252; 2253) "!"
                   TOKEN_TREE@[2253; 2684)
                     L_PAREN@[2253; 2254) "("
                     INT_NUMBER@[2254; 2257) "8u8"
@@ -1372,7 +1372,7 @@ SOURCE_FILE@[0; 3813)
                       L_CURLY@[2259; 2260) "{"
                       WHITESPACE@[2260; 2273) "\n            "
                       IDENT@[2273; 2284) "macro_rules"
-                      EXCL@[2284; 2285) "!"
+                      BANG@[2284; 2285) "!"
                       WHITESPACE@[2285; 2286) " "
                       IDENT@[2286; 2288) "u8"
                       WHITESPACE@[2288; 2289) " "
@@ -1435,7 +1435,7 @@ SOURCE_FILE@[0; 3813)
                               L_CURLY@[2420; 2421) "{"
                               WHITESPACE@[2421; 2450) "\n                     ..."
                               STRING@[2450; 2454) "\"u8\""
-                              SEMI@[2454; 2455) ";"
+                              SEMICOLON@[2454; 2455) ";"
                               WHITESPACE@[2455; 2484) "\n                     ..."
                               IDENT@[2484; 2486) "u8"
                               WHITESPACE@[2486; 2511) "\n                     ..."
@@ -1444,17 +1444,17 @@ SOURCE_FILE@[0; 3813)
                             R_CURLY@[2533; 2534) "}"
                           WHITESPACE@[2534; 2551) "\n                "
                           R_CURLY@[2551; 2552) "}"
-                        SEMI@[2552; 2553) ";"
+                        SEMICOLON@[2552; 2553) ";"
                         WHITESPACE@[2553; 2566) "\n            "
                         R_CURLY@[2566; 2567) "}"
                       WHITESPACE@[2567; 2581) "\n\n            "
                       IDENT@[2581; 2583) "u8"
-                      EXCL@[2583; 2584) "!"
+                      BANG@[2583; 2584) "!"
                       TOKEN_TREE@[2584; 2588)
                         L_PAREN@[2584; 2585) "("
                         IDENT@[2585; 2587) "u8"
                         R_PAREN@[2587; 2588) ")"
-                      SEMI@[2588; 2589) ";"
+                      SEMICOLON@[2588; 2589) ";"
                       WHITESPACE@[2589; 2602) "\n            "
                       LET_KW@[2602; 2605) "let"
                       WHITESPACE@[2605; 2606) " "
@@ -1476,7 +1476,7 @@ SOURCE_FILE@[0; 3813)
                         AMP@[2624; 2625) "&"
                         INT_NUMBER@[2625; 2628) "8u8"
                         R_PAREN@[2628; 2629) ")"
-                      SEMI@[2629; 2630) ";"
+                      SEMICOLON@[2629; 2630) ";"
                       WHITESPACE@[2630; 2643) "\n            "
                       CRATE_KW@[2643; 2648) "crate"
                       COLON@[2648; 2649) ":"
@@ -1486,13 +1486,13 @@ SOURCE_FILE@[0; 3813)
                         L_PAREN@[2652; 2653) "("
                         INT_NUMBER@[2653; 2656) "0u8"
                         R_PAREN@[2656; 2657) ")"
-                      SEMI@[2657; 2658) ";"
+                      SEMICOLON@[2657; 2658) ";"
                       WHITESPACE@[2658; 2671) "\n            "
                       IDENT@[2671; 2673) "u8"
                       WHITESPACE@[2673; 2682) "\n        "
                       R_CURLY@[2682; 2683) "}"
                     R_PAREN@[2683; 2684) ")"
-                SEMI@[2684; 2685) ";"
+                SEMICOLON@[2684; 2685) ";"
               WHITESPACE@[2685; 2690) "\n    "
               R_CURLY@[2690; 2691) "}"
         WHITESPACE@[2691; 2692) "\n"
@@ -1517,7 +1517,7 @@ SOURCE_FILE@[0; 3813)
               PATH_SEGMENT@[2712; 2721)
                 NAME_REF@[2712; 2721)
                   IDENT@[2712; 2721) "assert_eq"
-            EXCL@[2721; 2722) "!"
+            BANG@[2721; 2722) "!"
             TOKEN_TREE@[2722; 2829)
               L_PAREN@[2722; 2723) "("
               IDENT@[2723; 2729) "String"
@@ -1575,7 +1575,7 @@ SOURCE_FILE@[0; 3813)
                 L_PAREN@[2826; 2827) "("
                 R_PAREN@[2827; 2828) ")"
               R_PAREN@[2828; 2829) ")"
-          SEMI@[2829; 2830) ";"
+          SEMICOLON@[2829; 2830) ";"
         WHITESPACE@[2830; 2831) "\n"
         R_CURLY@[2831; 2832) "}"
   WHITESPACE@[2832; 2834) "\n\n"
@@ -1654,7 +1654,7 @@ SOURCE_FILE@[0; 3813)
           EQ@[2946; 2947) "="
           WHITESPACE@[2947; 2948) " "
           PREFIX_EXPR@[2948; 3013)
-            EXCL@[2948; 2949) "!"
+            BANG@[2948; 2949) "!"
             PAREN_EXPR@[2949; 3013)
               L_PAREN@[2949; 2950) "("
               BIN_EXPR@[2950; 3012)
@@ -1668,7 +1668,7 @@ SOURCE_FILE@[0; 3813)
                           TUPLE_PAT@[2952; 2956)
                             L_PAREN@[2952; 2953) "("
                             DOT_DOT_PAT@[2953; 2955)
-                              DOTDOT@[2953; 2955) ".."
+                              DOT2@[2953; 2955) ".."
                             R_PAREN@[2955; 2956) ")"
                           COLON@[2956; 2957) ":"
                           TUPLE_TYPE@[2957; 2962)
@@ -1715,7 +1715,7 @@ SOURCE_FILE@[0; 3813)
                         L_CURLY@[2992; 2993) "{"
                         R_CURLY@[2993; 2994) "}"
                     R_PAREN@[2994; 2995) ")"
-                EQEQ@[2995; 2997) "=="
+                EQ2@[2995; 2997) "=="
                 BLOCK_EXPR@[2997; 3012)
                   BLOCK@[2997; 3012)
                     L_CURLY@[2997; 2998) "{"
@@ -1726,20 +1726,20 @@ SOURCE_FILE@[0; 3813)
                           ARRAY_EXPR@[2999; 3006)
                             L_BRACK@[2999; 3000) "["
                             RANGE_EXPR@[3000; 3005)
-                              DOTDOTEQ@[3000; 3003) "..="
+                              DOT2EQ@[3000; 3003) "..="
                               RANGE_EXPR@[3003; 3005)
-                                DOTDOT@[3003; 3005) ".."
+                                DOT2@[3003; 3005) ".."
                             R_BRACK@[3005; 3006) "]"
                           L_BRACK@[3006; 3007) "["
                           RANGE_EXPR@[3007; 3009)
-                            DOTDOT@[3007; 3009) ".."
+                            DOT2@[3007; 3009) ".."
                           R_BRACK@[3009; 3010) "]"
-                      SEMI@[3010; 3011) ";"
+                      SEMICOLON@[3010; 3011) ";"
                     R_CURLY@[3011; 3012) "}"
               R_PAREN@[3012; 3013) ")"
           COMMENT@[3013; 3015) "//"
           WHITESPACE@[3015; 3020) "\n    "
-          SEMI@[3020; 3021) ";"
+          SEMICOLON@[3020; 3021) ";"
         WHITESPACE@[3021; 3026) "\n    "
         EXPR_STMT@[3026; 3040)
           MACRO_CALL@[3026; 3039)
@@ -1747,13 +1747,13 @@ SOURCE_FILE@[0; 3813)
               PATH_SEGMENT@[3026; 3032)
                 NAME_REF@[3026; 3032)
                   IDENT@[3026; 3032) "assert"
-            EXCL@[3032; 3033) "!"
+            BANG@[3032; 3033) "!"
             TOKEN_TREE@[3033; 3039)
               L_PAREN@[3033; 3034) "("
-              EXCL@[3034; 3035) "!"
+              BANG@[3034; 3035) "!"
               IDENT@[3035; 3038) "val"
               R_PAREN@[3038; 3039) ")"
-          SEMI@[3039; 3040) ";"
+          SEMICOLON@[3039; 3040) ";"
         WHITESPACE@[3040; 3041) "\n"
         R_CURLY@[3041; 3042) "}"
   WHITESPACE@[3042; 3044) "\n\n"
@@ -1781,11 +1781,11 @@ SOURCE_FILE@[0; 3813)
                     PATH_SEGMENT@[3068; 3071)
                       NAME_REF@[3068; 3071)
                         IDENT@[3068; 3071) "std"
-                  COLONCOLON@[3071; 3073) "::"
+                  COLON2@[3071; 3073) "::"
                   PATH_SEGMENT@[3073; 3076)
                     NAME_REF@[3073; 3076)
                       IDENT@[3073; 3076) "fmt"
-                COLONCOLON@[3076; 3078) "::"
+                COLON2@[3076; 3078) "::"
                 PATH_SEGMENT@[3078; 3083)
                   NAME_REF@[3078; 3083)
                     IDENT@[3078; 3083) "Debug"
@@ -1795,300 +1795,300 @@ SOURCE_FILE@[0; 3813)
         L_CURLY@[3084; 3085) "{"
         WHITESPACE@[3085; 3090) "\n    "
         RANGE_EXPR@[3090; 3512)
-          DOTDOTEQ@[3090; 3093) "..="
+          DOT2EQ@[3090; 3093) "..="
           RANGE_EXPR@[3093; 3512)
-            DOTDOTEQ@[3093; 3096) "..="
+            DOT2EQ@[3093; 3096) "..="
             RANGE_EXPR@[3096; 3512)
-              DOTDOT@[3096; 3098) ".."
+              DOT2@[3096; 3098) ".."
               WHITESPACE@[3098; 3099) " "
               RANGE_EXPR@[3099; 3512)
-                DOTDOT@[3099; 3101) ".."
+                DOT2@[3099; 3101) ".."
                 WHITESPACE@[3101; 3105) "    "
                 RANGE_EXPR@[3105; 3512)
-                  DOTDOT@[3105; 3107) ".."
+                  DOT2@[3105; 3107) ".."
                   WHITESPACE@[3107; 3108) " "
                   RANGE_EXPR@[3108; 3512)
-                    DOTDOT@[3108; 3110) ".."
+                    DOT2@[3108; 3110) ".."
                     WHITESPACE@[3110; 3111) " "
                     RANGE_EXPR@[3111; 3512)
-                      DOTDOT@[3111; 3113) ".."
+                      DOT2@[3111; 3113) ".."
                       WHITESPACE@[3113; 3114) " "
                       RANGE_EXPR@[3114; 3512)
-                        DOTDOT@[3114; 3116) ".."
+                        DOT2@[3114; 3116) ".."
                         WHITESPACE@[3116; 3120) "    "
                         RANGE_EXPR@[3120; 3512)
-                          DOTDOT@[3120; 3122) ".."
+                          DOT2@[3120; 3122) ".."
                           WHITESPACE@[3122; 3123) " "
                           RANGE_EXPR@[3123; 3512)
-                            DOTDOT@[3123; 3125) ".."
+                            DOT2@[3123; 3125) ".."
                             WHITESPACE@[3125; 3126) " "
                             RANGE_EXPR@[3126; 3512)
-                              DOTDOT@[3126; 3128) ".."
+                              DOT2@[3126; 3128) ".."
                               WHITESPACE@[3128; 3129) " "
                               RANGE_EXPR@[3129; 3512)
-                                DOTDOT@[3129; 3131) ".."
+                                DOT2@[3129; 3131) ".."
                                 WHITESPACE@[3131; 3135) "    "
                                 RANGE_EXPR@[3135; 3512)
-                                  DOTDOT@[3135; 3137) ".."
+                                  DOT2@[3135; 3137) ".."
                                   WHITESPACE@[3137; 3138) " "
                                   RANGE_EXPR@[3138; 3512)
-                                    DOTDOTEQ@[3138; 3141) "..="
+                                    DOT2EQ@[3138; 3141) "..="
                                     RANGE_EXPR@[3141; 3512)
-                                      DOTDOT@[3141; 3143) ".."
+                                      DOT2@[3141; 3143) ".."
                                       WHITESPACE@[3143; 3144) " "
                                       RANGE_EXPR@[3144; 3512)
-                                        DOTDOT@[3144; 3146) ".."
+                                        DOT2@[3144; 3146) ".."
                                         WHITESPACE@[3146; 3151) "\n    "
                                         RANGE_EXPR@[3151; 3512)
-                                          DOTDOTEQ@[3151; 3154) "..="
+                                          DOT2EQ@[3151; 3154) "..="
                                           RANGE_EXPR@[3154; 3512)
-                                            DOTDOT@[3154; 3156) ".."
+                                            DOT2@[3154; 3156) ".."
                                             WHITESPACE@[3156; 3157) " "
                                             RANGE_EXPR@[3157; 3512)
-                                              DOTDOTEQ@[3157; 3160) "..="
+                                              DOT2EQ@[3157; 3160) "..="
                                               RANGE_EXPR@[3160; 3512)
-                                                DOTDOT@[3160; 3162) ".."
+                                                DOT2@[3160; 3162) ".."
                                                 WHITESPACE@[3162; 3166) "    "
                                                 RANGE_EXPR@[3166; 3512)
-                                                  DOTDOT@[3166; 3168) ".."
+                                                  DOT2@[3166; 3168) ".."
                                                   WHITESPACE@[3168; 3169) " "
                                                   RANGE_EXPR@[3169; 3512)
-                                                    DOTDOT@[3169; 3171) ".."
+                                                    DOT2@[3169; 3171) ".."
                                                     WHITESPACE@[3171; 3172) " "
                                                     RANGE_EXPR@[3172; 3512)
-                                                      DOTDOT@[3172; 3174) ".."
+                                                      DOT2@[3172; 3174) ".."
                                                       WHITESPACE@[3174; 3175) " "
                                                       RANGE_EXPR@[3175; 3512)
-                                                        DOTDOT@[3175; 3177) ".."
+                                                        DOT2@[3175; 3177) ".."
                                                         WHITESPACE@[3177; 3181) "    "
                                                         RANGE_EXPR@[3181; 3512)
-                                                          DOTDOT@[3181; 3183) ".."
+                                                          DOT2@[3181; 3183) ".."
                                                           WHITESPACE@[3183; 3184) " "
                                                           RANGE_EXPR@[3184; 3512)
-                                                            DOTDOT@[3184; 3186) ".."
+                                                            DOT2@[3184; 3186) ".."
                                                             WHITESPACE@[3186; 3187) " "
                                                             RANGE_EXPR@[3187; 3512)
-                                                              DOTDOT@[3187; 3189) ".."
+                                                              DOT2@[3187; 3189) ".."
                                                               WHITESPACE@[3189; 3190) " "
                                                               RANGE_EXPR@[3190; 3512)
-                                                                DOTDOT@[3190; 3192) ".."
+                                                                DOT2@[3190; 3192) ".."
                                                                 WHITESPACE@[3192; 3196) "    "
                                                                 RANGE_EXPR@[3196; 3512)
-                                                                  DOTDOTEQ@[3196; 3199) "..="
+                                                                  DOT2EQ@[3196; 3199) "..="
                                                                   RANGE_EXPR@[3199; 3512)
-                                                                    DOTDOTEQ@[3199; 3202) "..="
+                                                                    DOT2EQ@[3199; 3202) "..="
                                                                     RANGE_EXPR@[3202; 3512)
-                                                                      DOTDOTEQ@[3202; 3205) "..="
+                                                                      DOT2EQ@[3202; 3205) "..="
                                                                       RANGE_EXPR@[3205; 3512)
-                                                                        DOTDOT@[3205; 3207) ".."
+                                                                        DOT2@[3205; 3207) ".."
                                                                         WHITESPACE@[3207; 3212) "\n    "
                                                                         RANGE_EXPR@[3212; 3512)
-                                                                          DOTDOTEQ@[3212; 3215) "..="
+                                                                          DOT2EQ@[3212; 3215) "..="
                                                                           RANGE_EXPR@[3215; 3512)
-                                                                            DOTDOT@[3215; 3217) ".."
+                                                                            DOT2@[3215; 3217) ".."
                                                                             WHITESPACE@[3217; 3218) " "
                                                                             RANGE_EXPR@[3218; 3512)
-                                                                              DOTDOTEQ@[3218; 3221) "..="
+                                                                              DOT2EQ@[3218; 3221) "..="
                                                                               RANGE_EXPR@[3221; 3512)
-                                                                                DOTDOT@[3221; 3223) ".."
+                                                                                DOT2@[3221; 3223) ".."
                                                                                 WHITESPACE@[3223; 3227) "    "
                                                                                 RANGE_EXPR@[3227; 3512)
-                                                                                  DOTDOTEQ@[3227; 3230) "..="
+                                                                                  DOT2EQ@[3227; 3230) "..="
                                                                                   RANGE_EXPR@[3230; 3512)
-                                                                                    DOTDOT@[3230; 3232) ".."
+                                                                                    DOT2@[3230; 3232) ".."
                                                                                     WHITESPACE@[3232; 3233) " "
                                                                                     RANGE_EXPR@[3233; 3512)
-                                                                                      DOTDOTEQ@[3233; 3236) "..="
+                                                                                      DOT2EQ@[3233; 3236) "..="
                                                                                       RANGE_EXPR@[3236; 3512)
-                                                                                        DOTDOT@[3236; 3238) ".."
+                                                                                        DOT2@[3236; 3238) ".."
                                                                                         WHITESPACE@[3238; 3242) "    "
                                                                                         RANGE_EXPR@[3242; 3512)
-                                                                                          DOTDOT@[3242; 3244) ".."
+                                                                                          DOT2@[3242; 3244) ".."
                                                                                           WHITESPACE@[3244; 3245) " "
                                                                                           RANGE_EXPR@[3245; 3512)
-                                                                                            DOTDOTEQ@[3245; 3248) "..="
+                                                                                            DOT2EQ@[3245; 3248) "..="
                                                                                             RANGE_EXPR@[3248; 3512)
-                                                                                              DOTDOTEQ@[3248; 3251) "..="
+                                                                                              DOT2EQ@[3248; 3251) "..="
                                                                                               RANGE_EXPR@[3251; 3512)
-                                                                                                DOTDOT@[3251; 3253) ".."
+                                                                                                DOT2@[3251; 3253) ".."
                                                                                                 WHITESPACE@[3253; 3257) "    "
                                                                                                 RANGE_EXPR@[3257; 3512)
-                                                                                                  DOTDOT@[3257; 3259) ".."
+                                                                                                  DOT2@[3257; 3259) ".."
                                                                                                   WHITESPACE@[3259; 3260) " "
                                                                                                   RANGE_EXPR@[3260; 3512)
-                                                                                                    DOTDOTEQ@[3260; 3263) "..="
+                                                                                                    DOT2EQ@[3260; 3263) "..="
                                                                                                     RANGE_EXPR@[3263; 3512)
-                                                                                                      DOTDOT@[3263; 3265) ".."
+                                                                                                      DOT2@[3263; 3265) ".."
                                                                                                       WHITESPACE@[3265; 3266) " "
                                                                                                       RANGE_EXPR@[3266; 3512)
-                                                                                                        DOTDOT@[3266; 3268) ".."
+                                                                                                        DOT2@[3266; 3268) ".."
                                                                                                         WHITESPACE@[3268; 3273) "\n    "
                                                                                                         RANGE_EXPR@[3273; 3512)
-                                                                                                          DOTDOTEQ@[3273; 3276) "..="
+                                                                                                          DOT2EQ@[3273; 3276) "..="
                                                                                                           RANGE_EXPR@[3276; 3512)
-                                                                                                            DOTDOTEQ@[3276; 3279) "..="
+                                                                                                            DOT2EQ@[3276; 3279) "..="
                                                                                                             RANGE_EXPR@[3279; 3512)
-                                                                                                              DOTDOT@[3279; 3281) ".."
+                                                                                                              DOT2@[3279; 3281) ".."
                                                                                                               WHITESPACE@[3281; 3282) " "
                                                                                                               RANGE_EXPR@[3282; 3512)
-                                                                                                                DOTDOT@[3282; 3284) ".."
+                                                                                                                DOT2@[3282; 3284) ".."
                                                                                                                 WHITESPACE@[3284; 3288) "    "
                                                                                                                 RANGE_EXPR@[3288; 3512)
-                                                                                                                  DOTDOTEQ@[3288; 3291) "..="
+                                                                                                                  DOT2EQ@[3288; 3291) "..="
                                                                                                                   RANGE_EXPR@[3291; 3512)
-                                                                                                                    DOTDOT@[3291; 3293) ".."
+                                                                                                                    DOT2@[3291; 3293) ".."
                                                                                                                     WHITESPACE@[3293; 3294) " "
                                                                                                                     RANGE_EXPR@[3294; 3512)
-                                                                                                                      DOTDOTEQ@[3294; 3297) "..="
+                                                                                                                      DOT2EQ@[3294; 3297) "..="
                                                                                                                       RANGE_EXPR@[3297; 3512)
-                                                                                                                        DOTDOT@[3297; 3299) ".."
+                                                                                                                        DOT2@[3297; 3299) ".."
                                                                                                                         WHITESPACE@[3299; 3303) "    "
                                                                                                                         RANGE_EXPR@[3303; 3512)
-                                                                                                                          DOTDOTEQ@[3303; 3306) "..="
+                                                                                                                          DOT2EQ@[3303; 3306) "..="
                                                                                                                           RANGE_EXPR@[3306; 3512)
-                                                                                                                            DOTDOT@[3306; 3308) ".."
+                                                                                                                            DOT2@[3306; 3308) ".."
                                                                                                                             WHITESPACE@[3308; 3309) " "
                                                                                                                             RANGE_EXPR@[3309; 3512)
-                                                                                                                              DOTDOT@[3309; 3311) ".."
+                                                                                                                              DOT2@[3309; 3311) ".."
                                                                                                                               WHITESPACE@[3311; 3312) " "
                                                                                                                               RANGE_EXPR@[3312; 3512)
-                                                                                                                                DOTDOT@[3312; 3314) ".."
+                                                                                                                                DOT2@[3312; 3314) ".."
                                                                                                                                 WHITESPACE@[3314; 3318) "    "
                                                                                                                                 RANGE_EXPR@[3318; 3512)
-                                                                                                                                  DOTDOT@[3318; 3320) ".."
+                                                                                                                                  DOT2@[3318; 3320) ".."
                                                                                                                                   WHITESPACE@[3320; 3321) " "
                                                                                                                                   RANGE_EXPR@[3321; 3512)
-                                                                                                                                    DOTDOTEQ@[3321; 3324) "..="
+                                                                                                                                    DOT2EQ@[3321; 3324) "..="
                                                                                                                                     RANGE_EXPR@[3324; 3512)
-                                                                                                                                      DOTDOT@[3324; 3326) ".."
+                                                                                                                                      DOT2@[3324; 3326) ".."
                                                                                                                                       WHITESPACE@[3326; 3327) " "
                                                                                                                                       RANGE_EXPR@[3327; 3512)
-                                                                                                                                        DOTDOT@[3327; 3329) ".."
+                                                                                                                                        DOT2@[3327; 3329) ".."
                                                                                                                                         WHITESPACE@[3329; 3334) "\n    "
                                                                                                                                         RANGE_EXPR@[3334; 3512)
-                                                                                                                                          DOTDOTEQ@[3334; 3337) "..="
+                                                                                                                                          DOT2EQ@[3334; 3337) "..="
                                                                                                                                           RANGE_EXPR@[3337; 3512)
-                                                                                                                                            DOTDOT@[3337; 3339) ".."
+                                                                                                                                            DOT2@[3337; 3339) ".."
                                                                                                                                             WHITESPACE@[3339; 3340) " "
                                                                                                                                             RANGE_EXPR@[3340; 3512)
-                                                                                                                                              DOTDOTEQ@[3340; 3343) "..="
+                                                                                                                                              DOT2EQ@[3340; 3343) "..="
                                                                                                                                               RANGE_EXPR@[3343; 3512)
-                                                                                                                                                DOTDOT@[3343; 3345) ".."
+                                                                                                                                                DOT2@[3343; 3345) ".."
                                                                                                                                                 WHITESPACE@[3345; 3349) "    "
                                                                                                                                                 RANGE_EXPR@[3349; 3512)
-                                                                                                                                                  DOTDOTEQ@[3349; 3352) "..="
+                                                                                                                                                  DOT2EQ@[3349; 3352) "..="
                                                                                                                                                   RANGE_EXPR@[3352; 3512)
-                                                                                                                                                    DOTDOT@[3352; 3354) ".."
+                                                                                                                                                    DOT2@[3352; 3354) ".."
                                                                                                                                                     WHITESPACE@[3354; 3355) " "
                                                                                                                                                     RANGE_EXPR@[3355; 3512)
-                                                                                                                                                      DOTDOTEQ@[3355; 3358) "..="
+                                                                                                                                                      DOT2EQ@[3355; 3358) "..="
                                                                                                                                                       RANGE_EXPR@[3358; 3512)
-                                                                                                                                                        DOTDOT@[3358; 3360) ".."
+                                                                                                                                                        DOT2@[3358; 3360) ".."
                                                                                                                                                         WHITESPACE@[3360; 3364) "    "
                                                                                                                                                         RANGE_EXPR@[3364; 3512)
-                                                                                                                                                          DOTDOT@[3364; 3366) ".."
+                                                                                                                                                          DOT2@[3364; 3366) ".."
                                                                                                                                                           WHITESPACE@[3366; 3367) " "
                                                                                                                                                           RANGE_EXPR@[3367; 3512)
-                                                                                                                                                            DOTDOTEQ@[3367; 3370) "..="
+                                                                                                                                                            DOT2EQ@[3367; 3370) "..="
                                                                                                                                                             RANGE_EXPR@[3370; 3512)
-                                                                                                                                                              DOTDOT@[3370; 3372) ".."
+                                                                                                                                                              DOT2@[3370; 3372) ".."
                                                                                                                                                               WHITESPACE@[3372; 3373) " "
                                                                                                                                                               RANGE_EXPR@[3373; 3512)
-                                                                                                                                                                DOTDOT@[3373; 3375) ".."
+                                                                                                                                                                DOT2@[3373; 3375) ".."
                                                                                                                                                                 WHITESPACE@[3375; 3379) "    "
                                                                                                                                                                 RANGE_EXPR@[3379; 3512)
-                                                                                                                                                                  DOTDOT@[3379; 3381) ".."
+                                                                                                                                                                  DOT2@[3379; 3381) ".."
                                                                                                                                                                   WHITESPACE@[3381; 3382) " "
                                                                                                                                                                   RANGE_EXPR@[3382; 3512)
-                                                                                                                                                                    DOTDOTEQ@[3382; 3385) "..="
+                                                                                                                                                                    DOT2EQ@[3382; 3385) "..="
                                                                                                                                                                     RANGE_EXPR@[3385; 3512)
-                                                                                                                                                                      DOTDOT@[3385; 3387) ".."
+                                                                                                                                                                      DOT2@[3385; 3387) ".."
                                                                                                                                                                       WHITESPACE@[3387; 3388) " "
                                                                                                                                                                       RANGE_EXPR@[3388; 3512)
-                                                                                                                                                                        DOTDOT@[3388; 3390) ".."
+                                                                                                                                                                        DOT2@[3388; 3390) ".."
                                                                                                                                                                         WHITESPACE@[3390; 3395) "\n    "
                                                                                                                                                                         RANGE_EXPR@[3395; 3512)
-                                                                                                                                                                          DOTDOTEQ@[3395; 3398) "..="
+                                                                                                                                                                          DOT2EQ@[3395; 3398) "..="
                                                                                                                                                                           RANGE_EXPR@[3398; 3512)
-                                                                                                                                                                            DOTDOT@[3398; 3400) ".."
+                                                                                                                                                                            DOT2@[3398; 3400) ".."
                                                                                                                                                                             WHITESPACE@[3400; 3401) " "
                                                                                                                                                                             RANGE_EXPR@[3401; 3512)
-                                                                                                                                                                              DOTDOTEQ@[3401; 3404) "..="
+                                                                                                                                                                              DOT2EQ@[3401; 3404) "..="
                                                                                                                                                                               RANGE_EXPR@[3404; 3512)
-                                                                                                                                                                                DOTDOT@[3404; 3406) ".."
+                                                                                                                                                                                DOT2@[3404; 3406) ".."
                                                                                                                                                                                 WHITESPACE@[3406; 3410) "    "
                                                                                                                                                                                 RANGE_EXPR@[3410; 3512)
-                                                                                                                                                                                  DOTDOTEQ@[3410; 3413) "..="
+                                                                                                                                                                                  DOT2EQ@[3410; 3413) "..="
                                                                                                                                                                                   RANGE_EXPR@[3413; 3512)
-                                                                                                                                                                                    DOTDOT@[3413; 3415) ".."
+                                                                                                                                                                                    DOT2@[3413; 3415) ".."
                                                                                                                                                                                     WHITESPACE@[3415; 3416) " "
                                                                                                                                                                                     RANGE_EXPR@[3416; 3512)
-                                                                                                                                                                                      DOTDOTEQ@[3416; 3419) "..="
+                                                                                                                                                                                      DOT2EQ@[3416; 3419) "..="
                                                                                                                                                                                       RANGE_EXPR@[3419; 3512)
-                                                                                                                                                                                        DOTDOT@[3419; 3421) ".."
+                                                                                                                                                                                        DOT2@[3419; 3421) ".."
                                                                                                                                                                                         WHITESPACE@[3421; 3425) "    "
                                                                                                                                                                                         RANGE_EXPR@[3425; 3512)
-                                                                                                                                                                                          DOTDOT@[3425; 3427) ".."
+                                                                                                                                                                                          DOT2@[3425; 3427) ".."
                                                                                                                                                                                           WHITESPACE@[3427; 3428) " "
                                                                                                                                                                                           RANGE_EXPR@[3428; 3512)
-                                                                                                                                                                                            DOTDOT@[3428; 3430) ".."
+                                                                                                                                                                                            DOT2@[3428; 3430) ".."
                                                                                                                                                                                             WHITESPACE@[3430; 3431) " "
                                                                                                                                                                                             RANGE_EXPR@[3431; 3512)
-                                                                                                                                                                                              DOTDOTEQ@[3431; 3434) "..="
+                                                                                                                                                                                              DOT2EQ@[3431; 3434) "..="
                                                                                                                                                                                               RANGE_EXPR@[3434; 3512)
-                                                                                                                                                                                                DOTDOT@[3434; 3436) ".."
+                                                                                                                                                                                                DOT2@[3434; 3436) ".."
                                                                                                                                                                                                 WHITESPACE@[3436; 3440) "    "
                                                                                                                                                                                                 RANGE_EXPR@[3440; 3512)
-                                                                                                                                                                                                  DOTDOT@[3440; 3442) ".."
+                                                                                                                                                                                                  DOT2@[3440; 3442) ".."
                                                                                                                                                                                                   WHITESPACE@[3442; 3443) " "
                                                                                                                                                                                                   RANGE_EXPR@[3443; 3512)
-                                                                                                                                                                                                    DOTDOTEQ@[3443; 3446) "..="
+                                                                                                                                                                                                    DOT2EQ@[3443; 3446) "..="
                                                                                                                                                                                                     RANGE_EXPR@[3446; 3512)
-                                                                                                                                                                                                      DOTDOT@[3446; 3448) ".."
+                                                                                                                                                                                                      DOT2@[3446; 3448) ".."
                                                                                                                                                                                                       WHITESPACE@[3448; 3449) " "
                                                                                                                                                                                                       RANGE_EXPR@[3449; 3512)
-                                                                                                                                                                                                        DOTDOT@[3449; 3451) ".."
+                                                                                                                                                                                                        DOT2@[3449; 3451) ".."
                                                                                                                                                                                                         WHITESPACE@[3451; 3456) "\n    "
                                                                                                                                                                                                         RANGE_EXPR@[3456; 3512)
-                                                                                                                                                                                                          DOTDOTEQ@[3456; 3459) "..="
+                                                                                                                                                                                                          DOT2EQ@[3456; 3459) "..="
                                                                                                                                                                                                           RANGE_EXPR@[3459; 3512)
-                                                                                                                                                                                                            DOTDOT@[3459; 3461) ".."
+                                                                                                                                                                                                            DOT2@[3459; 3461) ".."
                                                                                                                                                                                                             WHITESPACE@[3461; 3462) " "
                                                                                                                                                                                                             RANGE_EXPR@[3462; 3512)
-                                                                                                                                                                                                              DOTDOTEQ@[3462; 3465) "..="
+                                                                                                                                                                                                              DOT2EQ@[3462; 3465) "..="
                                                                                                                                                                                                               RANGE_EXPR@[3465; 3512)
-                                                                                                                                                                                                                DOTDOT@[3465; 3467) ".."
+                                                                                                                                                                                                                DOT2@[3465; 3467) ".."
                                                                                                                                                                                                                 WHITESPACE@[3467; 3471) "    "
                                                                                                                                                                                                                 RANGE_EXPR@[3471; 3512)
-                                                                                                                                                                                                                  DOTDOT@[3471; 3473) ".."
+                                                                                                                                                                                                                  DOT2@[3471; 3473) ".."
                                                                                                                                                                                                                   WHITESPACE@[3473; 3474) " "
                                                                                                                                                                                                                   RANGE_EXPR@[3474; 3512)
-                                                                                                                                                                                                                    DOTDOTEQ@[3474; 3477) "..="
+                                                                                                                                                                                                                    DOT2EQ@[3474; 3477) "..="
                                                                                                                                                                                                                     RANGE_EXPR@[3477; 3512)
-                                                                                                                                                                                                                      DOTDOTEQ@[3477; 3480) "..="
+                                                                                                                                                                                                                      DOT2EQ@[3477; 3480) "..="
                                                                                                                                                                                                                       RANGE_EXPR@[3480; 3512)
-                                                                                                                                                                                                                        DOTDOT@[3480; 3482) ".."
+                                                                                                                                                                                                                        DOT2@[3480; 3482) ".."
                                                                                                                                                                                                                         WHITESPACE@[3482; 3486) "    "
                                                                                                                                                                                                                         RANGE_EXPR@[3486; 3512)
-                                                                                                                                                                                                                          DOTDOTEQ@[3486; 3489) "..="
+                                                                                                                                                                                                                          DOT2EQ@[3486; 3489) "..="
                                                                                                                                                                                                                           RANGE_EXPR@[3489; 3512)
-                                                                                                                                                                                                                            DOTDOTEQ@[3489; 3492) "..="
+                                                                                                                                                                                                                            DOT2EQ@[3489; 3492) "..="
                                                                                                                                                                                                                             RANGE_EXPR@[3492; 3512)
-                                                                                                                                                                                                                              DOTDOT@[3492; 3494) ".."
+                                                                                                                                                                                                                              DOT2@[3492; 3494) ".."
                                                                                                                                                                                                                               WHITESPACE@[3494; 3495) " "
                                                                                                                                                                                                                               RANGE_EXPR@[3495; 3512)
-                                                                                                                                                                                                                                DOTDOT@[3495; 3497) ".."
+                                                                                                                                                                                                                                DOT2@[3495; 3497) ".."
                                                                                                                                                                                                                                 WHITESPACE@[3497; 3501) "    "
                                                                                                                                                                                                                                 RANGE_EXPR@[3501; 3512)
-                                                                                                                                                                                                                                  DOTDOT@[3501; 3503) ".."
+                                                                                                                                                                                                                                  DOT2@[3501; 3503) ".."
                                                                                                                                                                                                                                   WHITESPACE@[3503; 3504) " "
                                                                                                                                                                                                                                   RANGE_EXPR@[3504; 3512)
-                                                                                                                                                                                                                                    DOTDOTEQ@[3504; 3507) "..="
+                                                                                                                                                                                                                                    DOT2EQ@[3504; 3507) "..="
                                                                                                                                                                                                                                     RANGE_EXPR@[3507; 3512)
-                                                                                                                                                                                                                                      DOTDOT@[3507; 3509) ".."
+                                                                                                                                                                                                                                      DOT2@[3507; 3509) ".."
                                                                                                                                                                                                                                       WHITESPACE@[3509; 3510) " "
                                                                                                                                                                                                                                       RANGE_EXPR@[3510; 3512)
-                                                                                                                                                                                                                                        DOTDOT@[3510; 3512) ".."
+                                                                                                                                                                                                                                        DOT2@[3510; 3512) ".."
         WHITESPACE@[3512; 3513) "\n"
         R_CURLY@[3513; 3514) "}"
   WHITESPACE@[3514; 3516) "\n\n"
@@ -2105,22 +2105,22 @@ SOURCE_FILE@[0; 3813)
       BLOCK@[3528; 3552)
         L_CURLY@[3528; 3529) "{"
         WHITESPACE@[3529; 3534) "\n    "
-        SEMI@[3534; 3535) ";"
-        SEMI@[3535; 3536) ";"
-        SEMI@[3536; 3537) ";"
+        SEMICOLON@[3534; 3535) ";"
+        SEMICOLON@[3535; 3536) ";"
+        SEMICOLON@[3536; 3537) ";"
         EXPR_STMT@[3537; 3540)
           TUPLE_EXPR@[3537; 3539)
             L_PAREN@[3537; 3538) "("
             R_PAREN@[3538; 3539) ")"
-          SEMI@[3539; 3540) ";"
-        SEMI@[3540; 3541) ";"
-        SEMI@[3541; 3542) ";"
-        SEMI@[3542; 3543) ";"
-        SEMI@[3543; 3544) ";"
-        SEMI@[3544; 3545) ";"
-        SEMI@[3545; 3546) ";"
-        SEMI@[3546; 3547) ";"
-        SEMI@[3547; 3548) ";"
+          SEMICOLON@[3539; 3540) ";"
+        SEMICOLON@[3540; 3541) ";"
+        SEMICOLON@[3541; 3542) ";"
+        SEMICOLON@[3542; 3543) ";"
+        SEMICOLON@[3543; 3544) ";"
+        SEMICOLON@[3544; 3545) ";"
+        SEMICOLON@[3545; 3546) ";"
+        SEMICOLON@[3546; 3547) ";"
+        SEMICOLON@[3547; 3548) ";"
         TUPLE_EXPR@[3548; 3550)
           L_PAREN@[3548; 3549) "("
           R_PAREN@[3549; 3550) ")"
@@ -2153,7 +2153,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3581; 3583)
               L_PAREN@[3581; 3582) "("
               R_PAREN@[3582; 3583) ")"
-          SEMI@[3583; 3584) ";"
+          SEMICOLON@[3583; 3584) ";"
         WHITESPACE@[3584; 3589) "\n    "
         EXPR_STMT@[3589; 3597)
           CALL_EXPR@[3589; 3596)
@@ -2165,7 +2165,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3594; 3596)
               L_PAREN@[3594; 3595) "("
               R_PAREN@[3595; 3596) ")"
-          SEMI@[3596; 3597) ";"
+          SEMICOLON@[3596; 3597) ";"
         WHITESPACE@[3597; 3602) "\n    "
         EXPR_STMT@[3602; 3609)
           CALL_EXPR@[3602; 3608)
@@ -2177,7 +2177,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3606; 3608)
               L_PAREN@[3606; 3607) "("
               R_PAREN@[3607; 3608) ")"
-          SEMI@[3608; 3609) ";"
+          SEMICOLON@[3608; 3609) ";"
         WHITESPACE@[3609; 3614) "\n    "
         EXPR_STMT@[3614; 3628)
           CALL_EXPR@[3614; 3627)
@@ -2189,7 +2189,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3625; 3627)
               L_PAREN@[3625; 3626) "("
               R_PAREN@[3626; 3627) ")"
-          SEMI@[3627; 3628) ";"
+          SEMICOLON@[3627; 3628) ";"
         WHITESPACE@[3628; 3633) "\n    "
         EXPR_STMT@[3633; 3643)
           CALL_EXPR@[3633; 3642)
@@ -2201,7 +2201,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3640; 3642)
               L_PAREN@[3640; 3641) "("
               R_PAREN@[3641; 3642) ")"
-          SEMI@[3642; 3643) ";"
+          SEMICOLON@[3642; 3643) ";"
         WHITESPACE@[3643; 3648) "\n    "
         EXPR_STMT@[3648; 3664)
           CALL_EXPR@[3648; 3663)
@@ -2213,7 +2213,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3661; 3663)
               L_PAREN@[3661; 3662) "("
               R_PAREN@[3662; 3663) ")"
-          SEMI@[3663; 3664) ";"
+          SEMICOLON@[3663; 3664) ";"
         WHITESPACE@[3664; 3669) "\n    "
         EXPR_STMT@[3669; 3681)
           CALL_EXPR@[3669; 3680)
@@ -2225,7 +2225,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3678; 3680)
               L_PAREN@[3678; 3679) "("
               R_PAREN@[3679; 3680) ")"
-          SEMI@[3680; 3681) ";"
+          SEMICOLON@[3680; 3681) ";"
         WHITESPACE@[3681; 3686) "\n    "
         EXPR_STMT@[3686; 3701)
           CALL_EXPR@[3686; 3700)
@@ -2237,7 +2237,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3698; 3700)
               L_PAREN@[3698; 3699) "("
               R_PAREN@[3699; 3700) ")"
-          SEMI@[3700; 3701) ";"
+          SEMICOLON@[3700; 3701) ";"
         WHITESPACE@[3701; 3706) "\n    "
         EXPR_STMT@[3706; 3713)
           CALL_EXPR@[3706; 3712)
@@ -2249,7 +2249,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3710; 3712)
               L_PAREN@[3710; 3711) "("
               R_PAREN@[3711; 3712) ")"
-          SEMI@[3712; 3713) ";"
+          SEMICOLON@[3712; 3713) ";"
         WHITESPACE@[3713; 3718) "\n    "
         EXPR_STMT@[3718; 3726)
           CALL_EXPR@[3718; 3725)
@@ -2263,7 +2263,7 @@ SOURCE_FILE@[0; 3813)
               LITERAL@[3721; 3724)
                 INT_NUMBER@[3721; 3724) "8u8"
               R_PAREN@[3724; 3725) ")"
-          SEMI@[3725; 3726) ";"
+          SEMICOLON@[3725; 3726) ";"
         WHITESPACE@[3726; 3731) "\n    "
         EXPR_STMT@[3731; 3739)
           CALL_EXPR@[3731; 3738)
@@ -2275,7 +2275,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3736; 3738)
               L_PAREN@[3736; 3737) "("
               R_PAREN@[3737; 3738) ")"
-          SEMI@[3738; 3739) ";"
+          SEMICOLON@[3738; 3739) ";"
         WHITESPACE@[3739; 3744) "\n    "
         EXPR_STMT@[3744; 3752)
           CALL_EXPR@[3744; 3751)
@@ -2287,7 +2287,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3749; 3751)
               L_PAREN@[3749; 3750) "("
               R_PAREN@[3750; 3751) ")"
-          SEMI@[3751; 3752) ";"
+          SEMICOLON@[3751; 3752) ";"
         WHITESPACE@[3752; 3757) "\n    "
         EXPR_STMT@[3757; 3778)
           CALL_EXPR@[3757; 3777)
@@ -2299,7 +2299,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3775; 3777)
               L_PAREN@[3775; 3776) "("
               R_PAREN@[3776; 3777) ")"
-          SEMI@[3777; 3778) ";"
+          SEMICOLON@[3777; 3778) ";"
         WHITESPACE@[3778; 3783) "\n    "
         EXPR_STMT@[3783; 3796)
           CALL_EXPR@[3783; 3795)
@@ -2311,7 +2311,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3793; 3795)
               L_PAREN@[3793; 3794) "("
               R_PAREN@[3794; 3795) ")"
-          SEMI@[3795; 3796) ";"
+          SEMICOLON@[3795; 3796) ";"
         WHITESPACE@[3796; 3801) "\n    "
         EXPR_STMT@[3801; 3810)
           CALL_EXPR@[3801; 3809)
@@ -2323,7 +2323,7 @@ SOURCE_FILE@[0; 3813)
             ARG_LIST@[3807; 3809)
               L_PAREN@[3807; 3808) "("
               R_PAREN@[3808; 3809) ")"
-          SEMI@[3809; 3810) ";"
+          SEMICOLON@[3809; 3810) ";"
         WHITESPACE@[3810; 3811) "\n"
         R_CURLY@[3811; 3812) "}"
   WHITESPACE@[3812; 3813) "\n"

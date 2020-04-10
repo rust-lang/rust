@@ -22,7 +22,7 @@ SOURCE_FILE@[0; 189)
           WHITESPACE@[22; 23) " "
           LITERAL@[23; 27)
             TRUE_KW@[23; 27) "true"
-          SEMI@[27; 28) ";"
+          SEMICOLON@[27; 28) ";"
         WHITESPACE@[28; 33) "\n    "
         LET_STMT@[33; 47)
           LET_KW@[33; 36) "let"
@@ -34,7 +34,7 @@ SOURCE_FILE@[0; 189)
           WHITESPACE@[40; 41) " "
           LITERAL@[41; 46)
             FALSE_KW@[41; 46) "false"
-          SEMI@[46; 47) ";"
+          SEMICOLON@[46; 47) ";"
         WHITESPACE@[47; 52) "\n    "
         LET_STMT@[52; 62)
           LET_KW@[52; 55) "let"
@@ -46,7 +46,7 @@ SOURCE_FILE@[0; 189)
           WHITESPACE@[59; 60) " "
           LITERAL@[60; 61)
             INT_NUMBER@[60; 61) "1"
-          SEMI@[61; 62) ";"
+          SEMICOLON@[61; 62) ";"
         WHITESPACE@[62; 67) "\n    "
         LET_STMT@[67; 79)
           LET_KW@[67; 70) "let"
@@ -58,7 +58,7 @@ SOURCE_FILE@[0; 189)
           WHITESPACE@[74; 75) " "
           LITERAL@[75; 78)
             FLOAT_NUMBER@[75; 78) "2.0"
-          SEMI@[78; 79) ";"
+          SEMICOLON@[78; 79) ";"
         WHITESPACE@[79; 84) "\n    "
         LET_STMT@[84; 97)
           LET_KW@[84; 87) "let"
@@ -70,7 +70,7 @@ SOURCE_FILE@[0; 189)
           WHITESPACE@[91; 92) " "
           LITERAL@[92; 96)
             BYTE@[92; 96) "b\'a\'"
-          SEMI@[96; 97) ";"
+          SEMICOLON@[96; 97) ";"
         WHITESPACE@[97; 102) "\n    "
         LET_STMT@[102; 114)
           LET_KW@[102; 105) "let"
@@ -82,7 +82,7 @@ SOURCE_FILE@[0; 189)
           WHITESPACE@[109; 110) " "
           LITERAL@[110; 113)
             CHAR@[110; 113) "\'b\'"
-          SEMI@[113; 114) ";"
+          SEMICOLON@[113; 114) ";"
         WHITESPACE@[114; 119) "\n    "
         LET_STMT@[119; 131)
           LET_KW@[119; 122) "let"
@@ -94,7 +94,7 @@ SOURCE_FILE@[0; 189)
           WHITESPACE@[126; 127) " "
           LITERAL@[127; 130)
             STRING@[127; 130) "\"c\""
-          SEMI@[130; 131) ";"
+          SEMICOLON@[130; 131) ";"
         WHITESPACE@[131; 136) "\n    "
         LET_STMT@[136; 149)
           LET_KW@[136; 139) "let"
@@ -106,7 +106,7 @@ SOURCE_FILE@[0; 189)
           WHITESPACE@[143; 144) " "
           LITERAL@[144; 148)
             RAW_STRING@[144; 148) "r\"d\""
-          SEMI@[148; 149) ";"
+          SEMICOLON@[148; 149) ";"
         WHITESPACE@[149; 154) "\n    "
         LET_STMT@[154; 167)
           LET_KW@[154; 157) "let"
@@ -118,7 +118,7 @@ SOURCE_FILE@[0; 189)
           WHITESPACE@[161; 162) " "
           LITERAL@[162; 166)
             BYTE_STRING@[162; 166) "b\"e\""
-          SEMI@[166; 167) ";"
+          SEMICOLON@[166; 167) ";"
         WHITESPACE@[167; 172) "\n    "
         LET_STMT@[172; 186)
           LET_KW@[172; 175) "let"
@@ -130,7 +130,7 @@ SOURCE_FILE@[0; 189)
           WHITESPACE@[179; 180) " "
           LITERAL@[180; 185)
             RAW_BYTE_STRING@[180; 185) "br\"f\""
-          SEMI@[185; 186) ";"
+          SEMICOLON@[185; 186) ";"
         WHITESPACE@[186; 187) "\n"
         R_CURLY@[187; 188) "}"
   WHITESPACE@[188; 189) "\n"

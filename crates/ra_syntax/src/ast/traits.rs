@@ -6,6 +6,7 @@ use stdx::SepBy;
 use crate::{
     ast::{self, support, AstChildren, AstNode, AstToken},
     syntax_node::SyntaxElementChildren,
+    SyntaxToken, T,
 };
 
 pub trait TypeAscriptionOwner: AstNode {
@@ -63,8 +64,8 @@ pub trait TypeBoundsOwner: AstNode {
         support::child(self.syntax())
     }
 
-    fn colon(&self) -> Option<ast::Colon> {
-        support::token(self.syntax())
+    fn colon_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), T![:])
     }
 }
 

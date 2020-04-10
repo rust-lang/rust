@@ -12,5 +12,5 @@ SOURCE_FILE@[0; 16)
         PATH_SEGMENT@[11; 14)
           NAME_REF@[11; 14)
             IDENT@[11; 14) "Bar"
-    SEMI@[14; 15) ";"
+    SEMICOLON@[14; 15) ";"
   WHITESPACE@[15; 16) "\n"

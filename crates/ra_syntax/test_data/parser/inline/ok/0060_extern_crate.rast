@@ -6,5 +6,5 @@ SOURCE_FILE@[0; 18)
     WHITESPACE@[12; 13) " "
     NAME_REF@[13; 16)
       IDENT@[13; 16) "foo"
-    SEMI@[16; 17) ";"
+    SEMICOLON@[16; 17) ";"
   WHITESPACE@[17; 18) "\n"

@@ -4,7 +4,7 @@
 use crate::{
     SyntaxError,
     SyntaxKind::{self, *},
-    TextRange, TextUnit,
+    TextRange, TextUnit, T,
 };
 
 /// A token of Rust source.
@@ -115,21 +115,20 @@ fn rustc_token_kind_to_syntax_kind(
     // being `u16` that come from `rowan::SyntaxKind`.
 
     let syntax_kind = {
-        use rustc_lexer::TokenKind as TK;
         match rustc_token_kind {
-            TK::LineComment => COMMENT,
+            rustc_lexer::TokenKind::LineComment => COMMENT,
 
-            TK::BlockComment { terminated: true } => COMMENT,
-            TK::BlockComment { terminated: false } => {
+            rustc_lexer::TokenKind::BlockComment { terminated: true } => COMMENT,
+            rustc_lexer::TokenKind::BlockComment { terminated: false } => {
                 return (
                     COMMENT,
                     Some("Missing trailing `*/` symbols to terminate the block comment"),
                 );
             }
 
-            TK::Whitespace => WHITESPACE,
+            rustc_lexer::TokenKind::Whitespace => WHITESPACE,
 
-            TK::Ident => {
+            rustc_lexer::TokenKind::Ident => {
                 if token_text == "_" {
                     UNDERSCORE
                 } else {
@@ -137,42 +136,42 @@ fn rustc_token_kind_to_syntax_kind(
                 }
             }
 
-            TK::RawIdent => IDENT,
-            TK::Literal { kind, .. } => return match_literal_kind(&kind),
+            rustc_lexer::TokenKind::RawIdent => IDENT,
+            rustc_lexer::TokenKind::Literal { kind, .. } => return match_literal_kind(&kind),
 
-            TK::Lifetime { starts_with_number: false } => LIFETIME,
-            TK::Lifetime { starts_with_number: true } => {
+            rustc_lexer::TokenKind::Lifetime { starts_with_number: false } => LIFETIME,
+            rustc_lexer::TokenKind::Lifetime { starts_with_number: true } => {
                 return (LIFETIME, Some("Lifetime name cannot start with a number"))
             }
 
-            TK::Semi => SEMI,
-            TK::Comma => COMMA,
-            TK::Dot => DOT,
-            TK::OpenParen => L_PAREN,
-            TK::CloseParen => R_PAREN,
-            TK::OpenBrace => L_CURLY,
-            TK::CloseBrace => R_CURLY,
-            TK::OpenBracket => L_BRACK,
-            TK::CloseBracket => R_BRACK,
-            TK::At => AT,
-            TK::Pound => POUND,
-            TK::Tilde => TILDE,
-            TK::Question => QUESTION,
-            TK::Colon => COLON,
-            TK::Dollar => DOLLAR,
-            TK::Eq => EQ,
-            TK::Not => EXCL,
-            TK::Lt => L_ANGLE,
-            TK::Gt => R_ANGLE,
-            TK::Minus => MINUS,
-            TK::And => AMP,
-            TK::Or => PIPE,
-            TK::Plus => PLUS,
-            TK::Star => STAR,
-            TK::Slash => SLASH,
-            TK::Caret => CARET,
-            TK::Percent => PERCENT,
-            TK::Unknown => ERROR,
+            rustc_lexer::TokenKind::Semi => T![;],
+            rustc_lexer::TokenKind::Comma => T![,],
+            rustc_lexer::TokenKind::Dot => T![.],
+            rustc_lexer::TokenKind::OpenParen => T!['('],
+            rustc_lexer::TokenKind::CloseParen => T![')'],
+            rustc_lexer::TokenKind::OpenBrace => T!['{'],
+            rustc_lexer::TokenKind::CloseBrace => T!['}'],
+            rustc_lexer::TokenKind::OpenBracket => T!['['],
+            rustc_lexer::TokenKind::CloseBracket => T![']'],
+            rustc_lexer::TokenKind::At => T![@],
+            rustc_lexer::TokenKind::Pound => T![#],
+            rustc_lexer::TokenKind::Tilde => T![~],
+            rustc_lexer::TokenKind::Question => T![?],
+            rustc_lexer::TokenKind::Colon => T![:],
+            rustc_lexer::TokenKind::Dollar => T![$],
+            rustc_lexer::TokenKind::Eq => T![=],
+            rustc_lexer::TokenKind::Not => T![!],
+            rustc_lexer::TokenKind::Lt => T![<],
+            rustc_lexer::TokenKind::Gt => T![>],
+            rustc_lexer::TokenKind::Minus => T![-],
+            rustc_lexer::TokenKind::And => T![&],
+            rustc_lexer::TokenKind::Or => T![|],
+            rustc_lexer::TokenKind::Plus => T![+],
+            rustc_lexer::TokenKind::Star => T![*],
+            rustc_lexer::TokenKind::Slash => T![/],
+            rustc_lexer::TokenKind::Caret => T![^],
+            rustc_lexer::TokenKind::Percent => T![%],
+            rustc_lexer::TokenKind::Unknown => ERROR,
         }
     };
 

@@ -32,7 +32,7 @@ SOURCE_FILE@[0; 47)
                     PATH_SEGMENT@[22; 25)
                       NAME_REF@[22; 25)
                         IDENT@[22; 25) "bar"
-                  EXCL@[25; 26) "!"
+                  BANG@[25; 26) "!"
                   TOKEN_TREE@[26; 28)
                     L_PAREN@[26; 27) "("
                     R_PAREN@[27; 28) ")"

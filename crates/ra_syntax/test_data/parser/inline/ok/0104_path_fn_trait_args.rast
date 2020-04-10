@@ -37,5 +37,5 @@ SOURCE_FILE@[0; 29)
                         L_PAREN@[24; 25) "("
                         R_PAREN@[25; 26) ")"
             R_ANGLE@[26; 27) ">"
-    SEMI@[27; 28) ";"
+    SEMICOLON@[27; 28) ";"
   WHITESPACE@[28; 29) "\n"

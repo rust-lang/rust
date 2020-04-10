@@ -25,7 +25,7 @@ SOURCE_FILE@[0; 80)
             LITERAL@[24; 25)
               INT_NUMBER@[24; 25) "0"
             WHITESPACE@[25; 26) " "
-            DOTDOT@[26; 28) ".."
+            DOT2@[26; 28) ".."
             WHITESPACE@[28; 29) " "
             METHOD_CALL_EXPR@[29; 56)
               PAREN_EXPR@[29; 43)
@@ -34,7 +34,7 @@ SOURCE_FILE@[0; 80)
                   LITERAL@[30; 31)
                     INT_NUMBER@[30; 31) "0"
                   WHITESPACE@[31; 32) " "
-                  DOTDOT@[32; 34) ".."
+                  DOT2@[32; 34) ".."
                   WHITESPACE@[34; 35) " "
                   BLOCK_EXPR@[35; 42)
                     BLOCK@[35; 42)
@@ -53,7 +53,7 @@ SOURCE_FILE@[0; 80)
               NAME_REF@[44; 47)
                 IDENT@[44; 47) "sum"
               TYPE_ARG_LIST@[47; 54)
-                COLONCOLON@[47; 49) "::"
+                COLON2@[47; 49) "::"
                 L_ANGLE@[49; 50) "<"
                 TYPE_ARG@[50; 53)
                   PATH_TYPE@[50; 53)
@@ -73,7 +73,7 @@ SOURCE_FILE@[0; 80)
               EXPR_STMT@[66; 72)
                 BREAK_EXPR@[66; 71)
                   BREAK_KW@[66; 71) "break"
-                SEMI@[71; 72) ";"
+                SEMICOLON@[71; 72) ";"
               WHITESPACE@[72; 76) "\n   "
               R_CURLY@[76; 77) "}"
         WHITESPACE@[77; 78) "\n"

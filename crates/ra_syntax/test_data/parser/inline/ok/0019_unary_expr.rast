@@ -21,16 +21,16 @@ SOURCE_FILE@[0; 44)
                 AMP@[17; 18) "&"
                 LITERAL@[18; 19)
                   INT_NUMBER@[18; 19) "1"
-          SEMI@[19; 20) ";"
+          SEMICOLON@[19; 20) ";"
         WHITESPACE@[20; 25) "\n    "
         EXPR_STMT@[25; 32)
           PREFIX_EXPR@[25; 31)
-            EXCL@[25; 26) "!"
+            BANG@[25; 26) "!"
             PREFIX_EXPR@[26; 31)
-              EXCL@[26; 27) "!"
+              BANG@[26; 27) "!"
               LITERAL@[27; 31)
                 TRUE_KW@[27; 31) "true"
-          SEMI@[31; 32) ";"
+          SEMICOLON@[31; 32) ";"
         WHITESPACE@[32; 37) "\n    "
         EXPR_STMT@[37; 41)
           PREFIX_EXPR@[37; 40)
@@ -39,7 +39,7 @@ SOURCE_FILE@[0; 44)
               MINUS@[38; 39) "-"
               LITERAL@[39; 40)
                 INT_NUMBER@[39; 40) "1"
-          SEMI@[40; 41) ";"
+          SEMICOLON@[40; 41) ";"
         WHITESPACE@[41; 42) "\n"
         R_CURLY@[42; 43) "}"
   WHITESPACE@[43; 44) "\n"

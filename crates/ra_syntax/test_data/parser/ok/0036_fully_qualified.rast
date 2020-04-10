@@ -60,7 +60,7 @@ SOURCE_FILE@[0; 157)
                       NAME_REF@[114; 122)
                         IDENT@[114; 122) "Iterator"
                 R_ANGLE@[122; 123) ">"
-            COLONCOLON@[123; 125) "::"
+            COLON2@[123; 125) "::"
             PATH_SEGMENT@[125; 129)
               NAME_REF@[125; 129)
                 IDENT@[125; 129) "Item"

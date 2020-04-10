@@ -16,7 +16,7 @@ SOURCE_FILE@[0; 96)
         PARAM_LIST@[31; 33)
           L_PAREN@[31; 32) "("
           R_PAREN@[32; 33) ")"
-        SEMI@[33; 34) ";"
+        SEMICOLON@[33; 34) ";"
       WHITESPACE@[34; 35) "\n"
       R_CURLY@[35; 36) "}"
   WHITESPACE@[36; 38) "\n\n"
@@ -49,13 +49,13 @@ SOURCE_FILE@[0; 96)
                   PATH_SEGMENT@[84; 87)
                     NAME_REF@[84; 87)
                       IDENT@[84; 87) "i32"
-              SEMI@[87; 88) ";"
+              SEMICOLON@[87; 88) ";"
               WHITESPACE@[88; 89) " "
               LITERAL@[89; 90)
                 INT_NUMBER@[89; 90) "1"
               R_BRACK@[90; 91) "]"
           R_PAREN@[91; 92) ")"
-        SEMI@[92; 93) ";"
+        SEMICOLON@[92; 93) ";"
       WHITESPACE@[93; 94) "\n"
       R_CURLY@[94; 95) "}"
   WHITESPACE@[95; 96) "\n"

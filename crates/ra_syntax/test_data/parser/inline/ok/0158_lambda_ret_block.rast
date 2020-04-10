@@ -39,7 +39,7 @@ SOURCE_FILE@[0; 34)
             ARG_LIST@[28; 30)
               L_PAREN@[28; 29) "("
               R_PAREN@[29; 30) ")"
-          SEMI@[30; 31) ";"
+          SEMICOLON@[30; 31) ";"
         WHITESPACE@[31; 32) " "
         R_CURLY@[32; 33) "}"
   WHITESPACE@[33; 34) "\n"

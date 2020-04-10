@@ -29,7 +29,7 @@ SOURCE_FILE@[0; 83)
                         NAME_REF@[15; 16)
                           IDENT@[15; 16) "U"
                 R_ANGLE@[16; 17) ">"
-    SEMI@[17; 18) ";"
+    SEMICOLON@[17; 18) ";"
   WHITESPACE@[18; 19) "\n"
   TRAIT_DEF@[19; 51)
     TRAIT_KW@[19; 24) "trait"
@@ -80,7 +80,7 @@ SOURCE_FILE@[0; 83)
                 PATH_SEGMENT@[46; 50)
                   NAME_REF@[46; 50)
                     IDENT@[46; 50) "Copy"
-    SEMI@[50; 51) ";"
+    SEMICOLON@[50; 51) ";"
   WHITESPACE@[51; 52) "\n"
   TRAIT_DEF@[52; 82)
     TRAIT_KW@[52; 57) "trait"
@@ -124,5 +124,5 @@ SOURCE_FILE@[0; 83)
                             NAME_REF@[79; 80)
                               IDENT@[79; 80) "U"
                     R_ANGLE@[80; 81) ">"
-    SEMI@[81; 82) ";"
+    SEMICOLON@[81; 82) ";"
   WHITESPACE@[82; 83) "\n"

@@ -15,7 +15,7 @@ SOURCE_FILE@[0; 40)
         EXPR_STMT@[15; 22)
           RETURN_EXPR@[15; 21)
             RETURN_KW@[15; 21) "return"
-          SEMI@[21; 22) ";"
+          SEMICOLON@[21; 22) ";"
         WHITESPACE@[22; 27) "\n    "
         EXPR_STMT@[27; 37)
           RETURN_EXPR@[27; 36)
@@ -23,7 +23,7 @@ SOURCE_FILE@[0; 40)
             WHITESPACE@[33; 34) " "
             LITERAL@[34; 36)
               INT_NUMBER@[34; 36) "92"
-          SEMI@[36; 37) ";"
+          SEMICOLON@[36; 37) ";"
         WHITESPACE@[37; 38) "\n"
         R_CURLY@[38; 39) "}"
   WHITESPACE@[39; 40) "\n"

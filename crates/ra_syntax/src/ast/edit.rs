@@ -32,9 +32,9 @@ impl ast::FnDef {
         let mut to_insert: ArrayVec<[SyntaxElement; 2]> = ArrayVec::new();
         let old_body_or_semi: SyntaxElement = if let Some(old_body) = self.body() {
             old_body.syntax().clone().into()
-        } else if let Some(semi) = self.semi_token() {
+        } else if let Some(semi) = self.semicolon_token() {
             to_insert.push(make::tokens::single_space().into());
-            semi.syntax.clone().into()
+            semi.into()
         } else {
             to_insert.push(make::tokens::single_space().into());
             to_insert.push(body.syntax().clone().into());
@@ -98,7 +98,7 @@ impl ast::ItemList {
             None => match self.l_curly_token() {
                 Some(it) => (
                     "    ".to_string() + &leading_indent(self.syntax()).unwrap_or_default(),
-                    InsertPosition::After(it.syntax().clone().into()),
+                    InsertPosition::After(it.into()),
                 ),
                 None => return self.clone(),
             },
@@ -142,7 +142,7 @@ impl ast::RecordFieldList {
         macro_rules! after_l_curly {
             () => {{
                 let anchor = match self.l_curly_token() {
-                    Some(it) => it.syntax().clone().into(),
+                    Some(it) => it.into(),
                     None => return self.clone(),
                 };
                 InsertPosition::After(anchor)
@@ -189,15 +189,15 @@ impl ast::RecordFieldList {
 impl ast::TypeParam {
     #[must_use]
     pub fn remove_bounds(&self) -> ast::TypeParam {
-        let colon = match self.colon() {
+        let colon = match self.colon_token() {
             Some(it) => it,
             None => return self.clone(),
         };
         let end = match self.type_bound_list() {
             Some(it) => it.syntax().clone().into(),
-            None => colon.syntax().clone().into(),
+            None => colon.clone().into(),
         };
-        self.replace_children(colon.syntax().clone().into()..=end, iter::empty())
+        self.replace_children(colon.into()..=end, iter::empty())
     }
 }
 

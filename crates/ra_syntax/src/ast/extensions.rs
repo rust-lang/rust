@@ -5,7 +5,7 @@ use itertools::Itertools;
 use ra_parser::SyntaxKind;
 
 use crate::{
-    ast::{self, support, AstNode, AstToken, AttrInput, NameOwner, SyntaxNode},
+    ast::{self, support, AstNode, AttrInput, NameOwner, SyntaxNode},
     SmolStr, SyntaxElement, SyntaxToken, T,
 };
 
@@ -21,11 +21,7 @@ impl ast::NameRef {
     }
 
     pub fn as_tuple_field(&self) -> Option<usize> {
-        if let Some(ast::NameRefToken::IntNumber(token)) = self.name_ref_token_token() {
-            token.text().as_str().parse().ok()
-        } else {
-            None
-        }
+        self.text().parse().ok()
     }
 }
 
@@ -81,7 +77,7 @@ impl ast::Attr {
             first_token.and_then(|token| token.next_token()).as_ref().map(SyntaxToken::kind);
 
         match (first_token_kind, second_token_kind) {
-            (Some(SyntaxKind::POUND), Some(SyntaxKind::EXCL)) => AttrKind::Inner,
+            (Some(SyntaxKind::POUND), Some(T![!])) => AttrKind::Inner,
             _ => AttrKind::Outer,
         }
     }
@@ -315,7 +311,7 @@ pub enum TypeBoundKind {
     /// for<'a> ...
     ForType(ast::ForType),
     /// 'a
-    Lifetime(ast::Lifetime),
+    Lifetime(SyntaxToken),
 }
 
 impl ast::TypeBound {
@@ -331,23 +327,23 @@ impl ast::TypeBound {
         }
     }
 
-    pub fn const_question_token(&self) -> Option<ast::Question> {
+    pub fn const_question_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .take_while(|it| it.kind() != T![const])
-            .find_map(ast::Question::cast)
+            .find(|it| it.kind() == T![?])
     }
 
-    pub fn question_token(&self) -> Option<ast::Question> {
+    pub fn question_token(&self) -> Option<SyntaxToken> {
         if self.const_token().is_some() {
             self.syntax()
                 .children_with_tokens()
                 .filter_map(|it| it.into_token())
                 .skip_while(|it| it.kind() != T![const])
-                .find_map(ast::Question::cast)
+                .find(|it| it.kind() == T![?])
         } else {
-            support::token(&self.syntax)
+            support::token(&self.syntax, T![?])
         }
     }
 }
@@ -388,12 +384,12 @@ impl ast::MacroCall {
 }
 
 impl ast::LifetimeParam {
-    pub fn lifetime_bounds(&self) -> impl Iterator<Item = ast::Lifetime> {
+    pub fn lifetime_bounds(&self) -> impl Iterator<Item = SyntaxToken> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .skip_while(|x| x.kind() != T![:])
-            .filter_map(ast::Lifetime::cast)
+            .filter(|it| it.kind() == T![lifetime])
     }
 }
 
@@ -401,7 +397,7 @@ impl ast::RangePat {
     pub fn start(&self) -> Option<ast::Pat> {
         self.syntax()
             .children_with_tokens()
-            .take_while(|it| !ast::RangeSeparator::can_cast(it.kind()))
+            .take_while(|it| !(it.kind() == T![..] || it.kind() == T![..=]))
             .filter_map(|it| it.into_node())
             .find_map(ast::Pat::cast)
     }
@@ -409,18 +405,24 @@ impl ast::RangePat {
     pub fn end(&self) -> Option<ast::Pat> {
         self.syntax()
             .children_with_tokens()
-            .skip_while(|it| !ast::RangeSeparator::can_cast(it.kind()))
+            .skip_while(|it| !(it.kind() == T![..] || it.kind() == T![..=]))
             .filter_map(|it| it.into_node())
             .find_map(ast::Pat::cast)
     }
 }
 
 impl ast::TokenTree {
-    pub fn left_delimiter(&self) -> Option<ast::LeftDelimiter> {
-        self.syntax().first_child_or_token()?.into_token().and_then(ast::LeftDelimiter::cast)
+    pub fn left_delimiter_token(&self) -> Option<SyntaxToken> {
+        self.syntax().first_child_or_token()?.into_token().filter(|it| match it.kind() {
+            T!['{'] | T!['('] | T!['['] => true,
+            _ => false,
+        })
     }
 
-    pub fn right_delimiter(&self) -> Option<ast::RightDelimiter> {
-        self.syntax().last_child_or_token()?.into_token().and_then(ast::RightDelimiter::cast)
+    pub fn right_delimiter_token(&self) -> Option<SyntaxToken> {
+        self.syntax().last_child_or_token()?.into_token().filter(|it| match it.kind() {
+            T!['{'] | T!['('] | T!['['] => true,
+            _ => false,
+        })
     }
 }

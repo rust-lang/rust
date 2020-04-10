@@ -6,7 +6,7 @@ SOURCE_FILE@[0; 199)
     WHITESPACE@[68; 69) " "
     NAME@[69; 72)
       IDENT@[69; 72) "Foo"
-    SEMI@[72; 73) ";"
+    SEMICOLON@[72; 73) ";"
   WHITESPACE@[73; 75) "\n\n"
   IMPL_DEF@[75; 141)
     IMPL_KW@[75; 79) "impl"
@@ -47,7 +47,7 @@ SOURCE_FILE@[0; 199)
                 PATH_SEGMENT@[117; 130)
                   NAME_REF@[117; 130)
                     IDENT@[117; 130) "unimplemented"
-              EXCL@[130; 131) "!"
+              BANG@[130; 131) "!"
               TOKEN_TREE@[131; 133)
                 L_PAREN@[131; 132) "("
                 R_PAREN@[132; 133) ")"
@@ -113,7 +113,7 @@ SOURCE_FILE@[0; 199)
                             NAME_REF@[184; 187)
                               IDENT@[184; 187) "Foo"
                       R_ANGLE@[187; 188) ">"
-                  COLONCOLON@[188; 190) "::"
+                  COLON2@[188; 190) "::"
                   PATH_SEGMENT@[190; 193)
                     NAME_REF@[190; 193)
                       IDENT@[190; 193) "bar"

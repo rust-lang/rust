@@ -146,7 +146,7 @@ SOURCE_FILE@[0; 167)
               COMMA@[156; 157) ","
               WHITESPACE@[157; 162) "\n    "
               R_CURLY@[162; 163) "}"
-          SEMI@[163; 164) ";"
+          SEMICOLON@[163; 164) ";"
         WHITESPACE@[164; 165) "\n"
         R_CURLY@[165; 166) "}"
   WHITESPACE@[166; 167) "\n"

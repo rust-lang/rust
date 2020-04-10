@@ -1,7 +1,7 @@
 SOURCE_FILE@[0; 236)
   ATTR@[0; 8)
     POUND@[0; 1) "#"
-    EXCL@[1; 2) "!"
+    BANG@[1; 2) "!"
     L_BRACK@[2; 3) "["
     PATH@[3; 7)
       PATH_SEGMENT@[3; 7)
@@ -11,7 +11,7 @@ SOURCE_FILE@[0; 236)
   WHITESPACE@[8; 9) "\n"
   ATTR@[9; 23)
     POUND@[9; 10) "#"
-    EXCL@[10; 11) "!"
+    BANG@[10; 11) "!"
     L_BRACK@[11; 12) "["
     PATH@[12; 16)
       PATH_SEGMENT@[12; 16)
@@ -25,7 +25,7 @@ SOURCE_FILE@[0; 236)
   WHITESPACE@[23; 24) "\n"
   ATTR@[24; 39)
     POUND@[24; 25) "#"
-    EXCL@[25; 26) "!"
+    BANG@[25; 26) "!"
     L_BRACK@[26; 27) "["
     PATH@[27; 31)
       PATH_SEGMENT@[27; 31)
@@ -39,7 +39,7 @@ SOURCE_FILE@[0; 236)
   WHITESPACE@[39; 40) "\n"
   ATTR@[40; 116)
     POUND@[40; 41) "#"
-    EXCL@[41; 42) "!"
+    BANG@[41; 42) "!"
     L_BRACK@[42; 43) "["
     PATH@[43; 47)
       PATH_SEGMENT@[43; 47)
@@ -83,7 +83,7 @@ SOURCE_FILE@[0; 236)
   WHITESPACE@[116; 117) "\n"
   ATTR@[117; 130)
     POUND@[117; 118) "#"
-    EXCL@[118; 119) "!"
+    BANG@[118; 119) "!"
     L_BRACK@[119; 120) "["
     PATH@[120; 124)
       PATH_SEGMENT@[120; 124)
@@ -97,7 +97,7 @@ SOURCE_FILE@[0; 236)
   WHITESPACE@[130; 131) "\n"
   ATTR@[131; 155)
     POUND@[131; 132) "#"
-    EXCL@[132; 133) "!"
+    BANG@[132; 133) "!"
     L_BRACK@[133; 134) "["
     PATH@[134; 138)
       PATH_SEGMENT@[134; 138)
@@ -115,7 +115,7 @@ SOURCE_FILE@[0; 236)
   WHITESPACE@[155; 156) "\n"
   ATTR@[156; 173)
     POUND@[156; 157) "#"
-    EXCL@[157; 158) "!"
+    BANG@[157; 158) "!"
     L_BRACK@[158; 159) "["
     PATH@[159; 166)
       PATH_SEGMENT@[159; 166)
@@ -129,7 +129,7 @@ SOURCE_FILE@[0; 236)
   WHITESPACE@[173; 174) "\n"
   ATTR@[174; 191)
     POUND@[174; 175) "#"
-    EXCL@[175; 176) "!"
+    BANG@[175; 176) "!"
     L_BRACK@[176; 177) "["
     PATH@[177; 181)
       PATH_SEGMENT@[177; 181)
@@ -143,7 +143,7 @@ SOURCE_FILE@[0; 236)
   WHITESPACE@[191; 192) "\n"
   ATTR@[192; 214)
     POUND@[192; 193) "#"
-    EXCL@[193; 194) "!"
+    BANG@[193; 194) "!"
     L_BRACK@[194; 195) "["
     PATH@[195; 199)
       PATH_SEGMENT@[195; 199)
@@ -164,7 +164,7 @@ SOURCE_FILE@[0; 236)
   WHITESPACE@[214; 215) "\n"
   ATTR@[215; 236)
     POUND@[215; 216) "#"
-    EXCL@[216; 217) "!"
+    BANG@[216; 217) "!"
     L_BRACK@[217; 218) "["
     PATH@[218; 222)
       PATH_SEGMENT@[218; 222)

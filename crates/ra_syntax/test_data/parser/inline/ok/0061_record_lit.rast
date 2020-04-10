@@ -22,7 +22,7 @@ SOURCE_FILE@[0; 112)
             RECORD_FIELD_LIST@[17; 19)
               L_CURLY@[17; 18) "{"
               R_CURLY@[18; 19) "}"
-          SEMI@[19; 20) ";"
+          SEMICOLON@[19; 20) ";"
         WHITESPACE@[20; 25) "\n    "
         EXPR_STMT@[25; 41)
           RECORD_LIT@[25; 40)
@@ -49,7 +49,7 @@ SOURCE_FILE@[0; 112)
               COMMA@[37; 38) ","
               WHITESPACE@[38; 39) " "
               R_CURLY@[39; 40) "}"
-          SEMI@[40; 41) ";"
+          SEMICOLON@[40; 41) ";"
         WHITESPACE@[41; 46) "\n    "
         EXPR_STMT@[46; 83)
           RECORD_LIT@[46; 82)
@@ -75,7 +75,7 @@ SOURCE_FILE@[0; 112)
                   INT_NUMBER@[56; 58) "32"
               COMMA@[58; 59) ","
               WHITESPACE@[59; 60) " "
-              DOTDOT@[60; 62) ".."
+              DOT2@[60; 62) ".."
               CALL_EXPR@[62; 80)
                 PATH_EXPR@[62; 78)
                   PATH@[62; 78)
@@ -83,7 +83,7 @@ SOURCE_FILE@[0; 112)
                       PATH_SEGMENT@[62; 69)
                         NAME_REF@[62; 69)
                           IDENT@[62; 69) "Default"
-                    COLONCOLON@[69; 71) "::"
+                    COLON2@[69; 71) "::"
                     PATH_SEGMENT@[71; 78)
                       NAME_REF@[71; 78)
                         IDENT@[71; 78) "default"
@@ -92,7 +92,7 @@ SOURCE_FILE@[0; 112)
                   R_PAREN@[79; 80) ")"
               WHITESPACE@[80; 81) " "
               R_CURLY@[81; 82) "}"
-          SEMI@[82; 83) ";"
+          SEMICOLON@[82; 83) ";"
         WHITESPACE@[83; 88) "\n    "
         EXPR_STMT@[88; 109)
           RECORD_LIT@[88; 108)
@@ -113,7 +113,7 @@ SOURCE_FILE@[0; 112)
                   INT_NUMBER@[105; 106) "1"
               WHITESPACE@[106; 107) " "
               R_CURLY@[107; 108) "}"
-          SEMI@[108; 109) ";"
+          SEMICOLON@[108; 109) ";"
         WHITESPACE@[109; 110) "\n"
         R_CURLY@[110; 111) "}"
   WHITESPACE@[111; 112) "\n"

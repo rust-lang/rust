@@ -11,7 +11,7 @@ pub(crate) struct KindsSrc<'a> {
 
 pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
     punct: &[
-        (";", "SEMI"),
+        (";", "SEMICOLON"),
         (",", "COMMA"),
         ("(", "L_PAREN"),
         (")", "R_PAREN"),
@@ -35,15 +35,15 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         ("%", "PERCENT"),
         ("_", "UNDERSCORE"),
         (".", "DOT"),
-        ("..", "DOTDOT"),
-        ("...", "DOTDOTDOT"),
-        ("..=", "DOTDOTEQ"),
+        ("..", "DOT2"),
+        ("...", "DOT3"),
+        ("..=", "DOT2EQ"),
         (":", "COLON"),
-        ("::", "COLONCOLON"),
+        ("::", "COLON2"),
         ("=", "EQ"),
-        ("==", "EQEQ"),
+        ("==", "EQ2"),
         ("=>", "FAT_ARROW"),
-        ("!", "EXCL"),
+        ("!", "BANG"),
         ("!=", "NEQ"),
         ("-", "MINUS"),
         ("->", "THIN_ARROW"),
@@ -57,8 +57,8 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         ("/=", "SLASHEQ"),
         ("*=", "STAREQ"),
         ("%=", "PERCENTEQ"),
-        ("&&", "AMPAMP"),
-        ("||", "PIPEPIPE"),
+        ("&&", "AMP2"),
+        ("||", "PIPE2"),
         ("<<", "SHL"),
         (">>", "SHR"),
         ("<<=", "SHLEQ"),
@@ -225,21 +225,26 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
 };
 
 pub(crate) struct AstSrc<'a> {
+    pub(crate) tokens: &'a [&'a str],
     pub(crate) nodes: &'a [AstNodeSrc<'a>],
     pub(crate) enums: &'a [AstEnumSrc<'a>],
-    pub(crate) token_enums: &'a [AstEnumSrc<'a>],
 }
 
 pub(crate) struct AstNodeSrc<'a> {
     pub(crate) name: &'a str,
     pub(crate) traits: &'a [&'a str],
-    pub(crate) fields: &'a [(&'a str, FieldSrc<&'a str>)],
+    pub(crate) fields: &'a [Field<'a>],
 }
 
-pub(crate) enum FieldSrc<T> {
+pub(crate) enum Field<'a> {
+    Token(&'a str),
+    Node { name: &'a str, src: FieldSrc<'a> },
+}
+
+pub(crate) enum FieldSrc<'a> {
     Shorthand,
-    Optional(T),
-    Many(T),
+    Optional(&'a str),
+    Many(&'a str),
 }
 
 pub(crate) struct AstEnumSrc<'a> {
@@ -251,31 +256,34 @@ pub(crate) struct AstEnumSrc<'a> {
 macro_rules! ast_nodes {
     ($(
         struct $name:ident$(: $($trait:ident),*)? {
-            $($field_name:ident $(: $ty:tt)?),*$(,)?
+            $($field_name:ident $(![$token:tt])? $(: $ty:tt)?),*$(,)?
         }
     )*) => {
         [$(
             AstNodeSrc {
                 name: stringify!($name),
                 traits: &[$($(stringify!($trait)),*)?],
-                fields: &[$(
-                    (stringify!($field_name), field_ty!($field_name $($ty)?))
-                ),*],
+                fields: &[
+                    $(field!($(T![$token])? $field_name $($ty)?)),*
+                ],
 
             }
         ),*]
     };
 }
 
-macro_rules! field_ty {
+macro_rules! field {
+    (T![$token:tt] T) => {
+        Field::Token(stringify!($token))
+    };
     ($field_name:ident) => {
-        FieldSrc::Shorthand
+        Field::Node { name: stringify!($field_name), src: FieldSrc::Shorthand }
     };
     ($field_name:ident [$ty:ident]) => {
-        FieldSrc::Many(stringify!($ty))
+        Field::Node { name: stringify!($field_name), src: FieldSrc::Many(stringify!($ty)) }
     };
     ($field_name:ident $ty:ident) => {
-        FieldSrc::Optional(stringify!($ty))
+        Field::Node { name: stringify!($field_name), src: FieldSrc::Optional(stringify!($ty)) }
     };
 }
 
@@ -290,13 +298,13 @@ macro_rules! ast_enums {
                 name: stringify!($name),
                 traits: &[$($(stringify!($trait)),*)?],
                 variants: &[$(stringify!($variant)),*],
-
             }
         ),*]
     };
 }
 
 pub(crate) const AST_SRC: AstSrc = AstSrc {
+    tokens: &["Whitespace", "Comment", "String", "RawString"],
     nodes: &ast_nodes! {
         struct SourceFile: ModuleItemOwner, AttrsOwner {
             modules: [Module],
@@ -304,305 +312,305 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
 
         struct FnDef: VisibilityOwner, NameOwner, TypeParamsOwner, DocCommentsOwner, AttrsOwner {
             Abi,
-            ConstKw,
-            DefaultKw,
-            AsyncKw,
-            UnsafeKw,
-            FnKw,
+            T![const],
+            T![default],
+            T![async],
+            T![unsafe],
+            T![fn],
             ParamList,
             RetType,
             body: BlockExpr,
-            Semi
+            T![;]
         }
 
-        struct RetType { ThinArrow, TypeRef }
+        struct RetType { T![->], TypeRef }
 
         struct StructDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner {
-            StructKw,
+            T![struct],
             FieldDefList,
-            Semi
+            T![;]
         }
 
         struct UnionDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner {
-            UnionKw,
+            T![union],
             RecordFieldDefList,
         }
 
-        struct RecordFieldDefList { LCurly, fields: [RecordFieldDef], RCurly }
+        struct RecordFieldDefList { T!['{'], fields: [RecordFieldDef], T!['}'] }
         struct RecordFieldDef: VisibilityOwner, NameOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner { }
 
-        struct TupleFieldDefList { LParen, fields: [TupleFieldDef], RParen }
+        struct TupleFieldDefList { T!['('], fields: [TupleFieldDef], T![')'] }
         struct TupleFieldDef: VisibilityOwner, AttrsOwner {
             TypeRef,
         }
 
         struct EnumDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner {
-            EnumKw,
+            T![enum],
             variant_list: EnumVariantList,
         }
         struct EnumVariantList {
-            LCurly,
+            T!['{'],
             variants: [EnumVariant],
-            RCurly
+            T!['}']
         }
         struct EnumVariant: VisibilityOwner, NameOwner, DocCommentsOwner, AttrsOwner {
             FieldDefList,
-            Eq,
+            T![=],
             Expr
         }
 
         struct TraitDef: VisibilityOwner, NameOwner, AttrsOwner, DocCommentsOwner, TypeParamsOwner, TypeBoundsOwner {
-            UnsafeKw,
-            AutoKw,
-            TraitKw,
+            T![unsafe],
+            T![auto],
+            T![trait],
             ItemList,
         }
 
         struct Module: VisibilityOwner, NameOwner, AttrsOwner, DocCommentsOwner {
-            ModKw,
+            T![mod],
             ItemList,
-            Semi
+            T![;]
         }
 
         struct ItemList: ModuleItemOwner {
-            LCurly,
+            T!['{'],
             impl_items: [ImplItem],
-            RCurly
+            T!['}']
         }
 
         struct ConstDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner {
-            DefaultKw,
-            ConstKw,
-            Eq,
+            T![default],
+            T![const],
+            T![=],
             body: Expr,
-            Semi
+            T![;]
         }
 
         struct StaticDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner {
-            StaticKw,
-            MutKw,
-            Eq,
+            T![static],
+            T![mut],
+            T![=],
             body: Expr,
-            Semi
+            T![;]
         }
 
         struct TypeAliasDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeBoundsOwner {
-            DefaultKw,
-            TypeKw,
-            Eq,
+            T![default],
+            T![type],
+            T![=],
             TypeRef,
-            Semi
+            T![;]
         }
 
         struct ImplDef: TypeParamsOwner, AttrsOwner {
-            DefaultKw,
-            ConstKw,
-            UnsafeKw,
-            ImplKw,
-            Excl,
-            ForKw,
+            T![default],
+            T![const],
+            T![unsafe],
+            T![impl],
+            T![!],
+            T![for],
             ItemList,
         }
 
-        struct ParenType { LParen, TypeRef, RParen }
-        struct TupleType { LParen, fields: [TypeRef], RParen }
-        struct NeverType { Excl }
+        struct ParenType { T!['('], TypeRef, T![')'] }
+        struct TupleType { T!['('], fields: [TypeRef], T![')'] }
+        struct NeverType { T![!] }
         struct PathType { Path }
-        struct PointerType { Star, ConstKw, MutKw, TypeRef }
-        struct ArrayType { LBrack, TypeRef, Semi, Expr, RBrack }
-        struct SliceType { LBrack, TypeRef, RBrack }
-        struct ReferenceType { Amp, Lifetime, MutKw, TypeRef }
-        struct PlaceholderType { Underscore }
-        struct FnPointerType { Abi, UnsafeKw, FnKw, ParamList, RetType }
-        struct ForType { ForKw, TypeParamList, TypeRef }
-        struct ImplTraitType: TypeBoundsOwner { ImplKw }
-        struct DynTraitType: TypeBoundsOwner { DynKw }
+        struct PointerType { T![*], T![const], T![mut], TypeRef }
+        struct ArrayType { T!['['], TypeRef, T![;], Expr, T![']'] }
+        struct SliceType { T!['['], TypeRef, T![']'] }
+        struct ReferenceType { T![&], T![lifetime], T![mut], TypeRef }
+        struct PlaceholderType { T![_] }
+        struct FnPointerType { Abi, T![unsafe], T![fn], ParamList, RetType }
+        struct ForType { T![for], TypeParamList, TypeRef }
+        struct ImplTraitType: TypeBoundsOwner { T![impl] }
+        struct DynTraitType: TypeBoundsOwner { T![dyn] }
 
-        struct TupleExpr: AttrsOwner { LParen, exprs: [Expr], RParen }
-        struct ArrayExpr: AttrsOwner { LBrack, exprs: [Expr], Semi, RBrack }
-        struct ParenExpr: AttrsOwner { LParen, Expr, RParen }
+        struct TupleExpr: AttrsOwner { T!['('], exprs: [Expr], T![')'] }
+        struct ArrayExpr: AttrsOwner { T!['['], exprs: [Expr], T![;], T![']'] }
+        struct ParenExpr: AttrsOwner { T!['('], Expr, T![')'] }
         struct PathExpr  { Path }
         struct LambdaExpr: AttrsOwner {
-            StaticKw,
-            AsyncKw,
-            MoveKw,
+            T![static],
+            T![async],
+            T![move],
             ParamList,
             RetType,
             body: Expr,
         }
-        struct IfExpr: AttrsOwner { IfKw, Condition }
-        struct LoopExpr: AttrsOwner, LoopBodyOwner { LoopKw }
-        struct TryBlockExpr: AttrsOwner { TryKw, body: BlockExpr }
+        struct IfExpr: AttrsOwner { T![if], Condition }
+        struct LoopExpr: AttrsOwner, LoopBodyOwner { T![loop] }
+        struct TryBlockExpr: AttrsOwner { T![try], body: BlockExpr }
         struct ForExpr: AttrsOwner, LoopBodyOwner {
-            ForKw,
+            T![for],
             Pat,
-            InKw,
+            T![in],
             iterable: Expr,
         }
-        struct WhileExpr: AttrsOwner, LoopBodyOwner { WhileKw, Condition }
-        struct ContinueExpr: AttrsOwner { ContinueKw, Lifetime }
-        struct BreakExpr: AttrsOwner { BreakKw, Lifetime, Expr }
-        struct Label { Lifetime }
-        struct BlockExpr: AttrsOwner { Label, UnsafeKw, Block  }
+        struct WhileExpr: AttrsOwner, LoopBodyOwner { T![while], Condition }
+        struct ContinueExpr: AttrsOwner { T![continue], T![lifetime] }
+        struct BreakExpr: AttrsOwner { T![break], T![lifetime], Expr }
+        struct Label { T![lifetime] }
+        struct BlockExpr: AttrsOwner { Label, T![unsafe], Block  }
         struct ReturnExpr: AttrsOwner { Expr }
         struct CallExpr: ArgListOwner { Expr }
         struct MethodCallExpr: AttrsOwner, ArgListOwner {
-            Expr, Dot, NameRef, TypeArgList,
+            Expr, T![.], NameRef, TypeArgList,
         }
-        struct IndexExpr: AttrsOwner { LBrack, RBrack }
-        struct FieldExpr: AttrsOwner { Expr, Dot, NameRef }
-        struct AwaitExpr: AttrsOwner { Expr, Dot, AwaitKw }
-        struct TryExpr: AttrsOwner { TryKw, Expr }
-        struct CastExpr: AttrsOwner { Expr, AsKw, TypeRef }
-        struct RefExpr: AttrsOwner { Amp, RawKw, MutKw, Expr }
-        struct PrefixExpr: AttrsOwner { PrefixOp, Expr }
-        struct BoxExpr: AttrsOwner { BoxKw, Expr }
-        struct RangeExpr: AttrsOwner { RangeOp }
-        struct BinExpr: AttrsOwner { BinOp }
-        struct Literal { LiteralToken }
+        struct IndexExpr: AttrsOwner { T!['['], T![']'] }
+        struct FieldExpr: AttrsOwner { Expr, T![.], NameRef }
+        struct AwaitExpr: AttrsOwner { Expr, T![.], T![await] }
+        struct TryExpr: AttrsOwner { T![try], Expr }
+        struct CastExpr: AttrsOwner { Expr, T![as], TypeRef }
+        struct RefExpr: AttrsOwner { T![&], T![raw], T![mut], Expr }
+        struct PrefixExpr: AttrsOwner { /*PrefixOp,*/ Expr }
+        struct BoxExpr: AttrsOwner { T![box], Expr }
+        struct RangeExpr: AttrsOwner { /*RangeOp*/ }
+        struct BinExpr: AttrsOwner { /*BinOp*/ }
+        struct Literal { /*LiteralToken*/ }
 
-        struct MatchExpr: AttrsOwner { MatchKw, Expr, MatchArmList }
-        struct MatchArmList: AttrsOwner { LCurly, arms: [MatchArm], RCurly }
+        struct MatchExpr: AttrsOwner { T![match], Expr, MatchArmList }
+        struct MatchArmList: AttrsOwner { T!['{'], arms: [MatchArm], T!['}'] }
         struct MatchArm: AttrsOwner {
             pat: Pat,
             guard: MatchGuard,
-            FatArrow,
+            T![=>],
             Expr,
         }
-        struct MatchGuard { IfKw, Expr }
+        struct MatchGuard { T![if], Expr }
 
         struct RecordLit { Path, RecordFieldList}
         struct RecordFieldList {
-            LCurly,
+            T!['{'],
             fields: [RecordField],
-            Dotdot,
+            T![..],
             spread: Expr,
-            RCurly
+            T!['}']
         }
-        struct RecordField: AttrsOwner { NameRef, Colon, Expr }
+        struct RecordField: AttrsOwner { NameRef, T![:], Expr }
 
         struct OrPat { pats: [Pat] }
-        struct ParenPat { LParen, Pat, RParen }
-        struct RefPat { Amp, MutKw, Pat }
-        struct BoxPat { BoxKw, Pat }
-        struct BindPat: AttrsOwner, NameOwner { RefKw, MutKw, At, Pat }
-        struct PlaceholderPat { Underscore }
-        struct DotDotPat { Dotdot }
+        struct ParenPat { T!['('], Pat, T![')'] }
+        struct RefPat { T![&], T![mut], Pat }
+        struct BoxPat { T![box], Pat }
+        struct BindPat: AttrsOwner, NameOwner { T![ref], T![mut], T![@], Pat }
+        struct PlaceholderPat { T![_] }
+        struct DotDotPat { T![..] }
         struct PathPat { Path }
-        struct SlicePat { LBrack, args: [Pat], RBrack }
-        struct RangePat { RangeSeparator }
+        struct SlicePat { T!['['], args: [Pat], T![']'] }
+        struct RangePat { /*RangeSeparator*/ }
         struct LiteralPat { Literal }
         struct MacroPat { MacroCall }
 
         struct RecordPat { RecordFieldPatList, Path }
         struct RecordFieldPatList {
-            LCurly,
+            T!['{'],
             pats: [RecordInnerPat],
             record_field_pats: [RecordFieldPat],
             bind_pats: [BindPat],
-            Dotdot,
-            RCurly
+            T![..],
+            T!['}']
         }
-        struct RecordFieldPat: AttrsOwner, NameOwner { Colon, Pat }
+        struct RecordFieldPat: AttrsOwner, NameOwner { T![:], Pat }
 
-        struct TupleStructPat { Path, LParen, args: [Pat], RParen }
-        struct TuplePat { LParen, args: [Pat], RParen }
+        struct TupleStructPat { Path, T!['('], args: [Pat], T![')'] }
+        struct TuplePat { T!['('], args: [Pat], T![')'] }
 
-        struct Visibility { PubKw, SuperKw, SelfKw, CrateKw }
-        struct Name { Ident }
-        struct NameRef { NameRefToken }
+        struct Visibility { T![pub], T![super], T![self], T![crate] }
+        struct Name { T![ident] }
+        struct NameRef { /*NameRefToken*/ }
 
         struct MacroCall: NameOwner, AttrsOwner,DocCommentsOwner {
-            Path, Excl, TokenTree, Semi
+            Path, T![!], TokenTree, T![;]
         }
-        struct Attr { Pound, Excl, LBrack, Path, Eq, input: AttrInput, RBrack }
+        struct Attr { T![#], T![!], T!['['], Path, T![=], input: AttrInput, T![']'] }
         struct TokenTree {}
         struct TypeParamList {
-            LAngle,
+            T![<],
             generic_params: [GenericParam],
             type_params: [TypeParam],
             lifetime_params: [LifetimeParam],
             const_params: [ConstParam],
-            RAngle
+            T![>]
         }
         struct TypeParam: NameOwner, AttrsOwner, TypeBoundsOwner {
-            Eq,
+            T![=],
             default_type: TypeRef,
         }
         struct ConstParam: NameOwner, AttrsOwner, TypeAscriptionOwner {
-            Eq,
+            T![=],
             default_val: Expr,
         }
-        struct LifetimeParam: AttrsOwner { Lifetime}
-        struct TypeBound { Lifetime, /* Question,  */ ConstKw, /* Question,  */ TypeRef}
+        struct LifetimeParam: AttrsOwner { T![lifetime] }
+        struct TypeBound { T![lifetime], /* Question,  */ T![const], /* Question,  */ TypeRef}
         struct TypeBoundList { bounds: [TypeBound] }
-        struct WherePred: TypeBoundsOwner { Lifetime, TypeRef }
-        struct WhereClause { WhereKw, predicates: [WherePred] }
-        struct Abi { String }
-        struct ExprStmt: AttrsOwner { Expr, Semi }
+        struct WherePred: TypeBoundsOwner { T![lifetime], TypeRef }
+        struct WhereClause { T![where], predicates: [WherePred] }
+        struct Abi { /*String*/ }
+        struct ExprStmt: AttrsOwner { Expr, T![;] }
         struct LetStmt: AttrsOwner, TypeAscriptionOwner {
-            LetKw,
+            T![let],
             Pat,
-            Eq,
+            T![=],
             initializer: Expr,
-            Semi,
+            T![;],
         }
-        struct Condition { LetKw, Pat, Eq, Expr }
+        struct Condition { T![let], Pat, T![=], Expr }
         struct Block: AttrsOwner, ModuleItemOwner {
-            LCurly,
+            T!['{'],
             statements: [Stmt],
             Expr,
-            RCurly,
+            T!['}'],
         }
         struct ParamList {
-            LParen,
+            T!['('],
             SelfParam,
             params: [Param],
-            RParen
+            T![')']
         }
-        struct SelfParam: TypeAscriptionOwner, AttrsOwner { Amp, Lifetime, SelfKw }
+        struct SelfParam: TypeAscriptionOwner, AttrsOwner { T![&], T![lifetime], T![self] }
         struct Param: TypeAscriptionOwner, AttrsOwner {
             Pat,
-            Dotdotdot
+            T![...]
         }
         struct UseItem: AttrsOwner, VisibilityOwner {
-            UseKw,
+            T![use],
             UseTree,
         }
         struct UseTree {
-            Path, Star, UseTreeList, Alias
+            Path, T![*], UseTreeList, Alias
         }
-        struct Alias: NameOwner { AsKw }
-        struct UseTreeList { LCurly, use_trees: [UseTree], RCurly }
+        struct Alias: NameOwner { T![as] }
+        struct UseTreeList { T!['{'], use_trees: [UseTree], T!['}'] }
         struct ExternCrateItem: AttrsOwner, VisibilityOwner {
-            ExternKw, CrateKw, NameRef, Alias,
+            T![extern], T![crate], NameRef, Alias,
         }
         struct ArgList {
-            LParen,
+            T!['('],
             args: [Expr],
-            RParen
+            T![')']
         }
         struct Path {
             segment: PathSegment,
             qualifier: Path,
         }
         struct PathSegment {
-            Coloncolon, LAngle, NameRef, TypeArgList, ParamList, RetType, PathType, RAngle
+            T![::], T![<], NameRef, TypeArgList, ParamList, RetType, PathType, T![>]
         }
         struct TypeArgList {
-            Coloncolon,
-            LAngle,
+            T![::],
+            T![<],
             generic_args: [GenericArg],
             type_args: [TypeArg],
             lifetime_args: [LifetimeArg],
             assoc_type_args: [AssocTypeArg],
             const_args: [ConstArg],
-            RAngle
+            T![>]
         }
         struct TypeArg { TypeRef }
-        struct AssocTypeArg : TypeBoundsOwner { NameRef, Eq, TypeRef }
-        struct LifetimeArg { Lifetime }
-        struct ConstArg { Literal, Eq, BlockExpr }
+        struct AssocTypeArg : TypeBoundsOwner { NameRef, T![=], TypeRef }
+        struct LifetimeArg { T![lifetime] }
+        struct ConstArg { Literal, T![=], BlockExpr }
 
         struct MacroItems: ModuleItemOwner{ }
 
@@ -612,9 +620,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
 
         struct ExternItemList: ModuleItemOwner {
-            LCurly,
+            T!['{'],
             extern_items: [ExternItem],
-            RCurly
+            T!['}']
         }
 
         struct ExternBlock {
@@ -623,7 +631,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
 
         struct MetaItem {
-            Path, Eq, AttrInput, nested_meta_items: [MetaItem]
+            Path, T![=], AttrInput, nested_meta_items: [MetaItem]
         }
 
         struct MacroDef {
@@ -758,73 +766,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         enum FieldDefList {
             RecordFieldDefList,
             TupleFieldDefList,
-        }
-    },
-
-    token_enums: &ast_enums! {
-        enum LeftDelimiter { LParen, LBrack, LCurly }
-        enum RightDelimiter { RParen, RBrack, RCurly }
-        enum RangeSeparator { Dotdot, Dotdotdot, Dotdoteq}
-
-        enum BinOp {
-            Pipepipe,
-            Ampamp,
-            Eqeq,
-            Neq,
-            Lteq,
-            Gteq,
-            LAngle,
-            RAngle,
-            Plus,
-            Star,
-            Minus,
-            Slash,
-            Percent,
-            Shl,
-            Shr,
-            Caret,
-            Pipe,
-            Amp,
-            Eq,
-            Pluseq,
-            Slasheq,
-            Stareq,
-            Percenteq,
-            Shreq,
-            Shleq,
-            Minuseq,
-            Pipeeq,
-            Ampeq,
-            Careteq,
-        }
-
-        enum PrefixOp {
-            Minus,
-            Excl,
-            Star
-        }
-
-        enum RangeOp {
-            Dotdot,
-            Dotdoteq
-        }
-
-        enum LiteralToken {
-            IntNumber,
-            FloatNumber,
-            String,
-            RawString,
-            // TrueKw,
-            // FalseKw,
-            ByteString,
-            RawByteString,
-            Char,
-            Byte
-        }
-
-        enum NameRefToken {
-            Ident,
-            IntNumber
         }
     },
 };

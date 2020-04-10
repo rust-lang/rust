@@ -7,11 +7,11 @@ SOURCE_FILE@[0; 65)
         PATH@[4; 8)
           PATH_SEGMENT@[4; 8)
             SELF_KW@[4; 8) "self"
-        COLONCOLON@[8; 10) "::"
+        COLON2@[8; 10) "::"
         PATH_SEGMENT@[10; 13)
           NAME_REF@[10; 13)
             IDENT@[10; 13) "foo"
-    SEMI@[13; 14) ";"
+    SEMICOLON@[13; 14) ";"
   WHITESPACE@[14; 15) "\n"
   USE_ITEM@[15; 37)
     USE_KW@[15; 18) "use"
@@ -22,14 +22,14 @@ SOURCE_FILE@[0; 65)
           PATH@[19; 24)
             PATH_SEGMENT@[19; 24)
               SUPER_KW@[19; 24) "super"
-          COLONCOLON@[24; 26) "::"
+          COLON2@[24; 26) "::"
           PATH_SEGMENT@[26; 31)
             SUPER_KW@[26; 31) "super"
-        COLONCOLON@[31; 33) "::"
+        COLON2@[31; 33) "::"
         PATH_SEGMENT@[33; 36)
           NAME_REF@[33; 36)
             IDENT@[33; 36) "bar"
-    SEMI@[36; 37) ";"
+    SEMICOLON@[36; 37) ";"
   WHITESPACE@[37; 38) "\n"
   USE_ITEM@[38; 64)
     USE_KW@[38; 41) "use"
@@ -40,18 +40,18 @@ SOURCE_FILE@[0; 65)
           PATH@[42; 51)
             PATH@[42; 48)
               PATH_SEGMENT@[42; 48)
-                COLONCOLON@[42; 44) "::"
+                COLON2@[42; 44) "::"
                 SELF_KW@[44; 48) "self"
-            COLONCOLON@[48; 50) "::"
+            COLON2@[48; 50) "::"
             PATH_SEGMENT@[50; 51)
               NAME_REF@[50; 51)
                 IDENT@[50; 51) "a"
-          COLONCOLON@[51; 53) "::"
+          COLON2@[51; 53) "::"
           PATH_SEGMENT@[53; 58)
             SUPER_KW@[53; 58) "super"
-        COLONCOLON@[58; 60) "::"
+        COLON2@[58; 60) "::"
         PATH_SEGMENT@[60; 63)
           NAME_REF@[60; 63)
             IDENT@[60; 63) "bar"
-    SEMI@[63; 64) ";"
+    SEMICOLON@[63; 64) ";"
   WHITESPACE@[64; 65) "\n"

@@ -33,7 +33,7 @@ SOURCE_FILE@[0; 57)
           COMMA@[40; 41) ","
           WHITESPACE@[41; 42) " "
           PARAM@[42; 45)
-            DOTDOTDOT@[42; 45) "..."
+            DOT3@[42; 45) "..."
           R_PAREN@[45; 46) ")"
         WHITESPACE@[46; 47) " "
         RET_TYPE@[47; 53)
@@ -44,7 +44,7 @@ SOURCE_FILE@[0; 57)
               PATH_SEGMENT@[50; 53)
                 NAME_REF@[50; 53)
                   IDENT@[50; 53) "i32"
-        SEMI@[53; 54) ";"
+        SEMICOLON@[53; 54) ";"
       WHITESPACE@[54; 55) " "
       R_CURLY@[55; 56) "}"
   WHITESPACE@[56; 57) "\n"
