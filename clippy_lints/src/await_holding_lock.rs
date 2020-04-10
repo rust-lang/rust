@@ -1,10 +1,10 @@
-use crate::utils::span_lint_and_note;
-use if_chain::if_chain;
+use crate::utils::{match_def_path, paths, span_lint_and_note};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, HirId, IsAsync};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for calls to await while holding a MutexGuard.
@@ -44,8 +44,6 @@ declare_clippy_lint! {
     "Inside an async function, holding a MutexGuard while calling await"
 }
 
-const MUTEX_GUARD_TYPES: [&str; 3] = ["MutexGuard", "RwLockReadGuard", "RwLockWriteGuard"];
-
 declare_lint_pass!(AwaitHoldingLock => [AWAIT_HOLDING_LOCK]);
 
 impl LateLintPass<'_, '_> for AwaitHoldingLock {
@@ -62,21 +60,18 @@ impl LateLintPass<'_, '_> for AwaitHoldingLock {
             return;
         }
 
-        for ty_clause in &cx.tables.generator_interior_types {
-            if_chain! {
-              if let rustc_middle::ty::Adt(adt, _) = ty_clause.ty.kind;
-              if let Some(&sym) = cx.get_def_path(adt.did).iter().last();
-              if is_symbol_mutex_guard(sym);
-              then {
-                span_lint_and_note(
-                      cx,
-                      AWAIT_HOLDING_LOCK,
-                      ty_clause.span,
-                      "this MutexGuard is held across an 'await' point",
-                      ty_clause.scope_span.unwrap_or(span),
-                      "these are all the await points this lock is held through"
+        for ty_cause in &cx.tables.generator_interior_types {
+            if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind {
+                if is_mutex_guard(cx, adt.did) {
+                    span_lint_and_note(
+                        cx,
+                        AWAIT_HOLDING_LOCK,
+                        ty_cause.span,
+                        "this MutexGuard is held across an 'await' point",
+                        ty_cause.scope_span.unwrap_or(span),
+                        "these are all the await points this lock is held through",
                     );
-              }
+                }
             }
         }
     }
@@ -89,12 +84,11 @@ fn is_async_fn(fn_kind: FnKind<'_>) -> bool {
     })
 }
 
-fn is_symbol_mutex_guard(sym: Symbol) -> bool {
-    let sym_str = sym.as_str();
-    for ty in &MUTEX_GUARD_TYPES {
-        if sym_str == *ty {
-            return true;
-        }
-    }
-    false
+fn is_mutex_guard(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
+    match_def_path(cx, def_id, &paths::MUTEX_GUARD)
+        || match_def_path(cx, def_id, &paths::RWLOCK_READ_GUARD)
+        || match_def_path(cx, def_id, &paths::RWLOCK_WRITE_GUARD)
+        || match_def_path(cx, def_id, &paths::PARKING_LOT_MUTEX_GUARD)
+        || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_READ_GUARD)
+        || match_def_path(cx, def_id, &paths::PARKING_LOT_RWLOCK_WRITE_GUARD)
 }
