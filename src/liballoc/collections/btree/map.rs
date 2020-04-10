@@ -1727,28 +1727,22 @@ impl<K, V> Clone for Values<'_, K, V> {
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
 pub struct DrainFilter<'a, K, V, F>
 where
-    K: 'a + Ord, // This Ord bound should be removed before stabilization.
+    K: 'a,
     V: 'a,
     F: 'a + FnMut(&K, &mut V) -> bool,
 {
     pred: F,
     inner: DrainFilterInner<'a, K, V>,
 }
-pub(super) struct DrainFilterInner<'a, K, V>
-where
-    K: 'a + Ord,
-    V: 'a,
-{
+pub(super) struct DrainFilterInner<'a, K: 'a, V: 'a> {
     length: &'a mut usize,
     cur_leaf_edge: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<'a, K, V, F> Drop for DrainFilter<'a, K, V, F>
+impl<K, V, F> Drop for DrainFilter<'_, K, V, F>
 where
-    K: 'a + Ord,
-    V: 'a,
-    F: 'a + FnMut(&K, &mut V) -> bool,
+    F: FnMut(&K, &mut V) -> bool,
 {
     fn drop(&mut self) {
         self.for_each(drop);
@@ -1756,11 +1750,11 @@ where
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<'a, K, V, F> fmt::Debug for DrainFilter<'a, K, V, F>
+impl<K, V, F> fmt::Debug for DrainFilter<'_, K, V, F>
 where
-    K: 'a + fmt::Debug + Ord,
-    V: 'a + fmt::Debug,
-    F: 'a + FnMut(&K, &mut V) -> bool,
+    K: fmt::Debug,
+    V: fmt::Debug,
+    F: FnMut(&K, &mut V) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("DrainFilter").field(&self.inner.peek()).finish()
@@ -1768,11 +1762,9 @@ where
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<'a, K, V, F> Iterator for DrainFilter<'a, K, V, F>
+impl<K, V, F> Iterator for DrainFilter<'_, K, V, F>
 where
-    K: 'a + Ord,
-    V: 'a,
-    F: 'a + FnMut(&K, &mut V) -> bool,
+    F: FnMut(&K, &mut V) -> bool,
 {
     type Item = (K, V);
 
@@ -1785,11 +1777,7 @@ where
     }
 }
 
-impl<'a, K, V> DrainFilterInner<'a, K, V>
-where
-    K: 'a + Ord,
-    V: 'a,
-{
+impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
     /// Allow Debug implementations to predict the next element.
     pub(super) fn peek(&self) -> Option<(&K, &V)> {
         let edge = self.cur_leaf_edge.as_ref()?;
@@ -1828,12 +1816,7 @@ where
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F>
-where
-    K: Ord,
-    F: FnMut(&K, &mut V) -> bool,
-{
-}
+impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Iterator for Range<'a, K, V> {

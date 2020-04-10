@@ -1019,7 +1019,9 @@ pub fn get_cmd_lint_options(
     for &level in &[lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {
         for (passed_arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
             let arg_pos = if let lint::Forbid = level {
-                // forbid is always specified last, so it can't be overridden
+                // HACK: forbid is always specified last, so it can't be overridden.
+                // FIXME: remove this once <https://github.com/rust-lang/rust/issues/70819> is
+                // fixed and `forbid` works as expected.
                 usize::max_value()
             } else {
                 passed_arg_pos

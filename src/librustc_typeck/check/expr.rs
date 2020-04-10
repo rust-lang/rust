@@ -902,8 +902,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: MethodError<'tcx>,
     ) {
         let rcvr = &args[0];
-        let try_alt_rcvr = |err: &mut DiagnosticBuilder<'_>, rcvr_t, lang_item| {
-            if let Some(new_rcvr_t) = self.tcx.mk_lang_item(rcvr_t, lang_item) {
+        let try_alt_rcvr = |err: &mut DiagnosticBuilder<'_>, new_rcvr_t| {
+            if let Some(new_rcvr_t) = new_rcvr_t {
                 if let Ok(pick) = self.lookup_probe(
                     span,
                     segment.ident,
@@ -931,10 +931,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Try alternative arbitrary self types that could fulfill this call.
                 // FIXME: probe for all types that *could* be arbitrary self-types, not
                 // just this whitelist.
-                try_alt_rcvr(&mut err, rcvr_t, lang_items::OwnedBoxLangItem);
-                try_alt_rcvr(&mut err, rcvr_t, lang_items::PinTypeLangItem);
-                try_alt_rcvr(&mut err, rcvr_t, lang_items::Arc);
-                try_alt_rcvr(&mut err, rcvr_t, lang_items::Rc);
+                try_alt_rcvr(&mut err, self.tcx.mk_lang_item(rcvr_t, lang_items::OwnedBoxLangItem));
+                try_alt_rcvr(&mut err, self.tcx.mk_lang_item(rcvr_t, lang_items::PinTypeLangItem));
+                try_alt_rcvr(&mut err, self.tcx.mk_diagnostic_item(rcvr_t, sym::Arc));
+                try_alt_rcvr(&mut err, self.tcx.mk_diagnostic_item(rcvr_t, sym::Rc));
             }
             err.emit();
         }

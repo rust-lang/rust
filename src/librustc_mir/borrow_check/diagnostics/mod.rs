@@ -11,7 +11,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{symbol::sym, Span};
 use rustc_target::abi::VariantIdx;
 
 use super::borrow_set::BorrowData;
@@ -632,20 +632,20 @@ pub(super) enum BorrowedContentSource<'tcx> {
 }
 
 impl BorrowedContentSource<'tcx> {
-    pub(super) fn describe_for_unnamed_place(&self) -> String {
+    pub(super) fn describe_for_unnamed_place(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
             BorrowedContentSource::DerefRawPointer => "a raw pointer".to_string(),
             BorrowedContentSource::DerefSharedRef => "a shared reference".to_string(),
             BorrowedContentSource::DerefMutableRef => "a mutable reference".to_string(),
-            BorrowedContentSource::OverloadedDeref(ty) => {
-                if ty.is_rc() {
+            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind {
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Rc, def.did) => {
                     "an `Rc`".to_string()
-                } else if ty.is_arc() {
-                    "an `Arc`".to_string()
-                } else {
-                    format!("dereference of `{}`", ty)
                 }
-            }
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Arc, def.did) => {
+                    "an `Arc`".to_string()
+                }
+                _ => format!("dereference of `{}`", ty),
+            },
             BorrowedContentSource::OverloadedIndex(ty) => format!("index of `{}`", ty),
         }
     }
@@ -662,22 +662,22 @@ impl BorrowedContentSource<'tcx> {
         }
     }
 
-    pub(super) fn describe_for_immutable_place(&self) -> String {
+    pub(super) fn describe_for_immutable_place(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
             BorrowedContentSource::DerefRawPointer => "a `*const` pointer".to_string(),
             BorrowedContentSource::DerefSharedRef => "a `&` reference".to_string(),
             BorrowedContentSource::DerefMutableRef => {
                 bug!("describe_for_immutable_place: DerefMutableRef isn't immutable")
             }
-            BorrowedContentSource::OverloadedDeref(ty) => {
-                if ty.is_rc() {
+            BorrowedContentSource::OverloadedDeref(ty) => match ty.kind {
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Rc, def.did) => {
                     "an `Rc`".to_string()
-                } else if ty.is_arc() {
-                    "an `Arc`".to_string()
-                } else {
-                    format!("a dereference of `{}`", ty)
                 }
-            }
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::Arc, def.did) => {
+                    "an `Arc`".to_string()
+                }
+                _ => format!("a dereference of `{}`", ty),
+            },
             BorrowedContentSource::OverloadedIndex(ty) => format!("an index of `{}`", ty),
         }
     }

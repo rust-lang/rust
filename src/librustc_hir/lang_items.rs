@@ -254,7 +254,4 @@ language_item_table! {
     AlignOffsetLangItem,         "align_offset",       align_offset_fn,         Target::Fn;
 
     TerminationTraitLangItem,    "termination",        termination,             Target::Trait;
-
-    Arc,                         "arc",                arc,                     Target::Struct;
-    Rc,                          "rc",                 rc,                      Target::Struct;
 }
