@@ -1161,7 +1161,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<LocalTy<'tcx>>) -> Ty<'tcx> {
         match ty_opt {
             None => {
-                // infer the variable's type
+                // Infer the variable's type.
                 let var_ty = self.fcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::TypeInference,
                     span,
@@ -1173,7 +1173,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
                 var_ty
             }
             Some(typ) => {
-                // take type that the user specified
+                // Take type that the user specified.
                 self.fcx.locals.borrow_mut().insert(nid, typ);
                 typ.revealed_ty
             }
@@ -1244,7 +1244,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         intravisit::walk_pat(self, p);
     }
 
-    // Don't descend into the bodies of nested closures
+    // Don't descend into the bodies of nested closures.
     fn visit_fn(
         &mut self,
         _: intravisit::FnKind<'tcx>,
@@ -1292,7 +1292,7 @@ fn check_fn<'a, 'tcx>(
 
     debug!("check_fn(sig={:?}, fn_id={}, param_env={:?})", fn_sig, fn_id, param_env);
 
-    // Create the function context.  This is either derived from scratch or,
+    // Create the function context. This is either derived from scratch or,
     // in the case of closures, based on the outer context.
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.hir_id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
