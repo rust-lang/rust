@@ -74,7 +74,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
   --> $DIR/substs-ppaux.rs:49:5
    |
 LL |     fn bar<'a, T>() where T: 'a {}
-   |        ---                   -- required by this bound in `Foo::bar`
+   |                              -- required by this bound in `Foo::bar`
 ...
 LL |     <str as Foo<u8>>::bar;
    |     ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

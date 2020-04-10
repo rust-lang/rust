@@ -976,8 +976,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        for implication in super::elaborate_predicates(self.tcx, vec![*cond]) {
-            if let ty::Predicate::Trait(implication, _) = implication {
+        for obligation in super::elaborate_predicates(self.tcx, vec![*cond]) {
+            if let ty::Predicate::Trait(implication, _) = obligation.predicate {
                 let error = error.to_poly_trait_ref();
                 let implication = implication.to_poly_trait_ref();
                 // FIXME: I'm just not taking associated types at all here.
@@ -1387,7 +1387,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     (self.tcx.sess.source_map().span_to_snippet(span), &obligation.cause.code)
                 {
                     let generics = self.tcx.generics_of(*def_id);
-                    if !generics.params.is_empty() && !snippet.ends_with('>') {
+                    if generics.params.iter().filter(|p| p.name.as_str() != "Self").next().is_some()
+                        && !snippet.ends_with('>')
+                    {
                         // FIXME: To avoid spurious suggestions in functions where type arguments
                         // where already supplied, we check the snippet to make sure it doesn't
                         // end with a turbofish. Ideally we would have access to a `PathSegment`
@@ -1405,7 +1407,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                         //    |                        `Tt::const_val::<[i8; 123]>::<T>`
                         // ...
                         // LL |     const fn const_val<T: Sized>() -> usize {
-                        //    |              --------- - required by this bound in `Tt::const_val`
+                        //    |                        - required by this bound in `Tt::const_val`
                         //    |
                         //    = note: cannot satisfy `_: Tt`
 

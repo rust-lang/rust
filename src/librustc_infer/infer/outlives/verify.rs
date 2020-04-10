@@ -296,7 +296,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
         self.collect_outlives_from_predicate_list(
             move |ty| ty == identity_proj,
-            traits::elaborate_predicates(tcx, trait_predicates),
+            traits::elaborate_predicates(tcx, trait_predicates)
+                .into_iter()
+                .map(|o| o.predicate)
+                .collect::<Vec<_>>(),
         )
         .map(|b| b.1)
     }

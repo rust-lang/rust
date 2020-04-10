@@ -3,10 +3,12 @@ error[E0277]: the size for values of type `(dyn std::ops::Fn() + 'static)` canno
    |
 LL |     pub fn function(funs: Vec<dyn Fn() -> ()>) {}
    |                           ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+...
+LL | struct Vec<T> {
+   |            - required by this bound in `Vec`
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::ops::Fn() + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required by `std::vec::Vec`
 
 error: aborting due to previous error
 

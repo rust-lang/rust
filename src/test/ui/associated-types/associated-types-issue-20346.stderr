@@ -2,7 +2,7 @@ error[E0271]: type mismatch resolving `<Adapter<I> as Iterator>::Item == std::op
   --> $DIR/associated-types-issue-20346.rs:34:5
    |
 LL | fn is_iterator_of<A, I: Iterator<Item=A>>(_: &I) {}
-   |    --------------                ------ required by this bound in `is_iterator_of`
+   |                                  ------ required by this bound in `is_iterator_of`
 ...
 LL | fn test_adapter<T, I: Iterator<Item=Option<T>>>(it: I) {
    |                 - this type parameter

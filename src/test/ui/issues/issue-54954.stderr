@@ -11,7 +11,7 @@ LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
 ...
 LL |     const fn const_val<T: Sized>() -> usize {
-   |              --------- - required by this bound in `Tt::const_val`
+   |                        - required by this bound in `Tt::const_val`
    |
    = note: cannot satisfy `_: Tt`
 

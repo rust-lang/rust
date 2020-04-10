@@ -2,7 +2,7 @@ error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
   --> $DIR/wf-fn-where-clause.rs:8:24
    |
 LL | trait ExtraCopy<T:Copy> { }
-   | ----------------------- required by `ExtraCopy`
+   |                   ---- required by this bound in `ExtraCopy`
 LL | 
 LL | fn foo<T,U>() where T: ExtraCopy<U>
    |                        ^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `U`
@@ -17,10 +17,12 @@ error[E0277]: the size for values of type `(dyn std::marker::Copy + 'static)` ca
    |
 LL | fn bar() where Vec<dyn Copy>:, {}
    |                ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+...
+LL | struct Vec<T> {
+   |            - required by this bound in `Vec`
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::marker::Copy + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required by `std::vec::Vec`
 
 error[E0038]: the trait `std::marker::Copy` cannot be made into an object
   --> $DIR/wf-fn-where-clause.rs:12:16

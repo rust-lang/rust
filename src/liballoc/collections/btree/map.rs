@@ -1544,19 +1544,19 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     type IntoIter = IntoIter<K, V>;
 
     fn into_iter(self) -> IntoIter<K, V> {
-        let me = ManuallyDrop::new(self);
-        if me.root.is_none() {
-            return IntoIter { front: None, back: None, length: 0 };
-        }
+        let mut me = ManuallyDrop::new(self);
+        if let Some(root) = me.root.as_mut() {
+            let root1 = unsafe { ptr::read(root).into_ref() };
+            let root2 = unsafe { ptr::read(root).into_ref() };
+            let len = me.length;
 
-        let root1 = unsafe { unwrap_unchecked(ptr::read(&me.root)).into_ref() };
-        let root2 = unsafe { unwrap_unchecked(ptr::read(&me.root)).into_ref() };
-        let len = me.length;
-
-        IntoIter {
-            front: Some(root1.first_leaf_edge()),
-            back: Some(root2.last_leaf_edge()),
-            length: len,
+            IntoIter {
+                front: Some(root1.first_leaf_edge()),
+                back: Some(root2.last_leaf_edge()),
+                length: len,
+            }
+        } else {
+            IntoIter { front: None, back: None, length: 0 }
         }
     }
 }
@@ -2771,8 +2771,6 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
                             pos.next_unchecked();
                         }
                     }
-
-                    // This internal node might be underfull, but only if it's the root.
                     break;
                 }
             }

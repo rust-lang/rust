@@ -2,7 +2,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-21974.rs:11:19
    |
 LL | trait Foo {
-   | --------- required by `Foo`
+   | --------- required by this bound in `Foo`
 ...
 LL |     where &'a T : Foo,
    |                   ^^^ cannot infer type for reference `&'a T`

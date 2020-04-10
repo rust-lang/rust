@@ -2,7 +2,7 @@ error[E0275]: overflow evaluating the requirement `*mut (): Magic`
   --> $DIR/traits-inductive-overflow-two-traits.rs:19:5
    |
 LL | fn wizard<T: Magic>() { check::<<T as Magic>::X>(); }
-   |    ------    ----- required by this bound in `wizard`
+   |              ----- required by this bound in `wizard`
 ...
 LL |     wizard::<*mut ()>();
    |     ^^^^^^^^^^^^^^^^^

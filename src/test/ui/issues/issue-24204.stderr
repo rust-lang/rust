@@ -2,7 +2,9 @@ error[E0271]: type mismatch resolving `<<T as Trait>::A as MultiDispatch<i32>>::
   --> $DIR/issue-24204.rs:14:12
    |
 LL | trait Trait: Sized {
-   | ------------------ required by `Trait`
+   |       -----
+LL |     type A: MultiDispatch<Self::B, O = Self>;
+   |                                    -------- required by this bound in `Trait`
 ...
 LL | fn test<T: Trait<B=i32>>(b: i32) -> T where T::A: MultiDispatch<i32> { T::new(b) }
    |            ^^^^^^^^^^^^ expected type parameter `T`, found associated type

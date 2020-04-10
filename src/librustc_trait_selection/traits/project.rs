@@ -900,7 +900,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     // If so, extract what we know from the trait and try to come up with a good answer.
     let trait_predicates = tcx.predicates_of(def_id);
     let bounds = trait_predicates.instantiate(tcx, substs);
-    let bounds = elaborate_predicates(tcx, bounds.predicates);
+    let bounds = elaborate_predicates(tcx, bounds.predicates).map(|o| o.predicate);
     assemble_candidates_from_predicates(
         selcx,
         obligation,
@@ -1162,7 +1162,7 @@ fn confirm_object_candidate<'cx, 'tcx>(
 
         // select only those projections that are actually projecting an
         // item with the correct name
-        let env_predicates = env_predicates.filter_map(|p| match p {
+        let env_predicates = env_predicates.filter_map(|o| match o.predicate {
             ty::Predicate::Projection(data) => {
                 if data.projection_def_id() == obligation.predicate.item_def_id {
                     Some(data)

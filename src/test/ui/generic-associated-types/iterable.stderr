@@ -38,7 +38,10 @@ error[E0271]: type mismatch resolving `for<'a> <<std::vec::Vec<T> as Iterable>::
   --> $DIR/iterable.rs:19:30
    |
 LL | trait Iterable {
-   | -------------- required by `Iterable`
+   |       --------
+LL |     type Item<'a> where Self: 'a;
+LL |     type Iter<'a>: Iterator<Item = Self::Item<'a>> where Self: 'a;
+   |                             --------------------- required by this bound in `Iterable`
 ...
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
    |                              ^^^^^^^^^^^^^^ expected associated type, found reference
@@ -52,7 +55,10 @@ error[E0271]: type mismatch resolving `for<'a> <<[T] as Iterable>::Iter<'a> as s
   --> $DIR/iterable.rs:31:30
    |
 LL | trait Iterable {
-   | -------------- required by `Iterable`
+   |       --------
+LL |     type Item<'a> where Self: 'a;
+LL |     type Iter<'a>: Iterator<Item = Self::Item<'a>> where Self: 'a;
+   |                             --------------------- required by this bound in `Iterable`
 ...
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
    |                              ^^^^^^^^^^^^^^ expected associated type, found reference

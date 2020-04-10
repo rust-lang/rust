@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
   --> $DIR/extern-types-unsized.rs:22:20
    |
 LL | fn assert_sized<T>() { }
-   |    ------------ - required by this bound in `assert_sized`
+   |                 - required by this bound in `assert_sized`
 ...
 LL |     assert_sized::<A>();
    |                    ^ doesn't have a size known at compile-time
@@ -18,7 +18,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
   --> $DIR/extern-types-unsized.rs:25:5
    |
 LL | fn assert_sized<T>() { }
-   |    ------------ - required by this bound in `assert_sized`
+   |                 - required by this bound in `assert_sized`
 ...
 LL |     assert_sized::<Foo>();
    |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -31,7 +31,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
   --> $DIR/extern-types-unsized.rs:28:5
    |
 LL | fn assert_sized<T>() { }
-   |    ------------ - required by this bound in `assert_sized`
+   |                 - required by this bound in `assert_sized`
 ...
 LL |     assert_sized::<Bar<A>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -44,7 +44,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
   --> $DIR/extern-types-unsized.rs:31:5
    |
 LL | fn assert_sized<T>() { }
-   |    ------------ - required by this bound in `assert_sized`
+   |                 - required by this bound in `assert_sized`
 ...
 LL |     assert_sized::<Bar<Bar<A>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

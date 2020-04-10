@@ -2,7 +2,7 @@ error[E0277]: a value of type `i32` cannot be built from an iterator over elemen
   --> $DIR/type-check-defaults.rs:6:19
    |
 LL | struct Foo<T, U: FromIterator<T>>(T, U);
-   | ---------------------------------------- required by `Foo`
+   |                  --------------- required by this bound in `Foo`
 LL | struct WellFormed<Z = Foo<i32, i32>>(Z);
    |                   ^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
    |
@@ -12,7 +12,7 @@ error[E0277]: a value of type `i32` cannot be built from an iterator over elemen
   --> $DIR/type-check-defaults.rs:8:27
    |
 LL | struct Foo<T, U: FromIterator<T>>(T, U);
-   | ---------------------------------------- required by `Foo`
+   |                  --------------- required by this bound in `Foo`
 ...
 LL | struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
    |                           ^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
@@ -50,7 +50,7 @@ error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
   --> $DIR/type-check-defaults.rs:21:25
    |
 LL | trait Super<T: Copy> { }
-   | -------------------- required by `Super`
+   |                ---- required by this bound in `Super`
 LL | trait Base<T = String>: Super<T> { }
    |                         ^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |

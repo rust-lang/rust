@@ -2,7 +2,7 @@ error[E0277]: `*mut &'a isize` cannot be sent between threads safely
   --> $DIR/kindck-send-unsafe.rs:6:19
    |
 LL | fn assert_send<T:Send>() { }
-   |    -----------   ---- required by this bound in `assert_send`
+   |                  ---- required by this bound in `assert_send`
 ...
 LL |     assert_send::<*mut &'a isize>();
    |                   ^^^^^^^^^^^^^^ `*mut &'a isize` cannot be sent between threads safely

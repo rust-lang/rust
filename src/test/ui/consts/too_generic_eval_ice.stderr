@@ -15,7 +15,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
   --> $DIR/too_generic_eval_ice.rs:7:13
    |
 LL | pub struct Foo<A, B>(A, B);
-   | --------------------------- required by `Foo`
+   |                - required by this bound in `Foo`
 LL | 
 LL | impl<A, B> Foo<A, B> {
    |      - this type parameter needs to be `std::marker::Sized`
@@ -30,7 +30,7 @@ error[E0277]: the size for values of type `B` cannot be known at compilation tim
   --> $DIR/too_generic_eval_ice.rs:7:13
    |
 LL | pub struct Foo<A, B>(A, B);
-   | --------------------------- required by `Foo`
+   |                   - required by this bound in `Foo`
 LL | 
 LL | impl<A, B> Foo<A, B> {
    |         - this type parameter needs to be `std::marker::Sized`
