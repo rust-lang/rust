@@ -34,6 +34,9 @@ features = [ "rustc-dep-of-std" ] # enable build support for integrating into li
 [dev-dependencies]
 rand = "0.7"
 
+[build-dependencies]
+build_helper = { path = "../build_helper" }
+
 [target.'cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
 dlmalloc = { version = "0.1", features = ['rustc-dep-of-std'] }
 

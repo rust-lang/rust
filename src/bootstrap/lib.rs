@@ -120,7 +120,7 @@ use std::os::unix::fs::symlink as symlink_file;
 #[cfg(windows)]
 use std::os::windows::fs::symlink_file;
 
-use build_helper::{mtime, output, run, run_suppressed, t, try_run, try_run_suppressed};
+use build_helper::{channel, mtime, output, run, run_suppressed, t, try_run, try_run_suppressed};
 use filetime::FileTime;
 
 use crate::util::{exe, libdir, CiEnv};
@@ -128,7 +128,6 @@ use crate::util::{exe, libdir, CiEnv};
 mod builder;
 mod cache;
 mod cc_detect;
-mod channel;
 mod check;
 mod clean;
 mod compile;
@@ -1047,7 +1046,7 @@ impl Build {
     /// Note that this is a descriptive string which includes the commit date,
     /// sha, version, etc.
     fn rust_version(&self) -> String {
-        self.rust_info.version(self, channel::CFG_RELEASE_NUM)
+        self.rust_info.version(self.release(channel::CFG_RELEASE_NUM))
     }
 
     /// Returns the full commit hash.

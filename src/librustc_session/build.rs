@@ -1,5 +1,7 @@
+use build_helper::set_env;
 use std::error::Error;
 use std::ffi::OsString;
+use std::path::Path;
 use std::process::Command;
 
 fn output(cmd: &mut Command) -> Result<String, Box<dyn Error>> {
@@ -165,6 +167,27 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CFG_COMPILER_HOST_TRIPLE");
     println!("cargo:rerun-if-env-changed=CFG_LIBDIR_RELATIVE");
     println!("cargo:rerun-if-env-changed=RUSTC_STAGE");
+
+    if let Some(rustc) = build_helper::build_rustc() {
+        let mut rust_info_data = None;
+        let rust_info = || build_helper::channel::GitInfo::new(false, Path::new("../.."));
+        let rustc = &rustc;
+        set_env("CFG_RELEASE", || rustc.version.release.as_ref().map(|x| x.into()));
+        set_env("CFG_VERSION", || rustc.version.version.as_ref().map(|x| x.into()));
+        set_env("CFG_RELEASE_CHANNEL", || {
+            rustc
+                .version
+                .release
+                .as_ref()
+                .and_then(|release| release.rsplitn(2, "-").next().map(|x| x.into()))
+        });
+        set_env("CFG_VER_HASH", || {
+            rust_info_data.get_or_insert_with(|| rust_info()).sha().map(|x| x.into())
+        });
+        set_env("CFG_VER_DATE", || {
+            rust_info_data.get_or_insert_with(|| rust_info()).commit_date().map(|x| x.into())
+        });
+    }
 
     if std::env::var_os("CFG_COMPILER_HOST_TRIPLE").is_none() {
         println!(

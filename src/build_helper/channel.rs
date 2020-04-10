@@ -8,17 +8,17 @@
 use std::path::Path;
 use std::process::Command;
 
-use build_helper::output;
-
-use crate::Build;
+use crate::output;
 
 // The version number
 pub const CFG_RELEASE_NUM: &str = "1.44.0";
 
+#[derive(Clone)]
 pub struct GitInfo {
     inner: Option<Info>,
 }
 
+#[derive(Clone)]
 struct Info {
     commit_date: String,
     sha: String,
@@ -72,8 +72,7 @@ impl GitInfo {
         self.inner.as_ref().map(|s| &s.commit_date[..])
     }
 
-    pub fn version(&self, build: &Build, num: &str) -> String {
-        let mut version = build.release(num);
+    pub fn version(&self, mut version: String) -> String {
         if let Some(ref inner) = self.inner {
             version.push_str(" (");
             version.push_str(&inner.short_sha);

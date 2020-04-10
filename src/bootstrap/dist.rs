@@ -1174,7 +1174,7 @@ impl Step for Cargo {
         let etc = src.join("src/etc");
         let release_num = builder.release_num("cargo");
         let name = pkgname(builder, "cargo");
-        let version = builder.cargo_info.version(builder, &release_num);
+        let version = builder.cargo_info.version(builder.release(&release_num));
 
         let tmp = tmpdir(builder);
         let image = tmp.join("cargo-image");
@@ -1266,7 +1266,7 @@ impl Step for Rls {
         let src = builder.src.join("src/tools/rls");
         let release_num = builder.release_num("rls");
         let name = pkgname(builder, "rls");
-        let version = builder.rls_info.version(builder, &release_num);
+        let version = builder.rls_info.version(builder.release(&release_num));
 
         let tmp = tmpdir(builder);
         let image = tmp.join("rls-image");
@@ -1356,7 +1356,7 @@ impl Step for Clippy {
         let src = builder.src.join("src/tools/clippy");
         let release_num = builder.release_num("clippy");
         let name = pkgname(builder, "clippy");
-        let version = builder.clippy_info.version(builder, &release_num);
+        let version = builder.clippy_info.version(builder.release(&release_num));
 
         let tmp = tmpdir(builder);
         let image = tmp.join("clippy-image");
@@ -1453,7 +1453,7 @@ impl Step for Miri {
         let src = builder.src.join("src/tools/miri");
         let release_num = builder.release_num("miri");
         let name = pkgname(builder, "miri");
-        let version = builder.miri_info.version(builder, &release_num);
+        let version = builder.miri_info.version(builder.release(&release_num));
 
         let tmp = tmpdir(builder);
         let image = tmp.join("miri-image");
@@ -1549,7 +1549,7 @@ impl Step for Rustfmt {
         let src = builder.src.join("src/tools/rustfmt");
         let release_num = builder.release_num("rustfmt");
         let name = pkgname(builder, "rustfmt");
-        let version = builder.rustfmt_info.version(builder, &release_num);
+        let version = builder.rustfmt_info.version(builder.release(&release_num));
 
         let tmp = tmpdir(builder);
         let image = tmp.join("rustfmt-image");

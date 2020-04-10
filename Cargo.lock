@@ -19,6 +19,7 @@ dependencies = [
 name = "alloc"
 version = "0.0.0"
 dependencies = [
+ "build_helper",
  "compiler_builtins",
  "core",
  "rand 0.7.3",
@@ -653,6 +654,7 @@ dependencies = [
 name = "core"
 version = "0.0.0"
 dependencies = [
+ "build_helper",
  "rand 0.7.3",
 ]
 
@@ -4201,6 +4203,7 @@ dependencies = [
 name = "rustc_session"
 version = "0.0.0"
 dependencies = [
+ "build_helper",
  "getopts",
  "log",
  "num_cpus",
@@ -4694,6 +4697,7 @@ version = "0.0.0"
 dependencies = [
  "alloc",
  "backtrace",
+ "build_helper",
  "cfg-if",
  "compiler_builtins",
  "core",
