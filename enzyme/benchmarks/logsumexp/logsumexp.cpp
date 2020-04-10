@@ -7,6 +7,14 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include <adept_source.h>
+#include <adept_arrays.h>
+using adept::adouble;
+using adept::aMatrix;
+using adept::aVector;
+
+using adept::Vector;
+
 extern int diffe_const;
 template<typename Return, typename... T>
 Return __enzyme_autodiff(T...);
@@ -15,13 +23,6 @@ float tdiff(struct timeval *start, struct timeval *end) {
   return (end->tv_sec-start->tv_sec) + 1e-6*(end->tv_usec-start->tv_usec);
 }
 
-#include <adept_source.h>
-#include <adept_arrays.h>
-using adept::adouble;
-using adept::aMatrix;
-using adept::aVector;
-
-using adept::Vector;
 
 static double sum(const double *x, size_t n) {
     double res = 0;

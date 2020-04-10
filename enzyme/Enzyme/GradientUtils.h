@@ -1054,9 +1054,14 @@ public:
       }
   }
 
-  Value* unwrapM(Value* const val, IRBuilder<>& BuilderM, const ValueToValueMapTy& available, bool lookupIfAble) {
+  //! if full unwrap, don't just unwrap this instruction, but also its operands, etc
+
+  Value* unwrapM(Value* const val, IRBuilder<>& BuilderM, const ValueToValueMapTy& available, bool lookupIfAble, bool fullUnwrap=true) {
+    if (fullUnwrap == false) assert(!lookupIfAble);
     assert(val);
     assert(val->getName() != "<badref>");
+
+    assert(!val->getName().startswith("$truetape"));
 
     auto cidx = std::make_pair(val, BuilderM.GetInsertBlock());
     if (unwrap_cache.find(cidx) != unwrap_cache.end()) {
@@ -1096,147 +1101,158 @@ public:
     }
 
     //llvm::errs() << "uwval: " << *val << "\n";
+    auto getOp = [&](Value* v) -> Value* {
+      if (fullUnwrap) return unwrapM(v, BuilderM, available, lookupIfAble);
+      else return lookupM(v, BuilderM, available);
+    };
 
-          if (isa<Argument>(val) || isa<Constant>(val)) {
-            unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
-            return val;
-          } else if (isa<AllocaInst>(val)) {
-            unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
-            return val;
-          } else if (auto op = dyn_cast<CastInst>(val)) {
-            auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
-            if (op0 == nullptr) goto endCheck;
-            auto toreturn = BuilderM.CreateCast(op->getOpcode(), op0, op->getDestTy(), op->getName()+"_unwrap");
-            if (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) {
-                unwrap_cache[cidx] = toreturn;
-            }
-            assert(val->getType() == toreturn->getType());
-            return toreturn;
-          } else if (auto op = dyn_cast<ExtractValueInst>(val)) {
-            auto op0 = unwrapM(op->getAggregateOperand(), BuilderM, available, lookupIfAble);
-            if (op0 == nullptr) goto endCheck;
-            auto toreturn = BuilderM.CreateExtractValue(op0, op->getIndices(), op->getName()+"_unwrap");
-            if (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) {
-                unwrap_cache[cidx] = toreturn;
-            }
-            assert(val->getType() == toreturn->getType());
-            return toreturn;
-          } else if (auto op = dyn_cast<BinaryOperator>(val)) {
-            auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
-            if (op0 == nullptr) goto endCheck;
-            auto op1 = unwrapM(op->getOperand(1), BuilderM, available, lookupIfAble);
-            if (op1 == nullptr) goto endCheck;
-            auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1, op->getName()+"_unwrap");
-            if (
-                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
-                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
-                unwrap_cache[cidx] = toreturn;
-            }
-            assert(val->getType() == toreturn->getType());
-            return toreturn;
-          } else if (auto op = dyn_cast<ICmpInst>(val)) {
-            auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
-            if (op0 == nullptr) goto endCheck;
-            auto op1 = unwrapM(op->getOperand(1), BuilderM, available, lookupIfAble);
-            if (op1 == nullptr) goto endCheck;
-            auto toreturn = BuilderM.CreateICmp(op->getPredicate(), op0, op1);
-            if (
-                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
-                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
-                unwrap_cache[cidx] = toreturn;
-            }
-            assert(val->getType() == toreturn->getType());
-            return toreturn;
-          } else if (auto op = dyn_cast<FCmpInst>(val)) {
-            auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
-            if (op0 == nullptr) goto endCheck;
-            auto op1 = unwrapM(op->getOperand(1), BuilderM, available, lookupIfAble);
-            if (op1 == nullptr) goto endCheck;
-            auto toreturn = BuilderM.CreateFCmp(op->getPredicate(), op0, op1);
-            if (
-                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
-                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
-                unwrap_cache[cidx] = toreturn;
-            }
-            assert(val->getType() == toreturn->getType());
-            return toreturn;
-          } else if (auto op = dyn_cast<SelectInst>(val)) {
-            auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
-            if (op0 == nullptr) goto endCheck;
-            auto op1 = unwrapM(op->getOperand(1), BuilderM, available, lookupIfAble);
-            if (op1 == nullptr) goto endCheck;
-            auto op2 = unwrapM(op->getOperand(2), BuilderM, available, lookupIfAble);
-            if (op2 == nullptr) goto endCheck;
-            auto toreturn = BuilderM.CreateSelect(op0, op1, op2);
-            if (
-                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
-                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
-                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(2), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
-                unwrap_cache[cidx] = toreturn;
-            }
-            assert(val->getType() == toreturn->getType());
-            return toreturn;
-          } else if (auto inst = dyn_cast<GetElementPtrInst>(val)) {
-              auto ptr = unwrapM(inst->getPointerOperand(), BuilderM, available, lookupIfAble);
-              if (ptr == nullptr) goto endCheck;
-              bool cached = unwrap_cache.find(std::make_pair(inst->getPointerOperand(), BuilderM.GetInsertBlock())) != unwrap_cache.end();
-              SmallVector<Value*,4> ind;
-              //llvm::errs() << "inst: " << *inst << "\n";
-              for(auto& a : inst->indices()) {
-                assert(a->getName() != "<badref>");
-                auto op = unwrapM(a, BuilderM, available, lookupIfAble);
-                if (op == nullptr) goto endCheck;
-                cached &= unwrap_cache.find(std::make_pair((Value*)a, BuilderM.GetInsertBlock())) != unwrap_cache.end();
-                ind.push_back(op);
-              }
-              auto toreturn = BuilderM.CreateGEP(ptr, ind, inst->getName() + "_unwrap");
-              if (cached) {
-                    unwrap_cache[cidx] = toreturn;
-              }
-              assert(val->getType() == toreturn->getType());
-              return toreturn;
-          } else if (auto load = dyn_cast<LoadInst>(val)) {
-              if (load->getMetadata("enzyme_noneedunwrap")) return load;
+    if (isa<Argument>(val) || isa<Constant>(val)) {
+      unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
+      return val;
+    } else if (isa<AllocaInst>(val)) {
+      unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
+      return val;
+    } else if (auto op = dyn_cast<CastInst>(val)) {
+      auto op0 = getOp(op->getOperand(0));
+      if (op0 == nullptr) goto endCheck;
+      auto toreturn = BuilderM.CreateCast(op->getOpcode(), op0, op->getDestTy(), op->getName()+"_unwrap");
+      if (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) {
+          unwrap_cache[cidx] = toreturn;
+      }
+      assert(val->getType() == toreturn->getType());
+      return toreturn;
+    } else if (auto op = dyn_cast<ExtractValueInst>(val)) {
+      auto op0 = getOp(op->getAggregateOperand());
+      if (op0 == nullptr) goto endCheck;
+      auto toreturn = BuilderM.CreateExtractValue(op0, op->getIndices(), op->getName()+"_unwrap");
+      if (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) {
+          unwrap_cache[cidx] = toreturn;
+      }
+      assert(val->getType() == toreturn->getType());
+      return toreturn;
+    } else if (auto op = dyn_cast<BinaryOperator>(val)) {
+      auto op0 = getOp(op->getOperand(0));
+      if (op0 == nullptr) goto endCheck;
+      auto op1 = getOp(op->getOperand(1));
+      if (op1 == nullptr) goto endCheck;
+      auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1, op->getName()+"_unwrap");
+      if (
+              (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
+              (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
+          unwrap_cache[cidx] = toreturn;
+      }
+      assert(val->getType() == toreturn->getType());
+      return toreturn;
+    } else if (auto op = dyn_cast<ICmpInst>(val)) {
+      auto op0 = getOp(op->getOperand(0));
+      if (op0 == nullptr) goto endCheck;
+      auto op1 = getOp(op->getOperand(1));
+      if (op1 == nullptr) goto endCheck;
+      auto toreturn = BuilderM.CreateICmp(op->getPredicate(), op0, op1);
+      if (
+              (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
+              (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
+          unwrap_cache[cidx] = toreturn;
+      }
+      assert(val->getType() == toreturn->getType());
+      return toreturn;
+    } else if (auto op = dyn_cast<FCmpInst>(val)) {
+      auto op0 = getOp(op->getOperand(0));
+      if (op0 == nullptr) goto endCheck;
+      auto op1 = getOp(op->getOperand(1));
+      if (op1 == nullptr) goto endCheck;
+      auto toreturn = BuilderM.CreateFCmp(op->getPredicate(), op0, op1);
+      if (
+              (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
+              (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
+          unwrap_cache[cidx] = toreturn;
+      }
+      assert(val->getType() == toreturn->getType());
+      return toreturn;
+    } else if (auto op = dyn_cast<SelectInst>(val)) {
+      auto op0 = getOp(op->getOperand(0));
+      if (op0 == nullptr) goto endCheck;
+      auto op1 = getOp(op->getOperand(1));
+      if (op1 == nullptr) goto endCheck;
+      auto op2 = getOp(op->getOperand(2));
+      if (op2 == nullptr) goto endCheck;
+      auto toreturn = BuilderM.CreateSelect(op0, op1, op2);
+      if (
+              (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
+              (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
+              (unwrap_cache.find(std::make_pair((Value*)op->getOperand(2), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
+          unwrap_cache[cidx] = toreturn;
+      }
+      assert(val->getType() == toreturn->getType());
+      return toreturn;
+    } else if (auto inst = dyn_cast<GetElementPtrInst>(val)) {
+        auto ptr = getOp(inst->getPointerOperand());
+        if (ptr == nullptr) goto endCheck;
+        bool cached = unwrap_cache.find(std::make_pair(inst->getPointerOperand(), BuilderM.GetInsertBlock())) != unwrap_cache.end();
+        SmallVector<Value*,4> ind;
+        //llvm::errs() << "inst: " << *inst << "\n";
+        for(auto& a : inst->indices()) {
+          assert(a->getName() != "<badref>");
+          auto op = getOp(a);
+          if (op == nullptr) goto endCheck;
+          cached &= unwrap_cache.find(std::make_pair((Value*)a, BuilderM.GetInsertBlock())) != unwrap_cache.end();
+          ind.push_back(op);
+        }
+        auto toreturn = BuilderM.CreateGEP(ptr, ind, inst->getName() + "_unwrap");
+        if (cached) {
+              unwrap_cache[cidx] = toreturn;
+        }
+        assert(val->getType() == toreturn->getType());
+        return toreturn;
+    } else if (auto load = dyn_cast<LoadInst>(val)) {
+        if (load->getMetadata("enzyme_noneedunwrap")) return load;
 
-                Value* idx = unwrapM(load->getOperand(0), BuilderM, available, lookupIfAble);
-                if (idx == nullptr) goto endCheck;
+          Value* idx = getOp(load->getOperand(0));
+          if (idx == nullptr) goto endCheck;
 
-                if(idx->getType() != load->getOperand(0)->getType()) {
-                    llvm::errs() << "load: " << *load << "\n";
-                    llvm::errs() << "load->getOperand(0): " << *load->getOperand(0) << "\n";
-                    llvm::errs() << "idx: " << *idx << "\n";
-                }
-                assert(idx->getType() == load->getOperand(0)->getType());
-                auto toreturn = BuilderM.CreateLoad(idx);
-                if (unwrap_cache.find(std::make_pair((Value*)load->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) {
-                    unwrap_cache[cidx] = toreturn;
-                }
-                assert(val->getType() == toreturn->getType());
-                return toreturn;
-          } else if (auto op = dyn_cast<IntrinsicInst>(val)) {
-            switch(op->getIntrinsicID()) {
-                case Intrinsic::sin: {
-                  Value *args[] = {unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble)};
-                  if (args[0] == nullptr) goto endCheck;
-                  Type *tys[] = {op->getOperand(0)->getType()};
-                  return BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::sin, tys), args);
-                }
-                case Intrinsic::cos: {
-                  Value *args[] = {unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble)};
-                  if (args[0] == nullptr) goto endCheck;
-                  Type *tys[] = {op->getOperand(0)->getType()};
-                  return BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::cos, tys), args);
-                }
-                default:;
-
-            }
-          } else if (auto phi = dyn_cast<PHINode>(val)) {
-            if (phi->getNumIncomingValues () == 1) {
-                auto toreturn = unwrapM(phi->getIncomingValue(0), BuilderM, available, lookupIfAble);
-                assert(val->getType() == toreturn->getType());
-                return toreturn;
-            }
+          if(idx->getType() != load->getOperand(0)->getType()) {
+              llvm::errs() << "load: " << *load << "\n";
+              llvm::errs() << "load->getOperand(0): " << *load->getOperand(0) << "\n";
+              llvm::errs() << "idx: " << *idx << "\n";
           }
+          assert(idx->getType() == load->getOperand(0)->getType());
+          auto toreturn = BuilderM.CreateLoad(idx, load->getName()+"_unwrap");
+          toreturn->setAlignment(load->getAlignment());
+          toreturn->setVolatile(load->isVolatile());
+          toreturn->setOrdering(load->getOrdering());
+          toreturn->setSyncScopeID(load->getSyncScopeID());
+          if (unwrap_cache.find(std::make_pair((Value*)load->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) {
+              unwrap_cache[cidx] = toreturn;
+          }
+          assert(val->getType() == toreturn->getType());
+          return toreturn;
+    } else if (auto op = dyn_cast<IntrinsicInst>(val)) {
+      switch(op->getIntrinsicID()) {
+          case Intrinsic::sin: {
+            Value *args[] = {getOp(op->getOperand(0))};
+            if (args[0] == nullptr) goto endCheck;
+            Type *tys[] = {op->getOperand(0)->getType()};
+            return BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::sin, tys), args);
+          }
+          case Intrinsic::cos: {
+            Value *args[] = {getOp(op->getOperand(0))};
+            if (args[0] == nullptr) goto endCheck;
+            Type *tys[] = {op->getOperand(0)->getType()};
+            return BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::cos, tys), args);
+          }
+          default:;
+
+      }
+    } else if (auto phi = dyn_cast<PHINode>(val)) {
+      if (phi->getNumIncomingValues () == 1) {
+          assert(phi->getIncomingValue(0) != phi);
+          llvm::errs() << " unwrap of " << *phi << " retrieves" << phi->getIncomingValue(0) << "\n";
+          auto toreturn = getOp(phi->getIncomingValue(0));
+          if (toreturn == nullptr) goto endCheck;
+          assert(val->getType() == toreturn->getType());
+          return toreturn;
+      }
+    }
 
 
 endCheck:
@@ -1269,8 +1285,7 @@ endCheck:
                 }
             }
           }
-            return nullptr;
-            report_fatal_error("unable to unwrap");
+      return nullptr;
     }
 
     //! returns true indices
@@ -1720,7 +1735,7 @@ endCheck:
         return inst;
     }
 
-    Value* lookupM(Value* val, IRBuilder<>& BuilderM);
+    Value* lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToValueMapTy &incoming_availalble=ValueToValueMapTy());
 
     Value* invertPointerM(Value* val, IRBuilder<>& BuilderM);
 

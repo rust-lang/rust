@@ -26,10 +26,10 @@ attributes #0 = { noinline }
 ; CHECK-NEXT:  %0 = load float, float* %a, align 4
 ; CHECK-NEXT:  %1 = load float, float* %b, align 4
 ; CHECK-NEXT:  %cmp = fcmp ogt float %0, %1
-; CHECK-NEXT:  %"a.b'ipse" = select i1 %cmp, float* %"a'", float* %"b'"
 ; CHECK-NEXT:  %a.b = select i1 %cmp, float* %a, float* %b
-; CHECK-NEXT:  %2 = load float, float* %"a.b'ipse"
-; CHECK-NEXT:  %3 = fadd fast float %2, %[[differet]]
-; CHECK-NEXT:  store float %3, float* %"a.b'ipse"
+; CHECK-NEXT:  %[[abp:.+]] = select i1 %cmp, float* %"a'", float* %"b'"
+; CHECK-NEXT:  %[[prep:.+]] = load float, float* %[[abp]]
+; CHECK-NEXT:  %[[postp:.]] = fadd fast float %[[prep]], %[[differet]]
+; CHECK-NEXT:  store float %[[postp]], float* %[[abp]]
 ; CHECK-NEXT:  ret {} undef
 ; CHECK-NEXT: }

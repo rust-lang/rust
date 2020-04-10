@@ -1204,14 +1204,14 @@ attributes #10 = { noreturn nounwind }
 
 ; CHECK: define internal {} @diffesubfn(float** %m_data.i.i, float** %"m_data.i.i'", float* %K, float* %"K'", { i8* } %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"call'mi" = extractvalue { i8* } %tapeArg, 0
-; CHECK-NEXT:   %"a0'ipc" = bitcast i8* %"call'mi" to float*
-; CHECK-NEXT:   %0 = load float, float* %"a0'ipc", align 4
-; CHECK-NEXT:   %"a0'ipc1" = bitcast i8* %"call'mi" to float*
-; CHECK-NEXT:   store float 0.000000e+00, float* %"a0'ipc1", align 4
+; CHECK-NEXT:   %[[callpmi:.+]] = extractvalue { i8* } %tapeArg, 0
+; CHECK-NEXT:   %[[a0ipc:.+]] = bitcast i8* %[[callpmi:.+]] to float*
+; CHECK-NEXT:   %0 = load float, float* %[[a0ipc]], align 4
+; CHECK-NEXT:   %[[a0ipc1:.+]] = bitcast i8* %[[callpmi:.+]] to float*
+; CHECK-NEXT:   store float 0.000000e+00, float* %[[a0ipc1]], align 4
 ; CHECK-NEXT:   %1 = load float, float* %"K'", align 4
 ; CHECK-NEXT:   %2 = fadd fast float %1, %0
 ; CHECK-NEXT:   store float %2, float* %"K'", align 4
-; CHECK-NEXT:   tail call void @free(i8* nonnull %"call'mi")
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[callpmi:.+]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

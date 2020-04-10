@@ -72,12 +72,12 @@ attributes #3 = { readnone }
 
 ; CHECK: define internal {} @diffetotal(double* %this, double* %"this'", double %differeturn, {} %tapeArg) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %loaded = load double, double* %this, align 8
-; CHECK-NEXT:   %0 = call { double } @diffemeta(double %loaded, double %differeturn)
-; CHECK-NEXT:   %1 = extractvalue { double } %0, 0
-; CHECK-NEXT:   %2 = load double, double* %"this'", align 8
-; CHECK-NEXT:   %3 = fadd fast double %2, %1
-; CHECK-NEXT:   store double %3, double* %"this'", align 8
+; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %this, align 8
+; CHECK-NEXT:   %[[dmetastruct:.+]] = call { double } @diffemeta(double %[[loaded]], double %differeturn)
+; CHECK-NEXT:   %[[dmeta:.+]] = extractvalue { double } %[[dmetastruct]], 0
+; CHECK-NEXT:   %[[prethis:.+]] = load double, double* %"this'", align 8
+; CHECK-NEXT:   %[[postthis:.+]] = fadd fast double %[[prethis]], %[[dmeta]]
+; CHECK-NEXT:   store double %[[postthis:.+]], double* %"this'", align 8
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

@@ -100,89 +100,11 @@
     }
   }
 
-//! Given the option to recompute a value or re-use an old one, return true if we should recompute this value from scratch
+//! Given the option to recompute a value or re-use an old one, return true if it is faster to recompute this value from scratch
 bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& available) {
   if (available.count(val)) return true;
-  if (isa<Argument>(val) || isa<Constant>(val)) {
-    return true;
-  } else if (auto op = dyn_cast<CastInst>(val)) {
-    return shouldRecompute(op->getOperand(0), available);
-  } else if (isa<AllocaInst>(val)) {
-    //don't recompute an alloca inst (and thereby create a new allocation)
-    return false;
-  } else if (auto op = dyn_cast<BinaryOperator>(val)) {
-    bool a0 = shouldRecompute(op->getOperand(0), available);
-    if (a0) {
-        //llvm::errs() << "need recompute: " << *op->getOperand(0) << "\n";
-    }
-    bool a1 = shouldRecompute(op->getOperand(1), available);
-    if (a1) {
-        //llvm::errs() << "need recompute: " << *op->getOperand(1) << "\n";
-    }
-    return a0 && a1;
-  } else if (auto op = dyn_cast<CmpInst>(val)) {
-    return shouldRecompute(op->getOperand(0), available) && shouldRecompute(op->getOperand(1), available);
-  } else if (auto op = dyn_cast<SelectInst>(val)) {
-    return shouldRecompute(op->getOperand(0), available) && shouldRecompute(op->getOperand(1), available) && shouldRecompute(op->getOperand(2), available);
-  } else if (auto load = dyn_cast<LoadInst>(val)) {
-    Value* idx = load->getOperand(0);
-
-    while (!isa<Argument>(idx)) {
-
-      if (auto gep = dyn_cast<GetElementPtrInst>(idx)) {
-        for(auto &a : gep->indices()) {
-          if (!shouldRecompute(a, available)) {
-            //llvm::errs() << "not recomputable load " << *load << " as arg " << *gep << " has bad idx " << *a << "\n";
-            return false;
-          }
-        }
-        idx = gep->getPointerOperand();
-
-      } else if(auto cast = dyn_cast<CastInst>(idx)) {
-        idx = cast->getOperand(0);
-
-      } else if(auto ci = dyn_cast<CallInst>(idx)) {
-        if (!shouldRecompute(idx, available)) {
-            //llvm::errs() << "not recomputable load " << *load << " as arg " << *idx << "\n";
-            return false;
-        }
-
-        if (ci->hasRetAttr(Attribute::ReadOnly) || ci->hasRetAttr(Attribute::ReadNone)) {
-          //llvm::errs() << "recomputable load " << *load << " from call readonly ret " << *ci << "\n";
-          return true;
-        }
-
-        //llvm::errs() << "not recomputable load " << *load << " as arg " << *idx << "\n";
-        return false;
-
-      } else {
-              //llvm::errs() << "not a gep " << *idx << "\n";
-        //llvm::errs() << "not recomputable load " << *load << " unknown as arg " << *idx << "\n";
-        return false;
-      }
-    }
-
-    Argument* arg = cast<Argument>(idx);
-    if (arg->hasAttribute(Attribute::ReadOnly) || arg->hasAttribute(Attribute::ReadNone)) {
-            //llvm::errs() << "argument " << *arg << " not marked read only\n";
-      //llvm::errs() << "recomputable load " << *load << " from as argument " << *arg << "\n";
-      return true;
-    }
-
-    //llvm::errs() << "not recomputable load " << *load << " unknown as argument " << *arg << "\n";
-    return false;
-
-  } else if (auto phi = dyn_cast<PHINode>(val)) {
-    if (phi->getNumIncomingValues () == 1) {
-      bool b = shouldRecompute(phi->getIncomingValue(0) , available);
-      if (b) {
-            //llvm::errs() << "phi need recompute: " <<*phi->getIncomingValue(0) << "\n";
-      }
-      return b;
-    }
-
-    return false;
-  } else if (auto op = dyn_cast<IntrinsicInst>(val)) {
+  //TODO: remake such that this returns whether a load to a cache is more expensive than redoing the computation.
+  if (auto op = dyn_cast<IntrinsicInst>(val)) {
     switch(op->getIntrinsicID()) {
       case Intrinsic::sin:
       case Intrinsic::cos:
@@ -192,8 +114,12 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
       return false;
     }
   }
+
+  //cache a call, assuming its longer to run that
+  if (isa<CallInst>(val)) return false;
+
   //llvm::errs() << "unknown inst " << *val << " unable to recompute\n";
-  return false;
+  return true;
 }
 
 GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned> &returnMapping ) {
@@ -852,7 +778,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
     return true;
 }
 
-Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
+Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToValueMapTy& incoming_available) {
     assert(val->getName() != "<badref>");
     if (isa<Constant>(val)) {
         return val;
@@ -920,18 +846,31 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     bool inLoop = getContext(inst->getParent(), lc);
 
     ValueToValueMapTy available;
+    for(auto pair : incoming_available) {
+      available[pair.first] = pair.second;
+    }
+
     if (inLoop) {
+        bool first = true;
         for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx)) {
           if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
             available[idx.var] = BuilderM.CreateLoad(idx.antivaralloc);
           } else {
             available[idx.var] = idx.var;
           }
+          if (!first && idx.var == inst) return available[idx.var];
+          if (first) {
+            first = false;
+          }
           if (idx.parent == nullptr) break;
         }
     }
 
-    bool legalRecompute = true;
+    if (available.count(inst)) return available[inst];
+
+    //TODO consider call as part of legalRecompute
+    bool legalRecompute = !isa<PHINode>(inst);
+    legalRecompute &= inst->getMetadata("enzyme_mustcache") == nullptr;
     if (isa<LoadInst>(inst) && originalInstructions.find(inst) != originalInstructions.end()) {
         auto found = can_modref_map->find(getOriginal(inst));
         if(found == can_modref_map->end()) {
@@ -942,17 +881,37 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
             llvm::errs() << "couldn't find in can_modref_map: " << *getOriginal(inst) << " in fn: " << getOriginal(inst)->getParent()->getParent()->getName();
         }
         assert(found != can_modref_map->end());
-        legalRecompute = !found->second;
+        legalRecompute &= !found->second;
+        //llvm::errs() << " legal [ " << legalRecompute << " ] recompute of " << *inst << "\n";
     }
 
     if (legalRecompute) {
       if (shouldRecompute(inst, available)) {
-          auto op = unwrapM(inst, BuilderM, available, /*lookupIfAble*/true);
-          assert(op);
-          assert(op->getType());
-          return op;
+          //llvm::errs() << "for op " << *inst << " choosing to unwrap\n";
+          auto op = unwrapM(inst, BuilderM, available, /*lookupIfAble*/false, /*fullUnwrap*/false);
+          if (op) {
+            assert(op);
+            assert(op->getType());
+            if (auto load_op = dyn_cast<LoadInst>(inst)) {
+              if (auto new_op = dyn_cast<LoadInst>(op)) {
+                  MDNode* invgroup = load_op->getMetadata(LLVMContext::MD_invariant_group);
+                  if (invgroup == nullptr) {
+                    invgroup = MDNode::getDistinct(load_op->getContext(), {});
+                    load_op->setMetadata(LLVMContext::MD_invariant_group, invgroup);
+                  }
+                  new_op->setMetadata(LLVMContext::MD_invariant_group, invgroup);
+              }
+            }
+            lookup_cache[idx] = op;
+            return op;
+          }
+      } else {
+        if (isa<LoadInst>(inst)) {
+          llvm::errs() << " + loading " << *inst << "\n";
+        }
       }
     }
+    //llvm::errs() << "looking from cache: " << *inst << "\n";
 
     ensureLookupCached(inst);
     assert(scopeMap[inst]);

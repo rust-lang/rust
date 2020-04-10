@@ -10,8 +10,9 @@ jobs:
       fail-fast: false
       matrix:
         julia-version: ['1.3', '1.4']
-        os: [ubuntu-18.04]
+        os: [self-hosted]
     
+    timeout-minutes: 30 
     steps:
       - name: "Checkout Enzyme code"
         uses: actions/checkout@v1

@@ -32,12 +32,12 @@ entry:
 ; CHECK: define internal {} @diffematvec(double* %this, double* %"this'", i64* %d0, i64* %"d0'") {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call_augmented = call { { { double } }, double } @augmented_metaloader(double* %this, double* %"this'")
-; CHECK-NEXT:   %0 = extractvalue { { { double } }, double } %call_augmented, 0
+; CHECK-NEXT:   %[[eca:.+]] = extractvalue { { { double } }, double } %call_augmented, 0
 ; CHECK-NEXT:   %call = extractvalue { { { double } }, double } %call_augmented, 1
 ; CHECK-NEXT:   store double %call, double* %this, align 8
-; CHECK-NEXT:   %1 = load double, double* %"this'"
+; CHECK-NEXT:   %[[dth]] = load double, double* %"this'"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"this'", align 8
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffemetaloader(double* %this, double* %"this'", double %1, { { double } } %0)
+; CHECK-NEXT:   %[[unused:.+]] = call {} @diffemetaloader(double* %this, double* %"this'", double %[[dth]], { { double } } %[[eca]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

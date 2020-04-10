@@ -91,6 +91,7 @@ std::map<Instruction*, bool> compute_uncacheable_load_map(GradientUtils* gutils,
             }
           assert(found != uncacheable_args.end());
           if (found->second) {
+            //llvm::errs() << "OP is uncacheable arg: " << *op << "\n";
             can_modref = true;
           }
           //llvm::errs() << " + argument (can_modref=" << can_modref << ") " << *op << " object: " << *obj << " arg: " << *arg << "e\n";
@@ -121,11 +122,11 @@ std::map<Instruction*, bool> compute_uncacheable_load_map(GradientUtils* gutils,
             }
           } else if (isa<LoadInst>(obj)) {
             // If obj is from a load instruction conservatively consider it uncacheable.
+            //llvm::errs() << "OP is from a load, needing to cache " << *op << "\n";
             can_modref = true;
-          //} else if (isa<AllocaInst>(obj)) {
-          //  can_modref = true;
           } else {
             // In absence of more information, assume that the underlying object for pointer operand is uncacheable in caller.
+            //llvm::errs() << "OP is an unknown instruction, needing to cache " << *op << "\n";
             can_modref = true;
           }
         }
@@ -135,6 +136,24 @@ std::map<Instruction*, bool> compute_uncacheable_load_map(GradientUtils* gutils,
             assert(inst->getParent()->getParent() == inst2->getParent()->getParent());
             if (inst == inst2) continue;
             if (!gutils->OrigDT.dominates(inst2, inst)) {
+
+              // Don't consider modref from malloc/free as a need to cache
+              if (auto obj_op = dyn_cast<CallInst>(inst2)) {
+                Function* called = obj_op->getCalledFunction();
+                if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
+                  if (castinst->isCast()) {
+                    if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                      if (isAllocationFunction(*fn, TLI) || isDeallocationFunction(*fn, TLI)) {
+                        called = fn;
+                      }
+                    }
+                  }
+                }
+                if (called && isCertainMallocOrFree(called)) {
+                  continue;
+                }
+              }
+
               if (llvm::isModSet(AA.getModRefInfo(inst2, MemoryLocation::get(op)))) {
                 can_modref = true;
                 //llvm::errs() << *inst << " needs to be cached due to: " << *inst2 << "\n";
@@ -534,7 +553,7 @@ std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGr
     return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
 }
 
-void handleAugmentedCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations);
+void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations);
 
 enum class DerivativeMode {
     Forward,
@@ -561,13 +580,11 @@ public:
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map;
   const SmallPtrSetImpl<Instruction*> *returnuses;
   AugmentedReturnType augmentedReturn;
-  BasicBlock::reverse_iterator &I;
-  const BasicBlock::reverse_iterator &E;
   std::vector<Instruction*> *fakeTBAA;
   DerivativeMaker(DerivativeMode mode, GradientUtils *gutils, TypeResults &TR, std::function<unsigned(Instruction*, std::string)> getIndex,
     const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map, const SmallPtrSetImpl<Instruction*> *returnuses, AugmentedReturnType augmentedReturn,
-    BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, std::vector<Instruction*>* fakeTBAA
-    ) : mode(mode), gutils(gutils), TR(TR), getIndex(getIndex), uncacheable_args_map(uncacheable_args_map), returnuses(returnuses), augmentedReturn(augmentedReturn), I(I), E(E), fakeTBAA(fakeTBAA) {}
+    std::vector<Instruction*>* fakeTBAA
+    ) : mode(mode), gutils(gutils), TR(TR), getIndex(getIndex), uncacheable_args_map(uncacheable_args_map), returnuses(returnuses), augmentedReturn(augmentedReturn), fakeTBAA(fakeTBAA) {}
 
   void visitInstruction(llvm::Instruction& inst) {
     //TODO explicitly handle all instructions rather than using the catch all below
@@ -1284,7 +1301,7 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
 
   assert(uncacheable_args_map.find(orig) != uncacheable_args_map.end());
   assert(augmentedReturn);
-  handleAugmentedCallInst(TR, I, E, &call, gutils, uncacheable_args_map.find(orig)->second, *returnuses, getIndex, augmentedReturn->subaugmentations);
+  handleAugmentedCallInst(TR, &call, gutils, uncacheable_args_map.find(orig)->second, *returnuses, getIndex, augmentedReturn->subaugmentations);
 }
 
 template <>
@@ -1342,7 +1359,7 @@ typename std::map<K, V>::iterator insert_or_assign(std::map<K, V>& map, K2 key, 
   auto found = map.find(key);
   if (found == map.end()) {}
     return map.emplace(key, val).first;
-  
+
   map.at(key) = val;
   //map->second = val;
   return map.find(key);
@@ -1545,9 +1562,10 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
   for(BasicBlock* BB: gutils->originalBlocks) {
       auto term = BB->getTerminator();
       assert(term);
+      BasicBlock* oBB = gutils->getOriginal(BB);
 
       // Don't create derivatives for code that results in termination
-      if (guaranteedUnreachable.find(gutils->getOriginal(BB)) != guaranteedUnreachable.end()) continue;
+      if (guaranteedUnreachable.find(oBB) != guaranteedUnreachable.end()) continue;
 
       if (isa<ReturnInst>(term) || isa<BranchInst>(term) || isa<SwitchInst>(term)) {
       } else {
@@ -1559,13 +1577,13 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
         assert(0 && "unknown terminator inst");
       }
 
-      for (BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend(); I != E;) {
-        Instruction* inst = &*I;
+      BasicBlock::reverse_iterator I = oBB->rbegin(), E = oBB->rend();
+      I++;
+      for (; I != E; I++) {
+        Instruction* inst = gutils->getNewFromOriginal(&*I);
         assert(inst);
-        I++;
-        if (gutils->originalInstructions.find(inst) == gutils->originalInstructions.end()) continue;
 
-        DerivativeMaker<AugmentedReturn*> maker(DerivativeMode::Forward, gutils, TR, getIndex, uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second, I, E, nullptr);
+        DerivativeMaker<AugmentedReturn*> maker(DerivativeMode::Forward, gutils, TR, getIndex, uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second, nullptr);
         maker.visit(*inst);
      }
   }
@@ -2016,7 +2034,7 @@ static bool shouldAugmentCall(CallInst* op, const GradientUtils* gutils) {
   return modifyPrimal;
 }
 
-void handleAugmentedCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
+void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
     Function *called = op->getCalledFunction();
 
     if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -2039,7 +2057,6 @@ void handleAugmentedCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, c
         if (!gutils->isConstantValue(op)) {
             auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
             gutils->createAntiMalloc(op, getIndex(gutils->getOriginal(op), "shadow"));
-            if (I != E && placeholder == &*I) I++;
         }
         return;
     }
@@ -2197,7 +2214,6 @@ void handleAugmentedCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, c
         gutils->addMalloc(BuilderZ, tp, getIndex(gutils->getOriginal(op), "tape") );
         if (gutils->invertedPointers.count(op) != 0) {
             auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-            if (I != E && placeholder == &*I) I++;
             gutils->invertedPointers.erase(op);
 
             if (subdifferentialreturn) {
@@ -2245,7 +2261,7 @@ void handleAugmentedCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, c
         gutils->erase(op);
 }
 
-void handleGradientCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
+void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
   Function *called = op->getCalledFunction();
 
   if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -2301,7 +2317,6 @@ void handleGradientCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, co
     if (!constval) {
       PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[op]);
       auto anti = gutils->createAntiMalloc(op, getIndex(gutils->getOriginal(op), "shadow"));
-      if (I != E && placeholder == &*I) I++;
       Value* tofree = gutils->lookupM(anti, Builder2);
       assert(tofree);
       assert(tofree->getType());
@@ -2347,7 +2362,6 @@ void handleGradientCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, co
   if (called && called->getName()=="free") {
     if( gutils->invertedPointers.count(op) ) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-        if (I != E && placeholder == &*I) I++;
         gutils->invertedPointers.erase(op);
         gutils->erase(placeholder);
     }
@@ -2377,7 +2391,6 @@ void handleGradientCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, co
   if (called && (called->getName()=="_ZdlPv" || called->getName()=="_ZdlPvm")) {
     if( gutils->invertedPointers.count(op) ) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-        if (I != E && placeholder == &*I) I++;
         gutils->invertedPointers.erase(op);
         gutils->erase(placeholder);
     }
@@ -2845,7 +2858,6 @@ void handleGradientCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, co
 
             auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
             //llvm::errs() << " +  considering placeholder: " << *placeholder << "\n";
-            if (I != E && placeholder == &*I) I++;
 
             bool subcheck = subdifferentialreturn && !op->getType()->isFPOrFPVectorTy() && !gutils->isConstantValue(op);
 
@@ -2884,6 +2896,7 @@ void handleGradientCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, co
         if (fnandtapetype && fnandtapetype->tapeType) {
           auto tapep = BuilderZ.CreatePointerCast(tape, PointerType::getUnqual(fnandtapetype->tapeType));
           auto truetape = BuilderZ.CreateLoad(tapep);
+          truetape->setMetadata("enzyme_mustcache", MDNode::get(truetape->getContext(), {}));
 
           CallInst* ci = cast<CallInst>(CallInst::CreateFree(tape, &*BuilderZ.GetInsertPoint()));
           ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
@@ -2902,7 +2915,6 @@ void handleGradientCallInst(TypeResults &TR, BasicBlock::reverse_iterator &I, co
   } else {
       if( gutils->invertedPointers.count(op) ) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-        if (I != E && placeholder == &*I) I++;
         gutils->invertedPointers.erase(op);
         gutils->erase(placeholder);
       }
@@ -3015,7 +3027,6 @@ badfn:;
     //if a function is replaced for joint forward/reverse, handle inverted pointers
     if (gutils->invertedPointers.count(op)) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-        if (I != E && placeholder == &*I) I++;
         gutils->invertedPointers.erase(op);
         if (subdretptr) {
             dumpMap(gutils->invertedPointers);
@@ -3344,7 +3355,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         IRBuilder<> BuilderZ(gutils->inversionAllocs);
         auto tapep = BuilderZ.CreatePointerCast(additionalValue, PointerType::getUnqual(augmenteddata->tapeType));
         LoadInst* truetape = BuilderZ.CreateLoad(tapep);
-        truetape->setMetadata("enzyme_noneedunwrap", MDNode::get(truetape->getContext(), {}));
+        truetape->setMetadata("enzyme_mustcache", MDNode::get(truetape->getContext(), {}));
 
         CallInst* ci = cast<CallInst>(CallInst::CreateFree(additionalValue, truetape));//&*BuilderZ.GetInsertPoint()));
         ci->moveAfter(truetape);
@@ -3441,7 +3452,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
   for(BasicBlock* BB: gutils->originalBlocks) {
     // Don't create derivatives for code that results in termination
-    if (guaranteedUnreachable.find(gutils->getOriginal(BB)) != guaranteedUnreachable.end()) continue;
+    BasicBlock* oBB = gutils->getOriginal(BB);
+    if (guaranteedUnreachable.find(oBB) != guaranteedUnreachable.end()) continue;
 
     auto BB2 = gutils->reverseBlocks[BB];
     assert(BB2);
@@ -3482,14 +3494,13 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   }
 
 
-
-  for (BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend(); I != E;) {
-    Instruction* inst = &*I;
+  BasicBlock::reverse_iterator I = oBB->rbegin(), E = oBB->rend();
+  I++;
+  for (; I != E; I++) {
+    Instruction* inst = gutils->getNewFromOriginal(&*I);
     assert(inst);
-    I++;
-    if (gutils->originalInstructions.find(inst) == gutils->originalInstructions.end()) continue;
 
-    DerivativeMaker<const AugmentedReturn*> maker( topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils, TR, getIndex, uncacheable_args_map, /*returnuses*/nullptr, augmenteddata, I, E, &fakeTBAA);
+    DerivativeMaker<const AugmentedReturn*> maker( topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils, TR, getIndex, uncacheable_args_map, /*returnuses*/nullptr, augmenteddata, &fakeTBAA);
     //maker.visit(*inst);
 
     if (isa<BinaryOperator>(inst)) {
@@ -3543,7 +3554,7 @@ realcall:
           }
       }
       assert(uncacheable_args_map.find(orig) != uncacheable_args_map.end());
-      handleGradientCallInst(TR, I, E, Builder2, op, gutils, topLevel, replacedReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, returnUsed, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
+      handleGradientCallInst(TR, Builder2, op, gutils, topLevel, replacedReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, returnUsed, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
     } else if(auto op = dyn_cast_or_null<SelectInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;

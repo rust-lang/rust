@@ -12,23 +12,24 @@ jobs:
       matrix:
         llvm: ["7", "9"] # 8
         build: ["Release", "Debug"] # "RelWithDebInfo"
-        os: [ubuntu-18.04]
+        os: [self-hosted]
     
+    timeout-minutes: 30 
     steps:
     - name: add llvm 
       run: |
-          sudo apt-get remove  -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
-          sudo apt-get install -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
+          #sudo apt-get remove  -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
+          sudo apt-get install -y autoconf cmake libtool gfortran llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
     - uses: actions/checkout@v1
       with:
           fetch-depth: 1
     - name: mkdir
-      run: cd enzyme && mkdir build
+      run: cd enzyme && rm -rf build && mkdir build
     - name: cmake
       run: |
           cd enzyme/build 
           cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/llvm-${{ matrix.llvm }}/build/utils/lit/lit.py -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
     - name: make
-      run: cd enzyme/build && make
+      run: cd enzyme/build && make -j
     - name: make check-enzyme
-      run: cd enzyme/build && make check-enzyme
+      run: cd enzyme/build && make check-enzyme -j

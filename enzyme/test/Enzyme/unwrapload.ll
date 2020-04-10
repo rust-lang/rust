@@ -123,9 +123,6 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[a19cache:.+]] = extractvalue { i64, i64* } %tapeArg, 1
 ; CHECK-NEXT:   %a5 = extractvalue { i64, i64* } %tapeArg, 0
-; CHECK-NEXT:   %mallocsize = shl i64 %a5, 3
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to i64*
 ; CHECK-NEXT:   br label %loop1
 
 ; CHECK: loop1:                                            ; preds = %exit, %entry
@@ -133,9 +130,6 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
 ; CHECK-NEXT:   %1 = getelementptr i64, i64* %0, i64 %iv
 ; CHECK-NEXT:   %a19 = load i64, i64* %1, align 8, !invariant.group !1
-; CHECK-NEXT:   %2 = add i64 %a19, -1
-; CHECK-NEXT:   %3 = getelementptr i64, i64* %_malloccache, i64 %iv
-; CHECK-NEXT:   store i64 %2, i64* %3, align 8, !invariant.group !2
 ; CHECK-NEXT:   br label %loop2
 
 ; CHECK: loop2:                                            ; preds = %loop2, %loop1
@@ -149,7 +143,6 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   br i1 %exitcond25, label %invertexit, label %loop1
 
 ; CHECK: invertentry:                                      ; preds = %invertloop1
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   %[[free0:.+]] = bitcast i64* %[[a19cache]] to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[free0]])
 ; CHECK-NEXT:   ret {} undef
@@ -162,10 +155,11 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %[[p6:.+]] = fadd fast double %[[dadd:.+]], %[[dres:.+]]
 ; CHECK-NEXT:   br label %invertexit
 
-; CHECK: invertloop2:                                      ; preds = %invertexit, %incinvertloop2
-; CHECK-NEXT:   %"res1'de.0" = phi double [ 0.000000e+00, %invertexit ], [ %[[dres]], %incinvertloop2 ]
-; CHECK-NEXT:   %"add'de.0" = phi double [ %[[add1p:.+]], %invertexit ], [ %[[dadd]], %incinvertloop2 ]
-; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %[[iv1p:.+]], %invertexit ], [ %[[sub:.+]], %incinvertloop2 ]
+; CHECK: invertloop2:
+; CHECK-NEXT:   %"res1'de.0" = phi double [ 0.000000e+00, %invertexit ], [ %[[dres]], %invertloop2 ]
+; CHECK-NEXT:   %"add'de.0" = phi double [ %[[add1p:.+]], %invertexit ], [ %[[dadd]], %invertloop2 ]
+; CHECK-NEXT:   %"iv1'ac.0.in" = phi i64 [ %[[iv1p:.+]], %invertexit ], [ %"iv1'ac.0", %incinvertloop2 ]
+; CHECK-NEXT:   %"iv1'ac.0" = add i64 %"iv1'ac.0.in", -1
 ; CHECK-NEXT:   %"gepk3'ipg" = getelementptr double, double* %"data'", i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %[[linv:.+]] = load double, double* %"gepk3'ipg", align 8
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[linv]], %"add'de.0"
@@ -174,11 +168,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %[[dadd]] = select{{( fast)?}} i1 %[[eq]], double 0.000000e+00, double %"add'de.0"
 ; CHECK-NEXT:   %[[fdadd:.+]] = fadd fast double %"res1'de.0", %"add'de.0"
 ; CHECK-NEXT:   %[[dres]] = select{{( fast)?}} i1 %[[eq]], double %[[fdadd]], double %"res1'de.0"
-; CHECK-NEXT:   br i1 %[[eq]], label %invertloop1, label %incinvertloop2
-
-; CHECK: incinvertloop2:                                   ; preds = %invertloop2
-; CHECK-NEXT:   %[[sub]] = add nsw i64 %"iv1'ac.0", -1
-; CHECK-NEXT:   br label %invertloop2
+; CHECK-NEXT:   br i1 %[[eq]], label %invertloop1, label %invertloop2
 
 ; CHECK: invertexit:                                       ; preds = %exit, %incinvertloop1
 ; CHECK-NEXT:   %"add'de.1" = phi double [ %[[p6]], %incinvertloop1 ], [ %differeturn, %exit ]
@@ -186,8 +176,8 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %"iv'ac.0" = add i64 %"iv'ac.0.in", -1
 ; CHECK-NEXT:   %[[datap:.+]] = load double, double* %"data'", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"data'", align 8
-; CHECK-NEXT:   %[[mci:.+]] = getelementptr i64, i64* %_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[iv1p]] = load i64, i64* %[[mci]], align 8, !invariant.group !2
+; CHECK-NEXT:   %[[mci:.+]] = getelementptr i64, i64* %a19cache, i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[iv1p]] = load i64, i64* %[[mci]], align 8
 ; CHECK-NEXT:   %[[add1p]] = fadd fast double %"add'de.1", %[[datap]]
 ; CHECK-NEXT:   br label %invertloop2
 ; CHECK-NEXT: }
