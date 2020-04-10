@@ -1,5 +1,5 @@
 use ra_syntax::{
-    ast::{self, AstNode, AstToken, NameOwner, TypeParamsOwner},
+    ast::{self, AstNode, NameOwner, TypeParamsOwner},
     TextUnit,
 };
 use stdx::{format_to, SepBy};

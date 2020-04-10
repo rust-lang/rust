@@ -1,6 +1,5 @@
 //! Generated file, do not edit by hand, see `xtask/src/codegen`
 
-use super::tokens::*;
 use crate::{
     ast::{self, support, AstChildren, AstNode},
     SyntaxKind::{self, *},
@@ -463,7 +462,7 @@ impl ImplDef {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![const]) }
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![unsafe]) }
     pub fn impl_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![impl]) }
-    pub fn excl_token(&self) -> Option<Excl> { support::token(&self.syntax) }
+    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![!]) }
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![for]) }
     pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
 }
@@ -523,7 +522,7 @@ impl AstNode for NeverType {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl NeverType {
-    pub fn excl_token(&self) -> Option<Excl> { support::token(&self.syntax) }
+    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![!]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathType {
@@ -559,7 +558,7 @@ impl AstNode for PointerType {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl PointerType {
-    pub fn star_token(&self) -> Option<Star> { support::token(&self.syntax) }
+    pub fn star_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![*]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![const]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
@@ -622,8 +621,10 @@ impl AstNode for ReferenceType {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ReferenceType {
-    pub fn amp_token(&self) -> Option<Amp> { support::token(&self.syntax) }
-    pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
+    pub fn amp_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![&]) }
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![lifetime])
+    }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
@@ -643,7 +644,7 @@ impl AstNode for PlaceholderType {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl PlaceholderType {
-    pub fn underscore_token(&self) -> Option<Underscore> { support::token(&self.syntax) }
+    pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![_]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnPointerType {
@@ -955,7 +956,9 @@ impl ContinueExpr {
     pub fn continue_token(&self) -> Option<SyntaxToken> {
         support::token2(&self.syntax, T![continue])
     }
-    pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![lifetime])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BreakExpr {
@@ -975,7 +978,9 @@ impl AstNode for BreakExpr {
 impl ast::AttrsOwner for BreakExpr {}
 impl BreakExpr {
     pub fn break_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![break]) }
-    pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![lifetime])
+    }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -994,7 +999,9 @@ impl AstNode for Label {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl Label {
-    pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![lifetime])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BlockExpr {
@@ -1074,7 +1081,7 @@ impl ast::AttrsOwner for MethodCallExpr {}
 impl ast::ArgListOwner for MethodCallExpr {}
 impl MethodCallExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn dot_token(&self) -> Option<Dot> { support::token(&self.syntax) }
+    pub fn dot_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![.]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn type_arg_list(&self) -> Option<TypeArgList> { support::child(&self.syntax) }
 }
@@ -1116,7 +1123,7 @@ impl AstNode for FieldExpr {
 impl ast::AttrsOwner for FieldExpr {}
 impl FieldExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn dot_token(&self) -> Option<Dot> { support::token(&self.syntax) }
+    pub fn dot_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![.]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1137,7 +1144,7 @@ impl AstNode for AwaitExpr {
 impl ast::AttrsOwner for AwaitExpr {}
 impl AwaitExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn dot_token(&self) -> Option<Dot> { support::token(&self.syntax) }
+    pub fn dot_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![.]) }
     pub fn await_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![await]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1198,7 +1205,7 @@ impl AstNode for RefExpr {
 }
 impl ast::AttrsOwner for RefExpr {}
 impl RefExpr {
-    pub fn amp_token(&self) -> Option<Amp> { support::token(&self.syntax) }
+    pub fn amp_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![&]) }
     pub fn raw_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![raw]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -1220,7 +1227,6 @@ impl AstNode for PrefixExpr {
 }
 impl ast::AttrsOwner for PrefixExpr {}
 impl PrefixExpr {
-    pub fn prefix_op_token(&self) -> Option<PrefixOp> { support::token(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1259,9 +1265,7 @@ impl AstNode for RangeExpr {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ast::AttrsOwner for RangeExpr {}
-impl RangeExpr {
-    pub fn range_op_token(&self) -> Option<RangeOp> { support::token(&self.syntax) }
-}
+impl RangeExpr {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BinExpr {
     pub(crate) syntax: SyntaxNode,
@@ -1294,9 +1298,7 @@ impl AstNode for Literal {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl Literal {
-    pub fn literal_token_token(&self) -> Option<LiteralToken> { support::token(&self.syntax) }
-}
+impl Literal {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchExpr {
     pub(crate) syntax: SyntaxNode,
@@ -1358,7 +1360,7 @@ impl ast::AttrsOwner for MatchArm {}
 impl MatchArm {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn guard(&self) -> Option<MatchGuard> { support::child(&self.syntax) }
-    pub fn fat_arrow_token(&self) -> Option<FatArrow> { support::token(&self.syntax) }
+    pub fn fat_arrow_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=>]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1417,7 +1419,7 @@ impl AstNode for RecordFieldList {
 impl RecordFieldList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['{']) }
     pub fn fields(&self) -> AstChildren<RecordField> { support::children(&self.syntax) }
-    pub fn dotdot_token(&self) -> Option<Dotdot> { support::token(&self.syntax) }
+    pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![..]) }
     pub fn spread(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
@@ -1439,7 +1441,7 @@ impl AstNode for RecordField {
 impl ast::AttrsOwner for RecordField {}
 impl RecordField {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn colon_token(&self) -> Option<Colon> { support::token(&self.syntax) }
+    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![:]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1496,7 +1498,7 @@ impl AstNode for RefPat {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl RefPat {
-    pub fn amp_token(&self) -> Option<Amp> { support::token(&self.syntax) }
+    pub fn amp_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![&]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
@@ -1539,7 +1541,7 @@ impl ast::NameOwner for BindPat {}
 impl BindPat {
     pub fn ref_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![ref]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
-    pub fn at_token(&self) -> Option<At> { support::token(&self.syntax) }
+    pub fn at_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![@]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1558,7 +1560,7 @@ impl AstNode for PlaceholderPat {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl PlaceholderPat {
-    pub fn underscore_token(&self) -> Option<Underscore> { support::token(&self.syntax) }
+    pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![_]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DotDotPat {
@@ -1576,7 +1578,7 @@ impl AstNode for DotDotPat {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl DotDotPat {
-    pub fn dotdot_token(&self) -> Option<Dotdot> { support::token(&self.syntax) }
+    pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![..]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathPat {
@@ -1631,9 +1633,7 @@ impl AstNode for RangePat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl RangePat {
-    pub fn range_separator_token(&self) -> Option<RangeSeparator> { support::token(&self.syntax) }
-}
+impl RangePat {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LiteralPat {
     pub(crate) syntax: SyntaxNode,
@@ -1713,7 +1713,7 @@ impl RecordFieldPatList {
         support::children(&self.syntax)
     }
     pub fn bind_pats(&self) -> AstChildren<BindPat> { support::children(&self.syntax) }
-    pub fn dotdot_token(&self) -> Option<Dotdot> { support::token(&self.syntax) }
+    pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![..]) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1734,7 +1734,7 @@ impl AstNode for RecordFieldPat {
 impl ast::AttrsOwner for RecordFieldPat {}
 impl ast::NameOwner for RecordFieldPat {}
 impl RecordFieldPat {
-    pub fn colon_token(&self) -> Option<Colon> { support::token(&self.syntax) }
+    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![:]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1815,7 +1815,7 @@ impl AstNode for Name {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl Name {
-    pub fn ident_token(&self) -> Option<Ident> { support::token(&self.syntax) }
+    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![ident]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NameRef {
@@ -1832,9 +1832,7 @@ impl AstNode for NameRef {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl NameRef {
-    pub fn name_ref_token_token(&self) -> Option<NameRefToken> { support::token(&self.syntax) }
-}
+impl NameRef {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
@@ -1855,7 +1853,7 @@ impl ast::AttrsOwner for MacroCall {}
 impl ast::DocCommentsOwner for MacroCall {}
 impl MacroCall {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn excl_token(&self) -> Option<Excl> { support::token(&self.syntax) }
+    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![!]) }
     pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![;]) }
 }
@@ -1875,8 +1873,8 @@ impl AstNode for Attr {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl Attr {
-    pub fn pound_token(&self) -> Option<Pound> { support::token(&self.syntax) }
-    pub fn excl_token(&self) -> Option<Excl> { support::token(&self.syntax) }
+    pub fn pound_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![#]) }
+    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![!]) }
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['[']) }
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![=]) }
@@ -1915,12 +1913,12 @@ impl AstNode for TypeParamList {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl TypeParamList {
-    pub fn l_angle_token(&self) -> Option<LAngle> { support::token(&self.syntax) }
+    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![<]) }
     pub fn generic_params(&self) -> AstChildren<GenericParam> { support::children(&self.syntax) }
     pub fn type_params(&self) -> AstChildren<TypeParam> { support::children(&self.syntax) }
     pub fn lifetime_params(&self) -> AstChildren<LifetimeParam> { support::children(&self.syntax) }
     pub fn const_params(&self) -> AstChildren<ConstParam> { support::children(&self.syntax) }
-    pub fn r_angle_token(&self) -> Option<RAngle> { support::token(&self.syntax) }
+    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![>]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParam {
@@ -1983,7 +1981,9 @@ impl AstNode for LifetimeParam {
 }
 impl ast::AttrsOwner for LifetimeParam {}
 impl LifetimeParam {
-    pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![lifetime])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBound {
@@ -2001,7 +2001,9 @@ impl AstNode for TypeBound {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl TypeBound {
-    pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![lifetime])
+    }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![const]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
@@ -2040,7 +2042,9 @@ impl AstNode for WherePred {
 }
 impl ast::TypeBoundsOwner for WherePred {}
 impl WherePred {
-    pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![lifetime])
+    }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2077,9 +2081,7 @@ impl AstNode for Abi {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl Abi {
-    pub fn string_token(&self) -> Option<String> { support::token(&self.syntax) }
-}
+impl Abi {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExprStmt {
     pub(crate) syntax: SyntaxNode,
@@ -2207,8 +2209,10 @@ impl AstNode for SelfParam {
 impl ast::TypeAscriptionOwner for SelfParam {}
 impl ast::AttrsOwner for SelfParam {}
 impl SelfParam {
-    pub fn amp_token(&self) -> Option<Amp> { support::token(&self.syntax) }
-    pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
+    pub fn amp_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![&]) }
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![lifetime])
+    }
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![self]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2230,7 +2234,7 @@ impl ast::TypeAscriptionOwner for Param {}
 impl ast::AttrsOwner for Param {}
 impl Param {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
-    pub fn dotdotdot_token(&self) -> Option<Dotdotdot> { support::token(&self.syntax) }
+    pub fn dotdotdot_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![...]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseItem {
@@ -2270,7 +2274,7 @@ impl AstNode for UseTree {
 }
 impl UseTree {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn star_token(&self) -> Option<Star> { support::token(&self.syntax) }
+    pub fn star_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![*]) }
     pub fn use_tree_list(&self) -> Option<UseTreeList> { support::child(&self.syntax) }
     pub fn alias(&self) -> Option<Alias> { support::child(&self.syntax) }
 }
@@ -2391,14 +2395,14 @@ impl AstNode for PathSegment {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl PathSegment {
-    pub fn coloncolon_token(&self) -> Option<Coloncolon> { support::token(&self.syntax) }
-    pub fn l_angle_token(&self) -> Option<LAngle> { support::token(&self.syntax) }
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![::]) }
+    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![<]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn type_arg_list(&self) -> Option<TypeArgList> { support::child(&self.syntax) }
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
-    pub fn r_angle_token(&self) -> Option<RAngle> { support::token(&self.syntax) }
+    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![>]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeArgList {
@@ -2416,14 +2420,14 @@ impl AstNode for TypeArgList {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl TypeArgList {
-    pub fn coloncolon_token(&self) -> Option<Coloncolon> { support::token(&self.syntax) }
-    pub fn l_angle_token(&self) -> Option<LAngle> { support::token(&self.syntax) }
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![::]) }
+    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![<]) }
     pub fn generic_args(&self) -> AstChildren<GenericArg> { support::children(&self.syntax) }
     pub fn type_args(&self) -> AstChildren<TypeArg> { support::children(&self.syntax) }
     pub fn lifetime_args(&self) -> AstChildren<LifetimeArg> { support::children(&self.syntax) }
     pub fn assoc_type_args(&self) -> AstChildren<AssocTypeArg> { support::children(&self.syntax) }
     pub fn const_args(&self) -> AstChildren<ConstArg> { support::children(&self.syntax) }
-    pub fn r_angle_token(&self) -> Option<RAngle> { support::token(&self.syntax) }
+    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![>]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeArg {
@@ -2480,7 +2484,9 @@ impl AstNode for LifetimeArg {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl LifetimeArg {
-    pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![lifetime])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstArg {

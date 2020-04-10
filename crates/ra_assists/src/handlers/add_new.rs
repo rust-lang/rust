@@ -1,8 +1,7 @@
 use hir::Adt;
 use ra_syntax::{
     ast::{
-        self, AstNode, AstToken, NameOwner, StructKind, TypeAscriptionOwner, TypeParamsOwner,
-        VisibilityOwner,
+        self, AstNode, NameOwner, StructKind, TypeAscriptionOwner, TypeParamsOwner, VisibilityOwner,
     },
     TextUnit, T,
 };

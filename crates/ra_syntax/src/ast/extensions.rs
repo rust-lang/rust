@@ -21,11 +21,7 @@ impl ast::NameRef {
     }
 
     pub fn as_tuple_field(&self) -> Option<usize> {
-        if let Some(ast::NameRefToken::IntNumber(token)) = self.name_ref_token_token() {
-            token.text().as_str().parse().ok()
-        } else {
-            None
-        }
+        self.text().parse().ok()
     }
 }
 
@@ -315,7 +311,7 @@ pub enum TypeBoundKind {
     /// for<'a> ...
     ForType(ast::ForType),
     /// 'a
-    Lifetime(ast::Lifetime),
+    Lifetime(SyntaxToken),
 }
 
 impl ast::TypeBound {
@@ -401,7 +397,7 @@ impl ast::RangePat {
     pub fn start(&self) -> Option<ast::Pat> {
         self.syntax()
             .children_with_tokens()
-            .take_while(|it| !ast::RangeSeparator::can_cast(it.kind()))
+            .take_while(|it| !(it.kind() == T![..] || it.kind() == T![..=]))
             .filter_map(|it| it.into_node())
             .find_map(ast::Pat::cast)
     }
@@ -409,7 +405,7 @@ impl ast::RangePat {
     pub fn end(&self) -> Option<ast::Pat> {
         self.syntax()
             .children_with_tokens()
-            .skip_while(|it| !ast::RangeSeparator::can_cast(it.kind()))
+            .skip_while(|it| !(it.kind() == T![..] || it.kind() == T![..=]))
             .filter_map(|it| it.into_node())
             .find_map(ast::Pat::cast)
     }

@@ -655,4 +655,10 @@ macro_rules! T {
     ( raw ) => {
         $crate::SyntaxKind::RAW_KW
     };
+    ( lifetime ) => {
+        $crate::SyntaxKind::LIFETIME
+    };
+    ( ident ) => {
+        $crate::SyntaxKind::IDENT
+    };
 }

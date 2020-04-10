@@ -227,7 +227,6 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
 pub(crate) struct AstSrc<'a> {
     pub(crate) nodes: &'a [AstNodeSrc<'a>],
     pub(crate) enums: &'a [AstEnumSrc<'a>],
-    pub(crate) token_enums: &'a [AstEnumSrc<'a>],
 }
 
 pub(crate) struct AstNodeSrc<'a> {
@@ -415,11 +414,11 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct TupleType { T!['('], fields: [TypeRef], T![')'] }
         struct NeverType { T![!] }
         struct PathType { Path }
-        struct PointerType { Star, T![const], T![mut], TypeRef }
+        struct PointerType { T![*], T![const], T![mut], TypeRef }
         struct ArrayType { T!['['], TypeRef, T![;], Expr, T![']'] }
         struct SliceType { T!['['], TypeRef, T![']'] }
-        struct ReferenceType { Amp, Lifetime, T![mut], TypeRef }
-        struct PlaceholderType { Underscore }
+        struct ReferenceType { T![&], T![lifetime], T![mut], TypeRef }
+        struct PlaceholderType { T![_] }
         struct FnPointerType { Abi, T![unsafe], T![fn], ParamList, RetType }
         struct ForType { T![for], TypeParamList, TypeRef }
         struct ImplTraitType: TypeBoundsOwner { T![impl] }
@@ -447,33 +446,33 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             iterable: Expr,
         }
         struct WhileExpr: AttrsOwner, LoopBodyOwner { T![while], Condition }
-        struct ContinueExpr: AttrsOwner { T![continue], Lifetime }
-        struct BreakExpr: AttrsOwner { T![break], Lifetime, Expr }
-        struct Label { Lifetime }
+        struct ContinueExpr: AttrsOwner { T![continue], T![lifetime] }
+        struct BreakExpr: AttrsOwner { T![break], T![lifetime], Expr }
+        struct Label { T![lifetime] }
         struct BlockExpr: AttrsOwner { Label, T![unsafe], Block  }
         struct ReturnExpr: AttrsOwner { Expr }
         struct CallExpr: ArgListOwner { Expr }
         struct MethodCallExpr: AttrsOwner, ArgListOwner {
-            Expr, Dot, NameRef, TypeArgList,
+            Expr, T![.], NameRef, TypeArgList,
         }
         struct IndexExpr: AttrsOwner { T!['['], T![']'] }
-        struct FieldExpr: AttrsOwner { Expr, Dot, NameRef }
-        struct AwaitExpr: AttrsOwner { Expr, Dot, T![await] }
+        struct FieldExpr: AttrsOwner { Expr, T![.], NameRef }
+        struct AwaitExpr: AttrsOwner { Expr, T![.], T![await] }
         struct TryExpr: AttrsOwner { T![try], Expr }
         struct CastExpr: AttrsOwner { Expr, T![as], TypeRef }
-        struct RefExpr: AttrsOwner { Amp, T![raw], T![mut], Expr }
-        struct PrefixExpr: AttrsOwner { PrefixOp, Expr }
+        struct RefExpr: AttrsOwner { T![&], T![raw], T![mut], Expr }
+        struct PrefixExpr: AttrsOwner { /*PrefixOp,*/ Expr }
         struct BoxExpr: AttrsOwner { T![box], Expr }
-        struct RangeExpr: AttrsOwner { RangeOp }
+        struct RangeExpr: AttrsOwner { /*RangeOp*/ }
         struct BinExpr: AttrsOwner { /*BinOp*/ }
-        struct Literal { LiteralToken }
+        struct Literal { /*LiteralToken*/ }
 
         struct MatchExpr: AttrsOwner { T![match], Expr, MatchArmList }
         struct MatchArmList: AttrsOwner { T!['{'], arms: [MatchArm], T!['}'] }
         struct MatchArm: AttrsOwner {
             pat: Pat,
             guard: MatchGuard,
-            FatArrow,
+            T![=>],
             Expr,
         }
         struct MatchGuard { T![if], Expr }
@@ -482,22 +481,22 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct RecordFieldList {
             T!['{'],
             fields: [RecordField],
-            Dotdot,
+            T![..],
             spread: Expr,
             T!['}']
         }
-        struct RecordField: AttrsOwner { NameRef, Colon, Expr }
+        struct RecordField: AttrsOwner { NameRef, T![:], Expr }
 
         struct OrPat { pats: [Pat] }
         struct ParenPat { T!['('], Pat, T![')'] }
-        struct RefPat { Amp, T![mut], Pat }
+        struct RefPat { T![&], T![mut], Pat }
         struct BoxPat { T![box], Pat }
-        struct BindPat: AttrsOwner, NameOwner { T![ref], T![mut], At, Pat }
-        struct PlaceholderPat { Underscore }
-        struct DotDotPat { Dotdot }
+        struct BindPat: AttrsOwner, NameOwner { T![ref], T![mut], T![@], Pat }
+        struct PlaceholderPat { T![_] }
+        struct DotDotPat { T![..] }
         struct PathPat { Path }
         struct SlicePat { T!['['], args: [Pat], T![']'] }
-        struct RangePat { RangeSeparator }
+        struct RangePat { /*RangeSeparator*/ }
         struct LiteralPat { Literal }
         struct MacroPat { MacroCall }
 
@@ -507,30 +506,30 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             pats: [RecordInnerPat],
             record_field_pats: [RecordFieldPat],
             bind_pats: [BindPat],
-            Dotdot,
+            T![..],
             T!['}']
         }
-        struct RecordFieldPat: AttrsOwner, NameOwner { Colon, Pat }
+        struct RecordFieldPat: AttrsOwner, NameOwner { T![:], Pat }
 
         struct TupleStructPat { Path, T!['('], args: [Pat], T![')'] }
         struct TuplePat { T!['('], args: [Pat], T![')'] }
 
         struct Visibility { T![pub], T![super], T![self], T![crate] }
-        struct Name { Ident }
-        struct NameRef { NameRefToken }
+        struct Name { T![ident] }
+        struct NameRef { /*NameRefToken*/ }
 
         struct MacroCall: NameOwner, AttrsOwner,DocCommentsOwner {
             Path, T![!], TokenTree, T![;]
         }
-        struct Attr { Pound, T![!], T!['['], Path, T![=], input: AttrInput, T![']'] }
+        struct Attr { T![#], T![!], T!['['], Path, T![=], input: AttrInput, T![']'] }
         struct TokenTree {}
         struct TypeParamList {
-            LAngle,
+            T![<],
             generic_params: [GenericParam],
             type_params: [TypeParam],
             lifetime_params: [LifetimeParam],
             const_params: [ConstParam],
-            RAngle
+            T![>]
         }
         struct TypeParam: NameOwner, AttrsOwner, TypeBoundsOwner {
             T![=],
@@ -540,12 +539,12 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![=],
             default_val: Expr,
         }
-        struct LifetimeParam: AttrsOwner { Lifetime}
-        struct TypeBound { Lifetime, /* Question,  */ T![const], /* Question,  */ TypeRef}
+        struct LifetimeParam: AttrsOwner { T![lifetime] }
+        struct TypeBound { T![lifetime], /* Question,  */ T![const], /* Question,  */ TypeRef}
         struct TypeBoundList { bounds: [TypeBound] }
-        struct WherePred: TypeBoundsOwner { Lifetime, TypeRef }
+        struct WherePred: TypeBoundsOwner { T![lifetime], TypeRef }
         struct WhereClause { T![where], predicates: [WherePred] }
-        struct Abi { String }
+        struct Abi { /*String*/ }
         struct ExprStmt: AttrsOwner { Expr, T![;] }
         struct LetStmt: AttrsOwner, TypeAscriptionOwner {
             T![let],
@@ -567,17 +566,17 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             params: [Param],
             T![')']
         }
-        struct SelfParam: TypeAscriptionOwner, AttrsOwner { Amp, Lifetime, T![self] }
+        struct SelfParam: TypeAscriptionOwner, AttrsOwner { T![&], T![lifetime], T![self] }
         struct Param: TypeAscriptionOwner, AttrsOwner {
             Pat,
-            Dotdotdot
+            T![...]
         }
         struct UseItem: AttrsOwner, VisibilityOwner {
             T![use],
             UseTree,
         }
         struct UseTree {
-            Path, Star, UseTreeList, Alias
+            Path, T![*], UseTreeList, Alias
         }
         struct Alias: NameOwner { T![as] }
         struct UseTreeList { T!['{'], use_trees: [UseTree], T!['}'] }
@@ -594,21 +593,21 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             qualifier: Path,
         }
         struct PathSegment {
-            Coloncolon, LAngle, NameRef, TypeArgList, ParamList, RetType, PathType, RAngle
+            T![::], T![<], NameRef, TypeArgList, ParamList, RetType, PathType, T![>]
         }
         struct TypeArgList {
-            Coloncolon,
-            LAngle,
+            T![::],
+            T![<],
             generic_args: [GenericArg],
             type_args: [TypeArg],
             lifetime_args: [LifetimeArg],
             assoc_type_args: [AssocTypeArg],
             const_args: [ConstArg],
-            RAngle
+            T![>]
         }
         struct TypeArg { TypeRef }
         struct AssocTypeArg : TypeBoundsOwner { NameRef, T![=], TypeRef }
-        struct LifetimeArg { Lifetime }
+        struct LifetimeArg { T![lifetime] }
         struct ConstArg { Literal, T![=], BlockExpr }
 
         struct MacroItems: ModuleItemOwner{ }
@@ -765,39 +764,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         enum FieldDefList {
             RecordFieldDefList,
             TupleFieldDefList,
-        }
-    },
-
-    token_enums: &ast_enums! {
-        enum RangeSeparator { Dotdot, Dotdotdot, Dotdoteq}
-
-        enum PrefixOp {
-            Minus,
-            T![!],
-            Star
-        }
-
-        enum RangeOp {
-            Dotdot,
-            Dotdoteq
-        }
-
-        enum LiteralToken {
-            IntNumber,
-            FloatNumber,
-            String,
-            RawString,
-            // TrueKw,
-            // FalseKw,
-            ByteString,
-            RawByteString,
-            Char,
-            Byte
-        }
-
-        enum NameRefToken {
-            Ident,
-            IntNumber
         }
     },
 };
