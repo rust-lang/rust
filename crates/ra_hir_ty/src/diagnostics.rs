@@ -63,6 +63,29 @@ impl AstDiagnostic for MissingFields {
 }
 
 #[derive(Debug)]
+pub struct MissingPatFields {
+    pub file: HirFileId,
+    pub field_list: AstPtr<ast::RecordFieldPatList>,
+    pub missed_fields: Vec<Name>,
+}
+
+impl Diagnostic for MissingPatFields {
+    fn message(&self) -> String {
+        let mut buf = String::from("Missing structure fields:\n");
+        for field in &self.missed_fields {
+            format_to!(buf, "- {}", field);
+        }
+        buf
+    }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.field_list.into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+#[derive(Debug)]
 pub struct MissingMatchArms {
     pub file: HirFileId,
     pub match_expr: AstPtr<ast::Expr>,

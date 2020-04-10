@@ -668,7 +668,9 @@ impl ExprCollector<'_> {
                 });
                 fields.extend(iter);
 
-                Pat::Record { path, args: fields }
+                let ellipsis = record_field_pat_list.dotdot_token().is_some();
+
+                Pat::Record { path, args: fields, ellipsis }
             }
             ast::Pat::SlicePat(p) => {
                 let SlicePatComponents { prefix, slice, suffix } = p.components();

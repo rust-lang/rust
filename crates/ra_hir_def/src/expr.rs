@@ -376,35 +376,14 @@ pub enum Pat {
     Wild,
     Tuple(Vec<PatId>),
     Or(Vec<PatId>),
-    Record {
-        path: Option<Path>,
-        args: Vec<RecordFieldPat>,
-        // FIXME: 'ellipsis' option
-    },
-    Range {
-        start: ExprId,
-        end: ExprId,
-    },
-    Slice {
-        prefix: Vec<PatId>,
-        slice: Option<PatId>,
-        suffix: Vec<PatId>,
-    },
+    Record { path: Option<Path>, args: Vec<RecordFieldPat>, ellipsis: bool },
+    Range { start: ExprId, end: ExprId },
+    Slice { prefix: Vec<PatId>, slice: Option<PatId>, suffix: Vec<PatId> },
     Path(Path),
     Lit(ExprId),
-    Bind {
-        mode: BindingAnnotation,
-        name: Name,
-        subpat: Option<PatId>,
-    },
-    TupleStruct {
-        path: Option<Path>,
-        args: Vec<PatId>,
-    },
-    Ref {
-        pat: PatId,
-        mutability: Mutability,
-    },
+    Bind { mode: BindingAnnotation, name: Name, subpat: Option<PatId> },
+    TupleStruct { path: Option<Path>, args: Vec<PatId> },
+    Ref { pat: PatId, mutability: Mutability },
 }
 
 impl Pat {
