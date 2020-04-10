@@ -66,7 +66,7 @@ use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
 use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Index, IndexMut, RangeBounds};
 use core::ptr::{self, NonNull};
@@ -852,6 +852,42 @@ impl<T> Vec<T> {
             assume(!ptr.is_null());
         }
         ptr
+    }
+
+    /// Returns a mutable reference to an element, without doing bounds
+    /// checking.
+    ///
+    /// This is generally not recommended, use with caution!
+    /// Calling this method with an out-of-allocation index is *[undefined behavior]*
+    /// even if the resulting reference is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_get_uninit_unchecked, maybe_uninit_extra)]
+    ///
+    /// // Allocate vector big enough for 4 elements.
+    /// let size = 4;
+    /// let mut x = Vec::with_capacity(4);
+    ///
+    /// // Initialize elements via raw pointer writes, then set length.
+    /// unsafe {
+    ///     for i in 0..size {
+    ///         x.get_uninit_unchecked(i).write(i as i32);
+    ///     }
+    ///     x.set_len(size);
+    /// }
+    /// assert_eq!(&*x, &[0, 1, 2, 3]);
+    /// ```
+    #[unstable(feature = "vec_get_uninit_unchecked", issue = "none")]
+    pub fn get_uninit_unchecked(&mut self, index: usize) -> &mut MaybeUninit<T> {
+        if cfg!(debug_assertions) && index >= self.capacity() {
+            panic!("Out of allocation access")
+        } else {
+            unsafe { &mut *(self.as_mut_ptr().add(index) as *mut MaybeUninit<T>) }
+        }
     }
 
     /// Forces the length of the vector to `new_len`.
