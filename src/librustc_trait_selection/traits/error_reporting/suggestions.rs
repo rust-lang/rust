@@ -175,7 +175,7 @@ fn suggest_restriction(
         return;
     }
     // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...
-    if let Some((name, fn_sig)) =
+    if let Some((bound_str, fn_sig)) =
         fn_sig.zip(projection).and_then(|(sig, p)| match p.self_ty().kind {
             // Shenanigans to get the `Trait` from the `impl Trait`.
             ty::Param(param) => {
@@ -194,14 +194,14 @@ fn suggest_restriction(
         // but instead we choose to suggest replacing all instances of `impl Trait` with `T`
         // where `T: Trait`.
         let mut ty_spans = vec![];
-        let impl_name = format!("impl {}", name);
+        let impl_trait_str = format!("impl {}", bound_str);
         for input in fn_sig.decl.inputs {
             if let hir::TyKind::Path(hir::QPath::Resolved(
                 None,
                 hir::Path { segments: [segment], .. },
             )) = input.kind
             {
-                if segment.ident.as_str() == impl_name.as_str() {
+                if segment.ident.as_str() == impl_trait_str.as_str() {
                     // `fn foo(t: impl Trait)`
                     //            ^^^^^^^^^^ get this to suggest `T` instead
 
@@ -211,14 +211,14 @@ fn suggest_restriction(
             }
         }
 
-        let type_param_name = generics.params.next_type_param_name(Some(&name));
+        let type_param_name = generics.params.next_type_param_name(Some(&bound_str));
         // The type param `T: Trait` we will suggest to introduce.
-        let type_param = format!("{}: {}", type_param_name, name);
+        let type_param = format!("{}: {}", type_param_name, bound_str);
 
         // FIXME: modify the `trait_ref` instead of string shenanigans.
         // Turn `<impl Trait as Foo>::Bar: Qux` into `<T as Foo>::Bar: Qux`.
         let pred = trait_ref.without_const().to_predicate().to_string();
-        let pred = pred.replace(&impl_name, &type_param_name);
+        let pred = pred.replace(&impl_trait_str, &type_param_name);
         let mut sugg = vec![
             match generics
                 .params
@@ -258,10 +258,10 @@ fn suggest_restriction(
         );
     } else {
         // Trivial case: `T` needs an extra bound: `T: Bound`.
-        let (sp, s) =
+        let (sp, sugg) =
             predicate_constraint(generics, trait_ref.without_const().to_predicate().to_string());
         let appl = Applicability::MachineApplicable;
-        err.span_suggestion(sp, &format!("consider further restricting {}", msg), s, appl);
+        err.span_suggestion(sp, &format!("consider further restricting {}", msg), sugg, appl);
     }
 }
 
