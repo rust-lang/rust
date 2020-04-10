@@ -2771,8 +2771,6 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
                             pos.next_unchecked();
                         }
                     }
-
-                    // This internal node might be underfull, but only if it's the root.
                     break;
                 }
             }
