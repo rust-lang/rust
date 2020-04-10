@@ -173,14 +173,12 @@ macro_rules! intrinsics {
 
         #[cfg(all(windows, target_arch = "x86_64"))]
         pub mod $name {
-
-            intrinsics! {
-                pub extern $abi fn $name( $($argname: $ty),* )
-                    -> ::macros::win64_128bit_abi_hack::U64x2
-                {
-                    let e: $ret = super::$name($($argname),*);
-                    ::macros::win64_128bit_abi_hack::U64x2::from(e)
-                }
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub extern $abi fn $name( $($argname: $ty),* )
+                -> ::macros::win64_128bit_abi_hack::U64x2
+            {
+                let e: $ret = super::$name($($argname),*);
+                ::macros::win64_128bit_abi_hack::U64x2::from(e)
             }
         }
 
@@ -209,17 +207,23 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         #[cfg(target_arch = "arm")]
-        #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
         }
 
         #[cfg(target_arch = "arm")]
         pub mod $name {
-            intrinsics! {
-                pub extern "aapcs" fn $alias( $($argname: $ty),* ) -> $ret {
-                    super::$name($($argname),*)
-                }
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+                super::$name($($argname),*)
+            }
+        }
+
+        #[cfg(target_arch = "arm")]
+        pub mod $alias {
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub extern "aapcs" fn $alias( $($argname: $ty),* ) -> $ret {
+                super::$name($($argname),*)
             }
         }
 
@@ -234,9 +238,15 @@ macro_rules! intrinsics {
         intrinsics!($($rest)*);
     );
 
-    // This is the final catch-all rule. At this point we just generate an
+    // This is the final catch-all rule. At this point we generate an
     // intrinsic with a conditional `#[no_mangle]` directive to avoid
-    // interfereing with duplicate symbols and whatnot during testing.
+    // interfering with duplicate symbols and whatnot during testing.
+    //
+    // The implementation is placed in a separate module, to take advantage
+    // of the fact that rustc partitions functions into code generation
+    // units based on module they are defined in. As a result we will have
+    // a separate object file for each intrinsic. For further details see
+    // corresponding PR in rustc https://github.com/rust-lang/rust/pull/70846
     //
     // After the intrinsic is defined we just continue with the rest of the
     // input we were given.
@@ -249,9 +259,16 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         $(#[$($attr)*])*
-        #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
+        }
+
+        pub mod $name {
+            $(#[$($attr)*])*
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+                super::$name($($argname),*)
+            }
         }
 
         intrinsics!($($rest)*);
