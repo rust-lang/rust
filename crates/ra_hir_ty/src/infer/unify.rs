@@ -32,6 +32,7 @@ where
     var_stack: Vec<TypeVarId>,
 }
 
+#[derive(Debug)]
 pub(super) struct Canonicalized<T> {
     pub value: Canonical<T>,
     free_vars: Vec<InferTy>,

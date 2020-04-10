@@ -14,7 +14,7 @@ use crate::{
     db::HirDatabase,
     traits::{InEnvironment, Solution},
     utils::generics,
-    BoundVar, Canonical, DebruijnIndex, Substs, Ty,
+    BoundVar, Canonical, DebruijnIndex, Obligation, Substs, TraitRef, Ty,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
@@ -66,6 +66,20 @@ fn deref_by_trait(
     let parameters =
         Substs::build_for_generics(&generic_params).push(ty.value.value.clone()).build();
 
+    // Check that the type implements Deref at all
+    let trait_ref = TraitRef { trait_: deref_trait, substs: parameters.clone() };
+    let implements_goal = super::Canonical {
+        num_vars: ty.value.num_vars,
+        value: InEnvironment {
+            value: Obligation::Trait(trait_ref),
+            environment: ty.environment.clone(),
+        },
+    };
+    if db.trait_solve(krate, implements_goal).is_none() {
+        return None;
+    }
+
+    // Now do the assoc type projection
     let projection = super::traits::ProjectionPredicate {
         ty: Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.num_vars)),
         projection_ty: super::ProjectionTy { associated_ty: target, parameters },
@@ -91,6 +105,11 @@ fn deref_by_trait(
             // they're just being 'passed through'. In the 'standard' case where
             // we have `impl<T> Deref for Foo<T> { Target = T }`, that should be
             // the case.
+
+            // FIXME: if the trait solver decides to truncate the type, these
+            // assumptions will be broken. We would need to properly introduce
+            // new variables in that case
+
             for i in 1..vars.0.num_vars {
                 if vars.0.value[i - 1] != Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
                 {
