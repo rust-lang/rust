@@ -860,7 +860,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    /// Lower `(a,b) = t` to `{ let (lhs1,lhs2) = t; a = lhs1; b = lhs2; }`.
+    /// Destructure the LHS of complex assignments.
+    /// For instance, lower `(a,b) = t` to `{ let (lhs1,lhs2) = t; a = lhs1; b = lhs2; }`.
     fn lower_expr_assign(
         &mut self,
         lhs: &Expr,
@@ -868,6 +869,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
         eq_sign_span: Span,
         whole_span: Span,
     ) -> hir::ExprKind<'hir> {
+        // Return early in case of an ordinary assignment.
+        match lhs.kind {
+            ExprKind::Array(..) | ExprKind::Call(..) | ExprKind::Struct(..) | ExprKind::Tup(..) => {
+            }
+            _ => {
+                return hir::ExprKind::Assign(
+                    self.lower_expr(lhs),
+                    self.lower_expr(rhs),
+                    eq_sign_span,
+                );
+            }
+        }
+
         let mut assignments = Vec::new();
 
         // The LHS becomes a pattern: `(lhs1, lhs2)`
