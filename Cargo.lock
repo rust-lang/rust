@@ -4201,6 +4201,7 @@ dependencies = [
 name = "rustc_session"
 version = "0.0.0"
 dependencies = [
+ "getopts",
  "log",
  "num_cpus",
  "rustc_ast",
