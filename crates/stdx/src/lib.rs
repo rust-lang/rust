@@ -1,6 +1,6 @@
 //! Missing batteries for standard libraries.
 
-use std::{cell::Cell, fmt};
+use std::{cell::Cell, fmt, time::Instant};
 
 #[inline(always)]
 pub fn is_ci() -> bool {
@@ -87,4 +87,18 @@ where
         f.write_str(self.suffix)?;
         Ok(())
     }
+}
+pub fn timeit(label: &'static str) -> impl Drop {
+    struct Guard {
+        label: &'static str,
+        start: Instant,
+    }
+
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            eprintln!("{}: {:?}", self.label, self.start.elapsed())
+        }
+    }
+
+    Guard { label, start: Instant::now() }
 }
