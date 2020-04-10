@@ -5,6 +5,23 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
 
+const ODD_FUNCTIONS_WHITELIST: [&str; 14] = [
+    "asin",
+    "asinh",
+    "atan",
+    "atanh",
+    "cbrt",
+    "fract",
+    "round",
+    "signum",
+    "sin",
+    "sinh",
+    "tan",
+    "tanh",
+    "to_degrees",
+    "to_radians",
+];
+
 declare_clippy_lint! {
     /// **What it does:** Checks for operations where precedence may be unclear
     /// and suggests to add parentheses. Currently it catches the following:
@@ -86,11 +103,16 @@ impl EarlyLintPass for Precedence {
         }
 
         if let ExprKind::Unary(UnOp::Neg, ref rhs) = expr.kind {
-            if let ExprKind::MethodCall(_, ref args) = rhs.kind {
+            if let ExprKind::MethodCall(ref path_segment, ref args) = rhs.kind {
                 if let Some(slf) = args.first() {
                     if let ExprKind::Lit(ref lit) = slf.kind {
                         match lit.kind {
                             LitKind::Int(..) | LitKind::Float(..) => {
+                                for &odd_function in &ODD_FUNCTIONS_WHITELIST {
+                                    if odd_function == &*path_segment.ident.name.as_str() {
+                                        return;
+                                    }
+                                }
                                 let mut applicability = Applicability::MachineApplicable;
                                 span_lint_and_sugg(
                                     cx,

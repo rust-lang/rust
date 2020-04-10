@@ -32,6 +32,22 @@ fn main() {
     let _ = -(1i32.abs());
     let _ = -(1f32.abs());
 
+    // Odd functions shoud not trigger an error
+    let _ = -1f64.asin();
+    let _ = -1f64.asinh();
+    let _ = -1f64.atan();
+    let _ = -1f64.atanh();
+    let _ = -1f64.cbrt();
+    let _ = -1f64.fract();
+    let _ = -1f64.round();
+    let _ = -1f64.signum();
+    let _ = -1f64.sin();
+    let _ = -1f64.sinh();
+    let _ = -1f64.tan();
+    let _ = -1f64.tanh();
+    let _ = -1f64.to_degrees();
+    let _ = -1f64.to_radians();
+
     let b = 3;
     trip!(b * 8);
 }
