@@ -1947,9 +1947,10 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
             match &cx.tcx.hir().get(parent) {
                 hir::Node::Expr(parent) => match parent.kind {
                     // &*x is a nop, &x.clone() is not
-                    hir::ExprKind::AddrOf(..) |
+                    hir::ExprKind::AddrOf(..) => return,
                     // (*x).func() is useless, x.clone().func() can work in case func borrows mutably
-                    hir::ExprKind::MethodCall(..) => return,
+                    hir::ExprKind::MethodCall(_, _, parent_args) if expr.hir_id == parent_args[0].hir_id => return,
+
                     _ => {},
                 },
                 hir::Node::Stmt(stmt) => {

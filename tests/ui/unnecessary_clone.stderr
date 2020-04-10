@@ -1,5 +1,5 @@
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:17:5
+  --> $DIR/unnecessary_clone.rs:21:5
    |
 LL |     42.clone();
    |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
@@ -7,19 +7,31 @@ LL |     42.clone();
    = note: `-D clippy::clone-on-copy` implied by `-D warnings`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:21:5
+  --> $DIR/unnecessary_clone.rs:25:5
    |
 LL |     (&42).clone();
    |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:24:5
+  --> $DIR/unnecessary_clone.rs:28:5
    |
 LL |     rc.borrow().clone();
    |     ^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*rc.borrow()`
 
+error: using `clone` on a `Copy` type
+  --> $DIR/unnecessary_clone.rs:34:14
+   |
+LL |     is_ascii('z'.clone());
+   |              ^^^^^^^^^^^ help: try removing the `clone` call: `'z'`
+
+error: using `clone` on a `Copy` type
+  --> $DIR/unnecessary_clone.rs:38:14
+   |
+LL |     vec.push(42.clone());
+   |              ^^^^^^^^^^ help: try removing the `clone` call: `42`
+
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:39:5
+  --> $DIR/unnecessary_clone.rs:48:5
    |
 LL |     rc.clone();
    |     ^^^^^^^^^^ help: try this: `Rc::<bool>::clone(&rc)`
@@ -27,43 +39,43 @@ LL |     rc.clone();
    = note: `-D clippy::clone-on-ref-ptr` implied by `-D warnings`
 
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:42:5
+  --> $DIR/unnecessary_clone.rs:51:5
    |
 LL |     arc.clone();
    |     ^^^^^^^^^^^ help: try this: `Arc::<bool>::clone(&arc)`
 
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:45:5
+  --> $DIR/unnecessary_clone.rs:54:5
    |
 LL |     rcweak.clone();
    |     ^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&rcweak)`
 
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:48:5
+  --> $DIR/unnecessary_clone.rs:57:5
    |
 LL |     arc_weak.clone();
    |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&arc_weak)`
 
 error: using `.clone()` on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:52:33
+  --> $DIR/unnecessary_clone.rs:61:33
    |
 LL |     let _: Arc<dyn SomeTrait> = x.clone();
    |                                 ^^^^^^^^^ help: try this: `Arc::<SomeImpl>::clone(&x)`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:56:5
+  --> $DIR/unnecessary_clone.rs:65:5
    |
 LL |     t.clone();
    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:58:5
+  --> $DIR/unnecessary_clone.rs:67:5
    |
 LL |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:64:22
+  --> $DIR/unnecessary_clone.rs:73:22
    |
 LL |     let z: &Vec<_> = y.clone();
    |                      ^^^^^^^^^
@@ -79,10 +91,10 @@ LL |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:100:20
+  --> $DIR/unnecessary_clone.rs:109:20
    |
 LL |         let _: E = a.clone();
    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
 
-error: aborting due to 12 previous errors
+error: aborting due to 14 previous errors
 
