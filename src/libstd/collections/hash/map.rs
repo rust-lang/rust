@@ -1951,6 +1951,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(or_insert_with_key)]
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, usize> = HashMap::new();

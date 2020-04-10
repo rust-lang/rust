@@ -2386,6 +2386,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(or_insert_with_key)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
