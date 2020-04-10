@@ -3,7 +3,7 @@
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `ra_syntax::AstNode`.
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::HashSet;
 
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
@@ -20,7 +20,7 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
     let ast_tokens_file = project_root().join(codegen::AST_TOKENS);
-    let contents = generate_tokens(KINDS_SRC, AST_SRC)?;
+    let contents = generate_tokens(AST_SRC)?;
     update(ast_tokens_file.as_path(), &contents, mode)?;
 
     let ast_nodes_file = project_root().join(codegen::AST_NODES);
@@ -30,14 +30,7 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Default, Clone)]
-struct ElementKinds {
-    kinds: BTreeSet<proc_macro2::Ident>,
-    has_nodes: bool,
-    has_tokens: bool,
-}
-
-fn generate_tokens(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
+fn generate_tokens(grammar: AstSrc<'_>) -> Result<String> {
     let tokens = grammar.tokens.iter().map(|token| {
         let name = format_ident!("{}", token);
         let kind = format_ident!("{}", to_upper_snake_case(token));
@@ -91,7 +84,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
                 if let Some(token_kind) = field.token_kind() {
                     quote! {
                         pub fn #method_name(&self) -> Option<#ty> {
-                            support::token2(&self.syntax, #token_kind)
+                            support::token(&self.syntax, #token_kind)
                         }
                     }
                 } else {

@@ -343,7 +343,7 @@ impl ast::TypeBound {
                 .skip_while(|it| it.kind() != T![const])
                 .find(|it| it.kind() == T![?])
         } else {
-            support::token2(&self.syntax, T![?])
+            support::token(&self.syntax, T![?])
         }
     }
 }

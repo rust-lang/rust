@@ -65,7 +65,7 @@ pub trait TypeBoundsOwner: AstNode {
     }
 
     fn colon_token(&self) -> Option<SyntaxToken> {
-        support::token2(self.syntax(), T![:])
+        support::token(self.syntax(), T![:])
     }
 }
 
