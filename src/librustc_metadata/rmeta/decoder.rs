@@ -31,7 +31,7 @@ use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::common::record_time;
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
-use rustc_session::Session;
+use rustc_session::{Session, CFG_VIRTUAL_RUST_SOURCE_BASE_DIR};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
@@ -1463,7 +1463,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn imported_source_files(&self, sess: &Session) -> &'a [ImportedSourceFile] {
         // Translate the virtual `/rustc/$hash` prefix back to a real directory
         // that should hold actual sources, where possible.
-        let virtual_rust_source_base_dir = option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR")
+        let virtual_rust_source_base_dir = CFG_VIRTUAL_RUST_SOURCE_BASE_DIR
             .map(Path::new)
             .filter(|_| {
                 // Only spend time on further checks if we have what to translate *to*.

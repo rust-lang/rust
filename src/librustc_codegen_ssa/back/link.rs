@@ -10,7 +10,7 @@ use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, 
 use rustc_session::search_paths::PathKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
-use rustc_session::{filesearch, Session};
+use rustc_session::{filesearch, Session, CFG_PREFIX, CFG_RELEASE_CHANNEL};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
 
@@ -698,9 +698,7 @@ fn link_sanitizer_runtime(sess: &Session, crate_type: config::CrateType, linker:
     let default_sysroot = filesearch::get_or_default_sysroot();
     let default_tlib =
         filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.triple());
-    let channel = option_env!("CFG_RELEASE_CHANNEL")
-        .map(|channel| format!("-{}", channel))
-        .unwrap_or_default();
+    let channel = CFG_RELEASE_CHANNEL.map(|channel| format!("-{}", channel)).unwrap_or_default();
 
     match sess.opts.target_triple.triple() {
         "x86_64-apple-darwin" => {
@@ -1402,7 +1400,7 @@ fn add_rpath_args(
     if sess.opts.cg.rpath {
         let target_triple = sess.opts.target_triple.triple();
         let mut get_install_prefix_lib_path = || {
-            let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
+            let install_prefix = CFG_PREFIX.expect("CFG_PREFIX");
             let tlib = filesearch::relative_target_lib_path(&sess.sysroot, target_triple);
             let mut path = PathBuf::from(install_prefix);
             path.push(&tlib);

@@ -18,6 +18,7 @@ use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::CrateDisambiguator;
+use rustc_session::CFG_VERSION;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, Span};
@@ -34,7 +35,7 @@ mod encoder;
 mod table;
 
 crate fn rustc_version() -> String {
-    format!("rustc {}", option_env!("CFG_VERSION").unwrap_or("unknown version"))
+    format!("rustc {}", CFG_VERSION.unwrap_or("unknown version"))
 }
 
 /// Metadata encoding version.

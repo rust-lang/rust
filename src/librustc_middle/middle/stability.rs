@@ -16,6 +16,7 @@ use rustc_hir::{self, HirId};
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiagnostics, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
+use rustc_session::CFG_RELEASE;
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{MultiSpan, Span};
@@ -136,7 +137,7 @@ pub fn deprecation_in_effect(since: &str) -> bool {
         ver.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect()
     }
 
-    if let Some(rustc) = option_env!("CFG_RELEASE") {
+    if let Some(rustc) = CFG_RELEASE {
         let since: Vec<u32> = parse_version(since);
         let rustc: Vec<u32> = parse_version(rustc);
         // We simply treat invalid `since` attributes as relating to a previous

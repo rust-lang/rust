@@ -40,6 +40,7 @@ use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{self, DebugInfo};
+use rustc_session::CFG_VERSION;
 use rustc_span::symbol::{Interner, Symbol};
 use rustc_span::{self, SourceFile, SourceFileHash, Span};
 use rustc_target::abi::{Abi, Align, DiscriminantKind, HasDataLayout, Integer, LayoutOf};
@@ -909,8 +910,7 @@ pub fn compile_unit_metadata(
     }
 
     debug!("compile_unit_metadata: {:?}", name_in_debuginfo);
-    let rustc_producer =
-        format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"),);
+    let rustc_producer = format!("rustc version {}", CFG_VERSION.expect("CFG_VERSION"),);
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
     let producer = format!("clang LLVM ({})", rustc_producer);
 

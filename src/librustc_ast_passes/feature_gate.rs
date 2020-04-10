@@ -6,6 +6,7 @@ use rustc_errors::{struct_span_err, Handler};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue, UnstableFeatures};
 use rustc_session::parse::{feature_err, feature_err_issue, ParseSess};
+use rustc_session::CFG_RELEASE_CHANNEL;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -657,7 +658,7 @@ fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate, unstable: Un
                 attr.span,
                 E0554,
                 "`#![feature]` may not be used on the {} release channel",
-                option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)")
+                CFG_RELEASE_CHANNEL.unwrap_or("(unknown)")
             )
             .emit();
         }

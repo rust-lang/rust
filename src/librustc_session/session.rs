@@ -32,6 +32,16 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+pub static CFG_VERSION: Option<&str> = option_env!("CFG_VERSION");
+pub static CFG_RELEASE: Option<&str> = option_env!("CFG_RELEASE");
+pub static CFG_RELEASE_CHANNEL: Option<&str> = option_env!("CFG_RELEASE_CHANNEL");
+pub static CFG_VER_HASH: Option<&str> = option_env!("CFG_VER_HASH");
+pub static CFG_VER_DATE: Option<&str> = option_env!("CFG_VER_DATE");
+
+pub static CFG_PREFIX: Option<&str> = option_env!("CFG_PREFIX");
+pub static CFG_VIRTUAL_RUST_SOURCE_BASE_DIR: Option<&str> =
+    option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR");
+
 pub struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
     remaining: u64,

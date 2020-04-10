@@ -26,7 +26,7 @@ const HEADER_FORMAT_VERSION: u16 = 0;
 /// A version string that hopefully is always different for compiler versions
 /// with different encodings of incremental compilation artifacts. Contains
 /// the Git commit hash.
-const RUSTC_VERSION: Option<&str> = option_env!("CFG_VERSION");
+use rustc_session::CFG_VERSION as RUSTC_VERSION;
 
 pub fn write_file_header(stream: &mut Encoder) {
     stream.emit_raw_bytes(FILE_MAGIC);

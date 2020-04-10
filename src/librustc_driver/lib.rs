@@ -36,7 +36,9 @@ use rustc_session::config::nightly_options;
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest};
 use rustc_session::getopts;
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::{config, DiagnosticOutput, Session};
+use rustc_session::{
+    config, DiagnosticOutput, Session, CFG_RELEASE, CFG_VERSION, CFG_VER_DATE, CFG_VER_HASH,
+};
 use rustc_session::{early_error, early_warn};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
@@ -748,24 +750,24 @@ impl RustcDefaultCalls {
 
 /// Returns a version string such as "0.12.0-dev".
 fn release_str() -> Option<&'static str> {
-    option_env!("CFG_RELEASE")
+    CFG_RELEASE
 }
 
 /// Returns the full SHA1 hash of HEAD of the Git repo from which rustc was built.
 fn commit_hash_str() -> Option<&'static str> {
-    option_env!("CFG_VER_HASH")
+    CFG_VER_HASH
 }
 
 /// Returns the "commit date" of HEAD of the Git repo from which rustc was built as a static string.
 fn commit_date_str() -> Option<&'static str> {
-    option_env!("CFG_VER_DATE")
+    CFG_VER_DATE
 }
 
 /// Prints version information
 pub fn version(binary: &str, matches: &getopts::Matches) {
     let verbose = matches.opt_present("verbose");
 
-    println!("{} {}", binary, option_env!("CFG_VERSION").unwrap_or("unknown version"));
+    println!("{} {}", binary, CFG_VERSION.unwrap_or("unknown version"));
 
     if verbose {
         fn unw(x: Option<&str>) -> &str {
@@ -1196,7 +1198,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         format!("we would appreciate a bug report: {}", bug_report_url).into(),
         format!(
             "rustc {} running on {}",
-            option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+            CFG_VERSION.unwrap_or("unknown_version"),
             config::host_triple()
         )
         .into(),

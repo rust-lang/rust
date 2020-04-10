@@ -128,7 +128,7 @@ use rustc_middle::ty::{
 use rustc_session::config::{self, EntryFnType};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
-use rustc_session::Session;
+use rustc_session::{Session, CFG_VERSION};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -5806,7 +5806,7 @@ fn fatally_break_rust(sess: &Session) {
     );
     handler.note_without_error(&format!(
         "rustc {} running on {}",
-        option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+        CFG_VERSION.unwrap_or("unknown_version"),
         config::host_triple(),
     ));
 }
