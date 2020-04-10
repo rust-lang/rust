@@ -730,7 +730,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `new` not returning `Self`.
+    /// **What it does:** Checks for `new` not returning a type that contains `Self`.
     ///
     /// **Why is this bad?** As a convention, `new` methods are used to make a new
     /// instance of a type.
@@ -747,9 +747,31 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    ///
+    /// ```rust
+    /// # struct Foo;
+    /// # struct FooError;
+    /// impl Foo {
+    ///     // Good. Return type contains `Self`
+    ///     fn new() -> Result<Foo, FooError> {
+    ///         # Ok(Foo)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```rust
+    /// # struct Foo;
+    /// struct Bar(Foo);
+    /// impl Foo {
+    ///     // Bad. The type name must contain `Self`.
+    ///     fn new() -> Bar {
+    ///         # Bar(Foo)
+    ///     }
+    /// }
+    /// ```
     pub NEW_RET_NO_SELF,
     style,
-    "not returning `Self` in a `new` method"
+    "not returning type containing `Self` in a `new` method"
 }
 
 declare_clippy_lint! {
