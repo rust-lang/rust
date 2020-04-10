@@ -1,5 +1,8 @@
 //! This module contains paths to types and functions Clippy needs to know
 //! about.
+//!
+//! Whenever possible, please consider diagnostic items over hardcoded paths.
+//! See <https://github.com/rust-lang/rust-clippy/issues/5393> for more information.
 
 pub const ANY_TRAIT: [&str; 3] = ["std", "any", "Any"];
 pub const ARC: [&str; 3] = ["alloc", "sync", "Arc"];
