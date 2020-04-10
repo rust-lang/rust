@@ -1998,9 +1998,9 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &h
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(arg));
 
     if let ty::Adt(_, subst) = obj_ty.kind {
-        let caller_type = if match_type(cx, obj_ty, &paths::RC) {
+        let caller_type = if is_type_diagnostic_item(cx, obj_ty, sym::Rc) {
             "Rc"
-        } else if match_type(cx, obj_ty, &paths::ARC) {
+        } else if is_type_diagnostic_item(cx, obj_ty, sym::Arc) {
             "Arc"
         } else if match_type(cx, obj_ty, &paths::WEAK_RC) || match_type(cx, obj_ty, &paths::WEAK_ARC) {
             "Weak"
