@@ -2,6 +2,7 @@ FROM ubuntu:18.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
+  g++-arm-linux-gnueabi \
   make \
   file \
   curl \
@@ -29,7 +30,23 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-llvm-link-shared \
       --set rust.thin-lto-import-instr-limit=10
 
-ENV SCRIPT python2.7 ../x.py test --exclude src/tools/tidy && python2.7 ../x.py test src/tools/tidy
+ENV SCRIPT python2.7 ../x.py test --exclude src/tools/tidy && \
+           # Run the `mir-opt` tests again but this time for a 32-bit target.
+           # This enforces that tests using `// EMIT_MIR_FOR_EACH_BIT_WIDTH` have
+           # both 32-bit and 64-bit outputs updated by the PR author, before
+           # the PR is approved and tested for merging.
+           # It will also detect tests lacking `// EMIT_MIR_FOR_EACH_BIT_WIDTH`,
+           # despite having different output on 32-bit vs 64-bit targets.
+           #
+           # HACK(eddyb) `armv5te` is used (not `i686`) to support older LLVM than LLVM 9:
+           # https://github.com/rust-lang/compiler-builtins/pull/311#issuecomment-612270089.
+           # This also requires `--pass=build` because we can't execute the tests
+           # on the `x86_64` host when they're built as `armv5te` binaries.
+           # (we're only interested in the MIR output, so this doesn't matter)
+           python2.7 ../x.py test src/test/mir-opt --pass=build \
+                                  --target=armv5te-unknown-linux-gnueabi && \
+           # Run tidy at the very end, after all the other tests.
+           python2.7 ../x.py test src/tools/tidy
 
 # The purpose of this container isn't to test with debug assertions and
 # this is run on all PRs, so let's get speedier builds by disabling these extra
