@@ -33,3 +33,7 @@ Thanks! <3
 [instructions]: https://rustc-dev-guide.rust-lang.org/ice-breaker/cleanup-crew.html
 """
 label = "ICEBreaker-Cleanup-Crew"
+
+[prioritize]
+label = "I-prioritize"
+zulip_stream = 227806
