@@ -467,12 +467,13 @@ fn locals_live_across_suspend_points(
         dataflow::ResultsCursor::new(body_ref, &requires_storage_results);
 
     // Calculate the liveness of MIR locals ignoring borrows.
-    let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
     let mut liveness = liveness::liveness_of_locals(body);
     liveness::dump_mir(tcx, "generator_liveness", source, body_ref, &liveness);
 
     let mut storage_liveness_map = IndexVec::from_elem(None, body.basic_blocks());
     let mut live_locals_at_suspension_points = Vec::new();
+    let mut live_locals_at_any_suspension_point =
+        liveness::LiveVarSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks().iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
@@ -509,39 +510,39 @@ fn locals_live_across_suspend_points(
             // Locals live are live at this point only if they are used across
             // suspension points (the `liveness` variable)
             // and their storage is required (the `storage_required` variable)
-            let mut live_locals_here = storage_required;
-            live_locals_here.intersect(&liveness.outs[block]);
+            let mut live_locals = storage_required;
+            live_locals.intersect(&liveness.outs[block]);
 
             // The generator argument is ignored.
-            live_locals_here.remove(SELF_ARG);
+            live_locals.remove(SELF_ARG);
 
-            debug!("loc = {:?}, live_locals_here = {:?}", loc, live_locals_here);
+            debug!("loc = {:?}, live_locals = {:?}", loc, live_locals);
 
             // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
-            live_locals.union(&live_locals_here);
+            live_locals_at_any_suspension_point.union(&live_locals);
 
-            live_locals_at_suspension_points.push(live_locals_here);
+            live_locals_at_suspension_points.push(live_locals);
         }
     }
-    debug!("live_locals = {:?}", live_locals);
+    debug!("live_locals_anywhere = {:?}", live_locals_at_any_suspension_point);
 
     // Renumber our liveness_map bitsets to include only the locals we are
     // saving.
     let live_locals_at_suspension_points = live_locals_at_suspension_points
         .iter()
-        .map(|live_here| renumber_bitset(&live_here, &live_locals))
+        .map(|live_here| renumber_bitset(&live_here, &live_locals_at_any_suspension_point))
         .collect();
 
     let storage_conflicts = compute_storage_conflicts(
         body_ref,
-        &live_locals,
+        &live_locals_at_any_suspension_point,
         always_live_locals.clone(),
         requires_storage_results,
     );
 
     LivenessInfo {
-        live_locals,
+        live_locals: live_locals_at_any_suspension_point,
         live_locals_at_suspension_points,
         storage_conflicts,
         storage_liveness: storage_liveness_map,
