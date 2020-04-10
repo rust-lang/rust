@@ -9,8 +9,6 @@
 #![recursion_limit = "256"]
 
 pub extern crate getopts;
-#[cfg(unix)]
-extern crate libc;
 #[macro_use]
 extern crate log;
 #[macro_use]

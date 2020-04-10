@@ -10,7 +10,6 @@
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "256"]
 
-extern crate libc;
 extern crate proc_macro;
 
 #[macro_use]

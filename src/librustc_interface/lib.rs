@@ -6,9 +6,6 @@
 #![feature(generators)]
 #![recursion_limit = "256"]
 
-#[cfg(unix)]
-extern crate libc;
-
 mod callbacks;
 pub mod interface;
 mod passes;
