@@ -531,6 +531,10 @@ impl Field<'_> {
                     "->" => "thin_arrow",
                     "'{'" => "l_curly",
                     "'}'" => "r_curly",
+                    "'('" => "l_paren",
+                    "')'" => "r_paren",
+                    "'['" => "l_brack",
+                    "']'" => "r_brack",
                     _ => name,
                 };
                 format_ident!("{}_token", name)

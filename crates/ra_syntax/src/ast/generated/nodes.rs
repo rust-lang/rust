@@ -187,9 +187,9 @@ impl AstNode for TupleFieldDefList {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl TupleFieldDefList {
-    pub fn l_paren_token(&self) -> Option<LParen> { support::token(&self.syntax) }
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['(']) }
     pub fn fields(&self) -> AstChildren<TupleFieldDef> { support::children(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<RParen> { support::token(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleFieldDef {
@@ -483,9 +483,9 @@ impl AstNode for ParenType {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ParenType {
-    pub fn l_paren_token(&self) -> Option<LParen> { support::token(&self.syntax) }
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['(']) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<RParen> { support::token(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleType {
@@ -503,9 +503,9 @@ impl AstNode for TupleType {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl TupleType {
-    pub fn l_paren_token(&self) -> Option<LParen> { support::token(&self.syntax) }
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['(']) }
     pub fn fields(&self) -> AstChildren<TypeRef> { support::children(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<RParen> { support::token(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NeverType {
@@ -580,11 +580,11 @@ impl AstNode for ArrayType {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ArrayType {
-    pub fn l_brack_token(&self) -> Option<LBrack> { support::token(&self.syntax) }
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['[']) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![;]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn r_brack_token(&self) -> Option<RBrack> { support::token(&self.syntax) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SliceType {
@@ -602,9 +602,9 @@ impl AstNode for SliceType {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl SliceType {
-    pub fn l_brack_token(&self) -> Option<LBrack> { support::token(&self.syntax) }
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['[']) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
-    pub fn r_brack_token(&self) -> Option<RBrack> { support::token(&self.syntax) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReferenceType {
@@ -742,9 +742,9 @@ impl AstNode for TupleExpr {
 }
 impl ast::AttrsOwner for TupleExpr {}
 impl TupleExpr {
-    pub fn l_paren_token(&self) -> Option<LParen> { support::token(&self.syntax) }
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['(']) }
     pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<RParen> { support::token(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayExpr {
@@ -763,10 +763,10 @@ impl AstNode for ArrayExpr {
 }
 impl ast::AttrsOwner for ArrayExpr {}
 impl ArrayExpr {
-    pub fn l_brack_token(&self) -> Option<LBrack> { support::token(&self.syntax) }
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['[']) }
     pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![;]) }
-    pub fn r_brack_token(&self) -> Option<RBrack> { support::token(&self.syntax) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenExpr {
@@ -785,9 +785,9 @@ impl AstNode for ParenExpr {
 }
 impl ast::AttrsOwner for ParenExpr {}
 impl ParenExpr {
-    pub fn l_paren_token(&self) -> Option<LParen> { support::token(&self.syntax) }
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['(']) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<RParen> { support::token(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathExpr {
@@ -1095,8 +1095,8 @@ impl AstNode for IndexExpr {
 }
 impl ast::AttrsOwner for IndexExpr {}
 impl IndexExpr {
-    pub fn l_brack_token(&self) -> Option<LBrack> { support::token(&self.syntax) }
-    pub fn r_brack_token(&self) -> Option<RBrack> { support::token(&self.syntax) }
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['[']) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldExpr {
@@ -1478,9 +1478,9 @@ impl AstNode for ParenPat {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ParenPat {
-    pub fn l_paren_token(&self) -> Option<LParen> { support::token(&self.syntax) }
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['(']) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<RParen> { support::token(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefPat {
@@ -1614,9 +1614,9 @@ impl AstNode for SlicePat {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl SlicePat {
-    pub fn l_brack_token(&self) -> Option<LBrack> { support::token(&self.syntax) }
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['[']) }
     pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
-    pub fn r_brack_token(&self) -> Option<RBrack> { support::token(&self.syntax) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RangePat {
@@ -1756,9 +1756,9 @@ impl AstNode for TupleStructPat {
 }
 impl TupleStructPat {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn l_paren_token(&self) -> Option<LParen> { support::token(&self.syntax) }
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['(']) }
     pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<RParen> { support::token(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TuplePat {
@@ -1776,9 +1776,9 @@ impl AstNode for TuplePat {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl TuplePat {
-    pub fn l_paren_token(&self) -> Option<LParen> { support::token(&self.syntax) }
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['(']) }
     pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<RParen> { support::token(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Visibility {
@@ -1879,11 +1879,11 @@ impl AstNode for Attr {
 impl Attr {
     pub fn pound_token(&self) -> Option<Pound> { support::token(&self.syntax) }
     pub fn excl_token(&self) -> Option<Excl> { support::token(&self.syntax) }
-    pub fn l_brack_token(&self) -> Option<LBrack> { support::token(&self.syntax) }
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['[']) }
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn input(&self) -> Option<AttrInput> { support::child(&self.syntax) }
-    pub fn r_brack_token(&self) -> Option<RBrack> { support::token(&self.syntax) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TokenTree {
@@ -2186,10 +2186,10 @@ impl AstNode for ParamList {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ParamList {
-    pub fn l_paren_token(&self) -> Option<LParen> { support::token(&self.syntax) }
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['(']) }
     pub fn self_param(&self) -> Option<SelfParam> { support::child(&self.syntax) }
     pub fn params(&self) -> AstChildren<Param> { support::children(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<RParen> { support::token(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SelfParam {
@@ -2354,9 +2354,9 @@ impl AstNode for ArgList {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ArgList {
-    pub fn l_paren_token(&self) -> Option<LParen> { support::token(&self.syntax) }
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T!['(']) }
     pub fn args(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<RParen> { support::token(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {

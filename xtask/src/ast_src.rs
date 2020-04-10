@@ -338,7 +338,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct RecordFieldDefList { T!['{'], fields: [RecordFieldDef], T!['}'] }
         struct RecordFieldDef: VisibilityOwner, NameOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner { }
 
-        struct TupleFieldDefList { LParen, fields: [TupleFieldDef], RParen }
+        struct TupleFieldDefList { T!['('], fields: [TupleFieldDef], T![')'] }
         struct TupleFieldDef: VisibilityOwner, AttrsOwner {
             TypeRef,
         }
@@ -411,13 +411,13 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             ItemList,
         }
 
-        struct ParenType { LParen, TypeRef, RParen }
-        struct TupleType { LParen, fields: [TypeRef], RParen }
+        struct ParenType { T!['('], TypeRef, T![')'] }
+        struct TupleType { T!['('], fields: [TypeRef], T![')'] }
         struct NeverType { Excl }
         struct PathType { Path }
         struct PointerType { Star, T![const], T![mut], TypeRef }
-        struct ArrayType { LBrack, TypeRef, T![;], Expr, RBrack }
-        struct SliceType { LBrack, TypeRef, RBrack }
+        struct ArrayType { T!['['], TypeRef, T![;], Expr, T![']'] }
+        struct SliceType { T!['['], TypeRef, T![']'] }
         struct ReferenceType { Amp, Lifetime, T![mut], TypeRef }
         struct PlaceholderType { Underscore }
         struct FnPointerType { Abi, T![unsafe], T![fn], ParamList, RetType }
@@ -425,9 +425,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct ImplTraitType: TypeBoundsOwner { T![impl] }
         struct DynTraitType: TypeBoundsOwner { T![dyn] }
 
-        struct TupleExpr: AttrsOwner { LParen, exprs: [Expr], RParen }
-        struct ArrayExpr: AttrsOwner { LBrack, exprs: [Expr], T![;], RBrack }
-        struct ParenExpr: AttrsOwner { LParen, Expr, RParen }
+        struct TupleExpr: AttrsOwner { T!['('], exprs: [Expr], T![')'] }
+        struct ArrayExpr: AttrsOwner { T!['['], exprs: [Expr], T![;], T![']'] }
+        struct ParenExpr: AttrsOwner { T!['('], Expr, T![')'] }
         struct PathExpr  { Path }
         struct LambdaExpr: AttrsOwner {
             T![static],
@@ -456,7 +456,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct MethodCallExpr: AttrsOwner, ArgListOwner {
             Expr, Dot, NameRef, TypeArgList,
         }
-        struct IndexExpr: AttrsOwner { LBrack, RBrack }
+        struct IndexExpr: AttrsOwner { T!['['], T![']'] }
         struct FieldExpr: AttrsOwner { Expr, Dot, NameRef }
         struct AwaitExpr: AttrsOwner { Expr, Dot, T![await] }
         struct TryExpr: AttrsOwner { T![try], Expr }
@@ -489,14 +489,14 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct RecordField: AttrsOwner { NameRef, Colon, Expr }
 
         struct OrPat { pats: [Pat] }
-        struct ParenPat { LParen, Pat, RParen }
+        struct ParenPat { T!['('], Pat, T![')'] }
         struct RefPat { Amp, T![mut], Pat }
         struct BoxPat { T![box], Pat }
         struct BindPat: AttrsOwner, NameOwner { T![ref], T![mut], At, Pat }
         struct PlaceholderPat { Underscore }
         struct DotDotPat { Dotdot }
         struct PathPat { Path }
-        struct SlicePat { LBrack, args: [Pat], RBrack }
+        struct SlicePat { T!['['], args: [Pat], T![']'] }
         struct RangePat { RangeSeparator }
         struct LiteralPat { Literal }
         struct MacroPat { MacroCall }
@@ -512,8 +512,8 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
         struct RecordFieldPat: AttrsOwner, NameOwner { Colon, Pat }
 
-        struct TupleStructPat { Path, LParen, args: [Pat], RParen }
-        struct TuplePat { LParen, args: [Pat], RParen }
+        struct TupleStructPat { Path, T!['('], args: [Pat], T![')'] }
+        struct TuplePat { T!['('], args: [Pat], T![')'] }
 
         struct Visibility { T![pub], T![super], T![self], T![crate] }
         struct Name { Ident }
@@ -522,7 +522,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct MacroCall: NameOwner, AttrsOwner,DocCommentsOwner {
             Path, Excl, TokenTree, T![;]
         }
-        struct Attr { Pound, Excl, LBrack, Path, Eq, input: AttrInput, RBrack }
+        struct Attr { Pound, Excl, T!['['], Path, Eq, input: AttrInput, T![']'] }
         struct TokenTree {}
         struct TypeParamList {
             LAngle,
@@ -562,10 +562,10 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T!['}'],
         }
         struct ParamList {
-            LParen,
+            T!['('],
             SelfParam,
             params: [Param],
-            RParen
+            T![')']
         }
         struct SelfParam: TypeAscriptionOwner, AttrsOwner { Amp, Lifetime, T![self] }
         struct Param: TypeAscriptionOwner, AttrsOwner {
@@ -585,9 +585,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![extern], T![crate], NameRef, Alias,
         }
         struct ArgList {
-            LParen,
+            T!['('],
             args: [Expr],
-            RParen
+            T![')']
         }
         struct Path {
             segment: PathSegment,
