@@ -1,4 +1,4 @@
-use std::alloc::{alloc, dealloc, realloc, Layout};
+use std::alloc::{alloc, dealloc, Layout};
 
 // error-pattern: dereferenced after this allocation got freed
 
