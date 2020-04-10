@@ -900,7 +900,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         eq_sign_span: Span,
         assignments: &mut Vec<hir::Stmt<'hir>>,
     ) -> &'hir hir::Pat<'hir> {
-        // TODO: Handle `_`, requires changes to the parser
+        // FIXME: Handle `_`, requires changes to the parser
         match &lhs.kind {
             // slices:
             ExprKind::Array(elements) => {
@@ -932,8 +932,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             // structs:
-            // TODO: support `..` here, requires changes to the parser
-            ExprKind::Struct(path, fields, rest) => {
+            // FIXME: support `..` here, requires changes to the parser
+            ExprKind::Struct(path, fields, _rest) => {
                 let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
                     hir::FieldPat {

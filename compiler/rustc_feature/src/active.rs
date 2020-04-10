@@ -611,7 +611,7 @@ declare_features! (
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
 
     /// Allows the use of destructuring assignments.
-    (active, destructuring_assignment, "1.49.0", None, None),
+    (active, destructuring_assignment, "1.49.0", Some(372), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
