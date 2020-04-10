@@ -63,8 +63,12 @@ fn main() {
         cfg.define("COMPILER_RT_HAS_ATOMICS", Some("1"));
     }
 
-    let root = env::var_os("RUST_COMPILER_RT_ROOT").unwrap();
-    let root = Path::new(&root);
+    let root = env::var_os("RUST_COMPILER_RT_ROOT");
+    let root = if let Some(root) = &root {
+        Path::new(root)
+    } else {
+        Path::new("../llvm-project/compiler-rt")
+    };
 
     let src_root = root.join("lib").join("profile");
     for src in profile_sources {
