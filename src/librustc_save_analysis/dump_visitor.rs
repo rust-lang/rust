@@ -107,7 +107,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     where
         F: FnOnce(&mut Self),
     {
-        let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id);
+        let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id).to_def_id();
 
         let tables = if self.tcx.has_typeck_tables(item_def_id) {
             self.tcx.typeck_tables_of(item_def_id)
@@ -423,8 +423,10 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         vis: ast::Visibility,
         attrs: &'l [Attribute],
     ) {
-        let qualname =
-            format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(id)));
+        let qualname = format!(
+            "::{}",
+            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(id).to_def_id())
+        );
 
         if !self.span.filter_generated(ident.span) {
             let sig = sig::assoc_const_signature(id, ident.name, typ, expr, &self.save_ctxt);
@@ -470,7 +472,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         let name = item.ident.to_string();
         let qualname = format!(
             "::{}",
-            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
+            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id())
         );
 
         let kind = match item.kind {
@@ -670,7 +672,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             }
             v.process_generic_params(generics, "", item.id);
             for impl_item in impl_items {
-                v.process_impl_item(impl_item, map.local_def_id_from_node_id(item.id));
+                v.process_impl_item(impl_item, map.local_def_id_from_node_id(item.id).to_def_id());
             }
         });
     }
@@ -685,7 +687,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         let name = item.ident.to_string();
         let qualname = format!(
             "::{}",
-            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
+            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id())
         );
         let mut val = name.clone();
         if !generics.params.is_empty() {
@@ -751,7 +753,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         self.process_generic_params(generics, &qualname, item.id);
         for method in methods {
             let map = &self.tcx.hir();
-            self.process_trait_item(method, map.local_def_id_from_node_id(item.id))
+            self.process_trait_item(method, map.local_def_id_from_node_id(item.id).to_def_id())
         }
     }
 
@@ -1030,7 +1032,9 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 let name = trait_item.ident.name.to_string();
                 let qualname = format!(
                     "::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(trait_item.id))
+                    self.tcx.def_path_str(
+                        self.tcx.hir().local_def_id_from_node_id(trait_item.id).to_def_id()
+                    )
                 );
 
                 if !self.span.filter_generated(trait_item.ident.span) {
@@ -1134,7 +1138,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             .tcx
             .hir()
             .opt_local_def_id_from_node_id(id)
-            .and_then(|id| self.save_ctxt.tcx.parent(id))
+            .and_then(|id| self.save_ctxt.tcx.parent(id.to_def_id()))
             .map(id_from_def_id);
 
         match use_tree.kind {
@@ -1173,7 +1177,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
                 // Make a comma-separated list of names of imported modules.
                 let def_id = self.tcx.hir().local_def_id_from_node_id(id);
-                let names = self.tcx.names_imported_by_glob_use(def_id);
+                let names = self.tcx.names_imported_by_glob_use(def_id.to_def_id());
                 let names: Vec<_> = names.iter().map(|n| n.to_string()).collect();
 
                 // Otherwise it's a span with wrong macro expansion info, which
@@ -1227,8 +1231,10 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
         // only get called for the root module of a crate.
         assert_eq!(id, ast::CRATE_NODE_ID);
 
-        let qualname =
-            format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(id)));
+        let qualname = format!(
+            "::{}",
+            self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(id).to_def_id())
+        );
 
         let sm = self.tcx.sess.source_map();
         let filename = sm.span_to_filename(span);
@@ -1273,7 +1279,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                         .tcx
                         .hir()
                         .opt_local_def_id_from_node_id(item.id)
-                        .and_then(|id| self.save_ctxt.tcx.parent(id))
+                        .and_then(|id| self.save_ctxt.tcx.parent(id.to_def_id()))
                         .map(id_from_def_id);
                     self.dumper.import(
                         &Access { public: false, reachable: false },
@@ -1311,7 +1317,9 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
             TyAlias(_, ref ty_params, _, ref ty) => {
                 let qualname = format!(
                     "::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id))
+                    self.tcx.def_path_str(
+                        self.tcx.hir().local_def_id_from_node_id(item.id).to_def_id()
+                    )
                 );
                 let value = match ty {
                     Some(ty) => ty_to_string(&ty),

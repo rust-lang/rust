@@ -59,14 +59,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 }
             }
             ImplItemKind::OpaqueTy(_) => {
-                if tcx.impl_trait_ref(tcx.hir().get_parent_did(hir_id)).is_none() {
+                if tcx.impl_trait_ref(tcx.hir().get_parent_did(hir_id).to_def_id()).is_none() {
                     report_assoc_ty_on_inherent_impl(tcx, item.span);
                 }
 
                 find_opaque_ty_constraints(tcx, def_id)
             }
             ImplItemKind::TyAlias(ref ty) => {
-                if tcx.impl_trait_ref(tcx.hir().get_parent_did(hir_id)).is_none() {
+                if tcx.impl_trait_ref(tcx.hir().get_parent_did(hir_id).to_def_id()).is_none() {
                     report_assoc_ty_on_inherent_impl(tcx, item.span);
                 }
 
@@ -177,7 +177,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Ctor(&ref def) | Node::Variant(Variant { data: ref def, .. }) => match *def {
             VariantData::Unit(..) | VariantData::Struct(..) => {
-                tcx.type_of(tcx.hir().get_parent_did(hir_id))
+                tcx.type_of(tcx.hir().get_parent_did(hir_id).to_def_id())
             }
             VariantData::Tuple(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
@@ -207,9 +207,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     tcx.types.usize
                 }
 
-                Node::Variant(Variant { disr_expr: Some(ref e), .. }) if e.hir_id == hir_id => {
-                    tcx.adt_def(tcx.hir().get_parent_did(hir_id)).repr.discr_type().to_ty(tcx)
-                }
+                Node::Variant(Variant { disr_expr: Some(ref e), .. }) if e.hir_id == hir_id => tcx
+                    .adt_def(tcx.hir().get_parent_did(hir_id).to_def_id())
+                    .repr
+                    .discr_type()
+                    .to_ty(tcx),
 
                 Node::Ty(&Ty { kind: TyKind::Path(_), .. })
                 | Node::Expr(&Expr { kind: ExprKind::Struct(..), .. })

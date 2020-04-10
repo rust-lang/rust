@@ -10,7 +10,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirIdSet, Node};
@@ -42,7 +42,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>, attrs: Codegen
 fn method_might_be_inlined(
     tcx: TyCtxt<'_>,
     impl_item: &hir::ImplItem<'_>,
-    impl_src: DefId,
+    impl_src: LocalDefId,
 ) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner.to_def_id());
     let generics = tcx.generics_of(tcx.hir().local_def_id(impl_item.hir_id));
@@ -54,7 +54,7 @@ fn method_might_be_inlined(
             return true;
         }
     }
-    if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_src) {
+    if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_src.to_def_id()) {
         match tcx.hir().find(impl_hir_id) {
             Some(Node::Item(item)) => item_might_be_inlined(tcx, &item, codegen_fn_attrs),
             Some(..) | None => span_bug!(impl_item.span, "impl did is not an item"),
@@ -171,7 +171,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         if generics.requires_monomorphization(self.tcx) || attrs.requests_inline() {
                             true
                         } else {
-                            let impl_did = self.tcx.hir().get_parent_did(hir_id);
+                            let impl_did = self.tcx.hir().get_parent_did(hir_id).to_def_id();
                             // Check the impl. If the generics on the self
                             // type of the impl require inlining, this method
                             // does too.

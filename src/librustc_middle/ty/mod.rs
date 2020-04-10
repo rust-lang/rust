@@ -2657,13 +2657,13 @@ pub enum ImplOverlapKind {
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn body_tables(self, body: hir::BodyId) -> &'tcx TypeckTables<'tcx> {
-        self.typeck_tables_of(self.hir().body_owner_def_id(body))
+        self.typeck_tables_of(self.hir().body_owner_def_id(body).to_def_id())
     }
 
     /// Returns an iterator of the `DefId`s for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
-    pub fn body_owners(self) -> impl Iterator<Item = DefId> + Captures<'tcx> + 'tcx {
+    pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + Captures<'tcx> + 'tcx {
         self.hir()
             .krate()
             .body_ids
@@ -2671,7 +2671,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .map(move |&body_id| self.hir().body_owner_def_id(body_id))
     }
 
-    pub fn par_body_owners<F: Fn(DefId) + sync::Sync + sync::Send>(self, f: F) {
+    pub fn par_body_owners<F: Fn(LocalDefId) + sync::Sync + sync::Send>(self, f: F) {
         par_iter(&self.hir().krate().body_ids)
             .for_each(|&body_id| f(self.hir().body_owner_def_id(body_id)));
     }

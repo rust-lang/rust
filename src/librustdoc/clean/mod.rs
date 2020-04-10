@@ -419,7 +419,10 @@ impl Clean<Lifetime> for hir::GenericParam<'_> {
 impl Clean<Constant> for hir::ConstArg {
     fn clean(&self, cx: &DocContext<'_>) -> Constant {
         Constant {
-            type_: cx.tcx.type_of(cx.tcx.hir().body_owner_def_id(self.value.body)).clean(cx),
+            type_: cx
+                .tcx
+                .type_of(cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id())
+                .clean(cx),
             expr: print_const_expr(cx, self.value.body),
             value: None,
             is_literal: is_literal_expr(cx, self.value.body.hir_id),
@@ -1551,7 +1554,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
                     generic_params: Vec::new(),
-                    decl: (local_def_id, sig).clean(cx),
+                    decl: (local_def_id.to_def_id(), sig).clean(cx),
                     abi: sig.abi(),
                 })
             }
@@ -2261,7 +2264,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID),
+            def_id: cx.tcx.hir().local_def_id_from_node_id(ast::CRATE_NODE_ID).to_def_id(),
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,
