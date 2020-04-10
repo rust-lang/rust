@@ -8,7 +8,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_span::hygiene::ForLoopLoc;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -940,9 +940,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ParamMode::Optional,
                         ImplTraitContext::disallowed(),
                     );
-                    let tuple_struct_pat =
-                        hir::PatKind::TupleStruct(qpath, pats, rest.map(|r| r.0));
-                    return self.pat(lhs.span, tuple_struct_pat);
+                    match qpath {
+                        hir::QPath::Resolved(
+                            _,
+                            hir::Path { res: Res::Def(DefKind::Ctor(..), _), .. },
+                        ) => {
+                            // Destructure like a tuple struct since the path is in fact a constructor.
+                            let tuple_struct_pat =
+                                hir::PatKind::TupleStruct(qpath, pats, rest.map(|r| r.0));
+                            return self.pat(lhs.span, tuple_struct_pat);
+                        }
+                        _ => {
+                            // If the path is not a constructor, lower as an ordinary LHS.
+                            // Typecheck will report an error later.
+                        }
+                    }
                 }
             }
             // structs:
