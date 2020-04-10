@@ -860,8 +860,15 @@ impl<T> Vec<T> {
     /// This is generally not recommended, use with caution!
     /// Calling this method with an out-of-allocation index is *[undefined behavior]*
     /// even if the resulting reference is not used.
+    /// When you asign [`MaybeUninit::uninit()`] to the index in bounds, it is
+    /// *[undefined behavior]* to call other methods or drop the vector before using [`set_len`]
+    /// to make the index out of bounds.
+    /// You can have a memory leak if you forget to use [`set_len`] to make the index in bounds
+    /// after asigning value to the reference out of bounds.
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    /// [`MaybeUninit::uninit()`]: ../mem/union.MaybeUninit.html#method.uninit
+    /// [`set_len`]: #method.set_len
     ///
     /// # Examples
     ///
@@ -882,12 +889,14 @@ impl<T> Vec<T> {
     /// assert_eq!(&*x, &[0, 1, 2, 3]);
     /// ```
     #[unstable(feature = "vec_get_uninit_unchecked", issue = "none")]
-    pub fn get_uninit_unchecked(&mut self, index: usize) -> &mut MaybeUninit<T> {
-        if cfg!(debug_assertions) && index >= self.capacity() {
-            panic!("Out of allocation access")
-        } else {
-            unsafe { &mut *(self.as_mut_ptr().add(index) as *mut MaybeUninit<T>) }
-        }
+    pub unsafe fn get_uninit_unchecked(&mut self, index: usize) -> &mut MaybeUninit<T> {
+        debug_assert!(
+            index < self.capacity(),
+            "index out of allocation: the capacity is {} but the index is {}",
+            self.capacity(),
+            index
+        );
+        &mut *(self.as_mut_ptr().add(index) as *mut MaybeUninit<T>)
     }
 
     /// Forces the length of the vector to `new_len`.
