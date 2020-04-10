@@ -261,9 +261,9 @@ pub fn rustc_path<'a>() -> Option<&'a Path> {
     static RUSTC_PATH: once_cell::sync::OnceCell<Option<PathBuf>> =
         once_cell::sync::OnceCell::new();
 
-    const BIN_PATH: &str = env!("RUSTC_INSTALL_BINDIR");
+    let bin_path = option_env!("RUSTC_INSTALL_BINDIR").unwrap_or("bin");
 
-    RUSTC_PATH.get_or_init(|| get_rustc_path_inner(BIN_PATH)).as_ref().map(|v| &**v)
+    RUSTC_PATH.get_or_init(|| get_rustc_path_inner(bin_path)).as_ref().map(|v| &**v)
 }
 
 fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
