@@ -1,4 +1,4 @@
-use std::alloc::{alloc, dealloc, realloc, Layout};
+use std::alloc::{alloc, realloc, Layout};
 
 // error-pattern: allocation has size 1 and alignment 1, but gave size 2 and alignment 1
 
