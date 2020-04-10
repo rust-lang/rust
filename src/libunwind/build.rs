@@ -33,7 +33,7 @@ fn main() {
     } else if target.contains("dragonfly") {
         println!("cargo:rustc-link-lib=gcc_pic");
     } else if target.contains("pc-windows-gnu") {
-        // This is handled in the target spec with late_link_args_[static|dynamic]
+        // This is handled in lib.rs
 
         // cfg!(bootstrap) doesn't work in build scripts
         if env::var("RUSTC_STAGE").ok() == Some("0".to_string()) {

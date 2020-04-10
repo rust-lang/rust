@@ -1218,28 +1218,9 @@ fn add_user_defined_link_args(
 
 /// Add arbitrary "late link" args defined by the target spec.
 /// FIXME: Determine where exactly these args need to be inserted.
-fn add_late_link_args(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    flavor: LinkerFlavor,
-    crate_type: config::CrateType,
-    codegen_results: &CodegenResults,
-) {
+fn add_late_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
         cmd.args(args);
-    }
-    let any_dynamic_crate = crate_type == config::CrateType::Dylib
-        || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
-            *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
-        });
-    if any_dynamic_crate {
-        if let Some(args) = sess.target.target.options.late_link_args_dynamic.get(&flavor) {
-            cmd.args(args);
-        }
-    } else {
-        if let Some(args) = sess.target.target.options.late_link_args_static.get(&flavor) {
-            cmd.args(args);
-        }
     }
 }
 
@@ -1581,7 +1562,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     cmd.finalize();
 
     // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
-    add_late_link_args(cmd, sess, flavor, crate_type, codegen_results);
+    add_late_link_args(cmd, sess, flavor);
 
     // NO-OPT-OUT, OBJECT-FILES-YES
     add_post_link_objects(cmd, sess, crate_type);

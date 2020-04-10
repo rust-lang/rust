@@ -17,13 +17,12 @@ pub fn opts() -> TargetOptions {
     );
 
     let mut late_link_args = LinkArgs::new();
-    let mut late_link_args_dynamic = LinkArgs::new();
-    let mut late_link_args_static = LinkArgs::new();
     late_link_args.insert(
         LinkerFlavor::Gcc,
         vec![
             "-lmingwex".to_string(),
             "-lmingw32".to_string(),
+            "-lgcc".to_string(),
             "-lmsvcrt".to_string(),
             // mingw's msvcrt is a weird hybrid import library and static library.
             // And it seems that the linker fails to use import symbols from msvcrt
@@ -35,33 +34,6 @@ pub fn opts() -> TargetOptions {
             // See https://github.com/rust-lang/rust/pull/47483
             "-lmsvcrt".to_string(),
             "-luser32".to_string(),
-            "-lkernel32".to_string(),
-        ],
-    );
-    late_link_args_dynamic.insert(
-        LinkerFlavor::Gcc,
-        vec![
-            // If any of our crates are dynamically linked then we need to use
-            // the shared libgcc_s-dw2-1.dll. This is required to support
-            // unwinding across DLL boundaries.
-            "-lgcc_s".to_string(),
-            "-lgcc".to_string(),
-            "-lkernel32".to_string(),
-        ],
-    );
-    late_link_args_static.insert(
-        LinkerFlavor::Gcc,
-        vec![
-            // If all of our crates are statically linked then we can get away
-            // with statically linking the libgcc unwinding code. This allows
-            // binaries to be redistributed without the libgcc_s-dw2-1.dll
-            // dependency, but unfortunately break unwinding across DLL
-            // boundaries when unwinding across FFI boundaries.
-            "-lgcc".to_string(),
-            "-lgcc_eh".to_string(),
-            "-lpthread".to_string(),
-            // libpthread depends on libmsvcrt, so we need to link it *again*.
-            "-lmsvcrt".to_string(),
             "-lkernel32".to_string(),
         ],
     );
@@ -90,8 +62,6 @@ pub fn opts() -> TargetOptions {
             "rsbegin.o".to_string(),
         ],
         late_link_args,
-        late_link_args_dynamic,
-        late_link_args_static,
         post_link_objects: vec!["rsend.o".to_string()],
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,

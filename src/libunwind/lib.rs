@@ -27,3 +27,19 @@ extern "C" {}
 #[link(name = "gcc_eh", kind = "static-nobundle", cfg(target_feature = "crt-static"))]
 #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 extern "C" {}
+
+// If any of our crates are dynamically linked then we need to use
+// the shared libgcc_s-dw2-1.dll. This is required to support
+// unwinding across DLL boundaries.
+// If all of our crates are statically linked then we can get away
+// with statically linking the libgcc unwinding code. This allows
+// binaries to be redistributed without the libgcc_s-dw2-1.dll
+// dependency, but unfortunately break unwinding across DLL
+// boundaries when unwinding across FFI boundaries.
+//
+// Linking order matters a lot here!
+#[cfg(all(not(bootstrap), target_os = "windows", target_env = "gnu", target_vendor = "pc"))]
+#[link(name = "gcc_eh", kind = "static-nobundle")]
+#[link(name = "pthread", kind = "static-nobundle")]
+#[link(name = "gcc_s")]
+extern "C" {}
