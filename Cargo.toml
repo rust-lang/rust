@@ -57,7 +57,7 @@ serde = { version = "*", features = ["derive"] }
 vergen = "3"
 
 [dev-dependencies]
-compiletest_rs = { version = "0.4", features = ["tmp"] }
+compiletest_rs = { version = "0.5", features = ["tmp"] }
 colored = "1.6"
 
 [features]
