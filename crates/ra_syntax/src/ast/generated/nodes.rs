@@ -4,7 +4,7 @@ use super::tokens::*;
 use crate::{
     ast::{self, support, AstChildren, AstNode},
     SyntaxKind::{self, *},
-    SyntaxNode, SyntaxToken,
+    SyntaxNode, SyntaxToken, T,
 };
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceFile {
@@ -48,11 +48,13 @@ impl ast::DocCommentsOwner for FnDef {}
 impl ast::AttrsOwner for FnDef {}
 impl FnDef {
     pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, CONST_KW) }
-    pub fn default_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, DEFAULT_KW) }
-    pub fn async_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, ASYNC_KW) }
-    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, UNSAFE_KW) }
-    pub fn fn_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, FN_KW) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![const]) }
+    pub fn default_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![default])
+    }
+    pub fn async_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![async]) }
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![unsafe]) }
+    pub fn fn_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![fn]) }
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn body(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
@@ -98,7 +100,7 @@ impl ast::TypeParamsOwner for StructDef {}
 impl ast::AttrsOwner for StructDef {}
 impl ast::DocCommentsOwner for StructDef {}
 impl StructDef {
-    pub fn struct_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, STRUCT_KW) }
+    pub fn struct_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![struct]) }
     pub fn field_def_list(&self) -> Option<FieldDefList> { support::child(&self.syntax) }
     pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
 }
@@ -123,7 +125,7 @@ impl ast::TypeParamsOwner for UnionDef {}
 impl ast::AttrsOwner for UnionDef {}
 impl ast::DocCommentsOwner for UnionDef {}
 impl UnionDef {
-    pub fn union_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, UNION_KW) }
+    pub fn union_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![union]) }
     pub fn record_field_def_list(&self) -> Option<RecordFieldDefList> {
         support::child(&self.syntax)
     }
@@ -230,7 +232,7 @@ impl ast::TypeParamsOwner for EnumDef {}
 impl ast::AttrsOwner for EnumDef {}
 impl ast::DocCommentsOwner for EnumDef {}
 impl EnumDef {
-    pub fn enum_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, ENUM_KW) }
+    pub fn enum_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![enum]) }
     pub fn variant_list(&self) -> Option<EnumVariantList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -299,9 +301,9 @@ impl ast::DocCommentsOwner for TraitDef {}
 impl ast::TypeParamsOwner for TraitDef {}
 impl ast::TypeBoundsOwner for TraitDef {}
 impl TraitDef {
-    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, UNSAFE_KW) }
-    pub fn auto_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, AUTO_KW) }
-    pub fn trait_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, TRAIT_KW) }
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![unsafe]) }
+    pub fn auto_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![auto]) }
+    pub fn trait_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![trait]) }
     pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -324,7 +326,7 @@ impl ast::NameOwner for Module {}
 impl ast::AttrsOwner for Module {}
 impl ast::DocCommentsOwner for Module {}
 impl Module {
-    pub fn mod_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, MOD_KW) }
+    pub fn mod_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mod]) }
     pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
     pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
 }
@@ -371,8 +373,10 @@ impl ast::AttrsOwner for ConstDef {}
 impl ast::DocCommentsOwner for ConstDef {}
 impl ast::TypeAscriptionOwner for ConstDef {}
 impl ConstDef {
-    pub fn default_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, DEFAULT_KW) }
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, CONST_KW) }
+    pub fn default_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![default])
+    }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![const]) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
@@ -399,8 +403,8 @@ impl ast::AttrsOwner for StaticDef {}
 impl ast::DocCommentsOwner for StaticDef {}
 impl ast::TypeAscriptionOwner for StaticDef {}
 impl StaticDef {
-    pub fn static_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, STATIC_KW) }
-    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, MUT_KW) }
+    pub fn static_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![static]) }
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
@@ -427,8 +431,10 @@ impl ast::AttrsOwner for TypeAliasDef {}
 impl ast::DocCommentsOwner for TypeAliasDef {}
 impl ast::TypeBoundsOwner for TypeAliasDef {}
 impl TypeAliasDef {
-    pub fn default_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, DEFAULT_KW) }
-    pub fn type_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, TYPE_KW) }
+    pub fn default_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![default])
+    }
+    pub fn type_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![type]) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn semi_token(&self) -> Option<Semi> { support::token(&self.syntax) }
@@ -451,12 +457,14 @@ impl AstNode for ImplDef {
 impl ast::TypeParamsOwner for ImplDef {}
 impl ast::AttrsOwner for ImplDef {}
 impl ImplDef {
-    pub fn default_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, DEFAULT_KW) }
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, CONST_KW) }
-    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, UNSAFE_KW) }
-    pub fn impl_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, IMPL_KW) }
+    pub fn default_token(&self) -> Option<SyntaxToken> {
+        support::token2(&self.syntax, T![default])
+    }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![const]) }
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![unsafe]) }
+    pub fn impl_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![impl]) }
     pub fn excl_token(&self) -> Option<Excl> { support::token(&self.syntax) }
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, FOR_KW) }
+    pub fn for_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![for]) }
     pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -552,8 +560,8 @@ impl AstNode for PointerType {
 }
 impl PointerType {
     pub fn star_token(&self) -> Option<Star> { support::token(&self.syntax) }
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, CONST_KW) }
-    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, MUT_KW) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![const]) }
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -616,7 +624,7 @@ impl AstNode for ReferenceType {
 impl ReferenceType {
     pub fn amp_token(&self) -> Option<Amp> { support::token(&self.syntax) }
     pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
-    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, MUT_KW) }
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -654,8 +662,8 @@ impl AstNode for FnPointerType {
 }
 impl FnPointerType {
     pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
-    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, UNSAFE_KW) }
-    pub fn fn_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, FN_KW) }
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![unsafe]) }
+    pub fn fn_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![fn]) }
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
 }
@@ -675,7 +683,7 @@ impl AstNode for ForType {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ForType {
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, FOR_KW) }
+    pub fn for_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![for]) }
     pub fn type_param_list(&self) -> Option<TypeParamList> { support::child(&self.syntax) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
@@ -696,7 +704,7 @@ impl AstNode for ImplTraitType {
 }
 impl ast::TypeBoundsOwner for ImplTraitType {}
 impl ImplTraitType {
-    pub fn impl_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, IMPL_KW) }
+    pub fn impl_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![impl]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DynTraitType {
@@ -715,7 +723,7 @@ impl AstNode for DynTraitType {
 }
 impl ast::TypeBoundsOwner for DynTraitType {}
 impl DynTraitType {
-    pub fn dyn_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, DYN_KW) }
+    pub fn dyn_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![dyn]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleExpr {
@@ -816,9 +824,9 @@ impl AstNode for LambdaExpr {
 }
 impl ast::AttrsOwner for LambdaExpr {}
 impl LambdaExpr {
-    pub fn static_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, STATIC_KW) }
-    pub fn async_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, ASYNC_KW) }
-    pub fn move_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, MOVE_KW) }
+    pub fn static_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![static]) }
+    pub fn async_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![async]) }
+    pub fn move_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![move]) }
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -840,7 +848,7 @@ impl AstNode for IfExpr {
 }
 impl ast::AttrsOwner for IfExpr {}
 impl IfExpr {
-    pub fn if_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, IF_KW) }
+    pub fn if_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![if]) }
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -861,7 +869,7 @@ impl AstNode for LoopExpr {
 impl ast::AttrsOwner for LoopExpr {}
 impl ast::LoopBodyOwner for LoopExpr {}
 impl LoopExpr {
-    pub fn loop_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, LOOP_KW) }
+    pub fn loop_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![loop]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TryBlockExpr {
@@ -880,7 +888,7 @@ impl AstNode for TryBlockExpr {
 }
 impl ast::AttrsOwner for TryBlockExpr {}
 impl TryBlockExpr {
-    pub fn try_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, TRY_KW) }
+    pub fn try_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![try]) }
     pub fn body(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -901,9 +909,9 @@ impl AstNode for ForExpr {
 impl ast::AttrsOwner for ForExpr {}
 impl ast::LoopBodyOwner for ForExpr {}
 impl ForExpr {
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, FOR_KW) }
+    pub fn for_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![for]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
-    pub fn in_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, IN_KW) }
+    pub fn in_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![in]) }
     pub fn iterable(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -924,7 +932,7 @@ impl AstNode for WhileExpr {
 impl ast::AttrsOwner for WhileExpr {}
 impl ast::LoopBodyOwner for WhileExpr {}
 impl WhileExpr {
-    pub fn while_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, WHILE_KW) }
+    pub fn while_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![while]) }
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -945,7 +953,7 @@ impl AstNode for ContinueExpr {
 impl ast::AttrsOwner for ContinueExpr {}
 impl ContinueExpr {
     pub fn continue_token(&self) -> Option<SyntaxToken> {
-        support::token2(&self.syntax, CONTINUE_KW)
+        support::token2(&self.syntax, T![continue])
     }
     pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
 }
@@ -966,7 +974,7 @@ impl AstNode for BreakExpr {
 }
 impl ast::AttrsOwner for BreakExpr {}
 impl BreakExpr {
-    pub fn break_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, BREAK_KW) }
+    pub fn break_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![break]) }
     pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
@@ -1006,7 +1014,7 @@ impl AstNode for BlockExpr {
 impl ast::AttrsOwner for BlockExpr {}
 impl BlockExpr {
     pub fn label(&self) -> Option<Label> { support::child(&self.syntax) }
-    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, UNSAFE_KW) }
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![unsafe]) }
     pub fn block(&self) -> Option<Block> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1130,7 +1138,7 @@ impl ast::AttrsOwner for AwaitExpr {}
 impl AwaitExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn dot_token(&self) -> Option<Dot> { support::token(&self.syntax) }
-    pub fn await_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, AWAIT_KW) }
+    pub fn await_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![await]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TryExpr {
@@ -1149,7 +1157,7 @@ impl AstNode for TryExpr {
 }
 impl ast::AttrsOwner for TryExpr {}
 impl TryExpr {
-    pub fn try_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, TRY_KW) }
+    pub fn try_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![try]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1170,7 +1178,7 @@ impl AstNode for CastExpr {
 impl ast::AttrsOwner for CastExpr {}
 impl CastExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn as_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, AS_KW) }
+    pub fn as_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![as]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1191,8 +1199,8 @@ impl AstNode for RefExpr {
 impl ast::AttrsOwner for RefExpr {}
 impl RefExpr {
     pub fn amp_token(&self) -> Option<Amp> { support::token(&self.syntax) }
-    pub fn raw_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, RAW_KW) }
-    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, MUT_KW) }
+    pub fn raw_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![raw]) }
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1232,7 +1240,7 @@ impl AstNode for BoxExpr {
 }
 impl ast::AttrsOwner for BoxExpr {}
 impl BoxExpr {
-    pub fn box_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, BOX_KW) }
+    pub fn box_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![box]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1308,7 +1316,7 @@ impl AstNode for MatchExpr {
 }
 impl ast::AttrsOwner for MatchExpr {}
 impl MatchExpr {
-    pub fn match_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, MATCH_KW) }
+    pub fn match_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![match]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn match_arm_list(&self) -> Option<MatchArmList> { support::child(&self.syntax) }
 }
@@ -1371,7 +1379,7 @@ impl AstNode for MatchGuard {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl MatchGuard {
-    pub fn if_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, IF_KW) }
+    pub fn if_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![if]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1491,7 +1499,7 @@ impl AstNode for RefPat {
 }
 impl RefPat {
     pub fn amp_token(&self) -> Option<Amp> { support::token(&self.syntax) }
-    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, MUT_KW) }
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1510,7 +1518,7 @@ impl AstNode for BoxPat {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl BoxPat {
-    pub fn box_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, BOX_KW) }
+    pub fn box_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![box]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1531,8 +1539,8 @@ impl AstNode for BindPat {
 impl ast::AttrsOwner for BindPat {}
 impl ast::NameOwner for BindPat {}
 impl BindPat {
-    pub fn ref_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, REF_KW) }
-    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, MUT_KW) }
+    pub fn ref_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![ref]) }
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![mut]) }
     pub fn at_token(&self) -> Option<At> { support::token(&self.syntax) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
@@ -1788,10 +1796,10 @@ impl AstNode for Visibility {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl Visibility {
-    pub fn pub_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, PUB_KW) }
-    pub fn super_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, SUPER_KW) }
-    pub fn self_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, SELF_KW) }
-    pub fn crate_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, CRATE_KW) }
+    pub fn pub_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![pub]) }
+    pub fn super_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![super]) }
+    pub fn self_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![self]) }
+    pub fn crate_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![crate]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name {
@@ -1996,7 +2004,7 @@ impl AstNode for TypeBound {
 }
 impl TypeBound {
     pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, CONST_KW) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![const]) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2053,7 +2061,7 @@ impl AstNode for WhereClause {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl WhereClause {
-    pub fn where_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, WHERE_KW) }
+    pub fn where_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![where]) }
     pub fn predicates(&self) -> AstChildren<WherePred> { support::children(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2112,7 +2120,7 @@ impl AstNode for LetStmt {
 impl ast::AttrsOwner for LetStmt {}
 impl ast::TypeAscriptionOwner for LetStmt {}
 impl LetStmt {
-    pub fn let_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, LET_KW) }
+    pub fn let_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![let]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn initializer(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -2134,7 +2142,7 @@ impl AstNode for Condition {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl Condition {
-    pub fn let_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, LET_KW) }
+    pub fn let_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![let]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<Eq> { support::token(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -2203,7 +2211,7 @@ impl ast::AttrsOwner for SelfParam {}
 impl SelfParam {
     pub fn amp_token(&self) -> Option<Amp> { support::token(&self.syntax) }
     pub fn lifetime_token(&self) -> Option<Lifetime> { support::token(&self.syntax) }
-    pub fn self_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, SELF_KW) }
+    pub fn self_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![self]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Param {
@@ -2244,7 +2252,7 @@ impl AstNode for UseItem {
 impl ast::AttrsOwner for UseItem {}
 impl ast::VisibilityOwner for UseItem {}
 impl UseItem {
-    pub fn use_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, USE_KW) }
+    pub fn use_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![use]) }
     pub fn use_tree(&self) -> Option<UseTree> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2285,7 +2293,7 @@ impl AstNode for Alias {
 }
 impl ast::NameOwner for Alias {}
 impl Alias {
-    pub fn as_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, AS_KW) }
+    pub fn as_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![as]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTreeList {
@@ -2325,8 +2333,8 @@ impl AstNode for ExternCrateItem {
 impl ast::AttrsOwner for ExternCrateItem {}
 impl ast::VisibilityOwner for ExternCrateItem {}
 impl ExternCrateItem {
-    pub fn extern_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, EXTERN_KW) }
-    pub fn crate_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, CRATE_KW) }
+    pub fn extern_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![extern]) }
+    pub fn crate_token(&self) -> Option<SyntaxToken> { support::token2(&self.syntax, T![crate]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn alias(&self) -> Option<Alias> { support::child(&self.syntax) }
 }

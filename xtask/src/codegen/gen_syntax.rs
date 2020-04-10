@@ -12,7 +12,7 @@ use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
 
 use crate::{
-    ast_src::{AstSrc, FieldSrc, KindsSrc, AST_SRC, KINDS_SRC},
+    ast_src::{AstSrc, Field, FieldSrc, KindsSrc, AST_SRC, KINDS_SRC},
     codegen::{self, update, Mode},
     project_root, Result,
 };
@@ -189,46 +189,30 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
             quote!(impl ast::#trait_name for #name {})
         });
 
-        let methods = node.fields.iter().map(|(name, field)| {
-            let is_kw = name.ends_with("Kw");
-            let method_name = match field {
-                FieldSrc::Shorthand => {
-                    let name = if is_kw { &name[..name.len() - 2] } else { &name };
-                    format_ident!("{}", to_lower_snake_case(name))
-                }
-                _ => format_ident!("{}", name),
-            };
-            let ty = match field {
-                FieldSrc::Optional(ty) | FieldSrc::Many(ty) => ty,
-                FieldSrc::Shorthand => name,
-            };
+        let methods = node.fields.iter().map(|field| {
+            let method_name = field.method_name();
+            let ty = field.ty();
 
-            let ty = format_ident!("{}", ty);
-
-            match field {
-                FieldSrc::Many(_) => {
-                    quote! {
-                        pub fn #method_name(&self) -> AstChildren<#ty> {
-                            support::children(&self.syntax)
-                        }
+            if field.is_many() {
+                quote! {
+                    pub fn #method_name(&self) -> AstChildren<#ty> {
+                        support::children(&self.syntax)
                     }
                 }
-                FieldSrc::Optional(_) | FieldSrc::Shorthand => {
+            } else {
+                if let Some(token_kind) = field.token_kind() {
+                    quote! {
+                        pub fn #method_name(&self) -> Option<#ty> {
+                            support::token2(&self.syntax, #token_kind)
+                        }
+                    }
+                } else {
                     let is_token = token_kinds.contains(&ty.to_string());
                     if is_token {
                         let method_name = format_ident!("{}_token", method_name);
-                        if is_kw {
-                            let token_kind = format_ident!("{}", to_upper_snake_case(name));
-                            quote! {
-                                pub fn #method_name(&self) -> Option<SyntaxToken> {
-                                    support::token2(&self.syntax, #token_kind)
-                                }
-                            }
-                        } else {
-                            quote! {
-                                pub fn #method_name(&self) -> Option<#ty> {
-                                    support::token(&self.syntax)
-                                }
+                        quote! {
+                            pub fn #method_name(&self) -> Option<#ty> {
+                                support::token(&self.syntax)
                             }
                         }
                     } else {
@@ -351,6 +335,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         use crate::{
             SyntaxNode, SyntaxToken, SyntaxKind::{self, *},
             ast::{self, AstNode, AstChildren, support},
+            T,
         };
 
         use super::tokens::*;
@@ -518,4 +503,41 @@ fn to_pascal_case(s: &str) -> String {
         }
     }
     buf
+}
+
+impl Field<'_> {
+    fn is_many(&self) -> bool {
+        match self {
+            Field::Node { src: FieldSrc::Many(_), .. } => true,
+            _ => false,
+        }
+    }
+    fn token_kind(&self) -> Option<proc_macro2::TokenStream> {
+        let res = match self {
+            Field::Token(token) => {
+                let token = format_ident!("{}", token);
+                quote! { T![#token] }
+            }
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn method_name(&self) -> proc_macro2::Ident {
+        match self {
+            Field::Token(name) => format_ident!("{}_token", name),
+            Field::Node { name, src } => match src {
+                FieldSrc::Shorthand => format_ident!("{}", to_lower_snake_case(name)),
+                _ => format_ident!("{}", name),
+            },
+        }
+    }
+    fn ty(&self) -> proc_macro2::Ident {
+        match self {
+            Field::Token(_) => format_ident!("SyntaxToken"),
+            Field::Node { name, src } => match src {
+                FieldSrc::Optional(ty) | FieldSrc::Many(ty) => format_ident!("{}", ty),
+                FieldSrc::Shorthand => format_ident!("{}", name),
+            },
+        }
+    }
 }
