@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   file \
   curl \
   ca-certificates \
-  python2.7 \
+  python3 \
   git \
   cmake \
   libssl-dev \

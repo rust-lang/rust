@@ -19,7 +19,7 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
       --enable-cargo-openssl-static
 
-ENV SCRIPT python2.7 ../x.py dist --target $HOSTS --host $HOSTS
+ENV SCRIPT python3 ../x.py dist --target $HOSTS --host $HOSTS
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

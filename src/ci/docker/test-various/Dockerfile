@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   file \
   curl \
   ca-certificates \
-  python \
+  python3 \
   git \
   cmake \
   sudo \
@@ -40,7 +40,7 @@ ENV RUST_CONFIGURE_ARGS \
 ENV NO_DEBUG_ASSERTIONS=1
 
 ENV WASM_TARGETS=wasm32-unknown-unknown
-ENV WASM_SCRIPT python2.7 /checkout/x.py test --target $WASM_TARGETS \
+ENV WASM_SCRIPT python3 /checkout/x.py test --target $WASM_TARGETS \
   src/test/run-make \
   src/test/ui \
   src/test/compile-fail \
@@ -49,13 +49,13 @@ ENV WASM_SCRIPT python2.7 /checkout/x.py test --target $WASM_TARGETS \
   src/libcore
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
-ENV NVPTX_SCRIPT python2.7 /checkout/x.py test --target $NVPTX_TARGETS \
+ENV NVPTX_SCRIPT python3 /checkout/x.py test --target $NVPTX_TARGETS \
   src/test/run-make \
   src/test/assembly
 
 ENV MUSL_TARGETS=x86_64-unknown-linux-musl \
     CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc \
     CXX_x86_64_unknown_linux_musl=x86_64-linux-musl-g++
-ENV MUSL_SCRIPT python2.7 /checkout/x.py test --target $MUSL_TARGETS
+ENV MUSL_SCRIPT python3 /checkout/x.py test --target $MUSL_TARGETS
 
 ENV SCRIPT $WASM_SCRIPT && $NVPTX_SCRIPT && $MUSL_SCRIPT

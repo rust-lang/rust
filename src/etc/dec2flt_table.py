@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 """
 Generate powers of ten using William Clinger's ``AlgorithmM`` for use in

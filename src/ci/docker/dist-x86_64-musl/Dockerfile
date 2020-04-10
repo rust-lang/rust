@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   wget \
   curl \
   ca-certificates \
-  python2.7 \
+  python3 \
   git \
   cmake \
   xz-utils \
@@ -48,4 +48,4 @@ ENV CFLAGS_x86_64_unknown_linux_musl="-Wa,-mrelax-relocations=no -Wa,--compress-
     -Wl,--compress-debug-sections=none"
 
 # To run native tests replace `dist` below with `test`
-ENV SCRIPT python2.7 ../x.py dist --build $HOSTS
+ENV SCRIPT python3 ../x.py dist --build $HOSTS

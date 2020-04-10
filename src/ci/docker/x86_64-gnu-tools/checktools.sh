@@ -7,7 +7,7 @@ X_PY="$1"
 # Try to test all the tools and store the build/test success in the TOOLSTATE_FILE
 
 set +e
-python2.7 "$X_PY" test --no-fail-fast \
+python3 "$X_PY" test --no-fail-fast \
     src/doc/book \
     src/doc/nomicon \
     src/doc/reference \
@@ -22,4 +22,4 @@ python2.7 "$X_PY" test --no-fail-fast \
 
 set -e
 
-python2.7 "$X_PY" test check-tools
+python3 "$X_PY" test check-tools

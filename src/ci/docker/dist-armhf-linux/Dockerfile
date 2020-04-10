@@ -28,4 +28,4 @@ ENV CC_arm_unknown_linux_gnueabihf=arm-unknown-linux-gnueabihf-gcc \
 ENV HOSTS=arm-unknown-linux-gnueabihf
 
 ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
-ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
+ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS

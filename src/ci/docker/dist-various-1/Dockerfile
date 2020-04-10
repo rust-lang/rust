@@ -18,7 +18,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   file \
   curl \
   ca-certificates \
-  python2.7 \
   python3 \
   git \
   cmake \
@@ -209,8 +208,8 @@ ENV RUST_CONFIGURE_ARGS \
       --disable-docs
 
 ENV SCRIPT \
-      python2.7 ../x.py test --target $RUN_MAKE_TARGETS src/test/run-make && \
-      python2.7 ../x.py dist --target $TARGETS
+      python3 ../x.py test --target $RUN_MAKE_TARGETS src/test/run-make && \
+      python3 ../x.py dist --target $TARGETS
 
 # sccache
 COPY scripts/sccache.sh /scripts/
