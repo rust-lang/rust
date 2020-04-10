@@ -236,7 +236,7 @@ impl Index<PatId> for Body {
 
 impl BodySourceMap {
     pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprSource, SyntheticSyntax> {
-        self.expr_map_back[expr]
+        self.expr_map_back[expr].clone()
     }
 
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
@@ -255,7 +255,7 @@ impl BodySourceMap {
     }
 
     pub fn pat_syntax(&self, pat: PatId) -> Result<PatSource, SyntheticSyntax> {
-        self.pat_map_back[pat]
+        self.pat_map_back[pat].clone()
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
@@ -264,6 +264,6 @@ impl BodySourceMap {
     }
 
     pub fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::RecordField> {
-        self.field_map[&(expr, field)]
+        self.field_map[&(expr, field)].clone()
     }
 }
