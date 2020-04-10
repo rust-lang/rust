@@ -57,7 +57,8 @@ fn generate_tokens(grammar: AstSrc<'_>) -> Result<String> {
     let pretty = crate::reformat(quote! {
         use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
         #(#tokens)*
-    })?;
+    })?
+    .replace("#[derive", "\n#[derive");
     Ok(pretty)
 }
 
@@ -215,7 +216,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
     };
 
     let ast = ast.to_string().replace("T ! [ ", "T![").replace(" ] )", "])");
-    let pretty = crate::reformat(ast)?;
+    let pretty = crate::reformat(ast)?.replace("#[derive", "\n#[derive");
     Ok(pretty)
 }
 

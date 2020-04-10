@@ -5,6 +5,7 @@ use crate::{
     SyntaxKind::{self, *},
     SyntaxToken,
 };
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Whitespace {
     pub(crate) syntax: SyntaxToken,
@@ -25,6 +26,7 @@ impl AstToken for Whitespace {
     }
     fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Comment {
     pub(crate) syntax: SyntaxToken,
@@ -45,6 +47,7 @@ impl AstToken for Comment {
     }
     fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct String {
     pub(crate) syntax: SyntaxToken,
@@ -65,6 +68,7 @@ impl AstToken for String {
     }
     fn syntax(&self) -> &SyntaxToken { &self.syntax }
 }
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RawString {
     pub(crate) syntax: SyntaxToken,
