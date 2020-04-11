@@ -127,6 +127,21 @@ pub struct CallInfo {
     pub active_parameter: Option<usize>,
 }
 
+impl CallInfo {
+    pub fn active_parameter_type(&self) -> Option<String> {
+        if let Some(id) = self.active_parameter {
+            return self.signature.parameter_types.get(id).map(|param_ty| param_ty.clone());
+        }
+        None
+    }
+    pub fn active_parameter_name(&self) -> Option<String> {
+        if let Some(id) = self.active_parameter {
+            return self.signature.parameter_names.get(id).map(|param_ty| param_ty.clone());
+        }
+        None
+    }
+}
+
 /// `AnalysisHost` stores the current state of the world.
 #[derive(Debug)]
 pub struct AnalysisHost {

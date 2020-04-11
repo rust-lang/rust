@@ -1,17 +1,19 @@
 //! FIXME: write short doc here
 
-use hir::{Semantics, SemanticsScope};
+use hir::{db::HirDatabase, Semantics, SemanticsScope};
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{find_covering_element, find_node_at_offset},
-    ast, AstNode,
+    ast,
+    ast::ArgListOwner,
+    AstNode,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextUnit,
 };
 use ra_text_edit::AtomTextEdit;
 
-use crate::{completion::CompletionConfig, FilePosition};
+use crate::{call_info::call_info, completion::CompletionConfig, CallInfo, FilePosition};
 
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
@@ -21,6 +23,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) db: &'a RootDatabase,
     pub(super) config: &'a CompletionConfig,
     pub(super) offset: TextUnit,
+    pub(super) file_position: FilePosition,
     /// The token before the cursor, in the original file.
     pub(super) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
@@ -32,6 +35,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) record_lit_syntax: Option<ast::RecordLit>,
     pub(super) record_lit_pat: Option<ast::RecordPat>,
     pub(super) impl_def: Option<ast::ImplDef>,
+    pub(super) call_info: Option<CallInfo>,
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
@@ -88,9 +92,11 @@ impl<'a> CompletionContext<'a> {
             original_token,
             token,
             offset: position.offset,
+            file_position: position,
             krate,
             name_ref_syntax: None,
             function_syntax: None,
+            call_info: None,
             use_item_syntax: None,
             record_lit_syntax: None,
             record_lit_pat: None,
@@ -252,6 +258,8 @@ impl<'a> CompletionContext<'a> {
 
         self.use_item_syntax =
             self.sema.ancestors_with_macros(self.token.parent()).find_map(ast::UseItem::cast);
+
+        self.call_info = call_info(self.db, self.file_position);
 
         self.function_syntax = self
             .sema

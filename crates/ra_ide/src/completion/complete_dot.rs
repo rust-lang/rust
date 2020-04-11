@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{HasVisibility, Type};
+use hir::{HasVisibility, HirDisplay, Type};
 
 use crate::completion::completion_item::CompletionKind;
 use crate::{
@@ -8,6 +8,7 @@ use crate::{
     CompletionItem,
 };
 use rustc_hash::FxHashSet;
+use std::cmp::Ordering;
 
 /// Complete dot accesses, i.e. fields or methods (and .await syntax).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -37,7 +38,31 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
     for receiver in receiver.autoderef(ctx.db) {
-        for (field, ty) in receiver.fields(ctx.db) {
+        let mut fields = receiver.fields(ctx.db);
+        if let Some(call_info) = &ctx.call_info {
+            if let Some(active_parameter_type) = call_info.active_parameter_type() {
+                let active_parameter_name = call_info.active_parameter_name().unwrap();
+                fields.sort_by(|a, b| {
+                    // For the same type
+                    if active_parameter_type == a.1.display(ctx.db).to_string() {
+                        // If same type + same name then go top position
+                        if active_parameter_name == a.0.name(ctx.db).to_string() {
+                            Ordering::Less
+                        } else {
+                            if active_parameter_type == b.1.display(ctx.db).to_string() {
+                                Ordering::Equal
+                            } else {
+                                Ordering::Less
+                            }
+                        }
+                    } else {
+                        Ordering::Greater
+                    }
+                });
+            }
+        }
+
+        for (field, ty) in fields {
             if ctx.scope().module().map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
                 // Skip private field. FIXME: If the definition location of the
                 // field is editable, we should show the completion
@@ -47,6 +72,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Ty
         }
         for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
             // FIXME: Handle visibility
+            // TODO: add the same behavior with type ?
             acc.add_tuple_field(ctx, i, &ty);
         }
     }
@@ -70,11 +96,18 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &T
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
+    use crate::completion::{
+        test_utils::{do_completion, do_completion_without_sort},
+        CompletionItem, CompletionKind,
+    };
     use insta::assert_debug_snapshot;
 
     fn do_ref_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
+    }
+
+    fn do_ref_completion_without_sort(code: &str) -> Vec<CompletionItem> {
+        do_completion_without_sort(code, CompletionKind::Reference)
     }
 
     #[test]
@@ -97,6 +130,92 @@ mod tests {
                 insert: "the_field",
                 kind: Field,
                 detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_func_call() {
+        assert_debug_snapshot!(
+        do_ref_completion_without_sort(
+                r"
+                struct A { another_field: i64, the_field: u32, my_string: String }
+                fn test(my_param: u32) -> u32 { my_param }
+                fn foo(a: A) {
+                    test(a.<|>)
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+            CompletionItem {
+                label: "another_field",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+            },
+            CompletionItem {
+                label: "my_string",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "my_string",
+                kind: Field,
+                detail: "{unknown}",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_func_call_with_type_and_name() {
+        assert_debug_snapshot!(
+        do_ref_completion_without_sort(
+                r"
+                struct A { another_field: i64, another_good_type: u32, the_field: u32 }
+                fn test(the_field: u32) -> u32 { the_field }
+                fn foo(a: A) {
+                    test(a.<|>)
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [208; 208),
+                delete: [208; 208),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+            CompletionItem {
+                label: "another_good_type",
+                source_range: [208; 208),
+                delete: [208; 208),
+                insert: "another_good_type",
+                kind: Field,
+                detail: "u32",
+            },
+            CompletionItem {
+                label: "another_field",
+                source_range: [208; 208),
+                delete: [208; 208),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
             },
         ]
         "###

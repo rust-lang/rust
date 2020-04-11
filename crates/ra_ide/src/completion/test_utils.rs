@@ -7,13 +7,18 @@ use crate::{
 };
 
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
-    do_completion_with_options(code, kind, &CompletionConfig::default())
+    do_completion_with_options(code, kind, &CompletionConfig::default(), true)
+}
+
+pub(crate) fn do_completion_without_sort(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
+    do_completion_with_options(code, kind, &CompletionConfig::default(), false)
 }
 
 pub(crate) fn do_completion_with_options(
     code: &str,
     kind: CompletionKind,
     options: &CompletionConfig,
+    sort_by_key: bool,
 ) -> Vec<CompletionItem> {
     let (analysis, position) = if code.contains("//-") {
         analysis_and_position(code)
@@ -24,6 +29,8 @@ pub(crate) fn do_completion_with_options(
     let completion_items: Vec<CompletionItem> = completions.into();
     let mut kind_completions: Vec<CompletionItem> =
         completion_items.into_iter().filter(|c| c.completion_kind == kind).collect();
-    kind_completions.sort_by_key(|c| c.label().to_owned());
+    if sort_by_key {
+        kind_completions.sort_by_key(|c| c.label().to_owned());
+    }
     kind_completions
 }
