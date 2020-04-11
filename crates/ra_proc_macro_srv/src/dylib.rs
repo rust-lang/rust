@@ -7,28 +7,35 @@ use goblin::{mach::Mach, Object};
 use libloading::Library;
 use ra_proc_macro::ProcMacroKind;
 
-static NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
+use std::io::Error as IoError;
+use std::io::ErrorKind as IoErrorKind;
 
-fn get_symbols_from_lib(file: &Path) -> Option<Vec<String>> {
-    let buffer = std::fs::read(file).ok()?;
-    let object = Object::parse(&buffer).ok()?;
+const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
 
-    return match object {
+fn invalid_data_err(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> IoError {
+    IoError::new(IoErrorKind::InvalidData, e)
+}
+
+fn get_symbols_from_lib(file: &Path) -> Result<Vec<String>, IoError> {
+    let buffer = std::fs::read(file)?;
+    let object = Object::parse(&buffer).map_err(invalid_data_err)?;
+
+    match object {
         Object::Elf(elf) => {
-            let symbols = elf.dynstrtab.to_vec().ok()?;
+            let symbols = elf.dynstrtab.to_vec().map_err(invalid_data_err)?;
             let names = symbols.iter().map(|s| s.to_string()).collect();
-            Some(names)
+            Ok(names)
         }
         Object::PE(pe) => {
             let symbol_names =
                 pe.exports.iter().flat_map(|s| s.name).map(|n| n.to_string()).collect();
-            Some(symbol_names)
+            Ok(symbol_names)
         }
         Object::Mach(mach) => match mach {
             Mach::Binary(binary) => {
-                let exports = binary.exports().ok()?;
+                let exports = binary.exports().map_err(invalid_data_err)?;
                 let names = exports
-                    .iter()
+                    .into_iter()
                     .map(|s| {
                         // In macos doc:
                         // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html
@@ -37,26 +44,25 @@ fn get_symbols_from_lib(file: &Path) -> Option<Vec<String>> {
                         if s.name.starts_with("_") {
                             s.name[1..].to_string()
                         } else {
-                            s.name.to_string()
+                            s.name
                         }
                     })
                     .collect();
-                Some(names)
+                Ok(names)
             }
-            Mach::Fat(_) => None,
+            Mach::Fat(_) => Ok(vec![]),
         },
-        Object::Archive(_) | Object::Unknown(_) => None,
-    };
+        Object::Archive(_) | Object::Unknown(_) => Ok(vec![]),
+    }
 }
 
 fn is_derive_registrar_symbol(symbol: &str) -> bool {
     symbol.contains(NEW_REGISTRAR_SYMBOL)
 }
 
-fn find_registrar_symbol(file: &Path) -> Option<String> {
+fn find_registrar_symbol(file: &Path) -> Result<Option<String>, IoError> {
     let symbols = get_symbols_from_lib(file)?;
-
-    symbols.iter().find(|s| is_derive_registrar_symbol(s)).map(|s| s.clone())
+    Ok(symbols.into_iter().find(|s| is_derive_registrar_symbol(s)))
 }
 
 /// Loads dynamic library in platform dependent manner.
@@ -92,14 +98,14 @@ struct ProcMacroLibraryLibloading {
 }
 
 impl ProcMacroLibraryLibloading {
-    fn open(file: &Path) -> Result<Self, String> {
-        let symbol_name = find_registrar_symbol(file)
-            .ok_or(format!("Cannot find registrar symbol in file {:?}", file))?;
+    fn open(file: &Path) -> Result<Self, IoError> {
+        let symbol_name = find_registrar_symbol(file)?
+            .ok_or(invalid_data_err(format!("Cannot find registrar symbol in file {:?}", file)))?;
 
-        let lib = load_library(file).map_err(|e| e.to_string())?;
+        let lib = load_library(file).map_err(invalid_data_err)?;
         let exported_macros = {
             let macros: libloading::Symbol<&&[bridge::client::ProcMacro]> =
-                unsafe { lib.get(symbol_name.as_bytes()) }.map_err(|e| e.to_string())?;
+                unsafe { lib.get(symbol_name.as_bytes()) }.map_err(invalid_data_err)?;
             macros.to_vec()
         };
 
@@ -122,7 +128,7 @@ impl Expander {
         let lib =
             lib.as_ref().canonicalize().expect(&format!("Cannot canonicalize {:?}", lib.as_ref()));
 
-        let library = ProcMacroLibraryImpl::open(&lib)?;
+        let library = ProcMacroLibraryImpl::open(&lib).map_err(|e| e.to_string())?;
         libs.push(library);
 
         Ok(Expander { libs })
