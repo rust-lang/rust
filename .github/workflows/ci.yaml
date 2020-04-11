@@ -20,25 +20,14 @@ jobs:
     name: Audit Rust vulnerabilities
     runs-on: ubuntu-latest
     steps:
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
-
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
-
-    - name: Cache cargo
-      uses: actions/cache@v1
+    - uses: actions-rs/install@v0.1
       with:
-        path: ~/.cargo/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        crate: cargo-audit
+        use-tool-cache: true
 
-    - run: cargo install cargo-audit
     - run: cargo audit
 
   rust:
