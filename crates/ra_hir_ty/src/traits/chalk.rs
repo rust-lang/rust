@@ -16,8 +16,8 @@ use ra_db::{
 
 use super::{builtin, AssocTyValue, Canonical, ChalkContext, Impl, Obligation};
 use crate::{
-    db::HirDatabase, display::HirDisplay, utils::generics, ApplicationTy, GenericPredicate,
-    ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+    db::HirDatabase, display::HirDisplay, method_resolution::TyFingerprint, utils::generics,
+    ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
 
 pub(super) mod tls;
@@ -647,19 +647,22 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         debug!("impls_for_trait {:?}", trait_id);
         let trait_: hir_def::TraitId = from_chalk(self.db, trait_id);
 
+        let ty: Ty = from_chalk(self.db, parameters[0].assert_ty_ref(&Interner).clone());
+
+        let self_ty_fp = TyFingerprint::for_impl(&ty);
+
         // Note: Since we're using impls_for_trait, only impls where the trait
         // can be resolved should ever reach Chalk. `impl_datum` relies on that
         // and will panic if the trait can't be resolved.
         let mut result: Vec<_> = self
             .db
-            .impls_for_trait(self.krate, trait_)
+            .impls_for_trait(self.krate, trait_, self_ty_fp)
             .iter()
             .copied()
             .map(Impl::ImplDef)
             .map(|impl_| impl_.to_chalk(self.db))
             .collect();
 
-        let ty: Ty = from_chalk(self.db, parameters[0].assert_ty_ref(&Interner).clone());
         let arg: Option<Ty> =
             parameters.get(1).map(|p| from_chalk(self.db, p.assert_ty_ref(&Interner).clone()));
 
