@@ -11,6 +11,12 @@ fn assert_eq<T: PartialEq + Debug>(x: T, y: T) {
 }
 
 fn main() {
+    basic();
+    casts();
+    ops();
+}
+
+fn basic() {
     // basic arithmetic
     assert_eq(6.0_f32*6.0_f32, 36.0_f32);
     assert_eq(6.0_f64*6.0_f64, 36.0_f64);
@@ -41,57 +47,138 @@ fn main() {
     let x: u32 = unsafe { std::mem::transmute(42.0_f32) };
     let y: f32 = unsafe { std::mem::transmute(x) };
     assert_eq(y, 42.0_f32);
+}
 
-    // f32 <-> int casts
-    assert_eq(5.0f32 as u32, 5);
-    assert_eq(-5.0f32 as u32, 0);
-    assert_eq(5.0f32 as i32, 5);
-    assert_eq(-5.0f32 as i32, -5);
-    assert_eq(f32::MAX as i32, i32::MAX);
-    assert_eq(f32::INFINITY as i32, i32::MAX);
-    assert_eq(f32::MAX as u32, u32::MAX);
-    assert_eq(f32::INFINITY as u32, u32::MAX);
-    assert_eq(f32::MIN as i32, i32::MIN);
-    assert_eq(f32::NEG_INFINITY as i32, i32::MIN);
-    assert_eq(f32::MIN as u32, 0);
-    assert_eq(f32::NEG_INFINITY as u32, 0);
-    assert_eq(f32::NAN as i32, 0);
-    assert_eq(f32::NAN as u32, 0);
-    assert_eq((u32::MAX-127) as f32 as u32, u32::MAX); // rounding loss
-    assert_eq((u32::MAX-128) as f32 as u32, u32::MAX-255); // rounding loss
+fn casts() {
+    // f32 -> i32
+    assert_eq::<i32>(0.0f32 as i32, 0);
+    assert_eq::<i32>(-0.0f32 as i32, 0);
+    assert_eq::<i32>(/*0x1p-149*/ f32::from_bits(0x00000001) as i32, 0);
+    assert_eq::<i32>(/*-0x1p-149*/ f32::from_bits(0x80000001) as i32, 0);
+    assert_eq::<i32>(/*0x1.19999ap+0*/ f32::from_bits(0x3f8ccccd) as i32, 1);
+    assert_eq::<i32>(/*-0x1.19999ap+0*/ f32::from_bits(0xbf8ccccd) as i32, -1);
+    assert_eq::<i32>(1.9f32 as i32, 1);
+    assert_eq::<i32>(-1.9f32 as i32, -1);
+    assert_eq::<i32>(5.0f32 as i32, 5);
+    assert_eq::<i32>(-5.0f32 as i32, -5);
+    assert_eq::<i32>(2147483520.0f32 as i32, 2147483520);
+    assert_eq::<i32>(-2147483648.0f32 as i32, -2147483648);
+    // unrepresentable casts
+    assert_eq::<i32>(2147483648.0f32 as i32, i32::MAX);
+    assert_eq::<i32>(-2147483904.0f32 as i32, i32::MIN);
+    assert_eq::<i32>(f32::MAX as i32, i32::MAX);
+    assert_eq::<i32>(f32::MIN as i32, i32::MIN);
+    assert_eq::<i32>(f32::INFINITY as i32, i32::MAX);
+    assert_eq::<i32>(f32::NEG_INFINITY as i32, i32::MIN);
+    assert_eq::<i32>(f32::NAN as i32, 0);
+    assert_eq::<i32>((-f32::NAN) as i32, 0);
+
+    // f32 -> u32
+    assert_eq::<u32>(0.0f32 as u32, 0);
+    assert_eq::<u32>(-0.0f32 as u32, 0);
+    assert_eq::<u32>(/*0x1p-149*/ f32::from_bits(0x00000001) as u32, 0);
+    assert_eq::<u32>(/*-0x1p-149*/ f32::from_bits(0x80000001) as u32, 0);
+    assert_eq::<u32>(/*0x1.19999ap+0*/ f32::from_bits(0x3f8ccccd) as u32, 1);
+    assert_eq::<u32>(1.9f32 as u32, 1);
+    assert_eq::<u32>(5.0f32 as u32, 5);
+    assert_eq::<u32>(2147483648.0f32 as u32, 0x8000_0000);
+    assert_eq::<u32>(4294967040.0f32 as u32, 0u32.wrapping_sub(256));
+    assert_eq::<u32>(/*-0x1.ccccccp-1*/ f32::from_bits(0xbf666666) as u32, 0);
+    assert_eq::<u32>(/*-0x1.fffffep-1*/ f32::from_bits(0xbf7fffff) as u32, 0);
+    assert_eq::<u32>((u32::MAX-127) as f32 as u32, u32::MAX); // rounding loss
+    assert_eq::<u32>((u32::MAX-128) as f32 as u32, u32::MAX-255); // rounding loss
+    // unrepresentable casts
+    assert_eq::<u32>(4294967296.0f32 as u32, u32::MAX);
+    assert_eq::<u32>(-5.0f32 as u32, 0);
+    assert_eq::<u32>(f32::MAX as u32, u32::MAX);
+    assert_eq::<u32>(f32::MIN as u32, 0);
+    assert_eq::<u32>(f32::INFINITY as u32, u32::MAX);
+    assert_eq::<u32>(f32::NEG_INFINITY as u32, 0);
+    assert_eq::<u32>(f32::NAN as u32, 0);
+    assert_eq::<u32>((-f32::NAN) as u32, 0);
+
+    // f32 -> i64
+    assert_eq::<i64>(4294967296.0f32 as i64, 4294967296);
+    assert_eq::<i64>(-4294967296.0f32 as i64, -4294967296);
+    assert_eq::<i64>(9223371487098961920.0f32 as i64, 9223371487098961920);
+    assert_eq::<i64>(-9223372036854775808.0f32 as i64, -9223372036854775808);
+
+    // f64 -> i32
+    assert_eq::<i32>(0.0f64 as i32, 0);
+    assert_eq::<i32>(-0.0f64 as i32, 0);
+    assert_eq::<i32>(/*0x1.199999999999ap+0*/ f64::from_bits(0x3ff199999999999a) as i32, 1);
+    assert_eq::<i32>(/*-0x1.199999999999ap+0*/ f64::from_bits(0xbff199999999999a) as i32, -1);
+    assert_eq::<i32>(1.9f64 as i32, 1);
+    assert_eq::<i32>(-1.9f64 as i32, -1);
+    assert_eq::<i32>(1e8f64 as i32, 100_000_000);
+    assert_eq::<i32>(2147483647.0f64 as i32, 2147483647);
+    assert_eq::<i32>(-2147483648.0f64 as i32, -2147483648);
+    // unrepresentable casts
+    assert_eq::<i32>(2147483648.0f64 as i32, i32::MAX);
+    assert_eq::<i32>(-2147483649.0f64 as i32, i32::MIN);
+
+    // f64 -> i64
+    assert_eq::<i64>(0.0f64 as i64, 0);
+    assert_eq::<i64>(-0.0f64 as i64, 0);
+    assert_eq::<i64>(/*0x0.0000000000001p-1022*/ f64::from_bits(0x1) as i64, 0);
+    assert_eq::<i64>(/*-0x0.0000000000001p-1022*/ f64::from_bits(0x8000000000000001) as i64, 0);
+    assert_eq::<i64>(/*0x1.199999999999ap+0*/ f64::from_bits(0x3ff199999999999a) as i64, 1);
+    assert_eq::<i64>(/*-0x1.199999999999ap+0*/ f64::from_bits(0xbff199999999999a) as i64, -1);
+    assert_eq::<i64>(5.0f64 as i64, 5);
+    assert_eq::<i64>(5.9f64 as i64, 5);
+    assert_eq::<i64>(-5.0f64 as i64, -5);
+    assert_eq::<i64>(-5.9f64 as i64, -5);
+    assert_eq::<i64>(4294967296.0f64 as i64, 4294967296);
+    assert_eq::<i64>(-4294967296.0f64 as i64, -4294967296);
+    assert_eq::<i64>(9223372036854774784.0f64 as i64, 9223372036854774784);
+    assert_eq::<i64>(-9223372036854775808.0f64 as i64, -9223372036854775808);
+    // unrepresentable casts
+    assert_eq::<i64>(9223372036854775808.0f64 as i64, i64::MAX);
+    assert_eq::<i64>(-9223372036854777856.0f64 as i64, i64::MIN);
+    assert_eq::<i64>(f64::MAX as i64, i64::MAX);
+    assert_eq::<i64>(f64::MIN as i64, i64::MIN);
+    assert_eq::<i64>(f64::INFINITY as i64, i64::MAX);
+    assert_eq::<i64>(f64::NEG_INFINITY as i64, i64::MIN);
+    assert_eq::<i64>(f64::NAN as i64, 0);
+    assert_eq::<i64>((-f64::NAN) as i64, 0);
+
+    // f64 -> u64
+    assert_eq::<u64>(0.0f64 as u64, 0);
+    assert_eq::<u64>(-0.0f64 as u64, 0);
+    assert_eq::<u64>(5.0f64 as u64, 5);
+    assert_eq::<u64>(-5.0f64 as u64, 0);
+    assert_eq::<u64>(1e16f64 as u64, 10000000000000000);
+    assert_eq::<u64>((u64::MAX-1023) as f64 as u64, u64::MAX); // rounding loss
+    assert_eq::<u64>((u64::MAX-1024) as f64 as u64, u64::MAX-2047); // rounding loss
+    assert_eq::<u64>(9223372036854775808.0f64 as u64, 9223372036854775808);
+    // unrepresentable casts
+    assert_eq::<u64>(18446744073709551616.0f64 as u64, u64::MAX);
+    assert_eq::<u64>(f64::MAX as u64, u64::MAX);
+    assert_eq::<u64>(f64::MIN as u64, 0);
+    assert_eq::<u64>(f64::INFINITY as u64, u64::MAX);
+    assert_eq::<u64>(f64::NEG_INFINITY as u64, 0);
+    assert_eq::<u64>(f64::NAN as u64, 0);
+    assert_eq::<u64>((-f64::NAN) as u64, 0);
+
+    // int -> f32
     assert_eq(127i8 as f32, 127.0f32);
     assert_eq(i128::MIN as f32, -170141183460469231731687303715884105728.0f32);
     assert_eq(u128::MAX as f32, f32::INFINITY); // saturation
 
-    // f64 <-> int casts
-    assert_eq(5.0f64 as u64, 5);
-    assert_eq(-5.0f64 as u64, 0);
-    assert_eq(5.0f64 as i64, 5);
-    assert_eq(-5.0f64 as i64, -5);
-    assert_eq(f64::MAX as i64, i64::MAX);
-    assert_eq(f64::INFINITY as i64, i64::MAX);
-    assert_eq(f64::MAX as u64, u64::MAX);
-    assert_eq(f64::INFINITY as u64, u64::MAX);
-    assert_eq(f64::MIN as i64, i64::MIN);
-    assert_eq(f64::NEG_INFINITY as i64, i64::MIN);
-    assert_eq(f64::MIN as u64, 0);
-    assert_eq(f64::NEG_INFINITY as u64, 0);
-    assert_eq(f64::NAN as i64, 0);
-    assert_eq(f64::NAN as u64, 0);
-    assert_eq((u64::MAX-1023) as f64 as u64, u64::MAX); // rounding loss
-    assert_eq((u64::MAX-1024) as f64 as u64, u64::MAX-2047); // rounding loss
-    assert_eq(u128::MAX as f64 as u128, u128::MAX);
+    // int -> f64
     assert_eq(i16::MIN as f64, -32768.0f64);
     assert_eq(u128::MAX as f64, 340282366920938463463374607431768211455.0f64); // even that fits...
 
-    // f32 <-> f64 casts
+    // f32 <-> f64
     assert_eq(5.0f64 as f32, 5.0f32);
     assert_eq(5.0f32 as f64, 5.0f64);
     assert_eq(f64::MAX as f32, f32::INFINITY);
     assert_eq(f64::MIN as f32, f32::NEG_INFINITY);
     assert_eq(f32::INFINITY as f64, f64::INFINITY);
     assert_eq(f32::NEG_INFINITY as f64, f64::NEG_INFINITY);
+}
 
+fn ops() {
     // f32 min/max
     assert_eq((1.0 as f32).max(-1.0), 1.0);
     assert_eq((1.0 as f32).min(-1.0), -1.0);
