@@ -202,12 +202,14 @@ mod sealed {
     }
 
     impl<P> IntoQueryParam<P> for P {
+        #[inline(always)]
         fn into_query_param(self) -> P {
             self
         }
     }
 
     impl IntoQueryParam<DefId> for LocalDefId {
+        #[inline(always)]
         fn into_query_param(self) -> DefId {
             self.to_def_id()
         }
