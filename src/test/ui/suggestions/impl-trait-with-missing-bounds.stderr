@@ -5,7 +5,7 @@ LL |         qux(constraint);
    |             ^^^^^^^^^^ `<impl Iterator as std::iter::Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
 ...
 LL | fn qux(_: impl std::fmt::Debug) {}
-   |    ---         --------------- required by this bound in `qux`
+   |                --------------- required by this bound in `qux`
    |
    = help: the trait `std::fmt::Debug` is not implemented for `<impl Iterator as std::iter::Iterator>::Item`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
@@ -20,7 +20,7 @@ LL |         qux(constraint);
    |             ^^^^^^^^^^ `<impl Iterator as std::iter::Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
 ...
 LL | fn qux(_: impl std::fmt::Debug) {}
-   |    ---         --------------- required by this bound in `qux`
+   |                --------------- required by this bound in `qux`
    |
    = help: the trait `std::fmt::Debug` is not implemented for `<impl Iterator as std::iter::Iterator>::Item`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
@@ -35,7 +35,7 @@ LL |         qux(constraint);
    |             ^^^^^^^^^^ `<impl Iterator as std::iter::Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
 ...
 LL | fn qux(_: impl std::fmt::Debug) {}
-   |    ---         --------------- required by this bound in `qux`
+   |                --------------- required by this bound in `qux`
    |
    = help: the trait `std::fmt::Debug` is not implemented for `<impl Iterator as std::iter::Iterator>::Item`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
@@ -50,7 +50,7 @@ LL |         qux(constraint);
    |             ^^^^^^^^^^ `<impl Iterator as std::iter::Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
 ...
 LL | fn qux(_: impl std::fmt::Debug) {}
-   |    ---         --------------- required by this bound in `qux`
+   |                --------------- required by this bound in `qux`
    |
    = help: the trait `std::fmt::Debug` is not implemented for `<impl Iterator as std::iter::Iterator>::Item`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
@@ -65,7 +65,7 @@ LL |         qux(constraint);
    |             ^^^^^^^^^^ `<impl Iterator + std::fmt::Debug as std::iter::Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
 ...
 LL | fn qux(_: impl std::fmt::Debug) {}
-   |    ---         --------------- required by this bound in `qux`
+   |                --------------- required by this bound in `qux`
    |
    = help: the trait `std::fmt::Debug` is not implemented for `<impl Iterator + std::fmt::Debug as std::iter::Iterator>::Item`
 help: introduce a type parameter with a trait bound instead of using `impl Trait`
