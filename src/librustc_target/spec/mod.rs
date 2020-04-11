@@ -66,12 +66,12 @@ mod redox_base;
 mod riscv_base;
 mod solaris_base;
 mod thumb_base;
-mod uefi_base;
+mod uefi_msvc_base;
 mod vxworks_base;
 mod wasm32_base;
-mod windows_base;
+mod windows_gnu_base;
 mod windows_msvc_base;
-mod windows_uwp_base;
+mod windows_uwp_gnu_base;
 mod windows_uwp_msvc_base;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
