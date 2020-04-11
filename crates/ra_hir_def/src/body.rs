@@ -118,7 +118,7 @@ impl Expander {
         Attrs::new(owner, &self.hygiene)
     }
 
-    pub(crate) fn check_cfg(&self, attrs: &Attrs) -> bool {
+    pub(crate) fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
         attrs.is_cfg_enabled(&self.cfg_options)
     }
 

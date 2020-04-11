@@ -337,7 +337,7 @@ fn collect_impl_items(
         .filter_map(|item_node| match item_node {
             ast::ImplItem::FnDef(it) => {
                 let attrs = expander.parse_attrs(&it);
-                if !expander.check_cfg(&attrs) {
+                if !expander.is_cfg_enabled(&attrs) {
                     return None;
                 }
                 let def = FunctionLoc {

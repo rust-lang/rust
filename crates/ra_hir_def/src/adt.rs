@@ -202,7 +202,7 @@ fn lower_struct(
         ast::StructKind::Tuple(fl) => {
             for (i, fd) in fl.fields().enumerate() {
                 let attrs = expander.parse_attrs(&fd);
-                if !expander.check_cfg(&attrs) {
+                if !expander.is_cfg_enabled(&attrs) {
                     continue;
                 }
 
@@ -220,7 +220,7 @@ fn lower_struct(
         ast::StructKind::Record(fl) => {
             for fd in fl.fields() {
                 let attrs = expander.parse_attrs(&fd);
-                if !expander.check_cfg(&attrs) {
+                if !expander.is_cfg_enabled(&attrs) {
                     continue;
                 }
 

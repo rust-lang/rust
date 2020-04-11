@@ -306,8 +306,7 @@ impl ExprCollector<'_> {
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
                         .filter_map(|field| {
                             let attrs = self.expander.parse_attrs(&field);
-
-                            if !self.expander.check_cfg(&attrs) {
+                            if !self.expander.is_cfg_enabled(&attrs) {
                                 return None;
                             }
 
