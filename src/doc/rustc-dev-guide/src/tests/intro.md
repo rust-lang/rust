@@ -36,6 +36,8 @@ details.
 - `debuginfo` – tests that run in gdb or lldb and query the debug info
 - `codegen` – tests that compile and then test the generated LLVM
   code to make sure that the optimizations we want are taking effect.
+  See [LLVM docs](https://llvm.org/docs/CommandGuide/FileCheck.html) for how to
+  write such tests.
 - `assembly` – similar to `codegen` tests, but verifies assembly output
   to make sure LLVM target backend can handle provided code.
 - `mir-opt` – tests that check parts of the generated MIR to make
