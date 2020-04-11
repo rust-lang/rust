@@ -229,13 +229,13 @@ interface InlaysDecorations {
 }
 
 interface RustSourceFile {
-    /*
-    * Source of the token to cancel in-flight inlay hints request if any.
-    */
+    /**
+     * Source of the token to cancel in-flight inlay hints request if any.
+     */
     inlaysRequest: null | vscode.CancellationTokenSource;
     /**
-    * Last applied decorations.
-    */
+     * Last applied decorations.
+     */
     cachedDecorations: null | InlaysDecorations;
 
     document: RustDocument;
