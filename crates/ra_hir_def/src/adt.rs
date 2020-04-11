@@ -12,7 +12,7 @@ use ra_prof::profile;
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 
 use crate::{
-    body::Expander, db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace,
+    body::CfgExpander, db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace,
     type_ref::TypeRef, visibility::RawVisibility, EnumId, HasModule, LocalEnumVariantId,
     LocalStructFieldId, Lookup, ModuleId, StructId, UnionId, VariantId,
 };
@@ -124,7 +124,7 @@ fn lower_enum(
 
 impl VariantData {
     fn new(db: &dyn DefDatabase, flavor: InFile<ast::StructKind>, module_id: ModuleId) -> Self {
-        let mut expander = Expander::new(db, flavor.file_id, module_id);
+        let mut expander = CfgExpander::new(db, flavor.file_id, module_id.krate);
         let mut trace = Trace::new_for_arena();
         match lower_struct(db, &mut expander, &mut trace, &flavor) {
             StructKind::Tuple => VariantData::Tuple(trace.into_arena()),
@@ -178,7 +178,7 @@ impl HasChildSource for VariantId {
                 it.lookup(db).container.module(db),
             ),
         };
-        let mut expander = Expander::new(db, src.file_id, module_id);
+        let mut expander = CfgExpander::new(db, src.file_id, module_id.krate);
         let mut trace = Trace::new_for_map();
         lower_struct(db, &mut expander, &mut trace, &src);
         src.with_value(trace.into_map())
@@ -194,7 +194,7 @@ pub enum StructKind {
 
 fn lower_struct(
     db: &dyn DefDatabase,
-    expander: &mut Expander,
+    expander: &mut CfgExpander,
     trace: &mut Trace<StructFieldData, Either<ast::TupleFieldDef, ast::RecordFieldDef>>,
     ast: &InFile<ast::StructKind>,
 ) -> StructKind {
