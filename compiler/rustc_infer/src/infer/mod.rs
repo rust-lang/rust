@@ -14,7 +14,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::logged_unification_table as lut;
 use rustc_data_structures::modified_set as ms;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::undo_log::Rollback;
+use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
@@ -763,6 +763,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let mut inner = self.inner.borrow_mut();
         inner.rollback_to(undo_snapshot);
         inner.unwrap_region_constraints().rollback_to(region_constraints_snapshot);
+
+        if UndoLogs::<UndoLog<'_>>::num_open_snapshots(&inner.undo_log) == 0 {
+            inner.type_variables().clear_modified_set();
+            inner.int_unification_table().clear_modified_set();
+            inner.float_unification_table().clear_modified_set();
+            inner.const_unification_table().clear_modified_set();
+        }
     }
 
     fn commit_from(&self, snapshot: CombinedSnapshot<'a, 'tcx>) {

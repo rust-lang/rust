@@ -1,5 +1,3 @@
-use std::{marker::PhantomData, ops::Range};
-
 use rustc_index::vec::Idx;
 
 use crate::modified_set as ms;
@@ -7,7 +5,7 @@ use crate::snapshot_vec as sv;
 use crate::unify as ut;
 use crate::unify_log as ul;
 
-use ena::undo_log::{Rollback, Snapshots, UndoLogs};
+use ena::undo_log::{Rollback, UndoLogs};
 
 pub enum UndoLog<K: ut::UnifyKey, I = K> {
     Relation(sv::UndoLog<ut::Delegate<K>>),
@@ -33,44 +31,6 @@ impl<K: ut::UnifyKey, I> From<ms::Undo<I>> for UndoLog<K, I> {
     }
 }
 
-struct Logs<K: ut::UnifyKey, I> {
-    logs: Vec<UndoLog<K, I>>,
-    num_open_snapshots: usize,
-}
-
-impl<K: ut::UnifyKey, I> Default for Logs<K, I> {
-    fn default() -> Self {
-        Self { logs: Default::default(), num_open_snapshots: Default::default() }
-    }
-}
-
-impl<T, K: ut::UnifyKey, I> UndoLogs<T> for Logs<K, I>
-where
-    UndoLog<K, I>: From<T>,
-{
-    fn num_open_snapshots(&self) -> usize {
-        self.num_open_snapshots
-    }
-    fn push(&mut self, undo: T) {
-        if self.in_snapshot() {
-            self.logs.push(undo.into())
-        }
-    }
-    fn clear(&mut self) {
-        self.logs.clear();
-        self.num_open_snapshots = 0;
-    }
-    fn extend<J>(&mut self, undos: J)
-    where
-        Self: Sized,
-        J: IntoIterator<Item = T>,
-    {
-        if self.in_snapshot() {
-            self.logs.extend(undos.into_iter().map(UndoLog::from))
-        }
-    }
-}
-
 impl<K: ut::UnifyKey, I: Idx> Rollback<UndoLog<K, I>> for LoggedUnificationTableStorage<K, I> {
     fn reverse(&mut self, undo: UndoLog<K, I>) {
         match undo {
@@ -78,64 +38,6 @@ impl<K: ut::UnifyKey, I: Idx> Rollback<UndoLog<K, I>> for LoggedUnificationTable
             UndoLog::UnifyLog(undo) => self.unify_log.reverse(undo),
             UndoLog::ModifiedSet(undo) => self.modified_set.reverse(undo),
         }
-    }
-}
-
-impl<K: ut::UnifyKey, I: Idx> Snapshots<UndoLog<K, I>> for Logs<K, I> {
-    type Snapshot = Snapshot<K, I>;
-    fn actions_since_snapshot(&self, snapshot: &Self::Snapshot) -> &[UndoLog<K, I>] {
-        &self.logs[snapshot.undo_len..]
-    }
-
-    fn start_snapshot(&mut self) -> Self::Snapshot {
-        unreachable!()
-    }
-
-    fn rollback_to<R>(&mut self, values: impl FnOnce() -> R, snapshot: Self::Snapshot)
-    where
-        R: Rollback<UndoLog<K, I>>,
-    {
-        debug!("rollback_to({})", snapshot.undo_len);
-        self.assert_open_snapshot(&snapshot);
-
-        if self.logs.len() > snapshot.undo_len {
-            let mut values = values();
-            while self.logs.len() > snapshot.undo_len {
-                values.reverse(self.logs.pop().unwrap());
-            }
-        }
-
-        if self.num_open_snapshots == 1 {
-            // The root snapshot. It's safe to clear the undo log because
-            // there's no snapshot further out that we might need to roll back
-            // to.
-            assert!(snapshot.undo_len == 0);
-            self.logs.clear();
-        }
-
-        self.num_open_snapshots -= 1;
-    }
-
-    fn commit(&mut self, snapshot: Self::Snapshot) {
-        debug!("commit({})", snapshot.undo_len);
-
-        if self.num_open_snapshots == 1 {
-            // The root snapshot. It's safe to clear the undo log because
-            // there's no snapshot further out that we might need to roll back
-            // to.
-            assert!(snapshot.undo_len == 0);
-            self.logs.clear();
-        }
-
-        self.num_open_snapshots -= 1;
-    }
-}
-
-impl<K: ut::UnifyKey, I: Idx> Logs<K, I> {
-    fn assert_open_snapshot(&self, snapshot: &Snapshot<K, I>) {
-        // Failures here may indicate a failure to follow a stack discipline.
-        assert!(self.logs.len() >= snapshot.undo_len);
-        assert!(self.num_open_snapshots > 0);
     }
 }
 
@@ -268,38 +170,9 @@ where
         self.relations().new_key(value)
     }
 
-    pub fn vars_since_snapshot(&mut self, s: &Snapshot<K, I>) -> Range<K> {
-        K::from(I::new(s.value_count))..K::from(I::new(self.relations().len()))
+    pub fn clear_modified_set(&mut self) {
+        self.storage.modified_set.clear();
     }
-
-    /* FIXME
-    pub fn snapshot(&mut self) -> Snapshot<K, I> {
-        self.undo_log.num_open_snapshots += 1;
-        Snapshot {
-            undo_len: self.undo_log.logs.len(),
-            value_count: self.relations().len(),
-            _marker: PhantomData,
-        }
-    }
-
-    pub fn rollback_to(&mut self, snapshot: Snapshot<K, I>) {
-        let UnificationTableStorage { relations, unify_log, modified_set, .. } = self.storage;
-
-        self.undo_log.rollback_to(|| RollbackView { relations, unify_log, modified_set }, snapshot);
-
-        if self.undo_log.num_open_snapshots == 0 {
-            self.storage.modified_set.clear();
-        }
-    }
-
-    pub fn commit(&mut self, snapshot: Snapshot<K, I>) {
-        self.undo_log.commit(snapshot);
-
-        if self.undo_log.num_open_snapshots() == 0 {
-            self.storage.modified_set.clear();
-        }
-    }
-    */
 
     pub fn register(&mut self) -> ms::Offset<I> {
         self.storage.modified_set.register()
@@ -328,10 +201,4 @@ where
             f(vid)
         })
     }
-}
-
-pub struct Snapshot<K: ut::UnifyKey, I: Idx = K> {
-    undo_len: usize,
-    value_count: usize,
-    _marker: PhantomData<(K, I)>,
 }

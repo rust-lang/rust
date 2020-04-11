@@ -433,6 +433,10 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
             .collect()
     }
 
+    pub fn clear_modified_set(&mut self) {
+        self.eq_relations().clear_modified_set();
+    }
+
     pub fn drain_modified_set(
         &mut self,
         offset: &ms::Offset<ty::TyVid>,
