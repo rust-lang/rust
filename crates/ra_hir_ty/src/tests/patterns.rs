@@ -1,6 +1,7 @@
-use super::{infer, infer_with_mismatches};
 use insta::assert_snapshot;
 use test_utils::covers;
+
+use super::{infer, infer_with_mismatches};
 
 #[test]
 fn infer_pattern() {

@@ -192,14 +192,30 @@ fn record_field_pat_list(p: &mut Parser) {
         match p.current() {
             // A trailing `..` is *not* treated as a DOT_DOT_PAT.
             T![.] if p.at(T![..]) => p.bump(T![..]),
-
-            IDENT | INT_NUMBER if p.nth(1) == T![:] => record_field_pat(p),
             T!['{'] => error_block(p, "expected ident"),
-            T![box] => {
-                box_pat(p);
-            }
-            _ => {
-                bind_pat(p, false);
+
+            c => {
+                let m = p.start();
+                match c {
+                    // test record_field_pat
+                    // fn foo() {
+                    //     let S { 0: 1 } = ();
+                    //     let S { x: 1 } = ();
+                    // }
+                    IDENT | INT_NUMBER if p.nth(1) == T![:] => {
+                        name_ref_or_index(p);
+                        p.bump(T![:]);
+                        pattern(p);
+                    }
+                    T![box] => {
+                        // FIXME: not all box patterns should be allowed
+                        box_pat(p);
+                    }
+                    _ => {
+                        bind_pat(p, false);
+                    }
+                }
+                m.complete(p, RECORD_FIELD_PAT);
             }
         }
         if !p.at(T!['}']) {
@@ -208,26 +224,6 @@ fn record_field_pat_list(p: &mut Parser) {
     }
     p.expect(T!['}']);
     m.complete(p, RECORD_FIELD_PAT_LIST);
-}
-
-// test record_field_pat
-// fn foo() {
-//     let S { 0: 1 } = ();
-//     let S { x: 1 } = ();
-// }
-fn record_field_pat(p: &mut Parser) {
-    assert!(p.at(IDENT) || p.at(INT_NUMBER));
-    assert!(p.nth(1) == T![:]);
-
-    let m = p.start();
-
-    if !p.eat(INT_NUMBER) {
-        name(p)
-    }
-
-    p.bump_any();
-    pattern(p);
-    m.complete(p, RECORD_FIELD_PAT);
 }
 
 // test placeholder_pat

@@ -511,7 +511,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![..],
             T!['}']
         }
-        struct RecordFieldPat: AttrsOwner, NameOwner { T![:], Pat }
+        struct RecordFieldPat: AttrsOwner { NameRef, T![:], Pat }
 
         struct TupleStructPat { Path, T!['('], args: [Pat], T![')'] }
         struct TuplePat { T!['('], args: [Pat], T![')'] }

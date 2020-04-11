@@ -2,7 +2,7 @@
 use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let missing_fields = match (ctx.record_lit_pat.as_ref(), ctx.record_lit_syntax.as_ref()) {
+    let missing_fields = match (ctx.record_pat_syntax.as_ref(), ctx.record_lit_syntax.as_ref()) {
         (None, None) => return None,
         (Some(_), Some(_)) => unreachable!("A record cannot be both a literal and a pattern"),
         (Some(record_pat), _) => ctx.sema.record_pattern_missing_fields(record_pat),

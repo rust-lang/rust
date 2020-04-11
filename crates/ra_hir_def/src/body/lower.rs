@@ -637,7 +637,7 @@ impl ExprCollector<'_> {
                 let iter = record_field_pat_list.record_field_pats().filter_map(|f| {
                     let ast_pat = f.pat()?;
                     let pat = self.collect_pat(ast_pat);
-                    let name = f.name()?.as_name();
+                    let name = f.field_name()?.as_name();
                     Some(RecordFieldPat { name, pat })
                 });
                 fields.extend(iter);
