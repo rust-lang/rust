@@ -1386,6 +1386,42 @@ mod tests {
         // we don't create a diagnostic).
         check_no_diagnostic(content);
     }
+
+    #[test]
+    fn expr_diverges() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop {} {
+                    Either::A => (),
+                    Either::B => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_loop_with_break() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop { break Foo::A } {
+                    Either::A => (),
+                    Either::B => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
 }
 
 #[cfg(test)]
@@ -1453,6 +1489,47 @@ mod false_negatives {
 
         // This is a false negative.
         // We do not currently handle patterns with internal `or`s.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_diverges_missing_arm() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop {} {
+                    Either::A => (),
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // Even though the match expression diverges, rustc fails
+        // to compile here since `Either::B` is missing.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_loop_missing_arm() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop { break Foo::A } {
+                    Either::A => (),
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // We currently infer the type of `loop { break Foo::A }` to `!`, which
+        // causes us to skip the diagnostic since `Either::A` doesn't type check
+        // with `!`.
         check_no_diagnostic(content);
     }
 }
