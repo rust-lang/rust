@@ -18,9 +18,22 @@ fn main() {
     assert_eq(-{5.0_f64}, -5.0_f64);
     // infinities, NaN
     assert!((5.0_f32/0.0).is_infinite());
+    assert_ne!({5.0_f32/0.0}, {-5.0_f32/0.0});
     assert!((5.0_f64/0.0).is_infinite());
+    assert_ne!({5.0_f64/0.0}, {5.0_f64/-0.0});
     assert!((-5.0_f32).sqrt().is_nan());
     assert!((-5.0_f64).sqrt().is_nan());
+    assert_ne!(f32::NAN, f32::NAN);
+    assert_ne!(f64::NAN, f64::NAN);
+    // negative zero
+    let posz = 0.0f32;
+    let negz = -0.0f32;
+    assert_eq(posz, negz);
+    assert_ne!(posz.to_bits(), negz.to_bits());
+    let posz = 0.0f64;
+    let negz = -0.0f64;
+    assert_eq(posz, negz);
+    assert_ne!(posz.to_bits(), negz.to_bits());
     // byte-level transmute
     let x: u64 = unsafe { std::mem::transmute(42.0_f64) };
     let y: f64 = unsafe { std::mem::transmute(x) };
