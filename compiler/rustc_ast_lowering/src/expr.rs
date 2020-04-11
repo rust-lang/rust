@@ -870,18 +870,33 @@ impl<'hir> LoweringContext<'_, 'hir> {
         whole_span: Span,
     ) -> hir::ExprKind<'hir> {
         // Return early in case of an ordinary assignment.
-        match lhs.kind {
-            ExprKind::Array(..)
-            | ExprKind::Call(..)
-            | ExprKind::Struct(_, _, None)
-            | ExprKind::Tup(..) => {}
-            _ => {
-                return hir::ExprKind::Assign(
-                    self.lower_expr(lhs),
-                    self.lower_expr(rhs),
-                    eq_sign_span,
-                );
+        let is_ordinary = match &lhs.kind {
+            ExprKind::Array(..) | ExprKind::Struct(_, _, None) | ExprKind::Tup(..) => false,
+            ExprKind::Call(callee, ..) => {
+                // Check for tuple struct constructor.
+                if let ExprKind::Path(qself, path) = &callee.kind {
+                    let qpath = self.lower_qpath(
+                        callee.id,
+                        qself,
+                        path,
+                        ParamMode::Optional,
+                        ImplTraitContext::disallowed(),
+                    );
+                    match qpath {
+                        hir::QPath::Resolved(
+                            _,
+                            hir::Path { res: Res::Def(DefKind::Ctor(..), _), .. },
+                        ) => false,
+                        _ => true,
+                    }
+                } else {
+                    true
+                }
             }
+            _ => true,
+        };
+        if is_ordinary {
+            return hir::ExprKind::Assign(self.lower_expr(lhs), self.lower_expr(rhs), eq_sign_span);
         }
 
         let mut assignments = Vec::new();
