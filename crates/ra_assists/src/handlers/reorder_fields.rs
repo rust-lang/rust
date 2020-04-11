@@ -27,9 +27,9 @@ fn reorder_struct(ctx: AssistCtx) -> Option<Assist> {
 
 fn field_name(r: &RecordField) -> String {
     r.name_ref()
-        .map(|name| name.syntax().text())
-        .unwrap_or_else(|| r.expr().unwrap().syntax().text())
-        .to_string()
+        .map(|name| name.syntax().text().to_string())
+        .or_else(|| r.expr().map(|e| e.syntax().text().to_string()))
+        .unwrap_or_default()
 }
 
 fn reorder_struct_pat(ctx: AssistCtx) -> Option<Assist> {
