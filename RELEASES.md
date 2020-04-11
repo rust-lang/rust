@@ -5,11 +5,11 @@ Language
 --------
 - [Fixed using binary operations with `&{number}` (e.g. `&1.0`) not having
   the type inferred correctly.][68129]
+- [Attributes such as `#[cfg()]` can now be used on `if` expressions.][69201]
 
 **Syntax only changes**
 - [Allow `type Foo: Ord` syntactically.][69361]
 - [Fuse associated and extern items up to defaultness.][69194]
-- [Permit attributes on `if` expressions.][69201]
 - [Syntactically allow `self` in all `fn` contexts.][68764]
 - [Merge `fn` syntax + cleanup item parsing.][68728]
 - [`item` macro fragments can be interpolated into `trait`s, `impl`s, and `extern` blocks.][69366]
