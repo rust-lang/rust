@@ -243,7 +243,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                         parent_trait_ref,
                         parent_code: Rc::new(obligation.cause.code.clone()),
                     };
-                    cause.code = traits::ObligationCauseCode::ImplDerivedObligation(derived_cause);
+                    cause.code = traits::ObligationCauseCode::DerivedObligation(derived_cause);
                 }
                 extend_cause_with_original_assoc_item_obligation(
                     tcx,

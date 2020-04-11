@@ -134,7 +134,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         match obligation.cause.code {
             ObligationCauseCode::BuiltinDerivedObligation(..)
-            | ObligationCauseCode::ImplDerivedObligation(..) => {}
+            | ObligationCauseCode::ImplDerivedObligation(..)
+            | ObligationCauseCode::DerivedObligation(..) => {}
             _ => {
                 // this is a "direct", user-specified, rather than derived,
                 // obligation.

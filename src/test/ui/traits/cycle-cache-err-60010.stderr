@@ -21,7 +21,6 @@ LL |     type Storage = SalsaStorage;
    = note: required because of the requirements on the impl of `SourceDatabase` for `RootDatabase`
    = note: required because of the requirements on the impl of `Query<RootDatabase>` for `ParseQuery`
    = note: required because it appears within the type `SalsaStorage`
-   = note: required because of the requirements on the impl of `std::marker::Sized` for `<RootDatabase as Database>::Storage`
 
 error: aborting due to 2 previous errors
 

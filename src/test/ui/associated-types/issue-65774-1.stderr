@@ -16,8 +16,6 @@ LL |     type MpuConfig: MyDisplay = T;
 ...
 LL | impl MPU for S { }
    |      ^^^ the trait `MyDisplay` is not implemented for `T`
-   |
-   = note: required because of the requirements on the impl of `MyDisplay` for `<S as MPU>::MpuConfig`
 
 error: aborting due to 2 previous errors
 

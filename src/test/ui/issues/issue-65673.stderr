@@ -11,7 +11,6 @@ LL |     type Ctx = dyn Alias<T>;
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn Trait + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required because of the requirements on the impl of `std::marker::Sized` for `<T as WithType>::Ctx`
 
 error: aborting due to previous error
 

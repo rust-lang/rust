@@ -53,7 +53,6 @@ LL | impl<T> UncheckedCopy for T {}
    |
    = help: the trait `std::fmt::Display` is not implemented for `T`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
-   = note: required because of the requirements on the impl of `std::fmt::Display` for `<T as UncheckedCopy>::Output`
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::fmt::Display> UncheckedCopy for T {}
@@ -71,7 +70,6 @@ LL |     + Deref<Target = str>
 LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ the trait `std::ops::Deref` is not implemented for `T`
    |
-   = note: required because of the requirements on the impl of `std::ops::Deref` for `<T as UncheckedCopy>::Output`
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::ops::Deref> UncheckedCopy for T {}
@@ -90,7 +88,6 @@ LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ no implementation for `T += &'static str`
    |
    = help: the trait `std::ops::AddAssign<&'static str>` is not implemented for `T`
-   = note: required because of the requirements on the impl of `std::ops::AddAssign<&'static str>` for `<T as UncheckedCopy>::Output`
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::ops::AddAssign<&'static str>> UncheckedCopy for T {}
@@ -108,7 +105,6 @@ LL |     type Output: Copy
 LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
    |
-   = note: required because of the requirements on the impl of `std::marker::Copy` for `<T as UncheckedCopy>::Output`
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::marker::Copy> UncheckedCopy for T {}

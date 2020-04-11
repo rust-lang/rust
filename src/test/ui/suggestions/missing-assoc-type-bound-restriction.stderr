@@ -28,7 +28,6 @@ LL |     type Assoc = ChildWrapper<T::Assoc>;
    |                  ^^^^^^^^^^^^^^^^^^^^^^ the trait `Child<A>` is not implemented for `<T as Parent>::Assoc`
    |
    = note: required because of the requirements on the impl of `Child<A>` for `ChildWrapper<<T as Parent>::Assoc>`
-   = note: required because of the requirements on the impl of `Child<<ParentWrapper<T> as Parent>::Ty>` for `<ParentWrapper<T> as Parent>::Assoc`
 
 error[E0277]: the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
   --> $DIR/missing-assoc-type-bound-restriction.rs:20:5

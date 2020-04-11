@@ -57,7 +57,6 @@ LL | impl<'self> Serializable<str> for &'self str {
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required because of the requirements on the impl of `std::marker::Sized` for `str`
 
 error: aborting due to 9 previous errors
 

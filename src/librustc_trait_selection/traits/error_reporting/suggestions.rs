@@ -1135,7 +1135,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         while let Some(code) = next_code {
             debug!("maybe_note_obligation_cause_for_async_await: code={:?}", code);
             match code {
-                ObligationCauseCode::BuiltinDerivedObligation(derived_obligation)
+                ObligationCauseCode::DerivedObligation(derived_obligation)
+                | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation)
                 | ObligationCauseCode::ImplDerivedObligation(derived_obligation) => {
                     let ty = derived_obligation.parent_trait_ref.self_ty();
                     debug!(
@@ -1653,6 +1654,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     parent_trait_ref.print_only_trait_path(),
                     parent_trait_ref.skip_binder().self_ty()
                 ));
+                let parent_predicate = parent_trait_ref.without_const().to_predicate();
+                self.note_obligation_cause_code(
+                    err,
+                    &parent_predicate,
+                    &data.parent_code,
+                    obligated_types,
+                );
+            }
+            ObligationCauseCode::DerivedObligation(ref data) => {
+                let parent_trait_ref = self.resolve_vars_if_possible(&data.parent_trait_ref);
                 let parent_predicate = parent_trait_ref.without_const().to_predicate();
                 self.note_obligation_cause_code(
                     err,

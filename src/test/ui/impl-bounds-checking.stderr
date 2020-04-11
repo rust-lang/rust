@@ -6,8 +6,6 @@ LL | trait Getter<T: Clone2> {
 ...
 LL | impl Getter<isize> for isize {
    |      ^^^^^^^^^^^^^ the trait `Clone2` is not implemented for `isize`
-   |
-   = note: required because of the requirements on the impl of `Clone2` for `isize`
 
 error: aborting due to previous error
 

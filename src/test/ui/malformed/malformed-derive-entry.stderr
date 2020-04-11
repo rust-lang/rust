@@ -27,7 +27,6 @@ LL | #[derive(Copy(Bad))]
 LL | pub trait Copy: Clone {
    |                 ----- required by this bound in `std::marker::Copy`
    |
-   = note: required because of the requirements on the impl of `std::clone::Clone` for `Test1`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `Test2: std::clone::Clone` is not satisfied
@@ -41,7 +40,6 @@ LL | #[derive(Copy="bad")]
 LL | pub trait Copy: Clone {
    |                 ----- required by this bound in `std::marker::Copy`
    |
-   = note: required because of the requirements on the impl of `std::clone::Clone` for `Test2`
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
