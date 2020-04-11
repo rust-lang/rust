@@ -11,7 +11,7 @@ use ra_db::{impl_intern_key, salsa, CrateId, Upcast};
 use ra_prof::profile;
 
 use crate::{
-    method_resolution::CrateImplDefs,
+    method_resolution::{CrateImplDefs, TyFingerprint},
     traits::{chalk, AssocTyValue, Impl},
     Binders, CallableDef, GenericPredicate, InferenceResult, PolyFnSig, Substs, TraitRef, Ty,
     TyDefId, TypeCtor, ValueTyDefId,
@@ -65,7 +65,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn impls_in_crate(&self, krate: CrateId) -> Arc<CrateImplDefs>;
 
     #[salsa::invoke(crate::traits::impls_for_trait_query)]
-    fn impls_for_trait(&self, krate: CrateId, trait_: TraitId) -> Arc<[ImplId]>;
+    fn impls_for_trait(
+        &self,
+        krate: CrateId,
+        trait_: TraitId,
+        self_ty_fp: Option<TyFingerprint>,
+    ) -> Arc<[ImplId]>;
 
     // Interned IDs for Chalk integration
     #[salsa::interned]

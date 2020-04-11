@@ -34,7 +34,7 @@ impl TyFingerprint {
     /// Creates a TyFingerprint for looking up an impl. Only certain types can
     /// have impls: if we have some `struct S`, we can have an `impl S`, but not
     /// `impl &S`. Hence, this will return `None` for reference types and such.
-    fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
+    pub(crate) fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
         match ty {
             Ty::Apply(a_ty) => Some(TyFingerprint::Apply(a_ty.ctor)),
             _ => None,
@@ -45,7 +45,7 @@ impl TyFingerprint {
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateImplDefs {
     impls: FxHashMap<TyFingerprint, Vec<ImplId>>,
-    impls_by_trait: FxHashMap<TraitId, Vec<ImplId>>,
+    impls_by_trait: FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Vec<ImplId>>>,
 }
 
 impl CrateImplDefs {
@@ -59,7 +59,14 @@ impl CrateImplDefs {
             for impl_id in module_data.scope.impls() {
                 match db.impl_trait(impl_id) {
                     Some(tr) => {
-                        res.impls_by_trait.entry(tr.value.trait_).or_default().push(impl_id);
+                        let self_ty = db.impl_self_ty(impl_id);
+                        let self_ty_fp = TyFingerprint::for_impl(&self_ty.value);
+                        res.impls_by_trait
+                            .entry(tr.value.trait_)
+                            .or_default()
+                            .entry(self_ty_fp)
+                            .or_default()
+                            .push(impl_id);
                     }
                     None => {
                         let self_ty = db.impl_self_ty(impl_id);
@@ -79,11 +86,39 @@ impl CrateImplDefs {
     }
 
     pub fn lookup_impl_defs_for_trait(&self, tr: TraitId) -> impl Iterator<Item = ImplId> + '_ {
-        self.impls_by_trait.get(&tr).into_iter().flatten().copied()
+        self.impls_by_trait
+            .get(&tr)
+            .into_iter()
+            .flat_map(|m| m.values().flat_map(|v| v.iter().copied()))
+    }
+
+    pub fn lookup_impl_defs_for_trait_and_ty(
+        &self,
+        tr: TraitId,
+        fp: TyFingerprint,
+    ) -> impl Iterator<Item = ImplId> + '_ {
+        self.impls_by_trait
+            .get(&tr)
+            .and_then(|m| m.get(&Some(fp)))
+            .into_iter()
+            .flatten()
+            .copied()
+            .chain(
+                self.impls_by_trait
+                    .get(&tr)
+                    .and_then(|m| m.get(&None))
+                    .into_iter()
+                    .flatten()
+                    .copied(),
+            )
     }
 
     pub fn all_impls<'a>(&'a self) -> impl Iterator<Item = ImplId> + 'a {
-        self.impls.values().chain(self.impls_by_trait.values()).flatten().copied()
+        self.impls
+            .values()
+            .chain(self.impls_by_trait.values().flat_map(|m| m.values()))
+            .flatten()
+            .copied()
     }
 }
 
