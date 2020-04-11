@@ -1943,7 +1943,7 @@ impl<'a, K, V> Entry<'a, K, V> {
         }
     }
 
-    #[unstable(feature = "or_insert_with_key", issue = "70996")]
+    #[unstable(feature = "or_insert_with_key", issue = "71024")]
     /// Ensures a value is in the entry by inserting, if empty, the result of the default function,
     /// which takes the key as its argument, and returns a mutable reference to the value in the
     /// entry.
