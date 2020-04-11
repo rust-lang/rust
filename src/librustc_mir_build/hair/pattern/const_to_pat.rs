@@ -116,6 +116,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     traits::NonStructuralMatchTy::Param => {
                         bug!("use of constant whose type is a parameter inside a pattern")
                     }
+                    traits::NonStructuralMatchTy::Dynamic => {
+                        bug!("use of a trait object inside a pattern")
+                    }
                 };
                 let path = self.tcx().def_path_str(adt_def.did);
 

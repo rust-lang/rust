@@ -11,6 +11,7 @@ use rustc_span::Span;
 pub enum NonStructuralMatchTy<'tcx> {
     Adt(&'tcx AdtDef),
     Param,
+    Dynamic,
 }
 
 /// This method traverses the structure of `ty`, trying to find an
@@ -135,6 +136,10 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             ty::Adt(adt_def, substs) => (adt_def, substs),
             ty::Param(_) => {
                 self.found = Some(NonStructuralMatchTy::Param);
+                return true; // Stop visiting.
+            }
+            ty::Dynamic(..) => {
+                self.found = Some(NonStructuralMatchTy::Dynamic);
                 return true; // Stop visiting.
             }
             ty::RawPtr(..) => {
