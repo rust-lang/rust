@@ -1,5 +1,4 @@
 use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, TargetOptions};
-use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     let pre_link_args_msvc = vec!["/NOLOGO".to_string(), "/NXCOMPAT".to_string()];

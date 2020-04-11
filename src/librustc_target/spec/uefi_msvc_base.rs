@@ -10,7 +10,6 @@
 // code runs in the same environment, no process separation is supported.
 
 use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions};
-use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     let pre_link_args_msvc = vec![

@@ -37,7 +37,6 @@
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use rustc_serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
-use std::default::Default;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
