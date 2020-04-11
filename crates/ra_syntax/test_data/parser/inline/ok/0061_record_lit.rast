@@ -35,8 +35,11 @@ SOURCE_FILE@[0; 112)
               L_CURLY@[27; 28) "{"
               WHITESPACE@[28; 29) " "
               RECORD_FIELD@[29; 30)
-                NAME_REF@[29; 30)
-                  IDENT@[29; 30) "x"
+                PATH_EXPR@[29; 30)
+                  PATH@[29; 30)
+                    PATH_SEGMENT@[29; 30)
+                      NAME_REF@[29; 30)
+                        IDENT@[29; 30) "x"
               COMMA@[30; 31) ","
               WHITESPACE@[31; 32) " "
               RECORD_FIELD@[32; 37)
@@ -62,8 +65,11 @@ SOURCE_FILE@[0; 112)
               L_CURLY@[48; 49) "{"
               WHITESPACE@[49; 50) " "
               RECORD_FIELD@[50; 51)
-                NAME_REF@[50; 51)
-                  IDENT@[50; 51) "x"
+                PATH_EXPR@[50; 51)
+                  PATH@[50; 51)
+                    PATH_SEGMENT@[50; 51)
+                      NAME_REF@[50; 51)
+                        IDENT@[50; 51) "x"
               COMMA@[51; 52) ","
               WHITESPACE@[52; 53) " "
               RECORD_FIELD@[53; 58)

@@ -294,11 +294,6 @@ impl BodySourceMap {
         self.expansions.get(&src).cloned()
     }
 
-    pub fn field_init_shorthand_expr(&self, node: InFile<&ast::RecordField>) -> Option<ExprId> {
-        let src = node.map(|it| Either::Right(AstPtr::new(it)));
-        self.expr_map.get(&src).cloned()
-    }
-
     pub fn pat_syntax(&self, pat: PatId) -> Result<PatSource, SyntheticSyntax> {
         self.pat_map_back[pat].clone()
     }

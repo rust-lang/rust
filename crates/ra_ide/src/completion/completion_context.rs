@@ -227,7 +227,7 @@ impl<'a> CompletionContext<'a> {
         self.name_ref_syntax =
             find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();
-        if name_ref.syntax().parent().and_then(ast::RecordField::cast).is_some() {
+        if ast::RecordField::for_field_name(&name_ref).is_some() {
             self.record_lit_syntax =
                 self.sema.find_node_at_offset_with_macros(&original_file, offset);
         }

@@ -3,7 +3,7 @@
 use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if !(ctx.is_trivial_path && !ctx.is_pat_binding_or_const) {
+    if !(ctx.is_trivial_path && !ctx.is_pat_binding_or_const && !ctx.record_lit_syntax.is_some()) {
         return;
     }
 

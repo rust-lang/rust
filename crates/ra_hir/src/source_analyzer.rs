@@ -139,7 +139,7 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         field: &ast::FieldExpr,
-    ) -> Option<crate::StructField> {
+    ) -> Option<StructField> {
         let expr_id = self.expr_id(db, &field.clone().into())?;
         self.infer.as_ref()?.field_resolution(expr_id).map(|it| it.into())
     }
@@ -148,21 +148,19 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         field: &ast::RecordField,
-    ) -> Option<(crate::StructField, Option<Local>)> {
-        let (expr_id, local) = match field.expr() {
-            Some(it) => (self.expr_id(db, &it)?, None),
-            None => {
-                let src = InFile { file_id: self.file_id, value: field };
-                let expr_id = self.body_source_map.as_ref()?.field_init_shorthand_expr(src)?;
-                let local_name = field.name_ref()?.as_name();
-                let path = ModPath::from_segments(PathKind::Plain, once(local_name));
-                let local = match self.resolver.resolve_path_in_value_ns_fully(db.upcast(), &path) {
-                    Some(ValueNs::LocalBinding(pat_id)) => {
-                        Some(Local { pat_id, parent: self.resolver.body_owner()? })
-                    }
-                    _ => None,
-                };
-                (expr_id, local)
+    ) -> Option<(StructField, Option<Local>)> {
+        let expr = field.expr()?;
+        let expr_id = self.expr_id(db, &expr)?;
+        let local = if field.name_ref().is_some() {
+            None
+        } else {
+            let local_name = field.field_name()?.as_name();
+            let path = ModPath::from_segments(PathKind::Plain, once(local_name));
+            match self.resolver.resolve_path_in_value_ns_fully(db.upcast(), &path) {
+                Some(ValueNs::LocalBinding(pat_id)) => {
+                    Some(Local { pat_id, parent: self.resolver.body_owner()? })
+                }
+                _ => None,
             }
         };
         let struct_field = self.infer.as_ref()?.record_field_resolution(expr_id)?;
