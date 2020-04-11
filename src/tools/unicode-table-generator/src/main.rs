@@ -295,7 +295,7 @@ fn main() {
 
 fn version() -> String {
     let mut out = String::new();
-    out.push_str("pub const UNICODE_VERSION: (u32, u32, u32) = ");
+    out.push_str("pub const UNICODE_VERSION: (u8, u8, u8) = ");
 
     let readme =
         std::fs::read_to_string(std::path::Path::new(UNICODE_DIRECTORY).join("ReadMe.txt"))

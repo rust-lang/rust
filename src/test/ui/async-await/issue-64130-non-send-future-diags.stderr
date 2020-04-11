@@ -12,7 +12,7 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-non-send-future-diags.rs:15:5
    |
 LL |     let g = x.lock().unwrap();
-   |         - has type `std::sync::MutexGuard<'_, u32>`
+   |         - has type `std::sync::MutexGuard<'_, u32>` which is not `Send`
 LL |     baz().await;
    |     ^^^^^^^^^^^ await occurs here, with `g` maybe used later
 LL | }
