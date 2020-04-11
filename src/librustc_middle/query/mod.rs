@@ -610,7 +610,7 @@ rustc_queries! {
     }
 
     Other {
-        query reachable_set(_: CrateNum) -> Lrc<HirIdSet> {
+        query reachable_set(_: CrateNum) -> &'tcx HirIdSet {
             desc { "reachability" }
         }
 
@@ -642,7 +642,7 @@ rustc_queries! {
         query lookup_stability(_: DefId) -> Option<&'tcx attr::Stability> {}
         query lookup_const_stability(_: DefId) -> Option<&'tcx attr::ConstStability> {}
         query lookup_deprecation_entry(_: DefId) -> Option<DeprecationEntry> {}
-        query item_attrs(_: DefId) -> Lrc<[ast::Attribute]> {}
+        query item_attrs(_: DefId) -> &'tcx [ast::Attribute] {}
     }
 
     Codegen {
@@ -652,7 +652,7 @@ rustc_queries! {
     }
 
     Other {
-        query fn_arg_names(_: DefId) -> Vec<ast::Name> {}
+        query fn_arg_names(_: DefId) -> &'tcx [ast::Name] {}
         /// Gets the rendered value of the specified constant or associated constant.
         /// Used by rustdoc.
         query rendered_const(_: DefId) -> String {}
@@ -699,7 +699,7 @@ rustc_queries! {
             desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { true }
         }
-        query object_safety_violations(key: DefId) -> Vec<traits::ObjectSafetyViolation> {
+        query object_safety_violations(key: DefId) -> &'tcx [traits::ObjectSafetyViolation] {
             desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
         }
 
@@ -1047,7 +1047,7 @@ rustc_queries! {
             desc { "looking up all possibly unused extern crates" }
         }
         query names_imported_by_glob_use(_: DefId)
-            -> Lrc<FxHashSet<ast::Name>> {
+            -> &'tcx FxHashSet<ast::Name> {
             eval_always
         }
 
@@ -1075,19 +1075,19 @@ rustc_queries! {
         ///   correspond to a publicly visible symbol in `cnum` machine code.
         /// - The `exported_symbols` sets of different crates do not intersect.
         query exported_symbols(_: CrateNum)
-            -> Arc<Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)>> {
+            -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
             desc { "exported_symbols" }
         }
     }
 
     Codegen {
         query collect_and_partition_mono_items(_: CrateNum)
-            -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>) {
+            -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
             eval_always
             desc { "collect_and_partition_mono_items" }
         }
         query is_codegened_item(_: DefId) -> bool {}
-        query codegen_unit(_: Symbol) -> Arc<CodegenUnit<'tcx>> {
+        query codegen_unit(_: Symbol) -> &'tcx CodegenUnit<'tcx> {
             desc { "codegen_unit" }
         }
         query backend_optimization_level(_: CrateNum) -> OptLevel {

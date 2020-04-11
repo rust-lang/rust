@@ -1196,7 +1196,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Lrc<[ast::Attribute]> {
+    fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Vec<ast::Attribute> {
         // The attributes for a tuple struct/variant are attached to the definition, not the ctor;
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
@@ -1207,15 +1207,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             node_id
         };
 
-        Lrc::from(
-            self.root
-                .tables
-                .attributes
-                .get(self, item_id)
-                .unwrap_or(Lazy::empty())
-                .decode((self, sess))
-                .collect::<Vec<_>>(),
-        )
+        self.root
+            .tables
+            .attributes
+            .get(self, item_id)
+            .unwrap_or(Lazy::empty())
+            .decode((self, sess))
+            .collect::<Vec<_>>()
     }
 
     fn get_struct_field_names(&self, id: DefIndex, sess: &Session) -> Vec<Spanned<ast::Name>> {
@@ -1330,25 +1328,25 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_fn_param_names(&self, id: DefIndex) -> Vec<ast::Name> {
+    fn get_fn_param_names(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> &'tcx [ast::Name] {
         let param_names = match self.kind(id) {
             EntryKind::Fn(data) | EntryKind::ForeignFn(data) => data.decode(self).param_names,
             EntryKind::AssocFn(data) => data.decode(self).fn_data.param_names,
             _ => Lazy::empty(),
         };
-        param_names.decode(self).collect()
+        tcx.arena.alloc_from_iter(param_names.decode(self))
     }
 
     fn exported_symbols(
         &self,
         tcx: TyCtxt<'tcx>,
-    ) -> Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)> {
+    ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
         if self.root.is_proc_macro_crate() {
             // If this crate is a custom derive crate, then we're not even going to
             // link those in so we skip those crates.
-            vec![]
+            &[]
         } else {
-            self.root.exported_symbols.decode((self, tcx)).collect()
+            tcx.arena.alloc_from_iter(self.root.exported_symbols.decode((self, tcx)))
         }
     }
 

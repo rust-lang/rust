@@ -94,7 +94,6 @@
 
 use std::cmp;
 use std::collections::hash_map::Entry;
-use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
@@ -890,7 +889,7 @@ where
 fn collect_and_partition_mono_items(
     tcx: TyCtxt<'_>,
     cnum: CrateNum,
-) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'_>>>>) {
+) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'_>]) {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
@@ -928,10 +927,12 @@ fn collect_and_partition_mono_items(
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(
             || {
-                partition(tcx, items.iter().cloned(), tcx.sess.codegen_units(), &inlining_map)
-                    .into_iter()
-                    .map(Arc::new)
-                    .collect::<Vec<_>>()
+                &*tcx.arena.alloc_from_iter(partition(
+                    tcx,
+                    items.iter().cloned(),
+                    tcx.sess.codegen_units(),
+                    &inlining_map,
+                ))
             },
             || assert_symbols_are_distinct(tcx, items.iter()),
         )
@@ -949,7 +950,7 @@ fn collect_and_partition_mono_items(
     if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
         let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
 
-        for cgu in &codegen_units {
+        for cgu in codegen_units {
             for (&mono_item, &linkage) in cgu.items() {
                 item_to_cgus.entry(mono_item).or_default().push((cgu.name(), linkage));
             }
@@ -997,7 +998,7 @@ fn collect_and_partition_mono_items(
         }
     }
 
-    (Arc::new(mono_items), Arc::new(codegen_units))
+    (tcx.arena.alloc(mono_items), codegen_units)
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -1012,7 +1013,6 @@ pub fn provide(providers: &mut Providers<'_>) {
         let (_, all) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
         all.iter()
             .find(|cgu| cgu.name() == name)
-            .cloned()
             .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
     };
 }

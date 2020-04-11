@@ -975,10 +975,11 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext<'_>) -> FnDecl {
         let (did, sig) = *self;
         let mut names = if cx.tcx.hir().as_local_hir_id(did).is_some() {
-            vec![].into_iter()
+            &[]
         } else {
-            cx.tcx.fn_arg_names(did).into_iter()
-        };
+            cx.tcx.fn_arg_names(did)
+        }
+        .iter();
 
         FnDecl {
             output: Return(sig.skip_binder().output().clean(cx)),
@@ -2180,13 +2181,9 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
 
             let res = Res::Def(DefKind::Mod, DefId { krate: self.cnum, index: CRATE_DEF_INDEX });
 
-            if let Some(items) = inline::try_inline(
-                cx,
-                res,
-                self.name,
-                Some(rustc_middle::ty::Attributes::Borrowed(self.attrs)),
-                &mut visited,
-            ) {
+            if let Some(items) =
+                inline::try_inline(cx, res, self.name, Some(self.attrs), &mut visited)
+            {
                 return items;
             }
         }
@@ -2247,13 +2244,9 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             }
             if !denied {
                 let mut visited = FxHashSet::default();
-                if let Some(items) = inline::try_inline(
-                    cx,
-                    path.res,
-                    name,
-                    Some(rustc_middle::ty::Attributes::Borrowed(self.attrs)),
-                    &mut visited,
-                ) {
+                if let Some(items) =
+                    inline::try_inline(cx, path.res, name, Some(self.attrs), &mut visited)
+                {
                     return items;
                 }
             }

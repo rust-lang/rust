@@ -28,7 +28,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{self, par_iter, Lrc, ParallelIterator};
+use rustc_data_structures::sync::{self, par_iter, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
@@ -2596,22 +2596,7 @@ impl BorrowKind {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Attributes<'tcx> {
-    Owned(Lrc<[ast::Attribute]>),
-    Borrowed(&'tcx [ast::Attribute]),
-}
-
-impl<'tcx> ::std::ops::Deref for Attributes<'tcx> {
-    type Target = [ast::Attribute];
-
-    fn deref(&self) -> &[ast::Attribute] {
-        match self {
-            &Attributes::Owned(ref data) => &data,
-            &Attributes::Borrowed(data) => data,
-        }
-    }
-}
+pub type Attributes<'tcx> = &'tcx [ast::Attribute];
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ImplOverlapKind {
@@ -2847,9 +2832,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Gets the attributes of a definition.
     pub fn get_attrs(self, did: DefId) -> Attributes<'tcx> {
         if let Some(id) = self.hir().as_local_hir_id(did) {
-            Attributes::Borrowed(self.hir().attrs(id))
+            self.hir().attrs(id)
         } else {
-            Attributes::Owned(self.item_attrs(did))
+            self.item_attrs(did)
         }
     }
 

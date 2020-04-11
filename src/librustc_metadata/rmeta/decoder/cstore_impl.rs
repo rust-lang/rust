@@ -26,7 +26,6 @@ use rustc_span::symbol::Symbol;
 use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
 use std::any::Any;
-use std::sync::Arc;
 
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
@@ -139,12 +138,14 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     lookup_deprecation_entry => {
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
-    item_attrs => { cdata.get_item_attrs(def_id.index, tcx.sess) }
+    item_attrs => { tcx.arena.alloc_from_iter(
+        cdata.get_item_attrs(def_id.index, tcx.sess).into_iter()
+    ) }
     // FIXME(#38501) We've skipped a `read` on the `hir_owner_nodes` of
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
     // incremental recompilation ever enabled.
-    fn_arg_names => { cdata.get_fn_param_names(def_id.index) }
+    fn_arg_names => { cdata.get_fn_param_names(tcx, def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
@@ -239,7 +240,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         // to block export of generics from dylibs, but we must fix
         // rust-lang/rust#65890 before we can do that robustly.
 
-        Arc::new(syms)
+        syms
     }
 }
 

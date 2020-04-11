@@ -2723,7 +2723,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.names_imported_by_glob_use = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);
-        Lrc::new(tcx.glob_map.get(&id).cloned().unwrap_or_default())
+        tcx.arena.alloc(tcx.glob_map.get(&id).cloned().unwrap_or_default())
     };
 
     providers.lookup_stability = |tcx, id| {

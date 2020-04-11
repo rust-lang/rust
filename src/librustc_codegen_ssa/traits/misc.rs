@@ -4,7 +4,6 @@ use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::Session;
 use std::cell::RefCell;
-use std::sync::Arc;
 
 pub trait MiscMethods<'tcx>: BackendTypes {
     fn vtables(
@@ -15,7 +14,7 @@ pub trait MiscMethods<'tcx>: BackendTypes {
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> Self::Value;
     fn eh_personality(&self) -> Self::Value;
     fn sess(&self) -> &Session;
-    fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>>;
+    fn codegen_unit(&self) -> &'tcx CodegenUnit<'tcx>;
     fn used_statics(&self) -> &RefCell<Vec<Self::Value>>;
     fn set_frame_pointer_elimination(&self, llfn: Self::Function);
     fn apply_target_cpu_attr(&self, llfn: Self::Function);

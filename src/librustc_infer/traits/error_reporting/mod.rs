@@ -39,7 +39,7 @@ pub fn report_object_safety_error(
     tcx: TyCtxt<'tcx>,
     span: Span,
     trait_def_id: DefId,
-    violations: Vec<ObjectSafetyViolation>,
+    violations: &[ObjectSafetyViolation],
 ) -> DiagnosticBuilder<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
     let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
