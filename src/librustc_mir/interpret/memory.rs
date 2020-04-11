@@ -254,6 +254,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             );
         }
 
+        M::before_deallocation(&mut self.extra, ptr.alloc_id)?;
+
         let (alloc_kind, mut alloc) = match self.alloc_map.remove(&ptr.alloc_id) {
             Some(alloc) => alloc,
             None => {

@@ -721,15 +721,18 @@ fn compute_layout<'tcx>(
         _ => bug!(),
     };
 
+    let param_env = tcx.param_env(source.def_id());
+
     for (local, decl) in body.local_decls.iter_enumerated() {
         // Ignore locals which are internal or not live
         if !live_locals.contains(local) || decl.internal {
             continue;
         }
+        let decl_ty = tcx.normalize_erasing_regions(param_env, decl.ty);
 
         // Sanity check that typeck knows about the type of locals which are
         // live across a suspension point
-        if !allowed.contains(&decl.ty) && !allowed_upvars.contains(&decl.ty) {
+        if !allowed.contains(&decl_ty) && !allowed_upvars.contains(&decl_ty) {
             span_bug!(
                 body.span,
                 "Broken MIR: generator contains type {} in MIR, \
