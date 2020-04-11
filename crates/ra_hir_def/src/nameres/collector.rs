@@ -977,11 +977,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
-        // FIXME: handle cfg_attr :-)
-        attrs
-            .by_key("cfg")
-            .tt_values()
-            .all(|tt| self.def_collector.cfg_options.is_cfg_enabled(tt) != Some(false))
+        attrs.is_cfg_enabled(self.def_collector.cfg_options)
     }
 }
 

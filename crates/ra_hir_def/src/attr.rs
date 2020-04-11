@@ -93,6 +93,7 @@ impl Attrs {
     }
 
     pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
+        // FIXME: handle cfg_attr :-)
         self.by_key("cfg").tt_values().all(|tt| cfg_options.is_cfg_enabled(tt) != Some(false))
     }
 }
