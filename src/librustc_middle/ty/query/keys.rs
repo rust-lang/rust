@@ -270,6 +270,17 @@ impl<'tcx> Key for Ty<'tcx> {
     }
 }
 
+impl<'tcx> Key for &'tcx ty::List<ty::Predicate<'tcx>> {
+    type CacheSelector = DefaultCacheSelector;
+
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> Key for ty::ParamEnv<'tcx> {
     type CacheSelector = DefaultCacheSelector;
 

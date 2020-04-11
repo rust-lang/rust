@@ -72,7 +72,7 @@ impl Inliner<'tcx> {
 
         let mut callsites = VecDeque::new();
 
-        let param_env = self.tcx.param_env(self.source.def_id()).with_reveal_all();
+        let param_env = self.tcx.param_env_reveal_all_normalized(self.source.def_id());
 
         // Only do inlining into fn bodies.
         let id = self.tcx.hir().as_local_hir_id(self.source.def_id().expect_local());

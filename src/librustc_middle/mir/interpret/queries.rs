@@ -18,7 +18,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let substs = InternalSubsts::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, substs);
         let cid = GlobalId { instance, promoted: None };
-        let param_env = self.param_env(def_id).with_reveal_all();
+        let param_env = self.param_env(def_id).with_reveal_all_normalized(self);
         self.const_eval_global_id(param_env, cid, None)
     }
 

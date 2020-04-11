@@ -1921,7 +1921,7 @@ impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx>> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        let param_env = self.param_env.with_reveal_all();
+        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
         let ty = self.tcx.normalize_erasing_regions(param_env, ty);
         let layout = self.tcx.layout_raw(param_env.and(ty))?;
         let layout = TyAndLayout { ty, layout };
@@ -1945,7 +1945,7 @@ impl LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
-        let param_env = self.param_env.with_reveal_all();
+        let param_env = self.param_env.with_reveal_all_normalized(*self.tcx);
         let ty = self.tcx.normalize_erasing_regions(param_env, ty);
         let layout = self.tcx.layout_raw(param_env.and(ty))?;
         let layout = TyAndLayout { ty, layout };

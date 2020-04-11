@@ -193,7 +193,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
             );
         }
         let patch = {
-            let param_env = tcx.param_env(def_id).with_reveal_all();
+            let param_env = tcx.param_env_reveal_all_normalized(def_id);
             let mut elaborator =
                 DropShimElaborator { body: &body, patch: MirPatch::new(&body), tcx, param_env };
             let dropee = tcx.mk_place_deref(dropee_ptr);
