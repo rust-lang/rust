@@ -9,20 +9,6 @@ use {
 /// A range in text, represented as a pair of [`TextSize`][struct@TextSize].
 ///
 /// It is a logic error for `start` to be greater than `end`.
-///
-/// # Translation from `text_unit`
-///
-/// - `TextRange::from_to(from, to)`        ⟹ `TextRange::new(from, to)`
-/// - `TextRange::offset_len(offset, size)` ⟹ `TextRange::from_len(offset, size)`
-/// - `range.start()`                       ⟹ `range.start()`
-/// - `range.end()`                         ⟹ `range.end()`
-/// - `range.len()`                         ⟹ `range.len()`
-/// - `range.is_empty()`                    ⟹ `range.is_empty()`
-/// - `a.is_subrange(b)`                    ⟹ `b.contains_range(a)`
-/// - `a.intersection(b)`                   ⟹ `a.intersect(b)`
-/// - `a.extend_to(b)`                      ⟹ `a.cover(b)`
-/// - `range.contains(offset)`              ⟹ `range.contains(point)`
-/// - `range.contains_inclusive(offset)`    ⟹ `range.contains_inclusive(point)`
 #[derive(Default, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct TextRange {
     // Invariant: start <= end

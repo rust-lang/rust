@@ -21,13 +21,6 @@ use {
 ///
 /// These escape hatches are primarily required for unit testing and when
 /// converting from UTF-8 size to another coordinate space, such as UTF-16.
-///
-/// # Translation from `text_unit`
-///
-/// - `TextUnit::of_char(c)`        ⟹ `TextSize::of(c)`
-/// - `TextUnit::of_str(s)`         ⟹ `TextSize::of(s)`
-/// - `TextUnit::from_usize(size)`  ⟹ `TextSize::try_from(size).unwrap_or_else(|| panic!(_))`
-/// - `unit.to_usize()`             ⟹ `usize::from(size)`
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TextSize {
     pub(crate) raw: u32,
