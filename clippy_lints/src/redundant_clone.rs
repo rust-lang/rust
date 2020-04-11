@@ -80,15 +80,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
 
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_preds(cx, def_id) {
+        if fn_has_unsatisfiable_preds(cx, def_id.to_def_id()) {
             return;
         }
 
-        let mir = cx.tcx.optimized_mir(def_id);
+        let mir = cx.tcx.optimized_mir(def_id.to_def_id());
         let mir_read_only = mir.unwrap_read_only();
 
         let maybe_storage_live_result = MaybeStorageLive
-            .into_engine(cx.tcx, mir, def_id)
+            .into_engine(cx.tcx, mir, def_id.to_def_id())
             .iterate_to_fixpoint()
             .into_results_cursor(mir);
         let mut possible_borrower = {

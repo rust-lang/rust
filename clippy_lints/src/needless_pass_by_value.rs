@@ -113,8 +113,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds.to_vec())
             .filter(|p| !p.is_global())
-            .filter_map(|pred| {
-                if let ty::Predicate::Trait(poly_trait_ref, _) = pred {
+            .filter_map(|obligation| {
+                if let ty::Predicate::Trait(poly_trait_ref, _) = obligation.predicate {
                     if poly_trait_ref.def_id() == sized_trait || poly_trait_ref.skip_binder().has_escaping_bound_vars()
                     {
                         return None;
