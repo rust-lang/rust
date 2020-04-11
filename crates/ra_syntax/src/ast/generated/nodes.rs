@@ -3256,7 +3256,6 @@ pub enum Pat {
     RangePat(RangePat),
     LiteralPat(LiteralPat),
     MacroPat(MacroPat),
-    RecordFieldPat(RecordFieldPat),
 }
 impl From<OrPat> for Pat {
     fn from(node: OrPat) -> Pat { Pat::OrPat(node) }
@@ -3303,15 +3302,12 @@ impl From<LiteralPat> for Pat {
 impl From<MacroPat> for Pat {
     fn from(node: MacroPat) -> Pat { Pat::MacroPat(node) }
 }
-impl From<RecordFieldPat> for Pat {
-    fn from(node: RecordFieldPat) -> Pat { Pat::RecordFieldPat(node) }
-}
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             OR_PAT | PAREN_PAT | REF_PAT | BOX_PAT | BIND_PAT | PLACEHOLDER_PAT | DOT_DOT_PAT
             | PATH_PAT | RECORD_PAT | TUPLE_STRUCT_PAT | TUPLE_PAT | SLICE_PAT | RANGE_PAT
-            | LITERAL_PAT | MACRO_PAT | RECORD_FIELD_PAT => true,
+            | LITERAL_PAT | MACRO_PAT => true,
             _ => false,
         }
     }
@@ -3332,7 +3328,6 @@ impl AstNode for Pat {
             RANGE_PAT => Pat::RangePat(RangePat { syntax }),
             LITERAL_PAT => Pat::LiteralPat(LiteralPat { syntax }),
             MACRO_PAT => Pat::MacroPat(MacroPat { syntax }),
-            RECORD_FIELD_PAT => Pat::RecordFieldPat(RecordFieldPat { syntax }),
             _ => return None,
         };
         Some(res)
@@ -3354,7 +3349,6 @@ impl AstNode for Pat {
             Pat::RangePat(it) => &it.syntax,
             Pat::LiteralPat(it) => &it.syntax,
             Pat::MacroPat(it) => &it.syntax,
-            Pat::RecordFieldPat(it) => &it.syntax,
         }
     }
 }

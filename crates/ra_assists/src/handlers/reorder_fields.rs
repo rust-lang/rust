@@ -4,71 +4,79 @@ use itertools::Itertools;
 
 use hir::{Adt, ModuleDef, PathResolution, Semantics, Struct};
 use ra_ide_db::RootDatabase;
-use ra_syntax::ast::{Name, Pat};
 use ra_syntax::{
-    ast,
-    ast::{Path, RecordField, RecordLit, RecordPat},
-    AstNode,
+    algo, ast,
+    ast::{Name, Path, RecordLit, RecordPat},
+    AstNode, SyntaxKind, SyntaxNode,
 };
 
 use crate::{
     assist_ctx::{Assist, AssistCtx},
     AssistId,
 };
+use ra_syntax::ast::{Expr, NameRef};
 
 pub(crate) fn reorder_fields(ctx: AssistCtx) -> Option<Assist> {
-    reorder_struct(ctx.clone()).or_else(|| reorder_struct_pat(ctx))
+    reorder::<RecordLit>(ctx.clone()).or_else(|| reorder::<RecordPat>(ctx))
 }
 
-fn reorder_struct(ctx: AssistCtx) -> Option<Assist> {
-    let record: RecordLit = ctx.find_node_at_offset()?;
-    reorder(ctx, &record, &record.path()?, field_name)
-}
+fn reorder<R: AstNode>(ctx: AssistCtx) -> Option<Assist> {
+    let record = ctx.find_node_at_offset::<R>()?;
+    let path = record.syntax().children().find_map(Path::cast)?;
 
-fn field_name(r: &RecordField) -> String {
-    r.name_ref()
-        .map(|name| name.syntax().text().to_string())
-        .or_else(|| r.expr().map(|e| e.syntax().text().to_string()))
-        .unwrap_or_default()
-}
+    let ranks = compute_fields_ranks(&path, &ctx)?;
 
-fn reorder_struct_pat(ctx: AssistCtx) -> Option<Assist> {
-    let record: RecordPat = ctx.find_node_at_offset()?;
-    reorder(ctx, &record, &record.path()?, field_pat_name)
-}
-
-fn field_pat_name(field: &Pat) -> String {
-    field.syntax().children().find_map(Name::cast).map(|n| n.to_string()).unwrap_or_default()
-}
-
-fn reorder<R: AstNode, F: AstNode + Eq + Clone>(
-    ctx: AssistCtx,
-    record: &R,
-    path: &Path,
-    field_name: fn(&F) -> String,
-) -> Option<Assist> {
-    let ranks = compute_fields_ranks(path, &ctx)?;
-    let fields: Vec<F> = get_fields(record);
-    let sorted_fields: Vec<F> =
-        sort_by_rank(&fields, |f| *ranks.get(&field_name(f)).unwrap_or(&usize::max_value()));
+    let fields = get_fields(&record.syntax());
+    let sorted_fields = sorted_by_rank(&fields, |node| {
+        *ranks.get(&get_field_name(node)).unwrap_or(&usize::max_value())
+    });
 
     if sorted_fields == fields {
         return None;
     }
 
     ctx.add_assist(AssistId("reorder_fields"), "Reorder record fields", |edit| {
-        for (old, new) in fields.into_iter().zip(sorted_fields) {
-            edit.replace_ast(old, new);
+        for (old, new) in fields.iter().zip(&sorted_fields) {
+            algo::diff(old, new).into_text_edit(edit.text_edit_builder());
         }
         edit.target(record.syntax().text_range())
     })
 }
 
-fn get_fields<R: AstNode, F: AstNode>(record: &R) -> Vec<F> {
-    record.syntax().children().flat_map(|n1| n1.children()).filter_map(|n3| F::cast(n3)).collect()
+fn get_fields_kind(node: &SyntaxNode) -> Vec<SyntaxKind> {
+    use SyntaxKind::*;
+    match node.kind() {
+        RECORD_LIT => vec![RECORD_FIELD],
+        RECORD_PAT => vec![RECORD_FIELD_PAT, BIND_PAT],
+        _ => vec![],
+    }
 }
 
-fn sort_by_rank<F: AstNode + Clone>(fields: &[F], get_rank: impl FnMut(&F) -> usize) -> Vec<F> {
+fn get_field_name(node: &SyntaxNode) -> String {
+    use SyntaxKind::*;
+    match node.kind() {
+        RECORD_FIELD => {
+            if let Some(name) = node.children().find_map(NameRef::cast) {
+                return name.to_string();
+            }
+            node.children().find_map(Expr::cast).map(|expr| expr.to_string()).unwrap_or_default()
+        }
+        BIND_PAT | RECORD_FIELD_PAT => {
+            node.children().find_map(Name::cast).map(|n| n.to_string()).unwrap_or_default()
+        }
+        _ => String::new(),
+    }
+}
+
+fn get_fields(record: &SyntaxNode) -> Vec<SyntaxNode> {
+    let kinds = get_fields_kind(record);
+    record.children().flat_map(|n| n.children()).filter(|n| kinds.contains(&n.kind())).collect()
+}
+
+fn sorted_by_rank(
+    fields: &[SyntaxNode],
+    get_rank: impl Fn(&SyntaxNode) -> usize,
+) -> Vec<SyntaxNode> {
     fields.iter().cloned().sorted_by_key(get_rank).collect()
 }
 
