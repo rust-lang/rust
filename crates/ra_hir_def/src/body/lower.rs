@@ -2,9 +2,7 @@
 //! representation.
 
 use either::Either;
-
 use hir_expand::{
-    hygiene::Hygiene,
     name::{name, AsName, Name},
     MacroDefId, MacroDefKind,
 };
@@ -18,10 +16,8 @@ use ra_syntax::{
 };
 use test_utils::tested_by;
 
-use super::{ExprSource, PatSource};
 use crate::{
     adt::StructKind,
-    attr::Attrs,
     body::{Body, BodySourceMap, Expander, PatPtr, SyntheticSyntax},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
@@ -33,9 +29,11 @@ use crate::{
     path::GenericArgs,
     path::Path,
     type_ref::{Mutability, TypeRef},
-    AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, HasModule, Intern,
-    ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
+    StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
+
+use super::{ExprSource, PatSource};
 
 pub(super) fn lower(
     db: &dyn DefDatabase,
@@ -300,7 +298,6 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
             ast::Expr::RecordLit(e) => {
-                let crate_graph = self.db.crate_graph();
                 let path = e.path().and_then(|path| self.expander.parse_path(path));
                 let mut field_ptrs = Vec::new();
                 let record_lit = if let Some(nfl) = e.record_field_list() {
@@ -308,13 +305,8 @@ impl ExprCollector<'_> {
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
                         .filter_map(|field| {
-                            let module_id = ContainerId::DefWithBodyId(self.def).module(self.db);
-                            let attrs = Attrs::new(
-                                &field,
-                                &Hygiene::new(self.db.upcast(), self.expander.current_file_id),
-                            );
-
-                            if !attrs.is_cfg_enabled(&crate_graph[module_id.krate].cfg_options) {
+                            let attrs = self.expander.parse_attrs(&field);
+                            if !self.expander.is_cfg_enabled(&attrs) {
                                 return None;
                             }
 

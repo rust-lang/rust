@@ -20,7 +20,7 @@ use crate::{
     type_ref::{Mutability, TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, Expander, FunctionId, FunctionLoc, HasModule,
-    ImplId, Intern, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
+    ImplId, Intern, Lookup, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -218,10 +218,17 @@ impl ImplData {
         let mut items = Vec::new();
 
         if let Some(item_list) = src.value.item_list() {
-            items.extend(collect_impl_items(db, item_list.impl_items(), src.file_id, id));
+            let mut expander = Expander::new(db, impl_loc.ast_id.file_id, module_id);
+            items.extend(collect_impl_items(
+                db,
+                &mut expander,
+                item_list.impl_items(),
+                src.file_id,
+                id,
+            ));
             items.extend(collect_impl_items_in_macros(
                 db,
-                module_id,
+                &mut expander,
                 &src.with_value(item_list),
                 id,
             ));
@@ -268,18 +275,17 @@ impl ConstData {
 
 fn collect_impl_items_in_macros(
     db: &dyn DefDatabase,
-    module_id: ModuleId,
+    expander: &mut Expander,
     impl_def: &InFile<ast::ItemList>,
     id: ImplId,
 ) -> Vec<AssocItemId> {
-    let mut expander = Expander::new(db, impl_def.file_id, module_id);
     let mut res = Vec::new();
 
     // We set a limit to protect against infinite recursion
     let limit = 100;
 
     for m in impl_def.value.syntax().children().filter_map(ast::MacroCall::cast) {
-        res.extend(collect_impl_items_in_macro(db, &mut expander, m, id, limit))
+        res.extend(collect_impl_items_in_macro(db, expander, m, id, limit))
     }
 
     res
@@ -300,6 +306,7 @@ fn collect_impl_items_in_macro(
         let items: InFile<ast::MacroItems> = expander.to_source(items);
         let mut res = collect_impl_items(
             db,
+            expander,
             items.value.items().filter_map(|it| ImplItem::cast(it.syntax().clone())),
             items.file_id,
             id,
@@ -319,32 +326,26 @@ fn collect_impl_items_in_macro(
 
 fn collect_impl_items(
     db: &dyn DefDatabase,
+    expander: &mut Expander,
     impl_items: impl Iterator<Item = ImplItem>,
     file_id: crate::HirFileId,
     id: ImplId,
 ) -> Vec<AssocItemId> {
     let items = db.ast_id_map(file_id);
-    let crate_graph = db.crate_graph();
-    let module_id = id.lookup(db).container.module(db);
 
     impl_items
         .filter_map(|item_node| match item_node {
             ast::ImplItem::FnDef(it) => {
+                let attrs = expander.parse_attrs(&it);
+                if !expander.is_cfg_enabled(&attrs) {
+                    return None;
+                }
                 let def = FunctionLoc {
                     container: AssocContainerId::ImplId(id),
                     ast_id: AstId::new(file_id, items.ast_id(&it)),
                 }
                 .intern(db);
-
-                if !db
-                    .function_data(def)
-                    .attrs
-                    .is_cfg_enabled(&crate_graph[module_id.krate].cfg_options)
-                {
-                    None
-                } else {
-                    Some(def.into())
-                }
+                Some(def.into())
             }
             ast::ImplItem::ConstDef(it) => {
                 let def = ConstLoc {

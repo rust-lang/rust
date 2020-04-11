@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use either::Either;
 use hir_expand::{
-    hygiene::Hygiene,
     name::{AsName, Name},
     InFile,
 };
@@ -13,7 +12,7 @@ use ra_prof::profile;
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 
 use crate::{
-    attr::Attrs, db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace,
+    body::CfgExpander, db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace,
     type_ref::TypeRef, visibility::RawVisibility, EnumId, HasModule, LocalEnumVariantId,
     LocalStructFieldId, Lookup, ModuleId, StructId, UnionId, VariantId,
 };
@@ -125,8 +124,9 @@ fn lower_enum(
 
 impl VariantData {
     fn new(db: &dyn DefDatabase, flavor: InFile<ast::StructKind>, module_id: ModuleId) -> Self {
+        let mut expander = CfgExpander::new(db, flavor.file_id, module_id.krate);
         let mut trace = Trace::new_for_arena();
-        match lower_struct(db, &mut trace, &flavor, module_id) {
+        match lower_struct(db, &mut expander, &mut trace, &flavor) {
             StructKind::Tuple => VariantData::Tuple(trace.into_arena()),
             StructKind::Record => VariantData::Record(trace.into_arena()),
             StructKind::Unit => VariantData::Unit,
@@ -178,8 +178,9 @@ impl HasChildSource for VariantId {
                 it.lookup(db).container.module(db),
             ),
         };
+        let mut expander = CfgExpander::new(db, src.file_id, module_id.krate);
         let mut trace = Trace::new_for_map();
-        lower_struct(db, &mut trace, &src, module_id);
+        lower_struct(db, &mut expander, &mut trace, &src);
         src.with_value(trace.into_map())
     }
 }
@@ -193,16 +194,15 @@ pub enum StructKind {
 
 fn lower_struct(
     db: &dyn DefDatabase,
+    expander: &mut CfgExpander,
     trace: &mut Trace<StructFieldData, Either<ast::TupleFieldDef, ast::RecordFieldDef>>,
     ast: &InFile<ast::StructKind>,
-    module_id: ModuleId,
 ) -> StructKind {
-    let crate_graph = db.crate_graph();
     match &ast.value {
         ast::StructKind::Tuple(fl) => {
             for (i, fd) in fl.fields().enumerate() {
-                let attrs = Attrs::new(&fd, &Hygiene::new(db.upcast(), ast.file_id));
-                if !attrs.is_cfg_enabled(&crate_graph[module_id.krate].cfg_options) {
+                let attrs = expander.parse_attrs(&fd);
+                if !expander.is_cfg_enabled(&attrs) {
                     continue;
                 }
 
@@ -219,8 +219,8 @@ fn lower_struct(
         }
         ast::StructKind::Record(fl) => {
             for fd in fl.fields() {
-                let attrs = Attrs::new(&fd, &Hygiene::new(db.upcast(), ast.file_id));
-                if !attrs.is_cfg_enabled(&crate_graph[module_id.krate].cfg_options) {
+                let attrs = expander.parse_attrs(&fd);
+                if !expander.is_cfg_enabled(&attrs) {
                     continue;
                 }
 

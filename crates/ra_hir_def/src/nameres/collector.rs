@@ -462,6 +462,14 @@ impl DefCollector<'_> {
                 Some(ModuleDefId::AdtId(AdtId::EnumId(e))) => {
                     tested_by!(glob_enum);
                     // glob import from enum => just import all the variants
+
+                    // XXX: urgh, so this works by accident! Here, we look at
+                    // the enum data, and, in theory, this might require us to
+                    // look back at the crate_def_map, creating a cycle. For
+                    // example, `enum E { crate::some_macro!(); }`. Luckely, the
+                    // only kind of macro that is allowed inside enum is a
+                    // `cfg_macro`, and we don't need to run name resolution for
+                    // it, but this is sheer luck!
                     let enum_data = self.db.enum_data(e);
                     let resolutions = enum_data
                         .variants
@@ -977,11 +985,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
-        // FIXME: handle cfg_attr :-)
-        attrs
-            .by_key("cfg")
-            .tt_values()
-            .all(|tt| self.def_collector.cfg_options.is_cfg_enabled(tt) != Some(false))
+        attrs.is_cfg_enabled(self.def_collector.cfg_options)
     }
 }
 
