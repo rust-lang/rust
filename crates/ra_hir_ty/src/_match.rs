@@ -1422,6 +1422,27 @@ mod tests {
 
         check_no_diagnostic(content);
     }
+
+    #[test]
+    fn expr_partially_diverges() {
+        let content = r"
+            enum Either<T> {
+                A(T),
+                B,
+            }
+            fn foo() -> Either<!> {
+                Either::B
+            }
+            fn test_fn() -> u32 {
+                match foo() {
+                    Either::A(val) => val,
+                    Either::B => 0,
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
 }
 
 #[cfg(test)]
