@@ -5,7 +5,7 @@ LL | fn assert_send<T: Send>(_: T) {}
    |                   ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(async {
-   |     ^^^^^^^^^^^ future returned by `main` is not `Send`
+   |     ^^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `*const u8`
 note: future is not `Send` as this value is used across an await
@@ -14,7 +14,7 @@ note: future is not `Send` as this value is used across an await
 LL |         bar(Foo(std::ptr::null())).await;
    |         ^^^^^^^^----------------^^^^^^^^- `std::ptr::null()` is later dropped here
    |         |       |
-   |         |       has type `*const u8`
+   |         |       has type `*const u8` which is not `Send`
    |         await occurs here, with `std::ptr::null()` maybe used later
 help: consider moving this into a `let` binding to create a shorter lived borrow
   --> $DIR/issue-65436-raw-ptr-not-send.rs:14:13
