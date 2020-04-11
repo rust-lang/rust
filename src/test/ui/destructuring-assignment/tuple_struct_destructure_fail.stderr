@@ -1,0 +1,29 @@
+error: `..` can only be used once per tuple struct pattern
+  --> $DIR/tuple_struct_destructure_fail.rs:7:27
+   |
+LL |     TupleStruct(a, .., b, ..) = TupleStruct(0, 1);
+   |                    --     ^^ can only be used once per tuple struct pattern
+   |                    |
+   |                    previously used here
+
+error[E0023]: this pattern has 3 fields, but the corresponding tuple struct has 2 fields
+  --> $DIR/tuple_struct_destructure_fail.rs:9:5
+   |
+LL | struct TupleStruct<S, T>(S, T);
+   | ------------------------------- tuple struct defined here
+...
+LL |     TupleStruct(a, a, b) = TupleStruct(1,2);
+   |     ^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 3
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/tuple_struct_destructure_fail.rs:12:12
+   |
+LL |     test() = TupleStruct(0,0)
+   |     ------ ^
+   |     |
+   |     cannot assign to this expression
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0023, E0070.
+For more information about an error, try `rustc --explain E0023`.
