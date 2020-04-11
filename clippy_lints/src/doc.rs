@@ -229,7 +229,7 @@ fn lint_for_missing_headers<'a, 'tcx>(
                 if let Some(body_id) = body_id;
                 if let Some(future) = cx.tcx.lang_items().future_trait();
                 let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-                let mir = cx.tcx.optimized_mir(def_id);
+                let mir = cx.tcx.optimized_mir(def_id.to_def_id());
                 let ret_ty = mir.return_ty();
                 if implements_trait(cx, ret_ty, future, &[]);
                 if let ty::Opaque(_, subs) = ret_ty.kind;
