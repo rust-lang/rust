@@ -16,6 +16,22 @@ use crate::{
 };
 use ra_syntax::ast::{Expr, NameRef};
 
+
+// Assist: reorder_fields
+//
+// Reorder the fields of record literals and record patterns in the same order as in
+// the definition.
+//
+// ```
+// struct Foo {foo: i32, bar: i32};
+// const test: Foo = <|>Foo {bar: 0, foo: 1}
+// ```
+// ->
+// ```
+// struct Foo {foo: i32, bar: i32};
+// const test: Foo = <|>Foo {foo: 1, bar: 0}
+// ```
+//
 pub(crate) fn reorder_fields(ctx: AssistCtx) -> Option<Assist> {
     reorder::<RecordLit>(ctx.clone()).or_else(|| reorder::<RecordPat>(ctx))
 }
