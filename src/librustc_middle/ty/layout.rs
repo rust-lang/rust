@@ -871,6 +871,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     .iter_enumerated()
                     .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
 
+                let mut niche_filling_layout = None;
+
                 // Niche-filling enum optimization.
                 if !def.repr.inhibit_enum_layout_opt() && no_explicit_discriminants {
                     let mut dataful_variant = None;
@@ -967,7 +969,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             let largest_niche =
                                 Niche::from_scalar(dl, offset, niche_scalar.clone());
 
-                            return Ok(tcx.intern_layout(Layout {
+                            niche_filling_layout = Some(Layout {
                                 variants: Variants::Multiple {
                                     discr: niche_scalar,
                                     discr_kind: DiscriminantKind::Niche {
@@ -986,7 +988,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 largest_niche,
                                 size,
                                 align,
-                            }));
+                            });
                         }
                     }
                 }
@@ -1209,7 +1211,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag.clone());
 
-                tcx.intern_layout(Layout {
+                let tagged_layout = Layout {
                     variants: Variants::Multiple {
                         discr: tag,
                         discr_kind: DiscriminantKind::Tag,
@@ -1224,7 +1226,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     abi,
                     align,
                     size,
-                })
+                };
+
+                tcx.intern_layout(niche_filling_layout.unwrap_or(tagged_layout))
             }
 
             // Types with no meaningful known layout.
