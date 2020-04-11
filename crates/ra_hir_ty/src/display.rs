@@ -247,19 +247,21 @@ impl HirDisplay for ApplicationTy {
                 }
             }
             TypeCtor::Closure { .. } => {
-                let sig = self.parameters[0]
-                    .callable_sig(f.db)
-                    .expect("first closure parameter should contain signature");
-                if sig.params().is_empty() {
-                    write!(f, "||")?;
-                } else if f.omit_verbose_types() {
-                    write!(f, "|{}|", TYPE_HINT_TRUNCATION)?;
+                let sig = self.parameters[0].callable_sig(f.db);
+                if let Some(sig) = sig {
+                    if sig.params().is_empty() {
+                        write!(f, "||")?;
+                    } else if f.omit_verbose_types() {
+                        write!(f, "|{}|", TYPE_HINT_TRUNCATION)?;
+                    } else {
+                        write!(f, "|")?;
+                        f.write_joined(sig.params(), ", ")?;
+                        write!(f, "|")?;
+                    };
+                    write!(f, " -> {}", sig.ret().display(f.db))?;
                 } else {
-                    write!(f, "|")?;
-                    f.write_joined(sig.params(), ", ")?;
-                    write!(f, "|")?;
-                };
-                write!(f, " -> {}", sig.ret().display(f.db))?;
+                    write!(f, "{{closure}}")?;
+                }
             }
         }
         Ok(())

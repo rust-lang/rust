@@ -39,5 +39,5 @@ SOURCE_FILE@[0; 42)
         WHITESPACE@[37; 38) " "
         TYPE_BOUND@[38; 40)
           LIFETIME@[38; 40) "\'a"
-    SEMI@[40; 41) ";"
+    SEMICOLON@[40; 41) ";"
   WHITESPACE@[41; 42) "\n"

@@ -7,7 +7,7 @@ SOURCE_FILE@[0; 19)
         PATH_SEGMENT@[4; 7)
           NAME_REF@[4; 7)
             IDENT@[4; 7) "foo"
-    SEMI@[7; 8) ";"
+    SEMICOLON@[7; 8) ";"
   WHITESPACE@[8; 9) "\n"
   USE_ITEM@[9; 19)
     USE_KW@[9; 12) "use"
@@ -15,7 +15,7 @@ SOURCE_FILE@[0; 19)
     USE_TREE@[13; 18)
       PATH@[13; 18)
         PATH_SEGMENT@[13; 18)
-          COLONCOLON@[13; 15) "::"
+          COLON2@[13; 15) "::"
           NAME_REF@[15; 18)
             IDENT@[15; 18) "bar"
-    SEMI@[18; 19) ";"
+    SEMICOLON@[18; 19) ";"

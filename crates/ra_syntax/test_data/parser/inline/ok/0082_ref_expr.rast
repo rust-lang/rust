@@ -24,7 +24,7 @@ SOURCE_FILE@[0; 52)
             AMP@[23; 24) "&"
             LITERAL@[24; 25)
               INT_NUMBER@[24; 25) "1"
-          SEMI@[25; 26) ";"
+          SEMICOLON@[25; 26) ";"
         WHITESPACE@[26; 31) "\n    "
         LET_STMT@[31; 49)
           LET_KW@[31; 34) "let"
@@ -49,7 +49,7 @@ SOURCE_FILE@[0; 52)
                 ARG_LIST@[46; 48)
                   L_PAREN@[46; 47) "("
                   R_PAREN@[47; 48) ")"
-          SEMI@[48; 49) ";"
+          SEMICOLON@[48; 49) ";"
         WHITESPACE@[49; 50) "\n"
         R_CURLY@[50; 51) "}"
   WHITESPACE@[51; 52) "\n"

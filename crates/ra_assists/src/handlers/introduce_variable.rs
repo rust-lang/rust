@@ -61,7 +61,7 @@ pub(crate) fn introduce_variable(ctx: AssistCtx) -> Option<Assist> {
         };
         if is_full_stmt {
             tested_by!(test_introduce_var_expr_stmt);
-            if !full_stmt.unwrap().has_semi() {
+            if full_stmt.unwrap().semicolon_token().is_none() {
                 buf.push_str(";");
             }
             edit.replace(expr.syntax().text_range(), buf);

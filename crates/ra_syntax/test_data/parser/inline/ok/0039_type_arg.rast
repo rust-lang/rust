@@ -51,5 +51,5 @@ SOURCE_FILE@[0; 46)
                     NAME_REF@[40; 43)
                       IDENT@[40; 43) "u64"
             R_ANGLE@[43; 44) ">"
-    SEMI@[44; 45) ";"
+    SEMICOLON@[44; 45) ";"
   WHITESPACE@[45; 46) "\n"

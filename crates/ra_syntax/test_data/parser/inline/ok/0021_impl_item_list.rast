@@ -24,7 +24,7 @@ SOURCE_FILE@[0; 89)
             PATH_SEGMENT@[22; 25)
               NAME_REF@[22; 25)
                 IDENT@[22; 25) "i32"
-        SEMI@[25; 26) ";"
+        SEMICOLON@[25; 26) ";"
       WHITESPACE@[26; 31) "\n    "
       CONST_DEF@[31; 49)
         CONST_KW@[31; 36) "const"
@@ -43,7 +43,7 @@ SOURCE_FILE@[0; 89)
         WHITESPACE@[45; 46) " "
         LITERAL@[46; 48)
           INT_NUMBER@[46; 48) "92"
-        SEMI@[48; 49) ";"
+        SEMICOLON@[48; 49) ";"
       WHITESPACE@[49; 54) "\n    "
       FN_DEF@[54; 65)
         FN_KW@[54; 56) "fn"

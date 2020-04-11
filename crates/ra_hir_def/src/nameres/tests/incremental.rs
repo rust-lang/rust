@@ -32,6 +32,9 @@ fn typing_inside_a_function_should_not_invalidate_def_map() {
 
         use crate::foo::bar::Baz;
 
+        enum E { A, B }
+        use E::*;
+
         fn foo() -> i32 {
             1 + 1
         }
@@ -45,6 +48,9 @@ fn typing_inside_a_function_should_not_invalidate_def_map() {
         mod foo;
 
         use crate::foo::bar::Baz;
+
+        enum E { A, B }
+        use E::*;
 
         fn foo() -> i32 { 92 }
         ",

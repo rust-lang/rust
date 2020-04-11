@@ -1,6 +1,9 @@
 //! FIXME: write short doc here
 
-use ra_syntax::{ast, match_ast, AstNode};
+use ra_syntax::{
+    ast::{self, ModuleItemOwner},
+    match_ast, AstNode,
+};
 use rustc_hash::FxHashMap;
 
 use crate::completion::{CompletionContext, CompletionItem, CompletionKind, Completions};
@@ -16,11 +19,19 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
     let mut params = FxHashMap::default();
     for node in ctx.token.parent().ancestors() {
-        match_ast! {
+        let items = match_ast! {
             match node {
-                ast::SourceFile(it) => process(it, &mut params),
-                ast::ItemList(it) => process(it, &mut params),
-                _ => (),
+                ast::SourceFile(it) => it.items(),
+                ast::ItemList(it) => it.items(),
+                _ => continue,
+            }
+        };
+        for item in items {
+            if let ast::ModuleItem::FnDef(func) = item {
+                func.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
+                    let text = param.syntax().text().to_string();
+                    params.entry(text).or_insert((0, param)).0 += 1;
+                })
             }
         }
     }
@@ -39,15 +50,6 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
                 .lookup_by(lookup)
                 .add_to(acc)
         });
-
-    fn process<N: ast::FnDefOwner>(node: N, params: &mut FxHashMap<String, (u32, ast::Param)>) {
-        node.functions().filter_map(|it| it.param_list()).flat_map(|it| it.params()).for_each(
-            |param| {
-                let text = param.syntax().text().to_string();
-                params.entry(text).or_insert((0, param)).0 += 1;
-            },
-        )
-    }
 }
 
 #[cfg(test)]

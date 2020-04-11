@@ -27,7 +27,7 @@ SOURCE_FILE@[0; 62)
             PATH_SEGMENT@[31; 34)
               NAME_REF@[31; 34)
                 IDENT@[31; 34) "Bar"
-        SEMI@[34; 35) ";"
+        SEMICOLON@[34; 35) ";"
       WHITESPACE@[35; 40) "\n    "
       MACRO_CALL@[40; 47)
         PATH@[40; 47)
@@ -51,9 +51,9 @@ SOURCE_FILE@[0; 62)
       WHITESPACE@[59; 60) "\n"
       R_CURLY@[60; 61) "}"
   WHITESPACE@[61; 62) "\n"
-error [21; 21): expected EXCL
+error [21; 21): expected BANG
 error [21; 21): expected `{`, `[`, `(`
-error [21; 21): expected SEMI
-error [47; 47): expected EXCL
+error [21; 21): expected SEMICOLON
+error [47; 47): expected BANG
 error [47; 47): expected `{`, `[`, `(`
-error [47; 47): expected SEMI
+error [47; 47): expected SEMICOLON

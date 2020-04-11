@@ -2,16 +2,12 @@
 //! Extensions for various expressions live in a sibling `expr_extensions` module.
 
 use itertools::Itertools;
+use ra_parser::SyntaxKind;
 
 use crate::{
-    ast::{
-        self, child_opt, children, support, AstNode, AstToken, AttrInput, NameOwner, SyntaxNode,
-    },
-    SmolStr, SyntaxElement,
-    SyntaxKind::*,
-    SyntaxToken, T,
+    ast::{self, support, AstNode, AttrInput, NameOwner, SyntaxNode},
+    SmolStr, SyntaxElement, SyntaxToken, T,
 };
-use ra_parser::SyntaxKind;
 
 impl ast::Name {
     pub fn text(&self) -> &SmolStr {
@@ -25,13 +21,7 @@ impl ast::NameRef {
     }
 
     pub fn as_tuple_field(&self) -> Option<usize> {
-        self.syntax().children_with_tokens().find_map(|c| {
-            if c.kind() == SyntaxKind::INT_NUMBER {
-                c.as_token().and_then(|tok| tok.text().as_str().parse().ok())
-            } else {
-                None
-            }
-        })
+        self.text().parse().ok()
     }
 }
 
@@ -87,7 +77,7 @@ impl ast::Attr {
             first_token.and_then(|token| token.next_token()).as_ref().map(SyntaxToken::kind);
 
         match (first_token_kind, second_token_kind) {
-            (Some(SyntaxKind::POUND), Some(SyntaxKind::EXCL)) => AttrKind::Inner,
+            (Some(SyntaxKind::POUND), Some(T![!])) => AttrKind::Inner,
             _ => AttrKind::Outer,
         }
     }
@@ -140,15 +130,6 @@ impl ast::Path {
     }
 }
 
-impl ast::Module {
-    pub fn has_semi(&self) -> bool {
-        match self.syntax().last_child_or_token() {
-            None => false,
-            Some(node) => node.kind() == T![;],
-        }
-    }
-}
-
 impl ast::UseTreeList {
     pub fn parent_use_tree(&self) -> ast::UseTree {
         self.syntax()
@@ -174,14 +155,10 @@ impl ast::ImplDef {
     }
 
     fn target(&self) -> (Option<ast::TypeRef>, Option<ast::TypeRef>) {
-        let mut types = children(self);
+        let mut types = support::children(self.syntax());
         let first = types.next();
         let second = types.next();
         (first, second)
-    }
-
-    pub fn is_negative(&self) -> bool {
-        self.syntax().children_with_tokens().any(|t| t.kind() == T![!])
     }
 }
 
@@ -194,9 +171,9 @@ pub enum StructKind {
 
 impl StructKind {
     fn from_node<N: AstNode>(node: &N) -> StructKind {
-        if let Some(nfdl) = child_opt::<_, ast::RecordFieldDefList>(node) {
+        if let Some(nfdl) = support::child::<ast::RecordFieldDefList>(node.syntax()) {
             StructKind::Record(nfdl)
-        } else if let Some(pfl) = child_opt::<_, ast::TupleFieldDefList>(node) {
+        } else if let Some(pfl) = support::child::<ast::TupleFieldDefList>(node.syntax()) {
             StructKind::Tuple(pfl)
         } else {
             StructKind::Unit
@@ -210,6 +187,36 @@ impl ast::StructDef {
     }
 }
 
+impl ast::RecordField {
+    pub fn for_field_name(field_name: &ast::NameRef) -> Option<ast::RecordField> {
+        let candidate =
+            field_name.syntax().parent().and_then(ast::RecordField::cast).or_else(|| {
+                field_name.syntax().ancestors().nth(4).and_then(ast::RecordField::cast)
+            })?;
+        if candidate.field_name().as_ref() == Some(field_name) {
+            Some(candidate)
+        } else {
+            None
+        }
+    }
+
+    /// Deals with field init shorthand
+    pub fn field_name(&self) -> Option<ast::NameRef> {
+        if let Some(name_ref) = self.name_ref() {
+            return Some(name_ref);
+        }
+        if let Some(ast::Expr::PathExpr(expr)) = self.expr() {
+            let path = expr.path()?;
+            let segment = path.segment()?;
+            let name_ref = segment.name_ref()?;
+            if path.qualifier().is_none() {
+                return Some(name_ref);
+            }
+        }
+        None
+    }
+}
+
 impl ast::EnumVariant {
     pub fn parent_enum(&self) -> ast::EnumDef {
         self.syntax()
@@ -220,41 +227,6 @@ impl ast::EnumVariant {
     }
     pub fn kind(&self) -> StructKind {
         StructKind::from_node(self)
-    }
-}
-
-impl ast::FnDef {
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
-        self.syntax()
-            .last_child_or_token()
-            .and_then(|it| it.into_token())
-            .filter(|it| it.kind() == T![;])
-    }
-
-    pub fn is_async(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![async])
-    }
-}
-
-impl ast::LetStmt {
-    pub fn has_semi(&self) -> bool {
-        match self.syntax().last_child_or_token() {
-            None => false,
-            Some(node) => node.kind() == T![;],
-        }
-    }
-
-    pub fn eq_token(&self) -> Option<SyntaxToken> {
-        self.syntax().children_with_tokens().find(|t| t.kind() == EQ).and_then(|it| it.into_token())
-    }
-}
-
-impl ast::ExprStmt {
-    pub fn has_semi(&self) -> bool {
-        match self.syntax().last_child_or_token() {
-            None => false,
-            Some(node) => node.kind() == T![;],
-        }
     }
 }
 
@@ -283,25 +255,6 @@ impl ast::FieldExpr {
         } else {
             None
         }
-    }
-}
-
-impl ast::RefPat {
-    pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
-    }
-}
-
-impl ast::BindPat {
-    pub fn is_mutable(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
-    }
-
-    pub fn is_ref(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![ref])
-    }
-    pub fn has_at(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![@])
     }
 }
 
@@ -339,18 +292,6 @@ impl ast::SlicePat {
     }
 }
 
-impl ast::PointerType {
-    pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
-    }
-}
-
-impl ast::ReferenceType {
-    pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SelfParamKind {
     /// self
@@ -363,8 +304,8 @@ pub enum SelfParamKind {
 
 impl ast::SelfParam {
     pub fn kind(&self) -> SelfParamKind {
-        if self.amp().is_some() {
-            if self.amp_mut_kw().is_some() {
+        if self.amp_token().is_some() {
+            if self.mut_token().is_some() {
                 SelfParamKind::MutRef
             } else {
                 SelfParamKind::Ref
@@ -372,24 +313,6 @@ impl ast::SelfParam {
         } else {
             SelfParamKind::Owned
         }
-    }
-
-    /// the "mut" in "mut self", not the one in "&mut self"
-    pub fn mut_kw(&self) -> Option<ast::MutKw> {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .take_while(|it| it.kind() != T![&])
-            .find_map(ast::MutKw::cast)
-    }
-
-    /// the "mut" in "&mut self", not the one in "mut self"
-    pub fn amp_mut_kw(&self) -> Option<ast::MutKw> {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .skip_while(|it| it.kind() != T![&])
-            .find_map(ast::MutKw::cast)
     }
 }
 
@@ -400,50 +323,40 @@ pub enum TypeBoundKind {
     /// for<'a> ...
     ForType(ast::ForType),
     /// 'a
-    Lifetime(ast::Lifetime),
+    Lifetime(SyntaxToken),
 }
 
 impl ast::TypeBound {
     pub fn kind(&self) -> TypeBoundKind {
-        if let Some(path_type) = children(self).next() {
+        if let Some(path_type) = support::children(self.syntax()).next() {
             TypeBoundKind::PathType(path_type)
-        } else if let Some(for_type) = children(self).next() {
+        } else if let Some(for_type) = support::children(self.syntax()).next() {
             TypeBoundKind::ForType(for_type)
-        } else if let Some(lifetime) = self.lifetime() {
+        } else if let Some(lifetime) = self.lifetime_token() {
             TypeBoundKind::Lifetime(lifetime)
         } else {
             unreachable!()
         }
     }
 
-    pub fn has_question_mark(&self) -> bool {
-        self.question().is_some()
-    }
-
-    pub fn const_question(&self) -> Option<ast::Question> {
+    pub fn const_question_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .take_while(|it| it.kind() != T![const])
-            .find_map(ast::Question::cast)
+            .find(|it| it.kind() == T![?])
     }
 
-    pub fn question(&self) -> Option<ast::Question> {
-        if self.const_kw().is_some() {
+    pub fn question_token(&self) -> Option<SyntaxToken> {
+        if self.const_token().is_some() {
             self.syntax()
                 .children_with_tokens()
                 .filter_map(|it| it.into_token())
                 .skip_while(|it| it.kind() != T![const])
-                .find_map(ast::Question::cast)
+                .find(|it| it.kind() == T![?])
         } else {
-            support::token(&self.syntax)
+            support::token(&self.syntax, T![?])
         }
-    }
-}
-
-impl ast::TraitDef {
-    pub fn is_auto(&self) -> bool {
-        self.syntax().children_with_tokens().any(|t| t.kind() == T![auto])
     }
 }
 
@@ -457,29 +370,17 @@ pub enum VisibilityKind {
 
 impl ast::Visibility {
     pub fn kind(&self) -> VisibilityKind {
-        if let Some(path) = children(self).next() {
+        if let Some(path) = support::children(self.syntax()).next() {
             VisibilityKind::In(path)
-        } else if self.is_pub_crate() {
+        } else if self.crate_token().is_some() {
             VisibilityKind::PubCrate
-        } else if self.is_pub_super() {
+        } else if self.super_token().is_some() {
             VisibilityKind::PubSuper
-        } else if self.is_pub_self() {
+        } else if self.self_token().is_some() {
             VisibilityKind::PubSuper
         } else {
             VisibilityKind::Pub
         }
-    }
-
-    fn is_pub_crate(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![crate])
-    }
-
-    fn is_pub_super(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![super])
-    }
-
-    fn is_pub_self(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == T![self])
     }
 }
 
@@ -495,12 +396,12 @@ impl ast::MacroCall {
 }
 
 impl ast::LifetimeParam {
-    pub fn lifetime_bounds(&self) -> impl Iterator<Item = ast::Lifetime> {
+    pub fn lifetime_bounds(&self) -> impl Iterator<Item = SyntaxToken> {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .skip_while(|x| x.kind() != T![:])
-            .filter_map(ast::Lifetime::cast)
+            .filter(|it| it.kind() == T![lifetime])
     }
 }
 
@@ -508,7 +409,7 @@ impl ast::RangePat {
     pub fn start(&self) -> Option<ast::Pat> {
         self.syntax()
             .children_with_tokens()
-            .take_while(|it| !ast::RangeSeparator::can_cast(it.kind()))
+            .take_while(|it| !(it.kind() == T![..] || it.kind() == T![..=]))
             .filter_map(|it| it.into_node())
             .find_map(ast::Pat::cast)
     }
@@ -516,18 +417,24 @@ impl ast::RangePat {
     pub fn end(&self) -> Option<ast::Pat> {
         self.syntax()
             .children_with_tokens()
-            .skip_while(|it| !ast::RangeSeparator::can_cast(it.kind()))
+            .skip_while(|it| !(it.kind() == T![..] || it.kind() == T![..=]))
             .filter_map(|it| it.into_node())
             .find_map(ast::Pat::cast)
     }
 }
 
 impl ast::TokenTree {
-    pub fn left_delimiter(&self) -> Option<ast::LeftDelimiter> {
-        self.syntax().first_child_or_token()?.into_token().and_then(ast::LeftDelimiter::cast)
+    pub fn left_delimiter_token(&self) -> Option<SyntaxToken> {
+        self.syntax().first_child_or_token()?.into_token().filter(|it| match it.kind() {
+            T!['{'] | T!['('] | T!['['] => true,
+            _ => false,
+        })
     }
 
-    pub fn right_delimiter(&self) -> Option<ast::RightDelimiter> {
-        self.syntax().last_child_or_token()?.into_token().and_then(ast::RightDelimiter::cast)
+    pub fn right_delimiter_token(&self) -> Option<SyntaxToken> {
+        self.syntax().last_child_or_token()?.into_token().filter(|it| match it.kind() {
+            T!['{'] | T!['('] | T!['['] => true,
+            _ => false,
+        })
     }
 }

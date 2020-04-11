@@ -30,7 +30,7 @@ SOURCE_FILE@[0; 349)
         L_CURLY@[42; 43) "{"
         WHITESPACE@[43; 48) "\n    "
         IDENT@[48; 51) "vec"
-        EXCL@[51; 52) "!"
+        BANG@[51; 52) "!"
         TOKEN_TREE@[52; 91)
           L_BRACK@[52; 53) "["
           WHITESPACE@[53; 62) "\n        "
@@ -129,7 +129,7 @@ SOURCE_FILE@[0; 349)
               L_CURLY@[204; 205) "{"
               WHITESPACE@[205; 214) "\n        "
               IDENT@[214; 223) "assert_eq"
-              EXCL@[223; 224) "!"
+              BANG@[223; 224) "!"
               TOKEN_TREE@[224; 339)
                 L_PAREN@[224; 225) "("
                 WHITESPACE@[225; 238) "\n            "
@@ -137,7 +137,7 @@ SOURCE_FILE@[0; 349)
                 TOKEN_TREE@[253; 284)
                   L_PAREN@[253; 254) "("
                   IDENT@[254; 269) "parse_use_trees"
-                  EXCL@[269; 270) "!"
+                  BANG@[269; 270) "!"
                   TOKEN_TREE@[270; 283)
                     L_PAREN@[270; 271) "("
                     DOLLAR@[271; 272) "$"
@@ -153,7 +153,7 @@ SOURCE_FILE@[0; 349)
                 COMMA@[284; 285) ","
                 WHITESPACE@[285; 298) "\n            "
                 IDENT@[298; 313) "parse_use_trees"
-                EXCL@[313; 314) "!"
+                BANG@[313; 314) "!"
                 TOKEN_TREE@[314; 328)
                   L_PAREN@[314; 315) "("
                   DOLLAR@[315; 316) "$"
@@ -168,7 +168,7 @@ SOURCE_FILE@[0; 349)
                 COMMA@[328; 329) ","
                 WHITESPACE@[329; 338) "\n        "
                 R_PAREN@[338; 339) ")"
-              SEMI@[339; 340) ";"
+              SEMICOLON@[339; 340) ";"
               WHITESPACE@[340; 345) "\n    "
               R_CURLY@[345; 346) "}"
         WHITESPACE@[346; 347) "\n"

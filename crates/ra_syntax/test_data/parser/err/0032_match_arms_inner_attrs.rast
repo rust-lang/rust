@@ -38,7 +38,7 @@ SOURCE_FILE@[0; 293)
                 ATTR@[51; 52)
                   POUND@[51; 52) "#"
                 ERROR@[52; 53)
-                  EXCL@[52; 53) "!"
+                  BANG@[52; 53) "!"
                 ARRAY_EXPR@[53; 78)
                   L_BRACK@[53; 54) "["
                   CALL_EXPR@[54; 77)
@@ -104,7 +104,7 @@ SOURCE_FILE@[0; 293)
                 ATTR@[160; 161)
                   POUND@[160; 161) "#"
                 ERROR@[161; 162)
-                  EXCL@[161; 162) "!"
+                  BANG@[161; 162) "!"
                 ARRAY_EXPR@[162; 179)
                   L_BRACK@[162; 163) "["
                   CALL_EXPR@[163; 178)
@@ -149,7 +149,7 @@ SOURCE_FILE@[0; 293)
               ATTR@[231; 232)
                 POUND@[231; 232) "#"
               ERROR@[232; 233)
-                EXCL@[232; 233) "!"
+                BANG@[232; 233) "!"
               ARRAY_EXPR@[233; 250)
                 L_BRACK@[233; 234) "["
                 CALL_EXPR@[234; 249)

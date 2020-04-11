@@ -20,7 +20,7 @@ SOURCE_FILE@[0; 21)
                   NAME_REF@[15; 16)
                     IDENT@[15; 16) "x"
             QUESTION@[16; 17) "?"
-          SEMI@[17; 18) ";"
+          SEMICOLON@[17; 18) ";"
         WHITESPACE@[18; 19) "\n"
         R_CURLY@[19; 20) "}"
   WHITESPACE@[20; 21) "\n"

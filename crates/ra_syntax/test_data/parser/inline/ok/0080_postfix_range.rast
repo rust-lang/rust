@@ -24,8 +24,8 @@ SOURCE_FILE@[0; 89)
           RANGE_EXPR@[23; 26)
             LITERAL@[23; 24)
               INT_NUMBER@[23; 24) "1"
-            DOTDOT@[24; 26) ".."
-          SEMI@[26; 27) ";"
+            DOT2@[24; 26) ".."
+          SEMICOLON@[26; 27) ";"
         WHITESPACE@[27; 32) "\n    "
         EXPR_STMT@[32; 54)
           MATCH_EXPR@[32; 53)
@@ -34,7 +34,7 @@ SOURCE_FILE@[0; 89)
             RANGE_EXPR@[38; 41)
               LITERAL@[38; 39)
                 INT_NUMBER@[38; 39) "1"
-              DOTDOT@[39; 41) ".."
+              DOT2@[39; 41) ".."
             WHITESPACE@[41; 42) " "
             MATCH_ARM_LIST@[42; 53)
               L_CURLY@[42; 43) "{"
@@ -50,7 +50,7 @@ SOURCE_FILE@[0; 89)
                   R_PAREN@[50; 51) ")"
               WHITESPACE@[51; 52) " "
               R_CURLY@[52; 53) "}"
-          SEMI@[53; 54) ";"
+          SEMICOLON@[53; 54) ";"
         WHITESPACE@[54; 59) "\n    "
         EXPR_STMT@[59; 86)
           MATCH_EXPR@[59; 85)
@@ -69,7 +69,7 @@ SOURCE_FILE@[0; 89)
                 ARG_LIST@[68; 70)
                   L_PAREN@[68; 69) "("
                   R_PAREN@[69; 70) ")"
-              DOTDOT@[70; 72) ".."
+              DOT2@[70; 72) ".."
               PATH_EXPR@[72; 73)
                 PATH@[72; 73)
                   PATH_SEGMENT@[72; 73)
@@ -90,7 +90,7 @@ SOURCE_FILE@[0; 89)
                   R_PAREN@[82; 83) ")"
               WHITESPACE@[83; 84) " "
               R_CURLY@[84; 85) "}"
-          SEMI@[85; 86) ";"
+          SEMICOLON@[85; 86) ";"
         WHITESPACE@[86; 87) "\n"
         R_CURLY@[87; 88) "}"
   WHITESPACE@[88; 89) "\n"

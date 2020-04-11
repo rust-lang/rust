@@ -134,11 +134,6 @@ impl Path {
         lower::lower_path(path, hygiene)
     }
 
-    /// Converts an `ast::NameRef` into a single-identifier `Path`.
-    pub(crate) fn from_name_ref(name_ref: &ast::NameRef) -> Path {
-        Path { type_anchor: None, mod_path: name_ref.as_name().into(), generic_args: vec![None] }
-    }
-
     /// Converts a known mod path to `Path`.
     pub(crate) fn from_known_path(
         path: ModPath,

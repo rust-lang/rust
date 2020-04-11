@@ -19,7 +19,7 @@ SOURCE_FILE@[0; 21)
         EXPR_STMT@[15; 18)
           LITERAL@[15; 17)
             INT_NUMBER@[15; 17) "92"
-          SEMI@[17; 18) ";"
+          SEMICOLON@[17; 18) ";"
         WHITESPACE@[18; 19) " "
         R_CURLY@[19; 20) "}"
   WHITESPACE@[20; 21) "\n"

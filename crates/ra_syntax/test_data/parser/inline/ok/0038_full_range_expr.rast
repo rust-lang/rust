@@ -21,9 +21,9 @@ SOURCE_FILE@[0; 21)
                     IDENT@[11; 13) "xs"
             L_BRACK@[13; 14) "["
             RANGE_EXPR@[14; 16)
-              DOTDOT@[14; 16) ".."
+              DOT2@[14; 16) ".."
             R_BRACK@[16; 17) "]"
-          SEMI@[17; 18) ";"
+          SEMICOLON@[17; 18) ";"
         WHITESPACE@[18; 19) " "
         R_CURLY@[19; 20) "}"
   WHITESPACE@[20; 21) "\n"

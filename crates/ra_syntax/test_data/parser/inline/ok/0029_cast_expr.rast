@@ -24,7 +24,7 @@ SOURCE_FILE@[0; 89)
                 PATH_SEGMENT@[21; 24)
                   NAME_REF@[21; 24)
                     IDENT@[21; 24) "i32"
-          SEMI@[24; 25) ";"
+          SEMICOLON@[24; 25) ";"
         WHITESPACE@[25; 30) "\n    "
         EXPR_STMT@[30; 43)
           BIN_EXPR@[30; 42)
@@ -44,7 +44,7 @@ SOURCE_FILE@[0; 89)
             WHITESPACE@[40; 41) " "
             LITERAL@[41; 42)
               INT_NUMBER@[41; 42) "1"
-          SEMI@[42; 43) ";"
+          SEMICOLON@[42; 43) ";"
         WHITESPACE@[43; 48) "\n    "
         EXPR_STMT@[48; 62)
           BIN_EXPR@[48; 61)
@@ -64,7 +64,7 @@ SOURCE_FILE@[0; 89)
             WHITESPACE@[59; 60) " "
             LITERAL@[60; 61)
               INT_NUMBER@[60; 61) "1"
-          SEMI@[61; 62) ";"
+          SEMICOLON@[61; 62) ";"
         WHITESPACE@[62; 67) "\n    "
         EXPR_STMT@[67; 86)
           BIN_EXPR@[67; 85)
@@ -84,7 +84,7 @@ SOURCE_FILE@[0; 89)
             WHITESPACE@[80; 81) " "
             LITERAL@[81; 85)
               INT_NUMBER@[81; 85) "0x37"
-          SEMI@[85; 86) ";"
+          SEMICOLON@[85; 86) ";"
         WHITESPACE@[86; 87) "\n"
         R_CURLY@[87; 88) "}"
   WHITESPACE@[88; 89) "\n"

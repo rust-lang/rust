@@ -180,7 +180,7 @@ trait Trait<T> {
 }
 
 impl Trait<u32> for () {
-    fn foo(&self) -> u32 { unimplemented!() }
+    fn foo(&self) -> u32 { todo!() }
 
 }
 "#####,
@@ -602,6 +602,21 @@ impl Walrus {
 impl Walrus {
     fn feed(&self, amount: u32) {}
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_reorder_fields() {
+    check(
+        "reorder_fields",
+        r#####"
+struct Foo {foo: i32, bar: i32};
+const test: Foo = <|>Foo {bar: 0, foo: 1}
+"#####,
+        r#####"
+struct Foo {foo: i32, bar: i32};
+const test: Foo = Foo {foo: 1, bar: 0}
 "#####,
     )
 }

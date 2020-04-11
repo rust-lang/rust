@@ -9,11 +9,14 @@ use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId};
 use ra_arena::{map::ArenaMap, Arena};
+use ra_cfg::CfgOptions;
+use ra_db::CrateId;
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
 
 use crate::{
+    attr::Attrs,
     db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId},
     item_scope::BuiltinShadowMode,
@@ -24,13 +27,40 @@ use crate::{
     AsMacroCall, DefWithBodyId, HasModule, Lookup, ModuleId,
 };
 
+/// A subser of Exander that only deals with cfg attributes. We only need it to
+/// avoid cyclic queries in crate def map during enum processing.
+pub(crate) struct CfgExpander {
+    cfg_options: CfgOptions,
+    hygiene: Hygiene,
+}
+
 pub(crate) struct Expander {
+    cfg_expander: CfgExpander,
     crate_def_map: Arc<CrateDefMap>,
     current_file_id: HirFileId,
-    hygiene: Hygiene,
     ast_id_map: Arc<AstIdMap>,
     module: ModuleId,
     recursive_limit: usize,
+}
+
+impl CfgExpander {
+    pub(crate) fn new(
+        db: &dyn DefDatabase,
+        current_file_id: HirFileId,
+        krate: CrateId,
+    ) -> CfgExpander {
+        let hygiene = Hygiene::new(db.upcast(), current_file_id);
+        let cfg_options = db.crate_graph()[krate].cfg_options.clone();
+        CfgExpander { cfg_options, hygiene }
+    }
+
+    pub(crate) fn parse_attrs(&self, owner: &dyn ast::AttrsOwner) -> Attrs {
+        Attrs::new(owner, &self.hygiene)
+    }
+
+    pub(crate) fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
+        attrs.is_cfg_enabled(&self.cfg_options)
+    }
 }
 
 impl Expander {
@@ -39,10 +69,17 @@ impl Expander {
         current_file_id: HirFileId,
         module: ModuleId,
     ) -> Expander {
+        let cfg_expander = CfgExpander::new(db, current_file_id, module.krate);
         let crate_def_map = db.crate_def_map(module.krate);
-        let hygiene = Hygiene::new(db.upcast(), current_file_id);
         let ast_id_map = db.ast_id_map(current_file_id);
-        Expander { crate_def_map, current_file_id, hygiene, ast_id_map, module, recursive_limit: 0 }
+        Expander {
+            cfg_expander,
+            crate_def_map,
+            current_file_id,
+            ast_id_map,
+            module,
+            recursive_limit: 0,
+        }
     }
 
     pub(crate) fn enter_expand<T: ast::AstNode>(
@@ -75,7 +112,7 @@ impl Expander {
                         ast_id_map: mem::take(&mut self.ast_id_map),
                         bomb: DropBomb::new("expansion mark dropped"),
                     };
-                    self.hygiene = Hygiene::new(db.upcast(), file_id);
+                    self.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
                     self.current_file_id = file_id;
                     self.ast_id_map = db.ast_id_map(file_id);
                     self.recursive_limit += 1;
@@ -91,7 +128,7 @@ impl Expander {
     }
 
     pub(crate) fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
-        self.hygiene = Hygiene::new(db.upcast(), mark.file_id);
+        self.cfg_expander.hygiene = Hygiene::new(db.upcast(), mark.file_id);
         self.current_file_id = mark.file_id;
         self.ast_id_map = mem::take(&mut mark.ast_id_map);
         self.recursive_limit -= 1;
@@ -102,8 +139,16 @@ impl Expander {
         InFile { file_id: self.current_file_id, value }
     }
 
+    pub(crate) fn parse_attrs(&self, owner: &dyn ast::AttrsOwner) -> Attrs {
+        self.cfg_expander.parse_attrs(owner)
+    }
+
+    pub(crate) fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
+        self.cfg_expander.is_cfg_enabled(attrs)
+    }
+
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
-        Path::from_src(path, &self.hygiene)
+        Path::from_src(path, &self.cfg_expander.hygiene)
     }
 
     fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroDefId> {
@@ -142,7 +187,7 @@ pub struct Body {
     pub item_scope: ItemScope,
 }
 
-pub type ExprPtr = Either<AstPtr<ast::Expr>, AstPtr<ast::RecordField>>;
+pub type ExprPtr = AstPtr<ast::Expr>;
 pub type ExprSource = InFile<ExprPtr>;
 
 pub type PatPtr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
@@ -236,11 +281,11 @@ impl Index<PatId> for Body {
 
 impl BodySourceMap {
     pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprSource, SyntheticSyntax> {
-        self.expr_map_back[expr]
+        self.expr_map_back[expr].clone()
     }
 
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
-        let src = node.map(|it| Either::Left(AstPtr::new(it)));
+        let src = node.map(|it| AstPtr::new(it));
         self.expr_map.get(&src).cloned()
     }
 
@@ -249,13 +294,8 @@ impl BodySourceMap {
         self.expansions.get(&src).cloned()
     }
 
-    pub fn field_init_shorthand_expr(&self, node: InFile<&ast::RecordField>) -> Option<ExprId> {
-        let src = node.map(|it| Either::Right(AstPtr::new(it)));
-        self.expr_map.get(&src).cloned()
-    }
-
     pub fn pat_syntax(&self, pat: PatId) -> Result<PatSource, SyntheticSyntax> {
-        self.pat_map_back[pat]
+        self.pat_map_back[pat].clone()
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
@@ -264,6 +304,6 @@ impl BodySourceMap {
     }
 
     pub fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::RecordField> {
-        self.field_map[&(expr, field)]
+        self.field_map[&(expr, field)].clone()
     }
 }

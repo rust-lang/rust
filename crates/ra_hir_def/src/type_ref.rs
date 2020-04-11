@@ -77,7 +77,7 @@ impl TypeRef {
             }
             ast::TypeRef::PointerType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(inner.type_ref());
-                let mutability = Mutability::from_mutable(inner.is_mut());
+                let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
             }
             ast::TypeRef::ArrayType(inner) => {
@@ -88,7 +88,7 @@ impl TypeRef {
             }
             ast::TypeRef::ReferenceType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(inner.type_ref());
-                let mutability = Mutability::from_mutable(inner.is_mut());
+                let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::Reference(Box::new(inner_ty), mutability)
             }
             ast::TypeRef::PlaceholderType(_inner) => TypeRef::Placeholder,

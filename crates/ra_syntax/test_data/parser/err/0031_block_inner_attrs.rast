@@ -27,7 +27,7 @@ SOURCE_FILE@[0; 350)
               WHITESPACE@[30; 39) "\n        "
               ATTR@[39; 83)
                 POUND@[39; 40) "#"
-                EXCL@[40; 41) "!"
+                BANG@[40; 41) "!"
                 L_BRACK@[41; 42) "["
                 PATH@[42; 45)
                   PATH_SEGMENT@[42; 45)
@@ -42,7 +42,7 @@ SOURCE_FILE@[0; 350)
               COMMENT@[92; 122) "//! Nor are ModuleDoc ..."
               WHITESPACE@[122; 127) "\n    "
               R_CURLY@[127; 128) "}"
-          SEMI@[128; 129) ";"
+          SEMICOLON@[128; 129) ";"
         WHITESPACE@[129; 134) "\n    "
         EXPR_STMT@[134; 257)
           IF_EXPR@[134; 257)
@@ -58,7 +58,7 @@ SOURCE_FILE@[0; 350)
                 WHITESPACE@[143; 152) "\n        "
                 ATTR@[152; 171)
                   POUND@[152; 153) "#"
-                  EXCL@[153; 154) "!"
+                  BANG@[153; 154) "!"
                   L_BRACK@[154; 155) "["
                   PATH@[155; 158)
                     PATH_SEGMENT@[155; 158)
@@ -72,7 +72,7 @@ SOURCE_FILE@[0; 350)
                 WHITESPACE@[171; 180) "\n        "
                 ATTR@[180; 212)
                   POUND@[180; 181) "#"
-                  EXCL@[181; 182) "!"
+                  BANG@[181; 182) "!"
                   L_BRACK@[182; 183) "["
                   PATH@[183; 186)
                     PATH_SEGMENT@[183; 186)
@@ -101,7 +101,7 @@ SOURCE_FILE@[0; 350)
               WHITESPACE@[274; 283) "\n        "
               ATTR@[283; 302)
                 POUND@[283; 284) "#"
-                EXCL@[284; 285) "!"
+                BANG@[284; 285) "!"
                 L_BRACK@[285; 286) "["
                 PATH@[286; 289)
                   PATH_SEGMENT@[286; 289)

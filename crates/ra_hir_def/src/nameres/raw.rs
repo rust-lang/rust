@@ -287,7 +287,7 @@ impl RawItemsCollector {
         let visibility = RawVisibility::from_ast_with_hygiene(module.visibility(), &self.hygiene);
 
         let ast_id = self.source_ast_id_map.ast_id(&module);
-        if module.has_semi() {
+        if module.semicolon_token().is_some() {
             let item =
                 self.raw_items.modules.alloc(ModuleData::Declaration { name, visibility, ast_id });
             self.push_item(current_module, attrs, RawItemKind::Module(item));

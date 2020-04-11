@@ -2,9 +2,7 @@
 //! representation.
 
 use either::Either;
-
 use hir_expand::{
-    hygiene::Hygiene,
     name::{name, AsName, Name},
     MacroDefId, MacroDefKind,
 };
@@ -18,10 +16,8 @@ use ra_syntax::{
 };
 use test_utils::tested_by;
 
-use super::{ExprSource, PatSource};
 use crate::{
     adt::StructKind,
-    attr::Attrs,
     body::{Body, BodySourceMap, Expander, PatPtr, SyntheticSyntax},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
@@ -31,11 +27,12 @@ use crate::{
     },
     item_scope::BuiltinShadowMode,
     path::GenericArgs,
-    path::Path,
     type_ref::{Mutability, TypeRef},
-    AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, HasModule, Intern,
-    ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
+    StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
+
+use super::{ExprSource, PatSource};
 
 pub(super) fn lower(
     db: &dyn DefDatabase,
@@ -104,9 +101,8 @@ impl ExprCollector<'_> {
     }
 
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
-        let ptr = Either::Left(ptr);
         let src = self.expander.to_source(ptr);
-        let id = self.make_expr(expr, Ok(src));
+        let id = self.make_expr(expr, Ok(src.clone()));
         self.source_map.expr_map.insert(src, id);
         id
     }
@@ -114,13 +110,6 @@ impl ExprCollector<'_> {
     // somehow.
     fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
         self.make_expr(expr, Err(SyntheticSyntax))
-    }
-    fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
-        let ptr = Either::Right(ptr);
-        let src = self.expander.to_source(ptr);
-        let id = self.make_expr(expr, Ok(src));
-        self.source_map.expr_map.insert(src, id);
-        id
     }
     fn empty_block(&mut self) -> ExprId {
         self.alloc_expr_desugared(Expr::Block { statements: Vec::new(), tail: None })
@@ -136,7 +125,7 @@ impl ExprCollector<'_> {
 
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let src = self.expander.to_source(ptr);
-        let id = self.make_pat(pat, Ok(src));
+        let id = self.make_pat(pat, Ok(src.clone()));
         self.source_map.pat_map.insert(src, id);
         id
     }
@@ -291,7 +280,7 @@ impl ExprCollector<'_> {
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
-                let src = self.expander.to_source(Either::Left(syntax_ptr));
+                let src = self.expander.to_source(syntax_ptr);
                 self.source_map.expr_map.insert(src, inner);
                 inner
             }
@@ -300,7 +289,6 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
             ast::Expr::RecordLit(e) => {
-                let crate_graph = self.db.crate_graph();
                 let path = e.path().and_then(|path| self.expander.parse_path(path));
                 let mut field_ptrs = Vec::new();
                 let record_lit = if let Some(nfl) = e.record_field_list() {
@@ -308,31 +296,17 @@ impl ExprCollector<'_> {
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
                         .filter_map(|field| {
-                            let module_id = ContainerId::DefWithBodyId(self.def).module(self.db);
-                            let attrs = Attrs::new(
-                                &field,
-                                &Hygiene::new(self.db.upcast(), self.expander.current_file_id),
-                            );
-
-                            if !attrs.is_cfg_enabled(&crate_graph[module_id.krate].cfg_options) {
+                            let attrs = self.expander.parse_attrs(&field);
+                            if !self.expander.is_cfg_enabled(&attrs) {
                                 return None;
                             }
+                            let name = field.field_name()?.as_name();
 
                             Some(RecordLitField {
-                                name: field
-                                    .name_ref()
-                                    .map(|nr| nr.as_name())
-                                    .unwrap_or_else(Name::missing),
-                                expr: if let Some(e) = field.expr() {
-                                    self.collect_expr(e)
-                                } else if let Some(nr) = field.name_ref() {
-                                    // field shorthand
-                                    self.alloc_expr_field_shorthand(
-                                        Expr::Path(Path::from_name_ref(&nr)),
-                                        AstPtr::new(&field),
-                                    )
-                                } else {
-                                    self.missing_expr()
+                                name,
+                                expr: match field.expr() {
+                                    Some(e) => self.collect_expr(e),
+                                    None => self.missing_expr(),
                                 },
                             })
                         })
@@ -372,7 +346,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::RefExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let mutability = Mutability::from_mutable(e.is_mut());
+                let mutability = Mutability::from_mutable(e.mut_token().is_some());
                 self.alloc_expr(Expr::Ref { expr, mutability }, syntax_ptr)
             }
             ast::Expr::PrefixExpr(e) => {
@@ -587,7 +561,8 @@ impl ExprCollector<'_> {
         let pattern = match &pat {
             ast::Pat::BindPat(bp) => {
                 let name = bp.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
-                let annotation = BindingAnnotation::new(bp.is_mutable(), bp.is_ref());
+                let annotation =
+                    BindingAnnotation::new(bp.mut_token().is_some(), bp.ref_token().is_some());
                 let subpat = bp.pat().map(|subpat| self.collect_pat(subpat));
                 if annotation == BindingAnnotation::Unannotated && subpat.is_none() {
                     // This could also be a single-segment path pattern. To
@@ -628,7 +603,7 @@ impl ExprCollector<'_> {
             }
             ast::Pat::RefPat(p) => {
                 let pat = self.collect_pat_opt(p.pat());
-                let mutability = Mutability::from_mutable(p.is_mut());
+                let mutability = Mutability::from_mutable(p.mut_token().is_some());
                 Pat::Ref { pat, mutability }
             }
             ast::Pat::PathPat(p) => {
@@ -667,7 +642,9 @@ impl ExprCollector<'_> {
                 });
                 fields.extend(iter);
 
-                Pat::Record { path, args: fields }
+                let ellipsis = record_field_pat_list.dotdot_token().is_some();
+
+                Pat::Record { path, args: fields, ellipsis }
             }
             ast::Pat::SlicePat(p) => {
                 let SlicePatComponents { prefix, slice, suffix } = p.components();
@@ -688,7 +665,6 @@ impl ExprCollector<'_> {
                     Pat::Missing
                 }
             }
-
             // FIXME: implement
             ast::Pat::BoxPat(_) | ast::Pat::RangePat(_) | ast::Pat::MacroPat(_) => Pat::Missing,
         };

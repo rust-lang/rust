@@ -142,6 +142,79 @@ macro_rules! impl_froms {
 }
 
 #[test]
+fn test_convert_tt2() {
+    parse_macro(
+        r#"
+macro_rules! impl_froms {
+    ($e:ident: $($v:ident),*) => {
+        $(
+            impl From<$v> for $e {
+                fn from(it: $v) -> $e {
+                    $e::$v(it)
+                }
+            }
+        )*
+    }
+}
+"#,
+    )
+    .assert_expand(
+        "impl_froms!(TokenTree: Leaf, Subtree);",
+        r#"
+SUBTREE $
+  IDENT   impl 20
+  IDENT   From 21
+  PUNCH   < [joint] 22
+  IDENT   Leaf 53
+  PUNCH   > [alone] 25
+  IDENT   for 26
+  IDENT   TokenTree 51
+  SUBTREE {} 29
+    IDENT   fn 30
+    IDENT   from 31
+    SUBTREE () 32
+      IDENT   it 33
+      PUNCH   : [alone] 34
+      IDENT   Leaf 53
+    PUNCH   - [joint] 37
+    PUNCH   > [alone] 38
+    IDENT   TokenTree 51
+    SUBTREE {} 41
+      IDENT   TokenTree 51
+      PUNCH   : [joint] 44
+      PUNCH   : [joint] 45
+      IDENT   Leaf 53
+      SUBTREE () 48
+        IDENT   it 49
+  IDENT   impl 20
+  IDENT   From 21
+  PUNCH   < [joint] 22
+  IDENT   Subtree 55
+  PUNCH   > [alone] 25
+  IDENT   for 26
+  IDENT   TokenTree 51
+  SUBTREE {} 29
+    IDENT   fn 30
+    IDENT   from 31
+    SUBTREE () 32
+      IDENT   it 33
+      PUNCH   : [alone] 34
+      IDENT   Subtree 55
+    PUNCH   - [joint] 37
+    PUNCH   > [alone] 38
+    IDENT   TokenTree 51
+    SUBTREE {} 41
+      IDENT   TokenTree 51
+      PUNCH   : [joint] 44
+      PUNCH   : [joint] 45
+      IDENT   Subtree 55
+      SUBTREE () 48
+        IDENT   it 49
+"#,
+    );
+}
+
+#[test]
 fn test_expr_order() {
     let expanded = parse_macro(
         r#"
@@ -179,7 +252,7 @@ fn test_expr_order() {
             STAR@[11; 12) "*"
             LITERAL@[12; 13)
               INT_NUMBER@[12; 13) "2"
-          SEMI@[13; 14) ";"
+          SEMICOLON@[13; 14) ";"
         R_CURLY@[14; 15) "}""#,
     );
 }
@@ -532,7 +605,7 @@ fn test_tt_to_stmts() {
     EQ@[4; 5) "="
     LITERAL@[5; 6)
       INT_NUMBER@[5; 6) "0"
-    SEMI@[6; 7) ";"
+    SEMICOLON@[6; 7) ";"
   EXPR_STMT@[7; 14)
     BIN_EXPR@[7; 13)
       PATH_EXPR@[7; 8)
@@ -547,7 +620,7 @@ fn test_tt_to_stmts() {
         PLUS@[11; 12) "+"
         LITERAL@[12; 13)
           INT_NUMBER@[12; 13) "1"
-    SEMI@[13; 14) ";"
+    SEMICOLON@[13; 14) ";"
   EXPR_STMT@[14; 15)
     PATH_EXPR@[14; 15)
       PATH@[14; 15)
@@ -880,7 +953,7 @@ fn test_tt_composite2() {
       PATH_SEGMENT@[0; 3)
         NAME_REF@[0; 3)
           IDENT@[0; 3) "abs"
-    EXCL@[3; 4) "!"
+    BANG@[3; 4) "!"
     TOKEN_TREE@[4; 10)
       L_PAREN@[4; 5) "("
       EQ@[5; 6) "="
@@ -1000,14 +1073,14 @@ fn test_vec() {
               PATH_SEGMENT@[9; 12)
                 NAME_REF@[9; 12)
                   IDENT@[9; 12) "Vec"
-            COLONCOLON@[12; 14) "::"
+            COLON2@[12; 14) "::"
             PATH_SEGMENT@[14; 17)
               NAME_REF@[14; 17)
                 IDENT@[14; 17) "new"
         ARG_LIST@[17; 19)
           L_PAREN@[17; 18) "("
           R_PAREN@[18; 19) ")"
-      SEMI@[19; 20) ";"
+      SEMICOLON@[19; 20) ";"
     EXPR_STMT@[20; 33)
       METHOD_CALL_EXPR@[20; 32)
         PATH_EXPR@[20; 21)
@@ -1023,7 +1096,7 @@ fn test_vec() {
           LITERAL@[27; 31)
             INT_NUMBER@[27; 31) "1u32"
           R_PAREN@[31; 32) ")"
-      SEMI@[32; 33) ";"
+      SEMICOLON@[32; 33) ";"
     EXPR_STMT@[33; 43)
       METHOD_CALL_EXPR@[33; 42)
         PATH_EXPR@[33; 34)
@@ -1039,7 +1112,7 @@ fn test_vec() {
           LITERAL@[40; 41)
             INT_NUMBER@[40; 41) "2"
           R_PAREN@[41; 42) ")"
-      SEMI@[42; 43) ";"
+      SEMICOLON@[42; 43) ";"
     PATH_EXPR@[43; 44)
       PATH@[43; 44)
         PATH_SEGMENT@[43; 44)
@@ -1479,6 +1552,12 @@ impl MacroFixture {
         assert_eq!(expansion.to_string(), expected);
     }
 
+    fn assert_expand(&self, invocation: &str, expected: &str) {
+        let expansion = self.expand_tt(invocation);
+        let actual = format!("{:?}", expansion);
+        test_utils::assert_eq_text!(&actual.trim(), &expected.trim());
+    }
+
     fn assert_expand_items(&self, invocation: &str, expected: &str) -> &MacroFixture {
         self.assert_expansion(FragmentKind::Items, invocation, expected);
         self
@@ -1681,7 +1760,7 @@ fn test_no_space_after_semi_colon() {
     MOD_KW@[21; 24) "mod"
     NAME@[24; 25)
       IDENT@[24; 25) "m"
-    SEMI@[25; 26) ";"
+    SEMICOLON@[25; 26) ";"
   MODULE@[26; 52)
     ATTR@[26; 47)
       POUND@[26; 27) "#"
@@ -1700,7 +1779,7 @@ fn test_no_space_after_semi_colon() {
     MOD_KW@[47; 50) "mod"
     NAME@[50; 51)
       IDENT@[50; 51) "f"
-    SEMI@[51; 52) ";""###,
+    SEMICOLON@[51; 52) ";""###,
     );
 }
 

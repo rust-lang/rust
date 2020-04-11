@@ -2,7 +2,7 @@ SOURCE_FILE@[0; 20)
   IMPL_DEF@[0; 19)
     IMPL_KW@[0; 4) "impl"
     WHITESPACE@[4; 5) " "
-    EXCL@[5; 6) "!"
+    BANG@[5; 6) "!"
     PATH_TYPE@[6; 10)
       PATH@[6; 10)
         PATH_SEGMENT@[6; 10)

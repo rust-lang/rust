@@ -12,11 +12,11 @@ SOURCE_FILE@[0; 41)
         PATH_SEGMENT@[9; 12)
           NAME_REF@[9; 12)
             IDENT@[9; 12) "foo"
-      EXCL@[12; 13) "!"
+      BANG@[12; 13) "!"
       TOKEN_TREE@[13; 15)
         L_PAREN@[13; 14) "("
         R_PAREN@[14; 15) ")"
-    SEMI@[15; 16) ";"
+    SEMICOLON@[15; 16) ";"
   WHITESPACE@[16; 17) "\n"
   TYPE_ALIAS_DEF@[17; 40)
     TYPE_KW@[17; 21) "type"
@@ -31,13 +31,13 @@ SOURCE_FILE@[0; 41)
         PATH@[26; 31)
           PATH_SEGMENT@[26; 31)
             CRATE_KW@[26; 31) "crate"
-        COLONCOLON@[31; 33) "::"
+        COLON2@[31; 33) "::"
         PATH_SEGMENT@[33; 36)
           NAME_REF@[33; 36)
             IDENT@[33; 36) "foo"
-      EXCL@[36; 37) "!"
+      BANG@[36; 37) "!"
       TOKEN_TREE@[37; 39)
         L_PAREN@[37; 38) "("
         R_PAREN@[38; 39) ")"
-    SEMI@[39; 40) ";"
+    SEMICOLON@[39; 40) ";"
   WHITESPACE@[40; 41) "\n"

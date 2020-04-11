@@ -10,7 +10,7 @@ SOURCE_FILE@[0; 290)
         NAME@[10; 11)
           IDENT@[10; 11) "T"
       R_ANGLE@[11; 12) ">"
-    SEMI@[12; 13) ";"
+    SEMICOLON@[12; 13) ";"
   WHITESPACE@[13; 14) "\n"
   STRUCT_DEF@[14; 32)
     STRUCT_KW@[14; 20) "struct"
@@ -32,7 +32,7 @@ SOURCE_FILE@[0; 290)
               NAME_REF@[27; 30)
                 IDENT@[27; 30) "u32"
       R_PAREN@[30; 31) ")"
-    SEMI@[31; 32) ";"
+    SEMICOLON@[31; 32) ";"
   WHITESPACE@[32; 33) "\n"
   STRUCT_DEF@[33; 56)
     STRUCT_KW@[33; 39) "struct"
@@ -70,7 +70,7 @@ SOURCE_FILE@[0; 290)
     TYPE_PARAM_LIST@[67; 69)
       L_ANGLE@[67; 68) "<"
       R_ANGLE@[68; 69) ">"
-    SEMI@[69; 70) ";"
+    SEMICOLON@[69; 70) ";"
   WHITESPACE@[70; 71) "\n"
   STRUCT_DEF@[71; 85)
     STRUCT_KW@[71; 77) "struct"
@@ -82,7 +82,7 @@ SOURCE_FILE@[0; 290)
       LIFETIME_PARAM@[81; 83)
         LIFETIME@[81; 83) "\'a"
       R_ANGLE@[83; 84) ">"
-    SEMI@[84; 85) ";"
+    SEMICOLON@[84; 85) ";"
   WHITESPACE@[85; 86) "\n"
   STRUCT_DEF@[86; 101)
     STRUCT_KW@[86; 92) "struct"
@@ -95,7 +95,7 @@ SOURCE_FILE@[0; 290)
         LIFETIME@[96; 98) "\'a"
         COLON@[98; 99) ":"
       R_ANGLE@[99; 100) ">"
-    SEMI@[100; 101) ";"
+    SEMICOLON@[100; 101) ";"
   WHITESPACE@[101; 102) "\n"
   STRUCT_DEF@[102; 120)
     STRUCT_KW@[102; 108) "struct"
@@ -110,7 +110,7 @@ SOURCE_FILE@[0; 290)
         WHITESPACE@[115; 116) " "
         LIFETIME@[116; 118) "\'b"
       R_ANGLE@[118; 119) ">"
-    SEMI@[119; 120) ";"
+    SEMICOLON@[119; 120) ";"
   WHITESPACE@[120; 121) "\n"
   STRUCT_DEF@[121; 142)
     STRUCT_KW@[121; 127) "struct"
@@ -128,7 +128,7 @@ SOURCE_FILE@[0; 290)
         PLUS@[138; 139) "+"
       WHITESPACE@[139; 140) " "
       R_ANGLE@[140; 141) ">"
-    SEMI@[141; 142) ";"
+    SEMICOLON@[141; 142) ";"
   WHITESPACE@[142; 143) "\n"
   STRUCT_DEF@[143; 166)
     STRUCT_KW@[143; 149) "struct"
@@ -147,7 +147,7 @@ SOURCE_FILE@[0; 290)
         WHITESPACE@[161; 162) " "
         LIFETIME@[162; 164) "\'c"
       R_ANGLE@[164; 165) ">"
-    SEMI@[165; 166) ";"
+    SEMICOLON@[165; 166) ";"
   WHITESPACE@[166; 167) "\n"
   STRUCT_DEF@[167; 183)
     STRUCT_KW@[167; 173) "struct"
@@ -160,7 +160,7 @@ SOURCE_FILE@[0; 290)
         LIFETIME@[178; 180) "\'a"
       COMMA@[180; 181) ","
       R_ANGLE@[181; 182) ">"
-    SEMI@[182; 183) ";"
+    SEMICOLON@[182; 183) ";"
   WHITESPACE@[183; 184) "\n"
   STRUCT_DEF@[184; 203)
     STRUCT_KW@[184; 190) "struct"
@@ -176,7 +176,7 @@ SOURCE_FILE@[0; 290)
       LIFETIME_PARAM@[199; 201)
         LIFETIME@[199; 201) "\'b"
       R_ANGLE@[201; 202) ">"
-    SEMI@[202; 203) ";"
+    SEMICOLON@[202; 203) ";"
   WHITESPACE@[203; 204) "\n"
   STRUCT_DEF@[204; 233)
     STRUCT_KW@[204; 210) "struct"
@@ -200,7 +200,7 @@ SOURCE_FILE@[0; 290)
         LIFETIME@[228; 230) "\'c"
       COMMA@[230; 231) ","
       R_ANGLE@[231; 232) ">"
-    SEMI@[232; 233) ";"
+    SEMICOLON@[232; 233) ";"
   WHITESPACE@[233; 235) "\n\n"
   STRUCT_DEF@[235; 249)
     STRUCT_KW@[235; 241) "struct"
@@ -213,7 +213,7 @@ SOURCE_FILE@[0; 290)
         NAME@[246; 247)
           IDENT@[246; 247) "T"
       R_ANGLE@[247; 248) ">"
-    SEMI@[248; 249) ";"
+    SEMICOLON@[248; 249) ";"
   WHITESPACE@[249; 250) "\n"
   STRUCT_DEF@[250; 267)
     STRUCT_KW@[250; 256) "struct"
@@ -231,7 +231,7 @@ SOURCE_FILE@[0; 290)
         NAME@[264; 265)
           IDENT@[264; 265) "U"
       R_ANGLE@[265; 266) ">"
-    SEMI@[266; 267) ";"
+    SEMICOLON@[266; 267) ";"
   WHITESPACE@[267; 268) "\n"
   STRUCT_DEF@[268; 289)
     STRUCT_KW@[268; 274) "struct"
@@ -253,5 +253,5 @@ SOURCE_FILE@[0; 290)
         NAME@[286; 287)
           IDENT@[286; 287) "U"
       R_ANGLE@[287; 288) ">"
-    SEMI@[288; 289) ";"
+    SEMICOLON@[288; 289) ";"
   WHITESPACE@[289; 290) "\n"

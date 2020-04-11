@@ -69,7 +69,13 @@ impl FunctionSignature {
         for field in st.fields(db).into_iter() {
             let ty = field.signature_ty(db);
             let raw_param = format!("{}", ty.display(db));
-            parameter_types.push(raw_param.split(':').nth(1).unwrap()[1..].to_string());
+
+            if let Some(param_type) = raw_param.split(':').nth(1) {
+                parameter_types.push(param_type[1..].to_string());
+            } else {
+                // The unwrap_or_else is useful when you have tuple struct
+                parameter_types.push(raw_param.clone());
+            }
             params.push(raw_param);
         }
 
@@ -107,8 +113,15 @@ impl FunctionSignature {
         for field in variant.fields(db).into_iter() {
             let ty = field.signature_ty(db);
             let raw_param = format!("{}", ty.display(db));
-            parameter_types.push(raw_param.split(':').nth(1).unwrap()[1..].to_string());
-            params.push(raw_param);
+            if let Some(param_type) = raw_param.split(':').nth(1) {
+                parameter_types.push(param_type[1..].to_string());
+            } else {
+                // The unwrap_or_else is useful when you have tuple
+                parameter_types.push(raw_param);
+            }
+            let name = field.name(db);
+
+            params.push(format!("{}: {}", name, ty.display(db)));
         }
 
         Some(
@@ -164,7 +177,7 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                     has_self_param = true;
                     let raw_param = self_param.syntax().text().to_string();
 
-                    // TODO: better solution ?
+                    // FIXME: better solution ?
                     res_types.push(
                         raw_param.split(':').nth(1).unwrap_or_else(|| " Self")[1..].to_string(),
                     );

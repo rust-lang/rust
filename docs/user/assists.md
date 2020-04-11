@@ -175,7 +175,7 @@ trait Trait<T> {
 }
 
 impl Trait<u32> for () {
-    fn foo(&self) -> u32 { unimplemented!() }
+    fn foo(&self) -> u32 { todo!() }
 
 }
 ```
@@ -580,6 +580,21 @@ impl Walrus {
 impl Walrus {
     fn feed(&self, amount: u32) {}
 }
+```
+
+## `reorder_fields`
+
+Reorder the fields of record literals and record patterns in the same order as in
+the definition.
+
+```rust
+// BEFORE
+struct Foo {foo: i32, bar: i32};
+const test: Foo = ┃Foo {bar: 0, foo: 1}
+
+// AFTER
+struct Foo {foo: i32, bar: i32};
+const test: Foo = Foo {foo: 1, bar: 0}
 ```
 
 ## `replace_if_let_with_match`

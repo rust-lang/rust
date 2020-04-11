@@ -151,7 +151,7 @@ SOURCE_FILE@[0; 395)
                     PATH_SEGMENT@[234; 235)
                       NAME_REF@[234; 235)
                         IDENT@[234; 235) "A"
-                  COLONCOLON@[235; 237) "::"
+                  COLON2@[235; 237) "::"
                   PATH_SEGMENT@[237; 238)
                     NAME_REF@[237; 238)
                       IDENT@[237; 238) "B"
@@ -179,7 +179,7 @@ SOURCE_FILE@[0; 395)
                       PATH_SEGMENT@[257; 258)
                         NAME_REF@[257; 258)
                           IDENT@[257; 258) "A"
-                    COLONCOLON@[258; 260) "::"
+                    COLON2@[258; 260) "::"
                     PATH_SEGMENT@[260; 261)
                       NAME_REF@[260; 261)
                         IDENT@[260; 261) "B"
@@ -303,7 +303,7 @@ SOURCE_FILE@[0; 395)
             MINUS@[376; 377) "-"
             LITERAL@[377; 380)
               INT_NUMBER@[377; 380) "128"
-          DOTDOTEQ@[380; 383) "..="
+          DOT2EQ@[380; 383) "..="
           LITERAL_PAT@[383; 386)
             LITERAL@[383; 386)
               INT_NUMBER@[383; 386) "127"

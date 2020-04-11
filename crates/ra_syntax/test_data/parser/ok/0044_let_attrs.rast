@@ -47,7 +47,7 @@ SOURCE_FILE@[0; 166)
                   PATH_SEGMENT@[127; 132)
                     NAME_REF@[127; 132)
                       IDENT@[127; 132) "panic"
-                COLONCOLON@[132; 134) "::"
+                COLON2@[132; 134) "::"
                 PATH_SEGMENT@[134; 146)
                   NAME_REF@[134; 146)
                     IDENT@[134; 146) "catch_unwind"
@@ -70,7 +70,7 @@ SOURCE_FILE@[0; 166)
                     L_PAREN@[159; 160) "("
                     R_PAREN@[160; 161) ")"
               R_PAREN@[161; 162) ")"
-          SEMI@[162; 163) ";"
+          SEMICOLON@[162; 163) ";"
         WHITESPACE@[163; 164) "\n"
         R_CURLY@[164; 165) "}"
   WHITESPACE@[165; 166) "\n"

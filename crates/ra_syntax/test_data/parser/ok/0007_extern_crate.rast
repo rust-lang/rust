@@ -6,7 +6,7 @@ SOURCE_FILE@[0; 69)
     WHITESPACE@[12; 13) " "
     NAME_REF@[13; 16)
       IDENT@[13; 16) "foo"
-    SEMI@[16; 17) ";"
+    SEMICOLON@[16; 17) ";"
   WHITESPACE@[17; 18) "\n"
   EXTERN_CRATE_ITEM@[18; 42)
     EXTERN_KW@[18; 24) "extern"
@@ -21,7 +21,7 @@ SOURCE_FILE@[0; 69)
       WHITESPACE@[37; 38) " "
       NAME@[38; 41)
         IDENT@[38; 41) "bar"
-    SEMI@[41; 42) ";"
+    SEMICOLON@[41; 42) ";"
   WHITESPACE@[42; 43) "\n"
   EXTERN_CRATE_ITEM@[43; 68)
     EXTERN_KW@[43; 49) "extern"
@@ -36,5 +36,5 @@ SOURCE_FILE@[0; 69)
       WHITESPACE@[63; 64) " "
       NAME@[64; 67)
         IDENT@[64; 67) "baz"
-    SEMI@[67; 68) ";"
+    SEMICOLON@[67; 68) ";"
   WHITESPACE@[68; 69) "\n"

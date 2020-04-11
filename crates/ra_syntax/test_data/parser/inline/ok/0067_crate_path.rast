@@ -7,9 +7,9 @@ SOURCE_FILE@[0; 16)
         PATH@[4; 9)
           PATH_SEGMENT@[4; 9)
             CRATE_KW@[4; 9) "crate"
-        COLONCOLON@[9; 11) "::"
+        COLON2@[9; 11) "::"
         PATH_SEGMENT@[11; 14)
           NAME_REF@[11; 14)
             IDENT@[11; 14) "foo"
-    SEMI@[14; 15) ";"
+    SEMICOLON@[14; 15) ";"
   WHITESPACE@[15; 16) "\n"

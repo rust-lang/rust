@@ -54,5 +54,5 @@ SOURCE_FILE@[0; 60)
     WHITESPACE@[56; 57) " "
     NAME@[57; 58)
       IDENT@[57; 58) "b"
-    SEMI@[58; 59) ";"
+    SEMICOLON@[58; 59) ";"
   WHITESPACE@[59; 60) "\n"

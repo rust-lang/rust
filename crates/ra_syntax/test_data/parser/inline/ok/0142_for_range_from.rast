@@ -25,7 +25,7 @@ SOURCE_FILE@[0; 51)
             LITERAL@[23; 24)
               INT_NUMBER@[23; 24) "0"
             WHITESPACE@[24; 25) " "
-            DOTDOT@[25; 27) ".."
+            DOT2@[25; 27) ".."
           WHITESPACE@[27; 28) " "
           BLOCK_EXPR@[28; 48)
             BLOCK@[28; 48)
@@ -34,7 +34,7 @@ SOURCE_FILE@[0; 51)
               EXPR_STMT@[37; 43)
                 BREAK_EXPR@[37; 42)
                   BREAK_KW@[37; 42) "break"
-                SEMI@[42; 43) ";"
+                SEMICOLON@[42; 43) ";"
               WHITESPACE@[43; 47) "\n   "
               R_CURLY@[47; 48) "}"
         WHITESPACE@[48; 49) "\n"

@@ -12,6 +12,9 @@ doctest = false
 ra_tt = { path = "../ra_tt" }
 ra_mbe = { path = "../ra_mbe" }
 ra_proc_macro = { path = "../ra_proc_macro" }
+goblin = "0.2.1"
+libloading = "0.6.0"
+test_utils = { path = "../test_utils" }
 
 [dev-dependencies]
 cargo_metadata = "0.9.1"

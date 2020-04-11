@@ -129,6 +129,7 @@ mod handlers {
     mod replace_unwrap_with_match;
     mod split_import;
     mod add_from_impl_for_enum;
+    mod reorder_fields;
 
     pub(crate) fn all() -> &'static [AssistHandler] {
         &[
@@ -170,6 +171,7 @@ mod handlers {
             // These are manually sorted for better priorities
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
+            reorder_fields::reorder_fields,
         ]
     }
 }

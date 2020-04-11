@@ -339,7 +339,8 @@ fn expr_bp(p: &mut Parser, mut r: Restrictions, bp: u8) -> (Option<CompletedMark
     (Some(lhs), BlockLike::NotBlock)
 }
 
-const LHS_FIRST: TokenSet = atom::ATOM_EXPR_FIRST.union(token_set![AMP, STAR, EXCL, DOT, MINUS]);
+const LHS_FIRST: TokenSet =
+    atom::ATOM_EXPR_FIRST.union(token_set![T![&], T![*], T![!], T![.], T![-]]);
 
 fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     let m;
@@ -618,26 +619,39 @@ pub(crate) fn record_field_list(p: &mut Parser) {
     let m = p.start();
     p.bump(T!['{']);
     while !p.at(EOF) && !p.at(T!['}']) {
+        let m = p.start();
+        // test record_literal_field_with_attr
+        // fn main() {
+        //     S { #[cfg(test)] field: 1 }
+        // }
+        attributes::outer_attributes(p);
+
         match p.current() {
-            // test record_literal_field_with_attr
-            // fn main() {
-            //     S { #[cfg(test)] field: 1 }
-            // }
-            IDENT | INT_NUMBER | T![#] => {
-                let m = p.start();
-                attributes::outer_attributes(p);
-                name_ref_or_index(p);
-                if p.eat(T![:]) {
-                    expr(p);
+            IDENT | INT_NUMBER => {
+                // test_err record_literal_before_ellipsis_recovery
+                // fn main() {
+                //     S { field ..S::default() }
+                // }
+                if p.nth_at(1, T![:]) || p.nth_at(1, T![..]) {
+                    name_ref_or_index(p);
+                    p.expect(T![:]);
                 }
+                expr(p);
                 m.complete(p, RECORD_FIELD);
             }
             T![.] if p.at(T![..]) => {
+                m.abandon(p);
                 p.bump(T![..]);
                 expr(p);
             }
-            T!['{'] => error_block(p, "expected a field"),
-            _ => p.err_and_bump("expected identifier"),
+            T!['{'] => {
+                error_block(p, "expected a field");
+                m.abandon(p);
+            }
+            _ => {
+                p.err_and_bump("expected identifier");
+                m.abandon(p);
+            }
         }
         if !p.at(T!['}']) {
             p.expect(T![,]);

@@ -43,5 +43,5 @@ SOURCE_FILE@[0; 40)
           WHITESPACE@[35; 36) " "
           INT_NUMBER@[36; 37) "2"
         R_BRACK@[37; 38) "]"
-    SEMI@[38; 39) ";"
+    SEMICOLON@[38; 39) ";"
   WHITESPACE@[39; 40) "\n"

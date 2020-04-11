@@ -165,7 +165,7 @@ SOURCE_FILE@[0; 60)
               PATH_SEGMENT@[16; 22)
                 NAME_REF@[16; 22)
                   IDENT@[16; 22) "assert"
-            EXCL@[22; 23) "!"
+            BANG@[22; 23) "!"
             TOKEN_TREE@[23; 57)
               L_PAREN@[23; 24) "("
               STRING@[24; 52) "\"\n    fn foo() {\n     ..."
@@ -173,7 +173,7 @@ SOURCE_FILE@[0; 60)
               WHITESPACE@[53; 54) " "
               STRING@[54; 56) "\"\""
               R_PAREN@[56; 57) ")"
-          SEMI@[57; 58) ";"
+          SEMICOLON@[57; 58) ";"
         WHITESPACE@[58; 59) "\n"
         R_CURLY@[59; 60) "}"
 "#
@@ -226,7 +226,7 @@ EXPR_STMT@[16; 58)
       PATH_SEGMENT@[16; 22)
         NAME_REF@[16; 22)
           IDENT@[16; 22) "assert"
-    EXCL@[22; 23) "!"
+    BANG@[22; 23) "!"
     TOKEN_TREE@[23; 57)
       L_PAREN@[23; 24) "("
       STRING@[24; 52) "\"\n    fn foo() {\n     ..."
@@ -234,7 +234,7 @@ EXPR_STMT@[16; 58)
       WHITESPACE@[53; 54) " "
       STRING@[54; 56) "\"\""
       R_PAREN@[56; 57) ")"
-  SEMI@[57; 58) ";"
+  SEMICOLON@[57; 58) ";"
 "#
             .trim()
         );

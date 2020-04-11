@@ -9,5 +9,5 @@ SOURCE_FILE@[0; 22)
     WHITESPACE@[18; 19) " "
     PLACEHOLDER_TYPE@[19; 20)
       UNDERSCORE@[19; 20) "_"
-    SEMI@[20; 21) ";"
+    SEMICOLON@[20; 21) ";"
   WHITESPACE@[21; 22) "\n"

@@ -6,7 +6,7 @@ use std::{iter, ops::RangeInclusive};
 use arrayvec::ArrayVec;
 
 use crate::{
-    algo,
+    algo::{self, neighbor, SyntaxRewriter},
     ast::{
         self,
         make::{self, tokens},
@@ -16,7 +16,6 @@ use crate::{
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken, T,
 };
-use algo::{neighbor, SyntaxRewriter};
 
 impl ast::BinExpr {
     #[must_use]
@@ -96,10 +95,10 @@ impl ast::ItemList {
                 leading_indent(it.syntax()).unwrap_or_default().to_string(),
                 InsertPosition::After(it.syntax().clone().into()),
             ),
-            None => match self.l_curly() {
+            None => match self.l_curly_token() {
                 Some(it) => (
                     "    ".to_string() + &leading_indent(self.syntax()).unwrap_or_default(),
-                    InsertPosition::After(it.syntax().clone().into()),
+                    InsertPosition::After(it.into()),
                 ),
                 None => return self.clone(),
             },
@@ -142,8 +141,8 @@ impl ast::RecordFieldList {
 
         macro_rules! after_l_curly {
             () => {{
-                let anchor = match self.l_curly() {
-                    Some(it) => it.syntax().clone().into(),
+                let anchor = match self.l_curly_token() {
+                    Some(it) => it.into(),
                     None => return self.clone(),
                 };
                 InsertPosition::After(anchor)
@@ -190,15 +189,15 @@ impl ast::RecordFieldList {
 impl ast::TypeParam {
     #[must_use]
     pub fn remove_bounds(&self) -> ast::TypeParam {
-        let colon = match self.colon() {
+        let colon = match self.colon_token() {
             Some(it) => it,
             None => return self.clone(),
         };
         let end = match self.type_bound_list() {
             Some(it) => it.syntax().clone().into(),
-            None => colon.syntax().clone().into(),
+            None => colon.clone().into(),
         };
-        self.replace_children(colon.syntax().clone().into()..=end, iter::empty())
+        self.replace_children(colon.into()..=end, iter::empty())
     }
 }
 
@@ -301,7 +300,7 @@ impl ast::UseTree {
             suffix.clone(),
             self.use_tree_list(),
             self.alias(),
-            self.star().is_some(),
+            self.star_token().is_some(),
         );
         let nested = make::use_tree_list(iter::once(use_tree));
         return make::use_tree(prefix.clone(), Some(nested), None, false);

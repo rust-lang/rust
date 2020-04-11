@@ -3,8 +3,19 @@
 use super::*;
 
 pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(token_set![
-    L_PAREN, EXCL, STAR, L_BRACK, AMP, UNDERSCORE, FN_KW, UNSAFE_KW, EXTERN_KW, FOR_KW, IMPL_KW,
-    DYN_KW, L_ANGLE,
+    T!['('],
+    T!['['],
+    T![<],
+    T![!],
+    T![*],
+    T![&],
+    T![_],
+    T![fn],
+    T![unsafe],
+    T![extern],
+    T![for],
+    T![impl],
+    T![dyn],
 ]);
 
 const TYPE_RECOVERY_SET: TokenSet = token_set![R_PAREN, COMMA, L_DOLLAR];

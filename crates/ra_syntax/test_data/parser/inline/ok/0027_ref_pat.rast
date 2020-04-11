@@ -26,7 +26,7 @@ SOURCE_FILE@[0; 52)
           TUPLE_EXPR@[25; 27)
             L_PAREN@[25; 26) "("
             R_PAREN@[26; 27) ")"
-          SEMI@[27; 28) ";"
+          SEMICOLON@[27; 28) ";"
         WHITESPACE@[28; 33) "\n    "
         LET_STMT@[33; 49)
           LET_KW@[33; 36) "let"
@@ -44,7 +44,7 @@ SOURCE_FILE@[0; 52)
           TUPLE_EXPR@[46; 48)
             L_PAREN@[46; 47) "("
             R_PAREN@[47; 48) ")"
-          SEMI@[48; 49) ";"
+          SEMICOLON@[48; 49) ";"
         WHITESPACE@[49; 50) "\n"
         R_CURLY@[50; 51) "}"
   WHITESPACE@[51; 52) "\n"

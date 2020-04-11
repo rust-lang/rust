@@ -24,7 +24,7 @@ SOURCE_FILE@[0; 94)
       WHITESPACE@[48; 54) "\n     "
       ATTR@[54; 91)
         POUND@[54; 55) "#"
-        EXCL@[55; 56) "!"
+        BANG@[55; 56) "!"
         L_BRACK@[56; 57) "["
         PATH@[57; 60)
           PATH_SEGMENT@[57; 60)

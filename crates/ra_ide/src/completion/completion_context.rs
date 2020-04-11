@@ -1,13 +1,11 @@
 //! FIXME: write short doc here
 
-use hir::{db::HirDatabase, Semantics, SemanticsScope};
+use hir::{Semantics, SemanticsScope};
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{find_covering_element, find_node_at_offset},
-    ast,
-    ast::ArgListOwner,
-    AstNode,
+    ast, AstNode,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextUnit,
 };
@@ -196,7 +194,10 @@ impl<'a> CompletionContext<'a> {
         if let Some(name) = find_node_at_offset::<ast::Name>(&file_with_fake_ident, offset) {
             if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
                 self.is_pat_binding_or_const = true;
-                if bind_pat.has_at() || bind_pat.is_ref() || bind_pat.is_mutable() {
+                if bind_pat.at_token().is_some()
+                    || bind_pat.ref_token().is_some()
+                    || bind_pat.mut_token().is_some()
+                {
                     self.is_pat_binding_or_const = false;
                 }
                 if bind_pat.syntax().parent().and_then(ast::RecordFieldPatList::cast).is_some() {
@@ -230,7 +231,7 @@ impl<'a> CompletionContext<'a> {
         self.name_ref_syntax =
             find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();
-        if name_ref.syntax().parent().and_then(ast::RecordField::cast).is_some() {
+        if ast::RecordField::for_field_name(&name_ref).is_some() {
             self.record_lit_syntax =
                 self.sema.find_node_at_offset_with_macros(&original_file, offset);
         }

@@ -47,7 +47,7 @@ SOURCE_FILE@[0; 105)
                     L_CURLY@[46; 47) "{"
                     R_CURLY@[47; 48) "}"
               R_PAREN@[48; 49) ")"
-          SEMI@[49; 50) ";"
+          SEMICOLON@[49; 50) ";"
         WHITESPACE@[50; 55) "\n    "
         EXPR_STMT@[55; 77)
           CALL_EXPR@[55; 76)
@@ -68,11 +68,11 @@ SOURCE_FILE@[0; 105)
                     EXPR_STMT@[67; 73)
                       BREAK_EXPR@[67; 72)
                         BREAK_KW@[67; 72) "break"
-                      SEMI@[72; 73) ";"
+                      SEMICOLON@[72; 73) ";"
                     WHITESPACE@[73; 74) " "
                     R_CURLY@[74; 75) "}"
               R_PAREN@[75; 76) ")"
-          SEMI@[76; 77) ";"
+          SEMICOLON@[76; 77) ";"
         WHITESPACE@[77; 82) "\n    "
         EXPR_STMT@[82; 102)
           CALL_EXPR@[82; 101)
@@ -95,7 +95,7 @@ SOURCE_FILE@[0; 105)
                     L_CURLY@[98; 99) "{"
                     R_CURLY@[99; 100) "}"
               R_PAREN@[100; 101) ")"
-          SEMI@[101; 102) ";"
+          SEMICOLON@[101; 102) ";"
         WHITESPACE@[102; 103) "\n"
         R_CURLY@[103; 104) "}"
   WHITESPACE@[104; 105) "\n"

@@ -4,15 +4,15 @@ SOURCE_FILE@[0; 60)
     WHITESPACE@[3; 4) " "
     USE_TREE@[4; 5)
       STAR@[4; 5) "*"
-    SEMI@[5; 6) ";"
+    SEMICOLON@[5; 6) ";"
   WHITESPACE@[6; 7) "\n"
   USE_ITEM@[7; 15)
     USE_KW@[7; 10) "use"
     WHITESPACE@[10; 11) " "
     USE_TREE@[11; 14)
-      COLONCOLON@[11; 13) "::"
+      COLON2@[11; 13) "::"
       STAR@[13; 14) "*"
-    SEMI@[14; 15) ";"
+    SEMICOLON@[14; 15) ";"
   WHITESPACE@[15; 16) "\n"
   USE_ITEM@[16; 36)
     USE_KW@[16; 19) "use"
@@ -23,17 +23,17 @@ SOURCE_FILE@[0; 60)
           PATH_SEGMENT@[20; 24)
             NAME_REF@[20; 24)
               IDENT@[20; 24) "some"
-        COLONCOLON@[24; 26) "::"
+        COLON2@[24; 26) "::"
         PATH_SEGMENT@[26; 30)
           NAME_REF@[26; 30)
             IDENT@[26; 30) "path"
-      COLONCOLON@[30; 32) "::"
+      COLON2@[30; 32) "::"
       USE_TREE_LIST@[32; 35)
         L_CURLY@[32; 33) "{"
         USE_TREE@[33; 34)
           STAR@[33; 34) "*"
         R_CURLY@[34; 35) "}"
-    SEMI@[35; 36) ";"
+    SEMICOLON@[35; 36) ";"
   WHITESPACE@[36; 37) "\n"
   USE_ITEM@[37; 59)
     USE_KW@[37; 40) "use"
@@ -44,16 +44,16 @@ SOURCE_FILE@[0; 60)
           PATH_SEGMENT@[41; 45)
             NAME_REF@[41; 45)
               IDENT@[41; 45) "some"
-        COLONCOLON@[45; 47) "::"
+        COLON2@[45; 47) "::"
         PATH_SEGMENT@[47; 51)
           NAME_REF@[47; 51)
             IDENT@[47; 51) "path"
-      COLONCOLON@[51; 53) "::"
+      COLON2@[51; 53) "::"
       USE_TREE_LIST@[53; 58)
         L_CURLY@[53; 54) "{"
         USE_TREE@[54; 57)
-          COLONCOLON@[54; 56) "::"
+          COLON2@[54; 56) "::"
           STAR@[56; 57) "*"
         R_CURLY@[57; 58) "}"
-    SEMI@[58; 59) ";"
+    SEMICOLON@[58; 59) ";"
   WHITESPACE@[59; 60) "\n"

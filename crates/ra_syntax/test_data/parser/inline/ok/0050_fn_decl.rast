@@ -16,7 +16,7 @@ SOURCE_FILE@[0; 22)
         PARAM_LIST@[16; 18)
           L_PAREN@[16; 17) "("
           R_PAREN@[17; 18) ")"
-        SEMI@[18; 19) ";"
+        SEMICOLON@[18; 19) ";"
       WHITESPACE@[19; 20) " "
       R_CURLY@[20; 21) "}"
   WHITESPACE@[21; 22) "\n"

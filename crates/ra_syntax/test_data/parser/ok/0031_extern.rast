@@ -25,7 +25,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[35; 42)
               PATH@[35; 42)
                 PATH_SEGMENT@[35; 42)
-                  COLONCOLON@[35; 37) "::"
+                  COLON2@[35; 37) "::"
                   NAME_REF@[37; 42)
                     IDENT@[37; 42) "c_int"
           COMMA@[42; 43) ","
@@ -39,7 +39,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[48; 55)
               PATH@[48; 55)
                 PATH_SEGMENT@[48; 55)
-                  COLONCOLON@[48; 50) "::"
+                  COLON2@[48; 50) "::"
                   NAME_REF@[50; 55)
                     IDENT@[50; 55) "c_int"
           COMMA@[55; 56) ","
@@ -53,7 +53,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[67; 74)
               PATH@[67; 74)
                 PATH_SEGMENT@[67; 74)
-                  COLONCOLON@[67; 69) "::"
+                  COLON2@[67; 69) "::"
                   NAME_REF@[69; 74)
                     IDENT@[69; 74) "c_int"
           R_PAREN@[74; 75) ")"
@@ -64,10 +64,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[79; 86)
             PATH@[79; 86)
               PATH_SEGMENT@[79; 86)
-                COLONCOLON@[79; 81) "::"
+                COLON2@[79; 81) "::"
                 NAME_REF@[81; 86)
                   IDENT@[81; 86) "c_int"
-        SEMI@[86; 87) ";"
+        SEMICOLON@[86; 87) ";"
       WHITESPACE@[87; 92) "\n    "
       FN_DEF@[92; 167)
         VISIBILITY@[92; 95)
@@ -88,7 +88,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[108; 115)
               PATH@[108; 115)
                 PATH_SEGMENT@[108; 115)
-                  COLONCOLON@[108; 110) "::"
+                  COLON2@[108; 110) "::"
                   NAME_REF@[110; 115)
                     IDENT@[110; 115) "c_int"
           COMMA@[115; 116) ","
@@ -129,10 +129,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[159; 166)
             PATH@[159; 166)
               PATH_SEGMENT@[159; 166)
-                COLONCOLON@[159; 161) "::"
+                COLON2@[159; 161) "::"
                 NAME_REF@[161; 166)
                   IDENT@[161; 166) "c_int"
-        SEMI@[166; 167) ";"
+        SEMICOLON@[166; 167) ";"
       WHITESPACE@[167; 172) "\n    "
       FN_DEF@[172; 276)
         VISIBILITY@[172; 175)
@@ -153,7 +153,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[195; 202)
               PATH@[195; 202)
                 PATH_SEGMENT@[195; 202)
-                  COLONCOLON@[195; 197) "::"
+                  COLON2@[195; 197) "::"
                   NAME_REF@[197; 202)
                     IDENT@[197; 202) "c_int"
           COMMA@[202; 203) ","
@@ -194,10 +194,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[268; 275)
             PATH@[268; 275)
               PATH_SEGMENT@[268; 275)
-                COLONCOLON@[268; 270) "::"
+                COLON2@[268; 270) "::"
                 NAME_REF@[270; 275)
                   IDENT@[270; 275) "c_int"
-        SEMI@[275; 276) ";"
+        SEMICOLON@[275; 276) ";"
       WHITESPACE@[276; 281) "\n    "
       FN_DEF@[281; 341)
         VISIBILITY@[281; 284)
@@ -218,7 +218,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[303; 310)
               PATH@[303; 310)
                 PATH_SEGMENT@[303; 310)
-                  COLONCOLON@[303; 305) "::"
+                  COLON2@[303; 305) "::"
                   NAME_REF@[305; 310)
                     IDENT@[305; 310) "c_int"
           COMMA@[310; 311) ","
@@ -232,7 +232,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[321; 328)
               PATH@[321; 328)
                 PATH_SEGMENT@[321; 328)
-                  COLONCOLON@[321; 323) "::"
+                  COLON2@[321; 323) "::"
                   NAME_REF@[323; 328)
                     IDENT@[323; 328) "c_int"
           R_PAREN@[328; 329) ")"
@@ -243,10 +243,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[333; 340)
             PATH@[333; 340)
               PATH_SEGMENT@[333; 340)
-                COLONCOLON@[333; 335) "::"
+                COLON2@[333; 335) "::"
                 NAME_REF@[335; 340)
                   IDENT@[335; 340) "c_int"
-        SEMI@[340; 341) ";"
+        SEMICOLON@[340; 341) ";"
       WHITESPACE@[341; 346) "\n    "
       FN_DEF@[346; 469)
         VISIBILITY@[346; 349)
@@ -267,7 +267,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[373; 380)
               PATH@[373; 380)
                 PATH_SEGMENT@[373; 380)
-                  COLONCOLON@[373; 375) "::"
+                  COLON2@[373; 375) "::"
                   NAME_REF@[375; 380)
                     IDENT@[375; 380) "c_int"
           COMMA@[380; 381) ","
@@ -312,10 +312,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[461; 468)
             PATH@[461; 468)
               PATH_SEGMENT@[461; 468)
-                COLONCOLON@[461; 463) "::"
+                COLON2@[461; 463) "::"
                 NAME_REF@[463; 468)
                   IDENT@[463; 468) "c_int"
-        SEMI@[468; 469) ";"
+        SEMICOLON@[468; 469) ";"
       WHITESPACE@[469; 474) "\n    "
       FN_DEF@[474; 691)
         VISIBILITY@[474; 477)
@@ -336,7 +336,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[500; 507)
               PATH@[500; 507)
                 PATH_SEGMENT@[500; 507)
-                  COLONCOLON@[500; 502) "::"
+                  COLON2@[500; 502) "::"
                   NAME_REF@[502; 507)
                     IDENT@[502; 507) "c_int"
           COMMA@[507; 508) ","
@@ -350,7 +350,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[538; 545)
               PATH@[538; 545)
                 PATH_SEGMENT@[538; 545)
-                  COLONCOLON@[538; 540) "::"
+                  COLON2@[538; 540) "::"
                   NAME_REF@[540; 545)
                     IDENT@[540; 545) "c_int"
           COMMA@[545; 546) ","
@@ -364,7 +364,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[578; 585)
               PATH@[578; 585)
                 PATH_SEGMENT@[578; 585)
-                  COLONCOLON@[578; 580) "::"
+                  COLON2@[578; 580) "::"
                   NAME_REF@[580; 585)
                     IDENT@[580; 585) "c_int"
           COMMA@[585; 586) ","
@@ -382,7 +382,7 @@ SOURCE_FILE@[0; 1598)
               PATH_TYPE@[622; 630)
                 PATH@[622; 630)
                   PATH_SEGMENT@[622; 630)
-                    COLONCOLON@[622; 624) "::"
+                    COLON2@[622; 624) "::"
                     NAME_REF@[624; 630)
                       IDENT@[624; 630) "c_void"
           COMMA@[630; 631) ","
@@ -400,7 +400,7 @@ SOURCE_FILE@[0; 1598)
               PATH_TYPE@[667; 678)
                 PATH@[667; 678)
                   PATH_SEGMENT@[667; 678)
-                    COLONCOLON@[667; 669) "::"
+                    COLON2@[667; 669) "::"
                     NAME_REF@[669; 678)
                       IDENT@[669; 678) "socklen_t"
           R_PAREN@[678; 679) ")"
@@ -411,10 +411,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[683; 690)
             PATH@[683; 690)
               PATH_SEGMENT@[683; 690)
-                COLONCOLON@[683; 685) "::"
+                COLON2@[683; 685) "::"
                 NAME_REF@[685; 690)
                   IDENT@[685; 690) "c_int"
-        SEMI@[690; 691) ";"
+        SEMICOLON@[690; 691) ";"
       WHITESPACE@[691; 696) "\n    "
       FN_DEF@[696; 864)
         VISIBILITY@[696; 699)
@@ -435,7 +435,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[722; 729)
               PATH@[722; 729)
                 PATH_SEGMENT@[722; 729)
-                  COLONCOLON@[722; 724) "::"
+                  COLON2@[722; 724) "::"
                   NAME_REF@[724; 729)
                     IDENT@[724; 729) "c_int"
           COMMA@[729; 730) ","
@@ -449,7 +449,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[738; 745)
               PATH@[738; 745)
                 PATH_SEGMENT@[738; 745)
-                  COLONCOLON@[738; 740) "::"
+                  COLON2@[738; 740) "::"
                   NAME_REF@[740; 745)
                     IDENT@[740; 745) "c_int"
           COMMA@[745; 746) ","
@@ -463,7 +463,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[753; 760)
               PATH@[753; 760)
                 PATH_SEGMENT@[753; 760)
-                  COLONCOLON@[753; 755) "::"
+                  COLON2@[753; 755) "::"
                   NAME_REF@[755; 760)
                     IDENT@[755; 760) "c_int"
           COMMA@[760; 761) ","
@@ -481,7 +481,7 @@ SOURCE_FILE@[0; 1598)
               PATH_TYPE@[798; 806)
                 PATH@[798; 806)
                   PATH_SEGMENT@[798; 806)
-                    COLONCOLON@[798; 800) "::"
+                    COLON2@[798; 800) "::"
                     NAME_REF@[800; 806)
                       IDENT@[800; 806) "c_void"
           COMMA@[806; 807) ","
@@ -505,10 +505,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[856; 863)
             PATH@[856; 863)
               PATH_SEGMENT@[856; 863)
-                COLONCOLON@[856; 858) "::"
+                COLON2@[856; 858) "::"
                 NAME_REF@[858; 863)
                   IDENT@[858; 863) "c_int"
-        SEMI@[863; 864) ";"
+        SEMICOLON@[863; 864) ";"
       WHITESPACE@[864; 869) "\n    "
       FN_DEF@[869; 992)
         VISIBILITY@[869; 872)
@@ -529,7 +529,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[896; 903)
               PATH@[896; 903)
                 PATH_SEGMENT@[896; 903)
-                  COLONCOLON@[896; 898) "::"
+                  COLON2@[896; 898) "::"
                   NAME_REF@[898; 903)
                     IDENT@[898; 903) "c_int"
           COMMA@[903; 904) ","
@@ -574,10 +574,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[984; 991)
             PATH@[984; 991)
               PATH_SEGMENT@[984; 991)
-                COLONCOLON@[984; 986) "::"
+                COLON2@[984; 986) "::"
                 NAME_REF@[986; 991)
                   IDENT@[986; 991) "c_int"
-        SEMI@[991; 992) ";"
+        SEMICOLON@[991; 992) ";"
       WHITESPACE@[992; 997) "\n    "
       FN_DEF@[997; 1173)
         VISIBILITY@[997; 1000)
@@ -598,7 +598,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1019; 1026)
               PATH@[1019; 1026)
                 PATH_SEGMENT@[1019; 1026)
-                  COLONCOLON@[1019; 1021) "::"
+                  COLON2@[1019; 1021) "::"
                   NAME_REF@[1021; 1026)
                     IDENT@[1021; 1026) "c_int"
           COMMA@[1026; 1027) ","
@@ -616,7 +616,7 @@ SOURCE_FILE@[0; 1598)
               PATH_TYPE@[1040; 1048)
                 PATH@[1040; 1048)
                   PATH_SEGMENT@[1040; 1048)
-                    COLONCOLON@[1040; 1042) "::"
+                    COLON2@[1040; 1042) "::"
                     NAME_REF@[1042; 1048)
                       IDENT@[1042; 1048) "c_void"
           COMMA@[1048; 1049) ","
@@ -630,7 +630,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1055; 1063)
               PATH@[1055; 1063)
                 PATH_SEGMENT@[1055; 1063)
-                  COLONCOLON@[1055; 1057) "::"
+                  COLON2@[1055; 1057) "::"
                   NAME_REF@[1057; 1063)
                     IDENT@[1057; 1063) "size_t"
           COMMA@[1063; 1064) ","
@@ -644,7 +644,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1090; 1097)
               PATH@[1090; 1097)
                 PATH_SEGMENT@[1090; 1097)
-                  COLONCOLON@[1090; 1092) "::"
+                  COLON2@[1090; 1092) "::"
                   NAME_REF@[1092; 1097)
                     IDENT@[1092; 1097) "c_int"
           COMMA@[1097; 1098) ","
@@ -685,10 +685,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[1163; 1172)
             PATH@[1163; 1172)
               PATH_SEGMENT@[1163; 1172)
-                COLONCOLON@[1163; 1165) "::"
+                COLON2@[1163; 1165) "::"
                 NAME_REF@[1165; 1172)
                   IDENT@[1165; 1172) "ssize_t"
-        SEMI@[1172; 1173) ";"
+        SEMICOLON@[1172; 1173) ";"
       WHITESPACE@[1173; 1178) "\n    "
       FN_DEF@[1178; 1289)
         VISIBILITY@[1178; 1181)
@@ -709,7 +709,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1198; 1205)
               PATH@[1198; 1205)
                 PATH_SEGMENT@[1198; 1205)
-                  COLONCOLON@[1198; 1200) "::"
+                  COLON2@[1198; 1200) "::"
                   NAME_REF@[1200; 1205)
                     IDENT@[1200; 1205) "c_int"
           COMMA@[1205; 1206) ","
@@ -727,7 +727,7 @@ SOURCE_FILE@[0; 1598)
               PATH_TYPE@[1219; 1227)
                 PATH@[1219; 1227)
                   PATH_SEGMENT@[1219; 1227)
-                    COLONCOLON@[1219; 1221) "::"
+                    COLON2@[1219; 1221) "::"
                     NAME_REF@[1221; 1227)
                       IDENT@[1221; 1227) "c_void"
           COMMA@[1227; 1228) ","
@@ -741,7 +741,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1234; 1242)
               PATH@[1234; 1242)
                 PATH_SEGMENT@[1234; 1242)
-                  COLONCOLON@[1234; 1236) "::"
+                  COLON2@[1234; 1236) "::"
                   NAME_REF@[1236; 1242)
                     IDENT@[1236; 1242) "size_t"
           COMMA@[1242; 1243) ","
@@ -755,7 +755,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1267; 1274)
               PATH@[1267; 1274)
                 PATH_SEGMENT@[1267; 1274)
-                  COLONCOLON@[1267; 1269) "::"
+                  COLON2@[1267; 1269) "::"
                   NAME_REF@[1269; 1274)
                     IDENT@[1269; 1274) "c_int"
           R_PAREN@[1274; 1275) ")"
@@ -766,10 +766,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[1279; 1288)
             PATH@[1279; 1288)
               PATH_SEGMENT@[1279; 1288)
-                COLONCOLON@[1279; 1281) "::"
+                COLON2@[1279; 1281) "::"
                 NAME_REF@[1281; 1288)
                   IDENT@[1281; 1288) "ssize_t"
-        SEMI@[1288; 1289) ";"
+        SEMICOLON@[1288; 1289) ";"
       WHITESPACE@[1289; 1294) "\n    "
       FN_DEF@[1294; 1481)
         VISIBILITY@[1294; 1297)
@@ -790,7 +790,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1318; 1325)
               PATH@[1318; 1325)
                 PATH_SEGMENT@[1318; 1325)
-                  COLONCOLON@[1318; 1320) "::"
+                  COLON2@[1318; 1320) "::"
                   NAME_REF@[1320; 1325)
                     IDENT@[1320; 1325) "c_int"
           COMMA@[1325; 1326) ","
@@ -808,7 +808,7 @@ SOURCE_FILE@[0; 1598)
               PATH_TYPE@[1337; 1345)
                 PATH@[1337; 1345)
                   PATH_SEGMENT@[1337; 1345)
-                    COLONCOLON@[1337; 1339) "::"
+                    COLON2@[1337; 1339) "::"
                     NAME_REF@[1339; 1345)
                       IDENT@[1339; 1345) "c_void"
           COMMA@[1345; 1346) ","
@@ -822,7 +822,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1352; 1360)
               PATH@[1352; 1360)
                 PATH_SEGMENT@[1352; 1360)
-                  COLONCOLON@[1352; 1354) "::"
+                  COLON2@[1352; 1354) "::"
                   NAME_REF@[1354; 1360)
                     IDENT@[1354; 1360) "size_t"
           COMMA@[1360; 1361) ","
@@ -836,7 +836,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1389; 1396)
               PATH@[1389; 1396)
                 PATH_SEGMENT@[1389; 1396)
-                  COLONCOLON@[1389; 1391) "::"
+                  COLON2@[1389; 1391) "::"
                   NAME_REF@[1391; 1396)
                     IDENT@[1391; 1396) "c_int"
           COMMA@[1396; 1397) ","
@@ -854,7 +854,7 @@ SOURCE_FILE@[0; 1598)
               PATH_TYPE@[1409; 1419)
                 PATH@[1409; 1419)
                   PATH_SEGMENT@[1409; 1419)
-                    COLONCOLON@[1409; 1411) "::"
+                    COLON2@[1409; 1411) "::"
                     NAME_REF@[1411; 1419)
                       IDENT@[1411; 1419) "sockaddr"
           COMMA@[1419; 1420) ","
@@ -872,7 +872,7 @@ SOURCE_FILE@[0; 1598)
               PATH_TYPE@[1455; 1466)
                 PATH@[1455; 1466)
                   PATH_SEGMENT@[1455; 1466)
-                    COLONCOLON@[1455; 1457) "::"
+                    COLON2@[1455; 1457) "::"
                     NAME_REF@[1457; 1466)
                       IDENT@[1457; 1466) "socklen_t"
           R_PAREN@[1466; 1467) ")"
@@ -883,10 +883,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[1471; 1480)
             PATH@[1471; 1480)
               PATH_SEGMENT@[1471; 1480)
-                COLONCOLON@[1471; 1473) "::"
+                COLON2@[1471; 1473) "::"
                 NAME_REF@[1473; 1480)
                   IDENT@[1473; 1480) "ssize_t"
-        SEMI@[1480; 1481) ";"
+        SEMICOLON@[1480; 1481) ";"
       WHITESPACE@[1481; 1486) "\n    "
       FN_DEF@[1486; 1595)
         VISIBILITY@[1486; 1489)
@@ -907,7 +907,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1506; 1513)
               PATH@[1506; 1513)
                 PATH_SEGMENT@[1506; 1513)
-                  COLONCOLON@[1506; 1508) "::"
+                  COLON2@[1506; 1508) "::"
                   NAME_REF@[1508; 1513)
                     IDENT@[1508; 1513) "c_int"
           COMMA@[1513; 1514) ","
@@ -925,7 +925,7 @@ SOURCE_FILE@[0; 1598)
               PATH_TYPE@[1525; 1533)
                 PATH@[1525; 1533)
                   PATH_SEGMENT@[1525; 1533)
-                    COLONCOLON@[1525; 1527) "::"
+                    COLON2@[1525; 1527) "::"
                     NAME_REF@[1527; 1533)
                       IDENT@[1527; 1533) "c_void"
           COMMA@[1533; 1534) ","
@@ -939,7 +939,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1540; 1548)
               PATH@[1540; 1548)
                 PATH_SEGMENT@[1540; 1548)
-                  COLONCOLON@[1540; 1542) "::"
+                  COLON2@[1540; 1542) "::"
                   NAME_REF@[1542; 1548)
                     IDENT@[1542; 1548) "size_t"
           COMMA@[1548; 1549) ","
@@ -953,7 +953,7 @@ SOURCE_FILE@[0; 1598)
             PATH_TYPE@[1573; 1580)
               PATH@[1573; 1580)
                 PATH_SEGMENT@[1573; 1580)
-                  COLONCOLON@[1573; 1575) "::"
+                  COLON2@[1573; 1575) "::"
                   NAME_REF@[1575; 1580)
                     IDENT@[1575; 1580) "c_int"
           R_PAREN@[1580; 1581) ")"
@@ -964,10 +964,10 @@ SOURCE_FILE@[0; 1598)
           PATH_TYPE@[1585; 1594)
             PATH@[1585; 1594)
               PATH_SEGMENT@[1585; 1594)
-                COLONCOLON@[1585; 1587) "::"
+                COLON2@[1585; 1587) "::"
                 NAME_REF@[1587; 1594)
                   IDENT@[1587; 1594) "ssize_t"
-        SEMI@[1594; 1595) ";"
+        SEMICOLON@[1594; 1595) ";"
       WHITESPACE@[1595; 1596) "\n"
       R_CURLY@[1596; 1597) "}"
   WHITESPACE@[1597; 1598) "\n"

@@ -3,16 +3,13 @@
 //! Specifically, it generates the `SyntaxKind` enum and a number of newtype
 //! wrappers around `SyntaxNode` which implement `ra_syntax::AstNode`.
 
-use std::{
-    borrow::Cow,
-    collections::{BTreeSet, HashSet},
-};
+use std::collections::HashSet;
 
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
 
 use crate::{
-    ast_src::{AstSrc, FieldSrc, KindsSrc, AST_SRC, KINDS_SRC},
+    ast_src::{AstSrc, Field, FieldSrc, KindsSrc, AST_SRC, KINDS_SRC},
     codegen::{self, update, Mode},
     project_root, Result,
 };
@@ -22,58 +19,31 @@ pub fn generate_syntax(mode: Mode) -> Result<()> {
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC)?;
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
+    let ast_tokens_file = project_root().join(codegen::AST_TOKENS);
+    let contents = generate_tokens(AST_SRC)?;
+    update(ast_tokens_file.as_path(), &contents, mode)?;
+
     let ast_nodes_file = project_root().join(codegen::AST_NODES);
     let contents = generate_nodes(KINDS_SRC, AST_SRC)?;
     update(ast_nodes_file.as_path(), &contents, mode)?;
 
-    let ast_tokens_file = project_root().join(codegen::AST_TOKENS);
-    let contents = generate_tokens(KINDS_SRC, AST_SRC)?;
-    update(ast_tokens_file.as_path(), &contents, mode)?;
-
     Ok(())
 }
 
-#[derive(Debug, Default, Clone)]
-struct ElementKinds {
-    kinds: BTreeSet<proc_macro2::Ident>,
-    has_nodes: bool,
-    has_tokens: bool,
-}
-
-fn generate_tokens(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
-    let all_token_kinds: Vec<_> = kinds
-        .punct
-        .into_iter()
-        .map(|(_, kind)| kind)
-        .copied()
-        .map(|x| x.into())
-        .chain(
-            kinds
-                .keywords
-                .into_iter()
-                .chain(kinds.contextual_keywords.into_iter())
-                .map(|name| Cow::Owned(format!("{}_KW", to_upper_snake_case(&name)))),
-        )
-        .chain(kinds.literals.into_iter().copied().map(|x| x.into()))
-        .chain(kinds.tokens.into_iter().copied().map(|x| x.into()))
-        .collect();
-
-    let tokens = all_token_kinds.iter().map(|kind_str| {
-        let kind_str = &**kind_str;
-        let kind = format_ident!("{}", kind_str);
-        let name = format_ident!("{}", to_pascal_case(kind_str));
+fn generate_tokens(grammar: AstSrc<'_>) -> Result<String> {
+    let tokens = grammar.tokens.iter().map(|token| {
+        let name = format_ident!("{}", token);
+        let kind = format_ident!("{}", to_upper_snake_case(token));
         quote! {
             #[derive(Debug, Clone, PartialEq, Eq, Hash)]
             pub struct #name {
                 pub(crate) syntax: SyntaxToken,
             }
-
             impl std::fmt::Display for #name {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                     std::fmt::Display::fmt(&self.syntax, f)
                 }
             }
-
             impl AstToken for #name {
                 fn can_cast(kind: SyntaxKind) -> bool { kind == #kind }
                 fn cast(syntax: SyntaxToken) -> Option<Self> {
@@ -84,99 +54,15 @@ fn generate_tokens(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         }
     });
 
-    let enums = grammar.token_enums.iter().map(|en| {
-        let variants = en.variants.iter().map(|var| format_ident!("{}", var)).collect::<Vec<_>>();
-        let name = format_ident!("{}", en.name);
-        let kinds = variants
-            .iter()
-            .map(|name| format_ident!("{}", to_upper_snake_case(&name.to_string())))
-            .collect::<Vec<_>>();
-        assert!(en.traits.is_empty());
-
-        quote! {
-                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-                pub enum #name {
-                    #(#variants(#variants),)*
-                }
-
-                #(
-                impl From<#variants> for #name {
-                    fn from(node: #variants) -> #name {
-                        #name::#variants(node)
-                    }
-                }
-                )*
-
-                impl std::fmt::Display for #name {
-                    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                        std::fmt::Display::fmt(self.syntax(), f)
-                    }
-                }
-
-                impl AstToken for #name {
-                    fn can_cast(kind: SyntaxKind) -> bool {
-                        match kind {
-                            #(#kinds)|* => true,
-                            _ => false,
-                        }
-                    }
-                    fn cast(syntax: SyntaxToken) -> Option<Self> {
-                        let res = match syntax.kind() {
-                            #(
-                            #kinds => #name::#variants(#variants { syntax }),
-                            )*
-                            _ => return None,
-                        };
-                        Some(res)
-                    }
-                    fn syntax(&self) -> &SyntaxToken {
-                        match self {
-                            #(
-                            #name::#variants(it) => &it.syntax,
-                            )*
-                        }
-                    }
-                }
-        }
-    });
-
-    crate::reformat(quote! {
-        use crate::{SyntaxToken, SyntaxKind::{self, *}, ast::AstToken};
-
+    let pretty = crate::reformat(quote! {
+        use crate::{SyntaxKind::{self, *}, SyntaxToken, ast::AstToken};
         #(#tokens)*
-        #(#enums)*
-    })
+    })?
+    .replace("#[derive", "\n#[derive");
+    Ok(pretty)
 }
 
 fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
-    let all_token_kinds: Vec<_> = kinds
-        .punct
-        .into_iter()
-        .map(|(_, kind)| kind)
-        .copied()
-        .map(|x| x.into())
-        .chain(
-            kinds
-                .keywords
-                .into_iter()
-                .chain(kinds.contextual_keywords.into_iter())
-                .map(|name| Cow::Owned(format!("{}_KW", to_upper_snake_case(&name)))),
-        )
-        .chain(kinds.literals.into_iter().copied().map(|x| x.into()))
-        .chain(kinds.tokens.into_iter().copied().map(|x| x.into()))
-        .collect();
-
-    let mut token_kinds = HashSet::new();
-    for kind in &all_token_kinds {
-        let kind = &**kind;
-        let name = to_pascal_case(kind);
-        token_kinds.insert(name);
-    }
-
-    for en in grammar.token_enums {
-        token_kinds.insert(en.name.to_string());
-    }
-
     let nodes = grammar.nodes.iter().map(|node| {
         let name = format_ident!("{}", node.name);
         let kind = format_ident!("{}", to_upper_snake_case(&name.to_string()));
@@ -185,39 +71,27 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
             quote!(impl ast::#trait_name for #name {})
         });
 
-        let methods = node.fields.iter().map(|(name, field)| {
-            let method_name = match field {
-                FieldSrc::Shorthand => format_ident!("{}", to_lower_snake_case(&name)),
-                _ => format_ident!("{}", name),
-            };
-            let ty = match field {
-                FieldSrc::Optional(ty) | FieldSrc::Many(ty) => ty,
-                FieldSrc::Shorthand => name,
-            };
+        let methods = node.fields.iter().map(|field| {
+            let method_name = field.method_name();
+            let ty = field.ty();
 
-            let ty = format_ident!("{}", ty);
-
-            match field {
-                FieldSrc::Many(_) => {
-                    quote! {
-                        pub fn #method_name(&self) -> AstChildren<#ty> {
-                            support::children(&self.syntax)
-                        }
+            if field.is_many() {
+                quote! {
+                    pub fn #method_name(&self) -> AstChildren<#ty> {
+                        support::children(&self.syntax)
                     }
                 }
-                FieldSrc::Optional(_) | FieldSrc::Shorthand => {
-                    let is_token = token_kinds.contains(&ty.to_string());
-                    if is_token {
-                        quote! {
-                            pub fn #method_name(&self) -> Option<#ty> {
-                                support::token(&self.syntax)
-                            }
+            } else {
+                if let Some(token_kind) = field.token_kind() {
+                    quote! {
+                        pub fn #method_name(&self) -> Option<#ty> {
+                            support::token(&self.syntax, #token_kind)
                         }
-                    } else {
-                        quote! {
-                            pub fn #method_name(&self) -> Option<#ty> {
-                                support::child(&self.syntax)
-                            }
+                    }
+                } else {
+                    quote! {
+                        pub fn #method_name(&self) -> Option<#ty> {
+                            support::child(&self.syntax)
                         }
                     }
                 }
@@ -331,18 +205,18 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
 
     let ast = quote! {
         use crate::{
-            SyntaxNode, SyntaxKind::{self, *},
+            SyntaxNode, SyntaxToken, SyntaxKind::{self, *},
             ast::{self, AstNode, AstChildren, support},
+            T,
         };
-
-        use super::tokens::*;
 
         #(#nodes)*
         #(#enums)*
         #(#displays)*
     };
 
-    let pretty = crate::reformat(ast)?;
+    let ast = ast.to_string().replace("T ! [ ", "T![").replace(" ] )", "])");
+    let pretty = crate::reformat(ast)?.replace("#[derive", "\n#[derive");
     Ok(pretty)
 }
 
@@ -450,8 +324,10 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
 
         #[macro_export]
         macro_rules! T {
-            #((#punctuation_values) => { $crate::SyntaxKind::#punctuation };)*
-            #((#all_keywords_idents) => { $crate::SyntaxKind::#all_keywords };)*
+            #([#punctuation_values] => { $crate::SyntaxKind::#punctuation };)*
+            #([#all_keywords_idents] => { $crate::SyntaxKind::#all_keywords };)*
+            [lifetime] => { $crate::SyntaxKind::LIFETIME };
+            [ident] => { $crate::SyntaxKind::IDENT };
         }
     };
 
@@ -500,4 +376,69 @@ fn to_pascal_case(s: &str) -> String {
         }
     }
     buf
+}
+
+impl Field<'_> {
+    fn is_many(&self) -> bool {
+        match self {
+            Field::Node { src: FieldSrc::Many(_), .. } => true,
+            _ => false,
+        }
+    }
+    fn token_kind(&self) -> Option<proc_macro2::TokenStream> {
+        let res = match self {
+            Field::Token(token) => {
+                let token: proc_macro2::TokenStream = token.parse().unwrap();
+                quote! { T![#token] }
+            }
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn method_name(&self) -> proc_macro2::Ident {
+        match self {
+            Field::Token(name) => {
+                let name = match *name {
+                    ";" => "semicolon",
+                    "->" => "thin_arrow",
+                    "'{'" => "l_curly",
+                    "'}'" => "r_curly",
+                    "'('" => "l_paren",
+                    "')'" => "r_paren",
+                    "'['" => "l_brack",
+                    "']'" => "r_brack",
+                    "<" => "l_angle",
+                    ">" => "r_angle",
+                    "=" => "eq",
+                    "!" => "excl",
+                    "*" => "star",
+                    "&" => "amp",
+                    "_" => "underscore",
+                    "." => "dot",
+                    ".." => "dotdot",
+                    "..." => "dotdotdot",
+                    "=>" => "fat_arrow",
+                    "@" => "at",
+                    ":" => "colon",
+                    "::" => "coloncolon",
+                    "#" => "pound",
+                    _ => name,
+                };
+                format_ident!("{}_token", name)
+            }
+            Field::Node { name, src } => match src {
+                FieldSrc::Shorthand => format_ident!("{}", to_lower_snake_case(name)),
+                _ => format_ident!("{}", name),
+            },
+        }
+    }
+    fn ty(&self) -> proc_macro2::Ident {
+        match self {
+            Field::Token(_) => format_ident!("SyntaxToken"),
+            Field::Node { name, src } => match src {
+                FieldSrc::Optional(ty) | FieldSrc::Many(ty) => format_ident!("{}", ty),
+                FieldSrc::Shorthand => format_ident!("{}", name),
+            },
+        }
+    }
 }

@@ -190,7 +190,7 @@ SOURCE_FILE@[0; 170)
                   NAME_REF@[162; 165)
                     IDENT@[162; 165) "i32"
           R_PAREN@[165; 166) ")"
-        SEMI@[166; 167) ";"
+        SEMICOLON@[166; 167) ";"
       WHITESPACE@[167; 168) "\n"
       R_CURLY@[168; 169) "}"
   WHITESPACE@[169; 170) "\n"

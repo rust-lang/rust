@@ -119,7 +119,7 @@ SOURCE_FILE@[0; 519)
             R_BRACK@[112; 113) "]"
           WHITESPACE@[113; 114) " "
           PARAM@[114; 117)
-            DOTDOTDOT@[114; 117) "..."
+            DOT3@[114; 117) "..."
           R_PAREN@[117; 118) ")"
         WHITESPACE@[118; 119) " "
         RET_TYPE@[119; 125)
@@ -130,7 +130,7 @@ SOURCE_FILE@[0; 519)
               PATH_SEGMENT@[122; 125)
                 NAME_REF@[122; 125)
                   IDENT@[122; 125) "i32"
-        SEMI@[125; 126) ";"
+        SEMICOLON@[125; 126) ";"
       WHITESPACE@[126; 127) " "
       R_CURLY@[127; 128) "}"
   WHITESPACE@[128; 130) "\n\n"
@@ -250,7 +250,7 @@ SOURCE_FILE@[0; 519)
                   NAME_REF@[229; 232)
                     IDENT@[229; 232) "i32"
           R_PAREN@[232; 233) ")"
-        SEMI@[233; 234) ";"
+        SEMICOLON@[233; 234) ";"
       WHITESPACE@[234; 235) "\n"
       R_CURLY@[235; 236) "}"
   WHITESPACE@[236; 238) "\n\n"

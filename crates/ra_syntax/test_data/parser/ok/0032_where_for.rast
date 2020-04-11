@@ -74,11 +74,11 @@ SOURCE_FILE@[0; 116)
                     PATH_SEGMENT@[96; 99)
                       NAME_REF@[96; 99)
                         IDENT@[96; 99) "std"
-                  COLONCOLON@[99; 101) "::"
+                  COLON2@[99; 101) "::"
                   PATH_SEGMENT@[101; 104)
                     NAME_REF@[101; 104)
                       IDENT@[101; 104) "fmt"
-                COLONCOLON@[104; 106) "::"
+                COLON2@[104; 106) "::"
                 PATH_SEGMENT@[106; 111)
                   NAME_REF@[106; 111)
                     IDENT@[106; 111) "Debug"

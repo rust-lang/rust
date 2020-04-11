@@ -8,11 +8,11 @@ SOURCE_FILE@[0; 48)
           PATH_SEGMENT@[4; 7)
             NAME_REF@[4; 7)
               IDENT@[4; 7) "foo"
-        COLONCOLON@[7; 9) "::"
+        COLON2@[7; 9) "::"
         PATH_SEGMENT@[9; 12)
           NAME_REF@[9; 12)
             IDENT@[9; 12) "bar"
-    SEMI@[12; 13) ";"
+    SEMICOLON@[12; 13) ";"
   WHITESPACE@[13; 14) "\n"
   USE_ITEM@[14; 17)
     USE_KW@[14; 17) "use"
@@ -25,11 +25,11 @@ SOURCE_FILE@[0; 48)
         PATH@[22; 27)
           PATH_SEGMENT@[22; 27)
             CRATE_KW@[22; 27) "crate"
-        COLONCOLON@[27; 29) "::"
+        COLON2@[27; 29) "::"
         PATH_SEGMENT@[29; 32)
           NAME_REF@[29; 32)
             IDENT@[29; 32) "baz"
-    SEMI@[32; 33) ";"
+    SEMICOLON@[32; 33) ";"
   WHITESPACE@[33; 34) "\n"
   USE_ITEM@[34; 37)
     USE_KW@[34; 37) "use"
@@ -49,6 +49,6 @@ SOURCE_FILE@[0; 48)
         R_CURLY@[46; 47) "}"
   WHITESPACE@[47; 48) "\n"
 error [17; 17): expected one of `*`, `::`, `{`, `self`, `super` or an identifier
-error [17; 17): expected SEMI
+error [17; 17): expected SEMICOLON
 error [37; 37): expected one of `*`, `::`, `{`, `self`, `super` or an identifier
-error [37; 37): expected SEMI
+error [37; 37): expected SEMICOLON

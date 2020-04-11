@@ -23,7 +23,7 @@ SOURCE_FILE@[0; 59)
           WHITESPACE@[25; 26) " "
           LITERAL@[26; 28)
             INT_NUMBER@[26; 28) "92"
-          SEMI@[28; 29) ";"
+          SEMICOLON@[28; 29) ";"
         WHITESPACE@[29; 30) " "
         LET_STMT@[30; 57)
           LET_KW@[30; 33) "let"
@@ -45,6 +45,6 @@ SOURCE_FILE@[0; 59)
             WHITESPACE@[54; 55) " "
             LITERAL@[55; 56)
               INT_NUMBER@[55; 56) "2"
-          SEMI@[56; 57) ";"
+          SEMICOLON@[56; 57) ";"
         WHITESPACE@[57; 58) " "
         R_CURLY@[58; 59) "}"

@@ -38,7 +38,7 @@ SOURCE_FILE@[0; 53)
                 PATH_SEGMENT@[27; 32)
                   NAME_REF@[27; 32)
                     IDENT@[27; 32) "Clone"
-    SEMI@[32; 33) ";"
+    SEMICOLON@[32; 33) ";"
   WHITESPACE@[33; 34) "\n"
   STRUCT_DEF@[34; 52)
     STRUCT_KW@[34; 40) "struct"
@@ -60,5 +60,5 @@ SOURCE_FILE@[0; 53)
               NAME_REF@[49; 50)
                 IDENT@[49; 50) "T"
       R_PAREN@[50; 51) ")"
-    SEMI@[51; 52) ";"
+    SEMICOLON@[51; 52) ";"
   WHITESPACE@[52; 53) "\n"

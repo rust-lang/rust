@@ -194,7 +194,7 @@ impl GenericParams {
     }
 
     fn add_where_predicate_from_bound(&mut self, bound: ast::TypeBound, type_ref: TypeRef) {
-        if bound.has_question_mark() {
+        if bound.question_token().is_some() {
             // FIXME: remove this bound
             return;
         }

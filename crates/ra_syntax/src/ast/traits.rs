@@ -1,83 +1,77 @@
 //! Various traits that are implemented by ast nodes.
 //!
 //! The implementations are usually trivial, and live in generated.rs
-
-use itertools::Itertools;
+use stdx::SepBy;
 
 use crate::{
-    ast::{self, child_opt, children, support, AstChildren, AstNode, AstToken},
+    ast::{self, support, AstChildren, AstNode, AstToken},
     syntax_node::SyntaxElementChildren,
+    SyntaxToken, T,
 };
 
 pub trait TypeAscriptionOwner: AstNode {
     fn ascribed_type(&self) -> Option<ast::TypeRef> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait NameOwner: AstNode {
     fn name(&self) -> Option<ast::Name> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait VisibilityOwner: AstNode {
     fn visibility(&self) -> Option<ast::Visibility> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait LoopBodyOwner: AstNode {
     fn loop_body(&self) -> Option<ast::BlockExpr> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 
     fn label(&self) -> Option<ast::Label> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait ArgListOwner: AstNode {
     fn arg_list(&self) -> Option<ast::ArgList> {
-        child_opt(self)
-    }
-}
-
-pub trait FnDefOwner: AstNode {
-    fn functions(&self) -> AstChildren<ast::FnDef> {
-        children(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait ModuleItemOwner: AstNode {
     fn items(&self) -> AstChildren<ast::ModuleItem> {
-        children(self)
+        support::children(self.syntax())
     }
 }
 
 pub trait TypeParamsOwner: AstNode {
     fn type_param_list(&self) -> Option<ast::TypeParamList> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 
     fn where_clause(&self) -> Option<ast::WhereClause> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 }
 
 pub trait TypeBoundsOwner: AstNode {
     fn type_bound_list(&self) -> Option<ast::TypeBoundList> {
-        child_opt(self)
+        support::child(self.syntax())
     }
 
-    fn colon(&self) -> Option<ast::Colon> {
-        support::token(self.syntax())
+    fn colon_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), T![:])
     }
 }
 
 pub trait AttrsOwner: AstNode {
     fn attrs(&self) -> AstChildren<ast::Attr> {
-        children(self)
+        support::children(self.syntax())
     }
     fn has_atom_attr(&self, atom: &str) -> bool {
         self.attrs().filter_map(|x| x.as_simple_atom()).any(|x| x == atom)
@@ -122,7 +116,8 @@ pub trait DocCommentsOwner: AstNode {
                 // of a line in markdown.
                 line[pos..end].to_owned()
             })
-            .join("\n");
+            .sep_by("\n")
+            .to_string();
 
         if has_comments {
             Some(docs)

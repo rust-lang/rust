@@ -7,7 +7,7 @@ SOURCE_FILE@[0; 31)
     WHITESPACE@[9; 10) " "
     NAME@[10; 11)
       IDENT@[10; 11) "S"
-    SEMI@[11; 12) ";"
+    SEMICOLON@[11; 12) ";"
   WHITESPACE@[12; 14) "\n\n"
   ERROR@[14; 15)
     R_CURLY@[14; 15) "}"

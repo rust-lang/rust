@@ -66,23 +66,44 @@ export class Config {
         return vscode.workspace.getConfiguration(this.rootSection);
     }
 
-    get serverPath() { return this.cfg.get<null | string>("serverPath")!; }
-    get channel() { return this.cfg.get<UpdatesChannel>("updates.channel")!; }
-    get askBeforeDownload() { return this.cfg.get<boolean>("updates.askBeforeDownload")!; }
-    get traceExtension() { return this.cfg.get<boolean>("trace.extension")!; }
+    /**
+     * Beware that postfix `!` operator erases both `null` and `undefined`.
+     * This is why the following doesn't work as expected:
+     *
+     * ```ts
+     * const nullableNum = vscode
+     *  .workspace
+     *  .getConfiguration
+     *  .getConfiguration("rust-analyer")
+     *  .get<number | null>(path)!;
+     *
+     * // What happens is that type of `nullableNum` is `number` but not `null | number`:
+     * const fullFledgedNum: number = nullableNum;
+     * ```
+     * So this getter handles this quirk by not requiring the caller to use postfix `!`
+     */
+    private get<T>(path: string): T {
+        return this.cfg.get<T>(path)!;
+    }
+
+    get serverPath() { return this.get<null | string>("serverPath"); }
+    get channel() { return this.get<UpdatesChannel>("updates.channel"); }
+    get askBeforeDownload() { return this.get<boolean>("updates.askBeforeDownload"); }
+    get traceExtension() { return this.get<boolean>("trace.extension"); }
+
 
     get inlayHints() {
         return {
-            typeHints: this.cfg.get<boolean>("inlayHints.typeHints")!,
-            parameterHints: this.cfg.get<boolean>("inlayHints.parameterHints")!,
-            chainingHints: this.cfg.get<boolean>("inlayHints.chainingHints")!,
-            maxLength: this.cfg.get<null | number>("inlayHints.maxLength")!,
+            typeHints: this.get<boolean>("inlayHints.typeHints"),
+            parameterHints: this.get<boolean>("inlayHints.parameterHints"),
+            chainingHints: this.get<boolean>("inlayHints.chainingHints"),
+            maxLength: this.get<null | number>("inlayHints.maxLength"),
         };
     }
 
     get checkOnSave() {
         return {
-            command: this.cfg.get<string>("checkOnSave.command")!,
+            command: this.get<string>("checkOnSave.command"),
         };
     }
 }

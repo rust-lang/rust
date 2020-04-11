@@ -1,9 +1,12 @@
+use std::fs;
+
 use insta::assert_snapshot;
 use ra_db::fixture::WithFixture;
-
-use super::{infer, type_at, type_at_pos};
+use test_utils::project_dir;
 
 use crate::test_db::TestDB;
+
+use super::{infer, type_at, type_at_pos};
 
 #[test]
 fn cfg_impl_def() {
@@ -479,6 +482,30 @@ fn bar() -> u32 {0}
 "#,
     );
     assert_eq!("u32", type_at_pos(&db, pos));
+}
+
+#[test]
+#[ignore]
+fn include_accidentally_quadratic() {
+    let file = project_dir().join("crates/ra_syntax/test_data/accidentally_quadratic");
+    let big_file = fs::read_to_string(file).unwrap();
+    let big_file = vec![big_file; 10].join("\n");
+
+    let fixture = r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include {() => {}}
+
+include!("foo.rs");
+
+fn main() {
+    RegisterBlock { }<|>;
+}
+    "#;
+    let fixture = format!("{}\n//- /foo.rs\n{}", fixture, big_file);
+
+    let (db, pos) = TestDB::with_position(&fixture);
+    assert_eq!("RegisterBlock", type_at_pos(&db, pos));
 }
 
 #[test]

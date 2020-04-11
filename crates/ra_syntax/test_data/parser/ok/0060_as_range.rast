@@ -26,8 +26,8 @@ SOURCE_FILE@[0; 56)
                     NAME_REF@[21; 26)
                       IDENT@[21; 26) "usize"
             WHITESPACE@[26; 27) " "
-            DOTDOT@[27; 29) ".."
-          SEMI@[29; 30) ";"
+            DOT2@[27; 29) ".."
+          SEMICOLON@[29; 30) ";"
         WHITESPACE@[30; 35) "\n    "
         EXPR_STMT@[35; 53)
           RANGE_EXPR@[35; 52)
@@ -49,8 +49,8 @@ SOURCE_FILE@[0; 56)
                       NAME_REF@[44; 49)
                         IDENT@[44; 49) "usize"
             WHITESPACE@[49; 50) " "
-            DOTDOT@[50; 52) ".."
-          SEMI@[52; 53) ";"
+            DOT2@[50; 52) ".."
+          SEMICOLON@[52; 53) ";"
         WHITESPACE@[53; 54) "\n"
         R_CURLY@[54; 55) "}"
   WHITESPACE@[55; 56) "\n"

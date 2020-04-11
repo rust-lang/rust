@@ -11,9 +11,9 @@ SOURCE_FILE@[0; 50)
       BLOCK@[8; 49)
         L_CURLY@[8; 9) "{"
         WHITESPACE@[9; 14) "\n    "
-        SEMI@[14; 15) ";"
-        SEMI@[15; 16) ";"
-        SEMI@[16; 17) ";"
+        SEMICOLON@[14; 15) ";"
+        SEMICOLON@[15; 16) ";"
+        SEMICOLON@[16; 17) ";"
         EXPR_STMT@[17; 29)
           CALL_EXPR@[17; 28)
             PATH_EXPR@[17; 26)
@@ -24,22 +24,22 @@ SOURCE_FILE@[0; 50)
             ARG_LIST@[26; 28)
               L_PAREN@[26; 27) "("
               R_PAREN@[27; 28) ")"
-          SEMI@[28; 29) ";"
-        SEMI@[29; 30) ";"
-        SEMI@[30; 31) ";"
-        SEMI@[31; 32) ";"
+          SEMICOLON@[28; 29) ";"
+        SEMICOLON@[29; 30) ";"
+        SEMICOLON@[30; 31) ";"
+        SEMICOLON@[31; 32) ";"
         EXPR_STMT@[32; 38)
           BLOCK_EXPR@[32; 37)
             BLOCK@[32; 37)
               L_CURLY@[32; 33) "{"
-              SEMI@[33; 34) ";"
-              SEMI@[34; 35) ";"
-              SEMI@[35; 36) ";"
+              SEMICOLON@[33; 34) ";"
+              SEMICOLON@[34; 35) ";"
+              SEMICOLON@[35; 36) ";"
               R_CURLY@[36; 37) "}"
-          SEMI@[37; 38) ";"
-        SEMI@[38; 39) ";"
-        SEMI@[39; 40) ";"
-        SEMI@[40; 41) ";"
+          SEMICOLON@[37; 38) ";"
+        SEMICOLON@[38; 39) ";"
+        SEMICOLON@[39; 40) ";"
+        SEMICOLON@[40; 41) ";"
         CALL_EXPR@[41; 47)
           PATH_EXPR@[41; 43)
             PATH@[41; 43)

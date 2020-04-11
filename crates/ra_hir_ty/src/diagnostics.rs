@@ -21,7 +21,7 @@ impl Diagnostic for NoSuchField {
     }
 
     fn source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.field.into() }
+        InFile { file_id: self.file, value: self.field.clone().into() }
     }
 
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -45,7 +45,7 @@ impl Diagnostic for MissingFields {
         buf
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.field_list.into() }
+        InFile { file_id: self.file, value: self.field_list.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -63,6 +63,29 @@ impl AstDiagnostic for MissingFields {
 }
 
 #[derive(Debug)]
+pub struct MissingPatFields {
+    pub file: HirFileId,
+    pub field_list: AstPtr<ast::RecordFieldPatList>,
+    pub missed_fields: Vec<Name>,
+}
+
+impl Diagnostic for MissingPatFields {
+    fn message(&self) -> String {
+        let mut buf = String::from("Missing structure fields:\n");
+        for field in &self.missed_fields {
+            format_to!(buf, "- {}", field);
+        }
+        buf
+    }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.field_list.clone().into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+#[derive(Debug)]
 pub struct MissingMatchArms {
     pub file: HirFileId,
     pub match_expr: AstPtr<ast::Expr>,
@@ -74,7 +97,7 @@ impl Diagnostic for MissingMatchArms {
         String::from("Missing match arm")
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.match_expr.into() }
+        InFile { file_id: self.file, value: self.match_expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -92,7 +115,7 @@ impl Diagnostic for MissingOkInTailExpr {
         "wrap return expression in Ok".to_string()
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.expr.into() }
+        InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self

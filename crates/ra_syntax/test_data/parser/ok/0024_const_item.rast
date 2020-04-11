@@ -15,7 +15,7 @@ SOURCE_FILE@[0; 64)
     WHITESPACE@[14; 15) " "
     LITERAL@[15; 16)
       INT_NUMBER@[15; 16) "0"
-    SEMI@[16; 17) ";"
+    SEMICOLON@[16; 17) ";"
   WHITESPACE@[17; 18) "\n"
   CONST_DEF@[18; 38)
     CONST_KW@[18; 23) "const"
@@ -34,7 +34,7 @@ SOURCE_FILE@[0; 64)
     WHITESPACE@[34; 35) " "
     LITERAL@[35; 37)
       INT_NUMBER@[35; 37) "92"
-    SEMI@[37; 38) ";"
+    SEMICOLON@[37; 38) ";"
   WHITESPACE@[38; 39) "\n"
   CONST_DEF@[39; 63)
     CONST_KW@[39; 44) "const"
@@ -55,5 +55,5 @@ SOURCE_FILE@[0; 64)
     WHITESPACE@[59; 60) " "
     LITERAL@[60; 62)
       INT_NUMBER@[60; 62) "62"
-    SEMI@[62; 63) ";"
+    SEMICOLON@[62; 63) ";"
   WHITESPACE@[63; 64) "\n"

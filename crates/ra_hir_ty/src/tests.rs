@@ -23,7 +23,7 @@ use insta::assert_snapshot;
 use ra_db::{fixture::WithFixture, salsa::Database, FilePosition, SourceDatabase};
 use ra_syntax::{
     algo,
-    ast::{self, AstNode, AstToken},
+    ast::{self, AstNode},
 };
 use stdx::format_to;
 
@@ -82,12 +82,10 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
 
         for (expr, ty) in inference_result.type_of_expr.iter() {
             let syntax_ptr = match body_source_map.expr_syntax(expr) {
-                Ok(sp) => {
-                    sp.map(|ast| ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr()))
-                }
+                Ok(sp) => sp.map(|ast| ast.syntax_node_ptr()),
                 Err(SyntheticSyntax) => continue,
             };
-            types.push((syntax_ptr, ty));
+            types.push((syntax_ptr.clone(), ty));
             if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr) {
                 mismatches.push((syntax_ptr, mismatch));
             }
@@ -101,7 +99,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             let node = src_ptr.value.to_node(&src_ptr.file_syntax(&db));
 
             let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.clone()) {
-                (self_param.self_kw().unwrap().syntax().text_range(), "self".to_string())
+                (self_param.self_token().unwrap().text_range(), "self".to_string())
             } else {
                 (src_ptr.value.range(), node.text().to_string().replace("\n", " "))
             };
@@ -408,4 +406,44 @@ fn no_such_field_with_feature_flag_diagnostics_on_struct_fields() {
     .0;
 
     assert_snapshot!(diagnostics, @r###""###);
+}
+
+#[test]
+fn missing_record_pat_field_diagnostic() {
+    let diagnostics = TestDB::with_files(
+        r"
+        //- /lib.rs
+        struct S { foo: i32, bar: () }
+        fn baz(s: S) {
+            let S { foo: _ } = s;
+        }
+        ",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r###"
+    "{ foo: _ }": Missing structure fields:
+    - bar
+    "###
+    );
+}
+
+#[test]
+fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
+    let diagnostics = TestDB::with_files(
+        r"
+        //- /lib.rs
+        struct S { foo: i32, bar: () }
+        fn baz(s: S) -> i32 {
+            match s {
+                S { foo, .. } => foo,
+            }
+        }
+        ",
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @"");
 }

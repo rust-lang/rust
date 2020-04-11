@@ -24,7 +24,7 @@ SOURCE_FILE@[0; 97)
               L_CURLY@[24; 25) "{"
               WHITESPACE@[25; 26) " "
               R_CURLY@[26; 27) "}"
-          SEMI@[27; 28) ";"
+          SEMICOLON@[27; 28) ";"
         WHITESPACE@[28; 33) "\n    "
         EXPR_STMT@[33; 44)
           MATCH_EXPR@[33; 43)
@@ -39,7 +39,7 @@ SOURCE_FILE@[0; 97)
             MATCH_ARM_LIST@[41; 43)
               L_CURLY@[41; 42) "{"
               R_CURLY@[42; 43) "}"
-          SEMI@[43; 44) ";"
+          SEMICOLON@[43; 44) ";"
         WHITESPACE@[44; 49) "\n    "
         EXPR_STMT@[49; 71)
           MATCH_EXPR@[49; 70)
@@ -65,7 +65,7 @@ SOURCE_FILE@[0; 97)
                   R_PAREN@[67; 68) ")"
               WHITESPACE@[68; 69) " "
               R_CURLY@[69; 70) "}"
-          SEMI@[70; 71) ";"
+          SEMICOLON@[70; 71) ";"
         WHITESPACE@[71; 76) "\n    "
         EXPR_STMT@[76; 94)
           MATCH_EXPR@[76; 93)
@@ -90,7 +90,7 @@ SOURCE_FILE@[0; 97)
             MATCH_ARM_LIST@[91; 93)
               L_CURLY@[91; 92) "{"
               R_CURLY@[92; 93) "}"
-          SEMI@[93; 94) ";"
+          SEMICOLON@[93; 94) ";"
         WHITESPACE@[94; 95) "\n"
         R_CURLY@[95; 96) "}"
   WHITESPACE@[96; 97) "\n"

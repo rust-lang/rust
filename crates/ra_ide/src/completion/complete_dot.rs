@@ -72,7 +72,6 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Ty
         }
         for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
             // FIXME: Handle visibility
-            // TODO: add the same behavior with type ?
             acc.add_tuple_field(ctx, i, &ty);
         }
     }

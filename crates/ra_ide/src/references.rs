@@ -152,7 +152,7 @@ fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Optio
     if stmt.initializer().is_some() {
         let pat = stmt.pat()?;
         if let ast::Pat::BindPat(it) = pat {
-            if it.is_mutable() {
+            if it.mut_token().is_some() {
                 return Some(ReferenceAccess::Write);
             }
         }

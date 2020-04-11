@@ -16,5 +16,5 @@ SOURCE_FILE@[0; 17)
               IDENT@[10; 13) "i32"
       COMMA@[13; 14) ","
       R_PAREN@[14; 15) ")"
-    SEMI@[15; 16) ";"
+    SEMICOLON@[15; 16) ";"
   WHITESPACE@[16; 17) "\n"
