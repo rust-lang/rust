@@ -152,7 +152,9 @@ pub(crate) fn load(
         &extern_source_roots,
         proc_macro_client,
         &mut |path: &Path| {
-            let vfs_file = vfs.load(path);
+            // Some path from metadata will be non canonicalized, e.g. /foo/../bar/lib.rs
+            let path = path.canonicalize().ok()?;
+            let vfs_file = vfs.load(&path);
             log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
             vfs_file.map(vfs_file_to_id)
         },

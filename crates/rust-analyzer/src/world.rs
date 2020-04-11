@@ -139,7 +139,9 @@ impl WorldState {
         // Create crate graph from all the workspaces
         let mut crate_graph = CrateGraph::default();
         let mut load = |path: &std::path::Path| {
-            let vfs_file = vfs.load(path);
+            // Some path from metadata will be non canonicalized, e.g. /foo/../bar/lib.rs
+            let path = path.canonicalize().ok()?;
+            let vfs_file = vfs.load(&path);
             vfs_file.map(|f| FileId(f.0))
         };
 
