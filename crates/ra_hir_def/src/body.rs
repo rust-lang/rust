@@ -24,9 +24,11 @@ use crate::{
     src::HasSource,
     AsMacroCall, DefWithBodyId, HasModule, Lookup, ModuleId,
 };
+use ra_cfg::CfgOptions;
 
 pub(crate) struct Expander {
     crate_def_map: Arc<CrateDefMap>,
+    cfg_options: CfgOptions,
     current_file_id: HirFileId,
     hygiene: Hygiene,
     ast_id_map: Arc<AstIdMap>,
@@ -43,7 +45,16 @@ impl Expander {
         let crate_def_map = db.crate_def_map(module.krate);
         let hygiene = Hygiene::new(db.upcast(), current_file_id);
         let ast_id_map = db.ast_id_map(current_file_id);
-        Expander { crate_def_map, current_file_id, hygiene, ast_id_map, module, recursive_limit: 0 }
+        let cfg_options = db.crate_graph()[module.krate].cfg_options.clone();
+        Expander {
+            crate_def_map,
+            cfg_options,
+            current_file_id,
+            hygiene,
+            ast_id_map,
+            module,
+            recursive_limit: 0,
+        }
     }
 
     pub(crate) fn enter_expand<T: ast::AstNode>(
@@ -105,6 +116,10 @@ impl Expander {
 
     pub(crate) fn parse_attrs(&self, owner: &dyn ast::AttrsOwner) -> Attrs {
         Attrs::new(owner, &self.hygiene)
+    }
+
+    pub(crate) fn check_cfg(&self, attrs: &Attrs) -> bool {
+        attrs.is_cfg_enabled(&self.cfg_options)
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {

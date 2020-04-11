@@ -29,8 +29,8 @@ use crate::{
     path::GenericArgs,
     path::Path,
     type_ref::{Mutability, TypeRef},
-    AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, HasModule, Intern,
-    ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
+    StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
 use super::{ExprSource, PatSource};
@@ -298,7 +298,6 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
             ast::Expr::RecordLit(e) => {
-                let crate_graph = self.db.crate_graph();
                 let path = e.path().and_then(|path| self.expander.parse_path(path));
                 let mut field_ptrs = Vec::new();
                 let record_lit = if let Some(nfl) = e.record_field_list() {
@@ -306,10 +305,9 @@ impl ExprCollector<'_> {
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
                         .filter_map(|field| {
-                            let module_id = ContainerId::DefWithBodyId(self.def).module(self.db);
                             let attrs = self.expander.parse_attrs(&field);
 
-                            if !attrs.is_cfg_enabled(&crate_graph[module_id.krate].cfg_options) {
+                            if !self.expander.check_cfg(&attrs) {
                                 return None;
                             }
 
