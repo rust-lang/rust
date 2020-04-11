@@ -9,19 +9,12 @@
 // the timer-interrupt. Device-drivers are required to use polling-based models. Furthermore, all
 // code runs in the same environment, no process separation is supported.
 
-use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions};
+use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions};
 
 pub fn opts() -> TargetOptions {
+    let mut base = super::msvc_base::opts();
+
     let pre_link_args_msvc = vec![
-        // Suppress the verbose logo and authorship debugging output, which would needlessly
-        // clog any log files.
-        "/NOLOGO".to_string(),
-        // UEFI is fully compatible to non-executable data pages. Tell the compiler that
-        // non-code sections can be marked as non-executable, including stack pages. In fact,
-        // firmware might enforce this, so we better let the linker know about this, so it
-        // will fail if the compiler ever tries placing code on the stack (e.g., trampoline
-        // constructs and alike).
-        "/NXCOMPAT".to_string(),
         // Non-standard subsystems have no default entry-point in PE+ files. We have to define
         // one. "efi_main" seems to be a common choice amongst other implementations and the
         // spec.
@@ -37,25 +30,29 @@ pub fn opts() -> TargetOptions {
         // exit (default for applications).
         "/subsystem:efi_application".to_string(),
     ];
-    let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(LinkerFlavor::Msvc, pre_link_args_msvc.clone());
-    pre_link_args.insert(LinkerFlavor::Lld(LldFlavor::Link), pre_link_args_msvc);
+    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().extend(pre_link_args_msvc.clone());
+    base.pre_link_args
+        .get_mut(&LinkerFlavor::Lld(LldFlavor::Link))
+        .unwrap()
+        .extend(pre_link_args_msvc);
 
     TargetOptions {
-        dynamic_linking: false,
-        executables: true,
         disable_redzone: true,
         exe_suffix: ".efi".to_string(),
         allows_weak_linkage: false,
         panic_strategy: PanicStrategy::Abort,
         stack_probes: true,
         singlethread: true,
-        emit_debug_gdb_scripts: false,
-
         linker: Some("rust-lld".to_string()),
-        lld_flavor: LldFlavor::Link,
-        pre_link_args,
+        // FIXME: This should likely be `true` inherited from `msvc_base`
+        // because UEFI follows Windows ABI and uses PE/COFF.
+        // The `false` is probably causing ABI bugs right now.
+        is_like_windows: false,
+        // FIXME: This should likely be `true` inherited from `msvc_base`
+        // because UEFI follows Windows ABI and uses PE/COFF.
+        // The `false` is probably causing ABI bugs right now.
+        is_like_msvc: false,
 
-        ..Default::default()
+        ..base
     }
 }

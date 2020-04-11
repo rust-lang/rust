@@ -23,11 +23,6 @@ pub fn target() -> TargetResult {
     // arguments, thus giving you access to full MMX/SSE acceleration.
     base.features = "-mmx,-sse,+soft-float".to_string();
 
-    // UEFI mirrors the calling-conventions used on windows. In case of i686 this means small
-    // structs will be returned as int. This shouldn't matter much, since the restrictions placed
-    // by the UEFI specifications forbid any ABI to return structures.
-    base.abi_return_struct_as_int = true;
-
     // Use -GNU here, because of the reason below:
     // Background and Problem:
     //   If we use i686-unknown-windows, the LLVM IA32 MSVC generates compiler intrinsic

@@ -28,11 +28,6 @@ pub fn target() -> TargetResult {
     // places no locality-restrictions, so it fits well here.
     base.code_model = Some("large".to_string());
 
-    // UEFI mirrors the calling-conventions used on windows. In case of x86-64 this means small
-    // structs will be returned as int. This shouldn't matter much, since the restrictions placed
-    // by the UEFI specifications forbid any ABI to return structures.
-    base.abi_return_struct_as_int = true;
-
     Ok(Target {
         llvm_target: "x86_64-unknown-windows".to_string(),
         target_endian: "little".to_string(),
