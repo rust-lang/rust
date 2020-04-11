@@ -886,196 +886,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 // that allow representation optimization.)
                 assert!(def.is_enum());
 
-                // The current code for niche-filling relies on variant indices
-                // instead of actual discriminants, so dataful enums with
-                // explicit discriminants (RFC #2363) would misbehave.
-                let no_explicit_discriminants = def
-                    .variants
-                    .iter_enumerated()
-                    .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
-
-                // Niche-filling enum optimization.
-                if !def.repr.inhibit_enum_layout_opt() && no_explicit_discriminants {
-                    let mut dataful_variant = None;
-                    let mut niche_variants = VariantIdx::MAX..=VariantIdx::new(0);
-                    let mut max_size = Size::ZERO;
-                    let mut second_max_size = Size::ZERO;
-                    let mut align = dl.aggregate_align;
-
-                    // The size computations below assume that the padding is minimum.
-                    // This is the case when fields are re-ordered.
-                    let struct_reordering_opt = !def.repr.inhibit_struct_field_reordering_opt();
-
-                    let mut extend_niche_range = |d| {
-                        niche_variants =
-                            *niche_variants.start().min(&d)..=*niche_variants.end().max(&d);
-                    };
-
-                    // Find the largest and second largest variant.
-                    for (v, fields) in variants.iter_enumerated() {
-                        if absent(fields) {
-                            continue;
-                        }
-                        let mut size = Size::ZERO;
-                        for &f in fields {
-                            align = align.max(f.align);
-                            size += f.size;
-                        }
-                        if size > max_size {
-                            second_max_size = max_size;
-                            max_size = size;
-                            if let Some(d) = dataful_variant {
-                                extend_niche_range(d);
-                            }
-                            dataful_variant = Some(v);
-                        } else if size == max_size {
-                            if let Some(d) = dataful_variant {
-                                extend_niche_range(d);
-                            }
-                            dataful_variant = None;
-                            extend_niche_range(v);
-                        } else {
-                            second_max_size = second_max_size.max(size);
-                            extend_niche_range(v);
-                        }
-                    }
-
-                    if niche_variants.start() > niche_variants.end() {
-                        dataful_variant = None;
-                    }
-
-                    if let Some(dataful_variant) = dataful_variant {
-                        let count = (niche_variants.end().as_u32()
-                            - niche_variants.start().as_u32()
-                            + 1) as u128;
-
-                        // Find the field with the largest niche
-                        let niche_candidate = variants[dataful_variant]
-                            .iter()
-                            .enumerate()
-                            .filter_map(|(j, &field)| Some((j, field.largest_niche.as_ref()?)))
-                            .max_by_key(|(_, n)| (n.available(dl), cmp::Reverse(n.offset)))
-                            .and_then(|(field_index, niche)| {
-                                if struct_reordering_opt {
-                                    // make sure there is enough room for the other variants
-                                    if max_size - (niche.offset + niche.scalar.value.size(dl))
-                                        < second_max_size
-                                    {
-                                        return None;
-                                    }
-                                    // Don't perform niche optimisation if there is more padding than
-                                    // what's available in the biggest niche
-                                    let padding_bits =
-                                        (max_size.align_to(align.abi) - max_size).bits();
-                                    if padding_bits >= 128
-                                        || (1 << padding_bits) > niche.available(dl)
-                                    {
-                                        return None;
-                                    }
-                                } else if second_max_size > Size::ZERO {
-                                    return None;
-                                }
-                                Some((field_index, niche, niche.reserve(self, count)?))
-                            });
-
-                        if let Some((field_index, niche, (niche_start, niche_scalar))) =
-                            niche_candidate
-                        {
-                            let prefix = niche.offset + niche.scalar.value.size(dl);
-                            let st = variants
-                                .iter_enumerated()
-                                .map(|(j, v)| {
-                                    let mut st = self.univariant_uninterned(
-                                        ty,
-                                        v,
-                                        &def.repr,
-                                        if j == dataful_variant || second_max_size == Size::ZERO {
-                                            StructKind::AlwaysSized
-                                        } else {
-                                            StructKind::Prefixed(
-                                                prefix,
-                                                Align::from_bytes(1).unwrap(),
-                                            )
-                                        },
-                                    )?;
-                                    st.variants = Variants::Single { index: j };
-
-                                    debug_assert_eq!(align, align.max(st.align));
-                                    Ok(st)
-                                })
-                                .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
-
-                            let niche_offset = if struct_reordering_opt {
-                                debug_assert_eq!(
-                                    st[dataful_variant].fields.offset(field_index),
-                                    Size::ZERO
-                                );
-                                niche.offset
-                            } else {
-                                st[dataful_variant].fields.offset(field_index) + niche.offset
-                            };
-                            let size = st[dataful_variant].size.align_to(align.abi);
-                            debug_assert!(
-                                !struct_reordering_opt || size == max_size.align_to(align.abi)
-                            );
-                            debug_assert!(st.iter().all(|v| { v.size <= size }));
-
-                            let abi = if st.iter().all(|v| v.abi.is_uninhabited()) {
-                                Abi::Uninhabited
-                            } else if second_max_size == Size::ZERO {
-                                match st[dataful_variant].abi {
-                                    Abi::Scalar(_) => Abi::Scalar(niche_scalar.clone()),
-                                    Abi::ScalarPair(ref first, ref second) => {
-                                        // We need to use scalar_unit to reset the
-                                        // valid range to the maximal one for that
-                                        // primitive, because only the niche is
-                                        // guaranteed to be initialised, not the
-                                        // other primitive.
-                                        if niche_offset.bytes() == 0 {
-                                            Abi::ScalarPair(
-                                                niche_scalar.clone(),
-                                                scalar_unit(second.value),
-                                            )
-                                        } else {
-                                            Abi::ScalarPair(
-                                                scalar_unit(first.value),
-                                                niche_scalar.clone(),
-                                            )
-                                        }
-                                    }
-                                    _ => Abi::Aggregate { sized: true },
-                                }
-                            } else {
-                                Abi::Aggregate { sized: true }
-                            };
-
-                            let largest_niche =
-                                Niche::from_scalar(dl, niche_offset, niche_scalar.clone());
-
-                            return Ok(tcx.intern_layout(Layout {
-                                variants: Variants::Multiple {
-                                    discr: niche_scalar,
-                                    discr_kind: DiscriminantKind::Niche {
-                                        dataful_variant,
-                                        niche_variants,
-                                        niche_start,
-                                    },
-                                    discr_index: 0,
-                                    variants: st,
-                                },
-                                fields: FieldsShape::Arbitrary {
-                                    offsets: vec![niche_offset],
-                                    memory_index: vec![0],
-                                },
-                                abi,
-                                largest_niche,
-                                size,
-                                align,
-                            }));
-                        }
-                    }
-                }
-
                 let (mut min, mut max) = (i128::MAX, i128::MIN);
                 let discr_type = def.repr.discr_type();
                 let bits = Integer::from_attr(self, discr_type).size().bits();
@@ -1226,6 +1036,194 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     value: Int(ity, signed),
                     valid_range: (min as u128 & tag_mask)..=(max as u128 & tag_mask),
                 };
+                let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag.clone());
+
+                // The current code for niche-filling relies on variant indices
+                // instead of actual discriminants, so dataful enums with
+                // explicit discriminants (RFC #2363) would misbehave.
+                let no_explicit_discriminants = def
+                    .variants
+                    .iter_enumerated()
+                    .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
+
+                // Niche-filling enum optimization.
+                if !def.repr.inhibit_enum_layout_opt() && no_explicit_discriminants {
+                    let mut dataful_variant = None;
+                    let mut niche_variants = VariantIdx::MAX..=VariantIdx::new(0);
+                    let mut max_size = Size::ZERO;
+                    let mut second_max_size = Size::ZERO;
+                    let mut align = dl.aggregate_align;
+
+                    // The size computations below assume that the padding is minimum.
+                    // This is the case when fields are re-ordered.
+                    let struct_reordering_opt = !def.repr.inhibit_struct_field_reordering_opt();
+
+                    let mut extend_niche_range = |d| {
+                        niche_variants =
+                            *niche_variants.start().min(&d)..=*niche_variants.end().max(&d);
+                    };
+
+                    // Find the largest and second largest variant.
+                    for (v, fields) in variants.iter_enumerated() {
+                        if absent(fields) {
+                            continue;
+                        }
+                        let mut size = Size::ZERO;
+                        for &f in fields {
+                            align = align.max(f.align);
+                            size += f.size;
+                        }
+                        if size > max_size {
+                            second_max_size = max_size;
+                            max_size = size;
+                            if let Some(d) = dataful_variant {
+                                extend_niche_range(d);
+                            }
+                            dataful_variant = Some(v);
+                        } else if size == max_size {
+                            if let Some(d) = dataful_variant {
+                                extend_niche_range(d);
+                            }
+                            dataful_variant = None;
+                            extend_niche_range(v);
+                        } else {
+                            second_max_size = second_max_size.max(size);
+                            extend_niche_range(v);
+                        }
+                    }
+
+                    if niche_variants.start() > niche_variants.end() {
+                        dataful_variant = None;
+                    }
+
+                    if let Some(dataful_variant) = dataful_variant {
+                        let count = (niche_variants.end().as_u32()
+                            - niche_variants.start().as_u32()
+                            + 1) as u128;
+
+                        // Find the field with the largest niche
+                        let niche_candidate = variants[dataful_variant]
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(j, &field)| Some((j, field.largest_niche.as_ref()?)))
+                            .max_by_key(|(_, n)| (n.available(dl), cmp::Reverse(n.offset)))
+                            .and_then(|(field_index, niche)| {
+                                if !struct_reordering_opt && second_max_size > Size::ZERO {
+                                    return None;
+                                }
+                                // make sure there is enough room for the other variants
+                                if max_size - (niche.offset + niche.scalar.value.size(dl))
+                                    < second_max_size
+                                {
+                                    return None;
+                                }
+                                Some((field_index, niche, niche.reserve(self, count)?))
+                            });
+
+                        if let Some((field_index, niche, (niche_start, niche_scalar))) =
+                            niche_candidate
+                        {
+                            let prefix = niche.offset + niche.scalar.value.size(dl);
+                            let st = variants
+                                .iter_enumerated()
+                                .map(|(j, v)| {
+                                    let mut st = self.univariant_uninterned(
+                                        ty,
+                                        v,
+                                        &def.repr,
+                                        if j == dataful_variant || second_max_size == Size::ZERO {
+                                            StructKind::AlwaysSized
+                                        } else {
+                                            StructKind::Prefixed(
+                                                prefix,
+                                                Align::from_bytes(1).unwrap(),
+                                            )
+                                        },
+                                    )?;
+                                    st.variants = Variants::Single { index: j };
+
+                                    debug_assert_eq!(align, align.max(st.align));
+                                    Ok(st)
+                                })
+                                .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+
+                            let niche_offset = if struct_reordering_opt {
+                                debug_assert_eq!(
+                                    st[dataful_variant].fields.offset(field_index),
+                                    Size::ZERO
+                                );
+                                niche.offset
+                            } else {
+                                st[dataful_variant].fields.offset(field_index) + niche.offset
+                            };
+
+                            let new_size = st[dataful_variant].size.align_to(align.abi);
+                            debug_assert!(
+                                !struct_reordering_opt || new_size == max_size.align_to(align.abi)
+                            );
+                            debug_assert!(st.iter().all(|v| { v.size <= new_size }));
+
+                            let new_largest_niche =
+                                Niche::from_scalar(dl, niche_offset, niche_scalar.clone());
+
+                            if new_size < size
+                                || new_largest_niche.as_ref().map_or(0, |n| n.available(dl))
+                                    > largest_niche.as_ref().map_or(0, |n| n.available(dl))
+                            {
+                                let abi = if st.iter().all(|v| v.abi.is_uninhabited()) {
+                                    Abi::Uninhabited
+                                } else if second_max_size == Size::ZERO {
+                                    match st[dataful_variant].abi {
+                                        Abi::Scalar(_) => Abi::Scalar(niche_scalar.clone()),
+                                        Abi::ScalarPair(ref first, ref second) => {
+                                            // We need to use scalar_unit to reset the
+                                            // valid range to the maximal one for that
+                                            // primitive, because only the niche is
+                                            // guaranteed to be initialised, not the
+                                            // other primitive.
+                                            if niche_offset.bytes() == 0 {
+                                                Abi::ScalarPair(
+                                                    niche_scalar.clone(),
+                                                    scalar_unit(second.value),
+                                                )
+                                            } else {
+                                                Abi::ScalarPair(
+                                                    scalar_unit(first.value),
+                                                    niche_scalar.clone(),
+                                                )
+                                            }
+                                        }
+                                        _ => Abi::Aggregate { sized: true },
+                                    }
+                                } else {
+                                    Abi::Aggregate { sized: true }
+                                };
+
+                                return Ok(tcx.intern_layout(Layout {
+                                    variants: Variants::Multiple {
+                                        discr: niche_scalar,
+                                        discr_kind: DiscriminantKind::Niche {
+                                            dataful_variant,
+                                            niche_variants,
+                                            niche_start,
+                                        },
+                                        discr_index: 0,
+                                        variants: st,
+                                    },
+                                    fields: FieldsShape::Arbitrary {
+                                        offsets: vec![niche_offset],
+                                        memory_index: vec![0],
+                                    },
+                                    abi,
+                                    largest_niche: new_largest_niche,
+                                    size: new_size,
+                                    align,
+                                }));
+                            }
+                        }
+                    }
+                }
+
                 let mut abi = Abi::Aggregate { sized: true };
                 if tag.value.size(dl) == size {
                     abi = Abi::Scalar(tag.clone());
@@ -1291,8 +1289,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 if layout_variants.iter().all(|v| v.abi.is_uninhabited()) {
                     abi = Abi::Uninhabited;
                 }
-
-                let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag.clone());
 
                 tcx.intern_layout(Layout {
                     variants: Variants::Multiple {
