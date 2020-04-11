@@ -40,7 +40,7 @@ enum AddMissingImplMembersMode {
 // }
 //
 // impl Trait<u32> for () {
-//     fn foo(&self) -> u32 { unimplemented!() }
+//     fn foo(&self) -> u32 { todo!() }
 //
 // }
 // ```
@@ -165,7 +165,7 @@ fn add_missing_impl_members_inner(
 
 fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
     if fn_def.body().is_none() {
-        fn_def.with_body(make::block_from_expr(make::expr_unimplemented()))
+        fn_def.with_body(make::block_from_expr(make::expr_todo()))
     } else {
         fn_def
     }
@@ -215,8 +215,8 @@ impl Foo for S {
     fn bar(&self) {}
     <|>type Output;
     const CONST: usize = 42;
-    fn foo(&self) { unimplemented!() }
-    fn baz(&self) { unimplemented!() }
+    fn foo(&self) { todo!() }
+    fn baz(&self) { todo!() }
 
 }",
         );
@@ -250,7 +250,7 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    <|>fn foo(&self) { unimplemented!() }
+    <|>fn foo(&self) { todo!() }
 
 }",
         );
@@ -268,7 +268,7 @@ impl Foo for S { <|> }",
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
-    <|>fn foo(&self) { unimplemented!() }
+    <|>fn foo(&self) { todo!() }
 }",
         );
     }
@@ -285,7 +285,7 @@ impl Foo<u32> for S { <|> }",
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
 impl Foo<u32> for S {
-    <|>fn foo(&self, t: u32) -> &u32 { unimplemented!() }
+    <|>fn foo(&self, t: u32) -> &u32 { todo!() }
 }",
         );
     }
@@ -302,7 +302,7 @@ impl<U> Foo<U> for S { <|> }",
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
 impl<U> Foo<U> for S {
-    <|>fn foo(&self, t: U) -> &U { unimplemented!() }
+    <|>fn foo(&self, t: U) -> &U { todo!() }
 }",
         );
     }
@@ -319,7 +319,7 @@ impl Foo for S {}<|>",
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
-    <|>fn foo(&self) { unimplemented!() }
+    <|>fn foo(&self) { todo!() }
 }",
         )
     }
@@ -342,7 +342,7 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    <|>fn foo(&self, bar: foo::Bar) { unimplemented!() }
+    <|>fn foo(&self, bar: foo::Bar) { todo!() }
 }",
         );
     }
@@ -365,7 +365,7 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    <|>fn foo(&self, bar: foo::Bar<u32>) { unimplemented!() }
+    <|>fn foo(&self, bar: foo::Bar<u32>) { todo!() }
 }",
         );
     }
@@ -388,7 +388,7 @@ mod foo {
 }
 struct S;
 impl foo::Foo<u32> for S {
-    <|>fn foo(&self, bar: foo::Bar<u32>) { unimplemented!() }
+    <|>fn foo(&self, bar: foo::Bar<u32>) { todo!() }
 }",
         );
     }
@@ -414,7 +414,7 @@ mod foo {
 struct Param;
 struct S;
 impl foo::Foo<Param> for S {
-    <|>fn foo(&self, bar: Param) { unimplemented!() }
+    <|>fn foo(&self, bar: Param) { todo!() }
 }",
         );
     }
@@ -439,7 +439,7 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    <|>fn foo(&self, bar: foo::Bar<u32>::Assoc) { unimplemented!() }
+    <|>fn foo(&self, bar: foo::Bar<u32>::Assoc) { todo!() }
 }",
         );
     }
@@ -464,7 +464,7 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    <|>fn foo(&self, bar: foo::Bar<foo::Baz>) { unimplemented!() }
+    <|>fn foo(&self, bar: foo::Bar<foo::Baz>) { todo!() }
 }",
         );
     }
@@ -487,7 +487,7 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    <|>fn foo(&self, bar: dyn Fn(u32) -> i32) { unimplemented!() }
+    <|>fn foo(&self, bar: dyn Fn(u32) -> i32) { todo!() }
 }",
         );
     }
@@ -544,7 +544,7 @@ trait Foo {
 struct S;
 impl Foo for S {
     <|>type Output;
-    fn foo(&self) { unimplemented!() }
+    fn foo(&self) { todo!() }
 }"#,
         )
     }

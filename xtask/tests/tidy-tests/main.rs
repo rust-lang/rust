@@ -20,7 +20,16 @@ fn rust_files_are_tidy() {
 }
 
 fn check_todo(path: &Path, text: &str) {
-    if path.ends_with("tests/cli.rs") {
+    let whitelist = &[
+        // This file itself is whitelisted since this test itself contains matches.
+        "tests/cli.rs",
+        // Some of our assists generate `todo!()` so those files are whitelisted.
+        "doc_tests/generated.rs",
+        "handlers/add_missing_impl_members.rs",
+        // To support generating `todo!()` in assists, we have `expr_todo()` in ast::make.
+        "ast/make.rs",
+    ];
+    if whitelist.iter().any(|p| path.ends_with(p)) {
         return;
     }
     if text.contains("TODO") || text.contains("TOOD") || text.contains("todo!") {
