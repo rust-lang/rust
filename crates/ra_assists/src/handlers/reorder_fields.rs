@@ -1,20 +1,20 @@
 use std::collections::HashMap;
 
-use itertools::Itertools;
-
 use hir::{Adt, ModuleDef, PathResolution, Semantics, Struct};
+use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
-    algo, ast,
-    ast::{Name, Path, RecordLit, RecordPat},
-    AstNode, SyntaxKind, SyntaxNode,
+    algo,
+    ast::{self, Path, RecordLit, RecordPat},
+    match_ast, AstNode, SyntaxKind,
+    SyntaxKind::*,
+    SyntaxNode,
 };
 
 use crate::{
     assist_ctx::{Assist, AssistCtx},
     AssistId,
 };
-use ra_syntax::ast::{Expr, NameRef};
 
 // Assist: reorder_fields
 //
@@ -59,7 +59,6 @@ fn reorder<R: AstNode>(ctx: AssistCtx) -> Option<Assist> {
 }
 
 fn get_fields_kind(node: &SyntaxNode) -> Vec<SyntaxKind> {
-    use SyntaxKind::*;
     match node.kind() {
         RECORD_LIT => vec![RECORD_FIELD],
         RECORD_PAT => vec![RECORD_FIELD_PAT, BIND_PAT],
@@ -68,19 +67,14 @@ fn get_fields_kind(node: &SyntaxNode) -> Vec<SyntaxKind> {
 }
 
 fn get_field_name(node: &SyntaxNode) -> String {
-    use SyntaxKind::*;
-    match node.kind() {
-        RECORD_FIELD => {
-            if let Some(name) = node.children().find_map(NameRef::cast) {
-                return name.to_string();
-            }
-            node.children().find_map(Expr::cast).map(|expr| expr.to_string()).unwrap_or_default()
+    let res = match_ast! {
+        match node {
+            ast::RecordField(field) => { field.field_name().map(|it| it.to_string()) },
+            ast::RecordFieldPat(field) => { field.field_name().map(|it| it.to_string()) },
+            _ => None,
         }
-        BIND_PAT | RECORD_FIELD_PAT => {
-            node.children().find_map(Name::cast).map(|n| n.to_string()).unwrap_or_default()
-        }
-        _ => String::new(),
-    }
+    };
+    res.unwrap_or_default()
 }
 
 fn get_fields(record: &SyntaxNode) -> Vec<SyntaxNode> {

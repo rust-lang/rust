@@ -83,6 +83,15 @@ impl AsName for ast::Name {
     }
 }
 
+impl AsName for ast::NameOrNameRef {
+    fn as_name(&self) -> Name {
+        match self {
+            ast::NameOrNameRef::Name(it) => it.as_name(),
+            ast::NameOrNameRef::NameRef(it) => it.as_name(),
+        }
+    }
+}
+
 impl AsName for tt::Ident {
     fn as_name(&self) -> Name {
         Name::resolve(&self.text)

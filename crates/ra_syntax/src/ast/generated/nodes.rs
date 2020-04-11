@@ -1806,8 +1806,8 @@ impl AstNode for RecordFieldPat {
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl ast::AttrsOwner for RecordFieldPat {}
-impl ast::NameOwner for RecordFieldPat {}
 impl RecordFieldPat {
+    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }

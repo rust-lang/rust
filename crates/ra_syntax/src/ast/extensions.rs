@@ -1,6 +1,8 @@
 //! Various extension methods to ast Nodes, which are hard to code-generate.
 //! Extensions for various expressions live in a sibling `expr_extensions` module.
 
+use std::fmt;
+
 use itertools::Itertools;
 use ra_parser::SyntaxKind;
 
@@ -212,6 +214,34 @@ impl ast::RecordField {
             if path.qualifier().is_none() {
                 return Some(name_ref);
             }
+        }
+        None
+    }
+}
+
+pub enum NameOrNameRef {
+    Name(ast::Name),
+    NameRef(ast::NameRef),
+}
+
+impl fmt::Display for NameOrNameRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NameOrNameRef::Name(it) => fmt::Display::fmt(it, f),
+            NameOrNameRef::NameRef(it) => fmt::Display::fmt(it, f),
+        }
+    }
+}
+
+impl ast::RecordFieldPat {
+    /// Deals with field init shorthand
+    pub fn field_name(&self) -> Option<NameOrNameRef> {
+        if let Some(name_ref) = self.name_ref() {
+            return Some(NameOrNameRef::NameRef(name_ref));
+        }
+        if let Some(ast::Pat::BindPat(pat)) = self.pat() {
+            let name = pat.name()?;
+            return Some(NameOrNameRef::Name(name));
         }
         None
     }
