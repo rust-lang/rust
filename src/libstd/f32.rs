@@ -912,6 +912,30 @@ impl f32 {
         }
         x
     }
+
+    /// Computes `self + step(upper - pol)` the linear interpolation between
+    /// `self` and `upper` for the parameter `pol` (or extrapolation,
+    /// when `pol` is outside the range [0,1]).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lerp)]
+    /// let x = 10.0_f32;
+    /// let y = 20.0_f32;
+    /// let pol = 0.5_f32;
+    ///
+    /// // lerp(x, y, pol)
+    /// let lerp = x.lerp(y, pol);
+    ///
+    /// assert!(lerp == 15.0_f32);
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "lerp", issue = "71015")]
+    #[inline]
+    pub fn lerp(self, upper: f32, pol: f32) -> f32 {
+        self * (1_f32 - pol) + upper * pol
+    }
 }
 
 #[cfg(test)]

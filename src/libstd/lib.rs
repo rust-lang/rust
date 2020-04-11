@@ -247,6 +247,7 @@
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
 #![feature(clamp)]
+#![feature(lerp)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
 #![feature(const_raw_ptr_deref)]

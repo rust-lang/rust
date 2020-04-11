@@ -915,6 +915,30 @@ impl f64 {
         x
     }
 
+    /// Computes `self + step(upper - pol)` the linear interpolation between
+    /// `self` and `upper` for the parameter `pol` (or extrapolation,
+    /// when `pol` is outside the range [0,1]).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lerp)]
+    /// let x = 10.0_f64;
+    /// let y = 20.0_f64;
+    /// let pol = 0.5_f64;
+    ///
+    /// // lerp(x, y, pol)
+    /// let lerp = x.lerp(y, pol);
+    ///
+    /// assert!(lerp == 15.0_f64);
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "lerp", issue = "71015")]
+    #[inline]
+    pub fn lerp(self, upper: f64, pol: f64) -> f64 {
+        self * (1_f64 - pol) + upper * pol
+    }
+
     // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
     // because of their non-standard behavior (e.g., log(-n) returns -Inf instead
     // of expected NaN).
