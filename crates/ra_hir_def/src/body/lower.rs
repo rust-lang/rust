@@ -665,7 +665,6 @@ impl ExprCollector<'_> {
                     Pat::Missing
                 }
             }
-
             // FIXME: implement
             ast::Pat::BoxPat(_) | ast::Pat::RangePat(_) | ast::Pat::MacroPat(_) => Pat::Missing,
         };

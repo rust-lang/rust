@@ -607,6 +607,21 @@ impl Walrus {
 }
 
 #[test]
+fn doctest_reorder_fields() {
+    check(
+        "reorder_fields",
+        r#####"
+struct Foo {foo: i32, bar: i32};
+const test: Foo = <|>Foo {bar: 0, foo: 1}
+"#####,
+        r#####"
+struct Foo {foo: i32, bar: i32};
+const test: Foo = Foo {foo: 1, bar: 0}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_if_let_with_match() {
     check(
         "replace_if_let_with_match",

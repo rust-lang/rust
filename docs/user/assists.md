@@ -582,6 +582,21 @@ impl Walrus {
 }
 ```
 
+## `reorder_fields`
+
+Reorder the fields of record literals and record patterns in the same order as in
+the definition.
+
+```rust
+// BEFORE
+struct Foo {foo: i32, bar: i32};
+const test: Foo = ┃Foo {bar: 0, foo: 1}
+
+// AFTER
+struct Foo {foo: i32, bar: i32};
+const test: Foo = Foo {foo: 1, bar: 0}
+```
+
 ## `replace_if_let_with_match`
 
 Replaces `if let` with an else branch with a `match` expression.
