@@ -2,9 +2,7 @@
 //! representation.
 
 use either::Either;
-
 use hir_expand::{
-    hygiene::Hygiene,
     name::{name, AsName, Name},
     MacroDefId, MacroDefKind,
 };
@@ -18,10 +16,8 @@ use ra_syntax::{
 };
 use test_utils::tested_by;
 
-use super::{ExprSource, PatSource};
 use crate::{
     adt::StructKind,
-    attr::Attrs,
     body::{Body, BodySourceMap, Expander, PatPtr, SyntheticSyntax},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
@@ -36,6 +32,8 @@ use crate::{
     AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, HasModule, Intern,
     ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
 };
+
+use super::{ExprSource, PatSource};
 
 pub(super) fn lower(
     db: &dyn DefDatabase,
@@ -309,10 +307,7 @@ impl ExprCollector<'_> {
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
                         .filter_map(|field| {
                             let module_id = ContainerId::DefWithBodyId(self.def).module(self.db);
-                            let attrs = Attrs::new(
-                                &field,
-                                &Hygiene::new(self.db.upcast(), self.expander.current_file_id),
-                            );
+                            let attrs = self.expander.parse_attrs(&field);
 
                             if !attrs.is_cfg_enabled(&crate_graph[module_id.krate].cfg_options) {
                                 return None;

@@ -14,6 +14,7 @@ use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
 
 use crate::{
+    attr::Attrs,
     db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId},
     item_scope::BuiltinShadowMode,
@@ -100,6 +101,10 @@ impl Expander {
 
     pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {
         InFile { file_id: self.current_file_id, value }
+    }
+
+    pub(crate) fn parse_attrs(&self, owner: &dyn ast::AttrsOwner) -> Attrs {
+        Attrs::new(owner, &self.hygiene)
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
