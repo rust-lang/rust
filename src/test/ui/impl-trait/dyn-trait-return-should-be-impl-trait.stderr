@@ -72,18 +72,15 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bak() -> dyn Trait { unimplemented!() }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: currently nothing is being returned, depending on the final implementation you could change the return type in different ways
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-help: you could use some type `T` that is `T: Sized` as the return type if all return paths will have the same type
+help: use some type `T` that is `T: Sized` as the return type if all return paths have the same type
    |
 LL | fn bak() -> T { unimplemented!() }
    |             ^
-help: you could use `impl Trait` as the return type if all return paths will have the same type but you want to expose only the trait in the signature
+help: use `impl Trait` as the return type if all return paths have the same type but you want to expose only the trait in the signature
    |
 LL | fn bak() -> impl Trait { unimplemented!() }
    |             ^^^^^^^^^^
-help: you could use a boxed trait object if all return paths `impl` trait `Trait`
+help: use a boxed trait object if all return paths implement trait `Trait`
    |
 LL | fn bak() -> Box<dyn Trait> { unimplemented!() }
    |             ^^^^^^^^^^^^^^
@@ -106,6 +103,18 @@ LL |         return Box::new(Struct);
 LL |     }
 LL |     Box::new(42)
    |
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/dyn-trait-return-should-be-impl-trait.rs:29:9
+   |
+LL | /     if true {
+LL | |         Struct
+   | |         ------ expected because of this
+LL | |     } else {
+LL | |         42
+   | |         ^^ expected struct `Struct`, found integer
+LL | |     }
+   | |_____- `if` and `else` have incompatible types
 
 error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/dyn-trait-return-should-be-impl-trait.rs:25:13
@@ -278,7 +287,7 @@ help: use `impl Trait` as the return type, as all return paths are of type `{int
 LL | fn bay() -> impl Trait {
    |             ^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: aborting due to 20 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0746.
 For more information about an error, try `rustc --explain E0277`.
