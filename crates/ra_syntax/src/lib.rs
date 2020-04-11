@@ -19,6 +19,11 @@
 //! [RFC]: <https://github.com/rust-lang/rfcs/pull/2256>
 //! [Swift]: <https://github.com/apple/swift/blob/13d593df6f359d0cb2fc81cfaac273297c539455/lib/Syntax/README.md>
 
+#[allow(unused)]
+macro_rules! eprintln {
+    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
+}
+
 mod syntax_node;
 mod syntax_error;
 mod parsing;

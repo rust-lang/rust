@@ -216,7 +216,7 @@ pub fn classify_name_ref(
         }
     }
 
-    if let Some(record_field) = ast::RecordField::cast(parent.clone()) {
+    if let Some(record_field) = ast::RecordField::for_field_name(name_ref) {
         tested_by!(goto_def_for_record_fields; force);
         tested_by!(goto_def_for_field_init_shorthand; force);
         if let Some((field, local)) = sema.resolve_record_field(&record_field) {

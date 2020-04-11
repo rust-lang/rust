@@ -27,7 +27,6 @@ use crate::{
     },
     item_scope::BuiltinShadowMode,
     path::GenericArgs,
-    path::Path,
     type_ref::{Mutability, TypeRef},
     AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
     StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
@@ -102,7 +101,6 @@ impl ExprCollector<'_> {
     }
 
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
-        let ptr = Either::Left(ptr);
         let src = self.expander.to_source(ptr);
         let id = self.make_expr(expr, Ok(src.clone()));
         self.source_map.expr_map.insert(src, id);
@@ -112,13 +110,6 @@ impl ExprCollector<'_> {
     // somehow.
     fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
         self.make_expr(expr, Err(SyntheticSyntax))
-    }
-    fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
-        let ptr = Either::Right(ptr);
-        let src = self.expander.to_source(ptr);
-        let id = self.make_expr(expr, Ok(src.clone()));
-        self.source_map.expr_map.insert(src, id);
-        id
     }
     fn empty_block(&mut self) -> ExprId {
         self.alloc_expr_desugared(Expr::Block { statements: Vec::new(), tail: None })
@@ -289,7 +280,7 @@ impl ExprCollector<'_> {
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
-                let src = self.expander.to_source(Either::Left(syntax_ptr));
+                let src = self.expander.to_source(syntax_ptr);
                 self.source_map.expr_map.insert(src, inner);
                 inner
             }
@@ -309,22 +300,13 @@ impl ExprCollector<'_> {
                             if !self.expander.is_cfg_enabled(&attrs) {
                                 return None;
                             }
+                            let name = field.field_name()?.as_name();
 
                             Some(RecordLitField {
-                                name: field
-                                    .name_ref()
-                                    .map(|nr| nr.as_name())
-                                    .unwrap_or_else(Name::missing),
-                                expr: if let Some(e) = field.expr() {
-                                    self.collect_expr(e)
-                                } else if let Some(nr) = field.name_ref() {
-                                    // field shorthand
-                                    self.alloc_expr_field_shorthand(
-                                        Expr::Path(Path::from_name_ref(&nr)),
-                                        AstPtr::new(&field),
-                                    )
-                                } else {
-                                    self.missing_expr()
+                                name,
+                                expr: match field.expr() {
+                                    Some(e) => self.collect_expr(e),
+                                    None => self.missing_expr(),
                                 },
                             })
                         })

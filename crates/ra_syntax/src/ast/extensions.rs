@@ -187,6 +187,36 @@ impl ast::StructDef {
     }
 }
 
+impl ast::RecordField {
+    pub fn for_field_name(field_name: &ast::NameRef) -> Option<ast::RecordField> {
+        let candidate =
+            field_name.syntax().parent().and_then(ast::RecordField::cast).or_else(|| {
+                field_name.syntax().ancestors().nth(4).and_then(ast::RecordField::cast)
+            })?;
+        if candidate.field_name().as_ref() == Some(field_name) {
+            Some(candidate)
+        } else {
+            None
+        }
+    }
+
+    /// Deals with field init shorthand
+    pub fn field_name(&self) -> Option<ast::NameRef> {
+        if let Some(name_ref) = self.name_ref() {
+            return Some(name_ref);
+        }
+        if let Some(ast::Expr::PathExpr(expr)) = self.expr() {
+            let path = expr.path()?;
+            let segment = path.segment()?;
+            let name_ref = segment.name_ref()?;
+            if path.qualifier().is_none() {
+                return Some(name_ref);
+            }
+        }
+        None
+    }
+}
+
 impl ast::EnumVariant {
     pub fn parent_enum(&self) -> ast::EnumDef {
         self.syntax()
