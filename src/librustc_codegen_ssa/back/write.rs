@@ -104,6 +104,7 @@ pub struct ModuleConfig {
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
+
     // Miscellaneous flags.  These are mostly copied from command-line
     // options.
     pub verify_llvm_ir: bool,
@@ -118,77 +119,144 @@ pub struct ModuleConfig {
 }
 
 impl ModuleConfig {
-    fn new(passes: Vec<String>) -> ModuleConfig {
-        ModuleConfig {
-            passes,
-            opt_level: None,
-            opt_size: None,
-
-            pgo_gen: SwitchWithOptPath::Disabled,
-            pgo_use: None,
-
-            sanitizer: None,
-            sanitizer_recover: Default::default(),
-            sanitizer_memory_track_origins: 0,
-
-            emit_no_opt_bc: false,
-            emit_pre_lto_bc: false,
-            emit_bc: false,
-            emit_bc_compressed: false,
-            emit_ir: false,
-            emit_asm: false,
-            emit_obj: EmitObj::None,
-
-            verify_llvm_ir: false,
-            no_prepopulate_passes: false,
-            no_builtins: false,
-            time_module: true,
-            vectorize_loop: false,
-            vectorize_slp: false,
-            merge_functions: false,
-            inline_threshold: None,
-            new_llvm_pass_manager: None,
+    fn new(kind: ModuleKind, sess: &Session, no_builtins: bool) -> ModuleConfig {
+        // If it's a regular module, use `$regular`, otherwise use `$other`.
+        // `$regular` and `$other` are evaluated lazily.
+        macro_rules! if_regular {
+            ($regular: expr, $other: expr) => {
+                if let ModuleKind::Regular = kind { $regular } else { $other }
+            };
         }
-    }
 
-    fn set_flags(&mut self, sess: &Session, no_builtins: bool) {
-        self.verify_llvm_ir = sess.verify_llvm_ir();
-        self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
-        self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
-        self.inline_threshold = sess.opts.cg.inline_threshold;
-        self.new_llvm_pass_manager = sess.opts.debugging_opts.new_llvm_pass_manager;
+        let opt_level_and_size = if_regular!(Some(sess.opts.optimize), None);
 
-        // Copy what clang does by turning on loop vectorization at O2 and
-        // slp vectorization at O3. Otherwise configure other optimization aspects
-        // of this pass manager builder.
-        self.vectorize_loop = !sess.opts.cg.no_vectorize_loops
-            && (sess.opts.optimize == config::OptLevel::Default
-                || sess.opts.optimize == config::OptLevel::Aggressive);
+        let save_temps = sess.opts.cg.save_temps;
 
-        self.vectorize_slp =
-            !sess.opts.cg.no_vectorize_slp && sess.opts.optimize == config::OptLevel::Aggressive;
+        let should_emit_obj = sess.opts.output_types.contains_key(&OutputType::Exe)
+            || match kind {
+                ModuleKind::Regular => sess.opts.output_types.contains_key(&OutputType::Object),
+                ModuleKind::Allocator => false,
+                ModuleKind::Metadata => sess.opts.output_types.contains_key(&OutputType::Metadata),
+            };
 
-        // Some targets (namely, NVPTX) interact badly with the MergeFunctions
-        // pass. This is because MergeFunctions can generate new function calls
-        // which may interfere with the target calling convention; e.g. for the
-        // NVPTX target, PTX kernels should not call other PTX kernels.
-        // MergeFunctions can also be configured to generate aliases instead,
-        // but aliases are not supported by some backends (again, NVPTX).
-        // Therefore, allow targets to opt out of the MergeFunctions pass,
-        // but otherwise keep the pass enabled (at O2 and O3) since it can be
-        // useful for reducing code size.
-        self.merge_functions = match sess
-            .opts
-            .debugging_opts
-            .merge_functions
-            .unwrap_or(sess.target.target.options.merge_functions)
+        let emit_obj = if !should_emit_obj {
+            EmitObj::None
+        } else if sess.target.target.options.obj_is_bitcode
+            || sess.opts.cg.linker_plugin_lto.enabled()
         {
-            MergeFunctions::Disabled => false,
-            MergeFunctions::Trampolines | MergeFunctions::Aliases => {
-                sess.opts.optimize == config::OptLevel::Default
-                    || sess.opts.optimize == config::OptLevel::Aggressive
+            EmitObj::Bitcode
+        } else if sess.opts.debugging_opts.embed_bitcode {
+            match sess.opts.optimize {
+                config::OptLevel::No | config::OptLevel::Less => {
+                    EmitObj::ObjectCode(BitcodeSection::Marker)
+                }
+                _ => EmitObj::ObjectCode(BitcodeSection::Full),
             }
+        } else {
+            EmitObj::ObjectCode(BitcodeSection::None)
         };
+
+        ModuleConfig {
+            passes: if_regular!(
+                {
+                    let mut passes = sess.opts.cg.passes.clone();
+                    if sess.opts.debugging_opts.profile {
+                        passes.push("insert-gcov-profiling".to_owned());
+                    }
+                    passes
+                },
+                vec![]
+            ),
+
+            opt_level: opt_level_and_size,
+            opt_size: opt_level_and_size,
+
+            pgo_gen: if_regular!(
+                sess.opts.cg.profile_generate.clone(),
+                SwitchWithOptPath::Disabled
+            ),
+            pgo_use: if_regular!(sess.opts.cg.profile_use.clone(), None),
+
+            sanitizer: if_regular!(sess.opts.debugging_opts.sanitizer.clone(), None),
+            sanitizer_recover: if_regular!(
+                sess.opts.debugging_opts.sanitizer_recover.clone(),
+                vec![]
+            ),
+            sanitizer_memory_track_origins: if_regular!(
+                sess.opts.debugging_opts.sanitizer_memory_track_origins,
+                0
+            ),
+
+            emit_pre_lto_bc: if_regular!(
+                save_temps || need_pre_lto_bitcode_for_incr_comp(sess),
+                false
+            ),
+            emit_no_opt_bc: if_regular!(save_temps, false),
+            emit_bc: if_regular!(
+                save_temps || sess.opts.output_types.contains_key(&OutputType::Bitcode),
+                save_temps
+            ),
+            emit_bc_compressed: match kind {
+                ModuleKind::Regular | ModuleKind::Allocator => {
+                    // Emit compressed bitcode files for the crate if we're
+                    // emitting an rlib. Whenever an rlib is created, the
+                    // bitcode is inserted into the archive in order to allow
+                    // LTO against it.
+                    need_crate_bitcode_for_rlib(sess)
+                }
+                ModuleKind::Metadata => false,
+            },
+            emit_ir: if_regular!(
+                sess.opts.output_types.contains_key(&OutputType::LlvmAssembly),
+                false
+            ),
+            emit_asm: if_regular!(
+                sess.opts.output_types.contains_key(&OutputType::Assembly),
+                false
+            ),
+            emit_obj,
+
+            verify_llvm_ir: sess.verify_llvm_ir(),
+            no_prepopulate_passes: sess.opts.cg.no_prepopulate_passes,
+            no_builtins: no_builtins || sess.target.target.options.no_builtins,
+
+            // Exclude metadata and allocator modules from time_passes output,
+            // since they throw off the "LLVM passes" measurement.
+            time_module: if_regular!(true, false),
+
+            // Copy what clang does by turning on loop vectorization at O2 and
+            // slp vectorization at O3.
+            vectorize_loop: !sess.opts.cg.no_vectorize_loops
+                && (sess.opts.optimize == config::OptLevel::Default
+                    || sess.opts.optimize == config::OptLevel::Aggressive),
+            vectorize_slp: !sess.opts.cg.no_vectorize_slp
+                && sess.opts.optimize == config::OptLevel::Aggressive,
+
+            // Some targets (namely, NVPTX) interact badly with the
+            // MergeFunctions pass. This is because MergeFunctions can generate
+            // new function calls which may interfere with the target calling
+            // convention; e.g. for the NVPTX target, PTX kernels should not
+            // call other PTX kernels. MergeFunctions can also be configured to
+            // generate aliases instead, but aliases are not supported by some
+            // backends (again, NVPTX). Therefore, allow targets to opt out of
+            // the MergeFunctions pass, but otherwise keep the pass enabled (at
+            // O2 and O3) since it can be useful for reducing code size.
+            merge_functions: match sess
+                .opts
+                .debugging_opts
+                .merge_functions
+                .unwrap_or(sess.target.target.options.merge_functions)
+            {
+                MergeFunctions::Disabled => false,
+                MergeFunctions::Trampolines | MergeFunctions::Aliases => {
+                    sess.opts.optimize == config::OptLevel::Default
+                        || sess.opts.optimize == config::OptLevel::Aggressive
+                }
+            },
+
+            inline_threshold: sess.opts.cg.inline_threshold,
+            new_llvm_pass_manager: sess.opts.debugging_opts.new_llvm_pass_manager,
+        }
     }
 
     pub fn bitcode_needed(&self) -> bool {
@@ -353,99 +421,9 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let linker_info = LinkerInfo::new(tcx);
     let crate_info = CrateInfo::new(tcx);
 
-    // Figure out what we actually need to build.
-    let mut modules_config = ModuleConfig::new(sess.opts.cg.passes.clone());
-    let mut metadata_config = ModuleConfig::new(vec![]);
-    let mut allocator_config = ModuleConfig::new(vec![]);
-
-    if sess.opts.debugging_opts.profile {
-        modules_config.passes.push("insert-gcov-profiling".to_owned())
-    }
-
-    modules_config.pgo_gen = sess.opts.cg.profile_generate.clone();
-    modules_config.pgo_use = sess.opts.cg.profile_use.clone();
-    modules_config.sanitizer = sess.opts.debugging_opts.sanitizer.clone();
-    modules_config.sanitizer_recover = sess.opts.debugging_opts.sanitizer_recover.clone();
-    modules_config.sanitizer_memory_track_origins =
-        sess.opts.debugging_opts.sanitizer_memory_track_origins;
-    modules_config.opt_level = Some(sess.opts.optimize);
-    modules_config.opt_size = Some(sess.opts.optimize);
-
-    // Save all versions of the bytecode if we're saving our temporaries.
-    if sess.opts.cg.save_temps {
-        modules_config.emit_no_opt_bc = true;
-        modules_config.emit_pre_lto_bc = true;
-        modules_config.emit_bc = true;
-        metadata_config.emit_bc = true;
-        allocator_config.emit_bc = true;
-    }
-
-    // Emit compressed bitcode files for the crate if we're emitting an rlib.
-    // Whenever an rlib is created, the bitcode is inserted into the archive in
-    // order to allow LTO against it.
-    if need_crate_bitcode_for_rlib(sess) {
-        modules_config.emit_bc_compressed = true;
-        allocator_config.emit_bc_compressed = true;
-    }
-
-    let emit_obj =
-        if sess.target.target.options.obj_is_bitcode || sess.opts.cg.linker_plugin_lto.enabled() {
-            EmitObj::Bitcode
-        } else if sess.opts.debugging_opts.embed_bitcode {
-            match sess.opts.optimize {
-                config::OptLevel::No | config::OptLevel::Less => {
-                    EmitObj::ObjectCode(BitcodeSection::Marker)
-                }
-                _ => EmitObj::ObjectCode(BitcodeSection::Full),
-            }
-        } else {
-            EmitObj::ObjectCode(BitcodeSection::None)
-        };
-
-    modules_config.emit_pre_lto_bc = need_pre_lto_bitcode_for_incr_comp(sess);
-
-    for output_type in sess.opts.output_types.keys() {
-        match *output_type {
-            OutputType::Bitcode => {
-                modules_config.emit_bc = true;
-            }
-            OutputType::LlvmAssembly => {
-                modules_config.emit_ir = true;
-            }
-            OutputType::Assembly => {
-                modules_config.emit_asm = true;
-                // If we're not using the LLVM assembler, this function
-                // could be invoked specially with output_type_assembly, so
-                // in this case we still want the metadata object file.
-                if !sess.opts.output_types.contains_key(&OutputType::Assembly) {
-                    metadata_config.emit_obj = emit_obj;
-                    allocator_config.emit_obj = emit_obj;
-                }
-            }
-            OutputType::Object => {
-                modules_config.emit_obj = emit_obj;
-            }
-            OutputType::Metadata => {
-                metadata_config.emit_obj = emit_obj;
-            }
-            OutputType::Exe => {
-                modules_config.emit_obj = emit_obj;
-                metadata_config.emit_obj = emit_obj;
-                allocator_config.emit_obj = emit_obj;
-            }
-            OutputType::Mir => {}
-            OutputType::DepInfo => {}
-        }
-    }
-
-    modules_config.set_flags(sess, no_builtins);
-    metadata_config.set_flags(sess, no_builtins);
-    allocator_config.set_flags(sess, no_builtins);
-
-    // Exclude metadata and allocator modules from time_passes output, since
-    // they throw off the "LLVM passes" measurement.
-    metadata_config.time_module = false;
-    allocator_config.time_module = false;
+    let regular_config = ModuleConfig::new(ModuleKind::Regular, sess, no_builtins);
+    let metadata_config = ModuleConfig::new(ModuleKind::Metadata, sess, no_builtins);
+    let allocator_config = ModuleConfig::new(ModuleKind::Allocator, sess, no_builtins);
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (codegen_worker_send, codegen_worker_receive) = channel();
@@ -459,7 +437,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         coordinator_receive,
         total_cgus,
         sess.jobserver.clone(),
-        Arc::new(modules_config),
+        Arc::new(regular_config),
         Arc::new(metadata_config),
         Arc::new(allocator_config),
         coordinator_send.clone(),
@@ -959,7 +937,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
     total_cgus: usize,
     jobserver: Client,
-    modules_config: Arc<ModuleConfig>,
+    regular_config: Arc<ModuleConfig>,
     metadata_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
     tx_to_llvm_workers: Sender<Box<dyn Any + Send>>,
@@ -1042,7 +1020,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         coordinator_send,
         diag_emitter: shared_emitter.clone(),
         output_filenames: tcx.output_filenames(LOCAL_CRATE),
-        regular_module_config: modules_config,
+        regular_module_config: regular_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
         tm_factory: TargetMachineFactory(backend.target_machine_factory(tcx.sess, ol, false)),
