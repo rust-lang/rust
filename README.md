@@ -269,6 +269,7 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [`Vec::push` invalidating existing references into the vector](https://github.com/rust-lang/rust/issues/60847)
 * [`align_to_mut` violating uniqueness of mutable references](https://github.com/rust-lang/rust/issues/68549)
 * [Aliasing mutable references in `sized-chunks`](https://github.com/bodil/sized-chunks/issues/8)
+* [`String::push_str` invalidating existing references into the string](https://github.com/rust-lang/rust/issues/70301)
 
 ## License
 
