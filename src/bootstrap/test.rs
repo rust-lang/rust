@@ -628,8 +628,9 @@ impl Step for RustdocJSStd {
             let mut command = Command::new(nodejs);
             command
                 .arg(builder.src.join("src/tools/rustdoc-js/tester.js"))
-                .arg("--std")
-                .arg("--version")
+                .arg("--crate-name")
+                .arg("std")
+                .arg("--resource-suffix")
                 .arg(crate::channel::CFG_RELEASE_NUM)
                 .arg("--doc-folder")
                 .arg(builder.doc_out(self.target))

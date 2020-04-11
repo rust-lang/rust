@@ -2807,11 +2807,15 @@ impl<'test> TestCx<'test> {
             self.document(&out_dir);
 
             let root = self.config.find_rust_src_root().unwrap();
+            let file_stem =
+                self.testpaths.file.file_stem().and_then(|f| f.to_str()).expect("no file stem");
             let res = self.cmd2procres(
                 Command::new(&nodejs)
                     .arg(root.join("src/tools/rustdoc-js/tester.js"))
                     .arg("--doc-folder")
-                    .arg(out_dir.parent().expect("no parent"))
+                    .arg(out_dir)
+                    .arg("--crate-name")
+                    .arg(file_stem.replace("-", "_"))
                     .arg("--test-file")
                     .arg(self.testpaths.file.with_extension("js")),
             );

@@ -224,7 +224,7 @@ function loadMainJsAndIndex(mainJs, aliases, searchIndex, crate) {
     }
     searchIndex.pop();
     searchIndex = loadContent(searchIndex.join("\n") + '\nexports.searchIndex = searchIndex;');
-    finalJS = "";
+    var finalJS = "";
 
     var arraysToLoad = ["itemTypes"];
     var variablesToLoad = ["MAX_LEV_DISTANCE", "MAX_RESULTS", "NO_TYPE_FILTER",
@@ -306,52 +306,53 @@ function runChecks(testFile, loaded, index) {
     return errors;
 }
 
-function load_files(doc_folder, version, crate) {
-    var mainJs = readFile(doc_folder + "/main" + version + ".js");
-    var aliases = readFile(doc_folder + "/aliases" + version + ".js");
-    var searchIndex = readFile(doc_folder + "/search-index" + version + ".js").split("\n");
+function load_files(doc_folder, resource_suffix, crate) {
+    var mainJs = readFile(path.join(doc_folder, "main" + resource_suffix + ".js"));
+    var aliases = readFile(path.join(doc_folder, "aliases" + resource_suffix + ".js"));
+    var searchIndex = readFile(
+        path.join(doc_folder, "search-index" + resource_suffix + ".js")).split("\n");
 
     return loadMainJsAndIndex(mainJs, aliases, searchIndex, crate);
 }
 
 function showHelp() {
     console.log("rustdoc-js options:");
-    console.log("  --doc-folder [PATH] : location of the generated doc folder");
-    console.log("  --help              : show this message then quit");
-    console.log("  --std               : to run std tests");
-    console.log("  --test-file   [PATH]: location of the JS test file");
-    console.log("  --test-folder [PATH]: location of the JS tests folder");
-    console.log("  --version [STRING]  : version used when generating docs (used to get js files)");
+    console.log("  --doc-folder [PATH]        : location of the generated doc folder");
+    console.log("  --help                     : show this message then quit");
+    console.log("  --crate-name [STRING]      : crate name to be used");
+    console.log("  --test-file [PATH]         : location of the JS test file");
+    console.log("  --test-folder [PATH]       : location of the JS tests folder");
+    console.log("  --resource-suffix [STRING] : suffix to refer to the correct files");
 }
 
 function parseOptions(args) {
     var opts = {
-        "is_std": false,
-        "version": "",
+        "crate_name": "",
+        "resource_suffix": "",
         "doc_folder": "",
         "test_folder": "",
         "test_file": "",
     };
     var correspondances = {
-        "--version": "version",
+        "--resource-suffix": "resource_suffix",
         "--doc-folder": "doc_folder",
         "--test-folder": "test_folder",
         "--test-file": "test_file",
+        "--crate-name": "crate_name",
     };
 
     for (var i = 0; i < args.length; ++i) {
-        if (args[i] === "--version"
+        if (args[i] === "--resource-suffix"
             || args[i] === "--doc-folder"
             || args[i] === "--test-folder"
-            || args[i] === "--test-file") {
+            || args[i] === "--test-file"
+            || args[i] === "--crate-name") {
             i += 1;
             if (i >= args.length) {
                 console.error("Missing argument after `" + args[i - 1] + "` option.");
                 return null;
             }
             opts[correspondances[args[i - 1]]] = args[i];
-        } else if (args[i] === "--std") {
-            opts["is_std"] = true;
         } else if (args[i] === "--help") {
             showHelp();
             process.exit(0);
@@ -363,28 +364,20 @@ function parseOptions(args) {
     }
     if (opts["doc_folder"].length < 1) {
         console.error("Missing `--doc-folder` option.");
-        return null;
+    } else if (opts["crate_name"].length < 1) {
+        console.error("Missing `--crate-name` option.");
     } else if (opts["test_folder"].length < 1 && opts["test_file"].length < 1) {
         console.error("At least one of `--test-folder` or `--test-file` option is required.");
-        return null;
-    } else if (opts["is_std"] === true && opts["test_file"].length !== 0) {
-        console.error("`--std` and `--test-file` options can't be used at the same time.")
+    } else {
+        return opts;
     }
-    return opts;
+    return null;
 }
 
-function checkFile(test_file, opts, std_loaded, std_index) {
+function checkFile(test_file, opts, loaded, index) {
     const test_name = path.basename(test_file, ".js");
 
     process.stdout.write('Checking "' + test_name + '" ... ');
-
-    var loaded = std_loaded;
-    var index = std_index;
-    if (opts["is_std"] !== true) {
-        var tmp = load_files(path.join(opts["doc_folder"], test_name), opts["version"], test_name);
-        loaded = tmp[0];
-        index = tmp[1];
-    }
     return runChecks(test_file, loaded, index);
 }
 
@@ -394,25 +387,21 @@ function main(argv) {
         return 1;
     }
 
-    var std_loaded = null;
-    var std_index = null;
-    if (opts["is_std"] === true) {
-        var tmp = load_files(opts["doc_folder"], opts["version"], "std");
-        std_loaded = tmp[0];
-        std_index = tmp[1];
-    }
-
+    var [loaded, index] = load_files(
+        opts["doc_folder"],
+        opts["resource_suffix"],
+        opts["crate_name"]);
     var errors = 0;
 
     if (opts["test_file"].length !== 0) {
-        errors += checkFile(opts["test_file"], opts, null, null);
+        errors += checkFile(opts["test_file"], opts, loaded, index);
     }
     if (opts["test_folder"].length !== 0) {
         fs.readdirSync(opts["test_folder"]).forEach(function(file) {
             if (!file.endsWith(".js")) {
                 return;
             }
-            errors += checkFile(path.join(opts["test_folder"], file), opts, std_loaded, std_index);
+            errors += checkFile(path.join(opts["test_folder"], file), opts, loaded, index);
         });
     }
     return errors > 0 ? 1 : 0;
