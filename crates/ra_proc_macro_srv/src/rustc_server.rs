@@ -34,6 +34,10 @@ impl TokenStream {
         TokenStream { subtree: Default::default() }
     }
 
+    pub fn with_subtree(subtree: tt::Subtree) -> Self {
+        TokenStream { subtree }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.subtree.token_trees.is_empty()
     }

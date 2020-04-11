@@ -1,0 +1,188 @@
+SUBTREE $
+  PUNCH   # [alone] 4294967295
+  SUBTREE [] 4294967295
+    IDENT   allow 4294967295
+    SUBTREE () 4294967295
+      IDENT   non_upper_case_globals 4294967295
+      PUNCH   , [alone] 4294967295
+      IDENT   unused_attributes 4294967295
+      PUNCH   , [alone] 4294967295
+      IDENT   unused_qualifications 4294967295
+  IDENT   const 4294967295
+  IDENT   _IMPL_SERIALIZE_FOR_Foo 4294967295
+  PUNCH   : [alone] 4294967295
+  SUBTREE () 4294967295
+  PUNCH   = [alone] 4294967295
+  SUBTREE {} 4294967295
+    PUNCH   # [alone] 4294967295
+    SUBTREE [] 4294967295
+      IDENT   allow 4294967295
+      SUBTREE () 4294967295
+        IDENT   unknown_lints 4294967295
+    PUNCH   # [alone] 4294967295
+    SUBTREE [] 4294967295
+      IDENT   cfg_attr 4294967295
+      SUBTREE () 4294967295
+        IDENT   feature 4294967295
+        PUNCH   = [alone] 4294967295
+        SUBTREE $
+          LITERAL "cargo-clippy" 0
+        PUNCH   , [alone] 4294967295
+        IDENT   allow 4294967295
+        SUBTREE () 4294967295
+          IDENT   useless_attribute 4294967295
+    PUNCH   # [alone] 4294967295
+    SUBTREE [] 4294967295
+      IDENT   allow 4294967295
+      SUBTREE () 4294967295
+        IDENT   rust_2018_idioms 4294967295
+    IDENT   extern 4294967295
+    IDENT   crate 4294967295
+    IDENT   serde 4294967295
+    IDENT   as 4294967295
+    IDENT   _serde 4294967295
+    PUNCH   ; [alone] 4294967295
+    PUNCH   # [alone] 4294967295
+    SUBTREE [] 4294967295
+      IDENT   allow 4294967295
+      SUBTREE () 4294967295
+        IDENT   unused_macros 4294967295
+    IDENT   macro_rules 4294967295
+    PUNCH   ! [alone] 4294967295
+    IDENT   try 4294967295
+    SUBTREE {} 4294967295
+      SUBTREE () 4294967295
+        PUNCH   $ [alone] 4294967295
+        IDENT   __expr 4294967295
+        PUNCH   : [alone] 4294967295
+        IDENT   expr 4294967295
+      PUNCH   = [joint] 4294967295
+      PUNCH   > [alone] 4294967295
+      SUBTREE {} 4294967295
+        IDENT   match 4294967295
+        PUNCH   $ [alone] 4294967295
+        IDENT   __expr 4294967295
+        SUBTREE {} 4294967295
+          IDENT   _serde 4294967295
+          PUNCH   : [joint] 4294967295
+          PUNCH   : [alone] 4294967295
+          IDENT   export 4294967295
+          PUNCH   : [joint] 4294967295
+          PUNCH   : [alone] 4294967295
+          IDENT   Ok 4294967295
+          SUBTREE () 4294967295
+            IDENT   __val 4294967295
+          PUNCH   = [joint] 4294967295
+          PUNCH   > [alone] 4294967295
+          IDENT   __val 4294967295
+          PUNCH   , [alone] 4294967295
+          IDENT   _serde 4294967295
+          PUNCH   : [joint] 4294967295
+          PUNCH   : [alone] 4294967295
+          IDENT   export 4294967295
+          PUNCH   : [joint] 4294967295
+          PUNCH   : [alone] 4294967295
+          IDENT   Err 4294967295
+          SUBTREE () 4294967295
+            IDENT   __err 4294967295
+          PUNCH   = [joint] 4294967295
+          PUNCH   > [alone] 4294967295
+          SUBTREE {} 4294967295
+            IDENT   return 4294967295
+            IDENT   _serde 4294967295
+            PUNCH   : [joint] 4294967295
+            PUNCH   : [alone] 4294967295
+            IDENT   export 4294967295
+            PUNCH   : [joint] 4294967295
+            PUNCH   : [alone] 4294967295
+            IDENT   Err 4294967295
+            SUBTREE () 4294967295
+              IDENT   __err 4294967295
+            PUNCH   ; [alone] 4294967295
+    PUNCH   # [alone] 4294967295
+    SUBTREE [] 4294967295
+      IDENT   automatically_derived 4294967295
+    IDENT   impl 4294967295
+    IDENT   _serde 4294967295
+    PUNCH   : [joint] 4294967295
+    PUNCH   : [alone] 4294967295
+    IDENT   Serialize 4294967295
+    IDENT   for 4294967295
+    IDENT   Foo 1
+    SUBTREE {} 4294967295
+      IDENT   fn 4294967295
+      IDENT   serialize 4294967295
+      PUNCH   < [alone] 4294967295
+      IDENT   __S 4294967295
+      PUNCH   > [alone] 4294967295
+      SUBTREE () 4294967295
+        PUNCH   & [alone] 4294967295
+        IDENT   self 4294967295
+        PUNCH   , [alone] 4294967295
+        IDENT   __serializer 4294967295
+        PUNCH   : [alone] 4294967295
+        IDENT   __S 4294967295
+      PUNCH   - [joint] 4294967295
+      PUNCH   > [alone] 4294967295
+      IDENT   _serde 4294967295
+      PUNCH   : [joint] 4294967295
+      PUNCH   : [alone] 4294967295
+      IDENT   export 4294967295
+      PUNCH   : [joint] 4294967295
+      PUNCH   : [alone] 4294967295
+      IDENT   Result 4294967295
+      PUNCH   < [alone] 4294967295
+      IDENT   __S 4294967295
+      PUNCH   : [joint] 4294967295
+      PUNCH   : [alone] 4294967295
+      IDENT   Ok 4294967295
+      PUNCH   , [alone] 4294967295
+      IDENT   __S 4294967295
+      PUNCH   : [joint] 4294967295
+      PUNCH   : [alone] 4294967295
+      IDENT   Error 4294967295
+      PUNCH   > [alone] 4294967295
+      IDENT   where 4294967295
+      IDENT   __S 4294967295
+      PUNCH   : [alone] 4294967295
+      IDENT   _serde 4294967295
+      PUNCH   : [joint] 4294967295
+      PUNCH   : [alone] 4294967295
+      IDENT   Serializer 4294967295
+      PUNCH   , [alone] 4294967295
+      SUBTREE {} 4294967295
+        IDENT   let 4294967295
+        IDENT   __serde_state 4294967295
+        PUNCH   = [alone] 4294967295
+        IDENT   try 4294967295
+        PUNCH   ! [alone] 4294967295
+        SUBTREE () 4294967295
+          IDENT   _serde 4294967295
+          PUNCH   : [joint] 4294967295
+          PUNCH   : [alone] 4294967295
+          IDENT   Serializer 4294967295
+          PUNCH   : [joint] 4294967295
+          PUNCH   : [alone] 4294967295
+          IDENT   serialize_struct 4294967295
+          SUBTREE () 4294967295
+            IDENT   __serializer 4294967295
+            PUNCH   , [alone] 4294967295
+            LITERAL "Foo" 4294967295
+            PUNCH   , [alone] 4294967295
+            IDENT   false 4294967295
+            IDENT   as 4294967295
+            IDENT   usize 4294967295
+        PUNCH   ; [alone] 4294967295
+        IDENT   _serde 4294967295
+        PUNCH   : [joint] 4294967295
+        PUNCH   : [alone] 4294967295
+        IDENT   ser 4294967295
+        PUNCH   : [joint] 4294967295
+        PUNCH   : [alone] 4294967295
+        IDENT   SerializeStruct 4294967295
+        PUNCH   : [joint] 4294967295
+        PUNCH   : [alone] 4294967295
+        IDENT   end 4294967295
+        SUBTREE () 4294967295
+          IDENT   __serde_state 4294967295
+  PUNCH   ; [alone] 4294967295
