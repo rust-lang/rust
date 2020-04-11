@@ -208,9 +208,20 @@ mod tests {
         }
     }
 
-    fn call_info(text: &str) -> CallInfo {
+    fn call_info_helper(text: &str) -> Option<CallInfo> {
         let (analysis, position) = single_file_with_position(text);
-        analysis.call_info(position).unwrap().unwrap()
+        analysis.call_info(position).unwrap()
+    }
+
+    fn call_info(text: &str) -> CallInfo {
+        let info = call_info_helper(text);
+        assert!(info.is_some());
+        info.unwrap()
+    }
+
+    fn no_call_info(text: &str) {
+        let info = call_info_helper(text);
+        assert!(info.is_none());
     }
 
     #[test]
@@ -558,9 +569,8 @@ fn main() {
     }
 
     #[test]
-    #[should_panic]
     fn cant_call_named_structs() {
-        let _ = call_info(
+        no_call_info(
             r#"
 struct TS { x: u32, y: i32 }
 fn main() {
@@ -594,9 +604,8 @@ fn main() {
     }
 
     #[test]
-    #[should_panic]
     fn cant_call_enum_records() {
-        let _ = call_info(
+        no_call_info(
             r#"
 enum E {
     /// A Variant
