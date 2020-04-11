@@ -8,11 +8,22 @@ Language
 
 **Syntax only changes**
 - [Allow `type Foo: Ord` syntactically.][69361]
-- [Unify item parsing & filter illegal item kinds.][69366]
 - [Fuse associated and extern items up to defaultness.][69194]
 - [Permit attributes on `if` expressions.][69201]
 - [Syntactically allow `self` in all `fn` contexts.][68764]
 - [Merge `fn` syntax + cleanup item parsing.][68728]
+- [`item` macro fragments can be interpolated into `trait`s, `impl`s, and `extern` blocks.][69366]
+  For example, you may now write:
+  ```rust 
+  macro_rules! mac_trait {
+      ($i:item) => {
+          trait T { $i }
+      }
+  }
+  mac_trait! {
+      fn foo() {}
+  }
+  ```
 
 These are still rejected *semantically*, so you will likely receive an error but
 these changes can be seen and parsed by macros and
@@ -79,7 +90,6 @@ Compatibility Notes
   has been a warning since 1.36.0.
 - [Fixed `Self` not having the correctly inferred type.][69340] This incorrectly
   led to some instances being accepted, and now correctly emits a hard error.
-- [][]
 
 [69340]: https://github.com/rust-lang/rust/pull/69340
 
