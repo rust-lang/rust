@@ -1315,8 +1315,9 @@ mod tests {
             }
         ";
 
-        // Match arms with the incorrect type are filtered out.
-        check_diagnostic(content);
+        // Match statements with arms that don't match the
+        // expression pattern do not fire this diagnostic.
+        check_no_diagnostic(content);
     }
 
     #[test]
@@ -1330,8 +1331,9 @@ mod tests {
             }
         ";
 
-        // Match arms with the incorrect type are filtered out.
-        check_diagnostic(content);
+        // Match statements with arms that don't match the
+        // expression pattern do not fire this diagnostic.
+        check_no_diagnostic(content);
     }
 
     #[test]
@@ -1344,8 +1346,9 @@ mod tests {
             }
         ";
 
-        // Match arms with the incorrect type are filtered out.
-        check_diagnostic(content);
+        // Match statements with arms that don't match the
+        // expression pattern do not fire this diagnostic.
+        check_no_diagnostic(content);
     }
 
     #[test]
