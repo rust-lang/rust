@@ -23,9 +23,6 @@ pub fn opts() -> TargetOptions {
         // will fail if the compiler ever tries placing code on the stack (e.g., trampoline
         // constructs and alike).
         "/NXCOMPAT".to_string(),
-        // There is no runtime for UEFI targets, prevent them from being linked. UEFI targets
-        // must be freestanding.
-        "/nodefaultlib".to_string(),
         // Non-standard subsystems have no default entry-point in PE+ files. We have to define
         // one. "efi_main" seems to be a common choice amongst other implementations and the
         // spec.
