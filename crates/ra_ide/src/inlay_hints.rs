@@ -235,7 +235,10 @@ fn should_show_param_hint(
     param_name: &str,
     argument: &ast::Expr,
 ) -> bool {
-    if param_name.is_empty() || is_argument_similar_to_param(argument, param_name) {
+    if param_name.is_empty()
+        || is_argument_similar_to_param(argument, param_name)
+        || Some(param_name) == fn_signature.name.as_ref().map(String::as_str)
+    {
         return false;
     }
 
@@ -247,10 +250,7 @@ fn should_show_param_hint(
 
     // avoid displaying hints for common functions like map, filter, etc.
     // or other obvious words used in std
-    if parameters_len == 1 && is_obvious_param(param_name) {
-        return false;
-    }
-    true
+    parameters_len != 1 || !is_obvious_param(param_name)
 }
 
 fn is_argument_similar_to_param(argument: &ast::Expr, param_name: &str) -> bool {
@@ -1086,12 +1086,16 @@ impl Test {
     }
 
     fn no_hints_expected(&self, _: i32, test_var: i32) {}
+
+    fn frob(&self, frob: bool) {}
 }
 
 struct Param {}
 
 fn different_order(param: &Param) {}
 fn different_order_mut(param: &mut Param) {}
+
+fn twiddle(twiddle: bool) {}
 
 fn main() {
     let container: TestVarContainer = TestVarContainer { test_var: 42 };
@@ -1105,6 +1109,9 @@ fn main() {
     let test_var: i32 = 55;
     test_processed.no_hints_expected(22, test_var);
     test_processed.no_hints_expected(33, container.test_var);
+    test_processed.frob(false);
+
+    twiddle(true);
 
     let param_begin: Param = Param {};
     different_order(&param_begin);
