@@ -9,10 +9,10 @@ use crate::unify_log as ul;
 
 use ena::undo_log::{Rollback, Snapshots, UndoLogs};
 
-enum UndoLog<K: ut::UnifyKey, I> {
+pub enum UndoLog<K: ut::UnifyKey, I = K> {
     Relation(sv::UndoLog<ut::Delegate<K>>),
     UnifyLog(ul::Undo<I>),
-    ModifiedSet(ms::Undo),
+    ModifiedSet(ms::Undo<I>),
 }
 
 impl<K: ut::UnifyKey, I> From<sv::UndoLog<ut::Delegate<K>>> for UndoLog<K, I> {
@@ -27,8 +27,8 @@ impl<K: ut::UnifyKey, I> From<ul::Undo<I>> for UndoLog<K, I> {
     }
 }
 
-impl<K: ut::UnifyKey, I> From<ms::Undo> for UndoLog<K, I> {
-    fn from(l: ms::Undo) -> Self {
+impl<K: ut::UnifyKey, I> From<ms::Undo<I>> for UndoLog<K, I> {
+    fn from(l: ms::Undo<I>) -> Self {
         UndoLog::ModifiedSet(l)
     }
 }
@@ -56,6 +56,10 @@ where
             self.logs.push(undo.into())
         }
     }
+    fn clear(&mut self) {
+        self.logs.clear();
+        self.num_open_snapshots = 0;
+    }
     fn extend<J>(&mut self, undos: J)
     where
         Self: Sized,
@@ -67,13 +71,7 @@ where
     }
 }
 
-struct RollbackView<'a, K: ut::UnifyKey, I: Idx> {
-    relations: &'a mut ut::UnificationStorage<K>,
-    unify_log: &'a mut ul::UnifyLog<I>,
-    modified_set: &'a mut ms::ModifiedSet<I>,
-}
-
-impl<K: ut::UnifyKey, I: Idx> Rollback<UndoLog<K, I>> for RollbackView<'_, K, I> {
+impl<K: ut::UnifyKey, I: Idx> Rollback<UndoLog<K, I>> for LoggedUnificationTableStorage<K, I> {
     fn reverse(&mut self, undo: UndoLog<K, I>) {
         match undo {
             UndoLog::Relation(undo) => self.relations.reverse(undo),
@@ -93,12 +91,18 @@ impl<K: ut::UnifyKey, I: Idx> Snapshots<UndoLog<K, I>> for Logs<K, I> {
         unreachable!()
     }
 
-    fn rollback_to(&mut self, values: &mut impl Rollback<UndoLog<K, I>>, snapshot: Self::Snapshot) {
+    fn rollback_to<R>(&mut self, values: impl FnOnce() -> R, snapshot: Self::Snapshot)
+    where
+        R: Rollback<UndoLog<K, I>>,
+    {
         debug!("rollback_to({})", snapshot.undo_len);
         self.assert_open_snapshot(&snapshot);
 
-        while self.logs.len() > snapshot.undo_len {
-            values.reverse(self.logs.pop().unwrap());
+        if self.logs.len() > snapshot.undo_len {
+            let mut values = values();
+            while self.logs.len() > snapshot.undo_len {
+                values.reverse(self.logs.pop().unwrap());
+            }
         }
 
         if self.num_open_snapshots == 1 {
@@ -135,14 +139,18 @@ impl<K: ut::UnifyKey, I: Idx> Logs<K, I> {
     }
 }
 
-pub struct LoggedUnificationTable<K: ut::UnifyKey, I: Idx = K> {
-    relations: ut::UnificationStorage<K>,
+pub struct LoggedUnificationTableStorage<K: ut::UnifyKey, I: Idx = K> {
+    relations: ut::UnificationTableStorage<K>,
     unify_log: ul::UnifyLog<I>,
     modified_set: ms::ModifiedSet<I>,
-    undo_log: Logs<K, I>,
 }
 
-impl<K, I> LoggedUnificationTable<K, I>
+pub struct LoggedUnificationTable<'a, K: ut::UnifyKey, I: Idx, L> {
+    storage: &'a mut LoggedUnificationTableStorage<K, I>,
+    undo_log: L,
+}
+
+impl<K, I> LoggedUnificationTableStorage<K, I>
 where
     K: ut::UnifyKey + From<I>,
     I: Idx + From<K>,
@@ -152,14 +160,34 @@ where
             relations: Default::default(),
             unify_log: ul::UnifyLog::new(),
             modified_set: ms::ModifiedSet::new(),
-            undo_log: Logs::default(),
         }
     }
 
+    pub fn with_log<L>(&mut self, undo_log: L) -> LoggedUnificationTable<'_, K, I, L> {
+        LoggedUnificationTable { storage: self, undo_log }
+    }
+}
+
+impl<K, I, L> LoggedUnificationTable<'_, K, I, L>
+where
+    K: ut::UnifyKey,
+    I: Idx,
+{
+    pub fn len(&self) -> usize {
+        self.storage.relations.len()
+    }
+}
+
+impl<K, I, L> LoggedUnificationTable<'_, K, I, L>
+where
+    K: ut::UnifyKey + From<I>,
+    I: Idx + From<K>,
+    L: UndoLogs<ms::Undo<I>> + UndoLogs<ul::Undo<I>> + UndoLogs<sv::UndoLog<ut::Delegate<K>>>,
+{
     fn relations(
         &mut self,
-    ) -> ut::UnificationTable<ut::InPlace<K, &mut ut::UnificationStorage<K>, &mut Logs<K, I>>> {
-        ut::UnificationTable::with_log(&mut self.relations, &mut self.undo_log)
+    ) -> ut::UnificationTable<ut::InPlace<K, &mut ut::UnificationStorage<K>, &mut L>> {
+        ut::UnificationTable::with_log(&mut self.storage.relations, &mut self.undo_log)
     }
 
     pub fn unify(&mut self, a: I, b: I)
@@ -173,9 +201,9 @@ where
     where
         K::Value: ut::UnifyValue<Error = ut::NoError>,
     {
-        if self.unify_log.needs_log(vid) {
+        if self.storage.unify_log.needs_log(vid) {
             warn!("ModifiedSet {:?} => {:?}", vid, ty);
-            self.modified_set.set(&mut self.undo_log, vid);
+            self.storage.modified_set.set(&mut self.undo_log, vid);
         }
         let vid = vid.into();
         let mut relations = self.relations();
@@ -195,8 +223,8 @@ where
         value: K::Value,
     ) -> Result<(), <K::Value as ut::UnifyValue>::Error> {
         let vid = self.find(vid).into();
-        if self.unify_log.needs_log(vid) {
-            self.modified_set.set(&mut self.undo_log, vid);
+        if self.storage.unify_log.needs_log(vid) {
+            self.storage.modified_set.set(&mut self.undo_log, vid);
         }
         self.relations().unify_var_value(vid, value)
     }
@@ -212,9 +240,9 @@ where
         relations.unify_var_var(a, b)?;
 
         if a == relations.find(a) {
-            self.unify_log.unify(&mut self.undo_log, a.into(), b.into());
+            self.storage.unify_log.unify(&mut self.undo_log, a.into(), b.into());
         } else {
-            self.unify_log.unify(&mut self.undo_log, b.into(), a.into());
+            self.storage.unify_log.unify(&mut self.undo_log, b.into(), a.into());
         }
         Ok(())
     }
@@ -240,14 +268,11 @@ where
         self.relations().new_key(value)
     }
 
-    pub fn len(&self) -> usize {
-        self.relations.len()
-    }
-
     pub fn vars_since_snapshot(&mut self, s: &Snapshot<K, I>) -> Range<K> {
         K::from(I::new(s.value_count))..K::from(I::new(self.relations().len()))
     }
 
+    /* FIXME
     pub fn snapshot(&mut self) -> Snapshot<K, I> {
         self.undo_log.num_open_snapshots += 1;
         Snapshot {
@@ -258,44 +283,44 @@ where
     }
 
     pub fn rollback_to(&mut self, snapshot: Snapshot<K, I>) {
-        let Self { relations, unify_log, modified_set, .. } = self;
+        let UnificationTableStorage { relations, unify_log, modified_set, .. } = self.storage;
 
-        self.undo_log
-            .rollback_to(&mut RollbackView { relations, unify_log, modified_set }, snapshot);
+        self.undo_log.rollback_to(|| RollbackView { relations, unify_log, modified_set }, snapshot);
 
         if self.undo_log.num_open_snapshots == 0 {
-            self.modified_set.clear();
+            self.storage.modified_set.clear();
         }
     }
 
     pub fn commit(&mut self, snapshot: Snapshot<K, I>) {
         self.undo_log.commit(snapshot);
 
-        if self.undo_log.num_open_snapshots == 0 {
-            self.modified_set.clear();
+        if self.undo_log.num_open_snapshots() == 0 {
+            self.storage.modified_set.clear();
         }
     }
+    */
 
     pub fn register(&mut self) -> ms::Offset<I> {
-        self.modified_set.register()
+        self.storage.modified_set.register()
     }
 
     pub fn deregister(&mut self, offset: ms::Offset<I>) {
-        self.modified_set.deregister(offset);
+        self.storage.modified_set.deregister(offset);
     }
 
     pub fn watch_variable(&mut self, index: I) {
         debug_assert!(index == self.relations().find(index).into());
-        self.unify_log.watch_variable(index)
+        self.storage.unify_log.watch_variable(index)
     }
 
     pub fn unwatch_variable(&mut self, index: I) {
-        self.unify_log.unwatch_variable(index)
+        self.storage.unify_log.unwatch_variable(index)
     }
 
     pub fn drain_modified_set(&mut self, offset: &ms::Offset<I>, mut f: impl FnMut(I) -> bool) {
-        let unify_log = &self.unify_log;
-        self.modified_set.drain(&mut self.undo_log, offset, |vid| {
+        let unify_log = &self.storage.unify_log;
+        self.storage.modified_set.drain(&mut self.undo_log, offset, |vid| {
             for &unified_vid in unify_log.get(vid) {
                 f(unified_vid);
             }

@@ -5,10 +5,13 @@ use rustc_index::vec::Idx;
 use ena::undo_log::{Rollback, UndoLogs};
 
 #[derive(Copy, Clone, Debug)]
-pub enum Undo {
+enum UndoInner {
     Add,
     Drain { index: usize, offset: usize },
 }
+
+#[derive(Copy, Clone, Debug)]
+pub struct Undo<I>(UndoInner, PhantomData<I>);
 
 #[derive(Clone, Debug)]
 pub struct ModifiedSet<T: Idx> {
@@ -27,14 +30,14 @@ impl<T: Idx> ModifiedSet<T> {
         Self::default()
     }
 
-    pub fn set(&mut self, undo_log: &mut impl UndoLogs<Undo>, index: T) {
+    pub fn set(&mut self, undo_log: &mut impl UndoLogs<Undo<T>>, index: T) {
         self.modified.push(index);
-        undo_log.push(Undo::Add);
+        undo_log.push(Undo(UndoInner::Add, PhantomData));
     }
 
     pub fn drain(
         &mut self,
-        undo_log: &mut impl UndoLogs<Undo>,
+        undo_log: &mut impl UndoLogs<Undo<T>>,
         index: &Offset<T>,
         mut f: impl FnMut(T) -> bool,
     ) {
@@ -43,7 +46,8 @@ impl<T: Idx> ModifiedSet<T> {
             for &index in &self.modified[*offset..] {
                 f(index);
             }
-            undo_log.push(Undo::Drain { index: index.index, offset: *offset });
+            undo_log
+                .push(Undo(UndoInner::Drain { index: index.index, offset: *offset }, PhantomData));
             *offset = self.modified.len();
         }
     }
@@ -69,13 +73,13 @@ impl<T: Idx> ModifiedSet<T> {
     }
 }
 
-impl<I: Idx> Rollback<Undo> for ModifiedSet<I> {
-    fn reverse(&mut self, undo: Undo) {
-        match undo {
-            Undo::Add => {
+impl<I: Idx> Rollback<Undo<I>> for ModifiedSet<I> {
+    fn reverse(&mut self, undo: Undo<I>) {
+        match undo.0 {
+            UndoInner::Add => {
                 self.modified.pop();
             }
-            Undo::Drain { index, offset } => {
+            UndoInner::Drain { index, offset } => {
                 if let Some(o) = self.offsets.get_mut(index) {
                     *o = offset;
                 }

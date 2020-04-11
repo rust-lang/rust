@@ -226,9 +226,11 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     fn unify_const_variable(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        target_vid: ty::ConstVid<'tcx>,
+        target_vid: ty::ConstVid,
         ct: &'tcx ty::Const<'tcx>,
         vid_is_expected: bool,
+        vid: ty::ConstVid,
+        value: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         let (for_universe, span) = {
             let mut inner = self.inner.borrow_mut();
@@ -722,10 +724,14 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
                         } else {
-                            let new_var_id = variable_table.new_key(ConstVarValue {
-                                origin: var_value.origin,
-                                val: ConstVariableValue::Unknown { universe: self.for_universe },
-                            });
+                            let new_var_id = variable_table
+                                .new_key(ConstVarValue {
+                                    origin: var_value.origin,
+                                    val: ConstVariableValue::Unknown {
+                                        universe: self.for_universe,
+                                    },
+                                })
+                                .vid;
                             Ok(self.tcx().mk_const_var(new_var_id, c.ty))
                         }
                     }

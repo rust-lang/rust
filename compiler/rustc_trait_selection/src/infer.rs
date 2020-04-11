@@ -126,11 +126,13 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
             |ref infcx, key, canonical_inference_vars| {
                 let mut fulfill_cx = TraitEngine::new(infcx.tcx);
                 let value = operation(infcx, &mut *fulfill_cx, key)?;
-                infcx.make_canonicalized_query_response(
+                let x = infcx.make_canonicalized_query_response(
                     canonical_inference_vars,
                     value,
                     &mut *fulfill_cx,
-                )
+                );
+                fulfill_cx.deregister(infcx);
+                x
             },
         )
     }

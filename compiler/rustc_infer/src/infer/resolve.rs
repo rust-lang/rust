@@ -162,7 +162,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
 /// Full type resolution replaces all type and region variables with
 /// their concrete results. If any variable cannot be replaced (never unified, etc)
 /// then an `Err` result is returned.
-pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>, value: &T) -> FixupResult<'tcx, T>
+pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>, value: &T) -> FixupResult<T>
 where
     T: TypeFoldable<'tcx>,
 {
@@ -178,7 +178,7 @@ where
 // `err` field is not enforceable otherwise.
 struct FullTypeResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    err: Option<FixupError<'tcx>>,
+    err: Option<FixupError>,
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {

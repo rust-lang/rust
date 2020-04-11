@@ -104,7 +104,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionVid {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::ConstVid<'tcx> {
+impl<'a> HashStable<StableHashingContext<'a>> for ty::ConstVid {
     #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.index.hash_stable(hcx, hasher);

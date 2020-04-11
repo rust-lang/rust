@@ -23,7 +23,6 @@ use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::marker::PhantomData;
 use std::ops::Range;
 use ty::util::IntTypeExt;
 
@@ -1480,9 +1479,20 @@ impl Idx for TyVid {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-pub struct ConstVid<'tcx> {
+pub struct ConstVid {
     pub index: u32,
-    pub phantom: PhantomData<&'tcx ()>,
+}
+
+impl Idx for ConstVid {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        assert!(idx <= u32::max_value() as usize);
+        Self { index: idx as u32 }
+    }
+    #[inline]
+    fn index(self) -> usize {
+        self.index as usize
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]

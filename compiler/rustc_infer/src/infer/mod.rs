@@ -12,6 +12,7 @@ use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::logged_unification_table as lut;
+use rustc_data_structures::modified_set as ms;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
@@ -20,7 +21,9 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
+use rustc_middle::infer::unify_key::{
+    ConstVariableOrigin, ConstVariableOriginKind, ConstVidEqKey, ToType,
+};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::EvalToConstValueResult;
 use rustc_middle::traits::select;
@@ -83,11 +86,14 @@ pub type InferResult<'tcx, T> = Result<InferOk<'tcx, T>, TypeError<'tcx>>;
 
 pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
-pub type FixupResult<'tcx, T> = Result<T, FixupError<'tcx>>; // "fixup result"
+pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
 pub(crate) type UnificationTable<'a, 'tcx, T> = ut::UnificationTable<
     ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut InferCtxtUndoLogs<'tcx>>,
 >;
+
+pub(crate) type LoggedUnificationTable<'a, 'tcx, T, K = T> =
+    lut::LoggedUnificationTable<'a, T, K, &'a mut InferCtxtUndoLogs<'tcx>>;
 
 /// How we should handle region solving.
 ///
@@ -146,13 +152,14 @@ pub struct InferCtxtInner<'tcx> {
     type_variable_storage: type_variable::TypeVariableStorage<'tcx>,
 
     /// Map from const parameter variable to the kind of const it represents.
-    const_unification_storage: ut::UnificationTableStorage<ty::ConstVid<'tcx>>,
+    const_unification_storage:
+        lut::LoggedUnificationTableStorage<ConstVidEqKey<'tcx>, ty::ConstVid>,
 
     /// Map from integral variable to the kind of integer it represents.
-    int_unification_table: lut::LoggedUnificationTable<ty::IntVid>,
+    int_unification_storage: lut::LoggedUnificationTableStorage<ty::IntVid>,
 
     /// Map from floating variable to the kind of float it represents.
-    float_unification_table: lut::LoggedUnificationTable<ty::FloatVid>,
+    float_unification_storage: lut::LoggedUnificationTableStorage<ty::FloatVid>,
 
     /// Tracks the set of region variables and the constraints between them.
     /// This is initially `Some(_)` but when
@@ -203,10 +210,10 @@ impl<'tcx> InferCtxtInner<'tcx> {
             projection_cache: Default::default(),
             type_variable_storage: type_variable::TypeVariableStorage::new(),
             undo_log: InferCtxtUndoLogs::default(),
-            const_unification_table: ut::UnificationTableStorage::new(),
-            int_unification_table: lut::LoggedUnificationTable::new(),
-            float_unification_table: lut::LoggedUnificationTable::new(),
-            region_constraints: Some(RegionConstraintStorage::new()),
+            const_unification_storage: lut::LoggedUnificationTableStorage::new(),
+            int_unification_storage: lut::LoggedUnificationTableStorage::new(),
+            float_unification_storage: lut::LoggedUnificationTableStorage::new(),
+            region_constraint_storage: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
         }
     }
@@ -227,41 +234,19 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    fn int_unification_table(
-        &mut self,
-    ) -> ut::UnificationTable<
-        ut::InPlace<
-            ty::IntVid,
-            &mut ut::UnificationStorage<ty::IntVid>,
-            &mut InferCtxtUndoLogs<'tcx>,
-        >,
-    > {
+    fn int_unification_table(&mut self) -> LoggedUnificationTable<'_, 'tcx, ty::IntVid> {
         self.int_unification_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
-    fn float_unification_table(
-        &mut self,
-    ) -> ut::UnificationTable<
-        ut::InPlace<
-            ty::FloatVid,
-            &mut ut::UnificationStorage<ty::FloatVid>,
-            &mut InferCtxtUndoLogs<'tcx>,
-        >,
-    > {
+    fn float_unification_table(&mut self) -> LoggedUnificationTable<'_, 'tcx, ty::FloatVid> {
         self.float_unification_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
     fn const_unification_table(
         &mut self,
-    ) -> ut::UnificationTable<
-        ut::InPlace<
-            ty::ConstVid<'tcx>,
-            &mut ut::UnificationStorage<ty::ConstVid<'tcx>>,
-            &mut InferCtxtUndoLogs<'tcx>,
-        >,
-    > {
+    ) -> LoggedUnificationTable<'_, 'tcx, ConstVidEqKey<'tcx>, ty::ConstVid> {
         self.const_unification_storage.with_log(&mut self.undo_log)
     }
 
@@ -495,11 +480,11 @@ pub enum NLLRegionVariableOrigin {
 
 // FIXME(eddyb) investigate overlap between this and `TyOrConstInferVar`.
 #[derive(Copy, Clone, Debug)]
-pub enum FixupError<'tcx> {
+pub enum FixupError {
     UnresolvedIntTy(IntVid),
     UnresolvedFloatTy(FloatVid),
     UnresolvedTy(TyVid),
-    UnresolvedConst(ConstVid<'tcx>),
+    UnresolvedConst(ConstVid),
 }
 
 /// See the `region_obligations` field for more information.
@@ -510,7 +495,7 @@ pub struct RegionObligation<'tcx> {
     pub origin: SubregionOrigin<'tcx>,
 }
 
-impl<'tcx> fmt::Display for FixupError<'tcx> {
+impl fmt::Display for FixupError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::FixupError::*;
 
@@ -1021,15 +1006,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .inner
             .borrow_mut()
             .const_unification_table()
-            .new_key(ConstVarValue { origin, val: ConstVariableValue::Unknown { universe } });
+            .new_key(ConstVarValue { origin, val: ConstVariableValue::Unknown { universe } })
+            .vid;
         self.tcx.mk_const_var(vid, ty)
     }
 
-    pub fn next_const_var_id(&self, origin: ConstVariableOrigin) -> ConstVid<'tcx> {
-        self.inner.borrow_mut().const_unification_table().new_key(ConstVarValue {
-            origin,
-            val: ConstVariableValue::Unknown { universe: self.universe() },
-        })
+    pub fn next_const_var_id(&self, origin: ConstVariableOrigin) -> ConstVid {
+        self.inner
+            .borrow_mut()
+            .const_unification_table()
+            .new_key(ConstVarValue {
+                origin,
+                val: ConstVariableValue::Unknown { universe: self.universe() },
+            })
+            .vid
     }
 
     fn next_int_var_id(&self) -> IntVid {
@@ -1134,11 +1124,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ),
                     span,
                 };
-                let const_var_id =
-                    self.inner.borrow_mut().const_unification_table().new_key(ConstVarValue {
+                let const_var_id = self
+                    .inner
+                    .borrow_mut()
+                    .const_unification_table()
+                    .new_key(ConstVarValue {
                         origin,
                         val: ConstVariableValue::Unknown { universe: self.universe() },
-                    });
+                    })
+                    .vid;
                 self.tcx.mk_const_var(const_var_id, self.tcx.type_of(param.def_id)).into()
             }
         }
@@ -1344,7 +1338,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn probe_const_var(
         &self,
-        vid: ty::ConstVid<'tcx>,
+        vid: ty::ConstVid,
     ) -> Result<&'tcx ty::Const<'tcx>, ty::UniverseIndex> {
         match self.inner.borrow_mut().const_unification_table().probe_value(vid).val {
             ConstVariableValue::Known { value } => Ok(value),
@@ -1352,7 +1346,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<'tcx, T> {
+    pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<T> {
         /*!
          * Attempts to resolve all type/region/const variables in
          * `value`. Region inference must have been run already (e.g.,
@@ -1572,7 +1566,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// inference variables), and it handles both `Ty` and `ty::Const` without
     /// having to resort to storing full `GenericArg`s in `stalled_on`.
     #[inline(always)]
-    pub fn ty_or_const_infer_var_changed(&self, infer_var: TyOrConstInferVar<'tcx>) -> bool {
+    pub fn ty_or_const_infer_var_changed(&self, infer_var: TyOrConstInferVar) -> bool {
         match infer_var {
             TyOrConstInferVar::Ty(v) => {
                 use self::type_variable::TypeVariableValue;
@@ -1612,12 +1606,113 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         }
     }
+
+    pub fn drain_modifications(
+        &self,
+        offset: &WatcherOffset,
+        mut f: impl FnMut(TyOrConstInferVar) -> bool,
+    ) {
+        let mut inner = self.inner.borrow_mut();
+
+        inner
+            .type_variables()
+            .drain_modified_set(&offset.ty_offset, |v| f(TyOrConstInferVar::Ty(v)));
+
+        inner
+            .int_unification_table()
+            .drain_modified_set(&offset.int_offset, |vid| f(TyOrConstInferVar::TyInt(vid)));
+
+        inner
+            .float_unification_table()
+            .drain_modified_set(&offset.float_offset, |vid| f(TyOrConstInferVar::TyFloat(vid)));
+
+        inner
+            .const_unification_table()
+            .drain_modified_set(&offset.const_offset, |vid| f(TyOrConstInferVar::Const(vid)));
+    }
+
+    pub fn register_unify_watcher(&self) -> WatcherOffset {
+        let mut inner = self.inner.borrow_mut();
+        WatcherOffset {
+            ty_offset: inner.type_variables().register_unify_watcher(),
+
+            int_offset: inner.int_unification_table().register(),
+
+            float_offset: inner.float_unification_table().register(),
+
+            const_offset: inner.const_unification_table().register(),
+        }
+    }
+
+    pub fn deregister_unify_watcher(&self, offset: WatcherOffset) {
+        let mut inner = self.inner.borrow_mut();
+
+        inner.type_variables().deregister_unify_watcher(offset.ty_offset);
+
+        inner.int_unification_table().deregister(offset.int_offset);
+
+        inner.float_unification_table().deregister(offset.float_offset);
+
+        inner.const_unification_table().deregister(offset.const_offset);
+    }
+
+    pub fn watch_variable(&self, infer: TyOrConstInferVar) {
+        let mut inner = self.inner.borrow_mut();
+        match infer {
+            TyOrConstInferVar::Ty(v) => inner.type_variables().watch_variable(v),
+
+            TyOrConstInferVar::TyInt(v) => inner.int_unification_table().watch_variable(v),
+
+            TyOrConstInferVar::TyFloat(v) => inner.float_unification_table().watch_variable(v),
+
+            TyOrConstInferVar::Const(v) => inner.const_unification_table().watch_variable(v),
+        }
+    }
+
+    pub fn unwatch_variable(&self, infer: TyOrConstInferVar) {
+        let mut inner = self.inner.borrow_mut();
+        match infer {
+            TyOrConstInferVar::Ty(v) => inner.type_variables().unwatch_variable(v),
+
+            TyOrConstInferVar::TyInt(v) => inner.int_unification_table().unwatch_variable(v),
+
+            TyOrConstInferVar::TyFloat(v) => inner.float_unification_table().unwatch_variable(v),
+
+            TyOrConstInferVar::Const(v) => inner.const_unification_table().unwatch_variable(v),
+        }
+    }
+
+    pub fn root_ty_or_const(&self, infer: TyOrConstInferVar) -> TyOrConstInferVar {
+        let mut inner = self.inner.borrow_mut();
+        match infer {
+            TyOrConstInferVar::Ty(v) => TyOrConstInferVar::Ty(inner.type_variables().root_var(v)),
+
+            TyOrConstInferVar::TyInt(v) => {
+                TyOrConstInferVar::TyInt(inner.int_unification_table().find(v))
+            }
+
+            TyOrConstInferVar::TyFloat(v) => {
+                TyOrConstInferVar::TyFloat(inner.float_unification_table().find(v))
+            }
+
+            TyOrConstInferVar::Const(v) => {
+                TyOrConstInferVar::Const(inner.const_unification_table().find(v).vid)
+            }
+        }
+    }
+}
+
+pub struct WatcherOffset {
+    ty_offset: ms::Offset<ty::TyVid>,
+    int_offset: ms::Offset<ty::IntVid>,
+    float_offset: ms::Offset<ty::FloatVid>,
+    const_offset: ms::Offset<ty::ConstVid>,
 }
 
 /// Helper for `ty_or_const_infer_var_changed` (see comment on that), currently
 /// used only for `traits::fulfill`'s list of `stalled_on` inference variables.
-#[derive(Copy, Clone, Debug)]
-pub enum TyOrConstInferVar<'tcx> {
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub enum TyOrConstInferVar {
     /// Equivalent to `ty::Infer(ty::TyVar(_))`.
     Ty(TyVid),
     /// Equivalent to `ty::Infer(ty::IntVar(_))`.
@@ -1626,10 +1721,10 @@ pub enum TyOrConstInferVar<'tcx> {
     TyFloat(FloatVid),
 
     /// Equivalent to `ty::ConstKind::Infer(ty::InferConst::Var(_))`.
-    Const(ConstVid<'tcx>),
+    Const(ConstVid),
 }
 
-impl TyOrConstInferVar<'tcx> {
+impl TyOrConstInferVar {
     /// Tries to extract an inference variable from a type or a constant, returns `None`
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).

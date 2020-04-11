@@ -46,7 +46,7 @@ pub struct TypeFreshener<'a, 'tcx> {
     ty_freshen_count: u32,
     const_freshen_count: u32,
     ty_freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
-    const_freshen_map: FxHashMap<ty::InferConst<'tcx>, &'tcx ty::Const<'tcx>>,
+    const_freshen_map: FxHashMap<ty::InferConst, &'tcx ty::Const<'tcx>>,
 }
 
 impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
@@ -88,12 +88,12 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
     fn freshen_const<F>(
         &mut self,
         opt_ct: Option<&'tcx ty::Const<'tcx>>,
-        key: ty::InferConst<'tcx>,
+        key: ty::InferConst,
         freshener: F,
         ty: Ty<'tcx>,
     ) -> &'tcx ty::Const<'tcx>
     where
-        F: FnOnce(u32) -> ty::InferConst<'tcx>,
+        F: FnOnce(u32) -> ty::InferConst,
     {
         if let Some(ct) = opt_ct {
             return ct.fold_with(self);

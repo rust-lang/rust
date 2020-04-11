@@ -978,10 +978,12 @@ where
                 match var_value.val.known() {
                     Some(u) => self.relate(u, u),
                     None => {
-                        let new_var_id = variable_table.new_key(ConstVarValue {
-                            origin: var_value.origin,
-                            val: ConstVariableValue::Unknown { universe: self.universe },
-                        });
+                        let new_var_id = variable_table
+                            .new_key(ConstVarValue {
+                                origin: var_value.origin,
+                                val: ConstVariableValue::Unknown { universe: self.universe },
+                            })
+                            .vid;
                         Ok(self.tcx().mk_const_var(new_var_id, a.ty))
                     }
                 }

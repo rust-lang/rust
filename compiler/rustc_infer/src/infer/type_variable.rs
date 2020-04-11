@@ -9,6 +9,7 @@ use rustc_data_structures::logged_unification_table as lut;
 use rustc_data_structures::modified_set as ms;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
+use rustc_data_structures::unify_log as ul;
 use std::cmp;
 use std::marker::PhantomData;
 use std::ops::Range;
@@ -17,14 +18,14 @@ use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 
 /// Represents a single undo-able action that affects a type inference variable.
 pub(crate) enum UndoLog<'tcx> {
-    EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
+    EqRelation(lut::UndoLog<TyVidEqKey<'tcx>, ty::TyVid>),
     SubRelation(sv::UndoLog<ut::Delegate<ty::TyVid>>),
     Values(sv::UndoLog<Delegate>),
 }
 
 /// Convert from a specific kind of undo to the more general UndoLog
-impl<'tcx> From<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>) -> Self {
+impl<'tcx> From<lut::UndoLog<TyVidEqKey<'tcx>, ty::TyVid>> for UndoLog<'tcx> {
+    fn from(l: lut::UndoLog<TyVidEqKey<'tcx>, ty::TyVid>) -> Self {
         UndoLog::EqRelation(l)
     }
 }
@@ -50,6 +51,24 @@ impl<'tcx> From<Instantiate> for UndoLog<'tcx> {
     }
 }
 
+impl<'tcx> From<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>) -> Self {
+        UndoLog::EqRelation(l.into())
+    }
+}
+
+impl From<ul::Undo<ty::TyVid>> for UndoLog<'_> {
+    fn from(l: ul::Undo<ty::TyVid>) -> Self {
+        UndoLog::EqRelation(l.into())
+    }
+}
+
+impl From<ms::Undo<ty::TyVid>> for UndoLog<'_> {
+    fn from(l: ms::Undo<ty::TyVid>) -> Self {
+        UndoLog::EqRelation(l.into())
+    }
+}
+
 impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
     fn reverse(&mut self, undo: UndoLog<'tcx>) {
         match undo {
@@ -66,7 +85,7 @@ pub struct TypeVariableStorage<'tcx> {
     /// Two variables are unified in `eq_relations` when we have a
     /// constraint `?X == ?Y`. This table also stores, for each key,
     /// the known value.
-    eq_relations: lut::LoggedUnificationTable<TyVidEqKey<'tcx>, TyVid>,
+    eq_relations: lut::LoggedUnificationTableStorage<TyVidEqKey<'tcx>, TyVid>,
 
     /// Two variables are unified in `sub_relations` when we have a
     /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
@@ -153,12 +172,13 @@ pub(crate) struct Instantiate {
 }
 
 pub(crate) struct Delegate;
+pub(crate) struct UnifiedVarsDelegate;
 
 impl<'tcx> TypeVariableStorage<'tcx> {
     pub fn new() -> TypeVariableStorage<'tcx> {
         TypeVariableStorage {
             values: sv::SnapshotVecStorage::new(),
-            eq_relations: lut::LoggedUnificationTable::new(),
+            eq_relations: lut::LoggedUnificationTableStorage::new(),
             sub_relations: ut::UnificationTableStorage::new(),
         }
     }
@@ -195,7 +215,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
-        self.eq_relations().union(a, b);
+        self.eq_relations().unify(a, b);
         self.sub_relations().union(a, b);
     }
 
@@ -326,7 +346,9 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     }
 
     #[inline]
-    fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
+    fn eq_relations(
+        &mut self,
+    ) -> super::LoggedUnificationTable<'_, 'tcx, TyVidEqKey<'tcx>, ty::TyVid> {
         self.storage.eq_relations.with_log(self.undo_log)
     }
 
@@ -379,10 +401,8 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
                     if vid.index < new_elem_threshold {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
-                        let mut eq_relations = ut::UnificationTable::with_log(
-                            &mut self.storage.eq_relations,
-                            &mut *self.undo_log,
-                        );
+                        let mut eq_relations =
+                            self.storage.eq_relations.with_log(&mut *self.undo_log);
                         let escaping_type = match eq_relations.probe_value(vid) {
                             TypeVariableValue::Unknown { .. } => bug!(),
                             TypeVariableValue::Known { value } => value,
@@ -418,23 +438,23 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         offset: &ms::Offset<ty::TyVid>,
         f: impl FnMut(ty::TyVid) -> bool,
     ) {
-        self.eq_relations.drain_modified_set(offset, f)
+        self.eq_relations().drain_modified_set(offset, f)
     }
 
     pub fn register_unify_watcher(&mut self) -> ms::Offset<ty::TyVid> {
-        self.eq_relations.register()
+        self.eq_relations().register()
     }
 
     pub fn deregister_unify_watcher(&mut self, offset: ms::Offset<ty::TyVid>) {
-        self.eq_relations.deregister(offset);
+        self.eq_relations().deregister(offset);
     }
 
     pub fn watch_variable(&mut self, vid: ty::TyVid) {
-        self.eq_relations.watch_variable(vid);
+        self.eq_relations().watch_variable(vid);
     }
 
     pub fn unwatch_variable(&mut self, vid: ty::TyVid) {
-        self.eq_relations.unwatch_variable(vid);
+        self.eq_relations().unwatch_variable(vid);
     }
 }
 

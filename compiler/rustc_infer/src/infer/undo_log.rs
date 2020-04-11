@@ -1,8 +1,12 @@
 use std::marker::PhantomData;
 
+use rustc_data_structures::logged_unification_table as lut;
+use rustc_data_structures::modified_set as ms;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
+use rustc_data_structures::unify_log as ul;
+use rustc_middle::infer::unify_key;
 use rustc_middle::ty;
 
 use crate::{
@@ -18,9 +22,9 @@ pub struct Snapshot<'tcx> {
 /// Records the 'undo' data fora single operation that affects some form of inference variable.
 pub(crate) enum UndoLog<'tcx> {
     TypeVariables(type_variable::UndoLog<'tcx>),
-    ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
-    IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
-    FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
+    ConstUnificationTable(lut::UndoLog<unify_key::ConstVidEqKey<'tcx>, ty::ConstVid>),
+    IntUnificationTable(lut::UndoLog<ty::IntVid>),
+    FloatUnificationTable(lut::UndoLog<ty::FloatVid>),
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
     RegionUnificationTable(sv::UndoLog<ut::Delegate<ty::RegionVid>>),
     ProjectionCache(traits::UndoLog<'tcx>),
@@ -40,26 +44,35 @@ macro_rules! impl_from {
 }
 
 // Upcast from a single kind of "undoable action" to the general enum
+
 impl_from! {
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
     TypeVariables(type_variable::UndoLog<'tcx>),
 
+    TypeVariables(lut::UndoLog<type_variable::TyVidEqKey<'tcx>, ty::TyVid>),
     TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
     TypeVariables(sv::UndoLog<ut::Delegate<ty::TyVid>>),
     TypeVariables(sv::UndoLog<type_variable::Delegate>),
     TypeVariables(type_variable::Instantiate),
+    TypeVariables(ms::Undo<ty::TyVid>),
+    TypeVariables(ul::Undo<ty::TyVid>),
 
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
+    IntUnificationTable(ms::Undo<ty::IntVid>),
+    IntUnificationTable(ul::Undo<ty::IntVid>),
 
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
+    FloatUnificationTable(ms::Undo<ty::FloatVid>),
+    FloatUnificationTable(ul::Undo<ty::FloatVid>),
 
-    ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
+    ConstUnificationTable(sv::UndoLog<ut::Delegate<unify_key::ConstVidEqKey<'tcx>>>),
+    ConstUnificationTable(ms::Undo<ty::ConstVid>),
+    ConstUnificationTable(ul::Undo<ty::ConstVid>),
 
     RegionUnificationTable(sv::UndoLog<ut::Delegate<ty::RegionVid>>),
     ProjectionCache(traits::UndoLog<'tcx>),
 }
 
-/// The Rollback trait defines how to rollback a particular action.
 impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
     fn reverse(&mut self, undo: UndoLog<'tcx>) {
         match undo {

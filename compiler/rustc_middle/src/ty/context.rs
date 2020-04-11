@@ -2318,7 +2318,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
+    pub fn mk_const_var(self, v: ConstVid, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
         self.mk_const(ty::Const { val: ty::ConstKind::Infer(InferConst::Var(v)), ty })
     }
 
@@ -2338,7 +2338,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_const_infer(self, ic: InferConst<'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
+    pub fn mk_const_infer(self, ic: InferConst, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
         self.mk_const(ty::Const { val: ty::ConstKind::Infer(ic), ty })
     }
 

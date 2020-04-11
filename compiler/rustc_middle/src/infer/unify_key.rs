@@ -1,9 +1,10 @@
 use crate::ty::{self, FloatVarValue, InferConst, IntVarValue, Ty, TyCtxt};
+use rustc_data_structures::logged_unification_table::LoggedUnificationTable;
+use rustc_data_structures::modified_set as ms;
 use rustc_data_structures::snapshot_vec;
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_data_structures::unify::{
-    self, EqUnifyValue, InPlace, NoError, UnificationTable, UnifyKey, UnifyValue,
-};
+use rustc_data_structures::unify::{self, EqUnifyValue, NoError, UnifyKey, UnifyValue};
+use rustc_data_structures::unify_log as ul;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -159,13 +160,44 @@ pub struct ConstVarValue<'tcx> {
     pub val: ConstVariableValue<'tcx>,
 }
 
-impl<'tcx> UnifyKey for ty::ConstVid<'tcx> {
-    type Value = ConstVarValue<'tcx>;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub struct ConstVidEqKey<'tcx> {
+    pub vid: ty::ConstVid,
+    pub phantom: PhantomData<&'tcx ()>,
+}
+
+impl From<ty::ConstVid> for ConstVidEqKey<'_> {
+    fn from(vid: ty::ConstVid) -> Self {
+        Self { vid, phantom: PhantomData }
+    }
+}
+
+impl<'tcx> From<ConstVidEqKey<'tcx>> for ty::ConstVid {
+    fn from(vid: ConstVidEqKey<'tcx>) -> Self {
+        vid.vid
+    }
+}
+
+impl UnifyKey for ty::ConstVid {
+    type Value = ();
     fn index(&self) -> u32 {
         self.index
     }
     fn from_index(i: u32) -> Self {
-        ty::ConstVid { index: i, phantom: PhantomData }
+        ty::ConstVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "ConstVid"
+    }
+}
+
+impl<'tcx> UnifyKey for ConstVidEqKey<'tcx> {
+    type Value = ConstVarValue<'tcx>;
+    fn index(&self) -> u32 {
+        self.vid.index
+    }
+    fn from_index(i: u32) -> Self {
+        ConstVidEqKey { vid: ty::ConstVid { index: i }, phantom: PhantomData }
     }
     fn tag() -> &'static str {
         "ConstVid"
@@ -207,13 +239,14 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
 
 impl<'tcx> EqUnifyValue for &'tcx ty::Const<'tcx> {}
 
-pub fn replace_if_possible<V, L>(
-    table: &mut UnificationTable<InPlace<ty::ConstVid<'tcx>, V, L>>,
+pub fn replace_if_possible<L>(
+    table: &mut LoggedUnificationTable<'_, ConstVidEqKey<'tcx>, ty::ConstVid, L>,
     c: &'tcx ty::Const<'tcx>,
 ) -> &'tcx ty::Const<'tcx>
 where
-    V: snapshot_vec::VecLike<unify::Delegate<ty::ConstVid<'tcx>>>,
-    L: UndoLogs<snapshot_vec::UndoLog<unify::Delegate<ty::ConstVid<'tcx>>>>,
+    L: UndoLogs<snapshot_vec::UndoLog<unify::Delegate<ConstVidEqKey<'tcx>>>>
+        + UndoLogs<ms::Undo<ty::ConstVid>>
+        + UndoLogs<ul::Undo<ty::ConstVid>>,
 {
     if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = c {
         match table.probe_value(*vid).val.known() {

@@ -1,9 +1,11 @@
+use rustc_index::vec::Idx;
+use rustc_middle::infer::unify_key::ConstVidEqKey;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
 use super::type_variable::TypeVariableOrigin;
 use super::InferCtxt;
-use super::{ConstVariableOrigin, RegionVariableOrigin, UnificationTable};
+use super::{ConstVariableOrigin, LoggedUnificationTable, RegionVariableOrigin};
 
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
@@ -11,25 +13,26 @@ use ut::UnifyKey;
 
 use std::ops::Range;
 
-fn vars_since_snapshot<'tcx, T>(
-    table: &mut UnificationTable<'_, 'tcx, T>,
+fn vars_since_snapshot<'tcx, T, K>(
+    table: &mut LoggedUnificationTable<'_, 'tcx, T, K>,
     snapshot_var_len: usize,
 ) -> Range<T>
 where
     T: UnifyKey,
+    K: Idx,
     super::UndoLog<'tcx>: From<sv::UndoLog<ut::Delegate<T>>>,
 {
     T::from_index(snapshot_var_len as u32)..T::from_index(table.len() as u32)
 }
 
 fn const_vars_since_snapshot<'tcx>(
-    table: &mut UnificationTable<'_, 'tcx, ConstVid<'tcx>>,
+    table: &mut LoggedUnificationTable<'_, 'tcx, ConstVidEqKey<'tcx>, ConstVid>,
     snapshot_var_len: usize,
-) -> (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>) {
+) -> (Range<ConstVid>, Vec<ConstVariableOrigin>) {
     let range = vars_since_snapshot(table, snapshot_var_len);
     (
-        range.start..range.end,
-        (range.start.index..range.end.index)
+        range.start.into()..range.end.into(),
+        (range.start.vid.index..range.end.vid.index)
             .map(|index| table.probe_value(ConstVid::from_index(index)).origin)
             .collect(),
     )
@@ -173,7 +176,7 @@ pub struct InferenceFudger<'a, 'tcx> {
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
     region_vars: (Range<RegionVid>, Vec<RegionVariableOrigin>),
-    const_vars: (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>),
+    const_vars: (Range<ConstVid>, Vec<ConstVariableOrigin>),
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
