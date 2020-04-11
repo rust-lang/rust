@@ -40,7 +40,7 @@
                                            // + span: $DIR/repeat.rs:6:18: 6:28
                                            // + literal: Const { ty: usize, val: Value(Scalar(0x00000008)) }
 -         _6 = Lt(_4, _5);                 // bb0[7]: scope 0 at $DIR/repeat.rs:6:18: 6:28
--         assert(move _6, "index out of bounds: the len is move _5 but the index is _4") -> bb1; // bb0[8]: scope 0 at $DIR/repeat.rs:6:18: 6:28
+-         assert(move _6, "index out of bounds: the len is {} but the index is {}", move _5, _4) -> bb1; // bb0[8]: scope 0 at $DIR/repeat.rs:6:18: 6:28
 +         _6 = const true;                 // bb0[7]: scope 0 at $DIR/repeat.rs:6:18: 6:28
 +                                          // ty::Const
 +                                          // + ty: bool
@@ -48,7 +48,7 @@
 +                                          // mir::Constant
 +                                          // + span: $DIR/repeat.rs:6:18: 6:28
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
-+         assert(const true, "index out of bounds: the len is move _5 but the index is _4") -> bb1; // bb0[8]: scope 0 at $DIR/repeat.rs:6:18: 6:28
++         assert(const true, "index out of bounds: the len is {} but the index is {}", move _5, _4) -> bb1; // bb0[8]: scope 0 at $DIR/repeat.rs:6:18: 6:28
 +                                          // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x01))

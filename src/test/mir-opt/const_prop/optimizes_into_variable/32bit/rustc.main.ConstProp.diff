@@ -119,7 +119,7 @@
                                            // + span: $DIR/optimizes_into_variable.rs:13:13: 13:34
                                            // + literal: Const { ty: usize, val: Value(Scalar(0x00000006)) }
 -         _7 = Lt(_5, _6);                 // bb1[7]: scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
--         assert(move _7, "index out of bounds: the len is move _6 but the index is _5") -> bb2; // bb1[8]: scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
+-         assert(move _7, "index out of bounds: the len is {} but the index is {}", move _6, _5) -> bb2; // bb1[8]: scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
 +         _7 = const true;                 // bb1[7]: scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
 +                                          // ty::Const
 +                                          // + ty: bool
@@ -127,7 +127,7 @@
 +                                          // mir::Constant
 +                                          // + span: $DIR/optimizes_into_variable.rs:13:13: 13:34
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
-+         assert(const true, "index out of bounds: the len is move _6 but the index is _5") -> bb2; // bb1[8]: scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
++         assert(const true, "index out of bounds: the len is {} but the index is {}", move _6, _5) -> bb2; // bb1[8]: scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
 +                                          // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x01))

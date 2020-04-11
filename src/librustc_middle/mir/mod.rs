@@ -1403,6 +1403,21 @@ impl<O> AssertKind<O> {
             BoundsCheck { .. } => bug!("Unexpected AssertKind"),
         }
     }
+
+    /// Format the message arguments for the `assert(cond, msg..)` terminator in MIR printing.
+    fn fmt_assert_args<W: Write>(&self, f: &mut W) -> fmt::Result
+    where
+        O: Debug,
+    {
+        match self {
+            AssertKind::BoundsCheck { ref len, ref index } => write!(
+                f,
+                "\"index out of bounds: the len is {{}} but the index is {{}}\", {:?}, {:?}",
+                len, index
+            ),
+            _ => write!(f, "\"{}\"", self.description()),
+        }
+    }
 }
 
 impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
@@ -1480,7 +1495,9 @@ impl<'tcx> TerminatorKind<'tcx> {
                 if !expected {
                     write!(fmt, "!")?;
                 }
-                write!(fmt, "{:?}, \"{:?}\")", cond, msg)
+                write!(fmt, "{:?}, ", cond)?;
+                msg.fmt_assert_args(fmt)?;
+                write!(fmt, ")")
             }
             FalseEdges { .. } => write!(fmt, "falseEdges"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),

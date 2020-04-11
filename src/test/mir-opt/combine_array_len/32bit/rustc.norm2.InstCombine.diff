@@ -44,7 +44,7 @@
 +                                          // + span: $DIR/combine_array_len.rs:5:13: 5:17
 +                                          // + literal: Const { ty: usize, val: Value(Scalar(0x00000002)) }
           _5 = Lt(_3, _4);                 // bb0[4]: scope 0 at $DIR/combine_array_len.rs:5:13: 5:17
-          assert(move _5, "index out of bounds: the len is move _4 but the index is _3") -> bb1; // bb0[5]: scope 0 at $DIR/combine_array_len.rs:5:13: 5:17
+          assert(move _5, "index out of bounds: the len is {} but the index is {}", move _4, _3) -> bb1; // bb0[5]: scope 0 at $DIR/combine_array_len.rs:5:13: 5:17
       }
   
       bb1: {
@@ -68,7 +68,7 @@
 +                                          // + span: $DIR/combine_array_len.rs:6:13: 6:17
 +                                          // + literal: Const { ty: usize, val: Value(Scalar(0x00000002)) }
           _9 = Lt(_7, _8);                 // bb1[6]: scope 1 at $DIR/combine_array_len.rs:6:13: 6:17
-          assert(move _9, "index out of bounds: the len is move _8 but the index is _7") -> bb2; // bb1[7]: scope 1 at $DIR/combine_array_len.rs:6:13: 6:17
+          assert(move _9, "index out of bounds: the len is {} but the index is {}", move _8, _7) -> bb2; // bb1[7]: scope 1 at $DIR/combine_array_len.rs:6:13: 6:17
       }
   
       bb2: {

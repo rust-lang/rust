@@ -3,19 +3,14 @@
 
 pub(crate) mod printable;
 mod unicode_data;
-pub(crate) mod version;
-
-use version::UnicodeVersion;
 
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
 /// `char` and `str` methods are based on.
+///
+/// The version numbering scheme is explained in
+/// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard](https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4).
 #[unstable(feature = "unicode_version", issue = "49726")]
-pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
-    major: unicode_data::UNICODE_VERSION.0,
-    minor: unicode_data::UNICODE_VERSION.1,
-    micro: unicode_data::UNICODE_VERSION.2,
-    _priv: (),
-};
+pub const UNICODE_VERSION: (u8, u8, u8) = unicode_data::UNICODE_VERSION;
 
 // For use in liballoc, not re-exported in libstd.
 pub mod derived_property {
