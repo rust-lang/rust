@@ -101,7 +101,6 @@ impl ExprCollector<'_> {
     }
 
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
-        let ptr = Either::Left(ptr);
         let src = self.expander.to_source(ptr);
         let id = self.make_expr(expr, Ok(src.clone()));
         self.source_map.expr_map.insert(src, id);
@@ -281,7 +280,7 @@ impl ExprCollector<'_> {
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
-                let src = self.expander.to_source(Either::Left(syntax_ptr));
+                let src = self.expander.to_source(syntax_ptr);
                 self.source_map.expr_map.insert(src, inner);
                 inner
             }

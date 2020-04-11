@@ -317,8 +317,7 @@ fn scope_for_offset(
             if source.file_id != offset.file_id {
                 return None;
             }
-            let syntax_node_ptr =
-                source.value.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
+            let syntax_node_ptr = source.value.syntax_node_ptr();
             Some((syntax_node_ptr, scope))
         })
         // find containing scope
@@ -397,8 +396,7 @@ fn adjust(
             if source.file_id != file_id {
                 return None;
             }
-            let syntax_node_ptr =
-                source.value.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
+            let syntax_node_ptr = source.value.syntax_node_ptr();
             Some((syntax_node_ptr, scope))
         })
         .map(|(ptr, scope)| (ptr.range(), scope))

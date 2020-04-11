@@ -9,6 +9,8 @@ use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId};
 use ra_arena::{map::ArenaMap, Arena};
+use ra_cfg::CfgOptions;
+use ra_db::CrateId;
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
@@ -24,8 +26,6 @@ use crate::{
     src::HasSource,
     AsMacroCall, DefWithBodyId, HasModule, Lookup, ModuleId,
 };
-use ra_cfg::CfgOptions;
-use ra_db::CrateId;
 
 /// A subser of Exander that only deals with cfg attributes. We only need it to
 /// avoid cyclic queries in crate def map during enum processing.
@@ -187,7 +187,7 @@ pub struct Body {
     pub item_scope: ItemScope,
 }
 
-pub type ExprPtr = Either<AstPtr<ast::Expr>, AstPtr<ast::RecordField>>;
+pub type ExprPtr = AstPtr<ast::Expr>;
 pub type ExprSource = InFile<ExprPtr>;
 
 pub type PatPtr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
@@ -285,7 +285,7 @@ impl BodySourceMap {
     }
 
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
-        let src = node.map(|it| Either::Left(AstPtr::new(it)));
+        let src = node.map(|it| AstPtr::new(it));
         self.expr_map.get(&src).cloned()
     }
 

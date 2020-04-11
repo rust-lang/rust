@@ -89,21 +89,19 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let (_, source_map) = db.body_with_source_map(self.func.into());
 
         if let Ok(source_ptr) = source_map.expr_syntax(id) {
-            if let Some(expr) = source_ptr.value.as_ref().left() {
-                let root = source_ptr.file_syntax(db.upcast());
-                if let ast::Expr::RecordLit(record_lit) = expr.to_node(&root) {
-                    if let Some(field_list) = record_lit.record_field_list() {
-                        let variant_data = variant_data(db.upcast(), variant_def);
-                        let missed_fields = missed_fields
-                            .into_iter()
-                            .map(|idx| variant_data.fields()[idx].name.clone())
-                            .collect();
-                        self.sink.push(MissingFields {
-                            file: source_ptr.file_id,
-                            field_list: AstPtr::new(&field_list),
-                            missed_fields,
-                        })
-                    }
+            let root = source_ptr.file_syntax(db.upcast());
+            if let ast::Expr::RecordLit(record_lit) = &source_ptr.value.to_node(&root) {
+                if let Some(field_list) = record_lit.record_field_list() {
+                    let variant_data = variant_data(db.upcast(), variant_def);
+                    let missed_fields = missed_fields
+                        .into_iter()
+                        .map(|idx| variant_data.fields()[idx].name.clone())
+                        .collect();
+                    self.sink.push(MissingFields {
+                        file: source_ptr.file_id,
+                        field_list: AstPtr::new(&field_list),
+                        missed_fields,
+                    })
                 }
             }
         }
@@ -205,18 +203,16 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
 
         if let Ok(source_ptr) = source_map.expr_syntax(id) {
-            if let Some(expr) = source_ptr.value.as_ref().left() {
-                let root = source_ptr.file_syntax(db.upcast());
-                if let ast::Expr::MatchExpr(match_expr) = expr.to_node(&root) {
-                    if let (Some(match_expr), Some(arms)) =
-                        (match_expr.expr(), match_expr.match_arm_list())
-                    {
-                        self.sink.push(MissingMatchArms {
-                            file: source_ptr.file_id,
-                            match_expr: AstPtr::new(&match_expr),
-                            arms: AstPtr::new(&arms),
-                        })
-                    }
+            let root = source_ptr.file_syntax(db.upcast());
+            if let ast::Expr::MatchExpr(match_expr) = &source_ptr.value.to_node(&root) {
+                if let (Some(match_expr), Some(arms)) =
+                    (match_expr.expr(), match_expr.match_arm_list())
+                {
+                    self.sink.push(MissingMatchArms {
+                        file: source_ptr.file_id,
+                        match_expr: AstPtr::new(&match_expr),
+                        arms: AstPtr::new(&arms),
+                    })
                 }
             }
         }
@@ -247,9 +243,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             let (_, source_map) = db.body_with_source_map(self.func.into());
 
             if let Ok(source_ptr) = source_map.expr_syntax(id) {
-                if let Some(expr) = source_ptr.value.left() {
-                    self.sink.push(MissingOkInTailExpr { file: source_ptr.file_id, expr });
-                }
+                self.sink
+                    .push(MissingOkInTailExpr { file: source_ptr.file_id, expr: source_ptr.value });
             }
         }
     }

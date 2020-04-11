@@ -82,9 +82,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
 
         for (expr, ty) in inference_result.type_of_expr.iter() {
             let syntax_ptr = match body_source_map.expr_syntax(expr) {
-                Ok(sp) => {
-                    sp.map(|ast| ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr()))
-                }
+                Ok(sp) => sp.map(|ast| ast.syntax_node_ptr()),
                 Err(SyntheticSyntax) => continue,
             };
             types.push((syntax_ptr.clone(), ty));
