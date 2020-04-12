@@ -15,11 +15,9 @@ jobs:
     - uses: actions/checkout@master
     - name: Squash and Commit
       run: |
-        git fetch --prune --unshallow
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git reset --soft c01efc669f09508b55eced32d3c88702578a7c3e
-        git commit --amend -m "Squashed"
+        rm -rf .git && git init && git add . && git commit -m 'squashed'
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
