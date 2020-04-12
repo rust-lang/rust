@@ -89,13 +89,6 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor<'tcx> {
             *local = self.to;
         }
     }
-
-    fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
-        match elem {
-            PlaceElem::Index(local) if *local == self.from => Some(PlaceElem::Index(self.to)),
-            _ => None,
-        }
-    }
 }
 
 struct DerefArgVisitor<'tcx> {
