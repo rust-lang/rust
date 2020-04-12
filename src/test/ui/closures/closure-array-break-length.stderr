@@ -11,30 +11,11 @@ LL |     while |_: [_; continue]| {} {}
    |                   ^^^^^^^^ cannot `continue` outside of a loop
 
 error[E0268]: `break` outside of a loop
-  --> $DIR/closure-array-break-length.rs:7:19
+  --> $DIR/closure-array-break-length.rs:6:19
    |
 LL |     while |_: [_; break]| {} {}
    |                   ^^^^^ cannot `break` outside of a loop
 
-error[E0308]: mismatched types
-  --> $DIR/closure-array-break-length.rs:4:11
-   |
-LL |     while |_: [_; continue]| {} {}
-   |           ^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found closure
-   |
-   = note: expected type `bool`
-           found closure `[closure@$DIR/closure-array-break-length.rs:4:11: 4:32]`
+error: aborting due to 3 previous errors
 
-error[E0308]: mismatched types
-  --> $DIR/closure-array-break-length.rs:7:11
-   |
-LL |     while |_: [_; break]| {} {}
-   |           ^^^^^^^^^^^^^^^^^^ expected `bool`, found closure
-   |
-   = note: expected type `bool`
-           found closure `[closure@$DIR/closure-array-break-length.rs:7:11: 7:29]`
-
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0268, E0308.
-For more information about an error, try `rustc --explain E0268`.
+For more information about this error, try `rustc --explain E0268`.
