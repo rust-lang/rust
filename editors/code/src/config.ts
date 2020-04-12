@@ -12,6 +12,7 @@ export class Config {
     private readonly requiresReloadOpts = [
         "serverPath",
         "cargo",
+        "procMacro",
         "files",
         "highlighting",
         "updates.channel",

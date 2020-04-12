@@ -64,6 +64,7 @@ pub struct WorldState {
     pub latest_requests: Arc<RwLock<LatestRequests>>,
     pub flycheck: Option<Flycheck>,
     pub diagnostics: DiagnosticCollection,
+    pub proc_macro_client: ProcMacroClient,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -192,6 +193,7 @@ impl WorldState {
             latest_requests: Default::default(),
             flycheck,
             diagnostics: Default::default(),
+            proc_macro_client,
         }
     }
 

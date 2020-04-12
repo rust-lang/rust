@@ -70,7 +70,7 @@ pub(crate) fn load_cargo(
         })
         .collect::<FxHashMap<_, _>>();
 
-    let proc_macro_client = if with_proc_macro {
+    let proc_macro_client = if !with_proc_macro {
         ProcMacroClient::dummy()
     } else {
         ProcMacroClient::extern_process(Path::new("ra_proc_macro_srv")).unwrap()

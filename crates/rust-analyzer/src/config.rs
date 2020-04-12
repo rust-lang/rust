@@ -131,6 +131,14 @@ impl Config {
         set(value, "/cargo/allFeatures", &mut self.cargo.all_features);
         set(value, "/cargo/features", &mut self.cargo.features);
         set(value, "/cargo/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
+
+        match get::<bool>(value, "/procMacro/enabled") {
+            Some(true) => {
+                set(value, "/procMacro/serverPath", &mut self.proc_macro_srv);
+            }
+            _ => self.proc_macro_srv = None,
+        }
+
         match get::<Vec<String>>(value, "/rustfmt/overrideCommand") {
             Some(mut args) if !args.is_empty() => {
                 let command = args.remove(0);
