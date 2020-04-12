@@ -186,7 +186,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             let ty =
-                Place::ty_from(used_place.local, used_place.projection, *self.body, self.infcx.tcx)
+                Place::ty_from(used_place.local, used_place.projection, self.body, self.infcx.tcx)
                     .ty;
             let needs_note = match ty.kind {
                 ty::Closure(id, _) => {
@@ -202,7 +202,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let mpi = self.move_data.moves[move_out_indices[0]].path;
                 let place = &self.move_data.move_paths[mpi].place;
 
-                let ty = place.ty(*self.body, self.infcx.tcx).ty;
+                let ty = place.ty(self.body, self.infcx.tcx).ty;
                 let opt_name =
                     self.describe_place_with_options(place.as_ref(), IncludingDowncast(true));
                 let note_msg = match opt_name {
@@ -591,7 +591,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Define a small closure that we can use to check if the type of a place
         // is a union.
         let union_ty = |place_base, place_projection| {
-            let ty = Place::ty_from(place_base, place_projection, *self.body, self.infcx.tcx).ty;
+            let ty = Place::ty_from(place_base, place_projection, self.body, self.infcx.tcx).ty;
             ty.ty_adt_def().filter(|adt| adt.is_union()).map(|_| ty)
         };
 
@@ -1486,7 +1486,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::LocalStorageDead
                         | StorageDeadOrDrop::BoxedStorageDead => {
                             assert!(
-                                Place::ty_from(place.local, proj_base, *self.body, tcx).ty.is_box(),
+                                Place::ty_from(place.local, proj_base, self.body, tcx).ty.is_box(),
                                 "Drop of value behind a reference or raw pointer"
                             );
                             StorageDeadOrDrop::BoxedStorageDead
@@ -1494,7 +1494,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         StorageDeadOrDrop::Destructor(_) => base_access,
                     },
                     ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
-                        let base_ty = Place::ty_from(place.local, proj_base, *self.body, tcx).ty;
+                        let base_ty = Place::ty_from(place.local, proj_base, self.body, tcx).ty;
                         match base_ty.kind {
                             ty::Adt(def, _) if def.has_dtor(tcx) => {
                                 // Report the outermost adt with a destructor

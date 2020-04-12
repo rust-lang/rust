@@ -619,7 +619,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 let tcx = self.infcx.tcx;
 
                 // Compute the type with accurate region information.
-                let drop_place_ty = drop_place.ty(*self.body, self.infcx.tcx);
+                let drop_place_ty = drop_place.ty(self.body, self.infcx.tcx);
 
                 // Erase the regions.
                 let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty).ty;
@@ -871,7 +871,7 @@ impl InitializationRequiringAction {
 
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn body(&self) -> &'cx Body<'tcx> {
-        *self.body
+        self.body
     }
 
     /// Checks an access to the given place to see if it is allowed. Examines the set of borrows

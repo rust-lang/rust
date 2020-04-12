@@ -468,7 +468,7 @@ impl Inliner<'tcx> {
                         destination.0,
                     );
 
-                    let ty = dest.ty(&**caller_body, self.tcx);
+                    let ty = dest.ty(caller_body, self.tcx);
 
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
@@ -568,7 +568,7 @@ impl Inliner<'tcx> {
             assert!(args.next().is_none());
 
             let tuple = Place::from(tuple);
-            let tuple_tys = if let ty::Tuple(s) = tuple.ty(&**caller_body, tcx).ty.kind {
+            let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_body, tcx).ty.kind {
                 s
             } else {
                 bug!("Closure arguments are not passed as a tuple");
@@ -619,7 +619,7 @@ impl Inliner<'tcx> {
         // Otherwise, create a temporary for the arg
         let arg = Rvalue::Use(arg);
 
-        let ty = arg.ty(&**caller_body, self.tcx);
+        let ty = arg.ty(caller_body, self.tcx);
 
         let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
         let arg_tmp = caller_body.local_decls.push(arg_tmp);
