@@ -144,7 +144,7 @@ impl<'tcx> DocContext<'tcx> {
         if self.all_fake_def_ids.borrow().contains(&def_id) {
             None
         } else {
-            self.tcx.hir().as_local_hir_id(def_id)
+            def_id.as_local().map(|def_id| self.tcx.hir().as_local_hir_id(def_id).unwrap())
         }
     }
 

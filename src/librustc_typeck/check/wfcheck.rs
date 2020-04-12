@@ -70,14 +70,14 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
 /// We do this check as a pre-pass before checking fn bodies because if these constraints are
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
 /// the types first.
-pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
+pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let item = tcx.hir().expect_item(hir_id);
 
     debug!(
         "check_item_well_formed(it.hir_id={:?}, it.name={})",
         item.hir_id,
-        tcx.def_path_str(def_id)
+        tcx.def_path_str(def_id.to_def_id())
     );
 
     match item.kind {
@@ -183,7 +183,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
     }
 }
 
-pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
+pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
@@ -257,7 +257,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
     }
 }
 
-pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
+pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let impl_item = tcx.hir().expect_impl_item(hir_id);
 
@@ -789,7 +789,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     let mut predicates = predicates.instantiate_identity(fcx.tcx);
 
     if let Some((return_ty, span)) = return_ty {
-        let opaque_types = check_opaque_types(tcx, fcx, def_id, span, return_ty);
+        let opaque_types = check_opaque_types(tcx, fcx, def_id.expect_local(), span, return_ty);
         for _ in 0..opaque_types.len() {
             predicates.spans.push(span);
         }
@@ -862,7 +862,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
 fn check_opaque_types<'fcx, 'tcx>(
     tcx: TyCtxt<'tcx>,
     fcx: &FnCtxt<'fcx, 'tcx>,
-    fn_def_id: DefId,
+    fn_def_id: LocalDefId,
     span: Span,
     ty: Ty<'tcx>,
 ) -> Vec<ty::Predicate<'tcx>> {
@@ -878,7 +878,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                 // FIXME(eddyb) is  `generics.parent.is_none()` correct? It seems
                 // potentially risky wrt associated types in `impl`s.
                 if generics.parent.is_none() && def_id.is_local() {
-                    let opaque_hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+                    let opaque_hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
                     if may_define_opaque_type(tcx, fn_def_id, opaque_hir_id) {
                         trace!("check_opaque_types: may define, generics={:#?}", generics);
                         let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();

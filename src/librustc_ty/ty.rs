@@ -128,7 +128,7 @@ fn associated_item_from_impl_item_ref(
 }
 
 fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
-    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
     let parent_id = tcx.hir().get_parent_item(id);
     let parent_def_id = tcx.hir().local_def_id(parent_id);
     let parent_item = tcx.hir().expect_item(parent_id);
@@ -166,7 +166,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
 }
 
 fn impl_defaultness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::Defaultness {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
     let item = tcx.hir().expect_item(hir_id);
     if let hir::ItemKind::Impl { defaultness, .. } = item.kind {
         defaultness
@@ -200,7 +200,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtSizedConstrain
 }
 
 fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
-    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
     let item = tcx.hir().expect_item(id);
     match item.kind {
         hir::ItemKind::Trait(.., ref trait_item_refs) => tcx.arena.alloc_from_iter(
@@ -265,9 +265,12 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     let unnormalized_env =
         ty::ParamEnv::new(tcx.intern_predicates(&predicates), traits::Reveal::UserFacing, None);
 
-    let body_id = tcx.hir().as_local_hir_id(def_id).map_or(hir::CRATE_HIR_ID, |id| {
-        tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
-    });
+    let body_id = def_id
+        .as_local()
+        .map(|def_id| tcx.hir().as_local_hir_id(def_id).unwrap())
+        .map_or(hir::CRATE_HIR_ID, |id| {
+            tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
+        });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
 }
@@ -352,10 +355,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
-    let hir_id = tcx
-        .hir()
-        .as_local_hir_id(def_id)
-        .unwrap_or_else(|| bug!("asyncness: expected local `DefId`, got `{:?}`", def_id));
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
 
     let node = tcx.hir().get(hir_id);
 

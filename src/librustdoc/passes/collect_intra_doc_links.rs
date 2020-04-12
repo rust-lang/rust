@@ -335,7 +335,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         let item_hir_id = if item.is_mod() {
-            if let Some(id) = self.cx.tcx.hir().as_local_hir_id(item.def_id) {
+            if let Some(id) = item
+                .def_id
+                .as_local()
+                .map(|def_id| self.cx.tcx.hir().as_local_hir_id(def_id).unwrap())
+            {
                 Some(id)
             } else {
                 debug!("attempting to fold on a non-local item: {:?}", item);

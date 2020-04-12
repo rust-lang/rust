@@ -13,7 +13,7 @@
 //! move analysis runs after promotion on broken MIR.
 
 use rustc_ast::ast::LitKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::traversal::ReversePostorder;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -64,8 +64,13 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let mut rpo = traversal::reverse_postorder(body);
         let (temps, all_candidates) = collect_temps_and_candidates(tcx, body, &mut rpo);
 
-        let promotable_candidates =
-            validate_candidates(tcx, read_only!(body), def_id, &temps, &all_candidates);
+        let promotable_candidates = validate_candidates(
+            tcx,
+            read_only!(body),
+            def_id.expect_local(),
+            &temps,
+            &all_candidates,
+        );
 
         let promoted = promote_candidates(def_id, body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
@@ -720,7 +725,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 pub fn validate_candidates(
     tcx: TyCtxt<'tcx>,
     body: ReadOnlyBodyAndCache<'_, 'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
     temps: &IndexVec<Local, TempState>,
     candidates: &[Candidate],
 ) -> Vec<Candidate> {
@@ -1155,8 +1160,11 @@ crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
 ) -> bool {
     let mut rpo = traversal::reverse_postorder(&body);
     let (temps, _) = collect_temps_and_candidates(tcx, &body, &mut rpo);
-    let validator =
-        Validator { item: Item::new(tcx, mir_def_id, body), temps: &temps, explicit: false };
+    let validator = Validator {
+        item: Item::new(tcx, mir_def_id.expect_local(), body),
+        temps: &temps,
+        explicit: false,
+    };
 
     let should_promote = validator.validate_operand(operand).is_ok();
     let feature_flag = tcx.features().const_in_array_repeat_expressions;

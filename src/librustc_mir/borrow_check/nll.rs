@@ -66,7 +66,7 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
     // Compute named region information. This also renumbers the inputs/outputs.
-    let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
+    let universal_regions = UniversalRegions::new(infcx, def_id.expect_local(), param_env);
 
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
