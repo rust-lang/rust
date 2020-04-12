@@ -123,7 +123,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         trace!("handle_stack_pop(extra = {:?}, unwinding = {})", extra, unwinding);
-        if let Some(stacked_borrows) = this.memory.extra.stacked_borrows.as_ref() {
+        if let Some(stacked_borrows) = &this.memory.extra.stacked_borrows {
             stacked_borrows.borrow_mut().end_call(extra.call_id);
         }
 
