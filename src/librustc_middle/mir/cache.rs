@@ -48,10 +48,8 @@ impl Cache {
         if self.predecessors.is_none() {
             let mut result = IndexVec::from_elem(smallvec![], body.basic_blocks());
             for (bb, data) in body.basic_blocks().iter_enumerated() {
-                if let Some(ref term) = data.terminator {
-                    for &tgt in term.successors() {
-                        result[tgt].push(bb);
-                    }
+                for &tgt in data.terminator().successors() {
+                    result[tgt].push(bb);
                 }
             }
 

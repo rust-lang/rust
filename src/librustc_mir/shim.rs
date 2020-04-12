@@ -197,7 +197,7 @@ fn build_drop_shim<'tcx>(
     let block = |blocks: &mut IndexVec<_, _>, kind| {
         blocks.push(BasicBlockData {
             statements: vec![],
-            terminator: Some(Terminator { source_info, kind }),
+            terminator: Terminator { source_info, kind },
             is_cleanup: false,
         })
     };
@@ -397,7 +397,7 @@ impl CloneShimBuilder<'tcx> {
         let source_info = self.source_info();
         self.blocks.push(BasicBlockData {
             statements,
-            terminator: Some(Terminator { source_info, kind }),
+            terminator: Terminator { source_info, kind },
             is_cleanup,
         })
     }
@@ -775,7 +775,7 @@ fn build_call_shim<'tcx>(
     let block = |blocks: &mut IndexVec<_, _>, statements, kind, is_cleanup| {
         blocks.push(BasicBlockData {
             statements,
-            terminator: Some(Terminator { source_info, kind }),
+            terminator: Terminator { source_info, kind },
             is_cleanup,
         })
     };
@@ -888,7 +888,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &BodyAndCache<'_> {
 
     let start_block = BasicBlockData {
         statements,
-        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        terminator: Terminator { source_info, kind: TerminatorKind::Return },
         is_cleanup: false,
     };
 

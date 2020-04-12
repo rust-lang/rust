@@ -370,10 +370,10 @@ where
         if adt.variants.is_empty() {
             return self.elaborator.patch().new_block(BasicBlockData {
                 statements: vec![],
-                terminator: Some(Terminator {
+                terminator: Terminator {
                     source_info: self.source_info,
                     kind: TerminatorKind::Unreachable,
-                }),
+                },
                 is_cleanup: self.unwind.is_cleanup(),
             });
         }
@@ -527,7 +527,7 @@ where
         let discr_rv = Rvalue::Discriminant(self.place);
         let switch_block = BasicBlockData {
             statements: vec![self.assign(discr, discr_rv)],
-            terminator: Some(Terminator {
+            terminator: Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::SwitchInt {
                     discr: Operand::Move(discr),
@@ -535,7 +535,7 @@ where
                     values: From::from(values.to_owned()),
                     targets: blocks,
                 },
-            }),
+            },
             is_cleanup: unwind.is_cleanup(),
         };
         let switch_block = self.elaborator.patch().new_block(switch_block);
@@ -564,7 +564,7 @@ where
                     self.place,
                 ),
             )],
-            terminator: Some(Terminator {
+            terminator: Terminator {
                 kind: TerminatorKind::Call {
                     func: Operand::function_handle(
                         tcx,
@@ -578,7 +578,7 @@ where
                     from_hir_call: true,
                 },
                 source_info: self.source_info,
-            }),
+            },
             is_cleanup: unwind.is_cleanup(),
         };
         self.elaborator.patch().new_block(result)
@@ -630,11 +630,11 @@ where
         let drop_block = BasicBlockData {
             statements: vec![self.assign(ptr, ptr_next), self.assign(Place::from(cur), cur_next)],
             is_cleanup: unwind.is_cleanup(),
-            terminator: Some(Terminator {
+            terminator: Terminator {
                 source_info: self.source_info,
                 // this gets overwritten by drop elaboration.
                 kind: TerminatorKind::Unreachable,
-            }),
+            },
         };
         let drop_block = self.elaborator.patch().new_block(drop_block);
 
@@ -644,10 +644,10 @@ where
                 Rvalue::BinaryOp(BinOp::Eq, copy(Place::from(cur)), copy(length_or_end)),
             )],
             is_cleanup: unwind.is_cleanup(),
-            terminator: Some(Terminator {
+            terminator: Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::if_(tcx, move_(can_go), succ, drop_block),
-            }),
+            },
         };
         let loop_block = self.elaborator.patch().new_block(loop_block);
 
@@ -712,7 +712,7 @@ where
                 self.assign(len, Rvalue::Len(self.place)),
             ],
             is_cleanup: self.unwind.is_cleanup(),
-            terminator: Some(Terminator {
+            terminator: Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::SwitchInt {
                     discr: move_(elem_size),
@@ -723,7 +723,7 @@ where
                         self.drop_loop_pair(ety, true, len.clone()),
                     ],
                 },
-            }),
+            },
         };
         self.elaborator.patch().new_block(base_block)
     }
@@ -773,10 +773,10 @@ where
         let drop_block = self.elaborator.patch().new_block(BasicBlockData {
             statements: drop_block_stmts,
             is_cleanup: unwind.is_cleanup(),
-            terminator: Some(Terminator {
+            terminator: Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::Goto { target: loop_block },
-            }),
+            },
         });
 
         // FIXME(#34708): handle partially-dropped array/slice elements.
@@ -967,7 +967,7 @@ where
     fn new_block(&mut self, unwind: Unwind, k: TerminatorKind<'tcx>) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData {
             statements: vec![],
-            terminator: Some(Terminator { source_info: self.source_info, kind: k }),
+            terminator: Terminator { source_info: self.source_info, kind: k },
             is_cleanup: unwind.is_cleanup(),
         })
     }

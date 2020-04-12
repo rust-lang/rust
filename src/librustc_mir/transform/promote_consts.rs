@@ -767,10 +767,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let span = self.promoted.span;
         self.promoted.basic_blocks_mut().push(BasicBlockData {
             statements: vec![],
-            terminator: Some(Terminator {
+            terminator: Terminator {
                 source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
                 kind: TerminatorKind::Return,
-            }),
+            },
             is_cleanup: false,
         })
     }

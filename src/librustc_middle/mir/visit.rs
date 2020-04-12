@@ -316,17 +316,13 @@ macro_rules! make_mir_visitor {
                     is_cleanup: _
                 } = data;
 
-                let mut index = 0;
+                let mut location = Location { block: block, statement_index: 0 };
                 for statement in statements {
-                    let location = Location { block: block, statement_index: index };
                     self.visit_statement(statement, location);
-                    index += 1;
+                    location.statement_index += 1;
                 }
 
-                if let Some(terminator) = terminator {
-                    let location = Location { block: block, statement_index: index };
-                    self.visit_terminator(terminator, location);
-                }
+                self.visit_terminator(terminator, location);
             }
 
             fn super_source_scope_data(&mut self, scope_data: & $($mutability)? SourceScopeData) {
@@ -824,9 +820,7 @@ macro_rules! make_mir_visitor {
             ) {
                 let basic_block = & $($mutability)? body[location.block];
                 if basic_block.statements.len() == location.statement_index {
-                    if let Some(ref $($mutability)? terminator) = basic_block.terminator {
-                        self.visit_terminator(terminator, location)
-                    }
+                    self.visit_terminator(& $($mutability)? basic_block.terminator, location)
                 } else {
                     let statement = & $($mutability)?
                         basic_block.statements[location.statement_index];

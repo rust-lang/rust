@@ -46,26 +46,22 @@ impl AddCallGuards {
         let cur_len = body.basic_blocks().len();
 
         for block in body.basic_blocks_mut() {
-            match block.terminator {
-                Some(Terminator {
-                    kind:
-                        TerminatorKind::Call {
-                            destination: Some((_, ref mut destination)),
-                            cleanup,
-                            ..
-                        },
+            let is_cleanup = block.is_cleanup;
+            match block.terminator_mut() {
+                Terminator {
+                    kind: TerminatorKind::Call { destination: Some((_, destination)), cleanup, .. },
                     source_info,
-                }) if pred_count[*destination] > 1
+                } if pred_count[*destination] > 1
                     && (cleanup.is_some() || self == &AllCallEdges) =>
                 {
                     // It's a critical edge, break it
                     let call_guard = BasicBlockData {
                         statements: vec![],
-                        is_cleanup: block.is_cleanup,
-                        terminator: Some(Terminator {
-                            source_info,
+                        is_cleanup,
+                        terminator: Terminator {
+                            source_info: *source_info,
                             kind: TerminatorKind::Goto { target: *destination },
-                        }),
+                        },
                     };
 
                     // Get the index it will be when inserted into the MIR

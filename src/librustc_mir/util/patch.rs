@@ -49,10 +49,10 @@ impl<'tcx> MirPatch<'tcx> {
         let resume_block = resume_block.unwrap_or_else(|| {
             result.new_block(BasicBlockData {
                 statements: vec![],
-                terminator: Some(Terminator {
+                terminator: Terminator {
                     source_info: SourceInfo { span: body.span, scope: OUTERMOST_SOURCE_SCOPE },
                     kind: TerminatorKind::Resume,
-                }),
+                },
                 is_cleanup: true,
             })
         });

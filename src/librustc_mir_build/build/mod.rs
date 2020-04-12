@@ -775,9 +775,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     fn finish(self) -> Body<'tcx> {
-        for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
-            if block.terminator.is_none() {
-                span_bug!(self.fn_span, "no terminator on block {:?}", index);
+        // We use `Goto(BasicBlock::MAX)` to represent an uninitialized terminator. It's possible,
+        // though highly unlikely, for that to be a valid basic block index.
+        if self.cfg.basic_blocks.get(BasicBlock::MAX).is_none() {
+            for (index, block) in self.cfg.basic_blocks.iter().enumerate() {
+                if block.terminator().is_tombstone() {
+                    span_bug!(self.fn_span, "no terminator on block {:?}", index);
+                }
             }
         }
 

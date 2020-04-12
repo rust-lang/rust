@@ -960,14 +960,7 @@ pub struct BasicBlockData<'tcx> {
     pub statements: Vec<Statement<'tcx>>,
 
     /// Terminator for this block.
-    ///
-    /// N.B., this should generally ONLY be `None` during construction.
-    /// Therefore, you should generally access it via the
-    /// `terminator()` or `terminator_mut()` methods. The only
-    /// exception is that certain passes, such as `simplify_cfg`, swap
-    /// out the terminator temporarily with `None` while they continue
-    /// to recurse over the set of basic blocks.
-    pub terminator: Option<Terminator<'tcx>>,
+    pub terminator: Terminator<'tcx>,
 
     /// If true, this block lies on an unwind path. This is used
     /// during codegen where distinct kinds of basic blocks may be
@@ -1155,6 +1148,20 @@ pub type SuccessorsMut<'a> =
     iter::Chain<option::IntoIter<&'a mut BasicBlock>, slice::IterMut<'a, BasicBlock>>;
 
 impl<'tcx> Terminator<'tcx> {
+    #[inline]
+    pub fn tombstone() -> Self {
+        Terminator {
+            kind: TerminatorKind::Goto { target: BasicBlock::MAX },
+            source_info: SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
+        }
+    }
+
+    #[inline]
+    pub fn is_tombstone(&self) -> bool {
+        let tombstone = Terminator::tombstone();
+        self.kind == tombstone.kind && self.source_info == tombstone.source_info
+    }
+
     pub fn successors(&self) -> Successors<'_> {
         self.kind.successors()
     }
@@ -1294,20 +1301,24 @@ impl<'tcx> TerminatorKind<'tcx> {
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
-    pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
+    pub fn new(terminator: Terminator<'tcx>) -> BasicBlockData<'tcx> {
         BasicBlockData { statements: vec![], terminator, is_cleanup: false }
     }
 
     /// Accessor for terminator.
-    ///
-    /// Terminator may not be None after construction of the basic block is complete. This accessor
-    /// provides a convenience way to reach the terminator.
+    #[inline(always)]
     pub fn terminator(&self) -> &Terminator<'tcx> {
-        self.terminator.as_ref().expect("invalid terminator state")
+        &self.terminator
     }
 
+    #[inline(always)]
     pub fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
-        self.terminator.as_mut().expect("invalid terminator state")
+        &mut self.terminator
+    }
+
+    #[inline(always)]
+    pub fn set_terminator(&mut self, terminator: Terminator<'tcx>) {
+        self.terminator = terminator;
     }
 
     pub fn retain_statements<F>(&mut self, mut f: F)

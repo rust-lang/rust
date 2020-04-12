@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::GeneratorKind;
 use rustc_middle::mir::{
     AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand, Place,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
@@ -443,10 +443,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     );
                     if !is_terminator {
                         continue;
-                    } else if let Some(Terminator {
-                        kind: TerminatorKind::Call { ref func, from_hir_call: false, .. },
-                        ..
-                    }) = bbd.terminator
+                    } else if let TerminatorKind::Call { ref func, from_hir_call: false, .. } =
+                        bbd.terminator().kind
                     {
                         if let Some(source) =
                             BorrowedContentSource::from_call(func.ty(*self.body, tcx), tcx)

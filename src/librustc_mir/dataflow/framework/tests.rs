@@ -32,7 +32,7 @@ fn mock_body() -> mir::Body<'static> {
 
         blocks.push(mir::BasicBlockData {
             statements: std::iter::repeat(&nop).cloned().take(n).collect(),
-            terminator: Some(mir::Terminator { source_info, kind }),
+            terminator: mir::Terminator { source_info, kind },
             is_cleanup: false,
         })
     };

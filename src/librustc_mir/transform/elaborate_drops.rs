@@ -414,16 +414,13 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let unwind = unwind.unwrap_or_else(|| self.patch.resume_block());
         let unwind = self.patch.new_block(BasicBlockData {
             statements: vec![assign.clone()],
-            terminator: Some(Terminator {
-                kind: TerminatorKind::Goto { target: unwind },
-                ..*terminator
-            }),
+            terminator: Terminator { kind: TerminatorKind::Goto { target: unwind }, ..*terminator },
             is_cleanup: true,
         });
 
         let target = self.patch.new_block(BasicBlockData {
             statements: vec![assign],
-            terminator: Some(Terminator { kind: TerminatorKind::Goto { target }, ..*terminator }),
+            terminator: Terminator { kind: TerminatorKind::Goto { target }, ..*terminator },
             is_cleanup: false,
         });
 

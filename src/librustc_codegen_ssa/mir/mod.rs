@@ -277,7 +277,7 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             let funclet;
             let ret_llbb;
-            match mir[bb].terminator.as_ref().map(|t| &t.kind) {
+            match mir[bb].terminator().kind {
                 // This is a basic block that we're aborting the program for,
                 // notably in an `extern` function. These basic blocks are inserted
                 // so that we assert that `extern` functions do indeed not panic,
@@ -298,7 +298,7 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 //      } catch (...) {
                 //          bar();
                 //      }
-                Some(&mir::TerminatorKind::Abort) => {
+                mir::TerminatorKind::Abort => {
                     let mut cs_bx = bx.build_sibling_block(&format!("cs_funclet{:?}", bb));
                     let mut cp_bx = bx.build_sibling_block(&format!("cp_funclet{:?}", bb));
                     ret_llbb = cs_bx.llbb();

@@ -805,7 +805,7 @@ fn insert_switch<'tcx>(
         0,
         BasicBlockData {
             statements: vec![assign],
-            terminator: Some(Terminator { source_info, kind: switch }),
+            terminator: Terminator { source_info, kind: switch },
             is_cleanup: false,
         },
     );
@@ -949,7 +949,7 @@ fn insert_term_block<'tcx>(
     let source_info = source_info(body);
     body.basic_blocks_mut().push(BasicBlockData {
         statements: Vec::new(),
-        terminator: Some(Terminator { source_info, kind }),
+        terminator: Terminator { source_info, kind },
         is_cleanup: false,
     });
     term_block
@@ -976,7 +976,7 @@ fn insert_panic_block<'tcx>(
     let source_info = source_info(body);
     body.basic_blocks_mut().push(BasicBlockData {
         statements: Vec::new(),
-        terminator: Some(Terminator { source_info, kind: term }),
+        terminator: Terminator { source_info, kind: term },
         is_cleanup: false,
     });
 
@@ -1054,7 +1054,7 @@ fn create_generator_resume_function<'tcx>(
         let source_info = source_info(body);
         body.basic_blocks_mut().push(BasicBlockData {
             statements: vec![transform.set_discr(VariantIdx::new(POISONED), source_info)],
-            terminator: Some(Terminator { source_info, kind: TerminatorKind::Resume }),
+            terminator: Terminator { source_info, kind: TerminatorKind::Resume },
             is_cleanup: true,
         });
 
@@ -1135,7 +1135,7 @@ fn insert_clean_drop(body: &mut BodyAndCache<'_>) -> BasicBlock {
     let source_info = source_info(body);
     body.basic_blocks_mut().push(BasicBlockData {
         statements: Vec::new(),
-        terminator: Some(Terminator { source_info, kind: term }),
+        terminator: Terminator { source_info, kind: term },
         is_cleanup: false,
     });
 
@@ -1208,10 +1208,7 @@ fn create_cases<'tcx>(
                 // Then jump to the real target
                 body.basic_blocks_mut().push(BasicBlockData {
                     statements,
-                    terminator: Some(Terminator {
-                        source_info,
-                        kind: TerminatorKind::Goto { target },
-                    }),
+                    terminator: Terminator { source_info, kind: TerminatorKind::Goto { target } },
                     is_cleanup: false,
                 });
 

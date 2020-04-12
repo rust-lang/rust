@@ -78,10 +78,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         pred_count[START_BLOCK] = 1;
 
         for (_, data) in traversal::preorder(body) {
-            if let Some(ref term) = data.terminator {
-                for &tgt in term.successors() {
-                    pred_count[tgt] += 1;
-                }
+            for &tgt in data.terminator().successors() {
+                pred_count[tgt] += 1;
             }
         }
 
@@ -112,8 +110,10 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
                 debug!("simplifying {:?}", bb);
 
-                let mut terminator =
-                    self.basic_blocks[bb].terminator.take().expect("invalid terminator state");
+                let mut terminator = std::mem::replace(
+                    self.basic_blocks[bb].terminator_mut(),
+                    Terminator::tombstone(),
+                );
 
                 for successor in terminator.successors_mut() {
                     self.collapse_goto_chain(successor, &mut changed);
@@ -140,7 +140,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                     self.basic_blocks[bb].statements = statements;
                 }
 
-                self.basic_blocks[bb].terminator = Some(terminator);
+                self.basic_blocks[bb].set_terminator(terminator);
 
                 changed |= inner_changed;
             }
@@ -174,26 +174,27 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     // Collapse a goto chain starting from `start`
     fn collapse_goto_chain(&mut self, start: &mut BasicBlock, changed: &mut bool) {
-        let mut terminator = match self.basic_blocks[*start] {
-            BasicBlockData {
-                ref statements,
-                terminator:
-                    ref mut terminator @ Some(Terminator { kind: TerminatorKind::Goto { .. }, .. }),
-                ..
-            } if statements.is_empty() => terminator.take(),
-            // if `terminator` is None, this means we are in a loop. In that
-            // case, let all the loop collapse to its entry.
-            _ => return,
-        };
+        let data = &mut self.basic_blocks[*start];
 
-        let target = match terminator {
-            Some(Terminator { kind: TerminatorKind::Goto { ref mut target }, .. }) => {
-                self.collapse_goto_chain(target, changed);
-                *target
-            }
+        // If this basic block has statements or is not terminated with a `Goto`, we have reached
+        // the end of the chain.
+        if !data.statements.is_empty() || data.terminator().is_tombstone() {
+            return;
+        }
+        match data.terminator().kind {
+            TerminatorKind::Goto { target } if target != BasicBlock::MAX => {}
+            _ => return,
+        }
+
+        let mut terminator = std::mem::replace(data.terminator_mut(), Terminator::tombstone());
+        let target = match &mut terminator.kind {
+            TerminatorKind::Goto { target } => target,
             _ => unreachable!(),
         };
-        self.basic_blocks[*start].terminator = terminator;
+        self.collapse_goto_chain(target, changed);
+        let target = *target;
+
+        self.basic_blocks[*start].set_terminator(terminator);
 
         debug!("collapsing goto chain from {:?} to {:?}", *start, target);
 
@@ -223,14 +224,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         };
 
         debug!("merging block {:?} into {:?}", target, terminator);
-        *terminator = match self.basic_blocks[target].terminator.take() {
-            Some(terminator) => terminator,
-            None => {
-                // unreachable loop - this should not be possible, as we
-                // don't strand blocks, but handle it correctly.
-                return false;
-            }
-        };
+        *terminator =
+            std::mem::replace(&mut self.basic_blocks[target].terminator, Terminator::tombstone());
 
         merged_blocks.push(target);
         self.pred_count[target] = 0;
