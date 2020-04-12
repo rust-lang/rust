@@ -280,9 +280,13 @@ pub fn default_submod_path<'a>(
                 mod_name,
             );
             err.help(&format!(
-                "to create the module `{}`, create file \"{}\"",
+                "to create the module `{}` here, create file \"{}\"",
                 mod_name,
                 default_path.display(),
+            ));
+            err.help(&format!(
+                "if there is `mod {}` elsewhere in the crate already, import it with `use crate::` instead",
+                mod_name,
             ));
             Err(err)
         }

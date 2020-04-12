@@ -1,7 +1,8 @@
 // only-windows
 
 mod not_a_real_file; //~ ERROR file not found for module `not_a_real_file`
-//~^ HELP to create the module `not_a_real_file`, create file
+//~^ HELP to create the module `not_a_real_file` here, create file
+//~^ HELP if there is `mod not_a_real_file` elsewhere in the crate already
 
 fn main() {
     assert_eq!(mod_file_aux::bar(), 10);
