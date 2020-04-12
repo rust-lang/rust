@@ -444,10 +444,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            #[rustfmt::skip]
-            | "min_align_of_val"
-            | "align_of_val"
-            => {
+            "min_align_of_val" => {
                 let mplace = this.deref_operand(args[0])?;
                 let (_, align) = this
                     .size_and_align_of_mplace(mplace)?
