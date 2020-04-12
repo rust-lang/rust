@@ -194,13 +194,16 @@ fn solve(
         }
         remaining > 0
     };
-    let mut solve = || solver.solve_limited(&context, goal, should_continue);
+    let mut solve = || {
+        let solution = solver.solve_limited(&context, goal, should_continue);
+        log::debug!("solve({:?}) => {:?}", goal, solution);
+        solution
+    };
     // don't set the TLS for Chalk unless Chalk debugging is active, to make
     // extra sure we only use it for debugging
     let solution =
         if is_chalk_debug() { chalk::tls::set_current_program(db, solve) } else { solve() };
 
-    log::debug!("solve({:?}) => {:?}", goal, solution);
     solution
 }
 

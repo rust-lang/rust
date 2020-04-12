@@ -2023,6 +2023,33 @@ fn main() {
 }
 
 #[test]
+fn associated_type_bound() {
+    let t = type_at(
+        r#"
+//- /main.rs
+pub trait Trait {
+    type Item: OtherTrait<u32>;
+}
+pub trait OtherTrait<T> {
+    fn foo(&self) -> T;
+}
+
+// this is just a workaround for chalk#234
+pub struct S<T>;
+impl<T: Trait> Trait for S<T> {
+    type Item = <T as Trait>::Item;
+}
+
+fn test<T: Trait>() {
+    let y: <S<T> as Trait>::Item = no_matter;
+    y.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
 fn dyn_trait_through_chalk() {
     let t = type_at(
         r#"

@@ -9,7 +9,8 @@ use hir_expand::{
 };
 use ra_prof::profile;
 use ra_syntax::ast::{
-    self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner, VisibilityOwner,
+    self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner, TypeBoundsOwner,
+    VisibilityOwner,
 };
 
 use crate::{
@@ -106,6 +107,7 @@ pub struct TypeAliasData {
     pub name: Name,
     pub type_ref: Option<TypeRef>,
     pub visibility: RawVisibility,
+    pub bounds: Vec<TypeBound>,
 }
 
 impl TypeAliasData {
@@ -118,9 +120,17 @@ impl TypeAliasData {
         let name = node.value.name().map_or_else(Name::missing, |n| n.as_name());
         let type_ref = node.value.type_ref().map(TypeRef::from_ast);
         let vis_default = RawVisibility::default_for_container(loc.container);
-        let visibility =
-            RawVisibility::from_ast_with_default(db, vis_default, node.map(|n| n.visibility()));
-        Arc::new(TypeAliasData { name, type_ref, visibility })
+        let visibility = RawVisibility::from_ast_with_default(
+            db,
+            vis_default,
+            node.as_ref().map(|n| n.visibility()),
+        );
+        let bounds = if let Some(bound_list) = node.value.type_bound_list() {
+            bound_list.bounds().map(TypeBound::from_ast).collect()
+        } else {
+            Vec::new()
+        };
+        Arc::new(TypeAliasData { name, type_ref, visibility, bounds })
     }
 }
 
