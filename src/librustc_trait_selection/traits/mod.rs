@@ -31,7 +31,7 @@ use rustc_middle::middle::region;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, WithConstness};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use std::fmt::Debug;
 
@@ -136,7 +136,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
     let trait_ref = ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) };
     let obligation = Obligation {
         param_env,
-        cause: ObligationCause::misc(span, hir::DUMMY_HIR_ID),
+        cause: ObligationCause::misc(span, hir::CRATE_HIR_ID),
         recursion_depth: 0,
         predicate: trait_ref.without_const().to_predicate(),
     };
@@ -163,7 +163,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
         // anyhow).
-        let cause = ObligationCause::misc(span, hir::DUMMY_HIR_ID);
+        let cause = ObligationCause::misc(span, hir::CRATE_HIR_ID);
 
         fulfill_cx.register_bound(infcx, param_env, ty, def_id, cause);
 

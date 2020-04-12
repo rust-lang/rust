@@ -187,13 +187,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             // to store all of the necessary region/lifetime bounds in the InferContext, as well as
             // an additional sanity check.
             let mut fulfill = FulfillmentContext::new();
-            fulfill.register_bound(
-                &infcx,
-                full_env,
-                ty,
-                trait_did,
-                ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID),
-            );
+            fulfill.register_bound(&infcx, full_env, ty, trait_did, ObligationCause::dummy());
             fulfill.select_all_or_error(&infcx).unwrap_or_else(|e| {
                 panic!("Unable to fulfill trait {:?} for '{:?}': {:?}", trait_did, ty, e)
             });
@@ -292,7 +286,7 @@ impl AutoTraitFinder<'tcx> {
             user_env.caller_bounds.iter().cloned().collect();
 
         let mut new_env = param_env;
-        let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
+        let dummy_cause = ObligationCause::dummy();
 
         while let Some(pred) = predicates.pop_front() {
             infcx.clear_caches();
@@ -615,7 +609,7 @@ impl AutoTraitFinder<'tcx> {
         select: &mut SelectionContext<'_, 'tcx>,
         only_projections: bool,
     ) -> bool {
-        let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
+        let dummy_cause = ObligationCause::dummy();
 
         for (obligation, mut predicate) in nested.map(|o| (o.clone(), o.predicate)) {
             let is_new_pred = fresh_preds.insert(self.clean_pred(select.infcx(), predicate));

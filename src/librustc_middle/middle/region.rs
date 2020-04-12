@@ -159,21 +159,20 @@ impl Scope {
         self.id
     }
 
-    pub fn hir_id(&self, scope_tree: &ScopeTree) -> hir::HirId {
-        match scope_tree.root_body {
-            Some(hir_id) => hir::HirId { owner: hir_id.owner, local_id: self.item_local_id() },
-            None => hir::DUMMY_HIR_ID,
-        }
+    pub fn hir_id(&self, scope_tree: &ScopeTree) -> Option<hir::HirId> {
+        scope_tree
+            .root_body
+            .map(|hir_id| hir::HirId { owner: hir_id.owner, local_id: self.item_local_id() })
     }
 
     /// Returns the span of this `Scope`. Note that in general the
     /// returned span may not correspond to the span of any `NodeId` in
     /// the AST.
     pub fn span(&self, tcx: TyCtxt<'_>, scope_tree: &ScopeTree) -> Span {
-        let hir_id = self.hir_id(scope_tree);
-        if hir_id == hir::DUMMY_HIR_ID {
-            return DUMMY_SP;
-        }
+        let hir_id = match self.hir_id(scope_tree) {
+            Some(hir_id) => hir_id,
+            None => return DUMMY_SP,
+        };
         let span = tcx.hir().span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
             if let Node::Block(ref blk) = tcx.hir().get(hir_id) {
