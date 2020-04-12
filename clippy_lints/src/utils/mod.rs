@@ -1222,8 +1222,10 @@ pub fn is_normalizable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, param_env: ty::Para
 }
 
 pub fn match_def_path<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, did: DefId, syms: &[&str]) -> bool {
-    let path = cx.get_def_path(did);
-    path.len() == syms.len() && path.into_iter().zip(syms.iter()).all(|(a, &b)| a.as_str() == b)
+    // We have to convert `syms` to `&[Symbol]` here because rustc's `match_def_path`
+    // accepts only that. We should probably move to Symbols in Clippy as well.
+    let syms = syms.iter().map(|p| Symbol::intern(p)).collect::<Vec<Symbol>>();
+    cx.match_def_path(did, &syms)
 }
 
 /// Returns the list of condition expressions and the list of blocks in a
