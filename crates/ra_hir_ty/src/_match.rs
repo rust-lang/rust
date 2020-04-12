@@ -1484,6 +1484,45 @@ mod tests {
 
         check_no_diagnostic(content);
     }
+
+    #[test]
+    fn enum_tuple_partial_ellipsis_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(true, .., true) => {},
+                    Either::A(true, .., false) => {},
+                    Either::A(false, .., true) => {},
+                    Either::A(false, .., false) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_tuple_ellipsis_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(..) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
 }
 
 #[cfg(test)]
@@ -1626,6 +1665,31 @@ mod false_negatives {
 
         // This is a false negative.
         // See comments on `tuple_of_bools_with_ellipsis_at_end_missing_arm`.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_tuple_partial_ellipsis_missing_arm() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(true, .., true) => {},
+                    Either::A(true, .., false) => {},
+                    Either::A(false, .., false) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // The `..` pattern is currently lowered to a single `Pat::Wild`
+        // no matter how many fields the `..` pattern is covering. This
+        // causes us to return a `MatchCheckErr::MalformedMatchArm` in
+        // `Pat::specialize_constructor`.
         check_no_diagnostic(content);
     }
 }
