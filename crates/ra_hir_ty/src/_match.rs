@@ -973,6 +973,47 @@ mod tests {
     }
 
     #[test]
+    fn tuple_of_bools_with_ellipsis_at_end_no_diagnostic() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (false, ..) => {},
+                    (true, ..) => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_beginning_no_diagnostic() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (.., false) => {},
+                    (.., true) => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_no_diagnostic() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (..) => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
     fn tuple_of_tuple_and_bools_no_arms() {
         let content = r"
             fn test_fn() {
@@ -1551,6 +1592,40 @@ mod false_negatives {
         // We currently infer the type of `loop { break Foo::A }` to `!`, which
         // causes us to skip the diagnostic since `Either::A` doesn't type check
         // with `!`.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_end_missing_arm() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (false, ..) => {},
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // The `..` pattern is currently lowered to a single `Pat::Wild`
+        // no matter how many fields the `..` pattern is covering. This
+        // causes the match arm in this test not to type check against
+        // the match expression, which causes this diagnostic not to
+        // fire.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_beginning_missing_arm() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (.., false) => {},
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // See comments on `tuple_of_bools_with_ellipsis_at_end_missing_arm`.
         check_no_diagnostic(content);
     }
 }
