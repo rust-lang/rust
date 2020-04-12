@@ -360,13 +360,23 @@ impl Ty {
             },
             Some(TypeNs::GenericParam(param_id)) => {
                 let predicates = ctx.db.generic_predicates_for_param(param_id);
-                predicates
+                let mut traits_: Vec<_> = predicates
                     .iter()
                     .filter_map(|pred| match &pred.value {
                         GenericPredicate::Implemented(tr) => Some(tr.trait_),
                         _ => None,
                     })
-                    .collect()
+                    .collect();
+                // Handle `Self::Type` referring to own associated type in trait definitions
+                if let GenericDefId::TraitId(trait_id) = param_id.parent {
+                    let generics = generics(ctx.db.upcast(), trait_id.into());
+                    if generics.params.types[param_id.local_id].provenance
+                        == TypeParamProvenance::TraitSelf
+                    {
+                        traits_.push(trait_id);
+                    }
+                }
+                traits_
             }
             _ => return Ty::Unknown,
         };
