@@ -374,7 +374,7 @@ pub struct RecordFieldPat {
 pub enum Pat {
     Missing,
     Wild,
-    Tuple(Vec<PatId>),
+    Tuple { args: Vec<PatId>, ellipsis: Option<usize> },
     Or(Vec<PatId>),
     Record { path: Option<Path>, args: Vec<RecordFieldPat>, ellipsis: bool },
     Range { start: ExprId, end: ExprId },
@@ -382,7 +382,7 @@ pub enum Pat {
     Path(Path),
     Lit(ExprId),
     Bind { mode: BindingAnnotation, name: Name, subpat: Option<PatId> },
-    TupleStruct { path: Option<Path>, args: Vec<PatId> },
+    TupleStruct { path: Option<Path>, args: Vec<PatId>, ellipsis: Option<usize> },
     Ref { pat: PatId, mutability: Mutability },
 }
 
@@ -393,7 +393,7 @@ impl Pat {
             Pat::Bind { subpat, .. } => {
                 subpat.iter().copied().for_each(f);
             }
-            Pat::Or(args) | Pat::Tuple(args) | Pat::TupleStruct { args, .. } => {
+            Pat::Or(args) | Pat::Tuple { args, .. } | Pat::TupleStruct { args, .. } => {
                 args.iter().copied().for_each(f);
             }
             Pat::Ref { pat, .. } => f(*pat),

@@ -33,6 +33,7 @@ use crate::{
 };
 
 use super::{ExprSource, PatSource};
+use ast::AstChildren;
 
 pub(super) fn lower(
     db: &dyn DefDatabase,
@@ -598,8 +599,8 @@ impl ExprCollector<'_> {
             }
             ast::Pat::TupleStructPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
-                let args = p.args().map(|p| self.collect_pat(p)).collect();
-                Pat::TupleStruct { path, args }
+                let (args, ellipsis) = self.collect_tuple_pat(p.args());
+                Pat::TupleStruct { path, args, ellipsis }
             }
             ast::Pat::RefPat(p) => {
                 let pat = self.collect_pat_opt(p.pat());
@@ -616,10 +617,10 @@ impl ExprCollector<'_> {
             }
             ast::Pat::ParenPat(p) => return self.collect_pat_opt(p.pat()),
             ast::Pat::TuplePat(p) => {
-                let args = p.args().map(|p| self.collect_pat(p)).collect();
-                Pat::Tuple(args)
+                let (args, ellipsis) = self.collect_tuple_pat(p.args());
+                Pat::Tuple { args, ellipsis }
             }
-            ast::Pat::PlaceholderPat(_) | ast::Pat::DotDotPat(_) => Pat::Wild,
+            ast::Pat::PlaceholderPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
                 let record_field_pat_list =
@@ -665,6 +666,9 @@ impl ExprCollector<'_> {
                     Pat::Missing
                 }
             }
+            ast::Pat::DotDotPat(_) => unreachable!(
+                "`DotDotPat` requires special handling and should not be mapped to a Pat."
+            ),
             // FIXME: implement
             ast::Pat::BoxPat(_) | ast::Pat::RangePat(_) | ast::Pat::MacroPat(_) => Pat::Missing,
         };
@@ -678,6 +682,19 @@ impl ExprCollector<'_> {
         } else {
             self.missing_pat()
         }
+    }
+
+    fn collect_tuple_pat(&mut self, args: AstChildren<ast::Pat>) -> (Vec<PatId>, Option<usize>) {
+        // Find the location of the `..`, if there is one. Note that we do not
+        // consider the possiblity of there being multiple `..` here.
+        let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::DotDotPat(_)));
+        // We want to skip the `..` pattern here, since we account for it above.
+        let args = args
+            .filter(|p| !matches!(p, ast::Pat::DotDotPat(_)))
+            .map(|p| self.collect_pat(p))
+            .collect();
+
+        (args, ellipsis)
     }
 }
 
