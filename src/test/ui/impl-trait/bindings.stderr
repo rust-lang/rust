@@ -30,6 +30,6 @@ LL | #![feature(impl_trait_in_bindings)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0435`.

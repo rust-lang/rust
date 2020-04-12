@@ -18,6 +18,6 @@ help: consider restricting type parameter `T`
 LL | fn g<T: std::marker::Copy, const N: usize>(x: T) -> [T; N] {
    |       ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

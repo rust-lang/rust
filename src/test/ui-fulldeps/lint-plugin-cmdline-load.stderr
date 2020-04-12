@@ -14,3 +14,5 @@ LL | fn lintme() { }
    |
    = note: `#[warn(test_lint)]` on by default
 
+warning: 2 warnings emitted
+

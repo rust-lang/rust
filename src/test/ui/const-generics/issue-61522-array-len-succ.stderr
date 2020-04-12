@@ -22,5 +22,5 @@ LL |     fn inner(&self) -> &[u8; COUNT + 1] {
    |
    = note: this may fail depending on what value the parameter takes
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 

@@ -14,3 +14,5 @@ LL |     let foo = <[u8; 2]>::BIT_LEN;
    |
    = note: `#[warn(unused_variables)]` on by default
 
+warning: 2 warnings emitted
+

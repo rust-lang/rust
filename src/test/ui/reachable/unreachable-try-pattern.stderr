@@ -31,3 +31,5 @@ warning: unreachable pattern
 LL |     let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
    |                                        ^^^^^^
 
+warning: 3 warnings emitted
+

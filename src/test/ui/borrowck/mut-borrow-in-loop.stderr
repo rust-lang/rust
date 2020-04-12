@@ -42,6 +42,6 @@ LL |             (self.func)(arg)
    |             |           mutable borrow starts here in previous iteration of loop
    |             argument requires that `*arg` is borrowed for `'a`
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0499`.

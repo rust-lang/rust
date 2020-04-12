@@ -19,3 +19,5 @@ note: rustc VERSION running on TARGET
 
 note: compiler flags: FLAGS
 
+warning: 1 warning emitted
+

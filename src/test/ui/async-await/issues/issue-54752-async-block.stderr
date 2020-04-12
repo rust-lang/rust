@@ -6,3 +6,5 @@ LL | fn main() { let _a = (async  { }); }
    |
    = note: `#[warn(unused_parens)]` on by default
 
+warning: 1 warning emitted
+

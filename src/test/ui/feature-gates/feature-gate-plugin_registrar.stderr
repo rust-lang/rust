@@ -24,6 +24,6 @@ LL | #[plugin_registrar]
    |
    = note: `#[warn(deprecated)]` on by default
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.

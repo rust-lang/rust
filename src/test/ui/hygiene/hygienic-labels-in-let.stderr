@@ -330,3 +330,5 @@ LL |             run_once!(continue 'x);
    |
    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
+warning: 28 warnings emitted
+

@@ -4,3 +4,5 @@ warning: skipping const checks
 LL |     X(x) // FIXME: this should error someday
    |     ^^^^
 
+warning: 1 warning emitted
+

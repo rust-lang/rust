@@ -48,3 +48,5 @@ warning: unreachable pattern
 LL |         6 => {},
    |         ^
 
+warning: 6 warnings emitted
+

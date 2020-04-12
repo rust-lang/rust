@@ -4,3 +4,5 @@ warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
 LL | #[macro_escape]
    | ^^^^^^^^^^^^^^^
 
+warning: 1 warning emitted
+

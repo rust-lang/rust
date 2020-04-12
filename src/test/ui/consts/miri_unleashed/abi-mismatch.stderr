@@ -25,5 +25,5 @@ LL | const VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C
    |
    = note: `#[deny(const_err)]` on by default
 
-error: aborting due to previous error
+error: aborting due to previous error; 2 warnings emitted
 

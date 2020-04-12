@@ -6,3 +6,5 @@ LL | #![plugin(lint_plugin_test)]
    |
    = note: `#[warn(deprecated)]` on by default
 
+warning: 1 warning emitted
+
