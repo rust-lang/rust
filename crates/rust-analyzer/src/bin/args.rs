@@ -29,15 +29,18 @@ pub(crate) enum Command {
         with_deps: bool,
         path: PathBuf,
         load_output_dirs: bool,
+        with_proc_macro: bool,
     },
     Bench {
         path: PathBuf,
         what: BenchWhat,
         load_output_dirs: bool,
+        with_proc_macro: bool,
     },
     Diagnostics {
         path: PathBuf,
         load_output_dirs: bool,
+        with_proc_macro: bool,
         /// Include files which are not modules. In rust-analyzer
         /// this would include the parser test files.
         all: bool,
@@ -148,6 +151,7 @@ FLAGS:
     -h, --help              Prints help information
         --memory-usage
         --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
+        --with-proc-macro    Use ra-proc-macro-srv for proc-macro expanding
     -v, --verbose
     -q, --quiet
 
@@ -165,6 +169,7 @@ ARGS:
                 let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
                 let with_deps: bool = matches.contains("--with-deps");
                 let load_output_dirs = matches.contains("--load-output-dirs");
+                let with_proc_macro = matches.contains("--with-proc-macro");
                 let path = {
                     let mut trailing = matches.free()?;
                     if trailing.len() != 1 {
@@ -173,7 +178,15 @@ ARGS:
                     trailing.pop().unwrap().into()
                 };
 
-                Command::Stats { randomize, memory_usage, only, with_deps, path, load_output_dirs }
+                Command::Stats {
+                    randomize,
+                    memory_usage,
+                    only,
+                    with_deps,
+                    path,
+                    load_output_dirs,
+                    with_proc_macro,
+                }
             }
             "analysis-bench" => {
                 if matches.contains(["-h", "--help"]) {
@@ -187,6 +200,7 @@ USAGE:
 FLAGS:
     -h, --help          Prints help information
     --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
+    --with-proc-macro    Use ra-proc-macro-srv for proc-macro expanding
     -v, --verbose
 
 OPTIONS:
@@ -214,7 +228,8 @@ ARGS:
                     ),
                 };
                 let load_output_dirs = matches.contains("--load-output-dirs");
-                Command::Bench { path, what, load_output_dirs }
+                let with_proc_macro = matches.contains("--with-proc-macro");
+                Command::Bench { path, what, load_output_dirs, with_proc_macro }
             }
             "diagnostics" => {
                 if matches.contains(["-h", "--help"]) {
@@ -237,6 +252,7 @@ ARGS:
                 }
 
                 let load_output_dirs = matches.contains("--load-output-dirs");
+                let with_proc_macro = matches.contains("--with-proc-macro");
                 let all = matches.contains("--all");
                 let path = {
                     let mut trailing = matches.free()?;
@@ -246,7 +262,7 @@ ARGS:
                     trailing.pop().unwrap().into()
                 };
 
-                Command::Diagnostics { path, load_output_dirs, all }
+                Command::Diagnostics { path, load_output_dirs, with_proc_macro, all }
             }
             _ => {
                 eprintln!(

@@ -9,8 +9,13 @@ use std::{collections::HashSet, path::Path};
 use crate::cli::{load_cargo::load_cargo, Result};
 use hir::Semantics;
 
-pub fn diagnostics(path: &Path, load_output_dirs: bool, all: bool) -> Result<()> {
-    let (host, roots) = load_cargo(path, load_output_dirs)?;
+pub fn diagnostics(
+    path: &Path,
+    load_output_dirs: bool,
+    with_proc_macro: bool,
+    all: bool,
+) -> Result<()> {
+    let (host, roots) = load_cargo(path, load_output_dirs, with_proc_macro)?;
     let db = host.raw_database();
     let analysis = host.analysis();
     let semantics = Semantics::new(db);

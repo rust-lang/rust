@@ -25,6 +25,7 @@ fn vfs_root_to_id(r: ra_vfs::VfsRoot) -> SourceRootId {
 pub(crate) fn load_cargo(
     root: &Path,
     load_out_dirs_from_check: bool,
+    with_proc_macro: bool,
 ) -> Result<(AnalysisHost, FxHashMap<SourceRootId, PackageRoot>)> {
     let root = std::env::current_dir()?.join(root);
     let ws = ProjectWorkspace::discover(
@@ -69,7 +70,11 @@ pub(crate) fn load_cargo(
         })
         .collect::<FxHashMap<_, _>>();
 
-    let proc_macro_client = ProcMacroClient::dummy();
+    let proc_macro_client = if with_proc_macro {
+        ProcMacroClient::dummy()
+    } else {
+        ProcMacroClient::extern_process(Path::new("ra_proc_macro_srv")).unwrap()
+    };
     let host = load(&source_roots, ws, &mut vfs, receiver, extern_dirs, &proc_macro_client);
     Ok((host, source_roots))
 }
@@ -175,7 +180,7 @@ mod tests {
     #[test]
     fn test_loading_rust_analyzer() {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let (host, _roots) = load_cargo(path, false).unwrap();
+        let (host, _roots) = load_cargo(path, false, false).unwrap();
         let n_crates = Crate::all(host.raw_database()).len();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);
