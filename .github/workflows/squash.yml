@@ -13,9 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
+      with:
+        submodules: true
     - name: Squash and Commit
       run: |
-        git pull --recurse-submodules
         rm -rf .git && git init
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
