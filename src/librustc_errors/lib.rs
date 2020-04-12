@@ -231,7 +231,10 @@ impl CodeSuggestion {
                             }
                         }
                         if let Some(cur_line) = sf.get_line(cur_lo.line - 1) {
-                            let end = std::cmp::min(cur_line.len(), cur_lo.col.to_usize());
+                            let end = match cur_line.char_indices().nth(cur_lo.col.to_usize()) {
+                                Some((i, _)) => i,
+                                None => cur_line.len(),
+                            };
                             buf.push_str(&cur_line[..end]);
                         }
                     }
