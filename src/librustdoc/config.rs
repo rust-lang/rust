@@ -10,6 +10,7 @@ use rustc_session::config::{
     nightly_options,
 };
 use rustc_session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
+use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_span::edition::{Edition, DEFAULT_EDITION};

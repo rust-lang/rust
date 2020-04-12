@@ -27,6 +27,7 @@ smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_index = { path = "../librustc_index", package = "rustc_index" }
 bitflags = "1.2.1"
 measureme = "0.7.1"
+libc = "0.2"
 
 [dependencies.parking_lot]
 version = "0.10"

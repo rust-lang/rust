@@ -9,6 +9,7 @@ name = "rustc_session"
 path = "lib.rs"
 
 [dependencies]
+getopts = "0.2"
 log = "0.4"
 rustc_errors = { path = "../librustc_errors" }
 rustc_feature = { path = "../librustc_feature" }
