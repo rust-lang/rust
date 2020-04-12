@@ -420,7 +420,7 @@ impl Types {
                                 return; // don't recurse into the type
                             }
                         }
-                    } else if match_def_path(cx, def_id, &paths::OPTION) {
+                    } else if cx.tcx.is_diagnostic_item(sym!(option_type), def_id) {
                         if match_type_parameter(cx, qpath, &paths::OPTION).is_some() {
                             span_lint(
                                 cx,

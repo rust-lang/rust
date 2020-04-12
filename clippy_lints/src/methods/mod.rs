@@ -1836,9 +1836,9 @@ fn lint_expect_fun_call(
     }
 
     let receiver_type = cx.tables.expr_ty_adjusted(&args[0]);
-    let closure_args = if match_type(cx, receiver_type, &paths::OPTION) {
+    let closure_args = if is_type_diagnostic_item(cx, receiver_type, sym!(option_type)) {
         "||"
-    } else if match_type(cx, receiver_type, &paths::RESULT) {
+    } else if is_type_diagnostic_item(cx, receiver_type, sym!(result_type)) {
         "|_|"
     } else {
         return;
@@ -2067,7 +2067,7 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, source: &
     if_chain! {
         let source_type = cx.tables.expr_ty(source);
         if let ty::Adt(def, substs) = source_type.kind;
-        if match_def_path(cx, def.did, &paths::RESULT);
+        if cx.tcx.is_diagnostic_item(sym!(result_type), def.did);
         if match_type(cx, substs.type_at(0), &paths::CSTRING);
         then {
             span_lint_and_then(
@@ -2395,9 +2395,9 @@ fn derefs_to_slice<'a, 'tcx>(
 fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hir::Expr<'_>]) {
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&unwrap_args[0]));
 
-    let mess = if match_type(cx, obj_ty, &paths::OPTION) {
+    let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
         Some((OPTION_UNWRAP_USED, "an Option", "None"))
-    } else if match_type(cx, obj_ty, &paths::RESULT) {
+    } else if is_type_diagnostic_item(cx, obj_ty, sym!(result_type)) {
         Some((RESULT_UNWRAP_USED, "a Result", "Err"))
     } else {
         None
@@ -2422,9 +2422,9 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
 fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hir::Expr<'_>]) {
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&expect_args[0]));
 
-    let mess = if match_type(cx, obj_ty, &paths::OPTION) {
+    let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
         Some((OPTION_EXPECT_USED, "an Option", "None"))
-    } else if match_type(cx, obj_ty, &paths::RESULT) {
+    } else if is_type_diagnostic_item(cx, obj_ty, sym!(result_type)) {
         Some((RESULT_EXPECT_USED, "a Result", "Err"))
     } else {
         None
@@ -2445,7 +2445,7 @@ fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hi
 fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, ok_args: &[hir::Expr<'_>]) {
     if_chain! {
         // lint if the caller of `ok()` is a `Result`
-        if match_type(cx, cx.tables.expr_ty(&ok_args[0]), &paths::RESULT);
+        if is_type_diagnostic_item(cx, cx.tables.expr_ty(&ok_args[0]), sym!(result_type));
         let result_type = cx.tables.expr_ty(&ok_args[0]);
         if let Some(error_type) = get_error_type(cx, result_type);
         if has_debug_impl(error_type, cx);
@@ -2491,8 +2491,8 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
     unwrap_args: &'tcx [hir::Expr<'_>],
 ) {
     // lint if the caller of `map()` is an `Option`
-    let is_option = match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION);
-    let is_result = match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::RESULT);
+    let is_option = is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_args[0]), sym!(option_type));
+    let is_result = is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_args[0]), sym!(result_type));
 
     if is_option || is_result {
         // Don't make a suggestion that may fail to compile due to mutably borrowing
@@ -2559,8 +2559,8 @@ fn lint_map_or_none<'a, 'tcx>(
     expr: &'tcx hir::Expr<'_>,
     map_or_args: &'tcx [hir::Expr<'_>],
 ) {
-    let is_option = match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::OPTION);
-    let is_result = match_type(cx, cx.tables.expr_ty(&map_or_args[0]), &paths::RESULT);
+    let is_option = is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_or_args[0]), sym!(option_type));
+    let is_result = is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_or_args[0]), sym!(result_type));
 
     // There are two variants of this `map_or` lint:
     // (1) using `map_or` as an adapter from `Result<T,E>` to `Option<T>`
@@ -3210,7 +3210,6 @@ fn is_maybe_uninit_ty_valid(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
         ty::Array(ref component, _) => is_maybe_uninit_ty_valid(cx, component),
         ty::Tuple(ref types) => types.types().all(|ty| is_maybe_uninit_ty_valid(cx, ty)),
         ty::Adt(ref adt, _) => {
-            // needs to be a MaybeUninit
             match_def_path(cx, adt.did, &paths::MEM_MAYBEUNINIT)
         },
         _ => false,
@@ -3326,7 +3325,7 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     match ty.kind {
-        ty::Adt(_, substs) if match_type(cx, ty, &paths::RESULT) => substs.types().nth(1),
+        ty::Adt(_, substs) if is_type_diagnostic_item(cx, ty, sym!(result_type)) => substs.types().nth(1),
         _ => None,
     }
 }

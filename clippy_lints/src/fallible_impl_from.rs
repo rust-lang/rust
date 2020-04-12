@@ -1,10 +1,10 @@
-use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
-use crate::utils::{is_expn_of, match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty};
+use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT};
+use crate::utils::{is_expn_of, match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
@@ -76,7 +76,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
                 let reciever_ty = walk_ptrs_ty(self.tables.expr_ty(&arglists[0][0]));
-                if match_type(self.lcx, reciever_ty, &OPTION) || match_type(self.lcx, reciever_ty, &RESULT) {
+                if is_type_diagnostic_item(self.lcx, reciever_ty, sym!(option_type)) || is_type_diagnostic_item(self.lcx, reciever_ty, sym!(result_type)) {
                     self.result.push(expr.span);
                 }
             }
@@ -122,12 +122,5 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
                 }
             }
         }
-    }
-}
-
-fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
-    match ty.kind {
-        ty::Adt(adt, _) => match_def_path(cx, adt.did, path),
-        _ => false,
     }
 }
