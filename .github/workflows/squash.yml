@@ -23,4 +23,4 @@ jobs:
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.ACCESS_TOKEN }}
-        repository: rust-std-skyline-squashed
+        repository: jam1garner/rust-std-skyline-squashed
