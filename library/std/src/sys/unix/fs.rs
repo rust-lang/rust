@@ -155,12 +155,14 @@ cfg_has_statx! {{
         stat.st_blksize = buf.stx_blksize as libc::blksize_t;
         stat.st_blocks = buf.stx_blocks as libc::blkcnt64_t;
         stat.st_atime = buf.stx_atime.tv_sec as libc::time_t;
-        // `i64` on gnu-x86_64-x32, `c_ulong` otherwise.
-        stat.st_atime_nsec = buf.stx_atime.tv_nsec as _;
         stat.st_mtime = buf.stx_mtime.tv_sec as libc::time_t;
-        stat.st_mtime_nsec = buf.stx_mtime.tv_nsec as _;
         stat.st_ctime = buf.stx_ctime.tv_sec as libc::time_t;
-        stat.st_ctime_nsec = buf.stx_ctime.tv_nsec as _;
+        // `i64` on gnu-x86_64-x32, `c_ulong` otherwise.
+        #[cfg(not(target_env = "newlib"))] {
+            stat.st_atime_nsec = buf.stx_atime.tv_nsec as _;
+            stat.st_mtime_nsec = buf.stx_mtime.tv_nsec as _;
+            stat.st_ctime_nsec = buf.stx_ctime.tv_nsec as _;
+        }
 
         let extra = StatxExtraFields {
             stx_mask: buf.stx_mask,
@@ -295,6 +297,9 @@ impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_mtime as libc::time_t,
+            #[cfg(target_env = "newlib")]
+            tv_nsec: 0,
+            #[cfg(not(target_env = "newlib"))]
             tv_nsec: self.stat.st_mtime_nsec as _,
         }))
     }
@@ -302,6 +307,9 @@ impl FileAttr {
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_atime as libc::time_t,
+            #[cfg(target_env = "newlib")]
+            tv_nsec: 0,
+            #[cfg(not(target_env = "newlib"))]
             tv_nsec: self.stat.st_atime_nsec as _,
         }))
     }
@@ -560,7 +568,8 @@ impl DirEntry {
         target_os = "haiku",
         target_os = "l4re",
         target_os = "fuchsia",
-        target_os = "redox"
+        target_os = "redox",
+        target_env = "newlib"
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -598,7 +607,8 @@ impl DirEntry {
         target_os = "linux",
         target_os = "emscripten",
         target_os = "l4re",
-        target_os = "haiku"
+        target_os = "haiku",
+        target_env = "newlib"
     ))]
     fn name_bytes(&self) -> &[u8] {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes() }

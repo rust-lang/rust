@@ -33,6 +33,8 @@ pub use crate::os::openbsd as platform;
 pub use crate::os::redox as platform;
 #[cfg(all(not(doc), target_os = "solaris"))]
 pub use crate::os::solaris as platform;
+#[cfg(all(not(doc), target_vendor = "libnx"))]
+pub use crate::os::libnx as platform;
 
 pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;

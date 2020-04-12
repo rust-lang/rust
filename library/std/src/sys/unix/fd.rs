@@ -1,3 +1,4 @@
+#![cfg_attr(target_env = "newlib", allow(unused_variables, dead_code))]
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
 use crate::cmp;
@@ -72,6 +73,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
+    #[cfg(not(target_env = "newlib"))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::readv(
@@ -85,7 +87,7 @@ impl FileDesc {
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        true
+        !cfg!(target_env = "newlib")
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -129,6 +131,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
+    #[cfg(not(target_env = "newlib"))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::writev(
@@ -142,7 +145,7 @@ impl FileDesc {
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        true
+        !cfg!(target_env = "newlib")
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {

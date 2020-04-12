@@ -84,7 +84,8 @@ unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     target_os = "android",
     target_os = "illumos",
     target_os = "redox",
-    target_os = "solaris"
+    target_os = "solaris",
+    target_env = "newlib"
 )))]
 #[inline]
 unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
@@ -94,4 +95,10 @@ unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     let align = layout.align().max(crate::mem::size_of::<usize>());
     let ret = libc::posix_memalign(&mut out, align, layout.size());
     if ret != 0 { ptr::null_mut() } else { out as *mut u8 }
+}
+
+#[cfg(target_env = "newlib")]
+#[inline]
+unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
+    libc::aligned_alloc(layout.align(), layout.size()) as *mut u8
 }

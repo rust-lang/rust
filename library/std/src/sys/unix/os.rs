@@ -1,6 +1,7 @@
 //! Implementation of `std::os` functionality for unix systems
 
 #![allow(unused_imports)] // lots of cfg code here
+#![cfg_attr(target_env = "newlib", allow(unused_variables, dead_code))]
 
 use crate::os::unix::prelude::*;
 
@@ -430,7 +431,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }
 
-#[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
+#[cfg(any(target_os = "fuchsia", target_os = "l4re", target_vendor = "libnx"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
     Err(io::Error::new(ErrorKind::Other, "Not yet implemented!"))

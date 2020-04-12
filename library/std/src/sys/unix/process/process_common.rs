@@ -1,3 +1,5 @@
+#![cfg_attr(target_env = "newlib", allow(unused_variables, dead_code))]
+
 use crate::os::unix::prelude::*;
 
 use crate::collections::BTreeMap;

@@ -691,20 +691,35 @@ impl MetadataExt for fs::Metadata {
     fn atime(&self) -> i64 {
         self.st_atime()
     }
+    #[cfg(not(target_env = "newlib"))]
     fn atime_nsec(&self) -> i64 {
         self.st_atime_nsec()
+    }
+    #[cfg(target_env = "newlib")]
+    fn atime_nsec(&self) -> i64 {
+        0
     }
     fn mtime(&self) -> i64 {
         self.st_mtime()
     }
+    #[cfg(not(target_env = "newlib"))]
     fn mtime_nsec(&self) -> i64 {
         self.st_mtime_nsec()
+    }
+    #[cfg(target_env = "newlib")]
+    fn mtime_nsec(&self) -> i64 {
+        0
     }
     fn ctime(&self) -> i64 {
         self.st_ctime()
     }
+    #[cfg(not(target_env = "newlib"))]
     fn ctime_nsec(&self) -> i64 {
         self.st_ctime_nsec()
+    }
+    #[cfg(target_env = "newlib")]
+    fn ctime_nsec(&self) -> i64 {
+        0
     }
     fn blksize(&self) -> u64 {
         self.st_blksize()
