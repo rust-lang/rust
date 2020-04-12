@@ -25,6 +25,21 @@ pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Sen
     unreachable!()
 }
 
+extern "C" {
+    /// a
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn skyline_tcp_send_raw(bytes: *const u8, usize: u64);
+}
+
+/// Log a string through skyline
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn skyline_log(string: &str) {
+    unsafe {
+        skyline_tcp_send_raw(string.as_bytes().as_ptr(), string.as_bytes().len() as u64)
+    }
+}
+
+
 // "Leak" the payload and shim to the relevant abort on the platform in
 // question.
 //
@@ -41,6 +56,17 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
 
     #[cfg(any(unix, target_os = "cloudabi"))]
     unsafe fn abort() -> ! {
+        libc::abort();
+    }
+
+    #[cfg(any(unix, target_os = "switch"))]
+    unsafe fn abort() -> ! {
+        #[link_name = "\u{1}_ZN2nn2os11SleepThreadENS_8TimeSpanE"]
+        extern "C" { fn sleep(amt: TimeSpan); }
+
+        #[repr(C)] struct TimeSpan { pub nanoseconds: u64 };
+
+        sleep(TimeSpan { nanoseconds: 100000000 });
         libc::abort();
     }
 

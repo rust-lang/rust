@@ -19,7 +19,9 @@ cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
 core = { path = "../libcore" }
-libc = { version = "0.2.51", default-features = false, features = ['rustc-dep-of-std'] }
+#libc = { version = "0.2.51", default-features = false, features = ['rustc-dep-of-std'] }
+
+libc = { path = "../../../no_std_test/skyline/skyline_libc", features = ['rustc-dep-of-std']}
 compiler_builtins = { version = "0.1.16" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
@@ -45,6 +47,9 @@ hermit-abi = { version = "0.1.10", features = ['rustc-dep-of-std'] }
 
 [target.wasm32-wasi.dependencies]
 wasi = { version = "0.9.0", features = ['rustc-dep-of-std'], default-features = false }
+
+[target.aarch64-skyline-switch.dependencies]
+nnsdk = { path = '../../../no_std_test/skyline/nnsdk', features = ['rustc-dep-of-std'] }
 
 [features]
 default = ["std_detect_file_io", "std_detect_dlsym_getauxval"]

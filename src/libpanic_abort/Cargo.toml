@@ -12,5 +12,5 @@ doc = false
 
 [dependencies]
 core = { path = "../libcore" }
-libc = { version = "0.2", default-features = false }
+libc = { path = "../../../no_std_test/skyline/skyline_libc", features = ["rustc-dep-of-std"] }
 compiler_builtins = "0.1.0"
