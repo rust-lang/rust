@@ -15,6 +15,7 @@ jobs:
     - uses: actions/checkout@master
     - name: Squash and Commit
       run: |
+        git pull --recurse-submodules
         rm -rf .git && git init
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
