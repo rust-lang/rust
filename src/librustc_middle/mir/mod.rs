@@ -381,15 +381,18 @@ impl<'tcx> Body<'tcx> {
     }
 
     /// Returns the return type; it always return first element from `local_decls` array.
+    #[inline]
     pub fn return_ty(&self) -> Ty<'tcx> {
         self.local_decls[RETURN_PLACE].ty
     }
 
     /// Gets the location of the terminator for the given block.
+    #[inline]
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
         Location { block: bb, statement_index: self[bb].statements.len() }
     }
 
+    #[inline]
     pub fn predecessors_for(
         &self,
         bb: BasicBlock,
@@ -398,6 +401,7 @@ impl<'tcx> Body<'tcx> {
         MappedLockGuard::map(predecessors, |preds| &mut preds[bb])
     }
 
+    #[inline]
     pub fn predecessors(&self) -> impl std::ops::Deref<Target = Predecessors> + '_ {
         self.predecessor_cache.compute(&self.basic_blocks)
     }
@@ -2639,18 +2643,21 @@ impl<'tcx> graph::DirectedGraph for Body<'tcx> {
 }
 
 impl<'tcx> graph::WithNumNodes for Body<'tcx> {
+    #[inline]
     fn num_nodes(&self) -> usize {
         self.basic_blocks.len()
     }
 }
 
 impl<'tcx> graph::WithStartNode for Body<'tcx> {
+    #[inline]
     fn start_node(&self) -> Self::Node {
         START_BLOCK
     }
 }
 
 impl<'tcx> graph::WithSuccessors for Body<'tcx> {
+    #[inline]
     fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
         self.basic_blocks[node].terminator().successors().cloned()
     }
@@ -2667,6 +2674,7 @@ impl graph::GraphPredecessors<'graph> for Body<'tcx> {
 }
 
 impl graph::WithPredecessors for Body<'tcx> {
+    #[inline]
     fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
         self.predecessors_for(node).clone().into_iter()
     }

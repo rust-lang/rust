@@ -15,14 +15,17 @@ pub struct PredecessorCache {
 }
 
 impl PredecessorCache {
+    #[inline]
     pub fn new() -> Self {
         PredecessorCache { cache: Lock::new(None) }
     }
 
+    #[inline]
     pub fn invalidate(&mut self) {
         *self.cache.get_mut() = None;
     }
 
+    #[inline]
     pub fn compute(
         &self,
         basic_blocks: &IndexVec<BasicBlock, BasicBlockData<'_>>,
@@ -45,18 +48,21 @@ impl PredecessorCache {
 }
 
 impl serialize::Encodable for PredecessorCache {
+    #[inline]
     fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         serialize::Encodable::encode(&(), s)
     }
 }
 
 impl serialize::Decodable for PredecessorCache {
+    #[inline]
     fn decode<D: serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
         serialize::Decodable::decode(d).map(|_v: ()| Self::new())
     }
 }
 
 impl<CTX> HashStable<CTX> for PredecessorCache {
+    #[inline]
     fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {
         // do nothing
     }
