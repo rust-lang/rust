@@ -18,7 +18,7 @@ jobs:
         rm -rf .git && git init
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add . && git commit -m "squashed"
+        git add . > /dev/null && git commit -m "squashed" > /dev/null
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
