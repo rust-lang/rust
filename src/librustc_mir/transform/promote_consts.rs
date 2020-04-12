@@ -1036,15 +1036,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
             *local = self.promote_temp(*local);
         }
     }
-
-    fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
-        match elem {
-            PlaceElem::Index(local) if self.is_temp_kind(*local) => {
-                Some(PlaceElem::Index(self.promote_temp(*local)))
-            }
-            _ => None,
-        }
-    }
 }
 
 pub fn promote_candidates<'tcx>(

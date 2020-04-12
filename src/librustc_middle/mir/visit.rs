@@ -838,7 +838,7 @@ macro_rules! make_mir_visitor {
 }
 
 macro_rules! visit_place_fns {
-    (mut) => (
+    (mut) => {
         fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
         fn super_place(
@@ -849,7 +849,7 @@ macro_rules! visit_place_fns {
         ) {
             self.visit_place_base(&mut place.local, context, location);
 
-            if let Some(new_projection) = self.process_projection(&place.projection) {
+            if let Some(new_projection) = self.process_projection(&place.projection, location) {
                 place.projection = self.tcx().intern_place_elems(&new_projection);
             }
         }
@@ -857,12 +857,13 @@ macro_rules! visit_place_fns {
         fn process_projection(
             &mut self,
             projection: &'a [PlaceElem<'tcx>],
+            location: Location,
         ) -> Option<Vec<PlaceElem<'tcx>>> {
             let mut projection = Cow::Borrowed(projection);
 
             for i in 0..projection.len() {
                 if let Some(elem) = projection.get(i) {
-                    if let Some(elem) = self.process_projection_elem(elem) {
+                    if let Some(elem) = self.process_projection_elem(elem, location) {
                         // This converts the borrowed projection into `Cow::Owned(_)` and returns a
                         // clone of the projection so we can mutate and reintern later.
                         let vec = projection.to_mut();
@@ -879,13 +880,30 @@ macro_rules! visit_place_fns {
 
         fn process_projection_elem(
             &mut self,
-            _elem: &PlaceElem<'tcx>,
+            elem: &PlaceElem<'tcx>,
+            location: Location,
         ) -> Option<PlaceElem<'tcx>> {
-            None
-        }
-    );
+            match elem {
+                PlaceElem::Index(local) => {
+                    let mut new_local = *local;
+                    self.visit_local(
+                        &mut new_local,
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                        location,
+                    );
 
-    () => (
+                    if new_local == *local { None } else { Some(PlaceElem::Index(new_local)) }
+                }
+                PlaceElem::Deref
+                | PlaceElem::Field(..)
+                | PlaceElem::ConstantIndex { .. }
+                | PlaceElem::Subslice { .. }
+                | PlaceElem::Downcast(..) => None,
+            }
+        }
+    };
+
+    () => {
         fn visit_projection(
             &mut self,
             local: Local,
@@ -907,12 +925,7 @@ macro_rules! visit_place_fns {
             self.super_projection_elem(local, proj_base, elem, context, location);
         }
 
-        fn super_place(
-            &mut self,
-            place: &Place<'tcx>,
-            context: PlaceContext,
-            location: Location,
-        ) {
+        fn super_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
             let mut context = context;
 
             if !place.projection.is_empty() {
@@ -925,10 +938,7 @@ macro_rules! visit_place_fns {
 
             self.visit_place_base(&place.local, context, location);
 
-            self.visit_projection(place.local,
-                                  &place.projection,
-                                  context,
-                                  location);
+            self.visit_projection(place.local, &place.projection, context, location);
         }
 
         fn super_projection(
@@ -961,19 +971,16 @@ macro_rules! visit_place_fns {
                     self.visit_local(
                         local,
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                        location
+                        location,
                     );
                 }
-                ProjectionElem::Deref |
-                ProjectionElem::Subslice { from: _, to: _, from_end: _ } |
-                ProjectionElem::ConstantIndex { offset: _,
-                                                min_length: _,
-                                                from_end: _ } |
-                ProjectionElem::Downcast(_, _) => {
-                }
+                ProjectionElem::Deref
+                | ProjectionElem::Subslice { from: _, to: _, from_end: _ }
+                | ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ }
+                | ProjectionElem::Downcast(_, _) => {}
             }
         }
-    );
+    };
 }
 
 make_mir_visitor!(Visitor,);

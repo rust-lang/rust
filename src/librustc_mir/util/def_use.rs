@@ -2,9 +2,7 @@
 
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
-use rustc_middle::mir::{
-    Body, BodyAndCache, Local, Location, PlaceElem, ReadOnlyBodyAndCache, VarDebugInfo,
-};
+use rustc_middle::mir::{Body, BodyAndCache, Local, Location, ReadOnlyBodyAndCache, VarDebugInfo};
 use rustc_middle::ty::TyCtxt;
 use std::mem;
 
@@ -155,15 +153,6 @@ impl MutVisitor<'tcx> for MutateUseVisitor<'tcx> {
     fn visit_local(&mut self, local: &mut Local, _context: PlaceContext, _location: Location) {
         if *local == self.query {
             *local = self.new_local;
-        }
-    }
-
-    fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
-        match elem {
-            PlaceElem::Index(local) if *local == self.query => {
-                Some(PlaceElem::Index(self.new_local))
-            }
-            _ => None,
         }
     }
 }
