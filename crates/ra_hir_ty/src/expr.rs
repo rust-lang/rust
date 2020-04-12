@@ -161,12 +161,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         let mut seen = Matrix::empty();
         for pat in pats {
-            // We skip any patterns whose type we cannot resolve.
-            //
-            // This could lead to false positives in this diagnostic, so
-            // it might be better to skip the entire diagnostic if we either
-            // cannot resolve a match arm or determine that the match arm has
-            // the wrong type.
             if let Some(pat_ty) = infer.type_of_pat.get(pat) {
                 // We only include patterns whose type matches the type
                 // of the match expression. If we had a InvalidMatchArmPattern
@@ -189,8 +183,15 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                     // to the matrix here.
                     let v = PatStack::from_pattern(pat);
                     seen.push(&cx, v);
+                    continue;
                 }
             }
+
+            // If we can't resolve the type of a pattern, or the pattern type doesn't
+            // fit the match expression, we skip this diagnostic. Skipping the entire
+            // diagnostic rather than just not including this match arm is preferred
+            // to avoid the chance of false positives.
+            return;
         }
 
         match is_useful(&cx, &seen, &PatStack::from_wild()) {

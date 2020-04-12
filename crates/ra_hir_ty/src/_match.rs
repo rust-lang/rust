@@ -973,6 +973,47 @@ mod tests {
     }
 
     #[test]
+    fn tuple_of_bools_with_ellipsis_at_end_no_diagnostic() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (false, ..) => {},
+                    (true, ..) => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_beginning_no_diagnostic() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (.., false) => {},
+                    (.., true) => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_no_diagnostic() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (..) => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
     fn tuple_of_tuple_and_bools_no_arms() {
         let content = r"
             fn test_fn() {
@@ -1315,8 +1356,9 @@ mod tests {
             }
         ";
 
-        // Match arms with the incorrect type are filtered out.
-        check_diagnostic(content);
+        // Match statements with arms that don't match the
+        // expression pattern do not fire this diagnostic.
+        check_no_diagnostic(content);
     }
 
     #[test]
@@ -1330,8 +1372,9 @@ mod tests {
             }
         ";
 
-        // Match arms with the incorrect type are filtered out.
-        check_diagnostic(content);
+        // Match statements with arms that don't match the
+        // expression pattern do not fire this diagnostic.
+        check_no_diagnostic(content);
     }
 
     #[test]
@@ -1344,8 +1387,9 @@ mod tests {
             }
         ";
 
-        // Match arms with the incorrect type are filtered out.
-        check_diagnostic(content);
+        // Match statements with arms that don't match the
+        // expression pattern do not fire this diagnostic.
+        check_no_diagnostic(content);
     }
 
     #[test]
@@ -1381,6 +1425,102 @@ mod tests {
         // The enum is not in scope so we don't perform exhaustiveness
         // checking, but we want to be sure we don't panic here (and
         // we don't create a diagnostic).
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_diverges() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop {} {
+                    Either::A => (),
+                    Either::B => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_loop_with_break() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop { break Foo::A } {
+                    Either::A => (),
+                    Either::B => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_partially_diverges() {
+        let content = r"
+            enum Either<T> {
+                A(T),
+                B,
+            }
+            fn foo() -> Either<!> {
+                Either::B
+            }
+            fn test_fn() -> u32 {
+                match foo() {
+                    Either::A(val) => val,
+                    Either::B => 0,
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_tuple_partial_ellipsis_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(true, .., true) => {},
+                    Either::A(true, .., false) => {},
+                    Either::A(false, .., true) => {},
+                    Either::A(false, .., false) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_tuple_ellipsis_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(..) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
         check_no_diagnostic(content);
     }
 }
@@ -1450,6 +1590,106 @@ mod false_negatives {
 
         // This is a false negative.
         // We do not currently handle patterns with internal `or`s.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_diverges_missing_arm() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop {} {
+                    Either::A => (),
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // Even though the match expression diverges, rustc fails
+        // to compile here since `Either::B` is missing.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_loop_missing_arm() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop { break Foo::A } {
+                    Either::A => (),
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // We currently infer the type of `loop { break Foo::A }` to `!`, which
+        // causes us to skip the diagnostic since `Either::A` doesn't type check
+        // with `!`.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_end_missing_arm() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (false, ..) => {},
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // The `..` pattern is currently lowered to a single `Pat::Wild`
+        // no matter how many fields the `..` pattern is covering. This
+        // causes the match arm in this test not to type check against
+        // the match expression, which causes this diagnostic not to
+        // fire.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_beginning_missing_arm() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (.., false) => {},
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // See comments on `tuple_of_bools_with_ellipsis_at_end_missing_arm`.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_tuple_partial_ellipsis_missing_arm() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(true, .., true) => {},
+                    Either::A(true, .., false) => {},
+                    Either::A(false, .., false) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // The `..` pattern is currently lowered to a single `Pat::Wild`
+        // no matter how many fields the `..` pattern is covering. This
+        // causes us to return a `MatchCheckErr::MalformedMatchArm` in
+        // `Pat::specialize_constructor`.
         check_no_diagnostic(content);
     }
 }
