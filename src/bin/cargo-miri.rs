@@ -115,7 +115,7 @@ fn list_targets() -> impl Iterator<Item = cargo_metadata::Target> {
         get_arg_flag_value("--manifest-path").map(|m| Path::new(&m).canonicalize().unwrap());
 
     let mut cmd = cargo_metadata::MetadataCommand::new();
-    if let Some(manifest_path) = manifest_path.as_ref() {
+    if let Some(manifest_path) = &manifest_path {
         cmd.manifest_path(manifest_path);
     }
     let mut metadata = if let Ok(metadata) = cmd.exec() {
@@ -131,7 +131,7 @@ fn list_targets() -> impl Iterator<Item = cargo_metadata::Target> {
         .iter()
         .position(|package| {
             let package_manifest_path = Path::new(&package.manifest_path);
-            if let Some(manifest_path) = manifest_path.as_ref() {
+            if let Some(manifest_path) = &manifest_path {
                 package_manifest_path == manifest_path
             } else {
                 let current_dir = current_dir.as_ref().expect("could not read current directory");
@@ -368,8 +368,8 @@ path = "lib.rs"
     command.env("XARGO_HOME", &dir);
     command.env("XARGO_RUST_SRC", &rust_src);
     // Handle target flag.
-    if let Some(target) = target.as_ref() {
-        command.arg("--target").arg(&target);
+    if let Some(target) = &target {
+        command.arg("--target").arg(target);
     }
     // Finally run it!
     if command.status().expect("failed to run xargo").success().not() {
@@ -379,7 +379,7 @@ path = "lib.rs"
     // That should be it! But we need to figure out where xargo built stuff.
     // Unfortunately, it puts things into a different directory when the
     // architecture matches the host.
-    let is_host = match target.as_ref() {
+    let is_host = match &target {
         None => true,
         Some(target) => target == &rustc_version::version_meta().unwrap().host,
     };
@@ -404,12 +404,12 @@ fn main() {
         return;
     }
 
-    if let Some("miri") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
+    if let Some("miri") = std::env::args().nth(1).as_deref() {
         // This arm is for when `cargo miri` is called. We call `cargo check` for each applicable target,
         // but with the `RUSTC` env var set to the `cargo-miri` binary so that we come back in the other branch,
         // and dispatch the invocations to `rustc` and `miri`, respectively.
         in_cargo_miri();
-    } else if let Some("rustc") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
+    } else if let Some("rustc") = std::env::args().nth(1).as_deref() {
         // This arm is executed when `cargo-miri` runs `cargo check` with the `RUSTC_WRAPPER` env var set to itself:
         // dependencies get dispatched to `rustc`, the final test/binary to `miri`.
         inside_cargo_rustc();

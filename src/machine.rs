@@ -429,7 +429,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
         let (stacks, base_tag) =
-            if let Some(stacked_borrows) = memory_extra.stacked_borrows.as_ref() {
+            if let Some(stacked_borrows) = &memory_extra.stacked_borrows {
                 let (stacks, base_tag) =
                     Stacks::new_allocation(id, alloc.size, Rc::clone(stacked_borrows), kind);
                 (Some(stacks), base_tag)
@@ -440,7 +440,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let mut stacked_borrows = memory_extra.stacked_borrows.as_ref().map(|sb| sb.borrow_mut());
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.with_tags_and_extra(
             |alloc| {
-                if let Some(stacked_borrows) = stacked_borrows.as_mut() {
+                if let Some(stacked_borrows) = &mut stacked_borrows {
                     // Only globals may already contain pointers at this point
                     assert_eq!(kind, MiriMemoryKind::Global.into());
                     stacked_borrows.global_base_ptr(alloc)
@@ -455,7 +455,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn tag_global_base_pointer(memory_extra: &MemoryExtra, id: AllocId) -> Self::PointerTag {
-        if let Some(stacked_borrows) = memory_extra.stacked_borrows.as_ref() {
+        if let Some(stacked_borrows) = &memory_extra.stacked_borrows {
             stacked_borrows.borrow_mut().global_base_ptr(id)
         } else {
             Tag::Untagged
@@ -518,7 +518,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        if let Some(stacked_borrows) = alloc.extra.stacked_borrows.as_ref() {
+        if let Some(stacked_borrows) = &alloc.extra.stacked_borrows {
             stacked_borrows.memory_read(ptr, size)
         } else {
             Ok(())
@@ -531,7 +531,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        if let Some(stacked_borrows) = alloc.extra.stacked_borrows.as_mut() {
+        if let Some(stacked_borrows) = &mut alloc.extra.stacked_borrows {
             stacked_borrows.memory_written(ptr, size)
         } else {
             Ok(())
@@ -544,7 +544,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        if let Some(stacked_borrows) = alloc.extra.stacked_borrows.as_mut() {
+        if let Some(stacked_borrows) = &mut alloc.extra.stacked_borrows {
             stacked_borrows.memory_deallocated(ptr, size)
         } else {
             Ok(())
