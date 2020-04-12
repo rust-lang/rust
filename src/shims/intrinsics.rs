@@ -444,14 +444,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            "pref_align_of" => {
-                let ty = substs.type_at(0);
-                let layout = this.layout_of(ty)?;
-                let align = layout.align.pref.bytes();
-                let align_val = Scalar::from_machine_usize(align, this);
-                this.write_scalar(align_val, dest)?;
-            }
-
             #[rustfmt::skip]
             | "min_align_of_val"
             | "align_of_val"
