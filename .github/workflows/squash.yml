@@ -7,8 +7,6 @@ name: Squash
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
 
 jobs:
   build:
@@ -19,7 +17,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git reset --soft <my-first-commit>
+        git reset --soft c01efc669f09508b55eced32d3c88702578a7c3e
         git commit --amend -m "Squashed"
     - name: Push changes
       uses: ad-m/github-push-action@master
