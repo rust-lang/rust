@@ -21,27 +21,28 @@ use polonius_engine::Atom;
 pub use rustc_ast::ast::Mutability;
 use rustc_ast::ast::Name;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
+use rustc_data_structures::sync::MappedLockGuard;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 use std::slice;
 use std::{iter, mem, option};
 
-pub use self::cache::{BodyAndCache, ReadOnlyBodyAndCache};
+use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
-pub use crate::read_only;
 
-mod cache;
 pub mod interpret;
 pub mod mono;
+mod predecessors;
 mod query;
 pub mod tcx;
 pub mod traversal;
@@ -108,7 +109,7 @@ pub struct Body<'tcx> {
     pub yield_ty: Option<Ty<'tcx>>,
 
     /// Generator drop glue.
-    pub generator_drop: Option<Box<BodyAndCache<'tcx>>>,
+    pub generator_drop: Option<Box<Body<'tcx>>>,
 
     /// The layout of a generator. Produced by the state transformation.
     pub generator_layout: Option<GeneratorLayout<'tcx>>,
@@ -164,6 +165,8 @@ pub struct Body<'tcx> {
     /// implementation without the flag hid this situation silently.
     /// FIXME(oli-obk): rewrite the promoted during promotion to eliminate the cell components.
     pub ignore_interior_mut_in_const_validation: bool,
+
+    pub predecessor_cache: PredecessorCache,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -202,6 +205,7 @@ impl<'tcx> Body<'tcx> {
             span,
             ignore_interior_mut_in_const_validation: false,
             control_flow_destroyed,
+            predecessor_cache: PredecessorCache::new(),
         }
     }
 
@@ -227,12 +231,32 @@ impl<'tcx> Body<'tcx> {
             generator_kind: None,
             var_debug_info: Vec::new(),
             ignore_interior_mut_in_const_validation: false,
+            predecessor_cache: PredecessorCache::new(),
         }
     }
 
     #[inline]
     pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         &self.basic_blocks
+    }
+
+    #[inline]
+    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        // Because the user could mutate basic block terminators via this reference, we need to
+        // invalidate the predecessor cache.
+        //
+        // FIXME: Use a finer-grained API for this, so only transformations that alter terminators
+        // invalidate the predecessor cache.
+        self.predecessor_cache.invalidate();
+        &mut self.basic_blocks
+    }
+
+    #[inline]
+    pub fn basic_blocks_and_local_decls_mut(
+        &mut self,
+    ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
+        self.predecessor_cache.invalidate();
+        (&mut self.basic_blocks, &mut self.local_decls)
     }
 
     /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
@@ -365,6 +389,23 @@ impl<'tcx> Body<'tcx> {
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
         Location { block: bb, statement_index: self[bb].statements.len() }
     }
+
+    pub fn predecessors_for(
+        &self,
+        bb: BasicBlock,
+    ) -> impl std::ops::Deref<Target = SmallVec<[BasicBlock; 4]>> + '_ {
+        let predecessors = self.predecessor_cache.compute(&self.basic_blocks);
+        MappedLockGuard::map(predecessors, |preds| &mut preds[bb])
+    }
+
+    pub fn predecessors(&self) -> impl std::ops::Deref<Target = Predecessors> + '_ {
+        self.predecessor_cache.compute(&self.basic_blocks)
+    }
+
+    #[inline]
+    pub fn dominators(&self) -> Dominators<BasicBlock> {
+        dominators(self)
+    }
 }
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
@@ -384,6 +425,13 @@ impl<'tcx> Index<BasicBlock> for Body<'tcx> {
     #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.basic_blocks()[index]
+    }
+}
+
+impl<'tcx> IndexMut<BasicBlock> for Body<'tcx> {
+    #[inline]
+    fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
+        &mut self.basic_blocks_mut()[index]
     }
 }
 
@@ -2613,6 +2661,17 @@ impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
     type Iter = iter::Cloned<Successors<'b>>;
 }
 
+impl graph::GraphPredecessors<'graph> for Body<'tcx> {
+    type Item = BasicBlock;
+    type Iter = smallvec::IntoIter<[BasicBlock; 4]>;
+}
+
+impl graph::WithPredecessors for Body<'tcx> {
+    fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
+        self.predecessors_for(node).clone().into_iter()
+    }
+}
+
 /// `Location` represents the position of the start of the statement; or, if
 /// `statement_index` equals the number of statements, then the start of the
 /// terminator.
@@ -2642,11 +2701,7 @@ impl Location {
     }
 
     /// Returns `true` if `other` is earlier in the control flow graph than `self`.
-    pub fn is_predecessor_of<'tcx>(
-        &self,
-        other: Location,
-        body: ReadOnlyBodyAndCache<'_, 'tcx>,
-    ) -> bool {
+    pub fn is_predecessor_of<'tcx>(&self, other: Location, body: &Body<'tcx>) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.
         if self.block == other.block && self.statement_index < other.statement_index {
