@@ -546,8 +546,14 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     }
 }
 
+#[cfg(not(target_os = "horizon"))]
 pub fn page_size() -> usize {
     unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
+}
+
+#[cfg(target_os = "horizon")]
+pub fn page_size() -> usize {
+    0x1000
 }
 
 pub fn temp_dir() -> PathBuf {
@@ -567,7 +573,8 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "android",
         target_os = "ios",
         target_os = "emscripten",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "horizon"
     ))]
     unsafe fn fallback() -> Option<OsString> {
         None
@@ -576,7 +583,8 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "android",
         target_os = "ios",
         target_os = "emscripten",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "horizon"
     )))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {
