@@ -19,6 +19,7 @@ pub mod check_unsafety;
 pub mod cleanup_post_borrowck;
 pub mod const_prop;
 pub mod copy_prop;
+pub mod dag_nrvo;
 pub mod deaggregator;
 pub mod dump_mir;
 pub mod elaborate_drops;
@@ -306,8 +307,10 @@ fn run_optimization_passes<'tcx>(
             &instcombine::InstCombine,
             &const_prop::ConstProp,
             &simplify_branches::SimplifyBranches::new("after-const-prop"),
+            &simplify::SimplifyCfg::new("after-const-prop"),
             &deaggregator::Deaggregator,
-            &copy_prop::CopyPropagation,
+            &dag_nrvo::Nrvo,
+            //&copy_prop::CopyPropagation,
             &simplify_branches::SimplifyBranches::new("after-copy-prop"),
             &remove_noop_landing_pads::RemoveNoopLandingPads,
             &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),

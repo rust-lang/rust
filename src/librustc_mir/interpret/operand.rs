@@ -445,7 +445,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base_op = match place.local {
-            mir::RETURN_PLACE => throw_ub!(ReadFromReturnPlace),
+            mir::RETURN_PLACE => {
+                if let Some(place) = self.frame().return_place {
+                    self.place_to_op(place)?
+                } else {
+                    // Tried to access return place, but the function cannot return
+                    throw_ub!(Unreachable)
+                }
+            }
             local => {
                 // Do not use the layout passed in as argument if the base we are looking at
                 // here is not the entire place.
