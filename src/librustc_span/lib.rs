@@ -1192,8 +1192,10 @@ impl SourceFile {
                 kind: src_kind @ ExternalSourceKind::AbsentOk, ..
             } = &mut *external_src
             {
-                if let Some(src) = src {
+                if let Some(mut src) = src {
+                    // The src_hash needs to be computed on the pre-normalized src.
                     if self.src_hash.matches(&src) {
+                        normalize_src(&mut src, BytePos::from_usize(0));
                         *src_kind = ExternalSourceKind::Present(Lrc::new(src));
                         return true;
                     }
