@@ -41,7 +41,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                                 .any(|attr| attr.check_name(rustc_span::symbol::sym::test))
                             {
                                 let config = miri::MiriConfig::default();
-                                let did = self.0.hir().body_owner_def_id(body_id);
+                                let did = self.0.hir().body_owner_def_id(body_id).to_def_id();
                                 println!("running test: {}", self.0.def_path_debug_str(did));
                                 miri::eval_main(self.0, did, config);
                                 self.0.sess.abort_if_errors();
