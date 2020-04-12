@@ -146,9 +146,9 @@ fn casts() {
     test_cast::<f32, u32>(4294967040.0, 0u32.wrapping_sub(256));
     test_cast::<f32, u32>(/*-0x1.ccccccp-1*/ f32::from_bits(0xbf666666), 0);
     test_cast::<f32, u32>(/*-0x1.fffffep-1*/ f32::from_bits(0xbf7fffff), 0);
-    test_cast::<f32, u32>((u32::MAX-127) as f32, u32::MAX); // rounding loss
     test_cast::<f32, u32>((u32::MAX-128) as f32, u32::MAX-255); // rounding loss
     // unrepresentable casts
+    assert_eq::<u32>((u32::MAX-127) as f32 as u32, u32::MAX); // rounds up and then becomes unrepresentable
     assert_eq::<u32>(4294967296.0f32 as u32, u32::MAX);
     assert_eq::<u32>(-5.0f32 as u32, 0);
     assert_eq::<u32>(f32::MAX as u32, u32::MAX);
@@ -211,12 +211,12 @@ fn casts() {
     test_cast::<f64, u64>(0.0, 0);
     test_cast::<f64, u64>(-0.0, 0);
     test_cast::<f64, u64>(5.0, 5);
-    test_cast::<f64, u64>(-5.0, 0);
     test_cast::<f64, u64>(1e16, 10000000000000000);
-    test_cast::<f64, u64>((u64::MAX-1023) as f64, u64::MAX); // rounding loss
     test_cast::<f64, u64>((u64::MAX-1024) as f64, u64::MAX-2047); // rounding loss
     test_cast::<f64, u64>(9223372036854775808.0, 9223372036854775808);
     // unrepresentable casts
+    assert_eq::<u64>(-5.0f64 as u64, 0);
+    assert_eq::<u64>((u64::MAX-1023) as f64 as u64, u64::MAX); // rounds up and then becomes unrepresentable
     assert_eq::<u64>(18446744073709551616.0f64 as u64, u64::MAX);
     assert_eq::<u64>(f64::MAX as u64, u64::MAX);
     assert_eq::<u64>(f64::MIN as u64, 0);
