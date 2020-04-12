@@ -93,7 +93,8 @@ pub(super) fn note_and_explain_region(
             let unknown_scope =
                 || format!("{}unknown scope: {:?}{}.  Please report a bug.", prefix, scope, suffix);
             let span = scope.span(tcx, region_scope_tree);
-            let tag = match tcx.hir().find(scope.hir_id(region_scope_tree)) {
+            let hir_id = scope.hir_id(region_scope_tree);
+            let tag = match hir_id.and_then(|hir_id| tcx.hir().find(hir_id)) {
                 Some(Node::Block(_)) => "block",
                 Some(Node::Expr(expr)) => match expr.kind {
                     hir::ExprKind::Call(..) => "call",
