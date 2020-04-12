@@ -417,11 +417,4 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
         *l = self.map[*l].unwrap();
     }
-
-    fn process_projection_elem(&mut self, elem: &PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
-        match elem {
-            PlaceElem::Index(local) => Some(PlaceElem::Index(self.map[*local].unwrap())),
-            _ => None,
-        }
-    }
 }
