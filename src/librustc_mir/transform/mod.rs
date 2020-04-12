@@ -176,7 +176,7 @@ pub fn run_passes(
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
-    let const_kind = check_consts::ConstKind::for_item(tcx, def_id);
+    let const_kind = check_consts::ConstKind::for_item(tcx, def_id.expect_local());
 
     // No need to const-check a non-const `fn`.
     if const_kind.is_none() {

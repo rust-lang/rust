@@ -750,20 +750,20 @@ fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: DefId) {
 fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
     debug_assert!(crate_num == LOCAL_CRATE);
     tcx.par_body_owners(|body_owner_def_id| {
-        tcx.ensure().typeck_tables_of(body_owner_def_id.to_def_id());
+        tcx.ensure().typeck_tables_of(body_owner_def_id);
     });
 }
 
 fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
-    wfcheck::check_item_well_formed(tcx, def_id);
+    wfcheck::check_item_well_formed(tcx, def_id.expect_local());
 }
 
 fn check_trait_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
-    wfcheck::check_trait_item(tcx, def_id);
+    wfcheck::check_trait_item(tcx, def_id.expect_local());
 }
 
 fn check_impl_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
-    wfcheck::check_impl_item(tcx, def_id);
+    wfcheck::check_impl_item(tcx, def_id.expect_local());
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -977,7 +977,7 @@ fn diagnostic_only_typeck_tables_of<'tcx>(
 ) -> &ty::TypeckTables<'tcx> {
     assert!(def_id.is_local());
     let fallback = move || {
-        let span = tcx.hir().span(tcx.hir().as_local_hir_id(def_id).unwrap());
+        let span = tcx.hir().span(tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap());
         tcx.sess.delay_span_bug(span, "diagnostic only typeck table used");
         tcx.types.err
     };
@@ -996,7 +996,7 @@ fn typeck_tables_of_with_fallback<'tcx>(
         return tcx.typeck_tables_of(outer_def_id);
     }
 
-    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
@@ -1333,7 +1333,7 @@ fn check_fn<'a, 'tcx>(
     }
 
     let outer_def_id = tcx.closure_base_def_id(hir.local_def_id(fn_id).to_def_id());
-    let outer_hir_id = hir.as_local_hir_id(outer_def_id).unwrap();
+    let outer_hir_id = hir.as_local_hir_id(outer_def_id.expect_local()).unwrap();
     GatherLocalsVisitor { fcx: &fcx, parent_id: outer_hir_id }.visit_body(body);
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
@@ -1448,7 +1448,7 @@ fn check_fn<'a, 'tcx>(
     // Check that the main return type implements the termination trait.
     if let Some(term_id) = tcx.lang_items().termination() {
         if let Some((def_id, EntryFnType::Main)) = tcx.entry_fn(LOCAL_CRATE) {
-            let main_id = hir.as_local_hir_id(def_id).unwrap();
+            let main_id = hir.as_local_hir_id(def_id.expect_local()).unwrap();
             if main_id == fn_id {
                 let substs = tcx.mk_substs_trait(declared_ret_ty, &[]);
                 let trait_ref = ty::TraitRef::new(term_id, substs);
@@ -1626,9 +1626,7 @@ fn check_opaque<'tcx>(
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
 /// in "inheriting lifetimes".
 fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
-    let item = tcx.hir().expect_item(
-        tcx.hir().as_local_hir_id(def_id.to_def_id()).expect("opaque type is not local"),
-    );
+    let item = tcx.hir().expect_item(tcx.hir().as_local_hir_id(def_id).unwrap());
     debug!(
         "check_opaque_for_inheriting_lifetimes: def_id={:?} span={:?} item={:?}",
         def_id, span, item
@@ -2462,7 +2460,7 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
                 );
 
                 let hir = tcx.hir();
-                if let Some(hir_id) = hir.as_local_hir_id(def_spans[0].0) {
+                if let Some(hir_id) = hir.as_local_hir_id(def_spans[0].0.expect_local()) {
                     if let Node::Item(Item { ident, .. }) = hir.get(hir_id) {
                         err.span_note(
                             tcx.def_span(def_spans[0].0),
@@ -2474,7 +2472,7 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
                 if def_spans.len() > 2 {
                     let mut first = true;
                     for (adt_def, span) in def_spans.iter().skip(1).rev() {
-                        if let Some(hir_id) = hir.as_local_hir_id(*adt_def) {
+                        if let Some(hir_id) = hir.as_local_hir_id(adt_def.expect_local()) {
                             if let Node::Item(Item { ident, .. }) = hir.get(hir_id) {
                                 err.span_note(
                                     *span,
@@ -2698,7 +2696,7 @@ pub fn check_enum<'tcx>(
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
             let variant_did = def.variants[VariantIdx::new(i)].def_id;
-            let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did).unwrap();
+            let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did.expect_local()).unwrap();
             let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
             let i_span = match variant_i.disr_expr {
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
@@ -2759,7 +2757,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn get_type_parameter_bounds(&self, _: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
-        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
         let item_id = tcx.hir().ty_param_owner(hir_id);
         let item_def_id = tcx.hir().local_def_id(item_id);
         let generics = tcx.generics_of(item_def_id);
@@ -4974,7 +4972,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
                     sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                    match hir.as_local_hir_id(def_id).and_then(|hir_id| hir.def_kind(hir_id)) {
+                    match def_id
+                        .as_local()
+                        .map(|def_id| hir.as_local_hir_id(def_id).unwrap())
+                        .and_then(|hir_id| hir.def_kind(hir_id))
+                    {
                         Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
                             msg = "instantiate this tuple variant";
                         }

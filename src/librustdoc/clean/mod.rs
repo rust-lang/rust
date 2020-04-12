@@ -976,12 +976,7 @@ where
 impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext<'_>) -> FnDecl {
         let (did, sig) = *self;
-        let mut names = if cx.tcx.hir().as_local_hir_id(did).is_some() {
-            &[]
-        } else {
-            cx.tcx.fn_arg_names(did)
-        }
-        .iter();
+        let mut names = if did.is_local() { &[] } else { cx.tcx.fn_arg_names(did) }.iter();
 
         FnDecl {
             output: Return(sig.skip_binder().output().clean(cx)),
@@ -1384,7 +1379,10 @@ impl Clean<Type> for hir::Ty<'_> {
                 let mut alias = None;
                 if let Res::Def(DefKind::TyAlias, def_id) = path.res {
                     // Substitute private type aliases
-                    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
+                    if let Some(hir_id) = def_id
+                        .as_local()
+                        .map(|def_id| cx.tcx.hir().as_local_hir_id(def_id).unwrap())
+                    {
                         if !cx.renderinfo.borrow().access_levels.is_exported(def_id) {
                             alias = Some(&cx.tcx.hir().expect_item(hir_id).kind);
                         }

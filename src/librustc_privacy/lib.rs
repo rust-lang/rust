@@ -235,7 +235,7 @@ fn def_id_visibility<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> (ty::Visibility, Span, &'static str) {
-    match tcx.hir().as_local_hir_id(def_id) {
+    match def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id).unwrap()) {
         Some(hir_id) => {
             let vis = match tcx.hir().get(hir_id) {
                 Node::Item(item) => &item.vis,
@@ -445,7 +445,9 @@ impl VisibilityLike for Option<AccessLevel> {
     const SHALLOW: bool = true;
     fn new_min(find: &FindMin<'_, '_, Self>, def_id: DefId) -> Self {
         cmp::min(
-            if let Some(hir_id) = find.tcx.hir().as_local_hir_id(def_id) {
+            if let Some(hir_id) =
+                def_id.as_local().map(|def_id| find.tcx.hir().as_local_hir_id(def_id).unwrap())
+            {
                 find.access_levels.map.get(&hir_id).cloned()
             } else {
                 Self::MAX
@@ -532,7 +534,7 @@ impl EmbargoVisitor<'tcx> {
 
     fn update_macro_reachable_mod(&mut self, reachable_mod: hir::HirId, defining_mod: DefId) {
         let module_def_id = self.tcx.hir().local_def_id(reachable_mod);
-        let module = self.tcx.hir().get_module(module_def_id.to_def_id()).0;
+        let module = self.tcx.hir().get_module(module_def_id).0;
         for item_id in module.item_ids {
             let hir_id = item_id.id;
             let item_def_id = self.tcx.hir().local_def_id(hir_id);
@@ -547,7 +549,10 @@ impl EmbargoVisitor<'tcx> {
                 if export.vis.is_accessible_from(defining_mod, self.tcx) {
                     if let Res::Def(def_kind, def_id) = export.res {
                         let vis = def_id_visibility(self.tcx, def_id).0;
-                        if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
+                        if let Some(hir_id) = def_id
+                            .as_local()
+                            .map(|def_id| self.tcx.hir().as_local_hir_id(def_id).unwrap())
+                        {
                             self.update_macro_reachable_def(hir_id, def_kind, vis, defining_mod);
                         }
                     }
@@ -654,7 +659,9 @@ impl EmbargoVisitor<'tcx> {
                 // If the module is `self`, i.e. the current crate,
                 // there will be no corresponding item.
                 .filter(|def_id| def_id.index != CRATE_DEF_INDEX || def_id.krate != LOCAL_CRATE)
-                .and_then(|def_id| self.tcx.hir().as_local_hir_id(def_id))
+                .and_then(|def_id| {
+                    def_id.as_local().map(|def_id| self.tcx.hir().as_local_hir_id(def_id).unwrap())
+                })
                 .map(|module_hir_id| self.tcx.hir().expect_item(module_hir_id))
             {
                 if let hir::ItemKind::Mod(m) = &item.kind {
@@ -908,7 +915,10 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 for export in exports.iter() {
                     if export.vis == ty::Visibility::Public {
                         if let Some(def_id) = export.res.opt_def_id() {
-                            if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
+                            if let Some(hir_id) = def_id
+                                .as_local()
+                                .map(|def_id| self.tcx.hir().as_local_hir_id(def_id).unwrap())
+                            {
                                 self.update(hir_id, Some(AccessLevel::Exported));
                             }
                         }
@@ -996,10 +1006,11 @@ impl DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
         self.ev.tcx
     }
     fn visit_def_id(&mut self, def_id: DefId, _kind: &str, _descr: &dyn fmt::Display) -> bool {
-        if let Some(hir_id) = self.ev.tcx.hir().as_local_hir_id(def_id) {
+        if let Some(def_id) = def_id.as_local() {
+            let hir_id = self.ev.tcx.hir().as_local_hir_id(def_id).unwrap();
             if let ((ty::Visibility::Public, ..), _)
             | (_, Some(AccessLevel::ReachableFromImplTrait)) =
-                (def_id_visibility(self.tcx(), def_id), self.access_level)
+                (def_id_visibility(self.tcx(), def_id.to_def_id()), self.access_level)
             {
                 self.ev.update(hir_id, self.access_level);
             }
@@ -1443,10 +1454,10 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
         // A path can only be private if:
         // it's in this crate...
-        if let Some(hir_id) = self.tcx.hir().as_local_hir_id(did) {
+        if let Some(did) = did.as_local() {
             // .. and it corresponds to a private type in the AST (this returns
             // `None` for type parameters).
-            match self.tcx.hir().find(hir_id) {
+            match self.tcx.hir().find(self.tcx.hir().as_local_hir_id(did).unwrap()) {
                 Some(Node::Item(ref item)) => !item.vis.node.is_pub(),
                 Some(_) | None => false,
             }
@@ -1564,8 +1575,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                     |tr| {
                         let did = tr.path.res.def_id();
 
-                        if let Some(hir_id) = self.tcx.hir().as_local_hir_id(did) {
-                            self.trait_is_public(hir_id)
+                        if let Some(did) = did.as_local() {
+                            self.trait_is_public(self.tcx.hir().as_local_hir_id(did).unwrap())
                         } else {
                             true // external traits must be public
                         }
@@ -1825,8 +1836,8 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
             );
         }
 
-        let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
-            Some(hir_id) => hir_id,
+        let hir_id = match def_id.as_local() {
+            Some(def_id) => self.tcx.hir().as_local_hir_id(def_id).unwrap(),
             None => return false,
         };
 
@@ -2070,7 +2081,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: DefId) {
         current_item: None,
         empty_tables: &empty_tables,
     };
-    let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
+    let (module, span, hir_id) = tcx.hir().get_module(module_def_id.expect_local());
 
     intravisit::walk_mod(&mut visitor, module, hir_id);
 

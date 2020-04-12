@@ -15,7 +15,7 @@ use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::lang_items::SizedTraitLangItem;
 use rustc_hir::{Constness, GenericArg, GenericArgs};
@@ -153,7 +153,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             Some(rl::Region::Static) => tcx.lifetimes.re_static,
 
             Some(rl::Region::LateBound(debruijn, id, _)) => {
-                let name = lifetime_name(id);
+                let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReLateBound(debruijn, ty::BrNamed(id, name)))
             }
 
@@ -162,12 +162,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
 
             Some(rl::Region::EarlyBound(index, id, _)) => {
-                let name = lifetime_name(id);
+                let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id: id, index, name }))
             }
 
             Some(rl::Region::Free(scope, id)) => {
-                let name = lifetime_name(id);
+                let name = lifetime_name(id.expect_local());
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
                     scope,
                     bound_region: ty::BrNamed(id, name),
@@ -1974,7 +1974,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     // any ambiguity.
     fn find_bound_for_assoc_item(
         &self,
-        ty_param_def_id: DefId,
+        ty_param_def_id: LocalDefId,
         assoc_name: ast::Ident,
         span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported> {
@@ -1985,7 +1985,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty_param_def_id, assoc_name, span,
         );
 
-        let predicates = &self.get_type_parameter_bounds(span, ty_param_def_id).predicates;
+        let predicates =
+            &self.get_type_parameter_bounds(span, ty_param_def_id.to_def_id()).predicates;
 
         debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
 
@@ -2236,7 +2237,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             (
                 &ty::Param(_),
                 Res::SelfTy(Some(param_did), None) | Res::Def(DefKind::TyParam, param_did),
-            ) => self.find_bound_for_assoc_item(param_did, assoc_ident, span)?,
+            ) => self.find_bound_for_assoc_item(param_did.expect_local(), assoc_ident, span)?,
             _ => {
                 if variant_resolution.is_some() {
                     // Variant in type position
@@ -2372,7 +2373,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             debug!("qpath_to_ty: self.item_def_id()={:?}", def_id);
 
             let parent_def_id = def_id
-                .and_then(|def_id| tcx.hir().as_local_hir_id(def_id))
+                .and_then(|def_id| {
+                    def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id).unwrap())
+                })
                 .map(|hir_id| tcx.hir().get_parent_did(hir_id).to_def_id());
 
             debug!("qpath_to_ty: parent_def_id={:?}", parent_def_id);
@@ -2666,7 +2669,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments);
 
-                let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+                let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
                 let item_id = tcx.hir().get_parent_node(hir_id);
                 let item_def_id = tcx.hir().local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);

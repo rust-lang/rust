@@ -22,11 +22,11 @@ use rustc_target::spec::PanicStrategy;
 use super::lints;
 
 crate fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::steal::Steal<Body<'_>> {
-    tcx.alloc_steal_mir(mir_build(tcx, def_id))
+    tcx.alloc_steal_mir(mir_build(tcx, def_id.expect_local()))
 }
 
 /// Construct the MIR for a given `DefId`.
-fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
+fn mir_build(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Body<'_> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
@@ -181,7 +181,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
             build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
 
-        lints::check(tcx, &body, def_id);
+        lints::check(tcx, &body, def_id.to_def_id());
 
         // The borrow checker will replace all the regions here with its own
         // inference variables. There's no point having non-erased regions here.

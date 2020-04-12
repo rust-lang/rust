@@ -62,7 +62,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let def_id = src.def_id();
 
         let mut rpo = traversal::reverse_postorder(body);
-        let ccx = ConstCx::new(tcx, def_id, body);
+        let ccx = ConstCx::new(tcx, def_id.expect_local(), body);
         let (temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);
 
         let promotable_candidates = validate_candidates(&ccx, &temps, &all_candidates);

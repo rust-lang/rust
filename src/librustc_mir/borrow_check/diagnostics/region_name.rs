@@ -241,8 +241,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         .infcx
                         .tcx
                         .hir()
-                        .as_local_hir_id(self.mir_def_id)
-                        .expect("non-local mir");
+                        .as_local_hir_id(self.mir_def_id.expect_local())
+                        .unwrap();
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
                     if let DefiningTy::Closure(_, substs) = def_ty {
@@ -328,7 +328,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         argument_ty: Ty<'tcx>,
         argument_index: usize,
     ) -> Option<RegionName> {
-        let mir_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id)?;
+        let mir_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id.as_local()?)?;
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
         let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
         match argument_hir_ty.kind {
@@ -639,7 +639,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
         let type_name = self.infcx.extract_type_name(&return_ty, Some(highlight)).0;
 
-        let mir_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id).expect("non-local mir");
+        let mir_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id.expect_local()).unwrap();
 
         let (return_span, mir_description) = match tcx.hir().get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {
@@ -691,7 +691,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
         let type_name = self.infcx.extract_type_name(&yield_ty, Some(highlight)).0;
 
-        let mir_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id).expect("non-local mir");
+        let mir_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id.expect_local()).unwrap();
 
         let yield_span = match tcx.hir().get(mir_hir_id) {
             hir::Node::Expr(hir::Expr {

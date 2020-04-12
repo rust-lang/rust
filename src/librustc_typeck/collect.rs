@@ -269,10 +269,7 @@ impl ItemCtxt<'tcx> {
     }
 
     pub fn hir_id(&self) -> hir::HirId {
-        self.tcx
-            .hir()
-            .as_local_hir_id(self.item_def_id)
-            .expect("Non-local call to local provider is_const_fn")
+        self.tcx.hir().as_local_hir_id(self.item_def_id.expect_local()).unwrap()
     }
 
     pub fn node(&self) -> hir::Node<'tcx> {
@@ -489,7 +486,7 @@ fn type_param_predicates(
     // written inline like `<T: Foo>` or in a where-clause like
     // `where T: Foo`.
 
-    let param_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let param_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
     let param_owner = tcx.hir().ty_param_owner(param_id);
     let param_owner_def_id = tcx.hir().local_def_id(param_owner);
     let generics = tcx.generics_of(param_owner_def_id);
@@ -511,7 +508,7 @@ fn type_param_predicates(
         .unwrap_or_default();
     let mut extend = None;
 
-    let item_hir_id = tcx.hir().as_local_hir_id(item_def_id).unwrap();
+    let item_hir_id = tcx.hir().as_local_hir_id(item_def_id.expect_local()).unwrap();
     let ast_generics = match tcx.hir().get(item_hir_id) {
         Node::TraitItem(item) => &item.generics,
 
@@ -814,13 +811,10 @@ fn convert_variant(
     discr: ty::VariantDiscr,
     def: &hir::VariantData<'_>,
     adt_kind: ty::AdtKind,
-    parent_did: DefId,
+    parent_did: LocalDefId,
 ) -> ty::VariantDef {
     let mut seen_fields: FxHashMap<ast::Ident, Span> = Default::default();
-    let hir_id = tcx
-        .hir()
-        .as_local_hir_id(variant_did.map(LocalDefId::to_def_id).unwrap_or(parent_did))
-        .unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(variant_did.unwrap_or(parent_did)).unwrap();
     let fields = def
         .fields()
         .iter()
@@ -862,7 +856,7 @@ fn convert_variant(
         fields,
         CtorKind::from_hir(def),
         adt_kind,
-        parent_did,
+        parent_did.to_def_id(),
         recovered,
     )
 }
@@ -870,13 +864,14 @@ fn convert_variant(
 fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
     use rustc_hir::*;
 
+    let def_id = def_id.expect_local();
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let item = match tcx.hir().get(hir_id) {
         Node::Item(item) => item,
         _ => bug!(),
     };
 
-    let repr = ReprOptions::new(tcx, def_id);
+    let repr = ReprOptions::new(tcx, def_id.to_def_id());
     let (kind, variants) = match item.kind {
         ItemKind::Enum(ref def, _) => {
             let mut distance_from_explicit = 0;
@@ -949,7 +944,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
         }
         _ => bug!(),
     };
-    tcx.alloc_adt_def(def_id, kind, variants, repr)
+    tcx.alloc_adt_def(def_id.to_def_id(), kind, variants, repr)
 }
 
 /// Ensures that the super-predicates of the trait with a `DefId`
@@ -957,7 +952,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
 /// the transitive super-predicates are converted.
 fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredicates<'_> {
     debug!("super_predicates(trait_def_id={:?})", trait_def_id);
-    let trait_hir_id = tcx.hir().as_local_hir_id(trait_def_id).unwrap();
+    let trait_hir_id = tcx.hir().as_local_hir_id(trait_def_id.expect_local()).unwrap();
 
     let item = match tcx.hir().get(trait_hir_id) {
         Node::Item(item) => item,
@@ -1008,7 +1003,7 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
     let item = tcx.hir().expect_item(hir_id);
 
     let (is_auto, unsafety) = match item.kind {
@@ -1166,7 +1161,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
     use rustc_hir::*;
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
 
     let node = tcx.hir().get(hir_id);
     let parent_def_id = match node {
@@ -1464,7 +1459,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
     use rustc_hir::Node::*;
     use rustc_hir::*;
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
 
     let icx = ItemCtxt::new(tcx, def_id);
 
@@ -1562,7 +1557,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     let icx = ItemCtxt::new(tcx, def_id);
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
     match tcx.hir().expect_item(hir_id).kind {
         hir::ItemKind::Impl { ref of_trait, .. } => of_trait.as_ref().map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id);
@@ -1573,7 +1568,7 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
 }
 
 fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(hir_id);
     match &item.kind {
@@ -1707,7 +1702,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
         }
     }
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
     let node = tcx.hir().get(hir_id);
 
     let mut is_trait = None;
@@ -2562,7 +2557,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     if codegen_fn_attrs.flags.intersects(CodegenFnAttrFlags::NO_SANITIZE_ANY) {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
-                let hir_id = tcx.hir().as_local_hir_id(id).unwrap();
+                let hir_id = tcx.hir().as_local_hir_id(id.expect_local()).unwrap();
                 tcx.struct_span_lint_hir(
                     lint::builtin::INLINE_NO_SANITIZE,
                     hir_id,

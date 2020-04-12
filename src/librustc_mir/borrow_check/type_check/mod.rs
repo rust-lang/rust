@@ -1989,7 +1989,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
                             let ccx = ConstCx::new_with_param_env(
                                 tcx,
-                                self.mir_def_id,
+                                self.mir_def_id.expect_local(),
                                 body,
                                 self.param_env,
                             );

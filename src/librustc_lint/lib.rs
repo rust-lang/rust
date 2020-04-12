@@ -91,7 +91,11 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 fn lint_mod(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    late::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+    late::late_lint_mod(
+        tcx,
+        module_def_id.expect_local(),
+        BuiltinCombinedModuleLateLintPass::new(),
+    );
 }
 
 macro_rules! pre_expansion_lint_passes {

@@ -608,7 +608,9 @@ pub trait PrettyPrinter<'tcx>:
                 }
 
                 // FIXME(eddyb) should use `def_span`.
-                if let Some(hir_id) = self.tcx().hir().as_local_hir_id(did) {
+                if let Some(hir_id) =
+                    did.as_local().map(|did| self.tcx().hir().as_local_hir_id(did).unwrap())
+                {
                     p!(write("@{:?}", self.tcx().hir().span(hir_id)));
 
                     if substs.as_generator().is_valid() {
@@ -652,7 +654,9 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write("[closure"));
 
                 // FIXME(eddyb) should use `def_span`.
-                if let Some(hir_id) = self.tcx().hir().as_local_hir_id(did) {
+                if let Some(hir_id) =
+                    did.as_local().map(|did| self.tcx().hir().as_local_hir_id(did).unwrap())
+                {
                     if self.tcx().sess.opts.debugging_opts.span_free_formats {
                         p!(write("@"), print_def_path(did, substs));
                     } else {
