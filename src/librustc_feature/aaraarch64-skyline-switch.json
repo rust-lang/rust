@@ -1,0 +1,45 @@
+{
+  "abi-blacklist": [
+    "stdcall",
+    "fastcall",
+    "vectorcall",
+    "thiscall",
+    "win64",
+    "sysv64"
+  ],
+  "arch": "aarch64",
+  "crt-static-default": false,
+  "crt-static-respected": false,
+  "data-layout": "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128",
+  "dynamic-linking": true,
+  "dynamic-linking-available": true,
+  "executables": true,
+  "has-elf-tls": false,
+  "has-rpath": false,
+  "linker": "rust-lld",
+  "linker-flavor": "ld.lld",
+  "llvm-target": "aarch64-unknown-none",
+  "max-atomic-width": 128,
+  "os": "switch",
+  "panic-strategy": "unwind",
+  "position-independent-executables": true,
+  "pre-link-args": {
+    "ld.lld": [
+      "-Tlink.T",
+      "-init=__custom_init",
+      "-fini=__custom_fini",
+      "--export-dynamic"
+    ]
+  },
+  "post-link-args": {
+    "ld.lld": [
+      "--no-gc-sections",
+      "--eh-frame-hdr"
+    ]
+  },
+  "relro-level": "off",
+  "target-c-int-width": "32",
+  "target-endian": "little",
+  "target-pointer-width": "64",
+  "vendor": "roblabla"
+}
