@@ -18,8 +18,8 @@ use rustc_middle::ty::{self, query::TyCtxtAt, Instance, ParamEnv};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    AllocId, AllocMap, Allocation, AllocationExtra, CheckInAllocMsg, ErrorHandled, GlobalAlloc,
-    GlobalId, InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Scalar,
+    AllocId, AllocMap, Allocation, AllocationExtra, CheckInAllocMsg, GlobalAlloc, GlobalId,
+    InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Scalar,
 };
 use crate::util::pretty;
 
@@ -462,10 +462,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                         // no need to report anything, the const_eval call takes care of that
                         // for statics
                         assert!(tcx.is_static(def_id));
-                        match err {
-                            ErrorHandled::Reported => err_inval!(ReferencedConstant),
-                            ErrorHandled::TooGeneric => err_inval!(TooGeneric),
-                        }
+                        err
                     })?;
                 // Make sure we use the ID of the resolved memory, not the lazy one!
                 let id = raw_const.alloc_id;

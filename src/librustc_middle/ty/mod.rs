@@ -27,6 +27,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, par_iter, ParallelIterator};
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
@@ -2388,7 +2389,7 @@ impl<'tcx> AdtDef {
                     None
                 }
             }
-            Err(ErrorHandled::Reported) => {
+            Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => {
                 if !expr_did.is_local() {
                     span_bug!(
                         tcx.def_span(expr_did),

@@ -6,6 +6,7 @@ use crate::glue;
 use crate::traits::*;
 use crate::MemFlags;
 
+use rustc_errors::ErrorReported;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -447,8 +448,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.eval_mir_constant_to_operand(bx, constant).unwrap_or_else(|err| {
                     match err {
                         // errored or at least linted
-                        ErrorHandled::Reported => {}
-                        ErrorHandled::TooGeneric => bug!("codgen encountered polymorphic constant"),
+                        ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {}
+                        ErrorHandled::TooGeneric => {
+                            bug!("codegen encountered polymorphic constant")
+                        }
                     }
                     // Allow RalfJ to sleep soundly knowing that even refactorings that remove
                     // the above error (or silence it under some conditions) will not cause UB.

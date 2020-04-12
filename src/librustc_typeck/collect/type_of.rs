@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, StashKey};
+use rustc_errors::{struct_span_err, Applicability, ErrorReported, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -125,7 +125,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                     owner, def_id,
                                 ),
                             );
-                            if tcx.typeck_tables_of(owner).tainted_by_errors {
+                            if let Some(ErrorReported) =
+                                tcx.typeck_tables_of(owner).tainted_by_errors
+                            {
                                 // Some error in the
                                 // owner fn prevented us from populating
                                 // the `concrete_opaque_types` table.

@@ -3,7 +3,7 @@
 use rustc_ast::ast::Name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::{def_id::DefId, HirId, Node};
 use rustc_index::bit_set::BitSet;
@@ -135,7 +135,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     // Gather the upvars of a closure, if any.
     let tables = tcx.typeck_tables_of(def_id);
-    if tables.tainted_by_errors {
+    if let Some(ErrorReported) = tables.tainted_by_errors {
         infcx.set_tainted_by_errors();
     }
     let upvars: Vec<_> = tables

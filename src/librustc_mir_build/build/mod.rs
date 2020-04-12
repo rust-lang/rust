@@ -3,6 +3,7 @@ use crate::build::scope::DropKind;
 use crate::hair::cx::Cx;
 use crate::hair::{BindingMode, LintLevel, PatKind};
 use rustc_attr::{self as attr, UnwindAttr};
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items;
@@ -59,7 +60,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
 
     tcx.infer_ctxt().enter(|infcx| {
         let cx = Cx::new(&infcx, id);
-        let body = if cx.tables().tainted_by_errors {
+        let body = if let Some(ErrorReported) = cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
         } else if cx.body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound

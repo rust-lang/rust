@@ -5,6 +5,7 @@
 
 use super::validity::RefTracking;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_middle::mir::interpret::{ErrorHandled, InterpResult};
 use rustc_middle::ty::{self, Ty};
@@ -337,7 +338,9 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
                         diag.emit();
                     },
                 ) {
-                    Ok(()) | Err(ErrorHandled::TooGeneric) | Err(ErrorHandled::Reported) => {}
+                    ErrorHandled::TooGeneric
+                    | ErrorHandled::Reported(ErrorReported)
+                    | ErrorHandled::Linted => {}
                 }
             }
         }

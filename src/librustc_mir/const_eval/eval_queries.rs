@@ -213,13 +213,10 @@ fn validate_and_turn_into_const<'tcx>(
 
     val.map_err(|error| {
         let err = error_to_const_error(&ecx, error);
-        match err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
+        err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
             diag.note(note_on_undefined_behavior_error());
             diag.emit();
-        }) {
-            Ok(_) => ErrorHandled::Reported,
-            Err(err) => err,
-        }
+        })
     })
 }
 
@@ -292,11 +289,10 @@ pub fn const_eval_raw_provider<'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
 
-    if def_id.is_local()
-        && tcx.has_typeck_tables(def_id)
-        && tcx.typeck_tables_of(def_id).tainted_by_errors
-    {
-        return Err(ErrorHandled::Reported);
+    if def_id.is_local() && tcx.has_typeck_tables(def_id) {
+        if let Some(error_reported) = tcx.typeck_tables_of(def_id).tainted_by_errors {
+            return Err(ErrorHandled::Reported(error_reported));
+        }
     }
 
     let is_static = tcx.is_static(def_id);
