@@ -37,9 +37,62 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Some(p) => p,
         };
 
+        // Then handle terminating intrinsics.
         match intrinsic_name {
-            "try" => return this.handle_try(args, dest, ret),
+            // Raw memory accesses
+            #[rustfmt::skip]
+            | "copy"
+            | "copy_nonoverlapping"
+            => {
+                let elem_ty = substs.type_at(0);
+                let elem_layout = this.layout_of(elem_ty)?;
+                let count = this.read_scalar(args[2])?.to_machine_usize(this)?;
+                let elem_align = elem_layout.align.abi;
 
+                let size = elem_layout.size.checked_mul(count, this)
+                    .ok_or_else(|| err_ub_format!("overflow computing total size of `{}`", intrinsic_name))?;
+                let src = this.read_scalar(args[0])?.not_undef()?;
+                let src = this.memory.check_ptr_access(src, size, elem_align)?;
+                let dest = this.read_scalar(args[1])?.not_undef()?;
+                let dest = this.memory.check_ptr_access(dest, size, elem_align)?;
+
+                if let (Some(src), Some(dest)) = (src, dest) {
+                    this.memory.copy(
+                        src,
+                        dest,
+                        size,
+                        intrinsic_name.ends_with("_nonoverlapping"),
+                    )?;
+                }
+            }
+
+            "move_val_init" => {
+                let place = this.deref_operand(args[0])?;
+                this.copy_op(args[1], place.into())?;
+            }
+
+            "volatile_load" => {
+                let place = this.deref_operand(args[0])?;
+                this.copy_op(place.into(), dest)?;
+            }
+            "volatile_store" => {
+                let place = this.deref_operand(args[0])?;
+                this.copy_op(args[1], place.into())?;
+            }
+
+            "write_bytes" => {
+                let ty = substs.type_at(0);
+                let ty_layout = this.layout_of(ty)?;
+                let val_byte = this.read_scalar(args[1])?.to_u8()?;
+                let ptr = this.read_scalar(args[0])?.not_undef()?;
+                let count = this.read_scalar(args[2])?.to_machine_usize(this)?;
+                let byte_count = ty_layout.size.checked_mul(count, this)
+                    .ok_or_else(|| err_ub_format!("overflow computing total size of `write_bytes`"))?;
+                this.memory
+                    .write_bytes(ptr, iter::repeat(val_byte).take(byte_count.bytes() as usize))?;
+            }
+
+            // Pointer arithmetic
             "arith_offset" => {
                 let offset = this.read_scalar(args[1])?.to_machine_isize(this)?;
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
@@ -50,24 +103,183 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result_ptr = ptr.ptr_wrapping_signed_offset(offset, this);
                 this.write_scalar(result_ptr, dest)?;
             }
-
-            "assume" => {
-                let cond = this.read_scalar(args[0])?.to_bool()?;
-                if !cond {
-                    throw_ub_format!("`assume` intrinsic called with `false`");
-                }
+            "offset" => {
+                let offset = this.read_scalar(args[1])?.to_machine_isize(this)?;
+                let ptr = this.read_scalar(args[0])?.not_undef()?;
+                let result_ptr = this.pointer_offset_inbounds(ptr, substs.type_at(0), offset)?;
+                this.write_scalar(result_ptr, dest)?;
             }
 
-            "volatile_load" => {
-                let place = this.deref_operand(args[0])?;
-                this.copy_op(place.into(), dest)?;
+            // Floating-point operations
+            #[rustfmt::skip]
+            | "sinf32"
+            | "fabsf32"
+            | "cosf32"
+            | "sqrtf32"
+            | "expf32"
+            | "exp2f32"
+            | "logf32"
+            | "log10f32"
+            | "log2f32"
+            | "floorf32"
+            | "ceilf32"
+            | "truncf32"
+            | "roundf32"
+            => {
+                // FIXME: Using host floats.
+                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
+                let f = match intrinsic_name {
+                    "sinf32" => f.sin(),
+                    "fabsf32" => f.abs(),
+                    "cosf32" => f.cos(),
+                    "sqrtf32" => f.sqrt(),
+                    "expf32" => f.exp(),
+                    "exp2f32" => f.exp2(),
+                    "logf32" => f.ln(),
+                    "log10f32" => f.log10(),
+                    "log2f32" => f.log2(),
+                    "floorf32" => f.floor(),
+                    "ceilf32" => f.ceil(),
+                    "truncf32" => f.trunc(),
+                    "roundf32" => f.round(),
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
             }
 
-            "volatile_store" => {
-                let place = this.deref_operand(args[0])?;
-                this.copy_op(args[1], place.into())?;
+            #[rustfmt::skip]
+            | "sinf64"
+            | "fabsf64"
+            | "cosf64"
+            | "sqrtf64"
+            | "expf64"
+            | "exp2f64"
+            | "logf64"
+            | "log10f64"
+            | "log2f64"
+            | "floorf64"
+            | "ceilf64"
+            | "truncf64"
+            | "roundf64"
+            => {
+                // FIXME: Using host floats.
+                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+                let f = match intrinsic_name {
+                    "sinf64" => f.sin(),
+                    "fabsf64" => f.abs(),
+                    "cosf64" => f.cos(),
+                    "sqrtf64" => f.sqrt(),
+                    "expf64" => f.exp(),
+                    "exp2f64" => f.exp2(),
+                    "logf64" => f.ln(),
+                    "log10f64" => f.log10(),
+                    "log2f64" => f.log2(),
+                    "floorf64" => f.floor(),
+                    "ceilf64" => f.ceil(),
+                    "truncf64" => f.trunc(),
+                    "roundf64" => f.round(),
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
             }
 
+            #[rustfmt::skip]
+            | "fadd_fast"
+            | "fsub_fast"
+            | "fmul_fast"
+            | "fdiv_fast"
+            | "frem_fast"
+            => {
+                let a = this.read_immediate(args[0])?;
+                let b = this.read_immediate(args[1])?;
+                let op = match intrinsic_name {
+                    "fadd_fast" => mir::BinOp::Add,
+                    "fsub_fast" => mir::BinOp::Sub,
+                    "fmul_fast" => mir::BinOp::Mul,
+                    "fdiv_fast" => mir::BinOp::Div,
+                    "frem_fast" => mir::BinOp::Rem,
+                    _ => bug!(),
+                };
+                this.binop_ignore_overflow(op, a, b, dest)?;
+            }
+
+            #[rustfmt::skip]
+            | "minnumf32"
+            | "maxnumf32"
+            | "copysignf32"
+            => {
+                let a = this.read_scalar(args[0])?.to_f32()?;
+                let b = this.read_scalar(args[1])?.to_f32()?;
+                let res = match intrinsic_name {
+                    "minnumf32" => a.min(b),
+                    "maxnumf32" => a.max(b),
+                    "copysignf32" => a.copy_sign(b),
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_f32(res), dest)?;
+            }
+
+            #[rustfmt::skip]
+            | "minnumf64"
+            | "maxnumf64"
+            | "copysignf64"
+            => {
+                let a = this.read_scalar(args[0])?.to_f64()?;
+                let b = this.read_scalar(args[1])?.to_f64()?;
+                let res = match intrinsic_name {
+                    "minnumf64" => a.min(b),
+                    "maxnumf64" => a.max(b),
+                    "copysignf64" => a.copy_sign(b),
+                    _ => bug!(),
+                };
+                this.write_scalar(Scalar::from_f64(res), dest)?;
+            }
+            
+            "powf32" => {
+                // FIXME: Using host floats.
+                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
+                let f2 = f32::from_bits(this.read_scalar(args[1])?.to_u32()?);
+                this.write_scalar(Scalar::from_u32(f.powf(f2).to_bits()), dest)?;
+            }
+
+            "powf64" => {
+                // FIXME: Using host floats.
+                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+                let f2 = f64::from_bits(this.read_scalar(args[1])?.to_u64()?);
+                this.write_scalar(Scalar::from_u64(f.powf(f2).to_bits()), dest)?;
+            }
+
+            "fmaf32" => {
+                let a = this.read_scalar(args[0])?.to_f32()?;
+                let b = this.read_scalar(args[1])?.to_f32()?;
+                let c = this.read_scalar(args[2])?.to_f32()?;
+                let res = a.mul_add(b, c).value;
+                this.write_scalar(Scalar::from_f32(res), dest)?;
+            }
+
+            "fmaf64" => {
+                let a = this.read_scalar(args[0])?.to_f64()?;
+                let b = this.read_scalar(args[1])?.to_f64()?;
+                let c = this.read_scalar(args[2])?.to_f64()?;
+                let res = a.mul_add(b, c).value;
+                this.write_scalar(Scalar::from_f64(res), dest)?;
+            }
+
+            "powif32" => {
+                // FIXME: Using host floats.
+                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
+                let i = this.read_scalar(args[1])?.to_i32()?;
+                this.write_scalar(Scalar::from_u32(f.powi(i).to_bits()), dest)?;
+            }
+
+            "powif64" => {
+                // FIXME: Using host floats.
+                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+                let i = this.read_scalar(args[1])?.to_i32()?;
+                this.write_scalar(Scalar::from_u64(f.powi(i).to_bits()), dest)?;
+            }
+
+            // Atomic operations
             #[rustfmt::skip]
             | "atomic_load"
             | "atomic_load_relaxed"
@@ -214,190 +426,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_immediate(*val, place.into())?;
             }
 
-            #[rustfmt::skip]
-            | "copy"
-            | "copy_nonoverlapping"
-            => {
-                let elem_ty = substs.type_at(0);
-                let elem_layout = this.layout_of(elem_ty)?;
-                let count = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                let elem_align = elem_layout.align.abi;
-
-                let size = elem_layout.size.checked_mul(count, this)
-                    .ok_or_else(|| err_ub_format!("overflow computing total size of `{}`", intrinsic_name))?;
-                let src = this.read_scalar(args[0])?.not_undef()?;
-                let src = this.memory.check_ptr_access(src, size, elem_align)?;
-                let dest = this.read_scalar(args[1])?.not_undef()?;
-                let dest = this.memory.check_ptr_access(dest, size, elem_align)?;
-
-                if let (Some(src), Some(dest)) = (src, dest) {
-                    this.memory.copy(
-                        src,
-                        dest,
-                        size,
-                        intrinsic_name.ends_with("_nonoverlapping"),
-                    )?;
-                }
-            }
-
-            #[rustfmt::skip]
-            | "sinf32"
-            | "fabsf32"
-            | "cosf32"
-            | "sqrtf32"
-            | "expf32"
-            | "exp2f32"
-            | "logf32"
-            | "log10f32"
-            | "log2f32"
-            | "floorf32"
-            | "ceilf32"
-            | "truncf32"
-            | "roundf32"
-            => {
-                // FIXME: Using host floats.
-                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
-                let f = match intrinsic_name {
-                    "sinf32" => f.sin(),
-                    "fabsf32" => f.abs(),
-                    "cosf32" => f.cos(),
-                    "sqrtf32" => f.sqrt(),
-                    "expf32" => f.exp(),
-                    "exp2f32" => f.exp2(),
-                    "logf32" => f.ln(),
-                    "log10f32" => f.log10(),
-                    "log2f32" => f.log2(),
-                    "floorf32" => f.floor(),
-                    "ceilf32" => f.ceil(),
-                    "truncf32" => f.trunc(),
-                    "roundf32" => f.round(),
-                    _ => bug!(),
-                };
-                this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
-            }
-
-            #[rustfmt::skip]
-            | "sinf64"
-            | "fabsf64"
-            | "cosf64"
-            | "sqrtf64"
-            | "expf64"
-            | "exp2f64"
-            | "logf64"
-            | "log10f64"
-            | "log2f64"
-            | "floorf64"
-            | "ceilf64"
-            | "truncf64"
-            | "roundf64"
-            => {
-                // FIXME: Using host floats.
-                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
-                let f = match intrinsic_name {
-                    "sinf64" => f.sin(),
-                    "fabsf64" => f.abs(),
-                    "cosf64" => f.cos(),
-                    "sqrtf64" => f.sqrt(),
-                    "expf64" => f.exp(),
-                    "exp2f64" => f.exp2(),
-                    "logf64" => f.ln(),
-                    "log10f64" => f.log10(),
-                    "log2f64" => f.log2(),
-                    "floorf64" => f.floor(),
-                    "ceilf64" => f.ceil(),
-                    "truncf64" => f.trunc(),
-                    "roundf64" => f.round(),
-                    _ => bug!(),
-                };
-                this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
-            }
-
-            #[rustfmt::skip]
-            | "fadd_fast"
-            | "fsub_fast"
-            | "fmul_fast"
-            | "fdiv_fast"
-            | "frem_fast"
-            => {
-                let a = this.read_immediate(args[0])?;
-                let b = this.read_immediate(args[1])?;
-                let op = match intrinsic_name {
-                    "fadd_fast" => mir::BinOp::Add,
-                    "fsub_fast" => mir::BinOp::Sub,
-                    "fmul_fast" => mir::BinOp::Mul,
-                    "fdiv_fast" => mir::BinOp::Div,
-                    "frem_fast" => mir::BinOp::Rem,
-                    _ => bug!(),
-                };
-                this.binop_ignore_overflow(op, a, b, dest)?;
-            }
-
-            #[rustfmt::skip]
-            | "minnumf32"
-            | "maxnumf32"
-            | "copysignf32"
-            => {
-                let a = this.read_scalar(args[0])?.to_f32()?;
-                let b = this.read_scalar(args[1])?.to_f32()?;
-                let res = match intrinsic_name {
-                    "minnumf32" => a.min(b),
-                    "maxnumf32" => a.max(b),
-                    "copysignf32" => a.copy_sign(b),
-                    _ => bug!(),
-                };
-                this.write_scalar(Scalar::from_f32(res), dest)?;
-            }
-
-            #[rustfmt::skip]
-            | "minnumf64"
-            | "maxnumf64"
-            | "copysignf64"
-            => {
-                let a = this.read_scalar(args[0])?.to_f64()?;
-                let b = this.read_scalar(args[1])?.to_f64()?;
-                let res = match intrinsic_name {
-                    "minnumf64" => a.min(b),
-                    "maxnumf64" => a.max(b),
-                    "copysignf64" => a.copy_sign(b),
-                    _ => bug!(),
-                };
-                this.write_scalar(Scalar::from_f64(res), dest)?;
-            }
-
-            "exact_div" =>
-                this.exact_div(this.read_immediate(args[0])?, this.read_immediate(args[1])?, dest)?,
-
-            "forget" => {}
-
-            #[rustfmt::skip]
-            | "likely"
-            | "unlikely"
-            => {
-                // These just return their argument
-                let b = this.read_immediate(args[0])?;
-                this.write_immediate(*b, dest)?;
-            }
-
-            "pref_align_of" => {
-                let ty = substs.type_at(0);
-                let layout = this.layout_of(ty)?;
-                let align = layout.align.pref.bytes();
-                let align_val = Scalar::from_machine_usize(align, this);
-                this.write_scalar(align_val, dest)?;
-            }
-
-            "move_val_init" => {
-                let place = this.deref_operand(args[0])?;
-                this.copy_op(args[1], place.into())?;
-            }
-
-            "offset" => {
-                let offset = this.read_scalar(args[1])?.to_machine_isize(this)?;
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let result_ptr = this.pointer_offset_inbounds(ptr, substs.type_at(0), offset)?;
-                this.write_scalar(result_ptr, dest)?;
-            }
-
+            // Query type information
             "assert_inhabited" |
             "assert_zero_valid" |
             "assert_uninit_valid" => {
@@ -415,56 +444,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            "powf32" => {
-                // FIXME: Using host floats.
-                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
-                let f2 = f32::from_bits(this.read_scalar(args[1])?.to_u32()?);
-                this.write_scalar(Scalar::from_u32(f.powf(f2).to_bits()), dest)?;
-            }
-
-            "powf64" => {
-                // FIXME: Using host floats.
-                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
-                let f2 = f64::from_bits(this.read_scalar(args[1])?.to_u64()?);
-                this.write_scalar(Scalar::from_u64(f.powf(f2).to_bits()), dest)?;
-            }
-
-            "fmaf32" => {
-                let a = this.read_scalar(args[0])?.to_f32()?;
-                let b = this.read_scalar(args[1])?.to_f32()?;
-                let c = this.read_scalar(args[2])?.to_f32()?;
-                let res = a.mul_add(b, c).value;
-                this.write_scalar(Scalar::from_f32(res), dest)?;
-            }
-
-            "fmaf64" => {
-                let a = this.read_scalar(args[0])?.to_f64()?;
-                let b = this.read_scalar(args[1])?.to_f64()?;
-                let c = this.read_scalar(args[2])?.to_f64()?;
-                let res = a.mul_add(b, c).value;
-                this.write_scalar(Scalar::from_f64(res), dest)?;
-            }
-
-            "powif32" => {
-                // FIXME: Using host floats.
-                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
-                let i = this.read_scalar(args[1])?.to_i32()?;
-                this.write_scalar(Scalar::from_u32(f.powi(i).to_bits()), dest)?;
-            }
-
-            "powif64" => {
-                // FIXME: Using host floats.
-                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
-                let i = this.read_scalar(args[1])?.to_i32()?;
-                this.write_scalar(Scalar::from_u64(f.powi(i).to_bits()), dest)?;
-            }
-
-            "size_of_val" => {
-                let mplace = this.deref_operand(args[0])?;
-                let (size, _) = this
-                    .size_and_align_of_mplace(mplace)?
-                    .expect("size_of_val called on extern type");
-                this.write_scalar(Scalar::from_machine_usize(size.bytes(), this), dest)?;
+            "pref_align_of" => {
+                let ty = substs.type_at(0);
+                let layout = this.layout_of(ty)?;
+                let align = layout.align.pref.bytes();
+                let align_val = Scalar::from_machine_usize(align, this);
+                this.write_scalar(align_val, dest)?;
             }
 
             #[rustfmt::skip]
@@ -478,17 +463,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_machine_usize(align.bytes(), this), dest)?;
             }
 
-            "write_bytes" => {
-                let ty = substs.type_at(0);
-                let ty_layout = this.layout_of(ty)?;
-                let val_byte = this.read_scalar(args[1])?.to_u8()?;
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let count = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                let byte_count = ty_layout.size.checked_mul(count, this)
-                    .ok_or_else(|| err_ub_format!("overflow computing total size of `write_bytes`"))?;
-                this.memory
-                    .write_bytes(ptr, iter::repeat(val_byte).take(byte_count.bytes() as usize))?;
+            "size_of_val" => {
+                let mplace = this.deref_operand(args[0])?;
+                let (size, _) = this
+                    .size_and_align_of_mplace(mplace)?
+                    .expect("size_of_val called on extern type");
+                this.write_scalar(Scalar::from_machine_usize(size.bytes(), this), dest)?;
             }
+
+            // Other
+            "assume" => {
+                let cond = this.read_scalar(args[0])?.to_bool()?;
+                if !cond {
+                    throw_ub_format!("`assume` intrinsic called with `false`");
+                }
+            }
+
+            "exact_div" =>
+                this.exact_div(this.read_immediate(args[0])?, this.read_immediate(args[1])?, dest)?,
+
+            "forget" => {}
+
+            #[rustfmt::skip]
+            | "likely"
+            | "unlikely"
+            => {
+                // These just return their argument
+                let b = this.read_immediate(args[0])?;
+                this.write_immediate(*b, dest)?;
+            }
+
+            "try" => return this.handle_try(args, dest, ret),
 
             name => throw_unsup_format!("unimplemented intrinsic: {}", name),
         }
