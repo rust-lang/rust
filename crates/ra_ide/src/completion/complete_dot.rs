@@ -1,14 +1,23 @@
 //! FIXME: write short doc here
 
-use hir::{HasVisibility, HirDisplay, Type};
+use hir::{
+    HasVisibility,
+    // HirDisplay,
+    Type,
+};
 
 use crate::completion::completion_item::CompletionKind;
 use crate::{
-    completion::{completion_context::CompletionContext, completion_item::Completions},
+    call_info::call_info,
+    completion::{
+        completion_context::CompletionContext,
+        completion_item::{Completions, SortOption},
+    },
+    // CallInfo,
     CompletionItem,
 };
 use rustc_hash::FxHashSet;
-use std::cmp::Ordering;
+// use std::cmp::Ordering;
 
 /// Complete dot accesses, i.e. fields or methods (and .await syntax).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
@@ -38,29 +47,39 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
     for receiver in receiver.autoderef(ctx.db) {
-        let mut fields = receiver.fields(ctx.db);
-        if let Some(call_info) = &ctx.call_info {
-            if let Some(active_parameter_type) = call_info.active_parameter_type() {
-                let active_parameter_name = call_info.active_parameter_name().unwrap();
-                fields.sort_by(|a, b| {
-                    // For the same type
-                    if active_parameter_type == a.1.display(ctx.db).to_string() {
-                        // If same type + same name then go top position
-                        if active_parameter_name == a.0.name(ctx.db).to_string() {
-                            Ordering::Less
-                        } else {
-                            if active_parameter_type == b.1.display(ctx.db).to_string() {
-                                Ordering::Equal
-                            } else {
-                                Ordering::Less
-                            }
-                        }
-                    } else {
-                        Ordering::Greater
-                    }
-                });
-            }
+        let fields = receiver.fields(ctx.db);
+
+        // If we use this implementation we can delete call_info in the CompletionContext
+        if let Some(call_info) = call_info(ctx.db, ctx.file_position) {
+            acc.with_sort_option(SortOption::CallFn(call_info));
         }
+
+        // // For Call Fn
+        // if let Some(call_info) = &ctx.call_info {
+        //     if let Some(active_parameter_type) = call_info.active_parameter_type() {
+        //         let active_parameter_name = call_info.active_parameter_name().unwrap();
+        //         fields.sort_by(|a, b| {
+        //             // For the same type
+        //             if active_parameter_type == a.1.display(ctx.db).to_string() {
+        //                 // If same type + same name then go top position
+        //                 if active_parameter_name == a.0.name(ctx.db).to_string() {
+        //                     Ordering::Less
+        //                 } else {
+        //                     if active_parameter_type == b.1.display(ctx.db).to_string() {
+        //                         Ordering::Equal
+        //                     } else {
+        //                         Ordering::Less
+        //                     }
+        //                 }
+        //             } else {
+        //                 Ordering::Greater
+        //             }
+        //         });
+        //     }
+        // }
+
+        // For Lit struct fields
+        // ---
 
         for (field, ty) in fields {
             if ctx.scope().module().map_or(false, |m| !field.is_visible_from(ctx.db, m)) {

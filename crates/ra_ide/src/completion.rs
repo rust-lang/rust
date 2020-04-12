@@ -94,5 +94,8 @@ pub(crate) fn completions(
     complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
     complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
 
+    // Reorder completion items if there is a sort_option
+    acc.sort();
+
     Some(acc)
 }

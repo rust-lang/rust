@@ -1,7 +1,8 @@
 //! FIXME: write short doc here
 
-use std::fmt;
+use std::{cmp::Ordering, fmt};
 
+use crate::CallInfo;
 use hir::Documentation;
 use ra_syntax::TextRange;
 use ra_text_edit::TextEdit;
@@ -297,10 +298,17 @@ impl<'a> Into<CompletionItem> for Builder {
     }
 }
 
+#[derive(Debug)]
+pub(crate) enum SortOption {
+    CallFn(CallInfo),
+    // LitStruct,
+}
+
 /// Represents an in-progress set of completions being built.
 #[derive(Debug, Default)]
 pub(crate) struct Completions {
     buf: Vec<CompletionItem>,
+    sort_option: Option<SortOption>,
 }
 
 impl Completions {
@@ -313,6 +321,46 @@ impl Completions {
         I::Item: Into<CompletionItem>,
     {
         items.into_iter().for_each(|item| self.add(item.into()))
+    }
+
+    pub(crate) fn with_sort_option(&mut self, sort_option: SortOption) {
+        self.sort_option = Some(sort_option);
+    }
+
+    pub(crate) fn sort(&mut self) {
+        if self.sort_option.is_none() {
+            return;
+        }
+        let sort_option = self.sort_option.as_ref().unwrap();
+
+        match sort_option {
+            SortOption::CallFn(call_info) => {
+                if let Some(active_parameter_type) = call_info.active_parameter_type() {
+                    let active_parameter_name = call_info.active_parameter_name().unwrap();
+
+                    self.buf.sort_by(|a, b| {
+                        // For the same type
+                        if let Some(a_parameter_type) = &a.detail {
+                            if &active_parameter_type == a_parameter_type {
+                                // If same type + same name then go top position
+                                if active_parameter_name != a.label {
+                                    if let Some(b_parameter_type) = &b.detail {
+                                        if &active_parameter_type == b_parameter_type {
+                                            return Ordering::Equal;
+                                        }
+                                    }
+                                }
+                                Ordering::Less
+                            } else {
+                                Ordering::Greater
+                            }
+                        } else {
+                            Ordering::Greater
+                        }
+                    });
+                }
+            } // _ => unimplemented!("sort options not already implemented"),
+        }
     }
 }
 

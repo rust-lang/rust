@@ -34,7 +34,7 @@ fn check_todo(path: &Path, text: &str) {
     }
     if text.contains("TODO") || text.contains("TOOD") || text.contains("todo!") {
         panic!(
-            "\nTODO markers should not be committed to the master branch,\n\
+            "\nTODO markers or todo! macros should not be committed to the master branch,\n\
              use FIXME instead\n\
              {}\n",
             path.display(),
