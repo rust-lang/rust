@@ -186,6 +186,9 @@ impl EarlyLintPass for LiteralDigitGrouping {
     }
 }
 
+// Length of each UUID hyphenated group in hex digits.
+const UUID_GROUP_LENS: [usize; 5] = [8, 4, 4, 4, 12];
+
 impl LiteralDigitGrouping {
     fn check_lit(cx: &EarlyContext<'_>, lit: &Lit) {
         if_chain! {
@@ -193,6 +196,10 @@ impl LiteralDigitGrouping {
             if let Some(mut num_lit) = NumericLiteral::from_lit(&src, &lit);
             then {
                 if !Self::check_for_mistyped_suffix(cx, lit.span, &mut num_lit) {
+                    return;
+                }
+
+                if Self::is_literal_uuid_formatted(&mut num_lit) {
                     return;
                 }
 
@@ -263,6 +270,28 @@ impl LiteralDigitGrouping {
             false
         } else {
             true
+        }
+    }
+
+    /// Checks whether the numeric literal matches the formatting of a UUID.
+    ///
+    /// Returns `true` if the radix is hexadecimal, and the groups match the
+    /// UUID format of 8-4-4-4-12.
+    fn is_literal_uuid_formatted(num_lit: &mut NumericLiteral<'_>) -> bool {
+        if num_lit.radix != Radix::Hexadecimal {
+            return false;
+        }
+
+        // UUIDs should not have a fraction
+        if num_lit.fraction.is_some() {
+            return false;
+        }
+
+        let group_sizes: Vec<usize> = num_lit.integer.split('_').map(str::len).collect();
+        if UUID_GROUP_LENS.len() == group_sizes.len() {
+            UUID_GROUP_LENS.iter().zip(&group_sizes).all(|(&a, &b)| a == b)
+        } else {
+            false
         }
     }
 
