@@ -87,7 +87,7 @@ impl<'tcx> TlsData<'tcx> {
 
     pub fn store_tls(&mut self, key: TlsKey, new_data: Option<Scalar<Tag>>) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
-            Some(&mut TlsEntry { ref mut data, .. }) => {
+            Some(TlsEntry { data, .. }) => {
                 trace!("TLS key {} stored: {:?}", key, new_data);
                 *data = new_data;
                 Ok(())
@@ -139,12 +139,12 @@ impl<'tcx> TlsData<'tcx> {
             Some(key) => Excluded(key),
             None => Unbounded,
         };
-        for (&key, &mut TlsEntry { ref mut data, dtor }) in
+        for (&key, TlsEntry { data, dtor }) in
             thread_local.range_mut((start, Unbounded))
         {
             if let Some(data_scalar) = *data {
                 if let Some(dtor) = dtor {
-                    let ret = Some((dtor, data_scalar, key));
+                    let ret = Some((*dtor, data_scalar, key));
                     *data = None;
                     return ret;
                 }

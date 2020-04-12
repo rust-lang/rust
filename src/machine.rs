@@ -518,7 +518,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        if let Some(ref stacked_borrows) = alloc.extra.stacked_borrows {
+        if let Some(stacked_borrows) = alloc.extra.stacked_borrows.as_ref() {
             stacked_borrows.memory_read(ptr, size)
         } else {
             Ok(())
@@ -531,7 +531,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        if let Some(ref mut stacked_borrows) = alloc.extra.stacked_borrows {
+        if let Some(stacked_borrows) = alloc.extra.stacked_borrows.as_mut() {
             stacked_borrows.memory_written(ptr, size)
         } else {
             Ok(())
@@ -544,7 +544,7 @@ impl AllocationExtra<Tag> for AllocExtra {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        if let Some(ref mut stacked_borrows) = alloc.extra.stacked_borrows {
+        if let Some(stacked_borrows) = alloc.extra.stacked_borrows.as_mut() {
             stacked_borrows.memory_deallocated(ptr, size)
         } else {
             Ok(())

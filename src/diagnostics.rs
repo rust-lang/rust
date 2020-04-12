@@ -51,8 +51,8 @@ pub fn report_error<'tcx, 'mir>(
 ) -> Option<i64> {
     use InterpError::*;
 
-    let (title, helps) = match e.kind {
-        MachineStop(ref info) => {
+    let (title, helps) = match &e.kind {
+        MachineStop(info) => {
             let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
             use TerminationInfo::*;
             let title = match info {

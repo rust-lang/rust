@@ -191,7 +191,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         match msg {
-            BoundsCheck { ref index, ref len } => {
+            BoundsCheck { index, len } => {
                 // Forward to `panic_bounds_check` lang item.
 
                 // First arg: index.

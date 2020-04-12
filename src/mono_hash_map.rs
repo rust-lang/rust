@@ -64,7 +64,7 @@ impl<K: Hash + Eq, V> AllocMap<K, V> for MonoHashMap<K, V> {
         self.0.borrow().iter().filter_map(move |(k, v)| f(k, &*v)).collect()
     }
 
-    /// The most interesting method: Providing a shared ref without
+    /// The most interesting method: Providing a shared reference without
     /// holding the `RefCell` open, and inserting new data if the key
     /// is not used yet.
     /// `vacant` is called if the key is not found in the map;

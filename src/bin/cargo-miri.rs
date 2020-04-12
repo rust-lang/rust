@@ -115,7 +115,7 @@ fn list_targets() -> impl Iterator<Item = cargo_metadata::Target> {
         get_arg_flag_value("--manifest-path").map(|m| Path::new(&m).canonicalize().unwrap());
 
     let mut cmd = cargo_metadata::MetadataCommand::new();
-    if let Some(ref manifest_path) = manifest_path {
+    if let Some(manifest_path) = manifest_path.as_ref() {
         cmd.manifest_path(manifest_path);
     }
     let mut metadata = if let Ok(metadata) = cmd.exec() {
@@ -131,7 +131,7 @@ fn list_targets() -> impl Iterator<Item = cargo_metadata::Target> {
         .iter()
         .position(|package| {
             let package_manifest_path = Path::new(&package.manifest_path);
-            if let Some(ref manifest_path) = manifest_path {
+            if let Some(manifest_path) = manifest_path.as_ref() {
                 package_manifest_path == manifest_path
             } else {
                 let current_dir = current_dir.as_ref().expect("could not read current directory");
@@ -368,7 +368,7 @@ path = "lib.rs"
     command.env("XARGO_HOME", &dir);
     command.env("XARGO_RUST_SRC", &rust_src);
     // Handle target flag.
-    if let Some(ref target) = target {
+    if let Some(target) = target.as_ref() {
         command.arg("--target").arg(&target);
     }
     // Finally run it!
@@ -379,9 +379,9 @@ path = "lib.rs"
     // That should be it! But we need to figure out where xargo built stuff.
     // Unfortunately, it puts things into a different directory when the
     // architecture matches the host.
-    let is_host = match target {
+    let is_host = match target.as_ref() {
         None => true,
-        Some(target) => target == rustc_version::version_meta().unwrap().host,
+        Some(target) => target == &rustc_version::version_meta().unwrap().host,
     };
     let sysroot = if is_host { dir.join("HOST") } else { PathBuf::from(dir) };
     std::env::set_var("MIRI_SYSROOT", &sysroot); // pass the env var to the processes we spawn, which will turn it into "--sysroot" flags
@@ -583,6 +583,6 @@ fn inside_cargo_rustc() {
             if !exit.success() {
                 std::process::exit(exit.code().unwrap_or(42));
             },
-        Err(ref e) => panic!("error running {:?}:\n{:?}", command, e),
+        Err(e) => panic!("error running {:?}:\n{:?}", command, e),
     }
 }
