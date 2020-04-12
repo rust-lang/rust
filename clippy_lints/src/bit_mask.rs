@@ -87,7 +87,7 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # let x = 1;
-    /// if x & 0x1111 == 0 { }
+    /// if x & 0b1111 == 0 { }
     /// ```
     pub VERBOSE_BIT_MASK,
     style,
