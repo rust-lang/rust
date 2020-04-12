@@ -934,7 +934,7 @@ impl f32 {
     #[unstable(feature = "lerp", issue = "71015")]
     #[inline]
     pub fn lerp(self, upper: f32, pol: f32) -> f32 {
-        self * (1_f32 - pol) + upper * pol
+        unsafe { intrinsics::fmaf32(self, 1_f32 - pol, upper * pol) }
     }
 }
 

@@ -936,7 +936,7 @@ impl f64 {
     #[unstable(feature = "lerp", issue = "71015")]
     #[inline]
     pub fn lerp(self, upper: f64, pol: f64) -> f64 {
-        self * (1_f64 - pol) + upper * pol
+        unsafe { intrinsics::fmaf64(self, 1_f64 - pol, upper * pol) }
     }
 
     // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
