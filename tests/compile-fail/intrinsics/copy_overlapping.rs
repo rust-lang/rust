@@ -1,4 +1,3 @@
-//error-pattern: copy_nonoverlapping called on overlapping ranges
 #![feature(intrinsics)]
 
 // Directly call intrinsic to avoid debug assertions in libstd
@@ -11,6 +10,6 @@ fn main() {
     unsafe {
         let a = data.as_mut_ptr();
         let b = a.wrapping_offset(1) as *mut _;
-        copy_nonoverlapping(a, b, 2);
+        copy_nonoverlapping(a, b, 2); //~ ERROR copy_nonoverlapping called on overlapping ranges
     }
 }
