@@ -77,31 +77,31 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 }
 
                 let loop_id = match label.target_id {
-                    Ok(loop_id) => loop_id,
-                    Err(hir::LoopIdError::OutsideLoopScope) => hir::DUMMY_HIR_ID,
+                    Ok(loop_id) => Some(loop_id),
+                    Err(hir::LoopIdError::OutsideLoopScope) => None,
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
                         self.emit_unlabled_cf_in_while_condition(e.span, "break");
-                        hir::DUMMY_HIR_ID
+                        None
                     }
-                    Err(hir::LoopIdError::UnresolvedLabel) => hir::DUMMY_HIR_ID,
+                    Err(hir::LoopIdError::UnresolvedLabel) => None,
                 };
 
-                if loop_id != hir::DUMMY_HIR_ID {
+                if let Some(loop_id) = loop_id {
                     if let Node::Block(_) = self.hir_map.find(loop_id).unwrap() {
                         return;
                     }
                 }
 
                 if opt_expr.is_some() {
-                    let loop_kind = if loop_id == hir::DUMMY_HIR_ID {
-                        None
-                    } else {
+                    let loop_kind = if let Some(loop_id) = loop_id {
                         Some(match self.hir_map.expect_expr(loop_id).kind {
                             hir::ExprKind::Loop(_, _, source) => source,
                             ref r => {
                                 span_bug!(e.span, "break label resolved to a non-loop: {:?}", r)
                             }
                         })
+                    } else {
+                        None
                     };
                     match loop_kind {
                         None | Some(hir::LoopSource::Loop) => (),
