@@ -168,6 +168,62 @@ fn span_merging_fail() {
     assert!(sm.merge_spans(span1, span2).is_none());
 }
 
+/// Tests loading an external source file that requires normalization.
+#[test]
+fn t10() {
+    let sm = SourceMap::new(FilePathMapping::empty());
+    let unnormalized = "first line.\r\nsecond line";
+    let normalized = "first line.\nsecond line";
+
+    let src_file = sm.new_source_file(PathBuf::from("blork.rs").into(), unnormalized.to_string());
+
+    assert_eq!(src_file.src.as_ref().unwrap().as_ref(), normalized);
+    assert!(
+        src_file.src_hash.matches(unnormalized),
+        "src_hash should use the source before normalization"
+    );
+
+    let SourceFile {
+        name,
+        name_was_remapped,
+        src_hash,
+        start_pos,
+        end_pos,
+        lines,
+        multibyte_chars,
+        non_narrow_chars,
+        normalized_pos,
+        name_hash,
+        ..
+    } = (*src_file).clone();
+
+    let imported_src_file = sm.new_imported_source_file(
+        name,
+        name_was_remapped,
+        src_hash,
+        name_hash,
+        (end_pos - start_pos).to_usize(),
+        CrateNum::new(0),
+        lines,
+        multibyte_chars,
+        non_narrow_chars,
+        normalized_pos,
+        start_pos,
+        end_pos,
+    );
+
+    assert!(
+        imported_src_file.external_src.borrow().get_source().is_none(),
+        "imported source file should not have source yet"
+    );
+    imported_src_file.add_external_src(|| Some(unnormalized.to_string()));
+    assert_eq!(
+        imported_src_file.external_src.borrow().get_source().unwrap().as_ref(),
+        normalized,
+        "imported source file should be normalized"
+    );
+}
+
 /// Returns the span corresponding to the `n`th occurrence of `substring` in `source_text`.
 trait SourceMapExtension {
     fn span_substr(
