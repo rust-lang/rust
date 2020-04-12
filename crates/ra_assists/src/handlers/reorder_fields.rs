@@ -69,8 +69,8 @@ fn get_fields_kind(node: &SyntaxNode) -> Vec<SyntaxKind> {
 fn get_field_name(node: &SyntaxNode) -> String {
     let res = match_ast! {
         match node {
-            ast::RecordField(field) => { field.field_name().map(|it| it.to_string()) },
-            ast::RecordFieldPat(field) => { field.field_name().map(|it| it.to_string()) },
+            ast::RecordField(field) => field.field_name().map(|it| it.to_string()),
+            ast::RecordFieldPat(field) => field.field_name().map(|it| it.to_string()),
             _ => None,
         }
     };
