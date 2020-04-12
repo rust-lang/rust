@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 
 use rustc_ast::ast::FloatTy;
 use rustc_middle::{mir, ty};
-use rustc_apfloat::{Float, FloatConvert, Round, ieee::{Double, Single}};
+use rustc_apfloat::{Float, Round};
 use rustc_target::abi::{Align, LayoutOf, Size};
 
 use crate::*;
@@ -515,7 +515,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dest_ty: ty::Ty<'tcx>,
     ) -> InterpResult<'tcx, Scalar<Tag>>
     where
-        F: Float + Into<Scalar<Tag>> + FloatConvert<Single> + FloatConvert<Double>,
+        F: Float + Into<Scalar<Tag>>
     {
         let this = self.eval_context_ref();
 
