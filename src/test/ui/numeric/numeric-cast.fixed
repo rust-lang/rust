@@ -24,9 +24,9 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<usize>(x_u32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<usize>(x_u16.try_into().unwrap());
+    foo::<usize>(x_u16.into());
     //~^ ERROR mismatched types
-    foo::<usize>(x_u8.try_into().unwrap());
+    foo::<usize>(x_u8.into());
     //~^ ERROR mismatched types
     foo::<usize>(x_isize.try_into().unwrap());
     //~^ ERROR mismatched types
@@ -56,9 +56,9 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<isize>(x_i32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<isize>(x_i16.try_into().unwrap());
+    foo::<isize>(x_i16.into());
     //~^ ERROR mismatched types
-    foo::<isize>(x_i8.try_into().unwrap());
+    foo::<isize>(x_i8.into());
     //~^ ERROR mismatched types
     // foo::<isize>(x_f64);
     // foo::<isize>(x_f32);
