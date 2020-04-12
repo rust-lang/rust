@@ -1448,7 +1448,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "new_ret_no_self",
         group: "style",
-        desc: "not returning `Self` in a `new` method",
+        desc: "not returning type containing `Self` in a `new` method",
         deprecation: None,
         module: "methods",
     },
