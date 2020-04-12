@@ -12,5 +12,5 @@ doc = false
 
 [dependencies]
 core = { path = "../libcore" }
-libc = { path = "../../../no_std_test/skyline/skyline_libc", features = ["rustc-dep-of-std"] }
+libc = { git = "https://github.com/ultimate-research/libc-nnsdk.git", features = ["rustc-dep-of-std"] }
 compiler_builtins = "0.1.0"

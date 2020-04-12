@@ -6,6 +6,7 @@ pub struct Mutex {
 }
 
 #[inline]
+#[allow(dead_code)]
 pub unsafe fn raw(m: &Mutex) -> *mut libc::pthread_mutex_t {
     m.inner.get()
 }

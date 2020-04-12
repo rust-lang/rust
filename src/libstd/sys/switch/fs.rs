@@ -358,10 +358,6 @@ impl File {
         self.pos.load(Ordering::SeqCst)
     }
 
-    fn set_pos(&self, val: u64) {
-        self.pos.store(val, Ordering::SeqCst)
-    }
-
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
         match pos {
             SeekFrom::Start(offset) => {
