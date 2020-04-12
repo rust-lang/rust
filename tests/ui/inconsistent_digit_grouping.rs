@@ -34,6 +34,9 @@ fn main() {
     // Test suggestion when fraction has no digits
     let _: f32 = 1_23_456.;
 
+    // Test UUID formatted literal
+    let _: u128 = 0x12345678_1234_1234_1234_123456789012;
+
     // Ignore literals in macros
     let _ = mac1!();
     let _ = mac2!();
