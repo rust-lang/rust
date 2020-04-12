@@ -26,8 +26,6 @@
 
 #[macro_use]
 extern crate log;
-#[cfg(unix)]
-extern crate libc;
 #[macro_use]
 extern crate cfg_if;
 

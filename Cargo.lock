@@ -3694,6 +3694,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "lazy_static 1.4.0",
+ "libc",
  "log",
  "measureme",
  "parking_lot 0.10.0",
@@ -3713,6 +3714,7 @@ version = "0.0.0"
 dependencies = [
  "env_logger 0.7.1",
  "lazy_static 1.4.0",
+ "libc",
  "log",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3867,6 +3869,7 @@ dependencies = [
 name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
+ "libc",
  "log",
  "once_cell",
  "rustc-rayon",
@@ -3960,6 +3963,7 @@ name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
  "flate2",
+ "libc",
  "log",
  "memmap",
  "rustc_ast",
@@ -4197,6 +4201,7 @@ dependencies = [
 name = "rustc_session"
 version = "0.0.0"
 dependencies = [
+ "getopts",
  "log",
  "num_cpus",
  "rustc_ast",
