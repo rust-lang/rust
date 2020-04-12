@@ -26,3 +26,4 @@ jobs:
       with:
         github_token: ${{ secrets.ACCESS_TOKEN }}
         repository: jam1garner/rust-std-skyline-squashed
+        force: true
