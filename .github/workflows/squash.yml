@@ -15,9 +15,10 @@ jobs:
     - uses: actions/checkout@master
     - name: Squash and Commit
       run: |
+        rm -rf .git && git init
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        rm -rf .git && git init && git add . && git commit -m 'squashed'
+        git add . && git commit -m "squashed"
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
