@@ -7,7 +7,8 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    higher, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet_with_applicability, span_lint_and_sugg, SpanlessEq,
+    higher, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet_with_applicability,
+    span_lint_and_sugg, SpanlessEq,
 };
 
 declare_clippy_lint! {

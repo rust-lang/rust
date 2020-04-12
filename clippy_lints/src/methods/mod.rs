@@ -3209,9 +3209,7 @@ fn is_maybe_uninit_ty_valid(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
     match ty.kind {
         ty::Array(ref component, _) => is_maybe_uninit_ty_valid(cx, component),
         ty::Tuple(ref types) => types.types().all(|ty| is_maybe_uninit_ty_valid(cx, ty)),
-        ty::Adt(ref adt, _) => {
-            match_def_path(cx, adt.did, &paths::MEM_MAYBEUNINIT)
-        },
+        ty::Adt(ref adt, _) => match_def_path(cx, adt.did, &paths::MEM_MAYBEUNINIT),
         _ => false,
     }
 }

@@ -3,10 +3,10 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
-    expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable, is_type_diagnostic_item, is_wild,
-    match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet, snippet_block,
-    snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
-    walk_ptrs_ty,
+    expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
+    is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet,
+    snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    span_lint_and_then, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
