@@ -51,6 +51,7 @@ fn main() {
     cannot_move_from_type_with_drop();
     borrower_propagation();
     not_consumed();
+    issue_5405();
 }
 
 #[derive(Clone)]
@@ -159,4 +160,13 @@ fn not_consumed() {
     if let Some(x) = t {
         println!("{}", x);
     }
+}
+
+#[allow(clippy::clone_on_copy)]
+fn issue_5405() {
+    let a: [String; 1] = [String::from("foo")];
+    let _b: String = a[0].clone();
+
+    let c: [usize; 2] = [2, 3];
+    let _d: usize = c[1].clone();
 }
