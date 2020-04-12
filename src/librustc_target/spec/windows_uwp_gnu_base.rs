@@ -16,7 +16,7 @@ pub fn opts() -> TargetOptions {
         ],
     );
 
-    // FIXME: Should UWP target be updated for the exception machinery changes from #67502?
+    // FIXME: This should be updated for the exception machinery changes from #67502.
     let mut late_link_args = LinkArgs::new();
     let late_link_args_dynamic = LinkArgs::new();
     let late_link_args_static = LinkArgs::new();

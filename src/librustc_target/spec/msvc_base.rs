@@ -27,9 +27,6 @@ pub fn opts() -> TargetOptions {
         link_env: vec![("VSLANG".to_string(), "1033".to_string())],
         lld_flavor: LldFlavor::Link,
         pre_link_args,
-        // UEFI mirrors the calling-conventions used on windows. In case of x86-64 and i686 this
-        // means small structs will be returned as int. This shouldn't matter much, since the
-        // restrictions placed by the UEFI specifications forbid any ABI to return structures.
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
 
