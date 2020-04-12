@@ -9,7 +9,7 @@ use rustc_middle::ty::TyCtxt;
 /// code for these.
 pub struct RemoveNoopLandingPads;
 
-pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyAndCache<'tcx>) {
+pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     if tcx.sess.no_landing_pads() {
         return;
     }
@@ -19,7 +19,7 @@ pub fn remove_noop_landing_pads<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyAndCache
 }
 
 impl<'tcx> MirPass<'tcx> for RemoveNoopLandingPads {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         remove_noop_landing_pads(tcx, body);
     }
 }
@@ -80,7 +80,7 @@ impl RemoveNoopLandingPads {
         }
     }
 
-    fn remove_nop_landing_pads(&self, body: &mut BodyAndCache<'_>) {
+    fn remove_nop_landing_pads(&self, body: &mut Body<'_>) {
         // make sure there's a single resume block
         let resume_block = {
             let patch = MirPatch::new(body);

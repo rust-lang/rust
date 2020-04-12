@@ -152,7 +152,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     // a loop.
     fn maybe_sideeffect<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        mir: mir::ReadOnlyBodyAndCache<'tcx, 'tcx>,
+        mir: &'tcx mir::Body<'tcx>,
         bx: &mut Bx,
         targets: &[mir::BasicBlock],
     ) {

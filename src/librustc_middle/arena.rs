@@ -15,17 +15,17 @@ macro_rules! arena_types {
             [] generics: rustc_middle::ty::Generics,
             [] trait_def: rustc_middle::ty::TraitDef,
             [] adt_def: rustc_middle::ty::AdtDef,
-            [] steal_mir: rustc_middle::ty::steal::Steal<rustc_middle::mir::BodyAndCache<$tcx>>,
-            [] mir: rustc_middle::mir::BodyAndCache<$tcx>,
+            [] steal_mir: rustc_middle::ty::steal::Steal<rustc_middle::mir::Body<$tcx>>,
+            [] mir: rustc_middle::mir::Body<$tcx>,
             [] steal_promoted: rustc_middle::ty::steal::Steal<
                 rustc_index::vec::IndexVec<
                     rustc_middle::mir::Promoted,
-                    rustc_middle::mir::BodyAndCache<$tcx>
+                    rustc_middle::mir::Body<$tcx>
                 >
             >,
             [] promoted: rustc_index::vec::IndexVec<
                 rustc_middle::mir::Promoted,
-                rustc_middle::mir::BodyAndCache<$tcx>
+                rustc_middle::mir::Body<$tcx>
             >,
             [decode] tables: rustc_middle::ty::TypeckTables<$tcx>,
             [decode] borrowck_result: rustc_middle::mir::BorrowCheckResult<$tcx>,

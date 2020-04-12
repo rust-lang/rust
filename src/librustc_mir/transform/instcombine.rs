@@ -5,8 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::{
-    read_only, Body, BodyAndCache, Constant, Local, Location, Operand, Place, PlaceRef,
-    ProjectionElem, Rvalue,
+    Body, Constant, Local, Location, Operand, Place, PlaceRef, ProjectionElem, Rvalue,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use std::mem;
@@ -14,7 +13,7 @@ use std::mem;
 pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return;
@@ -24,9 +23,8 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
         // read-only so that we can do global analyses on the MIR in the process (e.g.
         // `Place::ty()`).
         let optimizations = {
-            let read_only_cache = read_only!(body);
             let mut optimization_finder = OptimizationFinder::new(body, tcx);
-            optimization_finder.visit_body(&read_only_cache);
+            optimization_finder.visit_body(body);
             optimization_finder.optimizations
         };
 

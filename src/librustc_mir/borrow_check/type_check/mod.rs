@@ -122,8 +122,8 @@ mod relate_tys;
 pub(crate) fn type_check<'mir, 'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
-    promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
+    body: &Body<'tcx>,
+    promoted: &IndexVec<Promoted, Body<'tcx>>,
     mir_def_id: DefId,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
@@ -190,8 +190,8 @@ fn type_check_internal<'a, 'tcx, R>(
     infcx: &'a InferCtxt<'a, 'tcx>,
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    body: ReadOnlyBodyAndCache<'a, 'tcx>,
-    promoted: &'a IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
+    body: &'a Body<'tcx>,
+    promoted: &'a IndexVec<Promoted, Body<'tcx>>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
@@ -266,7 +266,7 @@ enum FieldAccessError {
 struct TypeVerifier<'a, 'b, 'tcx> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
     body: &'b Body<'tcx>,
-    promoted: &'b IndexVec<Promoted, ReadOnlyBodyAndCache<'b, 'tcx>>,
+    promoted: &'b IndexVec<Promoted, Body<'tcx>>,
     last_span: Span,
     mir_def_id: DefId,
     errors_reported: bool,
@@ -320,7 +320,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = constant.literal.val {
                 if let Some(promoted) = promoted {
                     let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
-                                     promoted: &ReadOnlyBodyAndCache<'_, 'tcx>,
+                                     promoted: &Body<'tcx>,
                                      ty,
                                      san_ty| {
                         if let Err(terr) = verifier.cx.eq_types(
@@ -451,7 +451,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     fn new(
         cx: &'a mut TypeChecker<'b, 'tcx>,
         body: &'b Body<'tcx>,
-        promoted: &'b IndexVec<Promoted, ReadOnlyBodyAndCache<'b, 'tcx>>,
+        promoted: &'b IndexVec<Promoted, Body<'tcx>>,
     ) -> Self {
         TypeVerifier {
             body,
@@ -525,11 +525,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         place_ty
     }
 
-    fn sanitize_promoted(
-        &mut self,
-        promoted_body: ReadOnlyBodyAndCache<'b, 'tcx>,
-        location: Location,
-    ) {
+    fn sanitize_promoted(&mut self, promoted_body: &'b Body<'tcx>, location: Location) {
         // Determine the constraints from the promoted MIR by running the type
         // checker on the promoted MIR, then transfer the constraints back to
         // the main MIR, changing the locations to the provided location.
@@ -1396,12 +1392,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn check_stmt(
-        &mut self,
-        body: ReadOnlyBodyAndCache<'_, 'tcx>,
-        stmt: &Statement<'tcx>,
-        location: Location,
-    ) {
+    fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
         match stmt.kind {
@@ -1973,12 +1964,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_rvalue(
-        &mut self,
-        body: ReadOnlyBodyAndCache<'_, 'tcx>,
-        rvalue: &Rvalue<'tcx>,
-        location: Location,
-    ) {
+    fn check_rvalue(&mut self, body: &Body<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         let tcx = self.tcx();
 
         match rvalue {
@@ -2712,7 +2698,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         })
     }
 
-    fn typeck_mir(&mut self, body: ReadOnlyBodyAndCache<'_, 'tcx>) {
+    fn typeck_mir(&mut self, body: &Body<'tcx>) {
         self.last_span = body.span;
         debug!("run_on_mir: {:?}", body.span);
 

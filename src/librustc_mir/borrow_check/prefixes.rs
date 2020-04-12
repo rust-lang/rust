@@ -10,7 +10,7 @@
 use super::MirBorrowckCtxt;
 
 use rustc_hir as hir;
-use rustc_middle::mir::{Place, PlaceRef, ProjectionElem, ReadOnlyBodyAndCache};
+use rustc_middle::mir::{Body, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, TyCtxt};
 
 pub trait IsPrefixOf<'tcx> {
@@ -26,7 +26,7 @@ impl<'tcx> IsPrefixOf<'tcx> for PlaceRef<'tcx> {
 }
 
 pub(super) struct Prefixes<'cx, 'tcx> {
-    body: ReadOnlyBodyAndCache<'cx, 'tcx>,
+    body: &'cx Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     kind: PrefixSet,
     next: Option<PlaceRef<'tcx>>,

@@ -18,7 +18,7 @@
 
 use crate::transform::{MirPass, MirSource};
 use rustc_middle::mir::visit::MutVisitor;
-use rustc_middle::mir::{BodyAndCache, BorrowKind, Location, Rvalue};
+use rustc_middle::mir::{Body, BorrowKind, Location, Rvalue};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
 
@@ -29,7 +29,7 @@ pub struct DeleteNonCodegenStatements<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for CleanupNonCodegenStatements {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let mut delete = DeleteNonCodegenStatements { tcx };
         delete.visit_body(body);
         body.user_type_annotations.raw.clear();

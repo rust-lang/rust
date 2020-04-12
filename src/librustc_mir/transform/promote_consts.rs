@@ -42,11 +42,11 @@ use crate::transform::{MirPass, MirSource};
 /// newly created `Constant`.
 #[derive(Default)]
 pub struct PromoteTemps<'tcx> {
-    pub promoted_fragments: Cell<IndexVec<Promoted, BodyAndCache<'tcx>>>,
+    pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
 }
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
         // This does not include MIR that failed const-checking, which we still try to promote.
@@ -64,8 +64,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let mut rpo = traversal::reverse_postorder(body);
         let (temps, all_candidates) = collect_temps_and_candidates(tcx, body, &mut rpo);
 
-        let promotable_candidates =
-            validate_candidates(tcx, read_only!(body), def_id, &temps, &all_candidates);
+        let promotable_candidates = validate_candidates(tcx, body, def_id, &temps, &all_candidates);
 
         let promoted = promote_candidates(def_id, body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
@@ -719,7 +718,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 // FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
 pub fn validate_candidates(
     tcx: TyCtxt<'tcx>,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    body: &Body<'tcx>,
     def_id: DefId,
     temps: &IndexVec<Local, TempState>,
     candidates: &[Candidate],
@@ -752,8 +751,8 @@ pub fn validate_candidates(
 
 struct Promoter<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    source: &'a mut BodyAndCache<'tcx>,
-    promoted: BodyAndCache<'tcx>,
+    source: &'a mut Body<'tcx>,
+    promoted: Body<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
     extra_statements: &'a mut Vec<(Location, Statement<'tcx>)>,
 
@@ -901,7 +900,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         def_id: DefId,
         candidate: Candidate,
         next_promoted_id: usize,
-    ) -> Option<BodyAndCache<'tcx>> {
+    ) -> Option<Body<'tcx>> {
         let mut rvalue = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
@@ -1044,11 +1043,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 
 pub fn promote_candidates<'tcx>(
     def_id: DefId,
-    body: &mut BodyAndCache<'tcx>,
+    body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
     candidates: Vec<Candidate>,
-) -> IndexVec<Promoted, BodyAndCache<'tcx>> {
+) -> IndexVec<Promoted, Body<'tcx>> {
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
 
@@ -1093,7 +1092,7 @@ pub fn promote_candidates<'tcx>(
         promoted.ignore_interior_mut_in_const_validation = true;
 
         let promoter = Promoter {
-            promoted: BodyAndCache::new(promoted),
+            promoted,
             tcx,
             source: body,
             temps: &mut temps,
@@ -1150,7 +1149,7 @@ pub fn promote_candidates<'tcx>(
 crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_def_id: DefId,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    body: &Body<'tcx>,
     operand: &Operand<'tcx>,
 ) -> bool {
     let mut rpo = traversal::reverse_postorder(&body);

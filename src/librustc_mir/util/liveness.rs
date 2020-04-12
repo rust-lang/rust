@@ -56,7 +56,7 @@ pub struct LivenessResult {
 
 /// Computes which local variables are live within the given function
 /// `mir`, including drops.
-pub fn liveness_of_locals(body: ReadOnlyBodyAndCache<'_, '_>) -> LivenessResult {
+pub fn liveness_of_locals(body: &Body<'_>) -> LivenessResult {
     let num_live_vars = body.local_decls.len();
 
     let def_use: IndexVec<_, DefsUses> =

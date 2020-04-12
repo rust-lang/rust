@@ -1,3 +1,4 @@
+use either::Either;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -1262,8 +1263,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     fn get_moved_indexes(&mut self, location: Location, mpi: MovePathIndex) -> Vec<MoveSite> {
+        fn predecessor_locations(
+            body: &'a mir::Body<'tcx>,
+            location: Location,
+        ) -> impl Iterator<Item = Location> + 'a {
+            if location.statement_index == 0 {
+                let predecessors = body.predecessors_for(location.block).to_vec();
+                Either::Left(predecessors.into_iter().map(move |bb| body.terminator_loc(bb)))
+            } else {
+                Either::Right(std::iter::once(Location {
+                    statement_index: location.statement_index - 1,
+                    ..location
+                }))
+            }
+        }
+
         let mut stack = Vec::new();
-        stack.extend(self.body.predecessor_locations(location).map(|predecessor| {
+        stack.extend(predecessor_locations(self.body, location).map(|predecessor| {
             let is_back_edge = location.dominates(predecessor, &self.dominators);
             (predecessor, is_back_edge)
         }));
@@ -1345,7 +1361,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 continue 'dfs;
             }
 
-            stack.extend(self.body.predecessor_locations(location).map(|predecessor| {
+            stack.extend(predecessor_locations(self.body, location).map(|predecessor| {
                 let back_edge = location.dominates(predecessor, &self.dominators);
                 (predecessor, is_back_edge || back_edge)
             }));
