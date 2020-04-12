@@ -5,7 +5,7 @@ pub fn target() -> TargetResult {
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
 
-    let pre_link_args_msvc = vec![
+    let new_link_args = vec![
         // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
         // space available to x86 Windows binaries on x86_64.
         "/LARGEADDRESSAWARE".to_string(),
@@ -14,11 +14,16 @@ pub fn target() -> TargetResult {
         // https://docs.microsoft.com/en-us/cpp/build/reference/safeseh-image-has-safe-exception-handlers
         "/SAFESEH".to_string(),
     ];
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().extend(pre_link_args_msvc.clone());
-    base.pre_link_args
+    base.link_args
+        .get_mut(&LinkerFlavor::Msvc)
+        .unwrap()
+        .unordered_right_overridable
+        .extend(new_link_args.clone());
+    base.link_args
         .get_mut(&LinkerFlavor::Lld(LldFlavor::Link))
         .unwrap()
-        .extend(pre_link_args_msvc);
+        .unordered_right_overridable
+        .extend(new_link_args);
 
     Ok(Target {
         llvm_target: "i686-pc-windows-msvc".to_string(),

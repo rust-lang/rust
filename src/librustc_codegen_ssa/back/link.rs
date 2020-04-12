@@ -1571,8 +1571,18 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // OBJECT-FILES-NO, AUDIT-ORDER
     add_rpath_args(cmd, sess, codegen_results, out_filename);
 
+    // OBJECT-FILES-NO
+    if let Some(args) = sess.target.target.options.link_args.get(&flavor) {
+        cmd.args(&args.unordered_right_overridable);
+    }
+
     // OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
     add_user_defined_link_args(cmd, sess, codegen_results);
+
+    // OBJECT-FILES-NO
+    if let Some(args) = sess.target.target.options.link_args.get(&flavor) {
+        cmd.args(&args.unordered_left_overridable);
+    }
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     cmd.finalize();
@@ -1585,6 +1595,11 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
 
     // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
     add_post_link_args(cmd, sess, flavor);
+
+    // OBJECT-FILES-NO
+    if let Some(args) = sess.target.target.options.link_args.get(&flavor) {
+        cmd.args(&args.unordered_non_overridable);
+    }
 
     cmd.take_cmd()
 }

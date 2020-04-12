@@ -14,7 +14,7 @@ use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions};
 pub fn opts() -> TargetOptions {
     let mut base = super::msvc_base::opts();
 
-    let pre_link_args_msvc = vec![
+    let new_link_args = vec![
         // Non-standard subsystems have no default entry-point in PE+ files. We have to define
         // one. "efi_main" seems to be a common choice amongst other implementations and the
         // spec.
@@ -30,11 +30,16 @@ pub fn opts() -> TargetOptions {
         // exit (default for applications).
         "/subsystem:efi_application".to_string(),
     ];
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().extend(pre_link_args_msvc.clone());
-    base.pre_link_args
+    base.link_args
+        .get_mut(&LinkerFlavor::Msvc)
+        .unwrap()
+        .unordered_right_overridable
+        .extend(new_link_args.clone());
+    base.link_args
         .get_mut(&LinkerFlavor::Lld(LldFlavor::Link))
         .unwrap()
-        .extend(pre_link_args_msvc);
+        .unordered_right_overridable
+        .extend(new_link_args);
 
     TargetOptions {
         disable_redzone: true,

@@ -549,6 +549,26 @@ impl HasTargetSpec for Target {
     }
 }
 
+/// "Unordered" options are options applied to the whole linking process rather than to individual
+/// input object files or libraries. So it doesn't matter whether they are passed before or after
+/// input files.
+#[derive(Default, PartialEq, Clone, Debug)]
+pub struct NewLinkArgs {
+    /// These options cannot be overridden once specified.
+    /// So they can be passed anywhere on the command line.
+    pub unordered_non_overridable: Vec<String>,
+    /// These option can be overridden by options placed to the left from them on the command line.
+    /// So they need to be placed after customization points like `-C link-args`.
+    /// (Library search directories traversed from left to right is a typical example.)
+    pub unordered_left_overridable: Vec<String>,
+    /// These option can be overridden by options placed to the right from them on the command line.
+    /// So they need to be placed before customization points like `-C link-args`.
+    /// (Options like `-foo=yes` overridden by `-foo=no` is a typical example.)
+    pub unordered_right_overridable: Vec<String>,
+}
+
+type LinkArgsMap = BTreeMap<LinkerFlavor, NewLinkArgs>;
+
 /// Optional aspects of a target specification.
 ///
 /// This has an implementation of `Default`, see each field for what the default is. In general,
@@ -565,6 +585,9 @@ pub struct TargetOptions {
     /// without clarifying its flavor in any way.
     pub lld_flavor: LldFlavor,
 
+    /// New style default linker arguments.
+    /// Other link arg fields are supposed to be migrated to them eventually.
+    pub link_args: LinkArgsMap,
     /// Linker arguments that are passed *before* any user-defined libraries.
     pub pre_link_args: LinkArgs, // ... unconditionally
     pub pre_link_args_crt: LinkArgs, // ... when linking with a bundled crt
@@ -812,6 +835,7 @@ impl Default for TargetOptions {
             is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             lld_flavor: LldFlavor::Ld,
+            link_args: Default::default(),
             pre_link_args: LinkArgs::new(),
             pre_link_args_crt: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
