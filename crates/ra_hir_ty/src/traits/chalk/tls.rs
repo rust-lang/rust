@@ -2,6 +2,7 @@
 use std::fmt;
 
 use chalk_ir::{AliasTy, Goal, Goals, Lifetime, Parameter, ProgramClauseImplication, TypeName};
+use itertools::Itertools;
 
 use super::{from_chalk, Interner};
 use crate::{db::HirDatabase, CallableDef, TypeCtor};
@@ -133,14 +134,15 @@ impl DebugContext<'_> {
         };
         let trait_data = self.0.trait_data(trait_);
         let params = alias.substitution.parameters(&Interner);
-        write!(
-            fmt,
-            "<{:?} as {}<{:?}>>::{}",
-            &params[0],
-            trait_data.name,
-            &params[1..],
-            type_alias_data.name
-        )
+        write!(fmt, "<{:?} as {}", &params[0], trait_data.name,)?;
+        if params.len() > 1 {
+            write!(
+                fmt,
+                "<{}>",
+                &params[1..].iter().format_with(", ", |x, f| f(&format_args!("{:?}", x))),
+            )?;
+        }
+        write!(fmt, ">::{}", type_alias_data.name)
     }
 
     pub fn debug_ty(
