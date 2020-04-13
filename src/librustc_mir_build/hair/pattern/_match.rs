@@ -242,7 +242,7 @@ use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc_middle::mir::Field;
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
+use rustc_middle::ty::{self, Const, FieldDef, Ty, TyCtxt, TypeFoldable, VariantDef};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
@@ -630,7 +630,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         field: &FieldDef,
     ) -> bool {
         match adt_ty.kind {
-            ty::Adt(def, substs) => {
+            ty::Adt(adt, substs) => {
                 let is_non_exhaustive = self.is_foreign_non_exhaustive_variant(adt_ty, variant);
                 let field_ty = field.ty(self.tcx, substs);
                 let is_visible =
