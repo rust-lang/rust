@@ -435,14 +435,16 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     destination: Option<(Place<'tcx>, BasicBlock)>,
 ) {
     let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.tcx));
-    let sig = fx
+    let fn_sig = fx
         .tcx
         .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
-    let destination = destination
-        .map(|(place, bb)| (trans_place(fx, place), bb));
+    // FIXME mark the current block as cold when calling a `#[cold]` function.
 
-    if let ty::FnDef(def_id, substs) = fn_ty.kind {
+    let destination = destination.map(|(place, bb)| (trans_place(fx, place), bb));
+
+    // Handle special calls like instrinsics and empty drop glue.
+    let instance = if let ty::FnDef(def_id, substs) = fn_ty.kind {
         let instance =
             ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
 
@@ -469,42 +471,35 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 fx.bcx.ins().jump(ret_block, &[]);
                 return;
             }
-            _ => {}
+            _ => Some(instance)
         }
-    }
+    } else {
+        None
+    };
 
     // Unpack arguments tuple for closures
-    let args = if sig.abi == Abi::RustCall {
+    let args = if fn_sig.abi == Abi::RustCall {
         assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
         let self_arg = trans_operand(fx, &args[0]);
         let pack_arg = trans_operand(fx, &args[1]);
-        let mut args = Vec::new();
-        args.push(self_arg);
-        match pack_arg.layout().ty.kind {
+
+        let tupled_arguments = match pack_arg.layout().ty.kind {
             ty::Tuple(ref tupled_arguments) => {
-                for (i, _) in tupled_arguments.iter().enumerate() {
-                    args.push(pack_arg.value_field(fx, mir::Field::new(i)));
-                }
+                tupled_arguments
             }
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
+        };
+
+        let mut args = Vec::with_capacity(1 + tupled_arguments.len());
+        args.push(self_arg);
+        for i in 0..tupled_arguments.len() {
+            args.push(pack_arg.value_field(fx, mir::Field::new(i)));
         }
         args
     } else {
         args.into_iter()
             .map(|arg| trans_operand(fx, arg))
             .collect::<Vec<_>>()
-    };
-
-    // FIXME mark the current block as cold when calling a `#[cold]` function.
-    let fn_sig = fx
-        .tcx
-        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
-
-    let instance = match fn_ty.kind {
-        ty::FnDef(def_id, substs) => {
-            Some(Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap())
-        }
-        _ => None,
     };
 
     //   | indirect call target
