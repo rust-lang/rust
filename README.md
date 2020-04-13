@@ -17,12 +17,17 @@ for example:
 * **Experimental**: Violations of the [Stacked Borrows] rules governing aliasing
   for reference types
 
+On top of that, Miri will also tell you about memory leaks: when there is memory
+still allocated at the end of the execution, and that memory is not reachable
+from a global `static`, Miri will raise an error. Note however that
+[leak checking is currently disabled on Windows targets](https://github.com/rust-lang/miri/issues/1302).
+
 Miri has already discovered some [real-world bugs](#bugs-found-by-miri).  If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
 list!
 
-Be aware that Miri will **not catch all cases of undefined behavior** in your
-program, and cannot run all programs:
+However, be aware that Miri will **not catch all cases of undefined behavior**
+in your program, and cannot run all programs:
 
 * There are still plenty of open questions around the basic invariants for some
   types and when these invariants even have to hold. Miri tries to avoid false
