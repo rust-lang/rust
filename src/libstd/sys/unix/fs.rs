@@ -22,6 +22,7 @@ use libc::fstatat64;
     target_os = "linux",
     target_os = "emscripten",
     target_os = "solaris",
+    target_os = "illumos",
     target_os = "l4re",
     target_os = "fuchsia",
     target_os = "redox"
@@ -200,7 +201,12 @@ pub struct DirEntry {
     // on Solaris and Fuchsia because a) it uses a zero-length
     // array to store the name, b) its lifetime between readdir
     // calls is not guaranteed.
-    #[cfg(any(target_os = "solaris", target_os = "fuchsia", target_os = "redox"))]
+    #[cfg(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "fuchsia",
+        target_os = "redox"
+    ))]
     name: Box<[u8]>,
 }
 
@@ -403,7 +409,12 @@ impl fmt::Debug for ReadDir {
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
-    #[cfg(any(target_os = "solaris", target_os = "fuchsia", target_os = "redox"))]
+    #[cfg(any(
+        target_os = "solaris",
+        target_os = "fuchsia",
+        target_os = "redox",
+        target_os = "illumos"
+    ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         use crate::slice;
 
@@ -441,7 +452,12 @@ impl Iterator for ReadDir {
         }
     }
 
-    #[cfg(not(any(target_os = "solaris", target_os = "fuchsia", target_os = "redox")))]
+    #[cfg(not(any(
+        target_os = "solaris",
+        target_os = "fuchsia",
+        target_os = "redox",
+        target_os = "illumos"
+    )))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.end_of_stream {
             return None;
@@ -514,12 +530,12 @@ impl DirEntry {
         lstat(&self.path())
     }
 
-    #[cfg(any(target_os = "solaris", target_os = "haiku"))]
+    #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "haiku"))]
     pub fn file_type(&self) -> io::Result<FileType> {
         lstat(&self.path()).map(|m| m.file_type())
     }
 
-    #[cfg(not(any(target_os = "solaris", target_os = "haiku")))]
+    #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "haiku")))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
             libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
@@ -540,6 +556,7 @@ impl DirEntry {
         target_os = "emscripten",
         target_os = "android",
         target_os = "solaris",
+        target_os = "illumos",
         target_os = "haiku",
         target_os = "l4re",
         target_os = "fuchsia",
@@ -586,7 +603,12 @@ impl DirEntry {
     fn name_bytes(&self) -> &[u8] {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes() }
     }
-    #[cfg(any(target_os = "solaris", target_os = "fuchsia", target_os = "redox"))]
+    #[cfg(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "fuchsia",
+        target_os = "redox"
+    ))]
     fn name_bytes(&self) -> &[u8] {
         &*self.name
     }

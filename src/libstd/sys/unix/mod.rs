@@ -17,6 +17,8 @@ pub use crate::os::freebsd as platform;
 pub use crate::os::fuchsia as platform;
 #[cfg(all(not(doc), target_os = "haiku"))]
 pub use crate::os::haiku as platform;
+#[cfg(all(not(doc), target_os = "illumos"))]
+pub use crate::os::illumos as platform;
 #[cfg(all(not(doc), target_os = "ios"))]
 pub use crate::os::ios as platform;
 #[cfg(all(not(doc), target_os = "l4re"))]
