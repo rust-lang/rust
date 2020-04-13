@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
+      with:
+        submodules: true
     - name: Squash and Commit
       run: |
         rm -rf .git && git init
@@ -24,3 +26,4 @@ jobs:
       with:
         github_token: ${{ secrets.ACCESS_TOKEN }}
         repository: jam1garner/rust-std-skyline-squashed
+        force: true
