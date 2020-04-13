@@ -1797,7 +1797,8 @@ checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
 
 [[package]]
 name = "libc"
-version = "0.1.0"
+version = "0.0.1"
+source = "git+https://github.com/ultimate-research/libc-nnsdk.git#adc07d85675d74d9089b3dfdda26db952b6f8331"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -2240,8 +2241,9 @@ checksum = "f40f005c60db6e03bae699e414c58bf9aa7ea02a2d0b9bfbcf19286cc4c82b30"
 [[package]]
 name = "nnsdk"
 version = "0.1.0"
+source = "git+https://github.com/ultimate-research/nnsdk-rs.git#931f8957ef0e2cafb66d76ca740aa0532a62440f"
 dependencies = [
- "libc 0.1.0",
+ "libc 0.0.1",
 ]
 
 [[package]]
@@ -2374,7 +2376,7 @@ version = "0.0.0"
 dependencies = [
  "compiler_builtins",
  "core",
- "libc 0.1.0",
+ "libc 0.0.1",
 ]
 
 [[package]]
@@ -4710,7 +4712,7 @@ dependencies = [
  "fortanix-sgx-abi",
  "hashbrown 0.6.2",
  "hermit-abi",
- "libc 0.1.0",
+ "libc 0.0.1",
  "nnsdk",
  "panic_abort",
  "panic_unwind",
