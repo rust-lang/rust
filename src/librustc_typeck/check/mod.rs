@@ -4981,7 +4981,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if !self.check_for_cast(err, expr, found, expected) {
             let is_struct_pat_shorthand_field =
                 self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, expr.span);
-            let methods = self.get_conversion_methods(expr.span, expected, found);
+            let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
             if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
                 let mut suggestions = iter::repeat(&expr_text)
                     .zip(methods.iter())

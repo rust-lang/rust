@@ -265,7 +265,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     let unnormalized_env =
         ty::ParamEnv::new(tcx.intern_predicates(&predicates), traits::Reveal::UserFacing, None);
 
-    let body_id = tcx.hir().as_local_hir_id(def_id).map_or(hir::DUMMY_HIR_ID, |id| {
+    let body_id = tcx.hir().as_local_hir_id(def_id).map_or(hir::CRATE_HIR_ID, |id| {
         tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
     });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);

@@ -43,14 +43,14 @@ declare_lint! {
 #[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
-    negated_expr_id: hir::HirId,
+    negated_expr_id: Option<hir::HirId>,
 }
 
 impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS]);
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
-        TypeLimits { negated_expr_id: hir::DUMMY_HIR_ID }
+        TypeLimits { negated_expr_id: None }
     }
 }
 
@@ -244,7 +244,7 @@ fn lint_int_literal<'a, 'tcx>(
     let int_type = t.normalize(cx.sess().target.ptr_width);
     let (min, max) = int_ty_range(int_type);
     let max = max as u128;
-    let negative = type_limits.negated_expr_id == e.hir_id;
+    let negative = type_limits.negated_expr_id == Some(e.hir_id);
 
     // Detect literal value out of range [min, max] inclusive
     // avoiding use of -min to prevent overflow/panic
@@ -397,8 +397,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
-                if self.negated_expr_id != e.hir_id {
-                    self.negated_expr_id = expr.hir_id;
+                if self.negated_expr_id != Some(e.hir_id) {
+                    self.negated_expr_id = Some(expr.hir_id);
                 }
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
