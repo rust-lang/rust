@@ -158,7 +158,8 @@ pub(super) fn op_to_const<'tcx>(
                         (ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id), ptr.offset.bytes())
                     }
                     Scalar::Raw { .. } => (
-                        ecx.tcx.intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
+                        ecx.tcx
+                            .intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
                         0,
                     ),
                 };
@@ -167,7 +168,7 @@ pub(super) fn op_to_const<'tcx>(
                 let len: usize = len.try_into().unwrap();
                 ConstValue::Slice { data, start, end: start + len }
             }
-        }
+        },
     }
 }
 
