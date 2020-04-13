@@ -3,8 +3,7 @@ use std::iter::successors;
 use ra_syntax::{
     algo::{neighbor, SyntaxRewriter},
     ast::{self, edit::AstNodeEdit, make},
-    AstNode, Direction, InsertPosition, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxToken, Token,
-    T,
+    AstNode, Direction, InsertPosition, NodeOrToken, SyntaxElement, T,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -269,15 +268,15 @@ use {
         check_assist(
             merge_imports,
             r"
-use hyper::service::make_service_fn;
-use hyper::<|>{
-    StatusCode,
+use foo::bar::baz;
+use foo::<|>{
+    FooBar,
 };
 ",
             r"
-use hyper::{<|>
-    StatusCode,
-service::make_service_fn};
+use foo::{<|>
+    FooBar,
+bar::baz};
 ",
         )
     }
