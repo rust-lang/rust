@@ -179,9 +179,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
 
     const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
 
-    // We do not check for alignment to avoid having to carry an `Align`
-    // in `ConstValue::ByRef`.
-    const CHECK_ALIGN: bool = false;
+    #[inline(always)]
+    fn enforce_alignment(_memory_extra: &Self::MemoryExtra) -> bool {
+        // We do not check for alignment to avoid having to carry an `Align`
+        // in `ConstValue::ByRef`.
+        false
+    }
 
     #[inline(always)]
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
