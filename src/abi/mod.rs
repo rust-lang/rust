@@ -655,18 +655,17 @@ pub(crate) fn codegen_drop<'tcx>(
         // we don't actually need to drop anything
     } else {
         let drop_fn_ty = drop_fn.monomorphic_ty(fx.tcx);
+        let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(
+            ParamEnv::reveal_all(),
+            &drop_fn_ty.fn_sig(fx.tcx),
+        );
+        assert_eq!(fn_sig.output(), fx.tcx.mk_unit());
+
         match ty.kind {
             ty::Dynamic(..) => {
                 let (ptr, vtable) = drop_place.to_ptr_maybe_unsized();
                 let ptr = ptr.get_addr(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
-
-                let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(
-                    ParamEnv::reveal_all(),
-                    &drop_fn_ty.fn_sig(fx.tcx),
-                );
-
-                assert_eq!(fn_sig.output(), fx.tcx.mk_unit());
 
                 let sig = clif_sig_from_fn_sig(
                     fx.tcx,
@@ -679,6 +678,15 @@ pub(crate) fn codegen_drop<'tcx>(
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
             }
             _ => {
+                let instance = match drop_fn_ty.kind {
+                    ty::FnDef(def_id, substs) => {
+                        Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap()
+                    }
+                    _ => unreachable!("{:?}", drop_fn_ty),
+                };
+
+                assert!(!matches!(instance.def, InstanceDef::Virtual(_, _)));
+
                 let arg_place = CPlace::new_stack_slot(
                     fx,
                     fx.layout_of(fx.tcx.mk_ref(
@@ -691,7 +699,18 @@ pub(crate) fn codegen_drop<'tcx>(
                 );
                 drop_place.write_place_ref(fx, arg_place);
                 let arg_value = arg_place.to_cvalue(fx);
-                codegen_call_inner(fx, span, None, drop_fn_ty, vec![arg_value], None);
+                let arg_value = adjust_arg_for_abi(fx, arg_value);
+
+                let mut call_args: Vec<Value> = arg_value.into_iter().collect::<Vec<_>>();
+
+                if instance.def.requires_caller_location(fx.tcx) {
+                    // Pass the caller location for `#[track_caller]`.
+                    let caller_location = fx.get_caller_location(span);
+                    call_args.extend(adjust_arg_for_abi(fx, caller_location).into_iter());
+                }
+
+                let func_ref = fx.get_function_ref(instance);
+                fx.bcx.ins().call(func_ref, &call_args);
             }
         }
     }
