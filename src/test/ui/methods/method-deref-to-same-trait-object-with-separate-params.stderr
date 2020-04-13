@@ -20,12 +20,12 @@ error[E0034]: multiple applicable items in scope
 LL |     let z = x.foo();
    |               ^^^ multiple `foo` found
    |
-note: candidate #1 is defined in an impl of the trait `internal::X` for the type `_`
+note: candidate #1 is defined in an impl of the trait `internal::X` for the type `T`
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:43:9
    |
 LL |         fn foo(self: Smaht<Self, u64>) -> u64 {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: candidate #2 is defined in an impl of the trait `nuisance_foo::NuisanceFoo` for the type `_`
+note: candidate #2 is defined in an impl of the trait `nuisance_foo::NuisanceFoo` for the type `T`
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:70:9
    |
 LL |         fn foo(self) {}

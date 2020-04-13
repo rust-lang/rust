@@ -97,7 +97,6 @@ use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
 use rustc_session::config::EntryFnType;
@@ -111,10 +110,6 @@ use rustc_trait_selection::traits::{
 use std::iter;
 
 use astconv::{AstConv, Bounds};
-pub struct TypeAndSubsts<'tcx> {
-    substs: SubstsRef<'tcx>,
-    ty: Ty<'tcx>,
-}
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     if decl.c_variadic && !(abi == Abi::C || abi == Abi::Cdecl) {

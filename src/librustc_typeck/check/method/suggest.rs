@@ -117,7 +117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .span_if_local(item.def_id)
                             .or_else(|| self.tcx.hir().span_if_local(impl_did));
 
-                        let impl_ty = self.impl_self_ty(span, impl_did).ty;
+                        let impl_ty = self.tcx.at(span).type_of(impl_did);
 
                         let insertion = match self.tcx.impl_trait_ref(impl_did) {
                             None => String::new(),
@@ -537,7 +537,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // When the "method" is resolved through dereferencing, we really want the
                         // original type that has the associated function for accurate suggestions.
                         // (#61411)
-                        let ty = self.impl_self_ty(span, *impl_did).ty;
+                        let ty = tcx.at(span).type_of(*impl_did);
                         match (&ty.peel_refs().kind, &actual.peel_refs().kind) {
                             (ty::Adt(def, _), ty::Adt(def_actual, _)) if def == def_actual => {
                                 // Use `actual` as it will have more `substs` filled in.

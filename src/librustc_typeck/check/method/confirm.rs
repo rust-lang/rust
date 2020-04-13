@@ -209,7 +209,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     "impl {:?} is not an inherent impl",
                     impl_def_id
                 );
-                self.impl_self_ty(self.span, impl_def_id).substs
+                self.fresh_substs_for_item(self.span, impl_def_id)
             }
 
             probe::ObjectPick => {
