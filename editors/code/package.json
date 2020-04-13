@@ -154,7 +154,7 @@
         "keybindings": [
             {
                 "command": "rust-analyzer.parentModule",
-                "key": "ctrl+u",
+                "key": "ctrl+shift+u",
                 "when": "editorTextFocus && editorLangId == rust"
             },
             {
