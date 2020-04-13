@@ -9,7 +9,6 @@ use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual swapping.
@@ -199,7 +198,7 @@ fn check_for_slice<'a>(cx: &LateContext<'_, '_>, lhs1: &'a Expr<'_>, lhs2: &'a E
 
                 if matches!(ty.kind, ty::Slice(_))
                     || matches!(ty.kind, ty::Array(_, _))
-                    || is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type"))
+                    || is_type_diagnostic_item(cx, ty, sym!(vec_type))
                     || match_type(cx, ty, &paths::VEC_DEQUE)
                 {
                     return Slice::Swappable(lhs1, idx1, idx2);

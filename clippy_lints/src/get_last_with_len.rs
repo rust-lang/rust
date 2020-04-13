@@ -8,7 +8,6 @@ use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for using `x.get(x.len() - 1)` instead of
@@ -51,12 +50,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
 
             // Method name is "get"
-            if path.ident.name == Symbol::intern("get");
+            if path.ident.name == sym!(get);
 
             // Argument 0 (the struct we're calling the method on) is a vector
             if let Some(struct_calling_on) = args.get(0);
             let struct_ty = cx.tables.expr_ty(struct_calling_on);
-            if is_type_diagnostic_item(cx, struct_ty, Symbol::intern("vec_type"));
+            if is_type_diagnostic_item(cx, struct_ty, sym!(vec_type));
 
             // Argument to "get" is a subtraction
             if let Some(get_index_arg) = args.get(1);
@@ -71,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
 
             // LHS of subtraction is "x.len()"
             if let ExprKind::MethodCall(arg_lhs_path, _, lhs_args) = &lhs.kind;
-            if arg_lhs_path.ident.name == Symbol::intern("len");
+            if arg_lhs_path.ident.name == sym!(len);
             if let Some(arg_lhs_struct) = lhs_args.get(0);
 
             // The two vectors referenced (x in x.get(...) and in x.len())
