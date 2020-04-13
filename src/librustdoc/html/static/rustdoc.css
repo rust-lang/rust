@@ -184,6 +184,25 @@ nav.sub {
 	overflow: auto;
 }
 
+/* Improve the scrollbar display on firefox */
+* {
+	scrollbar-width: initial;
+}
+.sidebar {
+	scrollbar-width: thin;
+}
+
+/* Improve the scrollbar display on webkit-based browsers */
+::-webkit-scrollbar {
+	width: 12px;
+}
+.sidebar::-webkit-scrollbar {
+	width: 8px;
+}
+::-webkit-scrollbar-track {
+	-webkit-box-shadow: inset 0;
+}
+
 .sidebar .block > ul > li {
 	margin-right: -10px;
 }

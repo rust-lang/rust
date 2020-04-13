@@ -323,12 +323,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
-        let align = M::CHECK_ALIGN.then_some(align);
+        let align = M::enforce_alignment(&self.extra).then_some(align);
         self.check_ptr_access_align(sptr, size, align, CheckInAllocMsg::MemoryAccessTest)
     }
 
     /// Like `check_ptr_access`, but *definitely* checks alignment when `align`
-    /// is `Some` (overriding `M::CHECK_ALIGN`). Also lets the caller control
+    /// is `Some` (overriding `M::enforce_alignment`). Also lets the caller control
     /// the error message for the out-of-bounds case.
     pub fn check_ptr_access_align(
         &self,

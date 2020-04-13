@@ -118,7 +118,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     const GLOBAL_KIND: Option<Self::MemoryKind>;
 
     /// Whether memory accesses should be alignment-checked.
-    const CHECK_ALIGN: bool;
+    fn enforce_alignment(memory_extra: &Self::MemoryExtra) -> bool;
 
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
