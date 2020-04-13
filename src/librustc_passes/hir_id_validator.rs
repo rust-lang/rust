@@ -143,16 +143,6 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
     fn visit_id(&mut self, hir_id: HirId) {
         let owner = self.owner.expect("no owner");
 
-        if hir_id == hir::DUMMY_HIR_ID {
-            self.error(|| {
-                format!(
-                    "HirIdValidator: HirId {:?} is invalid",
-                    self.hir_map.node_to_string(hir_id)
-                )
-            });
-            return;
-        }
-
         if owner != hir_id.owner {
             self.error(|| {
                 format!(

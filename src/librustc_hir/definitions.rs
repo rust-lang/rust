@@ -7,7 +7,6 @@
 pub use crate::def_id::DefPathHash;
 use crate::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir;
-use crate::hir_id::DUMMY_HIR_ID;
 
 use rustc_ast::ast;
 use rustc_ast::crate_disambiguator::CrateDisambiguator;
@@ -345,8 +344,7 @@ impl Definitions {
     #[inline]
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<hir::HirId> {
         if let Some(def_id) = def_id.as_local() {
-            let hir_id = self.local_def_id_to_hir_id(def_id);
-            if hir_id != DUMMY_HIR_ID { Some(hir_id) } else { None }
+            Some(self.local_def_id_to_hir_id(def_id))
         } else {
             None
         }
