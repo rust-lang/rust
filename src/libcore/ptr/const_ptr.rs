@@ -706,6 +706,10 @@ impl<T: ?Sized> *const T {
     }
 }
 
+#[cfg(not(bootstrap))]
+#[lang = "const_slice_ptr"]
+impl<T> *const [T] {}
+
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *const T {

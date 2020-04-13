@@ -894,6 +894,10 @@ impl<T: ?Sized> *mut T {
     }
 }
 
+#[cfg(not(bootstrap))]
+#[lang = "mut_slice_ptr"]
+impl<T> *mut [T] {}
+
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *mut T {
