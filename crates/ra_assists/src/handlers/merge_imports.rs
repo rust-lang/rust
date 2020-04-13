@@ -1,9 +1,9 @@
 use std::iter::successors;
 
 use ra_syntax::{
-    algo::{neighbor, SyntaxRewriter},
+    algo::{neighbor, skip_trivia_token, SyntaxRewriter},
     ast::{self, edit::AstNodeEdit, make},
-    AstNode, Direction, InsertPosition, NodeOrToken, SyntaxElement, T,
+    AstNode, Direction, InsertPosition, SyntaxElement, T,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -72,18 +72,12 @@ fn try_merge_trees(old: &ast::UseTree, new: &ast::UseTree) -> Option<ast::UseTre
     let lhs = old.split_prefix(&lhs_prefix);
     let rhs = new.split_prefix(&rhs_prefix);
 
-    let mut should_insert_comma = true;
-
-    lhs.syntax()
-        .last_child()
-        .and_then(|child| child.children().last())
-        .and_then(|last| last.next_sibling_or_token())
-        .map(|next_sibling| {
-            // FIXME: there's probably a better way to check if it's a COMMA
-            if let NodeOrToken::Token(maybe_comma) = next_sibling {
-                should_insert_comma = maybe_comma.to_string() != ",";
-            }
-        });
+    let should_insert_comma = lhs
+        .use_tree_list()?
+        .r_curly_token()
+        .and_then(|it| skip_trivia_token(it.prev_token()?, Direction::Prev))
+        .map(|it| it.kind() != T![,])
+        .unwrap_or(true);
 
     let mut to_insert: Vec<SyntaxElement> = Vec::new();
     if should_insert_comma {
