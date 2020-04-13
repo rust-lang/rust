@@ -29,7 +29,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 // }
 //
 // fn bar(arg: &str, baz: Baz) {
-//     unimplemented!()
+//     todo!()
 // }
 //
 // ```
@@ -80,7 +80,7 @@ impl FunctionBuilder {
         Some(Self { append_fn_at, fn_name, type_params, params })
     }
     fn render(self) -> Option<FunctionTemplate> {
-        let placeholder_expr = ast::make::expr_unimplemented();
+        let placeholder_expr = ast::make::expr_todo();
         let fn_body = ast::make::block_expr(vec![], Some(placeholder_expr));
         let fn_def = ast::make::fn_def(self.fn_name, self.type_params, self.params, fn_body);
         let fn_def = ast::make::add_newlines(2, fn_def);
@@ -225,7 +225,7 @@ fn foo() {
 }
 
 fn bar() {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -252,7 +252,7 @@ impl Foo {
 }
 
 fn bar() {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -276,7 +276,7 @@ fn foo1() {
 }
 
 fn bar() {
-    <|>unimplemented!()
+    <|>todo!()
 }
 
 fn foo2() {}
@@ -302,7 +302,7 @@ mod baz {
     }
 
     fn bar() {
-        <|>unimplemented!()
+        <|>todo!()
     }
 }
 ",
@@ -315,20 +315,20 @@ mod baz {
             add_function,
             r"
 struct Baz;
-fn baz() -> Baz { unimplemented!() }
+fn baz() -> Baz { todo!() }
 fn foo() {
     bar<|>(baz());
 }
 ",
             r"
 struct Baz;
-fn baz() -> Baz { unimplemented!() }
+fn baz() -> Baz { todo!() }
 fn foo() {
     bar(baz());
 }
 
 fn bar(baz: Baz) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         );
@@ -361,7 +361,7 @@ impl Baz {
 }
 
 fn bar(baz: Baz) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -382,7 +382,7 @@ fn foo() {
 }
 
 fn bar(arg: &str) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 "#,
         )
@@ -403,7 +403,7 @@ fn foo() {
 }
 
 fn bar(arg: char) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 "#,
         )
@@ -424,7 +424,7 @@ fn foo() {
 }
 
 fn bar(arg: i32) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -445,7 +445,7 @@ fn foo() {
 }
 
 fn bar(arg: u8) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -470,7 +470,7 @@ fn foo() {
 }
 
 fn bar(x: u8) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -493,7 +493,7 @@ fn foo() {
 }
 
 fn bar(worble: ()) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -506,7 +506,7 @@ fn bar(worble: ()) {
             r"
 trait Foo {}
 fn foo() -> impl Foo {
-    unimplemented!()
+    todo!()
 }
 fn baz() {
     <|>bar(foo())
@@ -515,14 +515,14 @@ fn baz() {
             r"
 trait Foo {}
 fn foo() -> impl Foo {
-    unimplemented!()
+    todo!()
 }
 fn baz() {
     bar(foo())
 }
 
 fn bar(foo: impl Foo) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -556,7 +556,7 @@ mod Foo {
     }
 
     fn bar(baz: super::Baz::Bof) {
-        <|>unimplemented!()
+        <|>todo!()
     }
 }
 ",
@@ -580,7 +580,7 @@ fn foo<T>(t: T) {
 }
 
 fn bar<T>(t: T) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -611,7 +611,7 @@ fn foo() {
 }
 
 fn bar(arg: fn() -> Baz) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -636,7 +636,7 @@ fn foo() {
 }
 
 fn bar(closure: impl Fn(i64) -> i64) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -657,7 +657,7 @@ fn foo() {
 }
 
 fn bar(baz: ()) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -682,7 +682,7 @@ fn foo() {
 }
 
 fn bar(baz_1: Baz, baz_2: Baz) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 ",
         )
@@ -707,7 +707,7 @@ fn foo() {
 }
 
 fn bar(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) {
-    <|>unimplemented!()
+    <|>todo!()
 }
 "#,
         )
@@ -779,7 +779,7 @@ impl Foo {
         self.bar();
     }
     fn bar(&self) {
-        unimplemented!();
+        todo!();
     }
 }
         ",
