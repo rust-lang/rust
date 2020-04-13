@@ -62,7 +62,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // unresolved inference variables here anyway, but there might be
         // during typeck under some circumstances.)
         let obligations =
-            wf::obligations(infcx, param_env, hir::DUMMY_HIR_ID, ty, DUMMY_SP).unwrap_or(vec![]);
+            wf::obligations(infcx, param_env, hir::CRATE_HIR_ID, ty, DUMMY_SP).unwrap_or(vec![]);
 
         // N.B., all of these predicates *ought* to be easily proven
         // true. In fact, their correctness is (mostly) implied by

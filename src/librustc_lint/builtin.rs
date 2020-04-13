@@ -1354,7 +1354,7 @@ declare_lint! {
 }
 
 pub struct UnnameableTestItems {
-    boundary: hir::HirId, // HirId of the item under which things are not nameable
+    boundary: Option<hir::HirId>, // HirId of the item under which things are not nameable
     items_nameable: bool,
 }
 
@@ -1362,7 +1362,7 @@ impl_lint_pass!(UnnameableTestItems => [UNNAMEABLE_TEST_ITEMS]);
 
 impl UnnameableTestItems {
     pub fn new() -> Self {
-        Self { boundary: hir::DUMMY_HIR_ID, items_nameable: true }
+        Self { boundary: None, items_nameable: true }
     }
 }
 
@@ -1372,7 +1372,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
             if let hir::ItemKind::Mod(..) = it.kind {
             } else {
                 self.items_nameable = false;
-                self.boundary = it.hir_id;
+                self.boundary = Some(it.hir_id);
             }
             return;
         }
@@ -1385,7 +1385,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
     }
 
     fn check_item_post(&mut self, _cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
-        if !self.items_nameable && self.boundary == it.hir_id {
+        if !self.items_nameable && self.boundary == Some(it.hir_id) {
             self.items_nameable = true;
         }
     }

@@ -191,7 +191,7 @@ fn msg_span_from_early_bound_and_free_regions(
     let sm = tcx.sess.source_map();
 
     let scope = region.free_region_binding_scope(tcx);
-    let node = tcx.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
+    let node = tcx.hir().as_local_hir_id(scope).unwrap();
     let tag = match tcx.hir().find(node) {
         Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
         Some(Node::Item(it)) => item_scope_tag(&it),

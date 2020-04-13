@@ -561,28 +561,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// We currently do not permit const generics in `const fn`,
-    /// as this is tantamount to allowing compile-time dependent typing.
-    ///
-    /// FIXME(const_generics): Is this really true / necessary? Discuss with @varkor.
-    /// At any rate, the restriction feels too syntactic. Consider moving it to e.g. typeck.
-    fn check_const_fn_const_generic(&self, span: Span, sig: &FnSig, generics: &Generics) {
-        if let Const::Yes(const_span) = sig.header.constness {
-            // Look for const generics and error if we find any.
-            for param in &generics.params {
-                if let GenericParamKind::Const { .. } = param.kind {
-                    self.err_handler()
-                        .struct_span_err(
-                            span,
-                            "const parameters are not permitted in const functions",
-                        )
-                        .span_label(const_span, "`const` because of this")
-                        .emit();
-                }
-            }
-        }
-    }
-
     fn check_item_named(&self, ident: Ident, kind: &str) {
         if ident.name != kw::Underscore {
             return;
@@ -966,9 +944,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .emit();
                 }
             }
-            ItemKind::Fn(def, ref sig, ref generics, ref body) => {
+            ItemKind::Fn(def, _, _, ref body) => {
                 self.check_defaultness(item.span, def);
-                self.check_const_fn_const_generic(item.span, sig, generics);
 
                 if body.is_none() {
                     let msg = "free function without a body";
