@@ -1,8 +1,67 @@
 #![allow(missing_copy_implementations)]
 
 use crate::fmt;
-use crate::io::{self, BufRead, ErrorKind, Initializer, IoSlice, IoSliceMut, Read, Write};
-use crate::mem::MaybeUninit;
+use crate::io::{self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Write};
+
+mod copy_specialization {
+    use crate::mem::MaybeUninit;
+    use crate::io::{self, Read, BufRead, Write, ErrorKind};
+    
+    pub trait Copyable {
+        fn copy_to<W: ?Sized + Write>(&mut self, writer: &mut W) -> io::Result<u64>;
+    }
+    
+    impl<T: Read + ?Sized> Copyable for T {
+        default fn copy_to<W: ?Sized + Write>(&mut self, writer: &mut W) -> io::Result<u64> {
+            let mut buf = MaybeUninit::<[u8; io::DEFAULT_BUF_SIZE]>::uninit();
+            // FIXME(#53491): This is calling `get_mut` and `get_ref` on an uninitialized
+            // `MaybeUninit`. Revisit this once we decided whether that is valid or not.
+            // This is still technically undefined behavior due to creating a reference
+            // to uninitialized data, but within libstd we can rely on more guarantees
+            // than if this code were in an external lib.
+            unsafe {
+                self.initializer().initialize(buf.get_mut());
+            }
+
+            let mut written = 0;
+            loop {
+                let len = match self.read(unsafe { buf.get_mut() }) {
+                    Ok(0) => return Ok(written),
+                    Ok(len) => len,
+                    Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(e),
+                };
+                writer.write_all(unsafe { &buf.get_ref()[..len] })?;
+                written += len as u64;
+            }
+        }
+    }
+
+    impl<T: BufRead + ?Sized> Copyable for T {
+        fn copy_to<W: ?Sized + Write>(&mut self, writer: &mut W) -> io::Result<u64> {
+            let mut written = 0;
+            loop {
+                let (write_result, consumed) = {
+                    let buf = match self.fill_buf() {
+                        Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                        Ok(b) if b.is_empty() => return Ok(written),
+                        x => x,
+                    }?;
+                    (writer.write_all(buf), buf.len())
+                };
+                
+                // make sure to consume the data before dealing with write errors
+                // to maintain the same semantics as the default impl
+                //
+                // we have to do it this way because BufRead::consume has
+                // a borrow conflict on the returned buffer
+                self.consume(consumed);
+                written += consumed as u64;
+                write_result?;
+            }
+        }
+    }
+}
 
 /// Copies the entire contents of a reader into a writer.
 ///
@@ -45,27 +104,8 @@ where
     R: Read,
     W: Write,
 {
-    let mut buf = MaybeUninit::<[u8; super::DEFAULT_BUF_SIZE]>::uninit();
-    // FIXME(#53491): This is calling `get_mut` and `get_ref` on an uninitialized
-    // `MaybeUninit`. Revisit this once we decided whether that is valid or not.
-    // This is still technically undefined behavior due to creating a reference
-    // to uninitialized data, but within libstd we can rely on more guarantees
-    // than if this code were in an external lib.
-    unsafe {
-        reader.initializer().initialize(buf.get_mut());
-    }
-
-    let mut written = 0;
-    loop {
-        let len = match reader.read(unsafe { buf.get_mut() }) {
-            Ok(0) => return Ok(written),
-            Ok(len) => len,
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
-            Err(e) => return Err(e),
-        };
-        writer.write_all(unsafe { &buf.get_ref()[..len] })?;
-        written += len as u64;
-    }
+    use self::copy_specialization::Copyable;
+    reader.copy_to(writer)
 }
 
 /// A reader which is always at EOF.
