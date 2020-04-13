@@ -169,7 +169,7 @@ pub(crate) fn get_function_name_and_sig<'tcx>(
     inst: Instance<'tcx>,
     support_vararg: bool,
 ) -> (String, Signature) {
-    assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
+    assert!(!inst.substs.needs_infer());
     let fn_sig =
         tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_sig_for_fn_abi(tcx, inst));
     if fn_sig.c_variadic && !support_vararg {
