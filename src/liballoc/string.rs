@@ -1827,7 +1827,7 @@ impl<'a> Extend<Cow<'a, str>> for String {
     }
 }
 
-/// A convenience impl that delegates to the impl for `&str`
+/// A convenience impl that delegates to the impl for `&str`.
 #[unstable(
     feature = "pattern",
     reason = "API not fully fleshed out and ready to be stabilized",

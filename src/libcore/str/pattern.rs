@@ -451,7 +451,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
 
 impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 
-/// Searches for chars that are equal to a given char
+/// Searches for chars that are equal to a given `char`.
 impl<'a> Pattern<'a> for char {
     type Searcher = CharSearcher<'a>;
 
@@ -696,7 +696,7 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for CharSliceSearcher<'a, 'b> {
 
 impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 
-/// Searches for chars that are equal to any of the chars in the array
+/// Searches for chars that are equal to any of the chars in the array.
 impl<'a, 'b> Pattern<'a> for &'b [char] {
     pattern_methods!(CharSliceSearcher<'a, 'b>, MultiCharEqPattern, CharSliceSearcher);
 }
@@ -738,7 +738,7 @@ where
 
 impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F> where F: FnMut(char) -> bool {}
 
-/// Searches for chars that match the given predicate
+/// Searches for chars that match the given predicate.
 impl<'a, F> Pattern<'a> for F
 where
     F: FnMut(char) -> bool,
@@ -771,7 +771,7 @@ impl<'a, 'b> Pattern<'a> for &'b str {
         StrSearcher::new(haystack, self)
     }
 
-    /// Checks whether the pattern matches at the front of the haystack
+    /// Checks whether the pattern matches at the front of the haystack.
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
         haystack.as_bytes().starts_with(self.as_bytes())
@@ -788,7 +788,7 @@ impl<'a, 'b> Pattern<'a> for &'b str {
         }
     }
 
-    /// Checks whether the pattern matches at the back of the haystack
+    /// Checks whether the pattern matches at the back of the haystack.
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool {
         haystack.as_bytes().ends_with(self.as_bytes())
