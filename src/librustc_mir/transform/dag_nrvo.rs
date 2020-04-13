@@ -120,11 +120,17 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::collections::VecDeque;
+use rustc_span::def_id::LOCAL_CRATE;
 
 pub struct Nrvo;
 
 impl<'tcx> MirPass<'tcx> for Nrvo {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+        if tcx.crate_name(LOCAL_CRATE).as_str().starts_with("rustc_") {
+            // Only run this pass on the compiler.
+            return;
+        }
+
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return;
         }
