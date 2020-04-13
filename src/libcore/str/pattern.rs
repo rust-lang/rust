@@ -452,6 +452,12 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
 impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 
 /// Searches for chars that are equal to a given `char`.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find('o'), Some(4));
+/// ```
 impl<'a> Pattern<'a> for char {
     type Searcher = CharSearcher<'a>;
 
@@ -697,6 +703,13 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for CharSliceSearcher<'a, 'b> {
 impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 
 /// Searches for chars that are equal to any of the chars in the array.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find(&['l', 'l'] as &[_]), Some(2));
+/// assert_eq!("Hello world".find(&['l', 'l'][..]), Some(2));
+/// ```
 impl<'a, 'b> Pattern<'a> for &'b [char] {
     pattern_methods!(CharSliceSearcher<'a, 'b>, MultiCharEqPattern, CharSliceSearcher);
 }
@@ -739,6 +752,13 @@ where
 impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F> where F: FnMut(char) -> bool {}
 
 /// Searches for chars that match the given predicate.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find(char::is_uppercase), Some(0));
+/// assert_eq!("Hello world".find(|c| "aeiou".contains(c)), Some(1));
+/// ```
 impl<'a, F> Pattern<'a> for F
 where
     F: FnMut(char) -> bool,
@@ -763,6 +783,12 @@ impl<'a, 'b, 'c> Pattern<'a> for &'c &'b str {
 ///
 /// Will handle the pattern `""` as returning empty matches at each character
 /// boundary.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!("Hello world".find("world"), Some(6));
+/// ```
 impl<'a, 'b> Pattern<'a> for &'b str {
     type Searcher = StrSearcher<'a, 'b>;
 
