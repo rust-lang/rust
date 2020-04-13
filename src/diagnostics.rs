@@ -93,6 +93,11 @@ pub fn report_error<'tcx, 'mir>(
                     vec![format!("make sure to use a Miri sysroot, which you can prepare with `cargo miri setup`")],
                 Unsupported(_) =>
                     vec![format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support")],
+                UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. }) =>
+                    vec![
+                        format!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior"),
+                        format!("but alignment errors can also be false positives, see https://github.com/rust-lang/miri/issues/1074"),
+                    ],
                 UndefinedBehavior(_) =>
                     vec![
                         format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior"),
