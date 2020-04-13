@@ -217,14 +217,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         expected: Ty<'tcx>,
         checked_ty: Ty<'tcx>,
+        hir_id: hir::HirId,
     ) -> Vec<AssocItem> {
-        let mut methods = self.probe_for_return_type(
-            span,
-            probe::Mode::MethodCall,
-            expected,
-            checked_ty,
-            hir::DUMMY_HIR_ID,
-        );
+        let mut methods =
+            self.probe_for_return_type(span, probe::Mode::MethodCall, expected, checked_ty, hir_id);
         methods.retain(|m| {
             self.has_no_input_arg(m)
                 && self
