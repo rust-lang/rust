@@ -3,7 +3,8 @@ use std::iter::successors;
 use ra_syntax::{
     algo::{neighbor, SyntaxRewriter},
     ast::{self, edit::AstNodeEdit, make},
-    AstNode, Direction, InsertPosition, SyntaxElement, T,
+    AstNode, Direction, InsertPosition, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxToken, Token,
+    T,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -72,9 +73,24 @@ fn try_merge_trees(old: &ast::UseTree, new: &ast::UseTree) -> Option<ast::UseTre
     let lhs = old.split_prefix(&lhs_prefix);
     let rhs = new.split_prefix(&rhs_prefix);
 
+    let mut should_insert_comma = true;
+
+    lhs.syntax()
+        .last_child()
+        .and_then(|child| child.children().last())
+        .and_then(|last| last.next_sibling_or_token())
+        .map(|next_sibling| {
+            // FIXME: there's probably a better way to check if it's a COMMA
+            if let NodeOrToken::Token(maybe_comma) = next_sibling {
+                should_insert_comma = maybe_comma.to_string() != ",";
+            }
+        });
+
     let mut to_insert: Vec<SyntaxElement> = Vec::new();
-    to_insert.push(make::token(T![,]).into());
-    to_insert.push(make::tokens::single_space().into());
+    if should_insert_comma {
+        to_insert.push(make::token(T![,]).into());
+        to_insert.push(make::tokens::single_space().into());
+    }
     to_insert.extend(
         rhs.use_tree_list()?
             .syntax()
@@ -246,5 +262,23 @@ use {
 };
 ",
         );
+    }
+
+    #[test]
+    fn test_double_comma() {
+        check_assist(
+            merge_imports,
+            r"
+use hyper::service::make_service_fn;
+use hyper::<|>{
+    StatusCode,
+};
+",
+            r"
+use hyper::{<|>
+    StatusCode,
+service::make_service_fn};
+",
+        )
     }
 }
