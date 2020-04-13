@@ -1987,6 +1987,74 @@ fn test<I: Iterator<Item: Iterator<Item = u32>>>() {
 }
 
 #[test]
+fn proc_macro_server_types() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+macro_rules! with_api {
+    ($S:ident, $self:ident, $m:ident) => {
+        $m! {
+            TokenStream {
+                fn new() -> $S::TokenStream;
+            },
+            Group {
+            },
+        }
+    };
+}
+macro_rules! associated_item {
+    (type TokenStream) =>
+        (type TokenStream: 'static + Clone;);
+    (type Group) =>
+        (type Group: 'static + Clone;);
+    ($($item:tt)*) => ($($item)*;)
+}
+macro_rules! declare_server_traits {
+    ($($name:ident {
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+    }),* $(,)?) => {
+        pub trait Types {
+            $(associated_item!(type $name);)*
+        }
+
+        $(pub trait $name: Types {
+            $(associated_item!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
+        })*
+
+        pub trait Server: Types $(+ $name)* {}
+        impl<S: Types $(+ $name)*> Server for S {}
+    }
+}
+with_api!(Self, self_, declare_server_traits);
+struct Group {}
+struct TokenStream {}
+struct Rustc;
+impl Types for Rustc {
+    type TokenStream = TokenStream;
+    type Group = Group;
+}
+fn make<T>() -> T { loop {} }
+impl TokenStream for Rustc {
+    fn new() -> Self::TokenStream {
+        let group: Self::Group = make();
+        make()
+    }
+}
+"#, true),
+        @r###"
+    [1115; 1126) '{ loop {} }': T
+    [1117; 1124) 'loop {}': !
+    [1122; 1124) '{}': ()
+    [1190; 1253) '{     ...     }': {unknown}
+    [1204; 1209) 'group': {unknown}
+    [1225; 1229) 'make': fn make<{unknown}>() -> {unknown}
+    [1225; 1231) 'make()': {unknown}
+    [1241; 1245) 'make': fn make<{unknown}>() -> {unknown}
+    [1241; 1247) 'make()': {unknown}
+    "###
+    );
+}
+
+#[test]
 fn unify_impl_trait() {
     assert_snapshot!(
         infer_with_mismatches(r#"
