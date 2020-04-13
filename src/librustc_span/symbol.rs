@@ -322,6 +322,8 @@ symbols! {
         f32,
         f64,
         feature,
+        ffi_const,
+        ffi_pure,
         ffi_returns_twice,
         field,
         field_init_shorthand,

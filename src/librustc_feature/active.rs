@@ -565,6 +565,12 @@ declare_features! (
     /// Allow conditional compilation depending on rust version
     (active, cfg_version, "1.45.0", Some(64796), None),
 
+    /// Allows the use of `#[ffi_pure]` on foreign functions.
+    (active, ffi_pure, "1.45.0", Some(58329), None),
+
+    /// Allows the use of `#[ffi_const]` on foreign functions.
+    (active, ffi_const, "1.45.0", Some(58328), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

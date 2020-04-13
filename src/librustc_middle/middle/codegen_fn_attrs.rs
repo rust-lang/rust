@@ -77,6 +77,12 @@ bitflags! {
         const NO_SANITIZE_THREAD  = 1 << 14;
         /// All `#[no_sanitize(...)]` attributes.
         const NO_SANITIZE_ANY = Self::NO_SANITIZE_ADDRESS.bits | Self::NO_SANITIZE_MEMORY.bits | Self::NO_SANITIZE_THREAD.bits;
+        /// #[ffi_pure]: applies clang's `pure` attribute to a foreign function
+        /// declaration.
+        const FFI_PURE = 1 << 15;
+        /// #[ffi_const]: applies clang's `const` attribute to a foreign function
+        /// declaration.
+        const FFI_CONST = 1 << 16;
     }
 }
 
