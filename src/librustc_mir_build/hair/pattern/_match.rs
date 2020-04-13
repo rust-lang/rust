@@ -885,22 +885,10 @@ impl<'tcx> Constructor<'tcx> {
                                 // in any other pattern from this match (because they are
                                 // private), so their type does not matter - but we don't want
                                 // to know they are uninhabited.
-                                let allowed_to_inspect = is_visible
-                                    && match (is_non_exhaustive, is_uninhabited) {
-                                        // Treat all uninhabited types in non-exhaustive variants as
-                                        // `TyErr`.
-                                        (true, true) => false,
-                                        (_, _) => {
-                                            match ty.kind {
-                                                // If the field type returned is an array of an unknown
-                                                // size return an TyErr.
-                                                ty::Array(_, len) => len
-                                                    .try_eval_usize(cx.tcx, cx.param_env)
-                                                    .is_some(),
-                                                _ => true,
-                                            }
-                                        }
-                                    };
+                                // Also treat all uninhabited types in non-exhaustive variants as
+                                // `TyErr`.
+                                let allowed_to_inspect =
+                                    is_visible && !(is_non_exhaustive && is_uninhabited);
 
                                 if allowed_to_inspect {
                                     Pat::wildcard_from_ty(ty)
