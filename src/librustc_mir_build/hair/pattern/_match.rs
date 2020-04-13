@@ -604,7 +604,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    // Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
+    /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
     crate fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind {
             ty::Adt(def, ..) => {
@@ -614,8 +614,8 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    // Returns whether the given variant is from another crate and has its fields declared
-    // `#[non_exhaustive]`.
+    /// Returns whether the given variant is from another crate and has its fields declared
+    /// `#[non_exhaustive]`.
     fn is_foreign_non_exhaustive_variant(&self, ty: Ty<'tcx>, variant: &VariantDef) -> bool {
         match ty.kind {
             ty::Adt(def, ..) => variant.is_field_list_non_exhaustive() && !def.did.is_local(),
@@ -735,8 +735,8 @@ impl Slice {
 
 #[derive(Clone, Debug, PartialEq)]
 enum Constructor<'tcx> {
-    /// The constructor of all patterns that don't vary by constructor,
-    /// e.g., struct patterns and fixed-length arrays.
+    /// The constructor for patterns that have a single constructor, like tuples, struct patterns
+    /// and fixed-length arrays.
     Single,
     /// Enum variants.
     Variant(DefId),
@@ -2351,12 +2351,17 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let variant = &adt_def.variants[variant_index];
-            let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
-            Some(Variant(variant.def_id))
-                .filter(|variant_constructor| variant_constructor == constructor)
-                .map(|_| {
-                    patterns_for_variant(cx, subpatterns, ctor_wild_subpatterns, is_non_exhaustive)
-                })
+            if constructor == &Variant(variant.def_id) {
+                let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
+                Some(patterns_for_variant(
+                    cx,
+                    subpatterns,
+                    ctor_wild_subpatterns,
+                    is_non_exhaustive,
+                ))
+            } else {
+                None
+            }
         }
 
         PatKind::Leaf { ref subpatterns } => {
