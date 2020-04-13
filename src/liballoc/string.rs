@@ -1827,7 +1827,13 @@ impl<'a> Extend<Cow<'a, str>> for String {
     }
 }
 
-/// A convenience impl that delegates to the impl for `&str`
+/// A convenience impl that delegates to the impl for `&str`.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(String::from("Hello world").find("world"), Some(6));
+/// ```
 #[unstable(
     feature = "pattern",
     reason = "API not fully fleshed out and ready to be stabilized",
