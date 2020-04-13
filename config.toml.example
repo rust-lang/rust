@@ -84,8 +84,9 @@
 #link-shared = false
 
 # When building llvm, this configures what is being appended to the version.
-# If absent, we let the version as-is.
-#version-suffix = "-rust"
+# The default is "-rust-$version-$channel", except for dev channel where rustc
+# version number is omitted. To use LLVM version as is, provide an empty string.
+#version-suffix = "-rust-dev"
 
 # On MSVC you can compile LLVM with clang-cl, but the test suite doesn't pass
 # with clang-cl, so this is special in that it only compiles LLVM with clang-cl

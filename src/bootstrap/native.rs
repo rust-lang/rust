@@ -235,10 +235,14 @@ impl Step for Llvm {
             if !suffix.is_empty() {
                 cfg.define("LLVM_VERSION_SUFFIX", suffix);
             }
+        } else if builder.config.channel == "dev" {
+            // Changes to a version suffix require a complete rebuild of the LLVM.
+            // To avoid rebuilds during a time of version bump, don't include rustc
+            // release number on the dev channel.
+            cfg.define("LLVM_VERSION_SUFFIX", "-rust-dev");
         } else {
-            let default_suffix =
-                format!("-rust-{}-{}", channel::CFG_RELEASE_NUM, builder.config.channel);
-            cfg.define("LLVM_VERSION_SUFFIX", default_suffix);
+            let suffix = format!("-rust-{}-{}", channel::CFG_RELEASE_NUM, builder.config.channel);
+            cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
         if let Some(ref linker) = builder.config.llvm_use_linker {
