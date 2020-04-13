@@ -173,7 +173,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
 
     const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
 
-    const CHECK_ALIGN: bool = false;
+    #[inline(always)]
+    fn enforce_alignment(_memory_extra: &Self::MemoryExtra) -> bool {
+        false
+    }
 
     #[inline(always)]
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
