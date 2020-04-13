@@ -287,10 +287,8 @@ fn run_optimization_passes<'tcx>(
             // AddMovesForPackedDrops needs to run after drop
             // elaboration.
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
-            // AddRetag needs to run after ElaborateDrops, and it needs
-            // an AllCallEdges pass right before it.  Otherwise it should
-            // run fairly late, but before optimizations begin.
-            &add_call_guards::AllCallEdges,
+            // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
+            // but before optimizations begin.
             &add_retag::AddRetag,
             &simplify::SimplifyCfg::new("elaborate-drops"),
             // No lifetime analysis based on borrowing can be done from here on out.
