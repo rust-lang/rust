@@ -97,6 +97,7 @@ pub fn report_error<'tcx, 'mir>(
                     vec![
                         format!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior"),
                         format!("but alignment errors can also be false positives, see https://github.com/rust-lang/miri/issues/1074"),
+                        format!("you can disable the alignment check with `-Zmiri-disable-alignment-check`, but that could hide true bugs")
                     ],
                 UndefinedBehavior(_) =>
                     vec![
