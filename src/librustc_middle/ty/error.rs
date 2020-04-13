@@ -4,7 +4,7 @@ use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi;
 
 use std::borrow::Cow;
@@ -401,7 +401,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     (ty::Param(_), ty::Projection(_)) | (ty::Projection(_), ty::Param(_)) => {
                         db.note("you might be missing a type parameter or trait bound");
                     }
-                    (ty::Param(p), _) | (_, ty::Param(p)) => {
+                    (ty::Param(p), ty::Dynamic(..))
+                    | (ty::Dynamic(..), ty::Param(p))
+                    | (ty::Param(p), ty::Opaque(..))
+                    | (ty::Opaque(..), ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
@@ -441,11 +444,18 @@ impl<T> Trait<T> for X {
                                  #traits-as-parameters",
                         );
                     }
+                    (ty::Param(p), _) | (_, ty::Param(p)) => {
+                        let generics = self.generics_of(body_owner_def_id);
+                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        if !sp.contains(p_span) {
+                            db.span_label(p_span, "this type parameter");
+                        }
+                    }
                     (ty::Projection(_), _) => {
                         db.note(&format!(
                             "consider constraining the associated type `{}` to `{}` or calling a \
-                             method that returns `{}`",
-                            values.expected, values.found, values.expected,
+                             method that returns `{0}`",
+                            values.expected, values.found,
                         ));
                         if self.sess.teach(&db.get_code().unwrap()) {
                             db.help(
@@ -470,15 +480,18 @@ impl Trait for X {
                                  https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
                         );
                     }
-                    (_, ty::Projection(_)) => {
-                        db.note(&format!(
+                    (_, ty::Projection(proj_ty)) => {
+                        let msg = format!(
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,
-                        ));
-                        db.note(
-                            "for more information, visit \
-                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
                         );
+                        if !self.suggest_constraint(db, &msg, body_owner_def_id, proj_ty, values) {
+                            db.help(&msg);
+                            db.note(
+                                "for more information, visit \
+                                https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
+                            );
+                        }
                     }
                     _ => {}
                 }
@@ -512,5 +525,116 @@ impl Trait for X {
             }
             _ => {}
         }
+    }
+
+    fn suggest_constraint(
+        &self,
+        db: &mut DiagnosticBuilder<'_>,
+        msg: &str,
+        body_owner_def_id: DefId,
+        proj_ty: &ty::ProjectionTy<'tcx>,
+        values: &ExpectedFound<Ty<'tcx>>,
+    ) -> bool {
+        let assoc = self.associated_item(proj_ty.item_def_id);
+        let trait_ref = proj_ty.trait_ref(*self);
+        if let Some(item) = self.hir().get_if_local(body_owner_def_id) {
+            if let Some(hir_generics) = item.generics() {
+                // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
+                // This will also work for `impl Trait`.
+                let def_id = if let ty::Param(param_ty) = proj_ty.self_ty().kind {
+                    let generics = self.generics_of(body_owner_def_id);
+                    generics.type_param(&param_ty, *self).def_id
+                } else {
+                    return false;
+                };
+
+                // First look in the `where` clause, as this might be
+                // `fn foo<T>(x: T) where T: Trait`.
+                for predicate in hir_generics.where_clause.predicates {
+                    if let hir::WherePredicate::BoundPredicate(pred) = predicate {
+                        if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) =
+                            pred.bounded_ty.kind
+                        {
+                            if path.res.opt_def_id() == Some(def_id) {
+                                // This predicate is binding type param `A` in `<A as T>::Foo` to
+                                // something, potentially `T`.
+                            } else {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+
+                        if self.constrain_associated_type_structured_suggestion(
+                            db,
+                            &trait_ref,
+                            pred.bounds,
+                            &assoc,
+                            values,
+                            msg,
+                        ) {
+                            return true;
+                        }
+                    }
+                }
+                for param in hir_generics.params {
+                    if self.hir().opt_local_def_id(param.hir_id).map(|id| id.to_def_id())
+                        == Some(def_id)
+                    {
+                        // This is type param `A` in `<A as T>::Foo`.
+                        return self.constrain_associated_type_structured_suggestion(
+                            db,
+                            &trait_ref,
+                            param.bounds,
+                            &assoc,
+                            values,
+                            msg,
+                        );
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    fn constrain_associated_type_structured_suggestion(
+        &self,
+        db: &mut DiagnosticBuilder<'_>,
+        trait_ref: &ty::TraitRef<'tcx>,
+        bounds: hir::GenericBounds<'_>,
+        assoc: &ty::AssocItem,
+        values: &ExpectedFound<Ty<'tcx>>,
+        msg: &str,
+    ) -> bool {
+        for bound in bounds {
+            match bound {
+                hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::None) => {
+                    // Relate the type param against `T` in `<A as T>::Foo`.
+                    if ptr.trait_ref.trait_def_id() == Some(trait_ref.def_id) {
+                        if let Ok(has_params) = self
+                            .sess
+                            .source_map()
+                            .span_to_snippet(ptr.span)
+                            .map(|snippet| snippet.ends_with('>'))
+                        {
+                            let (span, sugg) = if has_params {
+                                let pos = ptr.span.hi() - BytePos(1);
+                                let span = Span::new(pos, pos, ptr.span.ctxt());
+                                (span, format!(", {} = {}", assoc.ident, values.expected))
+                            } else {
+                                (
+                                    ptr.span.shrink_to_hi(),
+                                    format!("<{} = {}>", assoc.ident, values.expected),
+                                )
+                            };
+                            db.span_suggestion(span, msg, sugg, Applicability::MaybeIncorrect);
+                            return true;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        false
     }
 }

@@ -9,8 +9,6 @@ LL |         Self::TSVariant(());
    |
    = note: expected type parameter `T`
                    found unit type `()`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:15:27
@@ -35,8 +33,6 @@ LL |         Self::<()>::TSVariant(());
    |
    = note: expected type parameter `T`
                    found unit type `()`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:20:16
@@ -61,8 +57,6 @@ LL |         Self::SVariant { v: () };
    |
    = note: expected type parameter `T`
                    found unit type `()`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:28:26
@@ -81,8 +75,6 @@ LL |         Self::SVariant::<()> { v: () };
    |
    = note: expected type parameter `T`
                    found unit type `()`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:31:16
@@ -101,8 +93,6 @@ LL |         Self::<()>::SVariant { v: () };
    |
    = note: expected type parameter `T`
                    found unit type `()`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:34:16
@@ -127,8 +117,6 @@ LL |         Self::<()>::SVariant::<()> { v: () };
    |
    = note: expected type parameter `T`
                    found unit type `()`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/enum-variant-generic-args.rs:41:26

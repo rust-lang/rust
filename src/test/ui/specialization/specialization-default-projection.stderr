@@ -25,7 +25,7 @@ LL |     generic::<()>()
    |
    = note:    expected unit type `()`
            found associated type `<() as Foo>::Assoc`
-   = note: consider constraining the associated type `<() as Foo>::Assoc` to `()`
+   = help: consider constraining the associated type `<() as Foo>::Assoc` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error: aborting due to 2 previous errors
