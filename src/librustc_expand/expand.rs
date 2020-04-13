@@ -507,9 +507,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 expanded_fragments.push(Vec::new());
             }
             expanded_fragments[depth - 1].push((expn_id, expanded_fragment));
-            if !self.cx.ecfg.single_step {
-                invocations.extend(new_invocations.into_iter().rev());
-            }
+            invocations.extend(new_invocations.into_iter().rev());
         }
 
         self.cx.current_expansion = orig_expansion_data;
@@ -1819,7 +1817,6 @@ pub struct ExpansionConfig<'feat> {
     pub recursion_limit: usize,
     pub trace_mac: bool,
     pub should_test: bool, // If false, strip `#[test]` nodes
-    pub single_step: bool,
     pub keep_macs: bool,
 }
 
@@ -1831,7 +1828,6 @@ impl<'feat> ExpansionConfig<'feat> {
             recursion_limit: 1024,
             trace_mac: false,
             should_test: false,
-            single_step: false,
             keep_macs: false,
         }
     }
