@@ -215,8 +215,18 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
+    pub fn opt_node_id_to_hir_id(&self, node_id: NodeId) -> Option<HirId> {
+        self.tcx.definitions.opt_node_id_to_hir_id(node_id)
+    }
+
+    #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
         self.tcx.definitions.local_def_id_to_hir_id(def_id)
+    }
+
+    #[inline]
+    pub fn opt_local_def_id_to_hir_id(&self, def_id: LocalDefId) -> Option<HirId> {
+        self.tcx.definitions.opt_local_def_id_to_hir_id(def_id)
     }
 
     pub fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {

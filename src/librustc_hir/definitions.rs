@@ -87,7 +87,7 @@ pub struct Definitions {
     node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
     def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
-    pub(super) node_id_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
+    pub(super) node_id_to_hir_id: IndexVec<ast::NodeId, Option<hir::HirId>>,
     /// The reverse mapping of `node_id_to_hir_id`.
     pub(super) hir_id_to_node_id: FxHashMap<hir::HirId, ast::NodeId>,
 
@@ -359,11 +359,22 @@ impl Definitions {
 
     #[inline]
     pub fn node_id_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
+        self.node_id_to_hir_id[node_id].unwrap()
+    }
+
+    #[inline]
+    pub fn opt_node_id_to_hir_id(&self, node_id: ast::NodeId) -> Option<hir::HirId> {
         self.node_id_to_hir_id[node_id]
     }
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
+        let node_id = self.def_id_to_node_id[id];
+        self.node_id_to_hir_id[node_id].unwrap()
+    }
+
+    #[inline]
+    pub fn opt_local_def_id_to_hir_id(&self, id: LocalDefId) -> Option<hir::HirId> {
         let node_id = self.def_id_to_node_id[id];
         self.node_id_to_hir_id[node_id]
     }
@@ -470,7 +481,10 @@ impl Definitions {
 
     /// Initializes the `ast::NodeId` to `HirId` mapping once it has been generated during
     /// AST to HIR lowering.
-    pub fn init_node_id_to_hir_id_mapping(&mut self, mapping: IndexVec<ast::NodeId, hir::HirId>) {
+    pub fn init_node_id_to_hir_id_mapping(
+        &mut self,
+        mapping: IndexVec<ast::NodeId, Option<hir::HirId>>,
+    ) {
         assert!(
             self.node_id_to_hir_id.is_empty(),
             "trying to initialize `NodeId` -> `HirId` mapping twice"
@@ -481,7 +495,7 @@ impl Definitions {
         self.hir_id_to_node_id = self
             .node_id_to_hir_id
             .iter_enumerated()
-            .map(|(node_id, &hir_id)| (hir_id, node_id))
+            .filter_map(|(node_id, &hir_id)| hir_id.map(|hir_id| (hir_id, node_id)))
             .collect();
     }
 
