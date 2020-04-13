@@ -1128,8 +1128,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
 
-        // In general, during probing we erase regions. See
-        // `impl_self_ty()` for an explanation.
+        // In general, during probing we erase regions.
         let region = tcx.lifetimes.re_erased;
 
         let autoref_ty = tcx.mk_ref(region, ty::TypeAndMut { ty: self_ty, mutbl });
@@ -1614,8 +1613,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 } else {
                     match param.kind {
                         GenericParamDefKind::Lifetime => {
-                            // In general, during probe we erase regions. See
-                            // `impl_self_ty()` for an explanation.
+                            // In general, during probe we erase regions.
                             self.tcx.lifetimes.re_erased.into()
                         }
                         GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {

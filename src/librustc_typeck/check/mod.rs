@@ -154,7 +154,6 @@ use std::slice;
 
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
-use crate::TypeAndSubsts;
 
 use self::autoderef::Autoderef;
 use self::callee::DeferredCallResolution;
@@ -4249,24 +4248,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Bool(_) => tcx.types.bool,
             ast::LitKind::Err(_) => tcx.types.err,
         }
-    }
-
-    // Determine the `Self` type, using fresh variables for all variables
-    // declared on the impl declaration e.g., `impl<A,B> for Vec<(A,B)>`
-    // would return `($0, $1)` where `$0` and `$1` are freshly instantiated type
-    // variables.
-    pub fn impl_self_ty(
-        &self,
-        span: Span, // (potential) receiver for this impl
-        did: DefId,
-    ) -> TypeAndSubsts<'tcx> {
-        let ity = self.tcx.type_of(did);
-        debug!("impl_self_ty: ity={:?}", ity);
-
-        let substs = self.fresh_substs_for_item(span, did);
-        let substd_ty = self.instantiate_type_scheme(span, &substs, &ity);
-
-        TypeAndSubsts { substs, ty: substd_ty }
     }
 
     /// Unifies the output type with the expected type early, for more coercions
