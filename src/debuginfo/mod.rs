@@ -355,9 +355,9 @@ fn place_location<'a, 'tcx>(
 fn translate_loc(isa: &dyn TargetIsa, loc: ValueLoc, stack_slots: &StackSlots) -> Option<Vec<u8>> {
     match loc {
         ValueLoc::Reg(reg) => {
-            let machine_reg = cranelift_codegen::isa::fde::map_reg(isa, reg).unwrap().0 as u8;
+            let machine_reg = isa.map_dwarf_register(reg).unwrap();
             assert!(machine_reg <= 32); // FIXME
-            Some(vec![gimli::constants::DW_OP_reg0.0 + machine_reg])
+            Some(vec![gimli::constants::DW_OP_reg0.0 + machine_reg as u8])
         }
         ValueLoc::Stack(ss) => {
             if let Some(ss_offset) = stack_slots[ss].offset {
