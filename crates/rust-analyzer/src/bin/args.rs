@@ -35,6 +35,10 @@ pub(crate) enum Command {
         what: BenchWhat,
         load_output_dirs: bool,
     },
+    Diagnostics {
+        path: PathBuf,
+        load_output_dirs: bool,
+    },
     RunServer,
     Version,
 }
@@ -208,6 +212,36 @@ ARGS:
                 };
                 let load_output_dirs = matches.contains("--load-output-dirs");
                 Command::Bench { path, what, load_output_dirs }
+            }
+            "diagnostics" => {
+                if matches.contains(["-h", "--help"]) {
+                    eprintln!(
+                        "\
+ra-cli-diagnostics
+
+USAGE:
+    rust-analyzer diagnostics [FLAGS] [PATH]
+
+FLAGS:
+    -h, --help              Prints help information
+        --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
+
+ARGS:
+    <PATH>"
+                    );
+                    return Ok(Err(HelpPrinted));
+                }
+
+                let load_output_dirs = matches.contains("--load-output-dirs");
+                let path = {
+                    let mut trailing = matches.free()?;
+                    if trailing.len() != 1 {
+                        bail!("Invalid flags");
+                    }
+                    trailing.pop().unwrap().into()
+                };
+
+                Command::Diagnostics { path, load_output_dirs }
             }
             _ => {
                 eprintln!(

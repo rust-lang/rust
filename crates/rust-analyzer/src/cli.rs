@@ -3,6 +3,7 @@
 mod load_cargo;
 mod analysis_stats;
 mod analysis_bench;
+mod diagnostics;
 mod progress_report;
 
 use std::io::Read;
@@ -11,6 +12,10 @@ use anyhow::Result;
 use ra_ide::{file_structure, Analysis};
 use ra_prof::profile;
 use ra_syntax::{AstNode, SourceFile};
+
+pub use analysis_bench::{analysis_bench, BenchWhat, Position};
+pub use analysis_stats::analysis_stats;
+pub use diagnostics::diagnostics;
 
 #[derive(Clone, Copy)]
 pub enum Verbosity {
@@ -59,9 +64,6 @@ pub fn highlight(rainbow: bool) -> Result<()> {
     println!("{}", html);
     Ok(())
 }
-
-pub use analysis_bench::{analysis_bench, BenchWhat, Position};
-pub use analysis_stats::analysis_stats;
 
 fn file() -> Result<SourceFile> {
     let text = read_stdin()?;
