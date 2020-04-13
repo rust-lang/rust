@@ -1116,6 +1116,8 @@ impl<'a> Parser<'a> {
             } else {
                 self.parse_lit_expr(attrs)
             }
+        } else if self.eat_keyword(kw::Underscore) {
+            Ok(self.mk_expr(self.prev_token.span, ExprKind::Underscore, attrs))
         } else {
             self.parse_lit_expr(attrs)
         }
