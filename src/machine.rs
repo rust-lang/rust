@@ -118,10 +118,19 @@ pub struct MemoryExtra {
     /// An allocation ID to report when it is being allocated
     /// (helps for debugging memory leaks).
     tracked_alloc_id: Option<AllocId>,
+
+    /// Controls whether alignment of memory accesses is being checked.
+    check_alignment: bool,
 }
 
 impl MemoryExtra {
-    pub fn new(rng: StdRng, stacked_borrows: bool, tracked_pointer_tag: Option<PtrId>, tracked_alloc_id: Option<AllocId>) -> Self {
+    pub fn new(
+        rng: StdRng,
+        stacked_borrows: bool,
+        tracked_pointer_tag: Option<PtrId>,
+        tracked_alloc_id: Option<AllocId>,
+        check_alignment: bool,
+    ) -> Self {
         let stacked_borrows = if stacked_borrows {
             Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(tracked_pointer_tag))))
         } else {
@@ -133,6 +142,7 @@ impl MemoryExtra {
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
             tracked_alloc_id,
+            check_alignment,
         }
     }
 
@@ -299,7 +309,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     const GLOBAL_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::Global);
 
-    const CHECK_ALIGN: bool = true;
+    #[inline(always)]
+    fn enforce_alignment(memory_extra: &MemoryExtra) -> bool {
+        memory_extra.check_alignment
+    }
 
     #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {

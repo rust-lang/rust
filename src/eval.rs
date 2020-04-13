@@ -19,6 +19,8 @@ pub struct MiriConfig {
     pub validate: bool,
     /// Determines if Stacked Borrows is enabled.
     pub stacked_borrows: bool,
+    /// Determines if alignment checking is enabled.
+    pub check_alignment: bool,
     /// Determines if communication with the host environment is enabled.
     pub communicate: bool,
     /// Determines if memory leaks should be ignored.
@@ -40,6 +42,7 @@ impl Default for MiriConfig {
         MiriConfig {
             validate: true,
             stacked_borrows: true,
+            check_alignment: true,
             communicate: false,
             ignore_leaks: false,
             excluded_env_vars: vec![],
@@ -72,6 +75,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             config.stacked_borrows,
             config.tracked_pointer_tag,
             config.tracked_alloc_id,
+            config.check_alignment,
         ),
     );
     // Complete initialization.
