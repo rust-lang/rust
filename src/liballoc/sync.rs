@@ -566,9 +566,33 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub fn into_raw(this: Self) -> *const T {
+        let ptr = Self::as_ptr(&this);
+        mem::forget(this);
+        ptr
+    }
+
+    /// Provides a raw pointer to the data.
+    ///
+    /// The counts are not affected in way and the `Arc` is not consumed. The pointer is valid for
+    /// as long as there are strong counts in the `Arc`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(weak_into_raw)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::new("hello".to_owned());
+    /// let y = Arc::clone(&x);
+    /// let x_ptr = Arc::as_ptr(&x);
+    /// assert_eq!(x_ptr, Arc::as_ptr(&y));
+    /// assert_eq!(unsafe { &*x_ptr }, "hello");
+    /// ```
+    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
         let fake_ptr = ptr as *mut T;
-        mem::forget(this);
 
         // SAFETY: This cannot go through Deref::deref.
         // Instead, we manually offset the pointer rather than manifesting a reference.

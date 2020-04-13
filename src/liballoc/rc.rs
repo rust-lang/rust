@@ -569,9 +569,33 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub fn into_raw(this: Self) -> *const T {
+        let ptr = Self::as_ptr(&this);
+        mem::forget(this);
+        ptr
+    }
+
+    /// Provides a raw pointer to the data.
+    ///
+    /// The counts are not affected in any way and the `Rc` is not consumed. The pointer is valid
+    /// for as long there are strong counts in the `Rc`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(weak_into_raw)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::new("hello".to_owned());
+    /// let y = Rc::clone(&x);
+    /// let x_ptr = Rc::as_ptr(&x);
+    /// assert_eq!(x_ptr, Rc::as_ptr(&y));
+    /// assert_eq!(unsafe { &*x_ptr }, "hello");
+    /// ```
+    #[unstable(feature = "weak_into_raw", issue = "60728")]
+    pub fn as_ptr(this: &Self) -> *const T {
         let ptr: *mut RcBox<T> = NonNull::as_ptr(this.ptr);
         let fake_ptr = ptr as *mut T;
-        mem::forget(this);
 
         // SAFETY: This cannot go through Deref::deref.
         // Instead, we manually offset the pointer rather than manifesting a reference.
