@@ -2,6 +2,10 @@
 #![feature(never_type)]
 #![allow(unused)]
 
+struct HasResult {
+    field: Result<usize, usize>,
+}
+
 fn do_nothing<T>(_: T) {}
 
 fn diverge<T>(_: T) -> ! {
@@ -14,6 +18,8 @@ fn plus_one(value: usize) -> usize {
 
 #[rustfmt::skip]
 fn result_map_unit_fn() {
+    let x = HasResult { field: Ok(10) };
+
     x.field.map(|value| { do_nothing(value); do_nothing(value) });
 
     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
