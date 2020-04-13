@@ -357,14 +357,15 @@ impl<'test> TestCx<'test> {
             Ui if pm == Some(PassMode::Run) || self.props.fail_mode == Some(FailMode::Run) => {
                 WillExecute::Yes
             }
-            Ui => WillExecute::No,
+            MirOpt if pm == Some(PassMode::Run) => WillExecute::Yes,
+            Ui | MirOpt => WillExecute::No,
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
 
     fn should_run_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            Ui => pm == Some(PassMode::Run),
+            Ui | MirOpt => pm == Some(PassMode::Run),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
@@ -3059,18 +3060,24 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_mir_opt_test(&self) {
-        let proc_res = self.compile_test(WillExecute::Yes, EmitMetadata::No);
+        let pm = self.pass_mode();
+        let should_run = self.should_run(pm);
+        let emit_metadata = self.should_emit_metadata(pm);
+        let proc_res = self.compile_test(should_run, emit_metadata);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        let proc_res = self.exec_compiled_test();
-
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("test run failed!", &proc_res);
-        }
         self.check_mir_dump();
+
+        if let WillExecute::Yes = should_run {
+            let proc_res = self.exec_compiled_test();
+
+            if !proc_res.status.success() {
+                self.fatal_proc_rec("test run failed!", &proc_res);
+            }
+        }
     }
 
     fn check_mir_dump(&self) {
@@ -3148,7 +3155,7 @@ impl<'test> TestCx<'test> {
                     }
                     let expected_string = fs::read_to_string(&expected_file).unwrap();
                     if dumped_string != expected_string {
-                        print_diff(&dumped_string, &expected_string, 3);
+                        print_diff(&expected_string, &dumped_string, 3);
                         panic!(
                             "Actual MIR output differs from expected MIR output {}",
                             expected_file.display()

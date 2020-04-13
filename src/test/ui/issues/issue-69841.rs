@@ -2,6 +2,7 @@
 // LLVM bug which needed a fix to be backported.
 
 // run-pass
+// no-system-llvm
 
 fn main() {
     let buffer = [49u8, 10];
