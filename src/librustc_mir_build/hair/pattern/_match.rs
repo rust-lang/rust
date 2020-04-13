@@ -2359,7 +2359,7 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let variant = &adt_def.variants[variant_index];
-            if constructor == Variant(variant.def_id) {
+            if constructor == &Variant(variant.def_id) {
                 let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
                 Some(patterns_for_variant(
                     cx,
