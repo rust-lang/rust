@@ -871,7 +871,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ExprKind<'hir> {
         // Return early in case of an ordinary assignment.
         let is_ordinary = match &lhs.kind {
-            ExprKind::Array(..) | ExprKind::Struct(_, _, None) | ExprKind::Tup(..) => false,
+            ExprKind::Array(..)
+            | ExprKind::Struct(_, _, None)
+            | ExprKind::Tup(..)
+            | ExprKind::Underscore => false,
             ExprKind::Call(callee, ..) => {
                 // Check for tuple struct constructor.
                 if let ExprKind::Path(qself, path) = &callee.kind {
@@ -931,8 +934,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         eq_sign_span: Span,
         assignments: &mut Vec<hir::Stmt<'hir>>,
     ) -> &'hir hir::Pat<'hir> {
-        // FIXME: Handle `_`, requires changes to the parser
         match &lhs.kind {
+            ExprKind::Underscore => {
+                return self.pat(lhs.span, hir::PatKind::Wild);
+            }
             // slices:
             ExprKind::Array(elements) => {
                 let (pats, rest) =

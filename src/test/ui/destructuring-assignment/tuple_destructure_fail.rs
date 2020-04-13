@@ -4,4 +4,5 @@ fn main() {
     let (mut a, mut b);
     (a, .., b, ..) = (0, 1); //~ ERROR `..` can only be used once per tuple pattern
     (a, a, b) = (1,2); //~ ERROR mismatched types
+    (_,) = (1,2); //~ ERROR mismatched types
 }

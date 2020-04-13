@@ -10,4 +10,6 @@ fn main() {
     assert_eq!((a,b), (0,1));
     TupleStruct(a, .., b) = TupleStruct(1,2);
     assert_eq!((a,b), (1,2));
+    TupleStruct(_, a) = TupleStruct(2,2);
+    assert_eq!((a,b), (2,2));
 }

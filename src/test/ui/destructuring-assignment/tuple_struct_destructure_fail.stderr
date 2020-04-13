@@ -18,12 +18,21 @@ LL |     TupleStruct(a, a, b) = TupleStruct(1,2);
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/tuple_struct_destructure_fail.rs:12:12
    |
-LL |     test() = TupleStruct(0,0)
+LL |     test() = TupleStruct(0,0);
    |     ------ ^
    |     |
    |     cannot assign to this expression
 
-error: aborting due to 3 previous errors
+error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
+  --> $DIR/tuple_struct_destructure_fail.rs:13:5
+   |
+LL | struct TupleStruct<S, T>(S, T);
+   | ------------------------------- tuple struct defined here
+...
+LL |     TupleStruct(_) = TupleStruct(1,2);
+   |     ^^^^^^^^^^^^^^ expected 2 fields, found 1
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0023, E0070.
 For more information about an error, try `rustc --explain E0023`.
