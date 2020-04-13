@@ -880,15 +880,15 @@ impl<'tcx> Constructor<'tcx> {
                                 let ty = field.ty(cx.tcx, substs);
                                 let is_visible = adt.is_enum()
                                     || field.vis.is_accessible_from(cx.module, cx.tcx);
-                                let is_uninhabited = cx.is_uninhabited(ty);
-                                // Treat all non-visible fields as `TyErr`. They can't appear
-                                // in any other pattern from this match (because they are
+                                let is_inhabited = !cx.is_uninhabited(ty);
+                                // Treat all uninhabited non-visible fields as `TyErr`. They can't
+                                // appear in any other pattern from this match (because they are
                                 // private), so their type does not matter - but we don't want
                                 // to know they are uninhabited.
                                 // Also treat all uninhabited types in non-exhaustive variants as
                                 // `TyErr`.
                                 let allowed_to_inspect =
-                                    is_visible && !(is_non_exhaustive && is_uninhabited);
+                                    is_inhabited || (is_visible && !is_non_exhaustive);
 
                                 if allowed_to_inspect {
                                     Pat::wildcard_from_ty(ty)
