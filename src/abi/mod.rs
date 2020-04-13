@@ -495,31 +495,6 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             .collect::<Vec<_>>()
     };
 
-    codegen_call_inner(
-        fx,
-        span,
-        Some(func),
-        fn_ty,
-        args,
-        destination.map(|(place, _)| place),
-    );
-
-    if let Some((_, dest)) = destination {
-        let ret_block = fx.get_block(dest);
-        fx.bcx.ins().jump(ret_block, &[]);
-    } else {
-        trap_unreachable(fx, "[corruption] Diverging function returned");
-    }
-}
-
-fn codegen_call_inner<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    span: Span,
-    func: Option<&Operand<'tcx>>,
-    fn_ty: Ty<'tcx>,
-    args: Vec<CValue<'tcx>>,
-    ret_place: Option<CPlace<'tcx>>,
-) {
     // FIXME mark the current block as cold when calling a `#[cold]` function.
     let fn_sig = fx
         .tcx
@@ -572,7 +547,7 @@ fn codegen_call_inner<'tcx>(
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(nop_inst, "indirect call");
             }
-            let func = trans_operand(fx, func.expect("indirect call without func Operand"))
+            let func = trans_operand(fx, func)
                 .load_scalar(fx);
             (
                 Some(func),
@@ -584,6 +559,7 @@ fn codegen_call_inner<'tcx>(
         }
     };
 
+    let ret_place = destination.map(|(place, _)| place);
     let (call_inst, call_args) =
         self::returning::codegen_with_call_return_arg(fx, fn_sig, ret_place, |fx, return_ptr| {
             let mut call_args: Vec<Value> = return_ptr
@@ -640,6 +616,13 @@ fn codegen_call_inner<'tcx>(
             })
             .collect::<Vec<AbiParam>>();
         fx.bcx.func.dfg.signatures[sig_ref].params = abi_params;
+    }
+
+    if let Some((_, dest)) = destination {
+        let ret_block = fx.get_block(dest);
+        fx.bcx.ins().jump(ret_block, &[]);
+    } else {
+        trap_unreachable(fx, "[corruption] Diverging function returned");
     }
 }
 
