@@ -6,11 +6,11 @@ use crate::io::{self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Write};
 mod copy_specialization {
     use crate::mem::MaybeUninit;
     use crate::io::{self, Read, BufRead, Write, ErrorKind};
-    
+
     pub trait Copyable {
         fn copy_to<W: ?Sized + Write>(&mut self, writer: &mut W) -> io::Result<u64>;
     }
-    
+
     impl<T: Read + ?Sized> Copyable for T {
         default fn copy_to<W: ?Sized + Write>(&mut self, writer: &mut W) -> io::Result<u64> {
             let mut buf = MaybeUninit::<[u8; io::DEFAULT_BUF_SIZE]>::uninit();
@@ -49,7 +49,7 @@ mod copy_specialization {
                     }?;
                     (writer.write_all(buf), buf.len())
                 };
-                
+
                 // make sure to consume the data before dealing with write errors
                 // to maintain the same semantics as the default impl
                 //
