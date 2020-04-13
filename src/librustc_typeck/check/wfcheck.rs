@@ -335,7 +335,7 @@ fn for_id(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'_> 
         inherited: Inherited::build(tcx, def_id),
         id,
         span,
-        param_env: tcx.param_env(def_id.to_def_id()),
+        param_env: tcx.param_env(def_id),
     }
 }
 

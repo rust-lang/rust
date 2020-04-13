@@ -234,18 +234,23 @@ macro_rules! hash_result {
 
 macro_rules! define_queries {
     (<$tcx:tt> $($category:tt {
-        $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*
+        $($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident: $node:ident($($K:tt)*) -> $V:ty,)*
     },)*) => {
         define_queries_inner! { <$tcx>
-            $($( $(#[$attr])* category<$category> [$($modifiers)*] fn $name: $node($K) -> $V,)*)*
+            $($( $(#[$attr])* category<$category> [$($modifiers)*] fn $name: $node($($K)*) -> $V,)*)*
         }
     }
+}
+
+macro_rules! query_helper_param_ty {
+    (DefId) => { impl IntoQueryParam<DefId> };
+    ($K:ty) => { $K };
 }
 
 macro_rules! define_queries_inner {
     (<$tcx:tt>
      $($(#[$attr:meta])* category<$category:tt>
-        [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
+        [$($modifiers:tt)*] fn $name:ident: $node:ident($($K:tt)*) -> $V:ty,)*) => {
 
         use std::mem;
         use crate::{
@@ -263,7 +268,7 @@ macro_rules! define_queries_inner {
         #[allow(nonstandard_style)]
         #[derive(Clone, Debug)]
         pub enum Query<$tcx> {
-            $($(#[$attr])* $name($K)),*
+            $($(#[$attr])* $name($($K)*)),*
         }
 
         impl<$tcx> Query<$tcx> {
@@ -321,7 +326,7 @@ macro_rules! define_queries_inner {
         }
 
         $(impl<$tcx> QueryConfig<TyCtxt<$tcx>> for queries::$name<$tcx> {
-            type Key = $K;
+            type Key = $($K)*;
             type Value = $V;
             const NAME: &'static str = stringify!($name);
             const CATEGORY: ProfileCategory = $category;
@@ -332,7 +337,7 @@ macro_rules! define_queries_inner {
             const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
             const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::$node;
 
-            type Cache = query_storage!([$($modifiers)*][$K, $V]);
+            type Cache = query_storage!([$($modifiers)*][$($K)*, $V]);
 
             #[inline(always)]
             fn query_state<'a>(tcx: TyCtxt<$tcx>) -> &'a QueryState<TyCtxt<$tcx>, Self::Cache> {
@@ -380,8 +385,8 @@ macro_rules! define_queries_inner {
         impl TyCtxtEnsure<$tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: $K) {
-                ensure_query::<queries::$name<'_>, _>(self.tcx, key)
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
+                ensure_query::<queries::$name<'_>, _>(self.tcx, key.into_query_param())
             })*
         }
 
@@ -421,7 +426,7 @@ macro_rules! define_queries_inner {
 
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: $K) -> $V {
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V {
                 self.at(DUMMY_SP).$name(key)
             })*
 
@@ -458,14 +463,14 @@ macro_rules! define_queries_inner {
         impl TyCtxtAt<$tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: $K) -> $V {
-                get_query::<queries::$name<'_>, _>(self.tcx, self.span, key)
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V {
+                get_query::<queries::$name<'_>, _>(self.tcx, self.span, key.into_query_param())
             })*
         }
 
         define_provider_struct! {
             tcx: $tcx,
-            input: ($(([$($modifiers)*] [$name] [$K] [$V]))*)
+            input: ($(([$($modifiers)*] [$name] [$($K)*] [$V]))*)
         }
 
         impl<$tcx> Copy for Providers<$tcx> {}

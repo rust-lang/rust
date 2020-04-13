@@ -193,7 +193,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> &Trai
     let mut impls = TraitImpls::default();
 
     {
-        let mut add_impl = |impl_def_id| {
+        let mut add_impl = |impl_def_id: DefId| {
             let impl_self_ty = tcx.type_of(impl_def_id);
             if impl_def_id.is_local() && impl_self_ty.references_error() {
                 return;
