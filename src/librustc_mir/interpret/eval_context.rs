@@ -646,6 +646,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.frame_mut().locals = locals;
         }
 
+        M::after_stack_push(self)?;
         info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
 
         if self.stack.len() > *self.tcx.sess.recursion_limit.get() {
@@ -751,7 +752,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // We want to skip the `info!` below, hence early return.
             return Ok(());
         }
-        // Normal return.
+        // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
             let unwind = next_block.expect("Encountered StackPopCleanup::None when unwinding!");
