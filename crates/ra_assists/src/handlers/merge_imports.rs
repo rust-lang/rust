@@ -1,7 +1,7 @@
 use std::iter::successors;
 
 use ra_syntax::{
-    algo::{neighbor, SyntaxRewriter},
+    algo::{neighbor, skip_trivia_token, SyntaxRewriter},
     ast::{self, edit::AstNodeEdit, make},
     AstNode, Direction, InsertPosition, SyntaxElement, T,
 };
@@ -72,9 +72,18 @@ fn try_merge_trees(old: &ast::UseTree, new: &ast::UseTree) -> Option<ast::UseTre
     let lhs = old.split_prefix(&lhs_prefix);
     let rhs = new.split_prefix(&rhs_prefix);
 
+    let should_insert_comma = lhs
+        .use_tree_list()?
+        .r_curly_token()
+        .and_then(|it| skip_trivia_token(it.prev_token()?, Direction::Prev))
+        .map(|it| it.kind() != T![,])
+        .unwrap_or(true);
+
     let mut to_insert: Vec<SyntaxElement> = Vec::new();
-    to_insert.push(make::token(T![,]).into());
-    to_insert.push(make::tokens::single_space().into());
+    if should_insert_comma {
+        to_insert.push(make::token(T![,]).into());
+        to_insert.push(make::tokens::single_space().into());
+    }
     to_insert.extend(
         rhs.use_tree_list()?
             .syntax()
@@ -246,5 +255,23 @@ use {
 };
 ",
         );
+    }
+
+    #[test]
+    fn test_double_comma() {
+        check_assist(
+            merge_imports,
+            r"
+use foo::bar::baz;
+use foo::<|>{
+    FooBar,
+};
+",
+            r"
+use foo::{<|>
+    FooBar,
+bar::baz};
+",
+        )
     }
 }
