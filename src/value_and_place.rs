@@ -360,22 +360,6 @@ impl<'tcx> CPlace<'tcx> {
     }
 
     pub(crate) fn write_cvalue(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, from: CValue<'tcx>) {
-        #[cfg(debug_assertions)]
-        {
-            use cranelift_codegen::cursor::{Cursor, CursorPosition};
-            let cur_block = match fx.bcx.cursor().position() {
-                CursorPosition::After(block) => block,
-                _ => unreachable!(),
-            };
-            fx.add_comment(
-                fx.bcx.func.layout.last_inst(cur_block).unwrap(),
-                format!("write_cvalue: {:?}: {:?} <- {:?}: {:?}", self.inner(), self.layout().ty, from.0, from.layout().ty),
-            );
-        }
-
-        let from_ty = from.layout().ty;
-        let to_ty = self.layout().ty;
-
         fn assert_assignable<'tcx>(
             fx: &FunctionCx<'_, 'tcx, impl Backend>,
             from_ty: Ty<'tcx>,
@@ -436,12 +420,60 @@ impl<'tcx> CPlace<'tcx> {
             }
         }
 
-        assert_assignable(fx, from_ty, to_ty);
+        assert_assignable(fx, from.layout().ty, self.layout().ty);
+
+        self.write_cvalue_maybe_transmute(fx, from, "write_cvalue");
+    }
+
+    pub(crate) fn write_cvalue_transmute(
+        self,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+        from: CValue<'tcx>,
+    ) {
+        self.write_cvalue_maybe_transmute(fx, from, "write_cvalue_transmute");
+    }
+
+    fn write_cvalue_maybe_transmute(
+        self,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+        from: CValue<'tcx>,
+        #[cfg_attr(not(debug_assertions), allow(unused_variables))]
+        method: &'static str,
+    ) {
+        assert_eq!(self.layout().size, from.layout().size);
+
+        #[cfg(debug_assertions)]
+        {
+            use cranelift_codegen::cursor::{Cursor, CursorPosition};
+            let cur_block = match fx.bcx.cursor().position() {
+                CursorPosition::After(block) => block,
+                _ => unreachable!(),
+            };
+            fx.add_comment(
+                fx.bcx.func.layout.last_inst(cur_block).unwrap(),
+                format!("{}: {:?}: {:?} <- {:?}: {:?}", method, self.inner(), self.layout().ty, from.0, from.layout().ty),
+            );
+        }
 
         let dst_layout = self.layout();
         let to_ptr = match self.inner {
             CPlaceInner::Var(var) => {
                 let data = from.load_scalar(fx);
+                let src_ty = fx.bcx.func.dfg.value_type(data);
+                let dst_ty = fx.clif_type(self.layout().ty).unwrap();
+                let data = match (src_ty, dst_ty) {
+                    (_, _) if src_ty == dst_ty => data,
+
+                    // This is a `write_cvalue_transmute`.
+                    (types::I32, types::F32) | (types::F32, types::I32)
+                    | (types::I64, types::F64) | (types::F64, types::I64) => {
+                        fx.bcx.ins().bitcast(dst_ty, data)
+                    }
+                    _ if src_ty.is_vector() && dst_ty.is_vector() => {
+                        fx.bcx.ins().raw_bitcast(dst_ty, data)
+                    }
+                    _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty, dst_ty),
+                };
                 fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::from_u32(var.as_u32()));
                 fx.bcx.def_var(mir_var(var), data);
                 return;
