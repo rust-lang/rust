@@ -708,7 +708,31 @@ impl<T: ?Sized> *const T {
 
 #[cfg(not(bootstrap))]
 #[lang = "const_slice_ptr"]
-impl<T> *const [T] {}
+impl<T> *const [T] {
+    /// Returns the length of a raw slice.
+    ///
+    /// The returned value is the number of **elements**, not the number of bytes.
+    ///
+    /// This function is safe, even when the raw slice cannot be cast to a slice
+    /// reference because the pointer is null or unaligned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_len)]
+    ///
+    /// use std::ptr;
+    ///
+    /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
+    /// assert_eq!(slice.len(), 3);
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_ptr_len", issue = "none")]
+    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "none")]
+    pub const fn len(self) -> usize {
+        unsafe { Repr { rust: self }.raw }.len
+    }
+}
 
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
