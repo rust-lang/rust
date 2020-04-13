@@ -481,11 +481,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         kind: mir::RetagKind,
         place: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
-        if ecx.memory.extra.stacked_borrows.is_none() {
-            // No tracking.
-            Ok(())
-        } else {
+        if ecx.memory.extra.stacked_borrows.is_some() {
             ecx.retag(kind, place)
+        } else {
+            Ok(())
         }
     }
 
@@ -500,6 +499,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         });
         let extra = FrameData { call_id, catch_unwind: None };
         Ok(frame.with_extra(extra))
+    }
+
+    #[inline(always)]
+    fn after_stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        if ecx.memory.extra.stacked_borrows.is_some() {
+            ecx.retag_return_place()
+        } else {
+            Ok(())
+        }
     }
 
     #[inline(always)]
