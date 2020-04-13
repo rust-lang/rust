@@ -846,7 +846,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "integer_arithmetic",
         group: "restriction",
-        desc: "any integer arithmetic statement",
+        desc: "any integer arithmetic expression which could overflow or panic",
         deprecation: None,
         module: "arithmetic",
     },
