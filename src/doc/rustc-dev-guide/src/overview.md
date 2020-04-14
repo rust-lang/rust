@@ -35,7 +35,7 @@ we'll talk about that later.
 - The token stream passes through a higher-level lexer located in
   [`librustc_parse`] to prepare for the next stage of the compile process. The
   [`StringReader`] struct is used at this stage to perform a set of validations
-  and turn strings into interned symbols.
+  and turn strings into interned symbols (_interning_ is discussed later).
 - (**TODO**: chrissimpkins - Expand info on parser) We then [_parse_ the stream
   of tokens][parser] to build an Abstract Syntax Tree (AST).
   - macro expansion (**TODO** chrissimpkins)
@@ -193,6 +193,14 @@ for different purposes:
   compilers to emit and also rich enough for LLVM to run a bunch of
   optimizations on it.
 
+One other thing to note is that many values in the compiler are _interned_.
+This is a performance and memory optimization in which we allocate the values
+in a special allocator called an _arena_. Then, we pass around references to
+the values allocated in the arena. This allows us to make sure that identical
+values (e.g. types in your program) are only allocated once and can be compared
+cheaply by comparing pointers. Many of the intermediate representations are
+interned.
+
 ### Queries
 
 The first big implementation choice is the _query_ system. The rust compiler
@@ -245,7 +253,7 @@ queries are defined as methods on the [`TyCtxt`] type, and the in-memory query
 cache is stored there too. In the code, there is usually a variable called
 `tcx` which is a handle on the typing context. You will also see lifetimes with
 the name `'tcx`, which means that something is tied to the lifetime of the
-`TyCtxt` (usually it is stored or _interned_ there).
+`TyCtxt` (usually it is stored or interned there).
 
 [`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html
 
