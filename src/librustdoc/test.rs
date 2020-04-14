@@ -263,7 +263,12 @@ fn run_test(
     if no_run && !compile_fail {
         compiler.arg("--emit=metadata");
     }
-    compiler.arg("--target").arg(target.to_string());
+    compiler.arg("--target").arg(match target {
+        TargetTriple::TargetTriple(s) => s,
+        TargetTriple::TargetPath(path) => {
+            path.to_str().expect("target path must be valid unicode").to_string()
+        }
+    });
 
     compiler.arg("-");
     compiler.stdin(Stdio::piped());
@@ -312,8 +317,8 @@ fn run_test(
 
     if let Some(tool) = runtool {
         cmd = Command::new(tool);
-        cmd.arg(output_file);
         cmd.args(runtool_args);
+        cmd.arg(output_file);
     } else {
         cmd = Command::new(output_file);
     }
