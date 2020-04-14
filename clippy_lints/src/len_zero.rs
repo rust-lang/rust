@@ -121,7 +121,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
 fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item<'_>, trait_items: &[TraitItemRef]) {
     fn is_named_self(cx: &LateContext<'_, '_>, item: &TraitItemRef, name: &str) -> bool {
         item.ident.name.as_str() == name
-            && if let AssocItemKind::Method { has_self } = item.kind {
+            && if let AssocItemKind::Fn { has_self } = item.kind {
                 has_self && {
                     let did = cx.tcx.hir().local_def_id(item.id.hir_id);
                     cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
@@ -149,8 +149,8 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item<'_>, trait_i
             .iter()
             .flat_map(|&i| cx.tcx.associated_items(i).in_definition_order())
             .any(|i| {
-                i.kind == ty::AssocKind::Method
-                    && i.method_has_self_argument
+                i.kind == ty::AssocKind::Fn
+                    && i.fn_has_self_parameter
                     && i.ident.name == sym!(is_empty)
                     && cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
             });
@@ -172,7 +172,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item<'_>, trait_i
 fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item<'_>, impl_items: &[ImplItemRef<'_>]) {
     fn is_named_self(cx: &LateContext<'_, '_>, item: &ImplItemRef<'_>, name: &str) -> bool {
         item.ident.name.as_str() == name
-            && if let AssocItemKind::Method { has_self } = item.kind {
+            && if let AssocItemKind::Fn { has_self } = item.kind {
                 has_self && {
                     let did = cx.tcx.hir().local_def_id(item.id.hir_id);
                     cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
@@ -261,7 +261,7 @@ fn check_len(
 fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     /// Gets an `AssocItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_, '_>, item: &ty::AssocItem) -> bool {
-        if let ty::AssocKind::Method = item.kind {
+        if let ty::AssocKind::Fn = item.kind {
             if item.ident.name.as_str() == "is_empty" {
                 let sig = cx.tcx.fn_sig(item.def_id);
                 let ty = sig.skip_binder();
