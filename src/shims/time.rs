@@ -173,13 +173,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // `mach_absolute_time`, we don't need to scale the absolute
         // time.
         let (numer, denom) = (1,1);
-        let uint32_layout = this.layout_of(this.tcx.types.u32)?;
         let imms = [
-            immty_from_int_checked(numer, uint32_layout)?,
-            immty_from_int_checked(denom, uint32_layout)?
+            immty_from_int_checked(numer, this.machine.layouts.u32)?,
+            immty_from_int_checked(denom, this.machine.layouts.u32)?
         ];
 
         this.write_packed_immediates(info, &imms)?;
-        Ok(0)
+        Ok(0) // KERN_SUCCESS
     }
 }
