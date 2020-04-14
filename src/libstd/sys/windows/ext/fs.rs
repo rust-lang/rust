@@ -224,7 +224,7 @@ pub trait OpenOptionsExt {
     /// opening a named pipe, to control to which degree a server process can
     /// act on behalf of a client process (security impersonation level).
     ///
-    /// When `security_qos_flags` is not set a malicious program can gain the
+    /// When `security_qos_flags` is not set, a malicious program can gain the
     /// elevated privileges of a privileged Rust process when it allows opening
     /// user-specified paths, by tricking it into opening a named pipe. So
     /// arguably `security_qos_flags` should also be set when opening arbitrary
