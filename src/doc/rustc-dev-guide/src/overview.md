@@ -17,8 +17,6 @@ we'll talk about that later.
 
 **TODO: Would be great to have a diagram of this once we nail down the details...**
 
-**TODO: someone else should confirm this vvv**
-
 - The compile process begins when a user writes a Rust source program in text
   and invokes the `rustc` compiler on it. The work that the compiler needs to
   perform is defined by command-line options. For example, it is possible to
@@ -47,8 +45,7 @@ we'll talk about that later.
   Representation (HIR)][hir]. This is a compiler-friendly representation of the
   AST.  This involves a lot of desugaring of things like loops and `async fn`.
 - We use the HIR to do [type inference]. This is the process of automatic
-  detection of the type of an expression. **TODO: how `ty` module fits in
-  here**
+  detection of the type of an expression.
 - **TODO: Maybe some other things are done here? I think initial type checking
   happens here? And trait solving?**
 - The HIR is then [lowered to Mid-Level Intermediate Representation (MIR)][mir].
@@ -364,7 +361,6 @@ bootstrapping compiler will support them.
   - Guide: [The MIR (Mid level IR)](https://rustc-dev-guide.rust-lang.org/mir/index.html)
   - Definition: [`librustc/mir`](https://github.com/rust-lang/rust/tree/master/src/librustc/mir)
   - Definition of source that manipulates the MIR: [`librustc_mir`](https://github.com/rust-lang/rust/tree/master/src/librustc_mir)
-  - Main entry point: **TODO**
 - The Borrow Checker
   - Guide: [MIR Borrow Check](https://rustc-dev-guide.rust-lang.org/borrow_check.html)
   - Definition: [`rustc_mir/borrow_check`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html)
