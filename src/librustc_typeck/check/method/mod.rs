@@ -171,11 +171,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// Given a method call like `foo.bar::<T1,...Tn>(...)`:
     ///
-    /// * `fcx`:                   the surrounding `FnCtxt` (!)
-    /// * `span`:                  the span for the method call
-    /// * `method_name`:           the name of the method being called (`bar`)
+    /// * `self`:                  the surrounding `FnCtxt` (!)
     /// * `self_ty`:               the (unadjusted) type of the self expression (`foo`)
-    /// * `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
+    /// * `segment`:               the name and generic arguments of the method (`bar::<T1, ...Tn>`)
+    /// * `span`:                  the span for the method call
+    /// * `call_expr`:             the complete method call: (`foo.bar::<T1,...Tn>(...)`)
     /// * `self_expr`:             the self expression (`foo`)
     pub fn lookup_method(
         &self,
