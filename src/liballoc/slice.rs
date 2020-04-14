@@ -254,7 +254,7 @@ impl<T> [T] {
 
     /// Sorts the slice with a key extraction function.
     ///
-    /// This sort is stable (i.e., does not reorder equal elements) and `O(m n log(m n))`
+    /// This sort is stable (i.e., does not reorder equal elements) and `O(m n log n)`
     /// worst-case, where the key function is `O(m)`.
     ///
     /// For expensive key functions (e.g. functions that are not simple property accesses or
