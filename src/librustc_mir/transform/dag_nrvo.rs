@@ -112,15 +112,14 @@
 use crate::transform::{MirPass, MirSource};
 use rustc_index::{bit_set::BitSet, vec::IndexVec};
 use rustc_middle::mir::tcx::PlaceTy;
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor, MutatingUseContext};
+use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    read_only, Body, BodyAndCache, Local, LocalKind, Location, Operand, Place, PlaceElem,
-    ReadOnlyBodyAndCache, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
-    BasicBlock,
+    read_only, BasicBlock, Body, BodyAndCache, Local, LocalKind, Location, Operand, Place,
+    PlaceElem, ReadOnlyBodyAndCache, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use std::collections::VecDeque;
 use rustc_span::def_id::LOCAL_CRATE;
+use std::collections::VecDeque;
 
 pub struct Nrvo;
 
@@ -166,11 +165,27 @@ impl<'tcx> MirPass<'tcx> for Nrvo {
             debug!("{:?} = {:?} at {:?}", dest, src, loc);
             debug!("usage_map[src] = {:?}", usage_map[src]);
             debug!("usage_map[dest.local] = {:?}", usage_map[dest.local]);
-            if expect_uses_relative_to(src, loc, Direction::Backward, &usage_map[src], &read_only!(body)).is_err() {
+            if expect_uses_relative_to(
+                src,
+                loc,
+                Direction::Backward,
+                &usage_map[src],
+                &read_only!(body),
+            )
+            .is_err()
+            {
                 debug!("(ineligible, src used after assignment)");
                 return false;
             }
-            if expect_uses_relative_to(dest.local, loc, Direction::Forward, &usage_map[dest.local], &read_only!(body)).is_err() {
+            if expect_uses_relative_to(
+                dest.local,
+                loc,
+                Direction::Forward,
+                &usage_map[dest.local],
+                &read_only!(body),
+            )
+            .is_err()
+            {
                 debug!("(ineligible, dest used before assignment)");
                 return false;
             }
@@ -382,16 +397,18 @@ fn expect_uses_relative_to(
     // We're interested in uses of `local` basically before or after the `=` sign of the assignment.
     // That mean we have to visit one half of the assign statement here.
     match &statements[loc.statement_index].kind {
-        StatementKind::Assign(box (place, rvalue)) => {
-            match dir {
-                Direction::Backward => {
-                    collector.visit_rvalue(rvalue, loc);
-                }
-                Direction::Forward => {
-                    collector.visit_place(place, PlaceContext::MutatingUse(MutatingUseContext::Store), loc);
-                }
+        StatementKind::Assign(box (place, rvalue)) => match dir {
+            Direction::Backward => {
+                collector.visit_rvalue(rvalue, loc);
             }
-        }
+            Direction::Forward => {
+                collector.visit_place(
+                    place,
+                    PlaceContext::MutatingUse(MutatingUseContext::Store),
+                    loc,
+                );
+            }
+        },
         _ => bug!("{:?} should be an assignment", loc),
     }
 
@@ -463,7 +480,8 @@ type UsageMap = IndexVec<Local, BitSet<BasicBlock>>;
 
 /// Builds a usage map, mapping `Local`s to the `BasicBlock`s using them.
 fn usage_map(body: &Body<'_>) -> UsageMap {
-    let mut map = IndexVec::from_elem_n(BitSet::new_empty(body.basic_blocks().len()), body.local_decls.len());
+    let mut map =
+        IndexVec::from_elem_n(BitSet::new_empty(body.basic_blocks().len()), body.local_decls.len());
     let mut collector = UseCollector {
         callback: |local, location: Location| {
             map[local].insert(location.block);
