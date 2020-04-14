@@ -1,5 +1,5 @@
-use crate::utils::{differing_macro_contexts, paths, snippet_with_applicability, span_lint_and_then};
-use crate::utils::{is_copy, match_type};
+use crate::utils::{differing_macro_contexts, snippet_with_applicability, span_lint_and_then};
+use crate::utils::{is_copy, is_type_diagnostic_item};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
@@ -20,7 +20,7 @@ pub(super) fn lint<'a, 'tcx>(
     map_span: Span,
 ) {
     // lint if the caller of `map()` is an `Option`
-    if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
+    if is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_args[0]), sym!(option_type)) {
         if !is_copy(cx, cx.tables.expr_ty(&unwrap_args[1])) {
             // Do not lint if the `map` argument uses identifiers in the `map`
             // argument that are also used in the `unwrap_or` argument

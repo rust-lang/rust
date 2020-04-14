@@ -1,8 +1,10 @@
 //! This module contains paths to types and functions Clippy needs to know
 //! about.
+//!
+//! Whenever possible, please consider diagnostic items over hardcoded paths.
+//! See <https://github.com/rust-lang/rust-clippy/issues/5393> for more information.
 
 pub const ANY_TRAIT: [&str; 3] = ["std", "any", "Any"];
-pub const ARC: [&str; 3] = ["alloc", "sync", "Arc"];
 pub const ARC_PTR_EQ: [&str; 4] = ["alloc", "sync", "Arc", "ptr_eq"];
 pub const ASMUT_TRAIT: [&str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
@@ -59,8 +61,6 @@ pub const MEM_FORGET: [&str; 3] = ["core", "mem", "forget"];
 pub const MEM_MAYBEUNINIT: [&str; 4] = ["core", "mem", "maybe_uninit", "MaybeUninit"];
 pub const MEM_MAYBEUNINIT_UNINIT: [&str; 5] = ["core", "mem", "maybe_uninit", "MaybeUninit", "uninit"];
 pub const MEM_REPLACE: [&str; 3] = ["core", "mem", "replace"];
-pub const MEM_UNINITIALIZED: [&str; 3] = ["core", "mem", "uninitialized"];
-pub const MEM_ZEROED: [&str; 3] = ["core", "mem", "zeroed"];
 pub const MUTEX: [&str; 4] = ["std", "sync", "mutex", "Mutex"];
 pub const MUTEX_GUARD: [&str; 4] = ["std", "sync", "mutex", "MutexGuard"];
 pub const OPEN_OPTIONS: [&str; 3] = ["std", "fs", "OpenOptions"];

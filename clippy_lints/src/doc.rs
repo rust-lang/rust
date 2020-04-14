@@ -1,4 +1,4 @@
-use crate::utils::{implements_trait, is_entrypoint_fn, match_type, paths, return_ty, span_lint};
+use crate::utils::{implements_trait, is_entrypoint_fn, is_type_diagnostic_item, return_ty, span_lint};
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{AttrKind, Attribute};
@@ -217,7 +217,7 @@ fn lint_for_missing_headers<'a, 'tcx>(
         );
     }
     if !headers.errors {
-        if match_type(cx, return_ty(cx, hir_id), &paths::RESULT) {
+        if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type)) {
             span_lint(
                 cx,
                 MISSING_ERRORS_DOC,
@@ -235,7 +235,7 @@ fn lint_for_missing_headers<'a, 'tcx>(
                 if let ty::Opaque(_, subs) = ret_ty.kind;
                 if let Some(gen) = subs.types().next();
                 if let ty::Generator(_, subs, _) = gen.kind;
-                if match_type(cx, subs.as_generator().return_ty(), &paths::RESULT);
+                if is_type_diagnostic_item(cx, subs.as_generator().return_ty(), sym!(result_type));
                 then {
                     span_lint(
                         cx,
