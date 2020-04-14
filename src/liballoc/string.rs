@@ -482,6 +482,7 @@ impl String {
     /// [`String`]: struct.String.html
     /// [`u8`]: ../../std/primitive.u8.html
     /// [`Vec<u8>`]: ../../std/vec/struct.Vec.html
+    /// [`&str`]: ../../std/primitive.str.html
     /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
     /// [`into_bytes`]: struct.String.html#method.into_bytes
     /// [`FromUtf8Error`]: struct.FromUtf8Error.html
