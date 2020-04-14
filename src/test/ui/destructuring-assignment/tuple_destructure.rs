@@ -12,7 +12,6 @@ fn main() {
     assert_eq!((a, b), (1, 2));
     (_, a) = (1, 2);
     assert_eq!((a, b), (2, 2));
-    // The following currently does not work, but should.
-    // (..) = (3, 4);
-    // assert_eq!((a, b), (2, 2));
+    (..) = (3, 4);
+    assert_eq!((a, b), (2, 2));
 }

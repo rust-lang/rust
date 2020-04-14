@@ -896,6 +896,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     true
                 }
             }
+            // `(..)`.
+            ExprKind::Paren(e) => {
+                if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
+                    false
+                } else {
+                    true
+                }
+            }
             _ => true,
         };
         if is_ordinary {
@@ -1031,6 +1039,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.destructure_sequence(elements, "tuple", eq_sign_span, assignments);
                 let tuple_pat = hir::PatKind::Tuple(pats, rest.map(|r| r.0));
                 return self.pat(lhs.span, tuple_pat);
+            }
+            // `(..)`. We special-case this for consistency with declarations.
+            ExprKind::Paren(e) => {
+                if let ExprKind::Range(None, None, RangeLimits::HalfOpen) = e.kind {
+                    let tuple_pat = hir::PatKind::Tuple(&[], Some(0));
+                    return self.pat(lhs.span, tuple_pat);
+                }
             }
             _ => {}
         }
