@@ -85,14 +85,14 @@ we'll talk about that later.
 [lex]: https://rustc-dev-guide.rust-lang.org/the-parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
 [`librustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
-[parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parser/index.html
+[parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [hir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html
 [type inference]: https://rustc-dev-guide.rust-lang.org/type-inference.html
 [mir]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 [borrow checking]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 [mir-opt]: https://rustc-dev-guide.rust-lang.org/mir/optimizations.html
 [`simplify_try`]: https://github.com/rust-lang/rust/pull/66282
-[codegen]: https://rustc-dev-guide.rust-lang.org/codegen.html
+[codegen]: https://rustc-dev-guide.rust-lang.org/backend/codegen.html
 
 ## How it does it
 
@@ -252,7 +252,7 @@ cache is stored there too. In the code, there is usually a variable called
 the name `'tcx`, which means that something is tied to the lifetime of the
 `TyCtxt` (usually it is stored or interned there).
 
-[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
 
 ### `ty::Ty`
 
@@ -264,7 +264,7 @@ on [`ty::Ty`][ty], but for now, we just want to mention that it exists and is th
 
 Oh, and also the `rustc::ty` module defines the `TyCtxt` struct we mentioned before.
 
-[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/type.Ty.html
+[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.Ty.html
 
 ### Parallelism
 
@@ -360,8 +360,8 @@ bootstrapping compiler will support them.
     - These two functions can't be decoupled.
 - The Mid Level Intermediate Representation (MIR)
   - Guide: [The MIR (Mid level IR)](https://rustc-dev-guide.rust-lang.org/mir/index.html)
-  - Definition: [`librustc/mir`](https://github.com/rust-lang/rust/tree/master/src/librustc/mir)
-  - Definition of source that manipulates the MIR: [`librustc_mir`](https://github.com/rust-lang/rust/tree/master/src/librustc_mir)
+  - Definition: [`librustc_middle/mir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html)
+  - Definition of source that manipulates the MIR: [`librustc_mir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/index.html)
 - The Borrow Checker
   - Guide: [MIR Borrow Check](https://rustc-dev-guide.rust-lang.org/borrow_check.html)
   - Definition: [`rustc_mir/borrow_check`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/index.html)
@@ -371,7 +371,7 @@ bootstrapping compiler will support them.
   - Definition: [`rustc_mir/transform`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/index.html)
   - Main entry point: [`optimized_mir` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.optimized_mir.html)
 - Code Generation
-  - Guide: [Code Generation](https://rustc-dev-guide.rust-lang.org/codegen.html)
+  - Guide: [Code Generation](https://rustc-dev-guide.rust-lang.org/backend/codegen.html)
   - Generating Machine Code from LLVM IR with LLVM - **TODO: reference?**
   - Main entry point: [`rustc_codegen_ssa::base::codegen_crate`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html)
     - This monomorphizes and produces LLVM IR for one codegen unit. It then starts a background thread to run LLVM, which must be joined later.
