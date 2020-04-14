@@ -438,13 +438,16 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
 }
 
 struct StatementDeclMarker<'a, 'tcx> {
-    used_locals: IndexVec<Local, usize>,
+    used_locals: &'a mut IndexVec<Local, usize>,
     statement: &'a Statement<'tcx>,
 }
 
 impl<'a, 'tcx> StatementDeclMarker<'a, 'tcx> {
-    pub fn new(local_count: usize, statement: &'a Statement<'tcx>) -> Self {
-        Self { used_locals: IndexVec::from_elem_n(0, local_count), statement }
+    pub fn new(
+        used_locals: &'a mut IndexVec<Local, usize>,
+        statement: &'a Statement<'tcx>,
+    ) -> Self {
+        Self { used_locals, statement }
     }
 }
 
@@ -457,7 +460,11 @@ impl<'a, 'tcx> Visitor<'tcx> for StatementDeclMarker<'a, 'tcx> {
             }
         }
 
-        self.used_locals[*local] += 1;
+        let use_count = &mut self.used_locals[*local];
+        // If this is the local we're removing...
+        if *use_count != 0 {
+            *use_count -= 1;
+        }
     }
 }
 
@@ -504,17 +511,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RemoveStatements<'a, 'tcx> {
                 trace!("removing statement {:?}", stmt);
                 self.modified = true;
 
-                let mut visitor = StatementDeclMarker::new(self.used_locals.len(), stmt);
+                let mut visitor = StatementDeclMarker::new(self.used_locals, stmt);
                 visitor.visit_statement(stmt, Location { block, statement_index: i });
-
-                for (local, count) in visitor.used_locals.iter_enumerated() {
-                    let used_count = &mut self.used_locals[local];
-
-                    // If this is the local we're removing...
-                    if *used_count != 0 {
-                        *used_count -= count;
-                    }
-                }
             }
 
             i += 1;
