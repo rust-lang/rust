@@ -915,8 +915,8 @@ impl<T> *mut [T] {
     /// assert_eq!(slice.len(), 3);
     /// ```
     #[inline]
-    #[unstable(feature = "slice_ptr_len", issue = "none")]
-    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "none")]
+    #[unstable(feature = "slice_ptr_len", issue = "71146")]
+    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
     pub const fn len(self) -> usize {
         unsafe { Repr { rust_mut: self }.raw }.len
     }
