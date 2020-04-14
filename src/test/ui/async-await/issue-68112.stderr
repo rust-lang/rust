@@ -2,7 +2,7 @@ error: future cannot be sent between threads safely
   --> $DIR/issue-68112.rs:34:5
    |
 LL | fn require_send(_: impl Send) {}
-   |    ------------         ---- required by this bound in `require_send`
+   |                         ---- required by this bound in `require_send`
 ...
 LL |     require_send(send_fut);
    |     ^^^^^^^^^^^^ future created by async block is not `Send`
@@ -18,7 +18,7 @@ error: future cannot be sent between threads safely
   --> $DIR/issue-68112.rs:43:5
    |
 LL | fn require_send(_: impl Send) {}
-   |    ------------         ---- required by this bound in `require_send`
+   |                         ---- required by this bound in `require_send`
 ...
 LL |     require_send(send_fut);
    |     ^^^^^^^^^^^^ future created by async block is not `Send`
@@ -34,7 +34,7 @@ error[E0277]: `std::cell::RefCell<i32>` cannot be shared between threads safely
   --> $DIR/issue-68112.rs:60:5
    |
 LL | fn require_send(_: impl Send) {}
-   |    ------------         ---- required by this bound in `require_send`
+   |                         ---- required by this bound in `require_send`
 ...
 LL |     require_send(send_fut);
    |     ^^^^^^^^^^^^ `std::cell::RefCell<i32>` cannot be shared between threads safely
