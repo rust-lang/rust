@@ -65,32 +65,32 @@ rustc-workspace-hack = "1.0.0"
 
 [dependencies.rustc_ast]
 package = "rustc-ap-rustc_ast"
-version = "651.0.0"
+version = "654.0.0"
 
 [dependencies.rustc_ast_pretty]
 package = "rustc-ap-rustc_ast_pretty"
-version = "651.0.0"
+version = "654.0.0"
 
 [dependencies.rustc_data_structures]
 package = "rustc-ap-rustc_data_structures"
-version = "651.0.0"
+version = "654.0.0"
 
 [dependencies.rustc_errors]
 package = "rustc-ap-rustc_errors"
-version = "651.0.0"
+version = "654.0.0"
 
 [dependencies.rustc_expand]
 package = "rustc-ap-rustc_expand"
-version = "651.0.0"
+version = "654.0.0"
 
 [dependencies.rustc_parse]
 package = "rustc-ap-rustc_parse"
-version = "651.0.0"
+version = "654.0.0"
 
 [dependencies.rustc_session]
 package = "rustc-ap-rustc_session"
-version = "651.0.0"
+version = "654.0.0"
 
 [dependencies.rustc_span]
 package = "rustc-ap-rustc_span"
-version = "651.0.0"
+version = "654.0.0"
