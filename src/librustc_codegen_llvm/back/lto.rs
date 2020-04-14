@@ -517,11 +517,20 @@ fn thin_lto(
 
                 let prev_imports = prev_import_map.modules_imported_by(module_name);
                 let curr_imports = curr_import_map.modules_imported_by(module_name);
+                let prev_exports = prev_import_map.modules_exported_by(module_name);
+                let curr_exports = curr_import_map.modules_exported_by(module_name);
                 let imports_all_green = curr_imports
                     .iter()
                     .all(|imported_module| green_modules.contains_key(imported_module));
+                let exports_all_green = curr_exports
+                    .iter()
+                    .all(|exported_module| green_modules.contains_key(exported_module));
 
-                if imports_all_green && equivalent_as_sets(prev_imports, curr_imports) {
+                if imports_all_green
+                    && equivalent_as_sets(prev_imports, curr_imports)
+                    && exports_all_green
+                    && equivalent_as_sets(prev_exports, curr_exports)
+                {
                     let work_product = green_modules[module_name].clone();
                     copy_jobs.push(work_product);
                     info!(" - {}: re-used", module_name);
@@ -885,11 +894,17 @@ pub unsafe fn optimize_thin_module(
 pub struct ThinLTOImports {
     // key = llvm name of importing module, value = list of modules it imports from
     imports: FxHashMap<String, Vec<String>>,
+    // key = llvm name of exporting module, value = list of modules it exports to
+    exports: FxHashMap<String, Vec<String>>,
 }
 
 impl ThinLTOImports {
     fn modules_imported_by(&self, llvm_module_name: &str) -> &[String] {
         self.imports.get(llvm_module_name).map(|v| &v[..]).unwrap_or(&[])
+    }
+
+    fn modules_exported_by(&self, llvm_module_name: &str) -> &[String] {
+        self.exports.get(llvm_module_name).map(|v| &v[..]).unwrap_or(&[])
     }
 
     fn save_to_file(&self, path: &Path) -> io::Result<()> {
@@ -909,13 +924,17 @@ impl ThinLTOImports {
     fn load_from_file(path: &Path) -> io::Result<ThinLTOImports> {
         use std::io::BufRead;
         let mut imports = FxHashMap::default();
-        let mut current_module = None;
-        let mut current_imports = vec![];
+        let mut exports: FxHashMap<_, Vec<_>> = FxHashMap::default();
+        let mut current_module: Option<String> = None;
+        let mut current_imports: Vec<String> = vec![];
         let file = File::open(path)?;
         for line in io::BufReader::new(file).lines() {
             let line = line?;
             if line.is_empty() {
                 let importing_module = current_module.take().expect("Importing module not set");
+                for imported in &current_imports {
+                    exports.entry(imported.clone()).or_default().push(importing_module.clone());
+                }
                 imports.insert(importing_module, mem::replace(&mut current_imports, vec![]));
             } else if line.starts_with(' ') {
                 // Space marks an imported module
@@ -927,7 +946,7 @@ impl ThinLTOImports {
                 current_module = Some(line.trim().to_string());
             }
         }
-        Ok(ThinLTOImports { imports })
+        Ok(ThinLTOImports { imports, exports })
     }
 
     /// Loads the ThinLTO import map from ThinLTOData.
@@ -951,7 +970,17 @@ impl ThinLTOImports {
                 .get_mut(importing_module_name)
                 .unwrap()
                 .push(imported_module_name.to_owned());
+
+            if !map.exports.contains_key(imported_module_name) {
+                map.exports.insert(imported_module_name.to_owned(), vec![]);
+            }
+
+            map.exports
+                .get_mut(imported_module_name)
+                .unwrap()
+                .push(importing_module_name.to_owned());
         }
+
         let mut map = ThinLTOImports::default();
         llvm::LLVMRustGetThinLTOModuleImports(
             data,
