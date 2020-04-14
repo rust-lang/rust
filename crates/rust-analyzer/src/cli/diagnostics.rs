@@ -2,7 +2,7 @@
 //! code if any errors are found.
 
 use anyhow::anyhow;
-use ra_db::{SourceDatabase, SourceDatabaseExt};
+use ra_db::SourceDatabaseExt;
 use ra_ide::Severity;
 use std::{collections::HashSet, path::Path};
 
@@ -28,28 +28,32 @@ pub fn diagnostics(path: &Path, load_output_dirs: bool, all: bool) -> Result<()>
 
     let mut found_error = false;
     let mut visited_files = HashSet::new();
-    let crate_graph = db.crate_graph();
-    for crate_id in crate_graph.iter() {
-        let krate = &crate_graph[crate_id];
-        if let Some(crate_name) = &krate.display_name {
-            println!("processing crate: {}", crate_name);
-        } else {
-            println!("processing crate: unknown");
-        }
-        for file_id in db.source_root(db.file_source_root(krate.root_file_id)).walk() {
+    for source_root_id in members {
+        for file_id in db.source_root(source_root_id).walk() {
             // Filter out files which are not actually modules (unless `--all` flag is
             // passed). In the rust-analyzer repository this filters out the parser test files.
             if semantics.to_module_def(file_id).is_some() || all {
                 if !visited_files.contains(&file_id) {
-                    if members.contains(&db.file_source_root(file_id)) {
-                        println!("processing module: {}", db.file_relative_path(file_id));
-                        for diagnostic in analysis.diagnostics(file_id).unwrap() {
-                            if matches!(diagnostic.severity, Severity::Error) {
-                                found_error = true;
-                            }
-
-                            println!("{:?}", diagnostic);
+                    let crate_name = if let Some(module) = semantics.to_module_def(file_id) {
+                        if let Some(name) = module.krate().display_name(db) {
+                            format!("{}", name)
+                        } else {
+                            String::from("unknown")
                         }
+                    } else {
+                        String::from("unknown")
+                    };
+                    println!(
+                        "processing crate: {}, module: {}",
+                        crate_name,
+                        db.file_relative_path(file_id)
+                    );
+                    for diagnostic in analysis.diagnostics(file_id).unwrap() {
+                        if matches!(diagnostic.severity, Severity::Error) {
+                            found_error = true;
+                        }
+
+                        println!("{:?}", diagnostic);
                     }
 
                     visited_files.insert(file_id);
