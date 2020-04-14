@@ -642,7 +642,7 @@ impl<T> Trait<T> for X {
                 .items
                 .iter()
                 .filter(|(name, item)| {
-                    ty::AssocKind::Method == item.kind && Some(**name) != current_method_ident
+                    ty::AssocKind::Fn == item.kind && Some(**name) != current_method_ident
                 })
                 .filter_map(|(_, item)| {
                     let method = self.fn_sig(item.def_id);
