@@ -169,13 +169,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let info = this.deref_operand(info_op)?;
 
-        // Since we return nanoseceonds instead of ticks from
+        // Since we return nanoseconds instead of ticks from
         // `mach_absolute_time`, we don't need to scale the absolute
         // time.
         let (numer, denom) = (1,1);
+        let uint32_layout = this.layout_of(this.tcx.types.u32)?;
         let imms = [
-            immty_from_int_checked(numer, this.libc_ty_layout("uint32_t")?)?,
-            immty_from_int_checked(denom, this.libc_ty_layout("uint32_t")?)?
+            immty_from_int_checked(numer, uint32_layout)?,
+            immty_from_int_checked(denom, uint32_layout)?
         ];
 
         this.write_packed_immediates(info, &imms)?;
