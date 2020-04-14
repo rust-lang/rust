@@ -1797,7 +1797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // we know that the yield type must be `()`; however, the context won't contain this
             // information. Hence, we check the source of the yield expression here and check its
             // value's type against `()` (this check should always hold).
-            None if src == &hir::YieldSource::Await => {
+            None if src.is_await() => {
                 self.check_expr_coercable_to_type(&value, self.tcx.mk_unit());
                 self.tcx.mk_unit()
             }

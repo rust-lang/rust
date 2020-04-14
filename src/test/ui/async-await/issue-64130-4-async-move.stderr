@@ -2,7 +2,7 @@ error: future cannot be sent between threads safely
   --> $DIR/issue-64130-4-async-move.rs:15:17
    |
 LL |   pub fn foo() -> impl Future + Send {
-   |                   ^^^^^^^^^^^^^^^^^^ future returned by `foo` is not `Send`
+   |                   ^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
 ...
 LL | /     async move {
 LL | |         match client.status() {
@@ -18,7 +18,7 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-4-async-move.rs:21:26
    |
 LL |         match client.status() {
-   |               ------ has type `&Client`
+   |               ------ has type `&Client` which is not `Send`
 LL |             200 => {
 LL |                 let _x = get().await;
    |                          ^^^^^^^^^^^ await occurs here, with `client` maybe used later

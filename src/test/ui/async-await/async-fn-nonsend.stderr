@@ -12,7 +12,7 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:24:5
    |
 LL |     let x = non_send();
-   |         - has type `impl std::fmt::Debug`
+   |         - has type `impl std::fmt::Debug` which is not `Send`
 LL |     drop(x);
 LL |     fut().await;
    |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
@@ -33,7 +33,7 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:33:20
    |
 LL |     match Some(non_send()) {
-   |                ---------- has type `impl std::fmt::Debug`
+   |                ---------- has type `impl std::fmt::Debug` which is not `Send`
 LL |         Some(_) => fut().await,
    |                    ^^^^^^^^^^^ await occurs here, with `non_send()` maybe used later
 ...
@@ -54,7 +54,7 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:42:9
    |
 LL |     let f: &mut std::fmt::Formatter = panic!();
-   |         - has type `&mut std::fmt::Formatter<'_>`
+   |         - has type `&mut std::fmt::Formatter<'_>` which is not `Send`
 LL |     if non_sync().fmt(f).unwrap() == () {
 LL |         fut().await;
    |         ^^^^^^^^^^^ await occurs here, with `f` maybe used later
