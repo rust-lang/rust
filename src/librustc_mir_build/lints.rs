@@ -24,7 +24,7 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: LocalDefId) {
             Some(AssocItem {
                 container: AssocItemContainer::TraitContainer(trait_def_id), ..
             }) => {
-                let trait_substs_count = tcx.generics_of(trait_def_id).count();
+                let trait_substs_count = tcx.generics_of(*trait_def_id).count();
                 &InternalSubsts::identity_for_item(tcx, def_id.to_def_id())[..trait_substs_count]
             }
             _ => &[],

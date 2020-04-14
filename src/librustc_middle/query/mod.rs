@@ -367,10 +367,12 @@ rustc_queries! {
         query associated_item_def_ids(_: DefId) -> &'tcx [DefId] {}
 
         /// Maps from a trait item to the trait item "descriptor".
-        query associated_item(_: DefId) -> ty::AssocItem {}
+        query associated_item(_: DefId) -> ty::AssocItem {
+            storage(ArenaCacheSelector<'tcx>)
+        }
 
         /// Collects the associated items defined on a trait or impl.
-        query associated_items(key: DefId) -> ty::AssociatedItems {
+        query associated_items(key: DefId) -> ty::AssociatedItems<'tcx> {
             storage(ArenaCacheSelector<'tcx>)
             desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
         }
@@ -395,6 +397,7 @@ rustc_queries! {
         query unsafety_check_result(key: LocalDefId) -> mir::UnsafetyCheckResult {
             desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
+            storage(ArenaCacheSelector<'tcx>)
         }
 
         /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error
@@ -644,6 +647,7 @@ rustc_queries! {
 
     Codegen {
         query codegen_fn_attrs(_: DefId) -> CodegenFnAttrs {
+            storage(ArenaCacheSelector<'tcx>)
             cache_on_disk_if { true }
         }
     }

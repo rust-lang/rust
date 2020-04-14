@@ -252,7 +252,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         inline(cx, llfn, attributes::InlineAttr::Hint);
     }
 
-    inline(cx, llfn, codegen_fn_attrs.inline);
+    inline(cx, llfn, codegen_fn_attrs.inline.clone());
 
     // The `uwtable` attribute according to LLVM is:
     //
