@@ -279,13 +279,21 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Ok(())
     }
 
-    /// Called immediately before a new stack frame got pushed.
-    fn stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, Self::FrameExtra>;
+    /// Called immediately before a new stack frame gets pushed.
+    fn init_frame_extra(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        frame: Frame<'mir, 'tcx, Self::PointerTag>,
+    ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>>;
 
-    /// Called immediately after a stack frame gets popped
-    fn stack_pop(
+    /// Called immediately after a stack frame got pushed and its locals got initialized.
+    fn after_stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called immediately after a stack frame got popped, but before jumping back to the caller.
+    fn after_stack_pop(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _extra: Self::FrameExtra,
+        _frame: Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
         _unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
         // By default, we do not support unwinding from panics

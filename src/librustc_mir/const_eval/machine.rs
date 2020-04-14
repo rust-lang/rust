@@ -13,8 +13,8 @@ use rustc_middle::mir::AssertMessage;
 use rustc_span::symbol::Symbol;
 
 use crate::interpret::{
-    self, AllocId, Allocation, GlobalId, ImmTy, InterpCx, InterpResult, Memory, MemoryKind, OpTy,
-    PlaceTy, Pointer, Scalar,
+    self, AllocId, Allocation, Frame, GlobalId, ImmTy, InterpCx, InterpResult, Memory, MemoryKind,
+    OpTy, PlaceTy, Pointer, Scalar,
 };
 
 use super::error::*;
@@ -342,8 +342,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
     }
 
     #[inline(always)]
-    fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        Ok(())
+    fn init_frame_extra(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        frame: Frame<'mir, 'tcx>,
+    ) -> InterpResult<'tcx, Frame<'mir, 'tcx>> {
+        Ok(frame)
     }
 
     fn before_access_global(
