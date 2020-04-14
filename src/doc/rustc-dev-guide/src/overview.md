@@ -324,7 +324,7 @@ bootstrapping compiler will support them.
 - Lexical Analysis: Lex the user program to a stream of tokens
   - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
   - Lexer definition: [`librustc_lexer`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html)
-  - Main entry point: [`rustc_lexer::tokenize`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/fn.tokenize.html)
+  - Main entry point: [`rustc_lexer::first_token`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/fn.first_token.html)
 - Parsing: Parse the stream of tokens to an Abstract Syntax Tree (AST)
   - Guide: [Lexing and Parsing](https://rustc-dev-guide.rust-lang.org/the-parser.html)
   - Parser definition: [`librustc_parse`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html)
