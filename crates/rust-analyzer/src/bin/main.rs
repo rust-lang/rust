@@ -39,8 +39,8 @@ fn main() -> Result<()> {
             cli::analysis_bench(args.verbosity, path.as_ref(), what, load_output_dirs)?
         }
 
-        args::Command::Diagnostics { path, load_output_dirs } => {
-            cli::diagnostics(path.as_ref(), load_output_dirs)?
+        args::Command::Diagnostics { path, load_output_dirs, all } => {
+            cli::diagnostics(path.as_ref(), load_output_dirs, all)?
         }
 
         args::Command::RunServer => run_server()?,

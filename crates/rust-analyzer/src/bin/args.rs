@@ -38,6 +38,9 @@ pub(crate) enum Command {
     Diagnostics {
         path: PathBuf,
         load_output_dirs: bool,
+        /// Include files which are not modules. In rust-analyzer
+        /// this would include the parser test files.
+        all: bool,
     },
     RunServer,
     Version,
@@ -225,6 +228,7 @@ USAGE:
 FLAGS:
     -h, --help              Prints help information
         --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
+        --all               Include all files rather than only modules
 
 ARGS:
     <PATH>"
@@ -233,6 +237,7 @@ ARGS:
                 }
 
                 let load_output_dirs = matches.contains("--load-output-dirs");
+                let all = matches.contains("--all");
                 let path = {
                     let mut trailing = matches.free()?;
                     if trailing.len() != 1 {
@@ -241,7 +246,7 @@ ARGS:
                     trailing.pop().unwrap().into()
                 };
 
-                Command::Diagnostics { path, load_output_dirs }
+                Command::Diagnostics { path, load_output_dirs, all }
             }
             _ => {
                 eprintln!(
