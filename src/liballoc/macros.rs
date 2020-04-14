@@ -42,8 +42,8 @@ macro_rules! vec {
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
     );
-    ($($x:expr),* $(,)?) => (
-        <[_]>::into_vec(box [$($x),*])
+    ($($x:expr),+ $(,)?) => (
+        <[_]>::into_vec(box [$($x),+])
     );
 }
 
