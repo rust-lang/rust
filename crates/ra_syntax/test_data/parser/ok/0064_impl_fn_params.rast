@@ -71,14 +71,16 @@ SOURCE_FILE@[0; 137)
               RECORD_FIELD_PAT_LIST@[58; 66)
                 L_CURLY@[58; 59) "{"
                 WHITESPACE@[59; 60) " "
-                BIND_PAT@[60; 61)
-                  NAME@[60; 61)
-                    IDENT@[60; 61) "a"
+                RECORD_FIELD_PAT@[60; 61)
+                  BIND_PAT@[60; 61)
+                    NAME@[60; 61)
+                      IDENT@[60; 61) "a"
                 COMMA@[61; 62) ","
                 WHITESPACE@[62; 63) " "
-                BIND_PAT@[63; 64)
-                  NAME@[63; 64)
-                    IDENT@[63; 64) "b"
+                RECORD_FIELD_PAT@[63; 64)
+                  BIND_PAT@[63; 64)
+                    NAME@[63; 64)
+                      IDENT@[63; 64) "b"
                 WHITESPACE@[64; 65) " "
                 R_CURLY@[65; 66) "}"
             COLON@[66; 67) ":"

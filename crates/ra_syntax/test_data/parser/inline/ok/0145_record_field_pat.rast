@@ -25,7 +25,8 @@ SOURCE_FILE@[0; 63)
               L_CURLY@[21; 22) "{"
               WHITESPACE@[22; 23) " "
               RECORD_FIELD_PAT@[23; 27)
-                INT_NUMBER@[23; 24) "0"
+                NAME_REF@[23; 24)
+                  INT_NUMBER@[23; 24) "0"
                 COLON@[24; 25) ":"
                 WHITESPACE@[25; 26) " "
                 LITERAL_PAT@[26; 27)
@@ -54,7 +55,7 @@ SOURCE_FILE@[0; 63)
               L_CURLY@[46; 47) "{"
               WHITESPACE@[47; 48) " "
               RECORD_FIELD_PAT@[48; 52)
-                NAME@[48; 49)
+                NAME_REF@[48; 49)
                   IDENT@[48; 49) "x"
                 COLON@[49; 50) ":"
                 WHITESPACE@[50; 51) " "

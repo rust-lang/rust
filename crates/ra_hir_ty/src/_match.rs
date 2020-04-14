@@ -289,7 +289,7 @@ impl PatStack {
         Self::from_slice(&self.0[1..])
     }
 
-    fn replace_head_with(&self, pat_ids: &[PatId]) -> PatStack {
+    fn replace_head_with<T: Into<PatIdOrWild> + Copy>(&self, pat_ids: &[T]) -> PatStack {
         let mut patterns: PatStackInner = smallvec![];
         for pat in pat_ids {
             patterns.push((*pat).into());
@@ -320,12 +320,14 @@ impl PatStack {
         constructor: &Constructor,
     ) -> MatchCheckResult<Option<PatStack>> {
         let result = match (self.head().as_pat(cx), constructor) {
-            (Pat::Tuple(ref pat_ids), Constructor::Tuple { arity }) => {
-                debug_assert_eq!(
-                    pat_ids.len(),
-                    *arity,
-                    "we type check before calling this code, so we should never hit this case",
-                );
+            (Pat::Tuple { args: ref pat_ids, ellipsis }, Constructor::Tuple { arity: _ }) => {
+                if ellipsis.is_some() {
+                    // If there are ellipsis here, we should add the correct number of
+                    // Pat::Wild patterns to `pat_ids`. We should be able to use the
+                    // constructors arity for this, but at the time of writing we aren't
+                    // correctly calculating this arity when ellipsis are present.
+                    return Err(MatchCheckErr::NotImplemented);
+                }
 
                 Some(self.replace_head_with(pat_ids))
             }
@@ -351,19 +353,47 @@ impl PatStack {
                     Some(self.to_tail())
                 }
             }
-            (Pat::TupleStruct { args: ref pat_ids, .. }, Constructor::Enum(enum_constructor)) => {
+            (
+                Pat::TupleStruct { args: ref pat_ids, ellipsis, .. },
+                Constructor::Enum(enum_constructor),
+            ) => {
                 let pat_id = self.head().as_id().expect("we know this isn't a wild");
                 if !enum_variant_matches(cx, pat_id, *enum_constructor) {
                     None
                 } else {
-                    // If the enum variant matches, then we need to confirm
-                    // that the number of patterns aligns with the expected
-                    // number of patterns for that enum variant.
-                    if pat_ids.len() != constructor.arity(cx)? {
-                        return Err(MatchCheckErr::MalformedMatchArm);
-                    }
+                    let constructor_arity = constructor.arity(cx)?;
+                    if let Some(ellipsis_position) = ellipsis {
+                        // If there are ellipsis in the pattern, the ellipsis must take the place
+                        // of at least one sub-pattern, so `pat_ids` should be smaller than the
+                        // constructor arity.
+                        if pat_ids.len() < constructor_arity {
+                            let mut new_patterns: Vec<PatIdOrWild> = vec![];
 
-                    Some(self.replace_head_with(pat_ids))
+                            for pat_id in &pat_ids[0..ellipsis_position] {
+                                new_patterns.push((*pat_id).into());
+                            }
+
+                            for _ in 0..(constructor_arity - pat_ids.len()) {
+                                new_patterns.push(PatIdOrWild::Wild);
+                            }
+
+                            for pat_id in &pat_ids[ellipsis_position..pat_ids.len()] {
+                                new_patterns.push((*pat_id).into());
+                            }
+
+                            Some(self.replace_head_with(&new_patterns))
+                        } else {
+                            return Err(MatchCheckErr::MalformedMatchArm);
+                        }
+                    } else {
+                        // If there is no ellipsis in the tuple pattern, the number
+                        // of patterns must equal the constructor arity.
+                        if pat_ids.len() == constructor_arity {
+                            Some(self.replace_head_with(pat_ids))
+                        } else {
+                            return Err(MatchCheckErr::MalformedMatchArm);
+                        }
+                    }
                 }
             }
             (Pat::Or(_), _) => return Err(MatchCheckErr::NotImplemented),
@@ -644,7 +674,11 @@ impl Constructor {
 fn pat_constructor(cx: &MatchCheckCtx, pat: PatIdOrWild) -> MatchCheckResult<Option<Constructor>> {
     let res = match pat.as_pat(cx) {
         Pat::Wild => None,
-        Pat::Tuple(pats) => Some(Constructor::Tuple { arity: pats.len() }),
+        // FIXME somehow create the Tuple constructor with the proper arity. If there are
+        // ellipsis, the arity is not equal to the number of patterns.
+        Pat::Tuple { args: pats, ellipsis } if ellipsis.is_none() => {
+            Some(Constructor::Tuple { arity: pats.len() })
+        }
         Pat::Lit(lit_expr) => match cx.body.exprs[lit_expr] {
             Expr::Literal(Literal::Bool(val)) => Some(Constructor::Bool(val)),
             _ => return Err(MatchCheckErr::NotImplemented),
@@ -965,6 +999,47 @@ mod tests {
                     (true, _x) => {},
                     (false, true) => {},
                     (false, false) => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_end_no_diagnostic() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (false, ..) => {},
+                    (true, ..) => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_beginning_no_diagnostic() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (.., false) => {},
+                    (.., true) => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_no_diagnostic() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (..) => {},
                 }
             }
         ";
@@ -1315,8 +1390,9 @@ mod tests {
             }
         ";
 
-        // Match arms with the incorrect type are filtered out.
-        check_diagnostic(content);
+        // Match statements with arms that don't match the
+        // expression pattern do not fire this diagnostic.
+        check_no_diagnostic(content);
     }
 
     #[test]
@@ -1330,8 +1406,9 @@ mod tests {
             }
         ";
 
-        // Match arms with the incorrect type are filtered out.
-        check_diagnostic(content);
+        // Match statements with arms that don't match the
+        // expression pattern do not fire this diagnostic.
+        check_no_diagnostic(content);
     }
 
     #[test]
@@ -1344,8 +1421,9 @@ mod tests {
             }
         ";
 
-        // Match arms with the incorrect type are filtered out.
-        check_diagnostic(content);
+        // Match statements with arms that don't match the
+        // expression pattern do not fire this diagnostic.
+        check_no_diagnostic(content);
     }
 
     #[test]
@@ -1381,6 +1459,163 @@ mod tests {
         // The enum is not in scope so we don't perform exhaustiveness
         // checking, but we want to be sure we don't panic here (and
         // we don't create a diagnostic).
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_diverges() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop {} {
+                    Either::A => (),
+                    Either::B => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_loop_with_break() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop { break Foo::A } {
+                    Either::A => (),
+                    Either::B => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_partially_diverges() {
+        let content = r"
+            enum Either<T> {
+                A(T),
+                B,
+            }
+            fn foo() -> Either<!> {
+                Either::B
+            }
+            fn test_fn() -> u32 {
+                match foo() {
+                    Either::A(val) => val,
+                    Either::B => 0,
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_tuple_partial_ellipsis_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(true, .., true) => {},
+                    Either::A(true, .., false) => {},
+                    Either::A(false, .., true) => {},
+                    Either::A(false, .., false) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_tuple_partial_ellipsis_2_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(true, .., true) => {},
+                    Either::A(true, .., false) => {},
+                    Either::A(.., true) => {},
+                    Either::A(.., false) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_tuple_partial_ellipsis_missing_arm() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(true, .., true) => {},
+                    Either::A(true, .., false) => {},
+                    Either::A(false, .., false) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
+        check_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_tuple_partial_ellipsis_2_missing_arm() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(true, .., true) => {},
+                    Either::A(true, .., false) => {},
+                    Either::A(.., true) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
+        check_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_tuple_ellipsis_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A(bool, bool, bool, bool),
+                B,
+            }
+            fn test_fn() {
+                match Either::B {
+                    Either::A(..) => {},
+                    Either::B => {},
+                }
+            }
+        ";
+
         check_no_diagnostic(content);
     }
 }
@@ -1450,6 +1685,77 @@ mod false_negatives {
 
         // This is a false negative.
         // We do not currently handle patterns with internal `or`s.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_diverges_missing_arm() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop {} {
+                    Either::A => (),
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // Even though the match expression diverges, rustc fails
+        // to compile here since `Either::B` is missing.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn expr_loop_missing_arm() {
+        let content = r"
+            enum Either {
+                A,
+                B,
+            }
+            fn test_fn() {
+                match loop { break Foo::A } {
+                    Either::A => (),
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // We currently infer the type of `loop { break Foo::A }` to `!`, which
+        // causes us to skip the diagnostic since `Either::A` doesn't type check
+        // with `!`.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_end_missing_arm() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (false, ..) => {},
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // We don't currently handle tuple patterns with ellipsis.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn tuple_of_bools_with_ellipsis_at_beginning_missing_arm() {
+        let content = r"
+            fn test_fn() {
+                match (false, true, false) {
+                    (.., false) => {},
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // We don't currently handle tuple patterns with ellipsis.
         check_no_diagnostic(content);
     }
 }

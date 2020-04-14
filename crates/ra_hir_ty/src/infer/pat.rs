@@ -85,7 +85,7 @@ impl<'a> InferenceContext<'a> {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
 
         let is_non_ref_pat = match &body[pat] {
-            Pat::Tuple(..)
+            Pat::Tuple { .. }
             | Pat::Or(..)
             | Pat::TupleStruct { .. }
             | Pat::Record { .. }
@@ -116,7 +116,7 @@ impl<'a> InferenceContext<'a> {
         let expected = expected;
 
         let ty = match &body[pat] {
-            Pat::Tuple(ref args) => {
+            Pat::Tuple { ref args, .. } => {
                 let expectations = match expected.as_tuple() {
                     Some(parameters) => &*parameters.0,
                     _ => &[],
@@ -155,7 +155,7 @@ impl<'a> InferenceContext<'a> {
                 let subty = self.infer_pat(*pat, expectation, default_bm);
                 Ty::apply_one(TypeCtor::Ref(*mutability), subty)
             }
-            Pat::TupleStruct { path: p, args: subpats } => {
+            Pat::TupleStruct { path: p, args: subpats, .. } => {
                 self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm, pat)
             }
             Pat::Record { path: p, args: fields, ellipsis: _ } => {
