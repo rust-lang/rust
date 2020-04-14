@@ -5,8 +5,8 @@
 //! always work with the most recent version of Android, but we also want to
 //! work with older versions of Android for whenever projects need to.
 //!
-//! Our current minimum supported Android version is `android-9`, e.g., Android
-//! with API level 9. We then in theory want to work on that and all future
+//! Our current minimum supported Android version is `android-16`, e.g., Android
+//! with API level 16. We then in theory want to work on that and all future
 //! versions of Android!
 //!
 //! Some of the detection here is done at runtime via `dlopen` and

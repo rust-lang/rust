@@ -52,22 +52,21 @@ unsafe impl GlobalAlloc for System {
     }
 }
 
-#[cfg(any(
-    target_os = "android",
-    target_os = "illumos",
-    target_os = "redox",
-    target_os = "solaris"
-))]
+#[cfg(any(target_os = "illumos", target_os = "redox", target_os = "solaris"))]
 #[inline]
 unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
-    // On android we currently target API level 9 which unfortunately
-    // doesn't have the `posix_memalign` API used below. Instead we use
-    // `memalign`, but this unfortunately has the property on some systems
-    // where the memory returned cannot be deallocated by `free`!
+    // On platforms where `posix_memalign` is unavailable, we use `memalign`.
     //
-    // Upon closer inspection, however, this appears to work just fine with
-    // Android, so for this platform we should be fine to call `memalign`
-    // (which is present in API level 9). Some helpful references could
+    // This was previously a workaround for old Android version,
+    // it also has been applied to other systems now.
+    //
+    // This _might_ unfortunately have the property on some platforms
+    // that the memory returned cannot be deallocated by `free`!
+    //
+    // However, this appears to work just fine with the covered platforms,
+    // so for these platforms we should be fine to call `memalign`.
+    //
+    // Some helpful references could
     // possibly be chromium using memalign [1], attempts at documenting that
     // memalign + free is ok [2] [3], or the current source of chromium
     // which still uses memalign on android [4].
@@ -80,12 +79,7 @@ unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     libc::memalign(layout.align(), layout.size()) as *mut u8
 }
 
-#[cfg(not(any(
-    target_os = "android",
-    target_os = "illumos",
-    target_os = "redox",
-    target_os = "solaris"
-)))]
+#[cfg(not(any(target_os = "illumos", target_os = "redox", target_os = "solaris")))]
 #[inline]
 unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     let mut out = ptr::null_mut();
