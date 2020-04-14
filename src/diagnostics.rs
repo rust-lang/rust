@@ -42,6 +42,7 @@ impl MachineStopType for TerminationInfo {}
 pub enum NonHaltingDiagnostic {
     PoppedTrackedPointerTag(Item),
     CreatedAlloc(AllocId),
+    FreedAlloc(AllocId),
 }
 
 /// Emit a custom diagnostic without going through the miri-engine machinery
@@ -191,6 +192,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         format!("popped tracked tag for item {:?}", item),
                     CreatedAlloc(AllocId(id)) =>
                         format!("created allocation with id {}", id),
+                    FreedAlloc(AllocId(id)) =>
+                        format!("freed allocation with id {}", id),
                 };
                 report_msg(this, "tracking was triggered", msg, vec![], false);
             }

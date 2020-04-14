@@ -116,7 +116,7 @@ pub struct MemoryExtra {
     pub(crate) rng: RefCell<StdRng>,
 
     /// An allocation ID to report when it is being allocated
-    /// (helps for debugging memory leaks).
+    /// (helps for debugging memory leaks and use after free bugs).
     tracked_alloc_id: Option<AllocId>,
 
     /// Controls whether alignment of memory accesses is being checked.
@@ -464,6 +464,18 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             AllocExtra { stacked_borrows: stacks },
         );
         (Cow::Owned(alloc), base_tag)
+    }
+
+    #[inline(always)]
+    fn before_deallocation(
+        memory_extra: &mut Self::MemoryExtra,
+        id: AllocId,
+    ) -> InterpResult<'tcx> {
+        if Some(id) == memory_extra.tracked_alloc_id {
+            register_diagnostic(NonHaltingDiagnostic::FreedAlloc(id));
+        }
+        
+        Ok(())
     }
 
     #[inline(always)]
