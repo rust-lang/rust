@@ -404,10 +404,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     (ty::Param(_), ty::Projection(_)) | (ty::Projection(_), ty::Param(_)) => {
                         db.note("you might be missing a type parameter or trait bound");
                     }
-                    (ty::Param(p), ty::Dynamic(..))
-                    | (ty::Dynamic(..), ty::Param(p))
-                    | (ty::Param(p), ty::Opaque(..))
-                    | (ty::Opaque(..), ty::Param(p)) => {
+                    (ty::Param(p), ty::Dynamic(..) | ty::Opaque(..))
+                    | (ty::Dynamic(..) | ty::Opaque(..), ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
