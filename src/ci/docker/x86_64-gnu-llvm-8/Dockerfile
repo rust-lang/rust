@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
-  llvm-7-tools \
+  llvm-8-tools \
   libedit-dev \
   libssl-dev \
   pkg-config \
@@ -26,7 +26,7 @@ RUN sh /scripts/sccache.sh
 # using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
-      --llvm-root=/usr/lib/llvm-7 \
+      --llvm-root=/usr/lib/llvm-8 \
       --enable-llvm-link-shared \
       --set rust.thin-lto-import-instr-limit=10
 

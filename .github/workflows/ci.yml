@@ -36,13 +36,13 @@ jobs:
       matrix:
         name:
           - mingw-check
-          - x86_64-gnu-llvm-7
+          - x86_64-gnu-llvm-8
           - x86_64-gnu-tools
         include:
           - name: mingw-check
             os: ubuntu-latest-xl
             env: {}
-          - name: x86_64-gnu-llvm-7
+          - name: x86_64-gnu-llvm-8
             os: ubuntu-latest-xl
             env: {}
           - name: x86_64-gnu-tools
@@ -352,7 +352,7 @@ jobs:
           - x86_64-gnu-debug
           - x86_64-gnu-distcheck
           - x86_64-gnu-full-bootstrap
-          - x86_64-gnu-llvm-7
+          - x86_64-gnu-llvm-8
           - x86_64-gnu-nopt
           - x86_64-gnu-tools
           - x86_64-mingw-1
@@ -469,7 +469,7 @@ jobs:
           - name: x86_64-gnu-full-bootstrap
             os: ubuntu-latest-xl
             env: {}
-          - name: x86_64-gnu-llvm-7
+          - name: x86_64-gnu-llvm-8
             env:
               RUST_BACKTRACE: 1
             os: ubuntu-latest-xl

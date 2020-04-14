@@ -83,17 +83,15 @@ unsafe fn configure_llvm(sess: &Session) {
         if !sess.opts.debugging_opts.no_generate_arange_section {
             add("-generate-arange-section", false);
         }
-        if get_major_version() >= 8 {
-            match sess
-                .opts
-                .debugging_opts
-                .merge_functions
-                .unwrap_or(sess.target.target.options.merge_functions)
-            {
-                MergeFunctions::Disabled | MergeFunctions::Trampolines => {}
-                MergeFunctions::Aliases => {
-                    add("-mergefunc-use-aliases", false);
-                }
+        match sess
+            .opts
+            .debugging_opts
+            .merge_functions
+            .unwrap_or(sess.target.target.options.merge_functions)
+        {
+            MergeFunctions::Disabled | MergeFunctions::Trampolines => {}
+            MergeFunctions::Aliases => {
+                add("-mergefunc-use-aliases", false);
             }
         }
 
