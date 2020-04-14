@@ -371,7 +371,7 @@ bootstrapping compiler will support them.
   - Main entry point: [`optimized_mir` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.optimized_mir.html)
 - Code Generation
   - Guide: [Code Generation](https://rustc-dev-guide.rust-lang.org/codegen.html)
-  - Guide: [Generating LLVM IR](https://rustc-dev-guide.rust-lang.org/codegen.html#generating-llvm-ir) - **TODO: this is not available yet**
   - Generating Machine Code from LLVM IR with LLVM - **TODO: reference?**
-  - Main entry point MIR -> LLVM IR: [`MonoItem::define`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/mono_item/enum.MonoItem.html#method.define)
-  - Main entry point LLVM IR -> Machine Code: [`rustc_codegen_ssa::base::codegen_crate`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html)
+  - Main entry point: [`rustc_codegen_ssa::base::codegen_crate`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html)
+    - This monomorphizes and produces LLVM IR for one codegen unit. It then starts a background thread to run LLVM, which must be joined later.
+    - Monomorphization happens lazily via [`FunctionCx::monomorphize`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#method.monomorphize)
