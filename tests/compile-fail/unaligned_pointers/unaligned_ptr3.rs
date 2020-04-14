@@ -1,5 +1,5 @@
-// This should fail even without validation.
-// compile-flags: -Zmiri-disable-validation
+// This should fail even without validation or Stacked Borrows.
+// compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
 
 fn main() {
     let x = [2u16, 3, 4, 5]; // Make it big enough so we don't get an out-of-bounds error.
