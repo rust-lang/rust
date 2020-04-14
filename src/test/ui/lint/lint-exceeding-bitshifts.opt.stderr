@@ -148,3 +148,5 @@ warning: this arithmetic operation will overflow
 LL |       let n = 1_usize << BITS;
    |               ^^^^^^^^^^^^^^^ attempt to shift left with overflow
 
+warning: 24 warnings emitted
+
