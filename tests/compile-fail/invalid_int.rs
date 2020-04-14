@@ -3,6 +3,6 @@
 // compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
 fn main() {
-    let b = unsafe { std::mem::transmute::<u8, bool>(2) };
-    let _x = b == true; //~ ERROR interpreting an invalid 8-bit value as a bool: 2
+    let i = unsafe { std::mem::MaybeUninit::<i32>::uninit().assume_init() };
+    let _x = i + 0; //~ ERROR this operation requires initialized memory
 }
