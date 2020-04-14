@@ -169,9 +169,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let info = this.deref_operand(info_op)?;
 
-        // Since we return nanoseconds instead of ticks from
-        // `mach_absolute_time`, we don't need to scale the absolute
-        // time.
+        // Since our emulated ticks in `mach_absolute_time` *are* nanoseconds,
+        // no scaling needs to happen.
         let (numer, denom) = (1,1);
         let imms = [
             immty_from_int_checked(numer, this.machine.layouts.u32)?,
