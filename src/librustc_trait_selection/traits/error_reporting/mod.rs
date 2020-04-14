@@ -292,7 +292,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 )),
                                 Some(
                                     "the question mark operation (`?`) implicitly performs a \
-                                     conversion on the error value using the `From` trait"
+                                        conversion on the error value using the `From` trait"
                                         .to_owned(),
                                 ),
                             )
@@ -311,6 +311,27 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 post_message,
                             ))
                         );
+
+                        let should_convert_option_to_result =
+                            format!("{}", trait_ref.print_only_trait_path())
+                                .starts_with("std::convert::From<std::option::NoneError");
+                        let should_convert_result_to_option = format!("{}", trait_ref)
+                            .starts_with("<std::option::NoneError as std::convert::From<");
+                        if is_try && is_from && should_convert_option_to_result {
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
+                                "consider converting the `Option<T>` into a `Result<T, _>` using `Option::ok_or` or `Option::ok_or_else`",
+                                ".ok_or_else(|_| /* error value */)".to_string(),
+                                Applicability::HasPlaceholders,
+                            );
+                        } else if is_try && is_from && should_convert_result_to_option {
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
+                                "consider converting the `Result<T, _>` into an `Option<T>` using `Result::ok`",
+                                ".ok()".to_string(),
+                                Applicability::HasPlaceholders,
+                            );
+                        }
 
                         let explanation =
                             if obligation.cause.code == ObligationCauseCode::MainFunctionType {
