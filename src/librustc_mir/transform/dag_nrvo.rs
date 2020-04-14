@@ -112,13 +112,13 @@
 use crate::transform::{MirPass, MirSource};
 use rustc_index::{bit_set::BitSet, vec::IndexVec};
 use rustc_middle::mir::tcx::PlaceTy;
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor, MutatingUseContext};
 use rustc_middle::mir::{
     read_only, Body, BodyAndCache, Local, LocalKind, Location, Operand, Place, PlaceElem,
     ReadOnlyBodyAndCache, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    BasicBlock,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use smallvec::SmallVec;
 use std::collections::VecDeque;
 
 pub struct Nrvo;
@@ -140,11 +140,7 @@ impl<'tcx> MirPass<'tcx> for Nrvo {
             debug!("running on {}", tcx.def_path_str(source.def_id()));
         }
 
-        let mut uses_of = uses_of_locals(body);
-        uses_of.iter_mut().for_each(|v| {
-            v.sort_unstable();
-            v.dedup();
-        });
+        let usage_map = usage_map(body);
 
         let mut candidates = find_candidates(tcx, body);
         candidates.retain(|candidate @ &CandidateAssignment { dest, src, loc }| {
@@ -161,19 +157,15 @@ impl<'tcx> MirPass<'tcx> for Nrvo {
             // uses of `src` by moving backwards through the CFG, and all other uses of `dest` by
             // moving forwards.
 
-            let past_src_uses =
-                uses_relative_to_location(src, loc, Direction::Backward, &read_only!(body));
-            let future_dest_uses =
-                uses_relative_to_location(dest.local, loc, Direction::Forward, &read_only!(body));
-
             debug!("{:?} = {:?} at {:?}", dest, src, loc);
-            debug!("dest: uses_of[{:?}] = {:?}", dest.local, uses_of[dest.local]);
-            debug!("future_dest_uses  = {:?}", future_dest_uses);
-            debug!("src:  uses_of[{:?}] = {:?}", src, uses_of[src]);
-            debug!("past_src_uses     = {:?}", past_src_uses);
-
-            if uses_of[dest.local] != future_dest_uses || uses_of[src] != past_src_uses {
-                debug!("(ineligible)");
+            debug!("usage_map[src] = {:?}", usage_map[src]);
+            debug!("usage_map[dest.local] = {:?}", usage_map[dest.local]);
+            if expect_uses_relative_to(src, loc, Direction::Backward, &usage_map[src], &read_only!(body)).is_err() {
+                debug!("(ineligible, src used after assignment)");
+                return false;
+            }
+            if expect_uses_relative_to(dest.local, loc, Direction::Forward, &usage_map[dest.local], &read_only!(body)).is_err() {
+                debug!("(ineligible, dest used before assignment)");
                 return false;
             }
 
@@ -281,7 +273,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         if let Some(replacement) = self.map[place.local] {
             // Rebase `place`s projections onto `self.with`.
-            self.place_elem_cache.clear(); // FIXME faster
+            self.place_elem_cache.clear();
             self.place_elem_cache.extend(replacement.projection);
             self.place_elem_cache.extend(place.projection);
             let projection = self.tcx.intern_place_elems(&self.place_elem_cache);
@@ -308,38 +300,94 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
 }
 
 enum Direction {
+    /// All known uses of a local must happen after the assignment.
     Forward,
+    /// All known uses of a local must happen before the assignment.
     Backward,
 }
 
-/// Starting at the `Assign` statement at `loc` and moving in `dir`, collects all reachable uses of
-/// `local`.
-fn uses_relative_to_location(
+fn expect_uses_relative_to(
     local: Local,
     loc: Location,
     dir: Direction,
+    used_by: &BitSet<BasicBlock>,
     body: &ReadOnlyBodyAndCache<'_, '_>,
-) -> SmallVec<[Location; 1]> {
-    let mut uses = SmallVec::new();
-    // The assignment at `loc` always contributes a use, regardless of `dir`.
-    uses.push(loc);
+) -> Result<(), ()> {
+    // Traverse CFG in `dir`, collect all reachable blocks that are in `used_by`. If we find all of
+    // them (minus the block containing the assignment at `loc`), check that there's no use of
+    // `local` in `loc.block` (in opposite direction of `dir`).
 
+    assert!(used_by.contains(loc.block), "used_by set does not contain block with assignment");
+
+    // Checking other blocks is only necessary if there is more than 1 block using `local`.
+    // (many locals are generated for temporaries and only get used in a single block, so this
+    // optimizes for that case)
+    if used_by.count() > 1 {
+        let mut seen = BitSet::new_empty(body.basic_blocks().len());
+
+        // FIXME: Instead of doing the discovery iteratively, precompute reachability matrices
+        let mut work_queue = VecDeque::new();
+        let enqueue_next_blocks = |block, queue: &mut VecDeque<_>| match dir {
+            Direction::Forward => {
+                queue.extend(body.basic_blocks()[block].terminator().successors().copied());
+            }
+            Direction::Backward => {
+                queue.extend(body.predecessors_for(block));
+            }
+        };
+
+        enqueue_next_blocks(loc.block, &mut work_queue);
+
+        while let Some(block) = work_queue.pop_front() {
+            if !seen.insert(block) {
+                continue; // already seen
+            }
+
+            enqueue_next_blocks(block, &mut work_queue);
+        }
+
+        assert!(!seen.contains(loc.block), "should be impossible since the CFG is acyclic");
+
+        // Now `seen` contains all reachable blocks in the direction we're interested in. This must be
+        // superset of the previously discovered blocks that use `local`, which is `used_by`.
+        if !seen.superset(used_by) {
+            return Err(());
+        }
+    }
+
+    // We haven't checked the contents of `loc.block` itself yet. For that, we just walk in the
+    // other direction, in which we don't expect any uses of `local`.
+    let dir = match dir {
+        Direction::Backward => Direction::Forward,
+        Direction::Forward => Direction::Backward,
+    };
+
+    let mut found_use = false;
     let mut collector = UseCollector {
-        callback: |current_local, location| {
+        callback: |current_local, _| {
             if current_local == local {
-                uses.push(location);
+                found_use = true;
             }
         },
     };
-    let mut seen = BitSet::new_empty(body.basic_blocks().len());
-
-    seen.insert(loc.block);
 
     let statements = &body.basic_blocks()[loc.block].statements;
 
-    // FIXME: Must visit the missing half of the assign stmt too!
-    // (actually this might not work since `Location` isn't granular enough if there's a use on
-    // both sides of the assignment)
+    // We're interested in uses of `local` basically before or after the `=` sign of the assignment.
+    // That mean we have to visit one half of the assign statement here.
+    match &statements[loc.statement_index].kind {
+        StatementKind::Assign(box (place, rvalue)) => {
+            match dir {
+                Direction::Backward => {
+                    collector.visit_rvalue(rvalue, loc);
+                }
+                Direction::Forward => {
+                    collector.visit_place(place, PlaceContext::MutatingUse(MutatingUseContext::Store), loc);
+                }
+            }
+        }
+        _ => bug!("{:?} should be an assignment", loc),
+    }
 
     // Process statements before/after `loc` in the starting block.
     let stmt_range = match dir {
@@ -357,30 +405,12 @@ fn uses_relative_to_location(
         );
     }
 
-    let mut work_queue = VecDeque::new();
-    let enqueue_next_blocks = |block, queue: &mut VecDeque<_>| match dir {
-        Direction::Forward => {
-            queue.extend(body.basic_blocks()[block].terminator().successors().copied());
-        }
-        Direction::Backward => {
-            queue.extend(body.predecessors_for(block));
-        }
-    };
-
-    enqueue_next_blocks(loc.block, &mut work_queue);
-
-    while let Some(block) = work_queue.pop_front() {
-        if !seen.insert(block) {
-            continue; // already seen
-        }
-
-        collector.visit_basic_block_data(block, &body.basic_blocks()[block]);
-        enqueue_next_blocks(block, &mut work_queue);
+    if found_use {
+        // Found a use on the "wrong side" of the assignment in `loc.block`.
+        Err(())
+    } else {
+        Ok(())
     }
-
-    uses.sort_unstable();
-    uses.dedup();
-    uses
 }
 
 /// A visitor that invokes a callback when any local is used in a way that's relevant to this
@@ -422,16 +452,19 @@ where
     }
 }
 
-/// Collects all locations where any local is accessed in any way.
-fn uses_of_locals(body: &Body<'_>) -> IndexVec<Local, SmallVec<[Location; 1]>> {
-    let mut uses = IndexVec::from_elem_n(SmallVec::new(), body.local_decls.len());
+/// A map from `Local`s to sets of `BasicBlock`s that use them.
+type UsageMap = IndexVec<Local, BitSet<BasicBlock>>;
+
+/// Builds a usage map, mapping `Local`s to the `BasicBlock`s using them.
+fn usage_map(body: &Body<'_>) -> UsageMap {
+    let mut map = IndexVec::from_elem_n(BitSet::new_empty(body.basic_blocks().len()), body.local_decls.len());
     let mut collector = UseCollector {
-        callback: |local, location| {
-            uses[local].push(location);
+        callback: |local, location: Location| {
+            map[local].insert(location.block);
         },
     };
     collector.visit_body(body);
-    uses
+    map
 }
 
 /// A `dest = {move} src;` statement at `loc`.
