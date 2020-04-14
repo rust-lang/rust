@@ -25,7 +25,7 @@ use hir_ty::{
     autoderef, display::HirFormatter, expr::ExprValidator, method_resolution, ApplicationTy,
     Canonical, InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
-use ra_db::{CrateId, Edition, FileId};
+use ra_db::{CrateId, CrateName, Edition, FileId};
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
@@ -89,6 +89,10 @@ impl Crate {
 
     pub fn edition(self, db: &dyn HirDatabase) -> Edition {
         db.crate_graph()[self.id].edition
+    }
+
+    pub fn display_name(self, db: &dyn HirDatabase) -> Option<CrateName> {
+        db.crate_graph()[self.id].display_name.as_ref().cloned()
     }
 
     pub fn all(db: &dyn HirDatabase) -> Vec<Crate> {
