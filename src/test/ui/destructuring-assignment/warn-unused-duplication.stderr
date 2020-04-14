@@ -11,3 +11,5 @@ LL | #![warn(unused_assignments)]
    |         ^^^^^^^^^^^^^^^^^^
    = help: maybe it is overwritten before being read?
 
+warning: 1 warning emitted
+
