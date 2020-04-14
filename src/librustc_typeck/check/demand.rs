@@ -246,9 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // This function checks if the method isn't static and takes other arguments than `self`.
     fn has_no_input_arg(&self, method: &AssocItem) -> bool {
         match method.kind {
-            ty::AssocKind::Method => {
-                self.tcx.fn_sig(method.def_id).inputs().skip_binder().len() == 1
-            }
+            ty::AssocKind::Fn => self.tcx.fn_sig(method.def_id).inputs().skip_binder().len() == 1,
             _ => false,
         }
     }

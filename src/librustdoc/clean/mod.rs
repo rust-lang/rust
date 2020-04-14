@@ -1174,14 +1174,14 @@ impl Clean<Item> for ty::AssocItem {
                 };
                 AssocConstItem(ty.clean(cx), default)
             }
-            ty::AssocKind::Method => {
+            ty::AssocKind::Fn => {
                 let generics =
                     (cx.tcx.generics_of(self.def_id), cx.tcx.explicit_predicates_of(self.def_id))
                         .clean(cx);
                 let sig = cx.tcx.fn_sig(self.def_id);
                 let mut decl = (self.def_id, sig).clean(cx);
 
-                if self.method_has_self_argument {
+                if self.fn_has_self_parameter {
                     let self_ty = match self.container {
                         ty::ImplContainer(def_id) => cx.tcx.type_of(def_id),
                         ty::TraitContainer(_) => cx.tcx.types.self_param,

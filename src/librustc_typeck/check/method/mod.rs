@@ -467,7 +467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let def_kind = pick.item.def_kind();
+        let def_kind = pick.item.kind.as_def_kind();
         debug!("resolve_ufcs: def_kind={:?}, def_id={:?}", def_kind, pick.item.def_id);
         tcx.check_stability(pick.item.def_id, Some(expr_id), span);
         Ok((def_kind, pick.item.def_id))

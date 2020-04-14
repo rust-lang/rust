@@ -516,7 +516,7 @@ fn compare_self_type<'tcx>(
         })
     };
 
-    match (trait_m.method_has_self_argument, impl_m.method_has_self_argument) {
+    match (trait_m.fn_has_self_parameter, impl_m.fn_has_self_parameter) {
         (false, false) | (true, true) => {}
 
         (false, true) => {
@@ -1163,7 +1163,7 @@ fn compare_type_predicate_entailment(
 fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {
     match impl_item.kind {
         ty::AssocKind::Const => "const",
-        ty::AssocKind::Method => "method",
+        ty::AssocKind::Fn => "method",
         ty::AssocKind::Type | ty::AssocKind::OpaqueTy => "type",
     }
 }

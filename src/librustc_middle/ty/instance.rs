@@ -366,7 +366,7 @@ impl<'tcx> Instance<'tcx> {
         let call_once = tcx
             .associated_items(fn_once)
             .in_definition_order()
-            .find(|it| it.kind == ty::AssocKind::Method)
+            .find(|it| it.kind == ty::AssocKind::Fn)
             .unwrap()
             .def_id;
         let def = ty::InstanceDef::ClosureOnceShim { call_once };

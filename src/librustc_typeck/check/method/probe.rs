@@ -570,7 +570,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.extension_candidates.push(candidate);
             }
         } else if self.private_candidate.is_none() {
-            self.private_candidate = Some((candidate.item.def_kind(), candidate.item.def_id));
+            self.private_candidate =
+                Some((candidate.item.kind.as_def_kind(), candidate.item.def_id));
         }
     }
 
@@ -896,7 +897,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         expected: Ty<'tcx>,
     ) -> bool {
         match method.kind {
-            ty::AssocKind::Method => {
+            ty::AssocKind::Fn => {
                 let fty = self.tcx.fn_sig(method.def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
@@ -1549,10 +1550,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // In Path mode (i.e., resolving a value like `T::next`), consider any
         // associated value (i.e., methods, constants) but not types.
         match self.mode {
-            Mode::MethodCall => item.method_has_self_argument,
+            Mode::MethodCall => item.fn_has_self_parameter,
             Mode::Path => match item.kind {
                 ty::AssocKind::OpaqueTy | ty::AssocKind::Type => false,
-                ty::AssocKind::Method | ty::AssocKind::Const => true,
+                ty::AssocKind::Fn | ty::AssocKind::Const => true,
             },
         }
         // FIXME -- check for types that deref to `Self`,
@@ -1573,7 +1574,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         impl_ty: Ty<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
-        if item.kind == ty::AssocKind::Method && self.mode == Mode::MethodCall {
+        if item.kind == ty::AssocKind::Fn && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, substs);
             (sig.inputs()[0], Some(sig.output()))
         } else {

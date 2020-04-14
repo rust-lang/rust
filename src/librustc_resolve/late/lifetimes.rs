@@ -2117,7 +2117,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
 
         let has_self = match assoc_item_kind {
-            Some(hir::AssocItemKind::Method { has_self }) => has_self,
+            Some(hir::AssocItemKind::Fn { has_self }) => has_self,
             _ => false,
         };
 

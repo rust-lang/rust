@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 pub use self::fold::{TypeFoldable, TypeVisitor};
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
@@ -192,58 +190,50 @@ pub struct AssocItem {
     pub container: AssocItemContainer,
 
     /// Whether this is a method with an explicit self
-    /// as its first argument, allowing method calls.
-    pub method_has_self_argument: bool,
+    /// as its first parameter, allowing method calls.
+    pub fn_has_self_parameter: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum AssocKind {
     Const,
-    Method,
+    Fn,
     OpaqueTy,
     Type,
 }
 
 impl AssocKind {
-    pub fn suggestion_descr(&self) -> &'static str {
-        match self {
-            ty::AssocKind::Method => "method call",
-            ty::AssocKind::Type | ty::AssocKind::OpaqueTy => "associated type",
-            ty::AssocKind::Const => "associated constant",
-        }
-    }
-
     pub fn namespace(&self) -> Namespace {
         match *self {
             ty::AssocKind::OpaqueTy | ty::AssocKind::Type => Namespace::TypeNS,
-            ty::AssocKind::Const | ty::AssocKind::Method => Namespace::ValueNS,
+            ty::AssocKind::Const | ty::AssocKind::Fn => Namespace::ValueNS,
+        }
+    }
+
+    pub fn as_def_kind(&self) -> DefKind {
+        match self {
+            AssocKind::Const => DefKind::AssocConst,
+            AssocKind::Fn => DefKind::AssocFn,
+            AssocKind::Type => DefKind::AssocTy,
+            AssocKind::OpaqueTy => DefKind::AssocOpaqueTy,
         }
     }
 }
 
 impl AssocItem {
-    pub fn def_kind(&self) -> DefKind {
-        match self.kind {
-            AssocKind::Const => DefKind::AssocConst,
-            AssocKind::Method => DefKind::AssocFn,
-            AssocKind::Type => DefKind::AssocTy,
-            AssocKind::OpaqueTy => DefKind::AssocOpaqueTy,
-        }
-    }
-
     /// Tests whether the associated item admits a non-trivial implementation
     /// for !
     pub fn relevant_for_never(&self) -> bool {
         match self.kind {
             AssocKind::OpaqueTy | AssocKind::Const | AssocKind::Type => true,
             // FIXME(canndrew): Be more thorough here, check if any argument is uninhabited.
-            AssocKind::Method => !self.method_has_self_argument,
+            AssocKind::Fn => !self.fn_has_self_parameter,
         }
     }
 
     pub fn signature(&self, tcx: TyCtxt<'_>) -> String {
         match self.kind {
-            ty::AssocKind::Method => {
+            ty::AssocKind::Fn => {
                 // We skip the binder here because the binder would deanonymize all
                 // late-bound regions, and we don't want method signatures to show up
                 // `as for<'r> fn(&'r MyType)`.  Pretty-printing handles late-bound
@@ -2664,7 +2654,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .in_definition_order()
-            .filter(|item| item.kind == AssocKind::Method && item.defaultness.has_value())
+            .filter(|item| item.kind == AssocKind::Fn && item.defaultness.has_value())
     }
 
     pub fn trait_relevant_for_never(self, did: DefId) -> bool {

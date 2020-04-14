@@ -1153,7 +1153,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             EntryKind::AssocConst(container, _, _) => (ty::AssocKind::Const, container, false),
             EntryKind::AssocFn(data) => {
                 let data = data.decode(self);
-                (ty::AssocKind::Method, data.container, data.has_self)
+                (ty::AssocKind::Fn, data.container, data.has_self)
             }
             EntryKind::AssocType(container) => (ty::AssocKind::Type, container, false),
             EntryKind::AssocOpaqueTy(container) => (ty::AssocKind::OpaqueTy, container, false),
@@ -1167,7 +1167,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             defaultness: container.defaultness(),
             def_id: self.local_def_id(id),
             container: container.with_def_id(parent),
-            method_has_self_argument: has_self,
+            fn_has_self_parameter: has_self,
         }
     }
 

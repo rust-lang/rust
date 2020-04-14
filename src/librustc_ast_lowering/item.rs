@@ -796,7 +796,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (hir::AssocItemKind::Type, default.is_some())
             }
             AssocItemKind::Fn(_, sig, _, default) => {
-                (hir::AssocItemKind::Method { has_self: sig.decl.has_self() }, default.is_some())
+                (hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }, default.is_some())
             }
             AssocItemKind::MacCall(..) => unimplemented!(),
         };
@@ -894,7 +894,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
                 AssocItemKind::Fn(_, sig, ..) => {
-                    hir::AssocItemKind::Method { has_self: sig.decl.has_self() }
+                    hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }
                 }
                 AssocItemKind::MacCall(..) => unimplemented!(),
             },
