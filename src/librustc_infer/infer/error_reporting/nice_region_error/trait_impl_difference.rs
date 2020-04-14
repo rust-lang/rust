@@ -146,7 +146,7 @@ struct TypeParamSpanVisitor<'tcx> {
 }
 
 impl Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
-    type Map = hir::intravisit::Map<'tcx>;
+    type Map = rustc_middle::hir::map::Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
         hir::intravisit::NestedVisitorMap::OnlyBodies(self.tcx.hir())
