@@ -13,6 +13,7 @@ pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Du
         .map_err(|_| err_unsup_format!("times before the Unix epoch are not supported").into())
 }
 
+
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn clock_gettime(
@@ -158,5 +159,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let duration = Instant::now().duration_since(this.machine.time_anchor);
         u64::try_from(duration.as_nanos())
             .map_err(|_| err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported").into())
+    }
+
+    fn mach_timebase_info(&mut self, info_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.assert_target_os("macos", "mach_timebase_info");
+        this.check_no_isolation("mach_timebase_info")?;
+
+        let info = this.deref_operand(info_op)?;
+
+        // Since our emulated ticks in `mach_absolute_time` *are* nanoseconds,
+        // no scaling needs to happen.
+        let (numer, denom) = (1,1);
+        let imms = [
+            immty_from_int_checked(numer, this.machine.layouts.u32)?,
+            immty_from_int_checked(denom, this.machine.layouts.u32)?
+        ];
+
+        this.write_packed_immediates(info, &imms)?;
+        Ok(0) // KERN_SUCCESS
     }
 }

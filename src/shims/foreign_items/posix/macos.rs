@@ -60,6 +60,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_u64(result), dest)?;
             }
 
+            "mach_timebase_info" => {
+                let result = this.mach_timebase_info(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            },
+
             // Access to command-line arguments
             "_NSGetArgc" => {
                 this.write_scalar(this.machine.argc.expect("machine must be initialized"), dest)?;
