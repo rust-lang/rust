@@ -395,5 +395,6 @@ bootstrapping compiler will support them.
   - Guide: [Code Generation](https://rustc-dev-guide.rust-lang.org/backend/codegen.html)
   - Generating Machine Code from LLVM IR with LLVM - **TODO: reference?**
   - Main entry point: [`rustc_codegen_ssa::base::codegen_crate`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_crate.html)
-    - This monomorphizes and produces LLVM IR for one codegen unit. It then starts a background thread to run LLVM, which must be joined later.
+    - This monomorphizes and produces LLVM IR for one codegen unit. It then
+      starts a background thread to run LLVM, which must be joined later.
     - Monomorphization happens lazily via [`FunctionCx::monomorphize`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#method.monomorphize) and [`rustc_codegen_ssa::base::codegen_instance `](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/base/fn.codegen_instance.html)
