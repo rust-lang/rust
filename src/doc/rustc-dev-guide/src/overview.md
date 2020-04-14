@@ -357,7 +357,9 @@ bootstrapping compiler will support them.
 - Type Inference
   - Guide: [Type Inference](https://rustc-dev-guide.rust-lang.org/type-inference.html)
   - Guide: [The ty Module: Representing Types](https://rustc-dev-guide.rust-lang.org/ty.html) (semantics)
-  - Main entry point: **TODO**
+  - Main entry point (type inference): [`InferCtxtBuilder::enter`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxtBuilder.html#method.enter)
+  - Main entry point (type checking bodies): [the `typeck_tables_of` query](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.typeck_tables_of)
+    - These two functions can't be decoupled.
 - The Mid Level Intermediate Representation (MIR)
   - Guide: [The MIR (Mid level IR)](https://rustc-dev-guide.rust-lang.org/mir/index.html)
   - Definition: [`librustc/mir`](https://github.com/rust-lang/rust/tree/master/src/librustc/mir)
