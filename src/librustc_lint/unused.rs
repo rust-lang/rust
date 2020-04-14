@@ -384,7 +384,7 @@ trait UnusedDelimLint {
     fn is_expr_delims_necessary(inner: &ast::Expr, followed_by_block: bool) -> bool {
         followed_by_block
             && match inner.kind {
-                ast::ExprKind::Ret(_) | ast::ExprKind::Break(..) => true,
+                ExprKind::Ret(_) | ExprKind::Break(..) => true,
                 _ => parser::contains_exterior_struct_lit(&inner),
             }
     }

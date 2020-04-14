@@ -1,8 +1,11 @@
-error: expected expression, found reserved keyword `try`
-  --> $DIR/try-block-in-while.rs:6:11
+error[E0277]: the trait bound `bool: std::ops::Try` is not satisfied
+  --> $DIR/try-block-in-while.rs:6:15
    |
 LL |     while try { false } {}
-   |           ^^^ expected expression
+   |               ^^^^^^^^^ the trait `std::ops::Try` is not implemented for `bool`
+   |
+   = note: required by `std::ops::Try::from_ok`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0277`.
