@@ -2,6 +2,8 @@
 // that arise from pointers being insufficiently aligned. The only way to achieve
 // that is not not let programs exploit integer information for alignment, so here
 // we test that this is indeed the case.
+//
+// See https://github.com/rust-lang/miri/issues/1074.
 fn main() {
     let x = &mut [0u8; 3];
     let base_addr = x as *mut _ as usize;
