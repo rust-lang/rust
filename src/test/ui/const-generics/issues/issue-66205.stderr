@@ -1,8 +1,8 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/associated-const-type-parameter-arrays-2.rs:16:22
+  --> $DIR/issue-66205.rs:5:12
    |
-LL |     let _array = [4; <A as Foo>::Y];
-   |                      ^^^^^^^^^^^^^
+LL |     fact::<{ N - 1 }>();
+   |            ^^^^^^^^^
    |
    = note: this may fail depending on what value the parameter takes
 

@@ -19,4 +19,5 @@ impl TraitB for B { //~ ERROR not all trait items implemented, missing: `MyA`
 
 fn main() {
     let _ = [0; B::VALUE];
+    //~^ ERROR constant expression depends on a generic parameter
 }

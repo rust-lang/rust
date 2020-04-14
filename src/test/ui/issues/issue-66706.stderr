@@ -12,6 +12,29 @@ error: expected identifier, found reserved identifier `_`
 LL |     [0; [|f @ &ref _| {} ; 0 ].len() ];
    |                    ^ expected identifier, found reserved identifier
 
+error: expected `,`, found `&`
+  --> $DIR/issue-66706.rs:14:17
+   |
+LL |     [0; [|&_: _ &_| {}; 0 ].len()]
+   |                -^ expected `,`
+   |                |
+   |                help: missing `,`
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/issue-66706.rs:20:26
+   |
+LL |     [0; match [|f @ &ref _| () ] {} ]
+   |                          ^ expected identifier, found reserved identifier
+
+error[E0658]: `match` is not allowed in a `const`
+  --> $DIR/issue-66706.rs:20:9
+   |
+LL |     [0; match [|f @ &ref _| () ] {} ]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #49146 <https://github.com/rust-lang/rust/issues/49146> for more information
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
 error[E0282]: type annotations needed
   --> $DIR/issue-66706.rs:2:11
    |
@@ -26,7 +49,23 @@ LL | fn a() {
 LL |     [0; [|_: _ &_| ()].len()]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found array `[{integer}; _]`
 
-error: aborting due to 4 previous errors
+error[E0308]: mismatched types
+  --> $DIR/issue-66706.rs:14:5
+   |
+LL | fn c() {
+   |        - help: try adding a return type: `-> [{integer}; _]`
+LL |     [0; [|&_: _ &_| {}; 0 ].len()]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found array `[{integer}; _]`
 
-Some errors have detailed explanations: E0282, E0308.
+error[E0308]: mismatched types
+  --> $DIR/issue-66706.rs:20:5
+   |
+LL | fn d() {
+   |        - help: try adding a return type: `-> [{integer}; _]`
+LL |     [0; match [|f @ &ref _| () ] {} ]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found array `[{integer}; _]`
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0282, E0308, E0658.
 For more information about an error, try `rustc --explain E0282`.

@@ -7,6 +7,22 @@ LL |     [();  { &loop { break } as *const _ as usize } ];
    = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
    = help: add `#![feature(const_loop)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0658]: casting pointers to integers in constants is unstable
+  --> $DIR/issue-52442.rs:2:13
+   |
+LL |     [();  { &loop { break } as *const _ as usize } ];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #51910 <https://github.com/rust-lang/rust/issues/51910> for more information
+   = help: add `#![feature(const_raw_ptr_to_usize_cast)]` to the crate attributes to enable
 
-For more information about this error, try `rustc --explain E0658`.
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-52442.rs:2:13
+   |
+LL |     [();  { &loop { break } as *const _ as usize } ];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0080, E0658.
+For more information about an error, try `rustc --explain E0080`.

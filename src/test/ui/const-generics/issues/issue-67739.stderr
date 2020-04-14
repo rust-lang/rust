@@ -1,8 +1,8 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/associated-const-type-parameter-arrays-2.rs:16:22
+  --> $DIR/issue-67739.rs:12:15
    |
-LL |     let _array = [4; <A as Foo>::Y];
-   |                      ^^^^^^^^^^^^^
+LL |         [0u8; mem::size_of::<Self::Associated>()];
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this may fail depending on what value the parameter takes
 

@@ -1,45 +1,10 @@
-error[E0599]: no associated item named `HOST_SIZE` found for struct `Foo<A, B>` in the current scope
-  --> $DIR/too_generic_eval_ice.rs:7:19
-   |
-LL | pub struct Foo<A, B>(A, B);
-   | --------------------------- associated item `HOST_SIZE` not found for this
-...
-LL |         [5; Self::HOST_SIZE] == [6; 0]
-   |                   ^^^^^^^^^ associated item not found in `Foo<A, B>`
-   |
-   = note: the method `HOST_SIZE` exists but the following trait bounds were not satisfied:
-           `A: std::marker::Sized`
-           `B: std::marker::Sized`
-
-error[E0277]: the size for values of type `A` cannot be known at compilation time
+error: constant expression depends on a generic parameter
   --> $DIR/too_generic_eval_ice.rs:7:13
    |
-LL | pub struct Foo<A, B>(A, B);
-   |                - required by this bound in `Foo`
-LL | 
-LL | impl<A, B> Foo<A, B> {
-   |      - this type parameter needs to be `std::marker::Sized`
-...
 LL |         [5; Self::HOST_SIZE] == [6; 0]
-   |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |             ^^^^^^^^^^^^^^^
    |
-   = help: the trait `std::marker::Sized` is not implemented for `A`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-
-error[E0277]: the size for values of type `B` cannot be known at compilation time
-  --> $DIR/too_generic_eval_ice.rs:7:13
-   |
-LL | pub struct Foo<A, B>(A, B);
-   |                   - required by this bound in `Foo`
-LL | 
-LL | impl<A, B> Foo<A, B> {
-   |         - this type parameter needs to be `std::marker::Sized`
-...
-LL |         [5; Self::HOST_SIZE] == [6; 0]
-   |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `std::marker::Sized` is not implemented for `B`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: this may fail depending on what value the parameter takes
 
 error[E0369]: binary operation `==` cannot be applied to type `[{integer}; _]`
   --> $DIR/too_generic_eval_ice.rs:7:30
@@ -49,7 +14,6 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    |         |
    |         [{integer}; _]
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0277, E0369, E0599.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0369`.
