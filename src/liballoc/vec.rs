@@ -741,7 +741,7 @@ impl<T> Vec<T> {
                 return;
             }
             let remaining_len = self.len - len;
-            let s = slice::from_raw_parts_mut(self.as_mut_ptr().add(len), remaining_len);
+            let s = ptr::slice_from_raw_parts_mut(self.as_mut_ptr().add(len), remaining_len);
             self.len = len;
             ptr::drop_in_place(s);
         }
@@ -2379,7 +2379,7 @@ unsafe impl<#[may_dangle] T> Drop for Vec<T> {
     fn drop(&mut self) {
         unsafe {
             // use drop for [T]
-            ptr::drop_in_place(&mut self[..]);
+            ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len))
         }
         // RawVec handles deallocation
     }
