@@ -175,7 +175,7 @@ for different purposes:
 - HAIR: This is an intermediate between HIR and MIR. It is like the HIR but it
   is fully typed and a bit more desugared (e.g. method calls and implicit
   dereferences are made fully explicit). Moreover, it is easier to lower to MIR
-  than HIR.
+  from HAIR than from HIR.
 - Middle-level IR (MIR): This IR is basically a Control-Flow Graph (CFG). A CFG
   is a type of diagram that shows the basic blocks of a program and how control
   flow can go between them. Likewise, MIR also has a bunch of basic blocks with
