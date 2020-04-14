@@ -339,7 +339,7 @@ impl<'tcx> TyCtxt<'tcx> {
         body_owner_def_id: DefId,
     ) {
         use self::TypeError::*;
-
+        debug!("note_and_explain_type_err err={:?} cause={:?}", err, cause);
         match err {
             Sorts(values) => {
                 let expected_str = values.expected.sort_string(self);
@@ -623,8 +623,12 @@ impl<T> Trait<T> for X {
             ) => false,
             _ => true,
         };
-        let impl_comparison =
-            matches!(cause_code, ObligationCauseCode::CompareImplMethodObligation { .. });
+        let impl_comparison = matches!(
+            cause_code,
+            ObligationCauseCode::CompareImplMethodObligation { .. }
+                | ObligationCauseCode::CompareImplTypeObligation { .. }
+                | ObligationCauseCode::CompareImplConstObligation
+        );
         if !callable_scope || impl_comparison {
             // We do not want to suggest calling functions when the reason of the
             // type error is a comparison of an `impl` with its `trait` or when the
@@ -679,12 +683,66 @@ impl<T> Trait<T> for X {
             suggested |=
                 self.suggest_constraint(db, &msg, body_owner_def_id, proj_ty, values.found);
         }
+        if let (Some(hir_id), false) = (self.hir().as_local_hir_id(body_owner_def_id), suggested) {
+            // When `body_owner` is an `impl` or `trait` item, look in its associated types for
+            // `expected` and point at it.
+            let parent_id = self.hir().get_parent_item(hir_id);
+            let item = self.hir().find(parent_id);
+            debug!("expected_projection parent item {:?}", item);
+            match item {
+                Some(hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Trait(.., items), ..
+                })) => {
+                    // FIXME: account for `#![feature(specialization)]`
+                    for item in &items[..] {
+                        match item.kind {
+                            hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
+                                if self.type_of(self.hir().local_def_id(item.id.hir_id))
+                                    == values.found
+                                {
+                                    if let hir::Defaultness::Default { has_value: true } =
+                                        item.defaultness
+                                    {
+                                        db.span_label(
+                                            item.span,
+                                            "associated type defaults can't be assumed inside the \
+                                                trait defining them",
+                                        );
+                                    } else {
+                                        db.span_label(item.span, "expected this associated type");
+                                    }
+                                    suggested = true;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                Some(hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Impl { items, .. },
+                    ..
+                })) => {
+                    for item in &items[..] {
+                        match item.kind {
+                            hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
+                                if self.type_of(self.hir().local_def_id(item.id.hir_id))
+                                    == values.found
+                                {
+                                    db.span_label(item.span, "expected this associated type");
+                                    suggested = true;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
         if !suggested && !impl_comparison {
             // Generic suggestion when we can't be more specific.
             if callable_scope {
-                db.help(
-                    &format!("{} or calling a method that returns `{}`", msg, values.expected,),
-                );
+                db.help(&format!("{} or calling a method that returns `{}`", msg, values.expected));
             } else {
                 db.help(&msg);
             }

@@ -9,8 +9,6 @@ LL |     const FROM: &'static str = "foo";
    |
    = note: expected associated type `<T as Foo>::Out`
                     found reference `&'static str`
-   = help: consider constraining the associated type `<T as Foo>::Out` to `&'static str`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error: aborting due to previous error
 
