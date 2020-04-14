@@ -225,11 +225,10 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             .arg(self.config.dst)
             .status()
             .expect("Couldn't run ranlib");
-        assert!(
-            status.success(),
-            "Ranlib exited with code {:?}",
-            status.code()
-        );
+
+        if !status.success() {
+            self.config.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
+        }
     }
 }
 
