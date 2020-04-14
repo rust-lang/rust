@@ -112,10 +112,10 @@ impl Conv for Severity {
     }
 }
 
-impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
+impl ConvWith<(&LineIndex, LineEndings, usize)> for CompletionItem {
     type Output = ::lsp_types::CompletionItem;
 
-    fn conv_with(self, ctx: (&LineIndex, LineEndings)) -> ::lsp_types::CompletionItem {
+    fn conv_with(self, ctx: (&LineIndex, LineEndings, usize)) -> ::lsp_types::CompletionItem {
         let mut additional_text_edits = Vec::new();
         let mut text_edit = None;
         // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -123,7 +123,7 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
         for atom_edit in self.text_edit().as_atoms() {
             if self.source_range().is_subrange(&atom_edit.delete) {
                 text_edit = Some(if atom_edit.delete == self.source_range() {
-                    atom_edit.conv_with(ctx)
+                    atom_edit.conv_with((ctx.0, ctx.1))
                 } else {
                     assert!(self.source_range().end() == atom_edit.delete.end());
                     let range1 =
@@ -131,12 +131,12 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
                     let range2 = self.source_range();
                     let edit1 = AtomTextEdit::replace(range1, String::new());
                     let edit2 = AtomTextEdit::replace(range2, atom_edit.insert.clone());
-                    additional_text_edits.push(edit1.conv_with(ctx));
-                    edit2.conv_with(ctx)
+                    additional_text_edits.push(edit1.conv_with((ctx.0, ctx.1)));
+                    edit2.conv_with((ctx.0, ctx.1))
                 })
             } else {
                 assert!(self.source_range().intersection(&atom_edit.delete).is_none());
-                additional_text_edits.push(atom_edit.conv_with(ctx));
+                additional_text_edits.push(atom_edit.conv_with((ctx.0, ctx.1)));
             }
         }
         let text_edit = text_edit.unwrap();
@@ -147,6 +147,7 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
             filter_text: Some(self.lookup().to_string()),
             kind: self.kind().map(|it| it.conv()),
             text_edit: Some(text_edit),
+            sort_text: Some(format!("{:02}", ctx.2)),
             additional_text_edits: Some(additional_text_edits),
             documentation: self.documentation().map(|it| it.conv()),
             deprecated: Some(self.deprecated()),
