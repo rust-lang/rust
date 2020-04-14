@@ -5,7 +5,7 @@ use crate::io::{self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Write};
 
 mod copy_specialization {
     use crate::mem::MaybeUninit;
-    use crate::io::{self, Read, BufRead, Write, ErrorKind};
+    use crate::io::{self, BufRead, ErrorKind, Read, Write};
 
     pub trait Copyable {
         fn copy_to<W: ?Sized + Write>(&mut self, writer: &mut W) -> io::Result<u64>;
