@@ -13,9 +13,9 @@ RUN . /scripts/android-ndk.sh && \
 RUN chmod 777 /android/ndk && \
     ln -s /android/ndk/x86-21 /android/ndk/x86
 
-ENV PATH=$PATH:/android/ndk/x86-14/bin
+ENV PATH=$PATH:/android/ndk/x86-16/bin
 
-ENV DEP_Z_ROOT=/android/ndk/x86-14/sysroot/usr/
+ENV DEP_Z_ROOT=/android/ndk/x86-16/sysroot/usr/
 
 ENV HOSTS=i686-linux-android
 
@@ -25,18 +25,18 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
       --enable-cargo-openssl-static
 
-# We support api level 14, but api level 21 is required to build llvm. To
+# We support api level 16, but api level 21 is required to build llvm. To
 # overcome this problem we use a ndk with api level 21 to build llvm and then
-# switch to a ndk with api level 14 to complete the build. When the linker is
+# switch to a ndk with api level 16 to complete the build. When the linker is
 # invoked there are missing symbols (like sigsetempty, not available with api
-# level 14), the default linker behavior is to generate an error, to allow the
+# level 16), the default linker behavior is to generate an error, to allow the
 # build to finish we use --warn-unresolved-symbols. Note that the missing
 # symbols does not affect std, only the compiler (llvm) and cargo (openssl).
 ENV SCRIPT \
   python3 ../x.py build src/llvm --host $HOSTS --target $HOSTS && \
   (export RUSTFLAGS="\"-C link-arg=-Wl,--warn-unresolved-symbols\""; \
     rm /android/ndk/x86 && \
-    ln -s /android/ndk/x86-14 /android/ndk/x86 && \
+    ln -s /android/ndk/x86-16 /android/ndk/x86 && \
     python3 ../x.py dist --host $HOSTS --target $HOSTS)
 
 COPY scripts/sccache.sh /scripts/
