@@ -17,7 +17,8 @@ fn main() {
     S { x: a, y: b } += s; //~ ERROR invalid left-hand side of assignment
     //~| ERROR binary assignment operation `+=` cannot be applied
 
-    S { x: a, ..s } = S { x: 3, y: 4 }; //~ ERROR invalid left-hand side of assignment
+    S { x: a, ..s } = S { x: 3, y: 4 }; //~ ERROR base expression not allowed
+    //~| ERROR destructuring assignments are unstable
 
     let c = 3;
 

@@ -2104,6 +2104,16 @@ impl<'a> Parser<'a> {
         while self.token != token::CloseDelim(token::Brace) {
             if self.eat(&token::DotDot) {
                 let exp_span = self.prev_token.span;
+                // If the struct ends in `.. }`, treat it like `.. _ }`.
+                // AST lowering will then report an error if it's not on the LHS of an assignment.
+                if self.token == token::CloseDelim(token::Brace) {
+                    base = Some(self.mk_expr(
+                        self.prev_token.span,
+                        ExprKind::Underscore,
+                        AttrVec::new(),
+                    ));
+                    break;
+                }
                 match self.parse_expr() {
                     Ok(e) => base = Some(e),
                     Err(mut e) if recover => {
