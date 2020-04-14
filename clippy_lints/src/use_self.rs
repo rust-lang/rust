@@ -119,7 +119,7 @@ fn check_trait_method_impl_decl<'a, 'tcx>(
     let trait_method = cx
         .tcx
         .associated_items(impl_trait_ref.def_id)
-        .find_by_name_and_kind(cx.tcx, impl_item.ident, ty::AssocKind::Method, impl_trait_ref.def_id)
+        .find_by_name_and_kind(cx.tcx, impl_item.ident, ty::AssocKind::Fn, impl_trait_ref.def_id)
         .expect("impl method matches a trait method");
 
     let trait_method_sig = cx.tcx.fn_sig(trait_method.def_id);

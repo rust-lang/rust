@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
         } = item.kind
         {
             for assoc_item in items {
-                if let hir::AssocItemKind::Method { has_self: false } = assoc_item.kind {
+                if let hir::AssocItemKind::Fn { has_self: false } = assoc_item.kind {
                     let impl_item = cx.tcx.hir().impl_item(assoc_item.id);
                     if in_external_macro(cx.sess(), impl_item.span) {
                         return;
