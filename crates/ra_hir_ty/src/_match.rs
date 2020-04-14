@@ -194,9 +194,10 @@ use smallvec::{smallvec, SmallVec};
 use crate::{
     db::HirDatabase,
     expr::{Body, Expr, Literal, Pat, PatId},
-    InferenceResult,
+    ApplicationTy, InferenceResult, Ty, TypeCtor,
 };
-use hir_def::{adt::VariantData, EnumVariantId, VariantId};
+use hir_def::{adt::VariantData, AdtId, EnumVariantId, VariantId};
+use ra_arena::Idx;
 
 #[derive(Debug, Clone, Copy)]
 /// Either a pattern from the source code being analyzed, represented as
@@ -512,6 +513,7 @@ pub enum Usefulness {
 }
 
 pub struct MatchCheckCtx<'a> {
+    pub match_expr: Idx<Expr>,
     pub body: Arc<Body>,
     pub infer: Arc<InferenceResult>,
     pub db: &'a dyn HirDatabase,
@@ -530,6 +532,16 @@ pub(crate) fn is_useful(
     matrix: &Matrix,
     v: &PatStack,
 ) -> MatchCheckResult<Usefulness> {
+    // Handle the special case of enums with no variants. In that case, no match
+    // arm is useful.
+    if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(AdtId::EnumId(enum_id)), .. }) =
+        cx.infer[cx.match_expr].strip_references()
+    {
+        if cx.db.enum_data(*enum_id).variants.is_empty() {
+            return Ok(Usefulness::NotUseful);
+        }
+    }
+
     if v.is_empty() {
         let result = if matrix.is_empty() { Usefulness::Useful } else { Usefulness::NotUseful };
 
@@ -1613,6 +1625,32 @@ mod tests {
                     Either::A(..) => {},
                     Either::B => {},
                 }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_never() {
+        let content = r"
+            enum Never {}
+
+            fn test_fn(never: Never) {
+                match never {}
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_never_ref() {
+        let content = r"
+            enum Never {}
+
+            fn test_fn(never: &Never) {
+                match never {}
             }
         ";
 
