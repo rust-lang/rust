@@ -160,31 +160,43 @@ up the sysroot.  If you are using `miri` (the Miri driver) directly, see
 ## Miri `-Z` flags and environment variables
 [miri-flags]: #miri--z-flags-and-environment-variables
 
-Several `-Z` flags are relevant for Miri:
+Miri adds its own set of `-Z` flags:
 
-* `-Zmiri-seed=<hex>` is a custom `-Z` flag added by Miri.  It configures the
-  seed of the RNG that Miri uses to resolve non-determinism.  This RNG is used
-  to pick base addresses for allocations.  When isolation is enabled (the default),
-  this is also used to emulate system entropy.  The default seed is 0.
-  **NOTE**: This entropy is not good enough for cryptographic use!  Do not
-  generate secret keys in Miri or perform other kinds of cryptographic
-  operations that rely on proper random numbers.
-* `-Zmiri-disable-validation` disables enforcing validity invariants, which are
-  enforced by default.  This is mostly useful for debugging.  It means Miri will
-  miss bugs in your program.  However, this can also help to make Miri run
-  faster.
+* `-Zmiri-disable-alignment-check` disables checking pointer alignment. This is
+  useful to avoid [false positives][alignment-false-positives]. However, setting
+  this flag means Miri could miss bugs in your program.
 * `-Zmiri-disable-stacked-borrows` disables checking the experimental
   [Stacked Borrows] aliasing rules.  This can make Miri run faster, but it also
   means no aliasing violations will be detected.
-* `-Zmiri-disable-alignment-check` disables checking pointer alignment on memory
-  accesses.
+* `-Zmiri-disable-validation` disables enforcing validity invariants, which are
+  enforced by default.  This is mostly useful to focus on other failures (such
+  as out-of-bounds accesses) first.  Setting this flag means Miri will miss bugs
+  in your program.  However, this can also help to make Miri run faster.
 * `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
-* `-Zmiri-ignore-leaks` disables the memory leak checker.
 * `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from
-  the host. Can be used multiple times to exclude several variables. The `TERM`
-  environment variable is excluded by default.
+  the host so that it cannot be accessed by the program.  Can be used multiple
+  times to exclude several variables.  On Windows, the `TERM` environment
+  variable is excluded by default.
+* `-Zmiri-ignore-leaks` disables the memory leak checker.
+* `-Zmiri-seed=<hex>` configures the seed of the RNG that Miri uses to resolve
+  non-determinism.  This RNG is used to pick base addresses for allocations.
+  When isolation is enabled (the default), this is also used to emulate system
+  entropy.  The default seed is 0.  **NOTE**: This entropy is not good enough
+  for cryptographic use!  Do not generate secret keys in Miri or perform other
+  kinds of cryptographic operations that rely on proper random numbers.
+* `-Zmiri-track-alloc-id=<id>` shows a backtrace when the given allocation is
+  being allocated.  This helps in debugging memory leaks.
+* `-Zmiri-track-pointer-tag=<tag>` shows a backtrace when the given pointer tag
+  is popped from a borrow stack (which is where the tag becomes invalid and any
+  future use of it will error).  This helps you in finding out why UB is
+  happening and where in your code would be a good place to look for it.
+
+[alignment-false-positives]: https://github.com/rust-lang/miri/issues/1074
+
+Some native rustc `-Z` flags are also very relevant for Miri:
+
 * `-Zmir-opt-level` controls how many MIR optimizations are performed.  Miri
   overrides the default to be `0`; be advised that using any higher level can
   make Miri miss bugs in your program because they got optimized away.
@@ -192,13 +204,7 @@ Several `-Z` flags are relevant for Miri:
   functions.  This is needed so that Miri can execute such functions, so Miri
   sets this flag per default.
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
-  enables this per default because it is needed for validation.
-* `-Zmiri-track-pointer-tag=<tag>` shows a backtrace when the given pointer tag
-  is popped from a borrow stack (which is where the tag becomes invalid and any
-  future use of it will error).  This helps you in finding out why UB is
-  happening and where in your code would be a good place to look for it.
-* `-Zmiri-track-alloc-id=<id>` shows a backtrace when the given allocation is
-  being allocated.  This helps in debugging memory leaks.
+  enables this per default because it is needed for [Stacked Borrows].
 
 Moreover, Miri recognizes some environment variables:
 
