@@ -82,7 +82,13 @@ fn main() -> () {
         _1[_7] = move _5;                // bb2[0]: scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:29
         StorageDead(_5);                 // bb2[1]: scope 3 at $DIR/array-index-is-temporary.rs:16:28: 16:29
         StorageDead(_7);                 // bb2[2]: scope 3 at $DIR/array-index-is-temporary.rs:16:29: 16:30
-        _0 = ();                         // bb2[3]: scope 0 at $DIR/array-index-is-temporary.rs:12:11: 17:2
+        _0 = const ();                   // bb2[3]: scope 0 at $DIR/array-index-is-temporary.rs:12:11: 17:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/array-index-is-temporary.rs:12:11: 17:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_3);                 // bb2[4]: scope 2 at $DIR/array-index-is-temporary.rs:17:1: 17:2
         StorageDead(_2);                 // bb2[5]: scope 1 at $DIR/array-index-is-temporary.rs:17:1: 17:2
         StorageDead(_1);                 // bb2[6]: scope 0 at $DIR/array-index-is-temporary.rs:17:1: 17:2
