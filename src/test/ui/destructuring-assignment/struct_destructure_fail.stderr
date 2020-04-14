@@ -12,6 +12,12 @@ error: base expression not allowed here
 LL |     Struct { a, ..d } = Struct { a: 1, b: 2 };
    |                   ^ help: consider removing this
 
+error: base expression required after `..`
+  --> $DIR/struct_destructure_fail.rs:15:19
+   |
+LL |     Struct { a, .. };
+   |                   ^ add the base expression here
+
 error[E0026]: struct `Struct` does not have a field named `c`
   --> $DIR/struct_destructure_fail.rs:11:20
    |
@@ -24,7 +30,7 @@ error[E0027]: pattern does not mention field `b`
 LL |     Struct { a, _ } = Struct { a: 1, b: 2 };
    |     ^^^^^^^^^^^^^^^ missing field `b`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0026, E0027.
 For more information about an error, try `rustc --explain E0026`.

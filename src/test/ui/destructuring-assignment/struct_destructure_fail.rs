@@ -12,4 +12,5 @@ fn main() {
     Struct { a, _ } = Struct { a: 1, b: 2 }; //~ ERROR pattern does not mention field `b`
     //~| ERROR expected identifier, found reserved identifier `_`
     Struct { a, ..d } = Struct { a: 1, b: 2 }; //~ ERROR base expression not allowed here
+    Struct { a, .. }; //~ ERROR base expression required after `..`
 }

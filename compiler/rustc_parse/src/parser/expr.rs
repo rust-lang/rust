@@ -2108,7 +2108,7 @@ impl<'a> Parser<'a> {
                 // AST lowering will then report an error if it's not on the LHS of an assignment.
                 if self.token == token::CloseDelim(token::Brace) {
                     base = Some(self.mk_expr(
-                        self.prev_token.span,
+                        self.prev_token.span.shrink_to_hi(),
                         ExprKind::Underscore,
                         AttrVec::new(),
                     ));
