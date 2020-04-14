@@ -293,12 +293,13 @@ but there are already some promising performance improvements.
 `rustc` itself is written in Rust. So how do we compile the compiler? We use an
 older compiler to compile the newer compiler. This is called _bootstrapping_.
 
-Bootstrapping has a lot of interesting implications. For example, it means that one
-of the major users of Rust is Rust, so we are constantly testing our own
+Bootstrapping has a lot of interesting implications. For example, it means that
+one of the major users of Rust is Rust, so we are constantly testing our own
 software ("eating our own dogfood"). Also, it means building the compiler can
-take a long time because one must first build the compiler and then use that to
-build the new compiler (sometimes you can get away without the full 2-stage
-build, but for release artifacts you need the 2-stage build).
+take a long time because one must first build the new compiler with an older
+compiler and then use that to build the new compiler with itself (sometimes you
+can get away without the full 2-stage build, but for release artifacts you need
+the 2-stage build).
 
 Bootstrapping also has implications for when features are usable in the
 compiler itself. The build system uses the current beta compiler to build the
