@@ -28,7 +28,7 @@ use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::{BytePos, Symbol};
+use rustc_span::BytePos;
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Place, PlaceBase};
 use std::iter::{once, Iterator};
 use std::mem;
@@ -804,7 +804,7 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
         _ => false,
     };
 
-    is_slice || is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) || match_type(cx, ty, &paths::VEC_DEQUE)
+    is_slice || is_type_diagnostic_item(cx, ty, sym!(vec_type)) || match_type(cx, ty, &paths::VEC_DEQUE)
 }
 
 fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -> Option<FixedOffsetVar> {
@@ -1955,7 +1955,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr<'_>) -> bool {
     // will allow further borrows afterwards
     let ty = cx.tables.expr_ty(e);
     is_iterable_array(ty, cx) ||
-    is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) ||
+    is_type_diagnostic_item(cx, ty, sym!(vec_type)) ||
     match_type(cx, ty, &paths::LINKED_LIST) ||
     match_type(cx, ty, &paths::HASHMAP) ||
     match_type(cx, ty, &paths::HASHSET) ||
@@ -2465,7 +2465,7 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
         then {
             let ty = cx.tables.node_type(ty.hir_id);
-            if is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) ||
+            if is_type_diagnostic_item(cx, ty, sym!(vec_type)) ||
                 match_type(cx, ty, &paths::VEC_DEQUE) ||
                 match_type(cx, ty, &paths::BTREEMAP) ||
                 match_type(cx, ty, &paths::HASHMAP) {

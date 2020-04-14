@@ -19,7 +19,7 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Predicate, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{sym, Symbol, SymbolStr};
+use rustc_span::symbol::{sym, SymbolStr};
 
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
@@ -2111,7 +2111,7 @@ fn lint_iter_cloned_collect<'a, 'tcx>(
     iter_args: &'tcx [hir::Expr<'_>],
 ) {
     if_chain! {
-        if is_type_diagnostic_item(cx, cx.tables.expr_ty(expr), Symbol::intern("vec_type"));
+        if is_type_diagnostic_item(cx, cx.tables.expr_ty(expr), sym!(vec_type));
         if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0]));
         if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite());
 
@@ -2240,7 +2240,7 @@ fn lint_iter_nth<'a, 'tcx>(
     let mut_str = if is_mut { "_mut" } else { "" };
     let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
         "slice"
-    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(&iter_args[0]), Symbol::intern("vec_type")) {
+    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(&iter_args[0]), sym!(vec_type)) {
         "Vec"
     } else if match_type(cx, cx.tables.expr_ty(&iter_args[0]), &paths::VEC_DEQUE) {
         "VecDeque"
@@ -2297,7 +2297,7 @@ fn lint_get_unwrap<'a, 'tcx>(
     let caller_type = if derefs_to_slice(cx, &get_args[0], expr_ty).is_some() {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "slice"
-    } else if is_type_diagnostic_item(cx, expr_ty, Symbol::intern("vec_type")) {
+    } else if is_type_diagnostic_item(cx, expr_ty, sym!(vec_type)) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "Vec"
     } else if match_type(cx, expr_ty, &paths::VEC_DEQUE) {
@@ -2378,7 +2378,7 @@ fn derefs_to_slice<'a, 'tcx>(
         match ty.kind {
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
-            ty::Adt(..) => is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")),
+            ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym!(vec_type)),
             ty::Array(_, size) => {
                 if let Some(size) = size.try_eval_usize(cx.tcx, cx.param_env) {
                     size < 32
