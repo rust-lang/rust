@@ -22,7 +22,7 @@ LL |     (1, 2) = (3, 4);
    |     |
    |     cannot assign to this expression
    |
-   = note: see issue #372 <https://github.com/rust-lang/rust/issues/372> for more information
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
    = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
 error[E0070]: invalid left-hand side of assignment
@@ -49,7 +49,7 @@ LL |     (a, b) = (3, 4);
    |     |
    |     cannot assign to this expression
    |
-   = note: see issue #372 <https://github.com/rust-lang/rust/issues/372> for more information
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
    = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
 error[E0070]: invalid left-hand side of assignment
