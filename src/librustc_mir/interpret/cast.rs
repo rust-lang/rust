@@ -106,14 +106,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match src.layout.ty.kind {
             // Floating point
             Float(FloatTy::F32) => {
-                return Ok(self
-                    .cast_from_float(src.to_scalar()?.to_f32()?, dest_layout.ty)?
-                    .into());
+                return Ok(self.cast_from_float(src.to_scalar()?.to_f32()?, dest_layout.ty).into());
             }
             Float(FloatTy::F64) => {
-                return Ok(self
-                    .cast_from_float(src.to_scalar()?.to_f64()?, dest_layout.ty)?
-                    .into());
+                return Ok(self.cast_from_float(src.to_scalar()?.to_f64()?, dest_layout.ty).into());
             }
             // The rest is integer/pointer-"like", including fn ptr casts and casts from enums that
             // are represented as integers.
@@ -135,7 +131,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     assert!(src.layout.is_zst());
                     let discr_layout = self.layout_of(discr.ty)?;
                     return Ok(self
-                        .cast_from_int_like(discr.val, discr_layout, dest_layout)?
+                        .cast_from_int_like(discr.val, discr_layout, dest_layout)
                         .into());
                 }
             }
@@ -173,15 +169,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // (b) cast from an integer-like (including bool, char, enums).
         // In both cases we want the bits.
         let bits = self.force_bits(src.to_scalar()?, src.layout.size)?;
-        Ok(self.cast_from_int_like(bits, src.layout, dest_layout)?.into())
+        Ok(self.cast_from_int_like(bits, src.layout, dest_layout).into())
     }
 
-    fn cast_from_int_like(
+    pub(super) fn cast_from_int_like(
         &self,
         v: u128, // raw bits
         src_layout: TyAndLayout<'tcx>,
         dest_layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
+    ) -> Scalar<M::PointerTag> {
         // Let's make sure v is sign-extended *if* it has a signed type.
         let signed = src_layout.abi.is_signed();
         let v = if signed { self.sign_extend(v, src_layout) } else { v };
@@ -190,21 +186,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match dest_layout.ty.kind {
             Int(_) | Uint(_) | RawPtr(_) => {
                 let v = self.truncate(v, dest_layout);
-                Ok(Scalar::from_uint(v, dest_layout.size))
+                Scalar::from_uint(v, dest_layout.size)
             }
 
-            Float(FloatTy::F32) if signed => {
-                Ok(Scalar::from_f32(Single::from_i128(v as i128).value))
-            }
-            Float(FloatTy::F64) if signed => {
-                Ok(Scalar::from_f64(Double::from_i128(v as i128).value))
-            }
-            Float(FloatTy::F32) => Ok(Scalar::from_f32(Single::from_u128(v).value)),
-            Float(FloatTy::F64) => Ok(Scalar::from_f64(Double::from_u128(v).value)),
+            Float(FloatTy::F32) if signed => Scalar::from_f32(Single::from_i128(v as i128).value),
+            Float(FloatTy::F64) if signed => Scalar::from_f64(Double::from_i128(v as i128).value),
+            Float(FloatTy::F32) => Scalar::from_f32(Single::from_u128(v).value),
+            Float(FloatTy::F64) => Scalar::from_f64(Double::from_u128(v).value),
 
             Char => {
                 // `u8` to `char` cast
-                Ok(Scalar::from_u32(u8::try_from(v).unwrap().into()))
+                Scalar::from_u32(u8::try_from(v).unwrap().into())
             }
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
@@ -212,11 +204,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    fn cast_from_float<F>(
-        &self,
-        f: F,
-        dest_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, Scalar<M::PointerTag>>
+    fn cast_from_float<F>(&self, f: F, dest_ty: Ty<'tcx>) -> Scalar<M::PointerTag>
     where
         F: Float + Into<Scalar<M::PointerTag>> + FloatConvert<Single> + FloatConvert<Double>,
     {
@@ -229,7 +217,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // (https://doc.rust-lang.org/nightly/nightly-rustc/rustc_apfloat/trait.Float.html#method.to_i128_r).
                 let v = f.to_u128(usize::try_from(width).unwrap()).value;
                 // This should already fit the bit width
-                Ok(Scalar::from_uint(v, Size::from_bits(width)))
+                Scalar::from_uint(v, Size::from_bits(width))
             }
             // float -> int
             Int(t) => {
@@ -237,12 +225,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // `to_i128` is a saturating cast, which is what we need
                 // (https://doc.rust-lang.org/nightly/nightly-rustc/rustc_apfloat/trait.Float.html#method.to_i128_r).
                 let v = f.to_i128(usize::try_from(width).unwrap()).value;
-                Ok(Scalar::from_int(v, Size::from_bits(width)))
+                Scalar::from_int(v, Size::from_bits(width))
             }
             // float -> f32
-            Float(FloatTy::F32) => Ok(Scalar::from_f32(f.convert(&mut false).value)),
+            Float(FloatTy::F32) => Scalar::from_f32(f.convert(&mut false).value),
             // float -> f64
-            Float(FloatTy::F64) => Ok(Scalar::from_f64(f.convert(&mut false).value)),
+            Float(FloatTy::F64) => Scalar::from_f64(f.convert(&mut false).value),
             // That's it.
             _ => bug!("invalid float to {:?} cast", dest_ty),
         }
