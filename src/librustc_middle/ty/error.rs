@@ -1,10 +1,12 @@
+use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
 use rustc_ast::ast;
-use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
+use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
+use rustc_errors::{pluralize, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, MultiSpan, Span};
 use rustc_target::spec::abi;
 
 use std::borrow::Cow;
@@ -332,6 +334,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         db: &mut DiagnosticBuilder<'_>,
         err: &TypeError<'tcx>,
+        cause: &ObligationCause<'tcx>,
         sp: Span,
         body_owner_def_id: DefId,
     ) {
@@ -370,7 +373,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                     sp,
                                     "use a float literal",
                                     format!("{}.0", snippet),
-                                    Applicability::MachineApplicable,
+                                    MachineApplicable,
                                 );
                             }
                         }
@@ -451,33 +454,13 @@ impl<T> Trait<T> for X {
                             db.span_label(p_span, "this type parameter");
                         }
                     }
-                    (ty::Projection(_), _) => {
-                        db.note(&format!(
-                            "consider constraining the associated type `{}` to `{}` or calling a \
-                             method that returns `{0}`",
-                            values.expected, values.found,
-                        ));
-                        if self.sess.teach(&db.get_code().unwrap()) {
-                            db.help(
-                                "given an associated type `T` and a method `foo`:
-```
-trait Trait {
-    type T;
-    fn foo(&self) -> Self::T;
-}
-```
-the only way of implementing method `foo` is to constrain `T` with an explicit associated type:
-```
-impl Trait for X {
-    type T = String;
-    fn foo(&self) -> Self::T { String::new() }
-}
-```",
-                            );
-                        }
-                        db.note(
-                            "for more information, visit \
-                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
+                    (ty::Projection(proj_ty), _) => {
+                        self.expected_projection(
+                            db,
+                            proj_ty,
+                            values,
+                            body_owner_def_id,
+                            &cause.code,
                         );
                     }
                     (_, ty::Projection(proj_ty)) => {
@@ -485,7 +468,13 @@ impl Trait for X {
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,
                         );
-                        if !self.suggest_constraint(db, &msg, body_owner_def_id, proj_ty, values) {
+                        if !self.suggest_constraint(
+                            db,
+                            &msg,
+                            body_owner_def_id,
+                            proj_ty,
+                            values.expected,
+                        ) {
                             db.help(&msg);
                             db.note(
                                 "for more information, visit \
@@ -533,7 +522,7 @@ impl Trait for X {
         msg: &str,
         body_owner_def_id: DefId,
         proj_ty: &ty::ProjectionTy<'tcx>,
-        values: &ExpectedFound<Ty<'tcx>>,
+        ty: Ty<'tcx>,
     ) -> bool {
         let assoc = self.associated_item(proj_ty.item_def_id);
         let trait_ref = proj_ty.trait_ref(*self);
@@ -570,7 +559,7 @@ impl Trait for X {
                             &trait_ref,
                             pred.bounds,
                             &assoc,
-                            values,
+                            ty,
                             msg,
                         ) {
                             return true;
@@ -587,7 +576,7 @@ impl Trait for X {
                             &trait_ref,
                             param.bounds,
                             &assoc,
-                            values,
+                            ty,
                             msg,
                         );
                     }
@@ -597,15 +586,145 @@ impl Trait for X {
         false
     }
 
+    fn expected_projection(
+        &self,
+        db: &mut DiagnosticBuilder<'_>,
+        proj_ty: &ty::ProjectionTy<'tcx>,
+        values: &ExpectedFound<Ty<'tcx>>,
+        body_owner_def_id: DefId,
+        cause_code: &ObligationCauseCode<'_>,
+    ) {
+        let msg = format!(
+            "consider constraining the associated type `{}` to `{}`",
+            values.expected, values.found
+        );
+        let mut suggested = false;
+        let body_owner = self.hir().get_if_local(body_owner_def_id);
+        let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
+
+        let callable_scope = match body_owner {
+            Some(
+                hir::Node::Item(hir::Item {
+                    kind:
+                        hir::ItemKind::Trait(..)
+                        | hir::ItemKind::Impl { .. }
+                        | hir::ItemKind::Const(..)
+                        | hir::ItemKind::Enum(..)
+                        | hir::ItemKind::Struct(..)
+                        | hir::ItemKind::Union(..),
+                    ..
+                })
+                | hir::Node::TraitItem(hir::TraitItem {
+                    kind: hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..),
+                    ..
+                })
+                | hir::Node::ImplItem(hir::ImplItem {
+                    kind: hir::ImplItemKind::Const(..) | hir::ImplItemKind::TyAlias(..),
+                    ..
+                }),
+            ) => false,
+            _ => true,
+        };
+        let impl_comparison =
+            matches!(cause_code, ObligationCauseCode::CompareImplMethodObligation { .. });
+        if !callable_scope || impl_comparison {
+            // We do not want to suggest calling functions when the reason of the
+            // type error is a comparison of an `impl` with its `trait` or when the
+            // scope is outside of a `Body`.
+        } else {
+            let assoc = self.associated_item(proj_ty.item_def_id);
+            let items = self.associated_items(assoc.container.id());
+            // Find all the methods in the trait that could be called to construct the
+            // expected associated type.
+            let methods: Vec<(Span, String)> = items
+                .items
+                .iter()
+                .filter(|(name, item)| {
+                    ty::AssocKind::Method == item.kind && Some(**name) != current_method_ident
+                })
+                .filter_map(|(_, item)| {
+                    let method = self.fn_sig(item.def_id);
+                    match method.output().skip_binder().kind {
+                        ty::Projection(ty::ProjectionTy { item_def_id, .. })
+                            if item_def_id == proj_ty.item_def_id =>
+                        {
+                            Some((
+                                self.sess.source_map().guess_head_span(self.def_span(item.def_id)),
+                                format!("consider calling `{}`", self.def_path_str(item.def_id)),
+                            ))
+                        }
+                        _ => None,
+                    }
+                })
+                .collect();
+            if !methods.is_empty() {
+                // Use a single `help:` to show all the methods in the trait that can
+                // be used to construct the expected associated type.
+                let mut span: MultiSpan =
+                    methods.iter().map(|(sp, _)| *sp).collect::<Vec<Span>>().into();
+                let msg = format!(
+                    "{some} method{s} {are} available that return{r} `{ty}`",
+                    some = if methods.len() == 1 { "a" } else { "some" },
+                    s = pluralize!(methods.len()),
+                    are = if methods.len() == 1 { "is" } else { "are" },
+                    r = if methods.len() == 1 { "s" } else { "" },
+                    ty = values.expected
+                );
+                for (sp, label) in methods.into_iter() {
+                    span.push_span_label(sp, label);
+                }
+                db.span_help(span, &msg);
+                suggested = true;
+            }
+            // Possibly suggest constraining the associated type to conform to the
+            // found type.
+            suggested |=
+                self.suggest_constraint(db, &msg, body_owner_def_id, proj_ty, values.found);
+        }
+        if !suggested && !impl_comparison {
+            // Generic suggestion when we can't be more specific.
+            if callable_scope {
+                db.help(
+                    &format!("{} or calling a method that returns `{}`", msg, values.expected,),
+                );
+            } else {
+                db.help(&msg);
+            }
+            db.note(
+                "for more information, visit \
+                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
+            );
+        }
+        if self.sess.teach(&db.get_code().unwrap()) {
+            db.help(
+                "given an associated type `T` and a method `foo`:
+```
+trait Trait {
+type T;
+fn foo(&self) -> Self::T;
+}
+```
+the only way of implementing method `foo` is to constrain `T` with an explicit associated type:
+```
+impl Trait for X {
+type T = String;
+fn foo(&self) -> Self::T { String::new() }
+}
+```",
+            );
+        }
+    }
+
     fn constrain_associated_type_structured_suggestion(
         &self,
         db: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::TraitRef<'tcx>,
         bounds: hir::GenericBounds<'_>,
         assoc: &ty::AssocItem,
-        values: &ExpectedFound<Ty<'tcx>>,
+        ty: Ty<'tcx>,
         msg: &str,
     ) -> bool {
+        // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
         for bound in bounds {
             match bound {
                 hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::None) => {
@@ -620,14 +739,11 @@ impl Trait for X {
                             let (span, sugg) = if has_params {
                                 let pos = ptr.span.hi() - BytePos(1);
                                 let span = Span::new(pos, pos, ptr.span.ctxt());
-                                (span, format!(", {} = {}", assoc.ident, values.expected))
+                                (span, format!(", {} = {}", assoc.ident, ty))
                             } else {
-                                (
-                                    ptr.span.shrink_to_hi(),
-                                    format!("<{} = {}>", assoc.ident, values.expected),
-                                )
+                                (ptr.span.shrink_to_hi(), format!("<{} = {}>", assoc.ident, ty))
                             };
-                            db.span_suggestion(span, msg, sugg, Applicability::MaybeIncorrect);
+                            db.span_suggestion_verbose(span, msg, sugg, MaybeIncorrect);
                             return true;
                         }
                     }

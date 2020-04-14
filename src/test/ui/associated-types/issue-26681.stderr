@@ -6,7 +6,7 @@ LL |     const C: <Self::Fv as Foo>::Bar = 6665;
    |
    = note: expected associated type `<<Self as Baz>::Fv as Foo>::Bar`
                          found type `{integer}`
-   = note: consider constraining the associated type `<<Self as Baz>::Fv as Foo>::Bar` to `{integer}` or calling a method that returns `<<Self as Baz>::Fv as Foo>::Bar`
+   = help: consider constraining the associated type `<<Self as Baz>::Fv as Foo>::Bar` to `{integer}`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error: aborting due to previous error

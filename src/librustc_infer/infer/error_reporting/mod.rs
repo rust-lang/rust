@@ -1388,6 +1388,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         terr: &TypeError<'tcx>,
     ) {
         let span = cause.span(self.tcx);
+        debug!("note_type_err cause={:?} values={:?}, terr={:?}", cause, values, terr);
 
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
@@ -1599,11 +1600,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 self.tcx.hir().body_owner_def_id(hir::BodyId { hir_id: cause.body_id })
             });
         self.check_and_note_conflicting_crates(diag, terr);
-        self.tcx.note_and_explain_type_err(diag, terr, span, body_owner_def_id.to_def_id());
+        self.tcx.note_and_explain_type_err(diag, terr, cause, span, body_owner_def_id.to_def_id());
 
         // It reads better to have the error origin as the final
         // thing.
-        self.note_error_origin(diag, &cause, exp_found);
+        self.note_error_origin(diag, cause, exp_found);
     }
 
     /// When encountering a case where `.as_ref()` on a `Result` or `Option` would be appropriate,

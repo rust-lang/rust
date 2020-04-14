@@ -6,6 +6,7 @@ trait Trait<T = Self> {
     type A;
 
     fn func(&self) -> Self::A;
+    fn funk(&self, _: Self::A);
 }
 
 fn foo(_: impl Trait, x: impl Trait) {
@@ -21,6 +22,7 @@ fn foo2(x: impl Trait<i32>) {
 }
 
 fn bar2<T: Trait<i32>>(x: T) {
+    x.funk(3); //~ ERROR mismatched types
     qux(x.func()) //~ ERROR mismatched types
 }
 
@@ -29,7 +31,7 @@ fn baz<D: std::fmt::Debug, T: Trait<A = D>>(x: T) {
 }
 
 fn bat(x: &mut dyn Trait<(), A = ()>) {
-    qux(x) //~ ERROR mismatched types
+    qux(x.func()) //~ ERROR mismatched types
 }
 
 fn ban<T>(x: T) where T: Trait {

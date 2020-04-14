@@ -9,8 +9,6 @@ LL |     fn make() -> u8 { 0 }
    |
    = note: expected fn pointer `fn() -> <A<T> as Tr>::Ty`
               found fn pointer `fn() -> u8`
-   = note: consider constraining the associated type `<A<T> as Tr>::Ty` to `u8` or calling a method that returns `<A<T> as Tr>::Ty`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0053]: method `make` has an incompatible type for trait
   --> $DIR/defaults-specialization.rs:34:18
@@ -23,8 +21,6 @@ LL |     fn make() -> bool { true }
    |
    = note: expected fn pointer `fn() -> <B<T> as Tr>::Ty`
               found fn pointer `fn() -> bool`
-   = note: consider constraining the associated type `<B<T> as Tr>::Ty` to `bool` or calling a method that returns `<B<T> as Tr>::Ty`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0308]: mismatched types
   --> $DIR/defaults-specialization.rs:9:9
@@ -36,7 +32,7 @@ LL |         0u8
    |
    = note: expected associated type `<Self as Tr>::Ty`
                          found type `u8`
-   = note: consider constraining the associated type `<Self as Tr>::Ty` to `u8` or calling a method that returns `<Self as Tr>::Ty`
+   = help: consider constraining the associated type `<Self as Tr>::Ty` to `u8` or calling a method that returns `<Self as Tr>::Ty`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0308]: mismatched types
@@ -49,7 +45,7 @@ LL |     fn make() -> Self::Ty { 0u8 }
    |
    = note: expected associated type `<A2<T> as Tr>::Ty`
                          found type `u8`
-   = note: consider constraining the associated type `<A2<T> as Tr>::Ty` to `u8` or calling a method that returns `<A2<T> as Tr>::Ty`
+   = help: consider constraining the associated type `<A2<T> as Tr>::Ty` to `u8` or calling a method that returns `<A2<T> as Tr>::Ty`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0308]: mismatched types
@@ -62,7 +58,7 @@ LL |     fn make() -> Self::Ty { true }
    |
    = note: expected associated type `<B2<T> as Tr>::Ty`
                          found type `bool`
-   = note: consider constraining the associated type `<B2<T> as Tr>::Ty` to `bool` or calling a method that returns `<B2<T> as Tr>::Ty`
+   = help: consider constraining the associated type `<B2<T> as Tr>::Ty` to `bool` or calling a method that returns `<B2<T> as Tr>::Ty`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0308]: mismatched types
@@ -75,8 +71,11 @@ LL |     let _: <B<()> as Tr>::Ty = 0u8;
    |
    = note: expected associated type `<B<()> as Tr>::Ty`
                          found type `u8`
-   = note: consider constraining the associated type `<B<()> as Tr>::Ty` to `u8` or calling a method that returns `<B<()> as Tr>::Ty`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+help: a method is available that returns `<B<()> as Tr>::Ty`
+  --> $DIR/defaults-specialization.rs:8:5
+   |
+LL |     fn make() -> Self::Ty {
+   |     ^^^^^^^^^^^^^^^^^^^^^ consider calling `Tr::make`
 
 error[E0308]: mismatched types
   --> $DIR/defaults-specialization.rs:87:32
@@ -88,8 +87,11 @@ LL |     let _: <B<()> as Tr>::Ty = true;
    |
    = note: expected associated type `<B<()> as Tr>::Ty`
                          found type `bool`
-   = note: consider constraining the associated type `<B<()> as Tr>::Ty` to `bool` or calling a method that returns `<B<()> as Tr>::Ty`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+help: a method is available that returns `<B<()> as Tr>::Ty`
+  --> $DIR/defaults-specialization.rs:8:5
+   |
+LL |     fn make() -> Self::Ty {
+   |     ^^^^^^^^^^^^^^^^^^^^^ consider calling `Tr::make`
 
 error[E0308]: mismatched types
   --> $DIR/defaults-specialization.rs:88:33
@@ -101,8 +103,11 @@ LL |     let _: <B2<()> as Tr>::Ty = 0u8;
    |
    = note: expected associated type `<B2<()> as Tr>::Ty`
                          found type `u8`
-   = note: consider constraining the associated type `<B2<()> as Tr>::Ty` to `u8` or calling a method that returns `<B2<()> as Tr>::Ty`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+help: a method is available that returns `<B2<()> as Tr>::Ty`
+  --> $DIR/defaults-specialization.rs:8:5
+   |
+LL |     fn make() -> Self::Ty {
+   |     ^^^^^^^^^^^^^^^^^^^^^ consider calling `Tr::make`
 
 error[E0308]: mismatched types
   --> $DIR/defaults-specialization.rs:89:33
@@ -114,8 +119,11 @@ LL |     let _: <B2<()> as Tr>::Ty = true;
    |
    = note: expected associated type `<B2<()> as Tr>::Ty`
                          found type `bool`
-   = note: consider constraining the associated type `<B2<()> as Tr>::Ty` to `bool` or calling a method that returns `<B2<()> as Tr>::Ty`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+help: a method is available that returns `<B2<()> as Tr>::Ty`
+  --> $DIR/defaults-specialization.rs:8:5
+   |
+LL |     fn make() -> Self::Ty {
+   |     ^^^^^^^^^^^^^^^^^^^^^ consider calling `Tr::make`
 
 error: aborting due to 9 previous errors
 
