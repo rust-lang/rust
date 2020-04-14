@@ -1313,9 +1313,9 @@ pub enum ExprKind {
     Field(P<Expr>, Ident),
     /// An indexing operation (e.g., `foo[2]`).
     Index(P<Expr>, P<Expr>),
-    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`).
+    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`; and `..` in destructuring assingment).
     Range(Option<P<Expr>>, Option<P<Expr>>, RangeLimits),
-    /// An underscore.
+    /// An underscore, used in destructuring assignment to ignore a value.
     Underscore,
 
     /// Variable reference, possibly containing `::` and/or type

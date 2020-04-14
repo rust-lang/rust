@@ -611,6 +611,8 @@ declare_features! (
     (active, unsized_fn_params, "1.49.0", Some(48055), None),
 
     /// Allows the use of destructuring assignments.
+    /// The current issue reference refers to the rust-lang/rfcs issue. This will be changed to a
+    /// valid rust-lang/rust issue when the accompanying RFC is accepted.
     (active, destructuring_assignment, "1.49.0", Some(372), None),
 
     // -------------------------------------------------------------------------

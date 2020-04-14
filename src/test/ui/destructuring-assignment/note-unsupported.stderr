@@ -1,8 +1,8 @@
-error: base expression not allowed here
+error: functional record updates are not allowed in destructuring assignments
   --> $DIR/note-unsupported.rs:20:17
    |
 LL |     S { x: a, ..s } = S { x: 3, y: 4 };
-   |                 ^ help: consider removing this
+   |                 ^ help: consider removing the trailing pattern
 
 error[E0658]: destructuring assignments are unstable
   --> $DIR/note-unsupported.rs:6:12
@@ -99,7 +99,7 @@ LL |     S { x: a, ..s } = S { x: 3, y: 4 };
    = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
 error[E0658]: destructuring assignments are unstable
-  --> $DIR/note-unsupported.rs:25:17
+  --> $DIR/note-unsupported.rs:26:17
    |
 LL |     ((a, b), c) = ((3, 4), 5);
    |     ----------- ^

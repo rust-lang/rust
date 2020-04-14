@@ -12,13 +12,13 @@ error[E0023]: this pattern has 3 fields, but the corresponding tuple struct has 
 LL | struct TupleStruct<S, T>(S, T);
    | ------------------------------- tuple struct defined here
 ...
-LL |     TupleStruct(a, a, b) = TupleStruct(1,2);
+LL |     TupleStruct(a, a, b) = TupleStruct(1, 2);
    |     ^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 3
 
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/tuple_struct_destructure_fail.rs:12:12
    |
-LL |     test() = TupleStruct(0,0);
+LL |     test() = TupleStruct(0, 0);
    |     ------ ^
    |     |
    |     cannot assign to this expression
@@ -29,7 +29,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2
 LL | struct TupleStruct<S, T>(S, T);
    | ------------------------------- tuple struct defined here
 ...
-LL |     TupleStruct(_) = TupleStruct(1,2);
+LL |     TupleStruct(_) = TupleStruct(1, 2);
    |     ^^^^^^^^^^^^^^ expected 2 fields, found 1
 
 error: aborting due to 4 previous errors

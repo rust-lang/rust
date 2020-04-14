@@ -861,7 +861,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Destructure the LHS of complex assignments.
-    /// For instance, lower `(a,b) = t` to `{ let (lhs1,lhs2) = t; a = lhs1; b = lhs2; }`.
+    /// For instance, lower `(a, b) = t` to `{ let (lhs1, lhs2) = t; a = lhs1; b = lhs2; }`.
     fn lower_expr_assign(
         &mut self,
         lhs: &Expr,
@@ -902,13 +902,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             return hir::ExprKind::Assign(self.lower_expr(lhs), self.lower_expr(rhs), eq_sign_span);
         }
 
-        let mut assignments = Vec::new();
+        let mut assignments = vec![];
 
-        // The LHS becomes a pattern: `(lhs1, lhs2)`
+        // The LHS becomes a pattern: `(lhs1, lhs2)`.
         let pat = self.destructure_assign(lhs, eq_sign_span, &mut assignments);
         let rhs = self.lower_expr(rhs);
 
-        // Introduce a let for destructuring: `let (lhs1,lhs2) = t`.
+        // Introduce a `let` for destructuring: `let (lhs1, lhs2) = t`.
         let destructure_let = self.stmt_let_pat(
             ThinVec::new(),
             whole_span,
@@ -927,7 +927,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Convert the LHS of a destructuring assignment to a pattern.
-    /// Along the way, introduce additional assignments in the parameter assignments.
+    /// Each sub-assignment is recorded in `assignments`.
     fn destructure_assign(
         &mut self,
         lhs: &Expr,
@@ -935,10 +935,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         assignments: &mut Vec<hir::Stmt<'hir>>,
     ) -> &'hir hir::Pat<'hir> {
         match &lhs.kind {
+            // Underscore pattern.
             ExprKind::Underscore => {
                 return self.pat(lhs.span, hir::PatKind::Wild);
             }
-            // slices:
+            // Slice patterns.
             ExprKind::Array(elements) => {
                 let (pats, rest) =
                     self.destructure_sequence(elements, "slice", eq_sign_span, assignments);
@@ -950,7 +951,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 };
                 return self.pat(lhs.span, slice_pat);
             }
-            // tuple structs:
+            // Tuple structs.
             ExprKind::Call(callee, args) => {
                 if let ExprKind::Path(qself, path) = &callee.kind {
                     let (pats, rest) =
@@ -979,7 +980,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                 }
             }
-            // structs:
+            // Structs.
             ExprKind::Struct(path, fields, base) => {
                 let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
@@ -1005,10 +1006,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ExprKind::Underscore => {}
                             _ => self
                                 .sess
-                                .struct_span_err(e.span, "base expression not allowed here")
+                                .struct_span_err(
+                                    e.span,
+                                    "functional record updates are not allowed in destructuring \
+                                     assignments",
+                                )
                                 .span_suggestion(
                                     e.span,
-                                    "consider removing this",
+                                    "consider removing the trailing pattern",
                                     String::new(),
                                     rustc_errors::Applicability::MachineApplicable,
                                 )
@@ -1020,7 +1025,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let struct_pat = hir::PatKind::Struct(qpath, field_pats, fields_omitted);
                 return self.pat(lhs.span, struct_pat);
             }
-            // tuples:
+            // Tuples.
             ExprKind::Tup(elements) => {
                 let (pats, rest) =
                     self.destructure_sequence(elements, "tuple", eq_sign_span, assignments);
@@ -1041,8 +1046,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     /// Destructure a sequence of expressions occurring on the LHS of an assignment.
     /// Such a sequence occurs in a tuple (struct)/slice.
-    /// Return a sequence of corresponding patterns and the index and span of `..`, if any.
-    /// Along the way, introduce additional assignments in the parameter `assignments`.
+    /// Return a sequence of corresponding patterns, and the index and the span of `..` if it
+    /// exists.
+    /// Each sub-assignment is recorded in `assignments`.
     fn destructure_sequence(
         &mut self,
         elements: &[AstP<Expr>],

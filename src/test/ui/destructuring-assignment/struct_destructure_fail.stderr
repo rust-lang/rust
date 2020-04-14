@@ -6,14 +6,14 @@ LL |     Struct { a, _ } = Struct { a: 1, b: 2 };
    |     |
    |     while parsing this struct
 
-error: base expression not allowed here
+error: functional record updates are not allowed in destructuring assignments
   --> $DIR/struct_destructure_fail.rs:14:19
    |
 LL |     Struct { a, ..d } = Struct { a: 1, b: 2 };
-   |                   ^ help: consider removing this
+   |                   ^ help: consider removing the trailing expression
 
 error: base expression required after `..`
-  --> $DIR/struct_destructure_fail.rs:15:19
+  --> $DIR/struct_destructure_fail.rs:16:19
    |
 LL |     Struct { a, .. };
    |                   ^ add the base expression here
