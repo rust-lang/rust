@@ -31,4 +31,4 @@ chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "039fc90
 chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "039fc904a05f8cb3d0c682c9a57a63dda7a35356" }
 
 [dev-dependencies]
-insta = "0.15.0"
+insta = "0.16.0"
