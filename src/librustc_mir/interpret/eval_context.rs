@@ -28,6 +28,8 @@ use crate::util::storage::AlwaysLiveLocals;
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
+    ///
+    /// Note: the stack is provided by the machine.
     pub machine: M,
 
     /// The results of the type checker, from rustc.
@@ -343,17 +345,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>] {
+    pub(crate) fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>] {
         M::stack(self)
     }
 
     #[inline(always)]
-    pub fn stack_mut(&mut self) -> &mut Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>> {
+    pub(crate) fn stack_mut(
+        &mut self,
+    ) -> &mut Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>> {
         M::stack_mut(self)
     }
 
     #[inline(always)]
-    pub fn cur_frame(&self) -> usize {
+    pub fn frame_idx(&self) -> usize {
         let stack = self.stack();
         assert!(!stack.is_empty());
         stack.len() - 1
@@ -598,7 +602,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         if !self.stack().is_empty() {
-            info!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("PAUSING({}) {}", self.frame_idx(), self.frame().instance);
         }
         ::log_settings::settings().indentation += 1;
 
@@ -649,7 +653,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         M::after_stack_push(self)?;
-        info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
+        info!("ENTERING({}) {}", self.frame_idx(), self.frame().instance);
 
         if self.stack().len() > *self.tcx.sess.recursion_limit.get() {
             throw_exhaust!(StackFrameLimitReached)
@@ -706,7 +710,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
         info!(
             "LEAVING({}) {} (unwinding = {})",
-            self.cur_frame(),
+            self.frame_idx(),
             self.frame().instance,
             unwinding
         );
@@ -789,7 +793,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if !self.stack().is_empty() {
             info!(
                 "CONTINUING({}) {} (unwinding = {})",
-                self.cur_frame(),
+                self.frame_idx(),
                 self.frame().instance,
                 unwinding
             );
@@ -897,8 +901,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Place::Local { frame, local } => {
                 let mut allocs = Vec::new();
                 let mut msg = format!("{:?}", local);
-                if frame != self.cur_frame() {
-                    write!(msg, " ({} frames up)", self.cur_frame() - frame).unwrap();
+                if frame != self.frame_idx() {
+                    write!(msg, " ({} frames up)", self.frame_idx() - frame).unwrap();
                 }
                 write!(msg, ":").unwrap();
 

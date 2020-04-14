@@ -537,6 +537,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             ty::ConstKind::Value(val_val) => val_val,
         };
+        let val_val = M::eval_maybe_thread_local_static_const(self, val_val)?;
         // Other cases need layout.
         let layout = from_known_layout(self.tcx, layout, || self.layout_of(val.ty))?;
         let op = match val_val {

@@ -60,10 +60,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let body = self.body();
         let basic_block = &body.basic_blocks()[block];
 
-        let old_frames = self.cur_frame();
+        let old_frames = self.frame_idx();
 
         if let Some(stmt) = basic_block.statements.get(stmt_id) {
-            assert_eq!(old_frames, self.cur_frame());
+            assert_eq!(old_frames, self.frame_idx());
             self.statement(stmt)?;
             return Ok(true);
         }
@@ -71,7 +71,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         M::before_terminator(self)?;
 
         let terminator = basic_block.terminator();
-        assert_eq!(old_frames, self.cur_frame());
+        assert_eq!(old_frames, self.frame_idx());
         self.terminator(terminator)?;
         Ok(true)
     }
@@ -84,7 +84,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Some statements (e.g., box) push new stack frames.
         // We have to record the stack frame number *before* executing the statement.
-        let frame_idx = self.cur_frame();
+        let frame_idx = self.frame_idx();
 
         match &stmt.kind {
             Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
