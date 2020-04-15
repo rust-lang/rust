@@ -159,6 +159,21 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     }
 }
 
+impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
+    pub fn with_extra<Extra>(self, extra: Extra) -> Frame<'mir, 'tcx, Tag, Extra> {
+        Frame {
+            body: self.body,
+            instance: self.instance,
+            return_to_block: self.return_to_block,
+            return_place: self.return_place,
+            locals: self.locals,
+            block: self.block,
+            stmt: self.stmt,
+            extra,
+        }
+    }
+}
+
 impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// Return the `SourceInfo` of the current instruction.
     pub fn current_source_info(&self) -> Option<mir::SourceInfo> {
@@ -586,8 +601,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ::log_settings::settings().indentation += 1;
 
         // first push a stack frame so we have access to the local substs
-        let extra = M::stack_push(self)?;
-        self.stack.push(Frame {
+        let pre_frame = Frame {
             body,
             block: Some(mir::START_BLOCK),
             return_to_block,
@@ -597,8 +611,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             locals: IndexVec::new(),
             instance,
             stmt: 0,
-            extra,
-        });
+            extra: (),
+        };
+        let frame = M::init_frame_extra(self, pre_frame)?;
+        self.stack.push(frame);
 
         // don't allocate at all for trivial constants
         if body.local_decls.len() > 1 {
@@ -630,6 +646,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.frame_mut().locals = locals;
         }
 
+        M::after_stack_push(self)?;
         info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
 
         if self.stack.len() > *self.tcx.sess.recursion_limit.get() {
@@ -725,16 +742,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         // Cleanup: deallocate all locals that are backed by an allocation.
-        for local in frame.locals {
+        for local in &frame.locals {
             self.deallocate_local(local.value)?;
         }
 
-        if M::stack_pop(self, frame.extra, unwinding)? == StackPopJump::NoJump {
+        let return_place = frame.return_place;
+        if M::after_stack_pop(self, frame, unwinding)? == StackPopJump::NoJump {
             // The hook already did everything.
             // We want to skip the `info!` below, hence early return.
             return Ok(());
         }
-        // Normal return.
+        // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
             let unwind = next_block.expect("Encountered StackPopCleanup::None when unwinding!");
@@ -743,7 +761,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Follow the normal return edge.
             // Validate the return value. Do this after deallocating so that we catch dangling
             // references.
-            if let Some(return_place) = frame.return_place {
+            if let Some(return_place) = return_place {
                 if M::enforce_validity(self) {
                     // Data got changed, better make sure it matches the type!
                     // It is still possible that the return place held invalid data while

@@ -247,7 +247,7 @@ impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
             Operand::Immediate(_) if self.layout.is_zst() => {
                 Ok(MPlaceTy::dangling(self.layout, cx))
             }
-            Operand::Immediate(imm) => Err(ImmTy { imm, layout: self.layout }),
+            Operand::Immediate(imm) => Err(ImmTy::from_immediate(imm, self.layout)),
         }
     }
 
