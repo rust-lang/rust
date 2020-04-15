@@ -2,9 +2,10 @@
 
 use std::{cmp::Ordering, fmt};
 
+use super::completion_context::CompletionContext;
 use crate::CallInfo;
-use hir::Documentation;
-use ra_syntax::TextRange;
+use hir::{Documentation, HirDisplay};
+use ra_syntax::{ast::RecordField, TextRange};
 use ra_text_edit::TextEdit;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
@@ -301,7 +302,7 @@ impl<'a> Into<CompletionItem> for Builder {
 #[derive(Debug)]
 pub(crate) enum SortOption {
     CallFn(CallInfo),
-    // LitStruct,
+    RecordField(RecordField),
 }
 
 /// Represents an in-progress set of completions being built.
@@ -327,40 +328,55 @@ impl Completions {
         self.sort_option = Some(sort_option);
     }
 
-    pub(crate) fn sort(&mut self) {
+    pub(crate) fn sort(&mut self, ctx: &CompletionContext) {
         if self.sort_option.is_none() {
             return;
         }
-        let sort_option = self.sort_option.as_ref().unwrap();
 
-        match sort_option {
+        let (active_name, active_type) = match self.sort_option.as_ref().unwrap() {
             SortOption::CallFn(call_info) => {
-                if let Some(active_parameter_type) = call_info.active_parameter_type() {
-                    let active_parameter_name = call_info.active_parameter_name().unwrap();
-
-                    self.buf.sort_by(|a, b| {
-                        // For the same type
-                        if let Some(a_parameter_type) = &a.detail {
-                            if &active_parameter_type == a_parameter_type {
-                                // If same type + same name then go top position
-                                if active_parameter_name != a.label {
-                                    if let Some(b_parameter_type) = &b.detail {
-                                        if &active_parameter_type == b_parameter_type {
-                                            return Ordering::Equal;
-                                        }
-                                    }
-                                }
-                                Ordering::Less
-                            } else {
-                                Ordering::Greater
-                            }
-                        } else {
-                            Ordering::Greater
-                        }
-                    });
+                if call_info.active_parameter_type().is_none()
+                    || call_info.active_parameter_name().is_none()
+                {
+                    return;
                 }
-            } // _ => unimplemented!("sort options not already implemented"),
-        }
+                (
+                    call_info.active_parameter_name().unwrap(),
+                    call_info.active_parameter_type().unwrap(),
+                )
+            }
+            SortOption::RecordField(record_field) => {
+                if let Some((struct_field, _)) = ctx.sema.resolve_record_field(record_field) {
+                    (
+                        struct_field.name(ctx.db).to_string(),
+                        struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
+                    )
+                } else {
+                    return;
+                }
+            }
+        };
+
+        self.buf.sort_by(|a, b| {
+            // For the same type
+            if let Some(a_parameter_type) = &a.detail {
+                if &active_type == a_parameter_type {
+                    // If same type + same name then go top position
+                    if active_name != a.label {
+                        if let Some(b_parameter_type) = &b.detail {
+                            if &active_type == b_parameter_type {
+                                return Ordering::Equal;
+                            }
+                        }
+                    }
+                    Ordering::Less
+                } else {
+                    Ordering::Greater
+                }
+            } else {
+                Ordering::Greater
+            }
+        });
     }
 }
 

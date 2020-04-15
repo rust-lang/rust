@@ -95,7 +95,7 @@ pub(crate) fn completions(
     complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
 
     // Reorder completion items if there is a sort_option
-    acc.sort();
+    acc.sort(&ctx);
 
     Some(acc)
 }
