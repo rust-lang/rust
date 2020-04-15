@@ -114,17 +114,18 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 [[package]]
 name = "chalk-derive"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=6222e416b96892b2a86bc08de7dbc9826ff1acea#6222e416b96892b2a86bc08de7dbc9826ff1acea"
 dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+ "synstructure",
 ]
 
 [[package]]
 name = "chalk-engine"
 version = "0.9.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=6222e416b96892b2a86bc08de7dbc9826ff1acea#6222e416b96892b2a86bc08de7dbc9826ff1acea"
 dependencies = [
  "chalk-macros",
  "rustc-hash",
@@ -133,7 +134,7 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=6222e416b96892b2a86bc08de7dbc9826ff1acea#6222e416b96892b2a86bc08de7dbc9826ff1acea"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -143,7 +144,7 @@ dependencies = [
 [[package]]
 name = "chalk-macros"
 version = "0.1.1"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=6222e416b96892b2a86bc08de7dbc9826ff1acea#6222e416b96892b2a86bc08de7dbc9826ff1acea"
 dependencies = [
  "lazy_static",
 ]
@@ -151,7 +152,7 @@ dependencies = [
 [[package]]
 name = "chalk-rust-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=6222e416b96892b2a86bc08de7dbc9826ff1acea#6222e416b96892b2a86bc08de7dbc9826ff1acea"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -162,7 +163,7 @@ dependencies = [
 [[package]]
 name = "chalk-solve"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=6222e416b96892b2a86bc08de7dbc9826ff1acea#6222e416b96892b2a86bc08de7dbc9826ff1acea"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -1561,6 +1562,18 @@ checksum = "0df0eb663f387145cab623dea85b09c2c5b4b0aef44e945d928e682fce71bb03"
 dependencies = [
  "proc-macro2",
  "quote",
+ "unicode-xid",
+]
+
+[[package]]
+name = "synstructure"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67656ea1dc1b41b1451851562ea232ec2e5a80242139f7e679ceccfb5d61f545"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
  "unicode-xid",
 ]
 

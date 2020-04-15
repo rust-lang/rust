@@ -32,6 +32,9 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
     type InternedSubstitution = Vec<Parameter<Self>>;
+    type InternedProgramClause = chalk_ir::ProgramClauseData<Self>;
+    type InternedProgramClauses = Vec<chalk_ir::ProgramClause<Self>>;
+    type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
     type Identifier = TypeAliasId;
     type DefId = InternId;
 
@@ -181,6 +184,48 @@ impl chalk_ir::interner::Interner for Interner {
     ) -> &'a [Parameter<Self>] {
         substitution
     }
+
+    fn intern_program_clause(
+        &self,
+        data: chalk_ir::ProgramClauseData<Self>,
+    ) -> chalk_ir::ProgramClauseData<Self> {
+        data
+    }
+
+    fn program_clause_data<'a>(
+        &self,
+        clause: &'a chalk_ir::ProgramClauseData<Self>,
+    ) -> &'a chalk_ir::ProgramClauseData<Self> {
+        clause
+    }
+
+    fn intern_program_clauses(
+        &self,
+        data: impl IntoIterator<Item = chalk_ir::ProgramClause<Self>>,
+    ) -> Vec<chalk_ir::ProgramClause<Self>> {
+        data.into_iter().collect()
+    }
+
+    fn program_clauses_data<'a>(
+        &self,
+        clauses: &'a Vec<chalk_ir::ProgramClause<Self>>,
+    ) -> &'a [chalk_ir::ProgramClause<Self>] {
+        clauses
+    }
+
+    fn intern_quantified_where_clauses(
+        &self,
+        data: impl IntoIterator<Item = chalk_ir::QuantifiedWhereClause<Self>>,
+    ) -> Self::InternedQuantifiedWhereClauses {
+        data.into_iter().collect()
+    }
+
+    fn quantified_where_clauses_data<'a>(
+        &self,
+        clauses: &'a Self::InternedQuantifiedWhereClauses,
+    ) -> &'a [chalk_ir::QuantifiedWhereClause<Self>] {
+        clauses
+    }
 }
 
 impl chalk_ir::interner::HasInterner for Interner {
@@ -238,12 +283,10 @@ impl ToChalk for Ty {
             Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx).intern(&Interner),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             Ty::Dyn(predicates) => {
-                let where_clauses = predicates
-                    .iter()
-                    .filter(|p| !p.is_error())
-                    .cloned()
-                    .map(|p| p.to_chalk(db))
-                    .collect();
+                let where_clauses = chalk_ir::QuantifiedWhereClauses::from(
+                    &Interner,
+                    predicates.iter().filter(|p| !p.is_error()).cloned().map(|p| p.to_chalk(db)),
+                );
                 let bounded_ty = chalk_ir::DynTy { bounds: make_binders(where_clauses, 1) };
                 chalk_ir::TyData::Dyn(bounded_ty).intern(&Interner)
             }
@@ -281,8 +324,12 @@ impl ToChalk for Ty {
             chalk_ir::TyData::InferenceVar(_iv) => Ty::Unknown,
             chalk_ir::TyData::Dyn(where_clauses) => {
                 assert_eq!(where_clauses.bounds.binders.len(), 1);
-                let predicates =
-                    where_clauses.bounds.value.into_iter().map(|c| from_chalk(db, c)).collect();
+                let predicates = where_clauses
+                    .bounds
+                    .skip_binders()
+                    .iter(&Interner)
+                    .map(|c| from_chalk(db, c.clone()))
+                    .collect();
                 Ty::Dyn(predicates)
             }
         }
@@ -426,7 +473,7 @@ impl ToChalk for GenericPredicate {
     ) -> GenericPredicate {
         // we don't produce any where clauses with binders and can't currently deal with them
         match where_clause
-            .value
+            .skip_binders()
             .shifted_out(&Interner)
             .expect("unexpected bound vars in where clause")
         {
@@ -521,7 +568,7 @@ impl ToChalk for Arc<super::TraitEnvironment> {
                 pred.clone().to_chalk(db).cast(&Interner);
             clauses.push(program_clause.into_from_env_clause(&Interner));
         }
-        chalk_ir::Environment::new().add_clauses(clauses)
+        chalk_ir::Environment::new(&Interner).add_clauses(&Interner, clauses)
     }
 
     fn from_chalk(
@@ -603,10 +650,10 @@ impl ToChalk for builtin::BuiltinImplAssocTyValueData {
 }
 
 fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T> {
-    chalk_ir::Binders {
+    chalk_ir::Binders::new(
+        std::iter::repeat(chalk_ir::ParameterKind::Ty(())).take(num_vars).collect(),
         value,
-        binders: std::iter::repeat(chalk_ir::ParameterKind::Ty(())).take(num_vars).collect(),
-    }
+    )
 }
 
 fn convert_where_clauses(
@@ -695,6 +742,12 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     }
     fn interner(&self) -> &Interner {
         &Interner
+    }
+    fn well_known_trait_id(
+        &self,
+        _well_known_trait: chalk_rust_ir::WellKnownTrait,
+    ) -> chalk_ir::TraitId<Interner> {
+        unimplemented!()
     }
 }
 
