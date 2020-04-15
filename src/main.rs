@@ -115,7 +115,7 @@ impl ClippyCmd {
         }
     }
 
-    fn path(&self) -> PathBuf {
+    fn path() -> PathBuf {
         let mut path = env::current_exe()
             .expect("current executable path invalid")
             .with_file_name("clippy-driver");
@@ -143,10 +143,10 @@ impl ClippyCmd {
             .map(|p| ("CARGO_TARGET_DIR", p))
     }
 
-    fn to_std_cmd(self) -> Command {
+    fn into_std_cmd(self) -> Command {
         let mut cmd = Command::new("cargo");
 
-        cmd.env(self.path_env(), self.path())
+        cmd.env(self.path_env(), Self::path())
             .envs(ClippyCmd::target_dir())
             .env("CLIPPY_ARGS", self.clippy_args)
             .arg(self.cargo_subcommand)
@@ -162,7 +162,7 @@ where
 {
     let cmd = ClippyCmd::new(old_args);
 
-    let mut cmd = cmd.to_std_cmd();
+    let mut cmd = cmd.into_std_cmd();
 
     let exit_status = cmd
         .spawn()
@@ -179,7 +179,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::ClippyCmd;
 
     #[test]
     #[should_panic]
@@ -196,7 +196,7 @@ mod tests {
         let cmd = ClippyCmd::new(args);
         assert_eq!("fix", cmd.cargo_subcommand);
         assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
-        assert!(cmd.args.iter().find(|arg| arg.ends_with("unstable-options")).is_some());
+        assert!(cmd.args.iter().any(|arg| arg.ends_with("unstable-options")));
     }
 
     #[test]
