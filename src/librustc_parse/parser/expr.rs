@@ -1846,11 +1846,9 @@ impl<'a> Parser<'a> {
     }
 
     fn is_try_block(&self) -> bool {
-        self.token.is_keyword(kw::Try) &&
-        self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) &&
-        self.token.uninterpolated_span().rust_2018() &&
-        // Prevent `while try {} {}`, `if try {} {} else {}`, etc.
-        !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
+        self.token.is_keyword(kw::Try)
+            && self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace))
+            && self.token.uninterpolated_span().rust_2018()
     }
 
     /// Parses an `async move? {...}` expression.

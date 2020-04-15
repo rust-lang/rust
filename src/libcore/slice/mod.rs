@@ -1697,7 +1697,7 @@ impl<T> [T] {
     /// elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place
-    /// (i.e., does not allocate), and `O(m n log(m n))` worst-case, where the key function is
+    /// (i.e., does not allocate), and `O(m n log n)` worst-case, where the key function is
     /// `O(m)`.
     ///
     /// # Current implementation

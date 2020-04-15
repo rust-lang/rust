@@ -62,6 +62,8 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
         lang_items.slice_u8_alloc_impl(),
         lang_items.const_ptr_impl(),
         lang_items.mut_ptr_impl(),
+        lang_items.const_slice_ptr_impl(),
+        lang_items.mut_slice_ptr_impl(),
     ];
 
     for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {

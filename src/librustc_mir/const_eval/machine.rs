@@ -353,15 +353,30 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
         static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
-        if is_write && allocation.mutability == Mutability::Not {
-            Err(err_ub!(WriteToReadOnly(alloc_id)).into())
-        } else if is_write {
-            Err(ConstEvalErrKind::ModifiedGlobal.into())
-        } else if memory_extra.can_access_statics || static_def_id.is_none() {
-            // `static_def_id.is_none()` indicates this is not a static, but a const or so.
-            Ok(())
+        if is_write {
+            // Write access. These are never allowed, but we give a targeted error message.
+            if allocation.mutability == Mutability::Not {
+                Err(err_ub!(WriteToReadOnly(alloc_id)).into())
+            } else {
+                Err(ConstEvalErrKind::ModifiedGlobal.into())
+            }
         } else {
-            Err(ConstEvalErrKind::ConstAccessesStatic.into())
+            // Read access. These are usually allowed, with some exceptions.
+            if memory_extra.can_access_statics {
+                // Machine configuration allows us read from anything (e.g., `static` initializer).
+                Ok(())
+            } else if static_def_id.is_some() {
+                // Machine configuration does not allow us to read statics
+                // (e.g., `const` initializer).
+                Err(ConstEvalErrKind::ConstAccessesStatic.into())
+            } else {
+                // Immutable global, this read is fine.
+                // But make sure we never accept a read from something mutable, that would be
+                // unsound. The reason is that as the content of this allocation may be different
+                // now and at run-time, so if we permit reading now we might return the wrong value.
+                assert_eq!(allocation.mutability, Mutability::Not);
+                Ok(())
+            }
         }
     }
 }
