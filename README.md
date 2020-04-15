@@ -192,7 +192,8 @@ Miri adds its own set of `-Z` flags:
   for cryptographic use!  Do not generate secret keys in Miri or perform other
   kinds of cryptographic operations that rely on proper random numbers.
 * `-Zmiri-track-alloc-id=<id>` shows a backtrace when the given allocation is
-  being allocated.  This helps in debugging memory leaks.
+  being allocated or freed.  This helps in debugging memory leaks and
+  use after free bugs.
 * `-Zmiri-track-pointer-tag=<tag>` shows a backtrace when the given pointer tag
   is popped from a borrow stack (which is where the tag becomes invalid and any
   future use of it will error).  This helps you in finding out why UB is
