@@ -2399,7 +2399,11 @@ impl<'tcx> AdtDef {
                 None
             }
             Err(ErrorHandled::TooGeneric) => {
-                span_bug!(tcx.def_span(expr_did), "enum discriminant depends on generic arguments",)
+                tcx.sess.delay_span_bug(
+                    tcx.def_span(expr_did),
+                    "enum discriminant depends on generic arguments",
+                );
+                None
             }
         }
     }

@@ -55,6 +55,7 @@ mod fuchsia_base;
 mod haiku_base;
 mod hermit_base;
 mod hermit_kernel_base;
+mod illumos_base;
 mod l4re_base;
 mod linux_base;
 mod linux_kernel_base;
@@ -437,6 +438,8 @@ supported_targets! {
     // (See <https://github.com/rust-lang/rust/issues/40531>.)
     ("x86_64-sun-solaris", "x86_64-pc-solaris", x86_64_sun_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
+
+    ("x86_64-unknown-illumos", x86_64_unknown_illumos),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
