@@ -181,3 +181,40 @@ where
         Err(exit_status.code().unwrap_or(-1))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[should_panic]
+    fn fix_without_unstable() {
+        let args = "cargo clippy --fix".split_whitespace().map(ToString::to_string);
+        let _ = ClippyCmd::new(args);
+    }
+
+    #[test]
+    fn fix_unstable() {
+        let args = "cargo clippy --fix -Zunstable-options".split_whitespace().map(ToString::to_string);
+        let cmd = ClippyCmd::new(args);
+        assert_eq!("fix", cmd.cmd);
+        assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
+        assert!(cmd.args.iter().find(|arg| arg.ends_with("unstable-options")).is_some());
+    }
+
+    #[test]
+    fn check() {
+        let args = "cargo clippy".split_whitespace().map(ToString::to_string);
+        let cmd = ClippyCmd::new(args);
+        assert_eq!("check", cmd.cmd);
+        assert_eq!("RUSTC_WRAPPER", cmd.path_env());
+    }
+
+    #[test]
+    fn check_unstable() {
+        let args = "cargo clippy -Zunstable-options".split_whitespace().map(ToString::to_string);
+        let cmd = ClippyCmd::new(args);
+        assert_eq!("check", cmd.cmd);
+        assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
+    }
+}
