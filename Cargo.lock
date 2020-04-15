@@ -463,7 +463,7 @@ dependencies = [
  "cargo_metadata 0.9.1",
  "clippy-mini-macro-test",
  "clippy_lints",
- "compiletest_rs",
+ "compiletest_rs 0.5.0",
  "derive-new",
  "lazy_static 1.4.0",
  "regex",
@@ -606,6 +606,28 @@ dependencies = [
  "miow 0.3.3",
  "regex",
  "rustfix 0.4.6",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "tempfile",
+ "tester",
+ "winapi 0.3.8",
+]
+
+[[package]]
+name = "compiletest_rs"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f737835bfbbe29ed1ff82d5137520338d7ed5bf1a1d4b9c1c7c58bb45b8fa29"
+dependencies = [
+ "diff",
+ "filetime",
+ "getopts",
+ "libc",
+ "log",
+ "miow 0.3.3",
+ "regex",
+ "rustfix 0.5.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -2168,7 +2190,7 @@ dependencies = [
  "byteorder",
  "cargo_metadata 0.9.1",
  "colored",
- "compiletest_rs",
+ "compiletest_rs 0.4.0",
  "directories",
  "env_logger 0.7.1",
  "getrandom",
