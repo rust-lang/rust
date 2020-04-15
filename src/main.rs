@@ -1,6 +1,10 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 
 use rustc_tools_util::VersionInfo;
+use std::env;
+use std::path::PathBuf;
+use std::process::{self, Command};
+use std::ffi::OsString;
 
 const CARGO_CLIPPY_HELP: &str = r#"Checks a package to catch common mistakes and improve your Rust code.
 
@@ -37,93 +41,135 @@ fn show_version() {
 
 pub fn main() {
     // Check for version and help flags even when invoked as 'cargo-clippy'
-    if std::env::args().any(|a| a == "--help" || a == "-h") {
+    if env::args().any(|a| a == "--help" || a == "-h") {
         show_help();
         return;
     }
 
-    if std::env::args().any(|a| a == "--version" || a == "-V") {
+    if env::args().any(|a| a == "--version" || a == "-V") {
         show_version();
         return;
     }
 
-    if let Err(code) = process(std::env::args().skip(2)) {
-        std::process::exit(code);
+    if let Err(code) = process(env::args().skip(2)) {
+        process::exit(code);
     }
 }
 
-fn process<I>(mut old_args: I) -> Result<(), i32>
+struct ClippyCmd {
+    unstable_options: bool,
+    cmd: &'static str,
+    args: Vec<String>,
+    clippy_args: String
+}
+
+impl ClippyCmd
+{
+    fn new<I>(mut old_args: I) -> Self
+    where
+        I: Iterator<Item = String>,
+    {
+        let mut cmd = "check";
+        let mut unstable_options = false;
+        let mut args = vec![];
+
+        for arg in old_args.by_ref() {
+            match arg.as_str() {
+                "--fix" => {
+                    cmd = "fix";
+                    continue;
+                }
+                "--" => break,
+                // Cover -Zunstable-options and -Z unstable-options
+                s if s.ends_with("unstable-options") => unstable_options = true,
+                _ => {}
+            }
+
+            args.push(arg);
+        }
+
+        if cmd == "fix" && !unstable_options {
+            panic!("Usage of `--fix` requires `-Z unstable-options`");
+        }
+
+        // Run the dogfood tests directly on nightly cargo. This is required due
+        // to a bug in rustup.rs when running cargo on custom toolchains. See issue #3118.
+        if env::var_os("CLIPPY_DOGFOOD").is_some() && cfg!(windows) {
+            args.insert(0, "+nightly".to_string());
+        }
+
+        let clippy_args: String =
+            old_args
+            .map(|arg| format!("{}__CLIPPY_HACKERY__", arg))
+            .collect();
+
+        ClippyCmd {
+            unstable_options,
+            cmd,
+            args,
+            clippy_args,
+        }
+    }
+
+    fn path_env(&self) -> &'static str {
+        if self.unstable_options {
+            "RUSTC_WORKSPACE_WRAPPER"
+        } else {
+            "RUSTC_WRAPPER"
+        }
+    }
+
+    fn path(&self) -> PathBuf {
+        let mut path = env::current_exe()
+            .expect("current executable path invalid")
+            .with_file_name("clippy-driver");
+
+        if cfg!(windows) {
+            path.set_extension("exe");
+        }
+
+        path
+    }
+
+    fn target_dir() -> Option<(&'static str, OsString)> {
+        env::var_os("CLIPPY_DOGFOOD")
+            .map(|_| {
+                env::var_os("CARGO_MANIFEST_DIR").map_or_else(
+                    || std::ffi::OsString::from("clippy_dogfood"),
+                    |d| {
+                        std::path::PathBuf::from(d)
+                            .join("target")
+                            .join("dogfood")
+                            .into_os_string()
+                    },
+                )
+            })
+            .map(|p| ("CARGO_TARGET_DIR", p))
+    }
+
+    fn to_std_cmd(self) -> Command {
+        let mut cmd = Command::new("cargo");
+
+        cmd.env(self.path_env(), self.path())
+            .envs(ClippyCmd::target_dir())
+            .env("CLIPPY_ARGS", self.clippy_args)
+            .arg(self.cmd)
+            .args(&self.args);
+
+        cmd
+    }
+}
+
+
+fn process<I>(old_args: I) -> Result<(), i32>
 where
     I: Iterator<Item = String>,
 {
-    let mut args = vec!["check".to_owned()];
+    let cmd = ClippyCmd::new(old_args);
 
-    let mut fix = false;
-    let mut unstable_options = false;
+    let mut cmd = cmd.to_std_cmd();
 
-    for arg in old_args.by_ref() {
-        match arg.as_str() {
-            "--fix" => {
-                fix = true;
-                continue;
-            },
-            "--" => break,
-            // Cover -Zunstable-options and -Z unstable-options
-            s if s.ends_with("unstable-options") => unstable_options = true,
-            _ => {},
-        }
-
-        args.push(arg);
-    }
-
-    if fix {
-        if unstable_options {
-            args[0] = "fix".to_owned();
-        } else {
-            panic!("Usage of `--fix` requires `-Z unstable-options`");
-        }
-    }
-
-    let path_env = if unstable_options {
-        "RUSTC_WORKSPACE_WRAPPER"
-    } else {
-        "RUSTC_WRAPPER"
-    };
-
-    let clippy_args: String = old_args.map(|arg| format!("{}__CLIPPY_HACKERY__", arg)).collect();
-
-    let mut path = std::env::current_exe()
-        .expect("current executable path invalid")
-        .with_file_name("clippy-driver");
-    if cfg!(windows) {
-        path.set_extension("exe");
-    }
-
-    let target_dir = std::env::var_os("CLIPPY_DOGFOOD")
-        .map(|_| {
-            std::env::var_os("CARGO_MANIFEST_DIR").map_or_else(
-                || std::ffi::OsString::from("clippy_dogfood"),
-                |d| {
-                    std::path::PathBuf::from(d)
-                        .join("target")
-                        .join("dogfood")
-                        .into_os_string()
-                },
-            )
-        })
-        .map(|p| ("CARGO_TARGET_DIR", p));
-
-    // Run the dogfood tests directly on nightly cargo. This is required due
-    // to a bug in rustup.rs when running cargo on custom toolchains. See issue #3118.
-    if std::env::var_os("CLIPPY_DOGFOOD").is_some() && cfg!(windows) {
-        args.insert(0, "+nightly".to_string());
-    }
-
-    let exit_status = std::process::Command::new("cargo")
-        .args(&args)
-        .env(path_env, path)
-        .env("CLIPPY_ARGS", clippy_args)
-        .envs(target_dir)
+    let exit_status = cmd
         .spawn()
         .expect("could not run cargo")
         .wait()

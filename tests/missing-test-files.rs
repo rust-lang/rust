@@ -46,7 +46,7 @@ fn explore_directory(dir: &Path) -> Vec<String> {
                         if file_stem != current_file {
                             missing_files.push(path.to_str().unwrap().to_string());
                         }
-                    },
+                    }
                     _ => continue,
                 };
             }

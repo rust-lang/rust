@@ -145,11 +145,11 @@ fn run_ui_toml(config: &mut compiletest::Config) {
 
     let res = run_ui_toml_tests(&config, tests);
     match res {
-        Ok(true) => {},
+        Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
         Err(e) => {
             println!("I/O failure during tests: {:?}", e);
-        },
+        }
     }
 }
 
