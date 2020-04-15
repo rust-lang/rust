@@ -21,10 +21,18 @@ declare_clippy_lint! {
     /// measure the change this lint suggests.
     ///
     /// **Example:**
+    ///
     /// ```rust
+    /// // Bad
     /// enum Test {
     ///     A(i32),
     ///     B([i32; 8000]),
+    /// }
+    ///
+    /// // Possibly better
+    /// enum Test2 {
+    ///     A(i32),
+    ///     B(Box<[i32; 8000]>),
     /// }
     /// ```
     pub LARGE_ENUM_VARIANT,
@@ -84,12 +92,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                 if difference > self.maximum_size_difference_allowed {
                     let (i, variant) = largest.1;
 
+                    let help_text = "consider boxing the large fields to reduce the total size of the enum";
                     span_lint_and_then(
                         cx,
                         LARGE_ENUM_VARIANT,
                         def.variants[i].span,
                         "large size difference between variants",
                         |db| {
+                            db.span_label(
+                                def.variants[(largest.1).0].span,
+                                &format!("this variant is {} bytes", largest.0),
+                            );
+                            db.span_note(
+                                def.variants[(second.1).0].span,
+                                &format!("and the second-largest variant is {} bytes:", second.0),
+                            );
                             if variant.fields.len() == 1 {
                                 let span = match def.variants[i].data {
                                     VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => {
@@ -100,18 +117,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                                 if let Some(snip) = snippet_opt(cx, span) {
                                     db.span_suggestion(
                                         span,
-                                        "consider boxing the large fields to reduce the total size of the \
-                                         enum",
+                                        help_text,
                                         format!("Box<{}>", snip),
                                         Applicability::MaybeIncorrect,
                                     );
                                     return;
                                 }
                             }
-                            db.span_help(
-                                def.variants[i].span,
-                                "consider boxing the large fields to reduce the total size of the enum",
-                            );
+                            db.span_help(def.variants[i].span, help_text);
                         },
                     );
                 }

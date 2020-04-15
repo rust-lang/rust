@@ -135,7 +135,7 @@ define_Conf! {
     /// Lint: TYPE_COMPLEXITY. The maximum complexity a type can have
     (type_complexity_threshold, "type_complexity_threshold": u64, 250),
     /// Lint: MANY_SINGLE_CHAR_NAMES. The maximum number of single char bindings a scope may have
-    (single_char_binding_names_threshold, "single_char_binding_names_threshold": u64, 5),
+    (single_char_binding_names_threshold, "single_char_binding_names_threshold": u64, 4),
     /// Lint: BOXED_LOCAL. The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
     (too_large_for_stack, "too_large_for_stack": u64, 200),
     /// Lint: ENUM_VARIANT_NAMES. The minimum number of enum variants for the lints about variant names to trigger
@@ -150,7 +150,7 @@ define_Conf! {
     (trivial_copy_size_limit, "trivial_copy_size_limit": Option<u64>, None),
     /// Lint: TOO_MANY_LINES. The maximum number of lines a function or method can have
     (too_many_lines_threshold, "too_many_lines_threshold": u64, 100),
-    /// Lint: LARGE_STACK_ARRAYS. The maximum allowed size for arrays on the stack
+    /// Lint: LARGE_STACK_ARRAYS, LARGE_CONST_ARRAYS. The maximum allowed size for arrays on the stack
     (array_size_threshold, "array_size_threshold": u64, 512_000),
     /// Lint: VEC_BOX. The size of the boxed type in bytes, where boxing in a `Vec` is allowed
     (vec_box_size_threshold, "vec_box_size_threshold": u64, 4096),

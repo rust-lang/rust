@@ -93,7 +93,7 @@ impl<'a, 'tcx> SimilarNamesLocalVisitor<'a, 'tcx> {
     fn check_single_char_names(&self) {
         let num_single_char_names = self.single_char_names.iter().flatten().count();
         let threshold = self.lint.single_char_binding_names_threshold;
-        if num_single_char_names as u64 >= threshold {
+        if num_single_char_names as u64 > threshold {
             let span = self
                 .single_char_names
                 .iter()
