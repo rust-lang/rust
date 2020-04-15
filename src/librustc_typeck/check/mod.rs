@@ -838,7 +838,11 @@ fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         return tcx.has_typeck_tables(outer_def_id);
     }
 
-    if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
+    // FIXME(#71104) Should really be using just `as_local_hir_id` but
+    // some `LocalDefId` do not seem to have a corresponding HirId.
+    if let Some(id) =
+        def_id.as_local().and_then(|def_id| tcx.hir().opt_local_def_id_to_hir_id(def_id))
+    {
         primary_body_of(tcx, id).is_some()
     } else {
         false

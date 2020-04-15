@@ -168,7 +168,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     current_hir_id_owner: Vec<(LocalDefId, u32)>,
     item_local_id_counters: NodeMap<u32>,
-    node_id_to_hir_id: IndexVec<NodeId, hir::HirId>,
+    node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
 
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
@@ -522,7 +522,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         self.lower_node_id(CRATE_NODE_ID);
-        debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == hir::CRATE_HIR_ID);
+        debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == Some(hir::CRATE_HIR_ID));
 
         visit::walk_crate(&mut MiscCollector { lctx: &mut self, hir_id_owner: None }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
@@ -530,7 +530,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let module = self.lower_mod(&c.module);
         let attrs = self.lower_attrs(&c.attrs);
         let body_ids = body_ids(&self.bodies);
-        let proc_macros = c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id]).collect();
+        let proc_macros =
+            c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
 
         self.resolver.definitions().init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
 
@@ -571,26 +572,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ast_node_id: NodeId,
         alloc_hir_id: impl FnOnce(&mut Self) -> hir::HirId,
     ) -> hir::HirId {
-        if ast_node_id == DUMMY_NODE_ID {
-            return hir::DUMMY_HIR_ID;
-        }
+        assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
         let min_size = ast_node_id.as_usize() + 1;
 
         if min_size > self.node_id_to_hir_id.len() {
-            self.node_id_to_hir_id.resize(min_size, hir::DUMMY_HIR_ID);
+            self.node_id_to_hir_id.resize(min_size, None);
         }
 
-        let existing_hir_id = self.node_id_to_hir_id[ast_node_id];
-
-        if existing_hir_id == hir::DUMMY_HIR_ID {
+        if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
+            existing_hir_id
+        } else {
             // Generate a new `HirId`.
             let hir_id = alloc_hir_id(self);
-            self.node_id_to_hir_id[ast_node_id] = hir_id;
+            self.node_id_to_hir_id[ast_node_id] = Some(hir_id);
 
             hir_id
-        } else {
-            existing_hir_id
         }
     }
 
