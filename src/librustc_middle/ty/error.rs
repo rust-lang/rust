@@ -552,7 +552,7 @@ impl<T> Trait<T> for X {
                             continue;
                         }
 
-                        if self.constrain_associated_type_structured_suggestion(
+                        if self.constrain_generic_bound_associated_type_structured_suggestion(
                             db,
                             &trait_ref,
                             pred.bounds,
@@ -569,7 +569,7 @@ impl<T> Trait<T> for X {
                         == Some(def_id)
                     {
                         // This is type param `A` in `<A as T>::Foo`.
-                        return self.constrain_associated_type_structured_suggestion(
+                        return self.constrain_generic_bound_associated_type_structured_suggestion(
                             db,
                             &trait_ref,
                             param.bounds,
@@ -629,15 +629,16 @@ impl<T> Trait<T> for X {
                 | ObligationCauseCode::CompareImplTypeObligation { .. }
                 | ObligationCauseCode::CompareImplConstObligation
         );
+        let assoc = self.associated_item(proj_ty.item_def_id);
         if !callable_scope || impl_comparison {
             // We do not want to suggest calling functions when the reason of the
             // type error is a comparison of an `impl` with its `trait` or when the
             // scope is outside of a `Body`.
         } else {
-            let assoc = self.associated_item(proj_ty.item_def_id);
             let items = self.associated_items(assoc.container.id());
             // Find all the methods in the trait that could be called to construct the
             // expected associated type.
+            // FIXME: consider suggesting the use of associated `const`s.
             let methods: Vec<(Span, String)> = items
                 .items
                 .iter()
@@ -739,6 +740,18 @@ impl<T> Trait<T> for X {
                 _ => {}
             }
         }
+        if let ty::Opaque(def_id, _) = proj_ty.self_ty().kind {
+            // When the expected `impl Trait` is not defined in the current item, it will come from
+            // a return type. This can occur when dealing with `TryStream` (#71035).
+            suggested |= self.constrain_associated_type_structured_suggestion(
+                db,
+                self.def_span(def_id),
+                &assoc,
+                values.found,
+                &msg,
+            );
+        }
+
         if !suggested && !impl_comparison {
             // Generic suggestion when we can't be more specific.
             if callable_scope {
@@ -771,7 +784,7 @@ fn foo(&self) -> Self::T { String::new() }
         }
     }
 
-    fn constrain_associated_type_structured_suggestion(
+    fn constrain_generic_bound_associated_type_structured_suggestion(
         &self,
         db: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::TraitRef<'tcx>,
@@ -785,27 +798,40 @@ fn foo(&self) -> Self::T { String::new() }
             match bound {
                 hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::None) => {
                     // Relate the type param against `T` in `<A as T>::Foo`.
-                    if ptr.trait_ref.trait_def_id() == Some(trait_ref.def_id) {
-                        if let Ok(has_params) = self
-                            .sess
-                            .source_map()
-                            .span_to_snippet(ptr.span)
-                            .map(|snippet| snippet.ends_with('>'))
-                        {
-                            let (span, sugg) = if has_params {
-                                let pos = ptr.span.hi() - BytePos(1);
-                                let span = Span::new(pos, pos, ptr.span.ctxt());
-                                (span, format!(", {} = {}", assoc.ident, ty))
-                            } else {
-                                (ptr.span.shrink_to_hi(), format!("<{} = {}>", assoc.ident, ty))
-                            };
-                            db.span_suggestion_verbose(span, msg, sugg, MaybeIncorrect);
-                            return true;
-                        }
+                    if ptr.trait_ref.trait_def_id() == Some(trait_ref.def_id)
+                        && self.constrain_associated_type_structured_suggestion(
+                            db, ptr.span, assoc, ty, msg,
+                        )
+                    {
+                        return true;
                     }
                 }
                 _ => {}
             }
+        }
+        false
+    }
+
+    fn constrain_associated_type_structured_suggestion(
+        &self,
+        db: &mut DiagnosticBuilder<'_>,
+        span: Span,
+        assoc: &ty::AssocItem,
+        ty: Ty<'tcx>,
+        msg: &str,
+    ) -> bool {
+        if let Ok(has_params) =
+            self.sess.source_map().span_to_snippet(span).map(|snippet| snippet.ends_with('>'))
+        {
+            let (span, sugg) = if has_params {
+                let pos = span.hi() - BytePos(1);
+                let span = Span::new(pos, pos, span.ctxt());
+                (span, format!(", {} = {}", assoc.ident, ty))
+            } else {
+                (span.shrink_to_hi(), format!("<{} = {}>", assoc.ident, ty))
+            };
+            db.span_suggestion_verbose(span, msg, sugg, MaybeIncorrect);
+            return true;
         }
         false
     }
