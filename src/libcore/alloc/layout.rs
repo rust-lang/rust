@@ -258,7 +258,7 @@ impl Layout {
 
     /// Creates a layout describing the record for `self` followed by
     /// `next`, including any necessary padding to ensure that `next`
-    /// will be properly aligned, but no trailing padding. Note that
+    /// will be properly aligned, but *no trailing padding*. Note that
     /// the resulting layout will satisfy the alignment properties of
     /// both `self` and `next`, in order to ensure field alignment.
     ///
