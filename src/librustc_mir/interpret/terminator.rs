@@ -407,7 +407,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let this_receiver_ptr = self.layout_of(receiver_ptr_ty)?.field(self, 0)?;
                 // Adjust receiver argument.
                 args[0] =
-                    OpTy::from(ImmTy { layout: this_receiver_ptr, imm: receiver_place.ptr.into() });
+                    OpTy::from(ImmTy::from_immediate(receiver_place.ptr.into(), this_receiver_ptr));
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
                 self.eval_fn_call(drop_fn, caller_abi, &args, ret, unwind)
@@ -436,10 +436,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => (instance, place),
         };
 
-        let arg = ImmTy {
-            imm: place.to_ref(),
-            layout: self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
-        };
+        let arg = ImmTy::from_immediate(
+            place.to_ref(),
+            self.layout_of(self.tcx.mk_mut_ptr(place.layout.ty))?,
+        );
 
         let ty = self.tcx.mk_unit(); // return type is ()
         let dest = MPlaceTy::dangling(self.layout_of(ty)?, self);

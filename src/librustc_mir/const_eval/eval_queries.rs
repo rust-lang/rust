@@ -1,7 +1,7 @@
 use super::{error_to_const_error, CompileTimeEvalContext, CompileTimeInterpreter, MemoryExtra};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, ImmTy, Immediate, InternKind,
+    intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, Immediate, InternKind,
     InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst, RefTracking, Scalar,
     ScalarMaybeUndef, StackPopCleanup,
 };
@@ -147,25 +147,28 @@ pub(super) fn op_to_const<'tcx>(
     match immediate {
         Ok(mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
-        Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
-            ScalarMaybeUndef::Scalar(s) => ConstValue::Scalar(s),
-            ScalarMaybeUndef::Undef => to_const_value(op.assert_mem_place(ecx)),
+        Err(imm) => match *imm {
+            Immediate::Scalar(x) => match x {
+                ScalarMaybeUndef::Scalar(s) => ConstValue::Scalar(s),
+                ScalarMaybeUndef::Undef => to_const_value(op.assert_mem_place(ecx)),
+            },
+            Immediate::ScalarPair(a, b) => {
+                let (data, start) = match a.not_undef().unwrap() {
+                    Scalar::Ptr(ptr) => {
+                        (ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id), ptr.offset.bytes())
+                    }
+                    Scalar::Raw { .. } => (
+                        ecx.tcx
+                            .intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
+                        0,
+                    ),
+                };
+                let len = b.to_machine_usize(&ecx.tcx.tcx).unwrap();
+                let start = start.try_into().unwrap();
+                let len: usize = len.try_into().unwrap();
+                ConstValue::Slice { data, start, end: start + len }
+            }
         },
-        Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
-            let (data, start) = match a.not_undef().unwrap() {
-                Scalar::Ptr(ptr) => {
-                    (ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id), ptr.offset.bytes())
-                }
-                Scalar::Raw { .. } => (
-                    ecx.tcx.intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
-                    0,
-                ),
-            };
-            let len = b.to_machine_usize(&ecx.tcx.tcx).unwrap();
-            let start = start.try_into().unwrap();
-            let len: usize = len.try_into().unwrap();
-            ConstValue::Slice { data, start, end: start + len }
-        }
     }
 }
 

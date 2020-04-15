@@ -290,8 +290,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     #[inline(always)]
-    fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        Ok(())
+    fn init_frame_extra(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        frame: Frame<'mir, 'tcx>,
+    ) -> InterpResult<'tcx, Frame<'mir, 'tcx>> {
+        Ok(frame)
     }
 }
 
