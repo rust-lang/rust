@@ -1,17 +1,17 @@
 //! Newtypes for working with text sizes/ranges in a more type-safe manner.
 //!
 //! This library can help with two things:
-//!   * Reducing storage requirenments for offsets and ranges, under the
+//!   * Reducing storage requirements for offsets and ranges, under the
 //!     assumption that 32 bits is enough.
 //!   * Providing standard vocabulary types for applications where text ranges
 //!     are pervasive.
 //!
 //! However, you should not use this library simply because you work with
-//! strings. In the overhelming majority of cases, using `usize` and
+//! strings. In the overwhelming majority of cases, using `usize` and
 //! `std::ops::Range<usize>` is better. In particular, if you are publishing a
 //! library, using only std types in the interface would make it more
 //! interoperable. Similarly, if you are writing something like a lexer, which
-//! produces, but does not *store* text ranges, than sticking to `usize` would
+//! produces, but does not *store* text ranges, then sticking to `usize` would
 //! be better.
 //!
 //! Minimal Supported Rust Version: latest stable.
