@@ -1220,6 +1220,16 @@ pub enum RangeLimits {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub enum StructRest {
+    /// `..x`.
+    Base(P<Expr>),
+    /// `..`.
+    Rest(Span),
+    /// No trailing `..` or expression.
+    None,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ExprKind {
     /// A `box x` expression.
     Box(P<Expr>),
@@ -1343,9 +1353,8 @@ pub enum ExprKind {
 
     /// A struct literal expression.
     ///
-    /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. base}`,
-    /// where `base` is the `Option<Expr>`.
-    Struct(Path, Vec<Field>, Option<P<Expr>>),
+    /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. rest}`.
+    Struct(Path, Vec<Field>, StructRest),
 
     /// An array literal constructed from one repeated element.
     ///

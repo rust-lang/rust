@@ -2089,7 +2089,7 @@ impl<'a> Parser<'a> {
         recover: bool,
     ) -> PResult<'a, P<Expr>> {
         let mut fields = Vec::new();
-        let mut base = None;
+        let mut base = ast::StructRest::None;
         let mut recover_async = false;
 
         attrs.extend(self.parse_inner_attributes()?);
@@ -2104,18 +2104,13 @@ impl<'a> Parser<'a> {
         while self.token != token::CloseDelim(token::Brace) {
             if self.eat(&token::DotDot) {
                 let exp_span = self.prev_token.span;
-                // If the struct ends in `.. }`, treat it like `.. _ }`.
-                // AST lowering will then report an error if it's not on the LHS of an assignment.
+                // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.token == token::CloseDelim(token::Brace) {
-                    base = Some(self.mk_expr(
-                        self.prev_token.span.shrink_to_hi(),
-                        ExprKind::Underscore,
-                        AttrVec::new(),
-                    ));
+                    base = StructRest::Rest(self.prev_token.span.shrink_to_hi());
                     break;
                 }
                 match self.parse_expr() {
-                    Ok(e) => base = Some(e),
+                    Ok(e) => base = StructRest::Base(e),
                     Err(mut e) if recover => {
                         e.emit();
                         self.recover_stmt();

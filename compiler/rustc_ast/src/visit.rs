@@ -724,7 +724,9 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Struct(ref path, ref fields, ref optional_base) => {
             visitor.visit_path(path, expression.id);
             walk_list!(visitor, visit_field, fields);
-            walk_list!(visitor, visit_expr, optional_base);
+            if let StructRest::Base(expr) = optional_base {
+                visitor.visit_expr(expr);
+            }
         }
         ExprKind::Tup(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);

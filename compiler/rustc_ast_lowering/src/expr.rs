@@ -989,7 +989,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             // Structs.
-            ExprKind::Struct(path, fields, base) => {
+            ExprKind::Struct(path, fields, rest) => {
                 let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
                     hir::FieldPat {
@@ -1007,28 +1007,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ParamMode::Optional,
                     ImplTraitContext::disallowed(),
                 );
-                let fields_omitted = match base {
-                    None => false,
-                    Some(e) => {
-                        match e.kind {
-                            ExprKind::Underscore => {}
-                            _ => self
-                                .sess
-                                .struct_span_err(
-                                    e.span,
-                                    "functional record updates are not allowed in destructuring \
-                                     assignments",
-                                )
-                                .span_suggestion(
-                                    e.span,
-                                    "consider removing the trailing pattern",
-                                    String::new(),
-                                    rustc_errors::Applicability::MachineApplicable,
-                                )
-                                .emit(),
-                        }
+                let fields_omitted = match rest {
+                    StructRest::Base(e) => {
+                        self.sess
+                            .struct_span_err(
+                                e.span,
+                                "functional record updates are not allowed in destructuring \
+                                    assignments",
+                            )
+                            .span_suggestion(
+                                e.span,
+                                "consider removing the trailing pattern",
+                                String::new(),
+                                rustc_errors::Applicability::MachineApplicable,
+                            )
+                            .emit();
                         true
                     }
+                    StructRest::Rest(_) => true,
+                    StructRest::None => false,
                 };
                 let struct_pat = hir::PatKind::Struct(qpath, field_pats, fields_omitted);
                 return self.pat(lhs.span, struct_pat);

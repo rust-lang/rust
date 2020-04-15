@@ -16,7 +16,7 @@ error: base expression required after `..`
   --> $DIR/struct_destructure_fail.rs:16:19
    |
 LL |     Struct { a, .. };
-   |                   ^ add the base expression here
+   |                   ^ add a base expression here
 
 error[E0026]: struct `Struct` does not have a field named `c`
   --> $DIR/struct_destructure_fail.rs:11:20
