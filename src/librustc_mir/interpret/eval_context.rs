@@ -724,10 +724,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let frame =
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
 
-        if let Some(return_place) = frame.return_place {
+        if !unwinding {
             // Copy the return value to the caller's stack frame.
-            let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
-            self.copy_op(op, return_place)?;
+            if let Some(return_place) = frame.return_place {
+                let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
+                self.copy_op(op, return_place)?;
+            } else {
+                throw_ub!(Unreachable);
+            }
         }
 
         // Now where do we jump next?
@@ -768,25 +772,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.unwind_to_block(unwind);
         } else {
             // Follow the normal return edge.
-            // Validate the return value. Do this after deallocating so that we catch dangling
-            // references.
-            if let Some(return_place) = return_place {
-                if M::enforce_validity(self) {
-                    // Data got changed, better make sure it matches the type!
-                    // It is still possible that the return place held invalid data while
-                    // the function is running, but that's okay because nobody could have
-                    // accessed that same data from the "outside" to observe any broken
-                    // invariant -- that is, unless a function somehow has a ptr to
-                    // its return place... but the way MIR is currently generated, the
-                    // return place is always a local and then this cannot happen.
-                    self.validate_operand(self.place_to_op(return_place)?)?;
-                }
-            } else {
-                // Uh, that shouldn't happen... the function did not intend to return
-                throw_ub!(Unreachable);
-            }
-
-            // Jump to new block -- *after* validation so that the spans make more sense.
             if let Some(ret) = next_block {
                 self.return_to_block(ret)?;
             }
