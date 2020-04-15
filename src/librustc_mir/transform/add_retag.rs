@@ -58,10 +58,14 @@ fn may_be_reference(ty: Ty<'tcx>) -> bool {
 }
 
 impl<'tcx> MirPass<'tcx> for AddRetag {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {
             return;
         }
+
+        // We need an `AllCallEdges` pass before we can do any work.
+        super::add_call_guards::AllCallEdges.run_pass(tcx, src, body);
+
         let (span, arg_count) = (body.span, body.arg_count);
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let needs_retag = |place: &Place<'tcx>| {
