@@ -6,7 +6,7 @@ use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
 use rustc_middle::mir;
-use rustc_middle::ty::{self, query::TyCtxtAt, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
 
 use super::{
@@ -230,10 +230,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
         id
     }
 
-    /// Called when converting a `ty::Const` to an operand.
+    /// Called when converting a `ty::Const` to an operand (in
+    /// `eval_const_to_op`).
     ///
-    /// Miri uses this callback for creating unique allocation ids for thread
-    /// locals. In Rust, one way for creating a thread local is by marking a
+    /// Miri uses this callback for creating per thread allocations for thread
+    /// locals. In Rust, one way of creating a thread local is by marking a
     /// static with `#[thread_local]`. On supported platforms this gets
     /// translated to a LLVM thread local for which LLVM automatically ensures
     /// that each thread gets its own copy. Since LLVM automatically handles
@@ -243,33 +244,18 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// plan is to change MIR to make accesses to thread locals explicit
     /// (https://github.com/rust-lang/rust/issues/70685). While the issue 70685
     /// is not fixed, our current workaround in Miri is to use this function to
-    /// reserve fresh allocation ids for each thread. Please note that here we
-    /// only **reserve** the allocation ids; the actual allocation for the
-    /// thread local statics is done in `Memory::get_global_alloc`, which uses
-    /// `resolve_maybe_global_alloc` to retrieve information about the
-    /// allocation id we generated.
+    /// make per-thread copies of thread locals. Please note that we cannot make
+    /// these copies in `canonical_alloc_id` because that is too late: for
+    /// example, if one created a pointer in thread `t1` to a thread local and
+    /// sent it to another thread `t2`, resolving the access in
+    /// `canonical_alloc_id` would result in pointer pointing to `t2`'s thread
+    /// local and not `t1` as it should.
     #[inline]
     fn eval_maybe_thread_local_static_const(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         val: mir::interpret::ConstValue<'tcx>,
     ) -> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
         Ok(val)
-    }
-
-    /// Called to obtain the `GlobalAlloc` associated with the allocation id.
-    ///
-    /// Miri uses this callback to resolve the information about the original
-    /// thread local static for which `canonical_alloc_id` reserved a fresh
-    /// allocation id. Since `canonical_alloc_id` does not create the actual
-    /// allocation and the reserved allocation id has no reference to its
-    /// parent, we need to ask Miri to retrieve information for us.
-    #[inline(always)]
-    fn resolve_maybe_global_alloc(
-        tcx: TyCtxtAt<'tcx>,
-        _memory_extra: &Self::MemoryExtra,
-        id: AllocId,
-    ) -> Option<mir::interpret::GlobalAlloc<'tcx>> {
-        tcx.alloc_map.lock().get(id)
     }
 
     /// Called to initialize the "extra" state of an allocation and make the pointers
