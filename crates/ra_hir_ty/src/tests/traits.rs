@@ -1803,7 +1803,7 @@ fn test<T, U>() where T::Item: Trait2, T: Trait<U::Item>, U: Trait<()> {
 }
 
 #[test]
-fn unselected_projection_on_trait_self() {
+fn unselected_projection_on_impl_self() {
     assert_snapshot!(infer(
         r#"
 //- /main.rs
@@ -1841,6 +1841,30 @@ impl Trait for S2 {
     [271; 272) 'y': i32
     [275; 276) 'x': i32
     "###);
+}
+
+#[test]
+fn unselected_projection_on_trait_self() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait {
+    type Item;
+
+    fn f(&self) -> Self::Item { loop {} }
+}
+
+struct S;
+impl Trait for S {
+    type Item = u32;
+}
+
+fn test() {
+    S.f()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
 }
 
 #[test]
@@ -1920,6 +1944,53 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
 "#,
     );
     // this is a legitimate cycle
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn inline_assoc_type_bounds_1() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Iterator {
+    type Item;
+}
+trait OtherTrait<T> {
+    fn foo(&self) -> T;
+}
+
+// workaround for Chalk assoc type normalization problems
+pub struct S<T>;
+impl<T: Iterator> Iterator for S<T> {
+    type Item = <T as Iterator>::Item;
+}
+
+fn test<I: Iterator<Item: OtherTrait<u32>>>() {
+    let x: <S<I> as Iterator>::Item;
+    x.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
+fn inline_assoc_type_bounds_2() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Iterator {
+    type Item;
+}
+
+fn test<I: Iterator<Item: Iterator<Item = u32>>>() {
+    let x: <<I as Iterator>::Item as Iterator>::Item;
+    x<|>;
+}
+"#,
+    );
+    // assert_eq!(t, "u32");
+    // doesn't currently work, Chalk #234
     assert_eq!(t, "{unknown}");
 }
 

@@ -451,8 +451,7 @@ pub mod str {
 "#,
     );
 
-    // should be Option<char>, but currently not because of Chalk ambiguity problem
-    assert_eq!("(Option<{unknown}>, Option<{unknown}>)", super::type_at_pos(&db, pos));
+    assert_eq!("(Option<char>, Option<char>)", super::type_at_pos(&db, pos));
 }
 
 #[test]

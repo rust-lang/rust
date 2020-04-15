@@ -14,7 +14,10 @@ use hir_expand::{
 use ra_db::CrateId;
 use ra_syntax::ast;
 
-use crate::{type_ref::TypeRef, InFile};
+use crate::{
+    type_ref::{TypeBound, TypeRef},
+    InFile,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModPath {
@@ -111,7 +114,21 @@ pub struct GenericArgs {
     /// is left out.
     pub has_self_type: bool,
     /// Associated type bindings like in `Iterator<Item = T>`.
-    pub bindings: Vec<(Name, TypeRef)>,
+    pub bindings: Vec<AssociatedTypeBinding>,
+}
+
+/// An associated type binding like in `Iterator<Item = T>`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AssociatedTypeBinding {
+    /// The name of the associated type.
+    pub name: Name,
+    /// The type bound to this associated type (in `Item = T`, this would be the
+    /// `T`). This can be `None` if there are bounds instead.
+    pub type_ref: Option<TypeRef>,
+    /// Bounds for the associated type, like in `Iterator<Item:
+    /// SomeOtherTrait>`. (This is the unstable `associated_type_bounds`
+    /// feature.)
+    pub bounds: Vec<TypeBound>,
 }
 
 /// A single generic argument.

@@ -15,7 +15,7 @@ use ra_syntax::ast::{
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    path::{path, GenericArgs, Path},
+    path::{path, AssociatedTypeBinding, GenericArgs, Path},
     src::HasSource,
     type_ref::{Mutability, TypeBound, TypeRef},
     visibility::RawVisibility,
@@ -95,7 +95,11 @@ fn desugar_future_path(orig: TypeRef) -> Path {
     let path = path![std::future::Future];
     let mut generic_args: Vec<_> = std::iter::repeat(None).take(path.segments.len() - 1).collect();
     let mut last = GenericArgs::empty();
-    last.bindings.push((name![Output], orig));
+    last.bindings.push(AssociatedTypeBinding {
+        name: name![Output],
+        type_ref: Some(orig),
+        bounds: Vec::new(),
+    });
     generic_args.push(Some(Arc::new(last)));
 
     Path::from_known_path(path, generic_args)

@@ -8,6 +8,7 @@ authors = ["rust-analyzer developers"]
 doctest = false
 
 [dependencies]
+itertools = "0.9.0"
 arrayvec = "0.5.1"
 smallvec = "1.2.0"
 ena = "0.13.1"
