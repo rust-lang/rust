@@ -30,4 +30,3 @@ fn baz() -> impl Bar<Item = i32> {
 fn main() {
     let _ = baz();
 }
-
