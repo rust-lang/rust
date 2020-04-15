@@ -134,11 +134,6 @@ fn main() {
             cmd.arg(format!("-Clinker={}", host_linker));
         }
 
-        // Override linker flavor if necessary.
-        if let Ok(host_linker_flavor) = env::var("RUSTC_HOST_LINKER_FLAVOR") {
-            cmd.arg(format!("-Clinker-flavor={}", host_linker_flavor));
-        }
-
         if let Ok(s) = env::var("RUSTC_HOST_CRT_STATIC") {
             if s == "true" {
                 cmd.arg("-C").arg("target-feature=+crt-static");
