@@ -4,7 +4,6 @@ use crate::utils::{
     snippet, snippet_opt, span_lint_and_then,
 };
 use if_chain::if_chain;
-use rustc::ty::{self, TypeFoldable};
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -12,8 +11,9 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, ItemKind, Node, PatKind, QPath, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::{self, TypeFoldable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::can_type_implement_copy;
@@ -113,8 +113,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
         let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds.to_vec())
             .filter(|p| !p.is_global())
-            .filter_map(|pred| {
-                if let ty::Predicate::Trait(poly_trait_ref, _) = pred {
+            .filter_map(|obligation| {
+                if let ty::Predicate::Trait(poly_trait_ref, _) = obligation.predicate {
                     if poly_trait_ref.def_id() == sized_trait || poly_trait_ref.skip_binder().has_escaping_bound_vars()
                     {
                         return None;
@@ -214,7 +214,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
                         let deref_span = spans_need_deref.get(&canonical_id);
                         if_chain! {
-                            if is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type"));
+                            if is_type_diagnostic_item(cx, ty, sym!(vec_type));
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
                             if let TyKind::Path(QPath::Resolved(_, ref path)) = input.kind;

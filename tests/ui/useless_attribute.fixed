@@ -11,7 +11,7 @@
 #[allow(unused_imports)]
 #[allow(unused_extern_crates)]
 #[macro_use]
-extern crate rustc;
+extern crate rustc_middle;
 
 #[macro_use]
 extern crate proc_macro_derive;

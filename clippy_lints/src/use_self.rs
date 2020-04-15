@@ -1,8 +1,4 @@
 use if_chain::if_chain;
-use rustc::hir::map::Map;
-use rustc::lint::in_external_macro;
-use rustc::ty;
-use rustc::ty::{DefIdTree, Ty};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -12,8 +8,13 @@ use rustc_hir::{
     TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::hir::map::Map;
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty;
+use rustc_middle::ty::{DefIdTree, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::kw;
+use rustc_typeck::hir_ty_to_ty;
 
 use crate::utils::{differing_macro_contexts, span_lint_and_sugg};
 
@@ -80,37 +81,28 @@ fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path<'_>, last_segment: O
     );
 }
 
-struct TraitImplTyVisitor<'a, 'tcx> {
-    item_type: Ty<'tcx>,
+// FIXME: always use this (more correct) visitor, not just in method signatures.
+struct SemanticUseSelfVisitor<'a, 'tcx> {
     cx: &'a LateContext<'a, 'tcx>,
-    trait_type_walker: ty::walk::TypeWalker<'tcx>,
-    impl_type_walker: ty::walk::TypeWalker<'tcx>,
+    self_ty: Ty<'tcx>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for SemanticUseSelfVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) {
-        let trait_ty = self.trait_type_walker.next();
-        let impl_ty = self.impl_type_walker.next();
-
-        if_chain! {
-            if let TyKind::Path(QPath::Resolved(_, path)) = &t.kind;
-
-            // The implementation and trait types don't match which means that
-            // the concrete type was specified by the implementation
-            if impl_ty != trait_ty;
-            if let Some(impl_ty) = impl_ty;
-            if self.item_type == impl_ty;
-            then {
-                match path.res {
-                    def::Res::SelfTy(..) => {},
-                    _ => span_use_self_lint(self.cx, path, None)
-                }
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'_>) {
+        if let TyKind::Path(QPath::Resolved(_, path)) = &hir_ty.kind {
+            match path.res {
+                def::Res::SelfTy(..) => {},
+                _ => {
+                    if hir_ty_to_ty(self.cx.tcx, hir_ty) == self.self_ty {
+                        span_use_self_lint(self.cx, path, None);
+                    }
+                },
             }
         }
 
-        walk_ty(self, t)
+        walk_ty(self, hir_ty)
     }
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -120,48 +112,48 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
 
 fn check_trait_method_impl_decl<'a, 'tcx>(
     cx: &'a LateContext<'a, 'tcx>,
-    item_type: Ty<'tcx>,
     impl_item: &ImplItem<'_>,
     impl_decl: &'tcx FnDecl<'_>,
-    impl_trait_ref: &ty::TraitRef<'_>,
+    impl_trait_ref: ty::TraitRef<'tcx>,
 ) {
     let trait_method = cx
         .tcx
         .associated_items(impl_trait_ref.def_id)
-        .find_by_name_and_kind(cx.tcx, impl_item.ident, ty::AssocKind::Method, impl_trait_ref.def_id)
+        .find_by_name_and_kind(cx.tcx, impl_item.ident, ty::AssocKind::Fn, impl_trait_ref.def_id)
         .expect("impl method matches a trait method");
 
     let trait_method_sig = cx.tcx.fn_sig(trait_method.def_id);
     let trait_method_sig = cx.tcx.erase_late_bound_regions(&trait_method_sig);
 
-    let impl_method_def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
-    let impl_method_sig = cx.tcx.fn_sig(impl_method_def_id);
-    let impl_method_sig = cx.tcx.erase_late_bound_regions(&impl_method_sig);
-
-    let output_ty = if let FnRetTy::Return(ty) = &impl_decl.output {
+    let output_hir_ty = if let FnRetTy::Return(ty) = &impl_decl.output {
         Some(&**ty)
     } else {
         None
     };
 
-    // `impl_decl_ty` (of type `hir::Ty`) represents the type declared in the signature.
-    // `impl_ty` (of type `ty:TyS`) is the concrete type that the compiler has determined for
-    // that declaration. We use `impl_decl_ty` to see if the type was declared as `Self`
-    // and use `impl_ty` to check its concrete type.
-    for (impl_decl_ty, (impl_ty, trait_ty)) in impl_decl.inputs.iter().chain(output_ty).zip(
-        impl_method_sig
-            .inputs_and_output
-            .iter()
-            .zip(trait_method_sig.inputs_and_output),
-    ) {
-        let mut visitor = TraitImplTyVisitor {
-            cx,
-            item_type,
-            trait_type_walker: trait_ty.walk(),
-            impl_type_walker: impl_ty.walk(),
-        };
+    // `impl_hir_ty` (of type `hir::Ty`) represents the type written in the signature.
+    // `trait_ty` (of type `ty::Ty`) is the semantic type for the signature in the trait.
+    // We use `impl_hir_ty` to see if the type was written as `Self`,
+    // `hir_ty_to_ty(...)` to check semantic types of paths, and
+    // `trait_ty` to determine which parts of the signature in the trait, mention
+    // the type being implemented verbatim (as opposed to `Self`).
+    for (impl_hir_ty, trait_ty) in impl_decl
+        .inputs
+        .iter()
+        .chain(output_hir_ty)
+        .zip(trait_method_sig.inputs_and_output)
+    {
+        // Check if the input/output type in the trait method specifies the implemented
+        // type verbatim, and only suggest `Self` if that isn't the case.
+        // This avoids suggestions to e.g. replace `Vec<u8>` with `Vec<Self>`,
+        // in an `impl Trait for u8`, when the trait always uses `Vec<u8>`.
+        // See also https://github.com/rust-lang/rust-clippy/issues/2894.
+        let self_ty = impl_trait_ref.self_ty();
+        if !trait_ty.walk().any(|inner| inner == self_ty.into()) {
+            let mut visitor = SemanticUseSelfVisitor { cx, self_ty };
 
-        visitor.visit_ty(&impl_decl_ty);
+            visitor.visit_ty(&impl_hir_ty);
+        }
     }
 }
 
@@ -197,8 +189,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                             let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
                             if let ImplItemKind::Fn(FnSig{ decl: impl_decl, .. }, impl_body_id)
                                     = &impl_item.kind {
-                                let item_type = cx.tcx.type_of(impl_def_id);
-                                check_trait_method_impl_decl(cx, item_type, impl_item, impl_decl, &impl_trait_ref);
+                                check_trait_method_impl_decl(cx, impl_item, impl_decl, impl_trait_ref);
 
                                 let body = cx.tcx.hir().body(*impl_body_id);
                                 visitor.visit_body(body);

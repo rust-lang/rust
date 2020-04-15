@@ -3,7 +3,6 @@
 use crate::utils::get_attr;
 use rustc_ast::ast::Attribute;
 use rustc_hir as hir;
-use rustc_hir::print;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::Session;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -50,7 +49,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
             hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
             hir::VisibilityKind::Restricted { ref path, .. } => println!(
                 "visible in module `{}`",
-                print::to_string(print::NO_ANN, |s| s.print_path(path, false))
+                rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(path, false))
             ),
             hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
         }
@@ -283,10 +282,10 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, indent: usize) {
                 print_expr(cx, e, indent + 1);
             }
         },
-        hir::ExprKind::InlineAsm(ref asm) => {
+        hir::ExprKind::LlvmInlineAsm(ref asm) => {
             let inputs = &asm.inputs_exprs;
             let outputs = &asm.outputs_exprs;
-            println!("{}InlineAsm", ind);
+            println!("{}LlvmInlineAsm", ind);
             println!("{}inputs:", ind);
             for e in inputs.iter() {
                 print_expr(cx, e, indent + 1);
@@ -333,7 +332,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
         hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
         hir::VisibilityKind::Restricted { ref path, .. } => println!(
             "visible in module `{}`",
-            print::to_string(print::NO_ANN, |s| s.print_path(path, false))
+            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(path, false))
         ),
         hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
     }
@@ -427,7 +426,7 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, indent: usize) {
             println!(
                 "{}name: {}",
                 ind,
-                print::to_string(print::NO_ANN, |s| s.print_qpath(path, false))
+                rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false))
             );
             println!("{}ignore leftover fields: {}", ind, ignore);
             println!("{}fields:", ind);
@@ -444,7 +443,7 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, indent: usize) {
             println!(
                 "{}path: {}",
                 ind,
-                print::to_string(print::NO_ANN, |s| s.print_qpath(path, false))
+                rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false))
             );
             if let Some(dot_position) = opt_dots_position {
                 println!("{}dot position: {}", ind, dot_position);

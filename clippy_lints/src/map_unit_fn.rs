@@ -1,10 +1,9 @@
-use crate::utils::paths;
-use crate::utils::{iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
+use crate::utils::{is_type_diagnostic_item, iter_input_pats, method_chain_args, snippet, span_lint_and_then};
 use if_chain::if_chain;
-use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
@@ -206,9 +205,9 @@ fn suggestion_msg(function_type: &str, map_type: &str) -> String {
 fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr<'_>, map_args: &[hir::Expr<'_>]) {
     let var_arg = &map_args[0];
 
-    let (map_type, variant, lint) = if match_type(cx, cx.tables.expr_ty(var_arg), &paths::OPTION) {
+    let (map_type, variant, lint) = if is_type_diagnostic_item(cx, cx.tables.expr_ty(var_arg), sym!(option_type)) {
         ("Option", "Some", OPTION_MAP_UNIT_FN)
-    } else if match_type(cx, cx.tables.expr_ty(var_arg), &paths::RESULT) {
+    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(var_arg), sym!(result_type)) {
         ("Result", "Ok", RESULT_MAP_UNIT_FN)
     } else {
         return;

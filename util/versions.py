@@ -12,6 +12,8 @@ def key(v):
         return float('inf')
     if v == 'stable':
         return sys.maxsize
+    if v == 'beta':
+        return sys.maxsize - 1
 
     v = v.replace('v', '').replace('rust-', '')
 

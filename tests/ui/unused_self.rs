@@ -42,6 +42,17 @@ mod unused_self_allow {
     impl B {
         fn unused_self_move(self) {}
     }
+
+    struct C {}
+
+    #[allow(clippy::unused_self)]
+    impl C {
+        #[warn(clippy::unused_self)]
+        fn some_fn((): ()) {}
+
+        // shouldn't trigger
+        fn unused_self_move(self) {}
+    }
 }
 
 mod used_self {

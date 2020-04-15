@@ -12,7 +12,6 @@
     clippy::linkedlist,
     clippy::shadow_unrelated,
     clippy::unnecessary_mut_passed,
-    clippy::cognitive_complexity,
     clippy::similar_names,
     unused,
     dead_code

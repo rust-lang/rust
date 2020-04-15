@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// let mut bytes = fs::read("foo.txt").unwrap();
     /// ```
     pub VERBOSE_FILE_READS,
-    complexity,
+    restriction,
     "use of `File::read_to_end` or `File::read_to_string`"
 }
 

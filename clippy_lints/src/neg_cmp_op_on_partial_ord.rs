@@ -1,7 +1,7 @@
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::{self, paths, span_lint};
@@ -25,13 +25,13 @@ declare_clippy_lint! {
     ///
     /// // Bad
     /// let a = 1.0;
-    /// let b = std::f64::NAN;
+    /// let b = f64::NAN;
     ///
     /// let _not_less_or_equal = !(a <= b);
     ///
     /// // Good
     /// let a = 1.0;
-    /// let b = std::f64::NAN;
+    /// let b = f64::NAN;
     ///
     /// let _not_less_or_equal = match a.partial_cmp(&b) {
     ///     None | Some(Ordering::Greater) => true,

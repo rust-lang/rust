@@ -42,34 +42,34 @@ LL |     Z > u;
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:19:5
    |
-LL |     u > std::u32::MAX;
-   |     ^^^^^^^^^^^^^^^^^
+LL |     u > u32::MAX;
+   |     ^^^^^^^^^^^^
    |
-   = help: because `std::u32::MAX` is the maximum value for this type, this comparison is always false
+   = help: because `u32::MAX` is the maximum value for this type, this comparison is always false
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:20:5
    |
-LL |     u >= std::u32::MAX;
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     u >= u32::MAX;
+   |     ^^^^^^^^^^^^^
    |
-   = help: because `std::u32::MAX` is the maximum value for this type, the case where the two sides are not equal never occurs, consider using `u == std::u32::MAX` instead
+   = help: because `u32::MAX` is the maximum value for this type, the case where the two sides are not equal never occurs, consider using `u == u32::MAX` instead
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:21:5
    |
-LL |     std::u32::MAX < u;
-   |     ^^^^^^^^^^^^^^^^^
+LL |     u32::MAX < u;
+   |     ^^^^^^^^^^^^
    |
-   = help: because `std::u32::MAX` is the maximum value for this type, this comparison is always false
+   = help: because `u32::MAX` is the maximum value for this type, this comparison is always false
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:22:5
    |
-LL |     std::u32::MAX <= u;
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     u32::MAX <= u;
+   |     ^^^^^^^^^^^^^
    |
-   = help: because `std::u32::MAX` is the maximum value for this type, the case where the two sides are not equal never occurs, consider using `std::u32::MAX == u` instead
+   = help: because `u32::MAX` is the maximum value for this type, the case where the two sides are not equal never occurs, consider using `u32::MAX == u` instead
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:23:5
@@ -106,18 +106,18 @@ LL |     i < -127 - 1;
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:28:5
    |
-LL |     std::i8::MAX >= i;
-   |     ^^^^^^^^^^^^^^^^^
+LL |     i8::MAX >= i;
+   |     ^^^^^^^^^^^^
    |
-   = help: because `std::i8::MAX` is the maximum value for this type, this comparison is always true
+   = help: because `i8::MAX` is the maximum value for this type, this comparison is always true
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:29:5
    |
-LL |     3-7 < std::i32::MIN;
-   |     ^^^^^^^^^^^^^^^^^^^
+LL |     3-7 < i32::MIN;
+   |     ^^^^^^^^^^^^^^
    |
-   = help: because `std::i32::MIN` is the minimum value for this type, this comparison is always false
+   = help: because `i32::MIN` is the minimum value for this type, this comparison is always false
 
 error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
   --> $DIR/absurd-extreme-comparisons.rs:31:5

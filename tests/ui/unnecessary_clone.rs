@@ -13,6 +13,10 @@ impl SomeTrait for SomeImpl {}
 
 fn main() {}
 
+fn is_ascii(ch: char) -> bool {
+    ch.is_ascii()
+}
+
 fn clone_on_copy() {
     42.clone();
 
@@ -27,6 +31,11 @@ fn clone_on_copy() {
     let mut x = 43;
     let _ = &x.clone(); // ok, getting a ref
     'a'.clone().make_ascii_uppercase(); // ok, clone and then mutate
+    is_ascii('z'.clone());
+
+    // Issue #5436
+    let mut vec = Vec::new();
+    vec.push(42.clone());
 }
 
 fn clone_on_ref_ptr() {

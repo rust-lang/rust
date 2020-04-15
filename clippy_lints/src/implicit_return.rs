@@ -135,11 +135,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
 
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_preds(cx, def_id) {
+        if fn_has_unsatisfiable_preds(cx, def_id.to_def_id()) {
             return;
         }
 
-        let mir = cx.tcx.optimized_mir(def_id);
+        let mir = cx.tcx.optimized_mir(def_id.to_def_id());
 
         // checking return type through MIR, HIR is not able to determine inferred closure return types
         // make sure it's not a macro

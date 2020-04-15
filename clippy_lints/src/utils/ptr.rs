@@ -1,9 +1,9 @@
 use crate::utils::{get_pat_name, match_var, snippet};
-use rustc::hir::map::Map;
 use rustc_ast::ast::Name;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, BodyId, Expr, ExprKind, Param};
 use rustc_lint::LateContext;
+use rustc_middle::hir::map::Map;
 use rustc_span::source_map::Span;
 use std::borrow::Cow;
 

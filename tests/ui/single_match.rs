@@ -81,4 +81,15 @@ fn single_match_know_enum() {
     }
 }
 
-fn main() {}
+macro_rules! single_match {
+    ($num:literal) => {
+        match $num {
+            15 => println!("15"),
+            _ => (),
+        }
+    };
+}
+
+fn main() {
+    single_match!(5);
+}

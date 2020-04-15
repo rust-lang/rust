@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - beta
     tags:
       - rust-1.**
 
@@ -34,6 +35,9 @@ jobs:
       run: |
         TAG=$(basename ${{ github.ref }})
         echo "::set-env name=TAG_NAME::$TAG"
+    - name: Set beta to true
+      if: github.ref == 'refs/heads/beta'
+      run: echo "::set-env name=BETA::true"
     - name: Deploy
       run: |
         eval "$(ssh-agent -s)"

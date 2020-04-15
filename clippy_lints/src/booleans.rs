@@ -1,14 +1,14 @@
 use crate::utils::{
-    get_trait_def_id, implements_trait, in_macro, match_type, paths, snippet_opt, span_lint_and_sugg,
+    get_trait_def_id, implements_trait, in_macro, is_type_diagnostic_item, paths, snippet_opt, span_lint_and_sugg,
     span_lint_and_then, SpanlessEq,
 };
 use if_chain::if_chain;
-use rustc::hir::map::Map;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
@@ -249,7 +249,9 @@ fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<String> {
         },
         ExprKind::MethodCall(path, _, args) if args.len() == 1 => {
             let type_of_receiver = cx.tables.expr_ty(&args[0]);
-            if !match_type(cx, type_of_receiver, &paths::OPTION) && !match_type(cx, type_of_receiver, &paths::RESULT) {
+            if !is_type_diagnostic_item(cx, type_of_receiver, sym!(option_type))
+                && !is_type_diagnostic_item(cx, type_of_receiver, sym!(result_type))
+            {
                 return None;
             }
             METHODS_WITH_NEGATION

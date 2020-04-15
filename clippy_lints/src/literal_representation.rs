@@ -7,10 +7,10 @@ use crate::utils::{
     snippet_opt, span_lint_and_sugg,
 };
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
 use rustc_ast::ast::{Expr, ExprKind, Lit, LitKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// let x: u64 = 61864918973511;
     /// ```
     pub UNREADABLE_LITERAL,
-    style,
+    pedantic,
     "long integer literal without underscores"
 }
 
@@ -186,6 +186,9 @@ impl EarlyLintPass for LiteralDigitGrouping {
     }
 }
 
+// Length of each UUID hyphenated group in hex digits.
+const UUID_GROUP_LENS: [usize; 5] = [8, 4, 4, 4, 12];
+
 impl LiteralDigitGrouping {
     fn check_lit(cx: &EarlyContext<'_>, lit: &Lit) {
         if_chain! {
@@ -193,6 +196,10 @@ impl LiteralDigitGrouping {
             if let Some(mut num_lit) = NumericLiteral::from_lit(&src, &lit);
             then {
                 if !Self::check_for_mistyped_suffix(cx, lit.span, &mut num_lit) {
+                    return;
+                }
+
+                if Self::is_literal_uuid_formatted(&mut num_lit) {
                     return;
                 }
 
@@ -263,6 +270,28 @@ impl LiteralDigitGrouping {
             false
         } else {
             true
+        }
+    }
+
+    /// Checks whether the numeric literal matches the formatting of a UUID.
+    ///
+    /// Returns `true` if the radix is hexadecimal, and the groups match the
+    /// UUID format of 8-4-4-4-12.
+    fn is_literal_uuid_formatted(num_lit: &mut NumericLiteral<'_>) -> bool {
+        if num_lit.radix != Radix::Hexadecimal {
+            return false;
+        }
+
+        // UUIDs should not have a fraction
+        if num_lit.fraction.is_some() {
+            return false;
+        }
+
+        let group_sizes: Vec<usize> = num_lit.integer.split('_').map(str::len).collect();
+        if UUID_GROUP_LENS.len() == group_sizes.len() {
+            UUID_GROUP_LENS.iter().zip(&group_sizes).all(|(&a, &b)| a == b)
+        } else {
+            false
         }
     }
 

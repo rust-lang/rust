@@ -1,14 +1,18 @@
 //! This module contains paths to types and functions Clippy needs to know
 //! about.
+//!
+//! Whenever possible, please consider diagnostic items over hardcoded paths.
+//! See <https://github.com/rust-lang/rust-clippy/issues/5393> for more information.
 
 pub const ANY_TRAIT: [&str; 3] = ["std", "any", "Any"];
-pub const ARC: [&str; 3] = ["alloc", "sync", "Arc"];
+pub const ARC_PTR_EQ: [&str; 4] = ["alloc", "sync", "Arc", "ptr_eq"];
 pub const ASMUT_TRAIT: [&str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
 pub const BEGIN_PANIC: [&str; 3] = ["std", "panicking", "begin_panic"];
 pub const BEGIN_PANIC_FMT: [&str; 3] = ["std", "panicking", "begin_panic_fmt"];
 pub const BINARY_HEAP: [&str; 4] = ["alloc", "collections", "binary_heap", "BinaryHeap"];
 pub const BORROW_TRAIT: [&str; 3] = ["core", "borrow", "Borrow"];
+pub const BOX: [&str; 3] = ["alloc", "boxed", "Box"];
 pub const BTREEMAP: [&str; 5] = ["alloc", "collections", "btree", "map", "BTreeMap"];
 pub const BTREEMAP_ENTRY: [&str; 5] = ["alloc", "collections", "btree", "map", "Entry"];
 pub const BTREESET: [&str; 5] = ["alloc", "collections", "btree", "set", "BTreeSet"];
@@ -57,8 +61,6 @@ pub const MEM_FORGET: [&str; 3] = ["core", "mem", "forget"];
 pub const MEM_MAYBEUNINIT: [&str; 4] = ["core", "mem", "maybe_uninit", "MaybeUninit"];
 pub const MEM_MAYBEUNINIT_UNINIT: [&str; 5] = ["core", "mem", "maybe_uninit", "MaybeUninit", "uninit"];
 pub const MEM_REPLACE: [&str; 3] = ["core", "mem", "replace"];
-pub const MEM_UNINITIALIZED: [&str; 3] = ["core", "mem", "uninitialized"];
-pub const MEM_ZEROED: [&str; 3] = ["core", "mem", "zeroed"];
 pub const MUTEX: [&str; 4] = ["std", "sync", "mutex", "Mutex"];
 pub const MUTEX_GUARD: [&str; 4] = ["std", "sync", "mutex", "MutexGuard"];
 pub const OPEN_OPTIONS: [&str; 3] = ["std", "fs", "OpenOptions"];
@@ -74,6 +76,7 @@ pub const PATH: [&str; 3] = ["std", "path", "Path"];
 pub const PATH_BUF: [&str; 3] = ["std", "path", "PathBuf"];
 pub const PATH_BUF_AS_PATH: [&str; 4] = ["std", "path", "PathBuf", "as_path"];
 pub const PATH_TO_PATH_BUF: [&str; 4] = ["std", "path", "Path", "to_path_buf"];
+pub const PTR_EQ: [&str; 3] = ["core", "ptr", "eq"];
 pub const PTR_NULL: [&str; 2] = ["ptr", "null"];
 pub const PTR_NULL_MUT: [&str; 2] = ["ptr", "null_mut"];
 pub const RANGE: [&str; 3] = ["core", "ops", "Range"];
@@ -90,6 +93,7 @@ pub const RANGE_TO_INCLUSIVE: [&str; 3] = ["core", "ops", "RangeToInclusive"];
 pub const RANGE_TO_INCLUSIVE_STD: [&str; 3] = ["std", "ops", "RangeToInclusive"];
 pub const RANGE_TO_STD: [&str; 3] = ["std", "ops", "RangeTo"];
 pub const RC: [&str; 3] = ["alloc", "rc", "Rc"];
+pub const RC_PTR_EQ: [&str; 4] = ["alloc", "rc", "Rc", "ptr_eq"];
 pub const RECEIVER: [&str; 4] = ["std", "sync", "mpsc", "Receiver"];
 pub const REGEX: [&str; 3] = ["regex", "re_unicode", "Regex"];
 pub const REGEX_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "unicode", "RegexBuilder", "new"];
@@ -128,5 +132,6 @@ pub const VEC_AS_MUT_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_mut_slice"];
 pub const VEC_AS_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_slice"];
 pub const VEC_DEQUE: [&str; 4] = ["alloc", "collections", "vec_deque", "VecDeque"];
 pub const VEC_FROM_ELEM: [&str; 3] = ["alloc", "vec", "from_elem"];
+pub const VEC_NEW: [&str; 4] = ["alloc", "vec", "Vec", "new"];
 pub const WEAK_ARC: [&str; 3] = ["alloc", "sync", "Weak"];
 pub const WEAK_RC: [&str; 3] = ["alloc", "rc", "Weak"];

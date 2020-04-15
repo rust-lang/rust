@@ -1,11 +1,11 @@
 //! lint on manually implemented checked conversions that could be transformed into `try_from`
 
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::{snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// ```rust
     /// # let foo: u32 = 5;
     /// # let _ =
-    /// foo <= i32::max_value() as u32
+    /// foo <= i32::MAX as u32
     /// # ;
     /// ```
     ///
@@ -179,7 +179,7 @@ impl ConversionType {
     }
 }
 
-/// Check for `expr <= (to_type::max_value() as from_type)`
+/// Check for `expr <= (to_type::MAX as from_type)`
 fn check_upper_bound<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
     if_chain! {
          if let ExprKind::Binary(ref op, ref left, ref right) = &expr.kind;
@@ -194,7 +194,7 @@ fn check_upper_bound<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
     }
 }
 
-/// Check for `expr >= 0|(to_type::min_value() as from_type)`
+/// Check for `expr >= 0|(to_type::MIN as from_type)`
 fn check_lower_bound<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
     fn check_function<'a>(candidate: &'a Expr<'a>, check: &'a Expr<'a>) -> Option<Conversion<'a>> {
         (check_lower_bound_zero(candidate, check)).or_else(|| (check_lower_bound_min(candidate, check)))
@@ -222,7 +222,7 @@ fn check_lower_bound_zero<'a>(candidate: &'a Expr<'_>, check: &'a Expr<'_>) -> O
     }
 }
 
-/// Check for `expr >= (to_type::min_value() as from_type)`
+/// Check for `expr >= (to_type::MIN as from_type)`
 fn check_lower_bound_min<'a>(candidate: &'a Expr<'_>, check: &'a Expr<'_>) -> Option<Conversion<'a>> {
     if let Some((from, to)) = get_types_from_cast(check, MIN_VALUE, SINTS) {
         Conversion::try_new(candidate, from, to)

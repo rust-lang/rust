@@ -18,4 +18,18 @@ fn unwrap_addr() -> Option<&'static ExprNode> {
     }
 }
 
-fn main() {}
+macro_rules! unwrap_addr {
+    ($expression:expr) => {
+        match $expression {
+            ExprNode::ExprAddrOf => Some(&NODE),
+            _ => {
+                let x = 5;
+                None
+            },
+        }
+    };
+}
+
+fn main() {
+    unwrap_addr!(ExprNode::Unicorns);
+}

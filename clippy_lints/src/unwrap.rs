@@ -1,10 +1,10 @@
-use crate::utils::{higher::if_block, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
+use crate::utils::{higher::if_block, is_type_diagnostic_item, span_lint_and_then, usage::is_potentially_mutated};
 use if_chain::if_chain;
-use rustc::hir::map::Map;
-use rustc::lint::in_external_macro;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Path, QPath, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::map::Map;
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
@@ -100,7 +100,7 @@ fn collect_unwrap_info<'a, 'tcx>(
             if let ExprKind::MethodCall(method_name, _, args) = &expr.kind;
             if let ExprKind::Path(QPath::Resolved(None, path)) = &args[0].kind;
             let ty = cx.tables.expr_ty(&args[0]);
-            if match_type(cx, ty, &paths::OPTION) || match_type(cx, ty, &paths::RESULT);
+            if is_type_diagnostic_item(cx, ty, sym!(option_type)) || is_type_diagnostic_item(cx, ty, sym!(result_type));
             let name = method_name.ident.as_str();
             if ["is_some", "is_none", "is_ok", "is_err"].contains(&&*name);
             then {

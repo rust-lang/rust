@@ -1,10 +1,8 @@
+use crate::clippy_project_root;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
-
 use walkdir::WalkDir;
-
-use clippy_dev::clippy_project_root;
 
 // The maximum length allowed for stderr files.
 //

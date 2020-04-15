@@ -2,10 +2,10 @@
 
 use crate::consts::{constant, Constant};
 use crate::utils::{higher, span_lint, span_lint_and_help};
-use rustc::ty;
 use rustc_ast::ast::RangeLimits;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {

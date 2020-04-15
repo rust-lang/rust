@@ -6,16 +6,16 @@ use crate::utils::{
     walk_ptrs_hir_ty,
 };
 use if_chain::if_chain;
-use rustc::ty;
 use rustc_errors::Applicability;
 use rustc_hir::{
     BinOpKind, BodyId, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind,
     Lifetime, MutTy, Mutability, Node, PathSegment, QPath, TraitFn, TraitItem, TraitItemKind, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::{MultiSpan, Symbol};
+use rustc_span::MultiSpan;
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -153,7 +153,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_
 
     for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
         if let ty::Ref(_, ty, Mutability::Not) = ty.kind {
-            if is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) {
+            if is_type_diagnostic_item(cx, ty, sym!(vec_type)) {
                 let mut ty_snippet = None;
                 if_chain! {
                     if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).kind;

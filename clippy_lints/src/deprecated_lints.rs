@@ -147,3 +147,11 @@ declare_deprecated_lint! {
     pub UNUSED_LABEL,
     "this lint has been uplifted to rustc and is now called `unused_labels`"
 }
+
+declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** Associated-constants are now preferred.
+    pub REPLACE_CONSTS,
+    "associated-constants `MIN`/`MAX` of integers are prefer to `{min,max}_value()` and module constants"
+}

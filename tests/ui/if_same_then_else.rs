@@ -78,7 +78,7 @@ fn if_same_then_else() {
     let _ = if true { 0.0 } else { -0.0 };
 
     // Different NaNs
-    let _ = if true { 0.0 / 0.0 } else { std::f32::NAN };
+    let _ = if true { 0.0 / 0.0 } else { f32::NAN };
 
     if true {
         foo();

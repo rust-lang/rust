@@ -3,11 +3,11 @@ use crate::utils::{
 };
 use crate::utils::{higher, sugg};
 use if_chain::if_chain;
-use rustc::hir::map::Map;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -77,7 +77,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
             },
             hir::ExprKind::Assign(assignee, e, _) => {
                 if let hir::ExprKind::Binary(op, l, r) = &e.kind {
-                    #[allow(clippy::cognitive_complexity)]
                     let lint = |assignee: &hir::Expr<'_>, rhs: &hir::Expr<'_>| {
                         let ty = cx.tables.expr_ty(assignee);
                         let rty = cx.tables.expr_ty(rhs);

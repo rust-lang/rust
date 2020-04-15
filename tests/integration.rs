@@ -64,6 +64,9 @@ fn integration_test() {
     } else if stderr.contains("query stack during panic") {
         panic!("query stack during panic in the output");
     } else if stderr.contains("E0463") {
+        // Encountering E0463 (can't find crate for `x`) did _not_ cause the build to fail in the
+        // past. Even though it should have. That's why we explicitly panic here.
+        // See PR #3552 and issue #3523 for more background.
         panic!("error: E0463");
     } else if stderr.contains("E0514") {
         panic!("incompatible crate versions");

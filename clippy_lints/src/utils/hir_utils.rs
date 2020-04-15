@@ -1,7 +1,5 @@
 use crate::consts::{constant_context, constant_simple};
 use crate::utils::differing_macro_contexts;
-use rustc::ich::StableHashingContextProvider;
-use rustc::ty::TypeckTables;
 use rustc_ast::ast::Name;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{
@@ -10,6 +8,8 @@ use rustc_hir::{
     TyKind, TypeBinding,
 };
 use rustc_lint::LateContext;
+use rustc_middle::ich::StableHashingContextProvider;
+use rustc_middle::ty::TypeckTables;
 use std::hash::Hash;
 
 /// Type used to check whether two ast are the same. This is different from the
@@ -474,7 +474,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(a);
                 self.hash_expr(i);
             },
-            ExprKind::InlineAsm(..) | ExprKind::Err => {},
+            ExprKind::LlvmInlineAsm(..) | ExprKind::Err => {},
             ExprKind::Lit(ref l) => {
                 l.node.hash(&mut self.s);
             },

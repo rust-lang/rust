@@ -1,7 +1,6 @@
 #![warn(clippy::if_same_then_else)]
 #![allow(
     clippy::blacklisted_name,
-    clippy::cognitive_complexity,
     clippy::collapsible_if,
     clippy::ifs_same_cond,
     clippy::needless_return
@@ -87,10 +86,10 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
 
     // Same NaNs
     let _ = if true {
-        std::f32::NAN
+        f32::NAN
     } else {
         //~ ERROR same body as `if` block
-        std::f32::NAN
+        f32::NAN
     };
 
     if true {

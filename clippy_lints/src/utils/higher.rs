@@ -5,10 +5,10 @@
 
 use crate::utils::{is_expn_of, match_def_path, match_qpath, paths};
 use if_chain::if_chain;
-use rustc::ty;
 use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
+use rustc_middle::ty;
 
 /// Converts a hir binary operator to the corresponding `ast` type.
 #[must_use]
@@ -279,6 +279,9 @@ pub fn vec_macro<'e>(cx: &LateContext<'_, '_>, expr: &'e hir::Expr<'_>) -> Optio
                 }
 
                 None
+            }
+            else if match_def_path(cx, fun_def_id, &paths::VEC_NEW) && args.is_empty() {
+                Some(VecArgs::Vec(&[]))
             }
             else {
                 None

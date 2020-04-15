@@ -33,8 +33,8 @@ LL |     A = 0x1_0000_0000,
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enum_clike_unportable_variant.rs:28:5
    |
-LL |     C = (std::i32::MIN as isize) - 1,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     C = (i32::MIN as isize) - 1,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Clike enum variant discriminant is not portable to 32-bit targets
   --> $DIR/enum_clike_unportable_variant.rs:34:5

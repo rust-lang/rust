@@ -5,10 +5,6 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use if_chain::if_chain;
-use rustc::hir::map::Map;
-use rustc::lint::in_external_macro;
-use rustc::ty::layout::LayoutOf;
-use rustc::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc_ast::ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -19,10 +15,14 @@ use rustc_hir::{
     TraitItem, TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::hir::map::Map;
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::sym;
+use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 
@@ -99,16 +99,33 @@ declare_clippy_lint! {
     /// represents an optional optional value which is logically the same thing as an optional
     /// value but has an unneeded extra level of wrapping.
     ///
+    /// If you have a case where `Some(Some(_))`, `Some(None)` and `None` are distinct cases,
+    /// consider a custom `enum` instead, with clear names for each case.
+    ///
     /// **Known problems:** None.
     ///
     /// **Example**
     /// ```rust
-    /// fn x() -> Option<Option<u32>> {
+    /// fn get_data() -> Option<Option<u32>> {
     ///     None
     /// }
     /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// pub enum Contents {
+    ///     Data(Vec<u8>), // Was Some(Some(Vec<u8>))
+    ///     NotYetFetched, // Was Some(None)
+    ///     None,          // Was None
+    /// }
+    ///
+    /// fn get_data() -> Contents {
+    ///     Contents::None
+    /// }
+    /// ```
     pub OPTION_OPTION,
-    complexity,
+    pedantic,
     "usage of `Option<Option<T>>`"
 }
 
@@ -171,11 +188,35 @@ declare_clippy_lint! {
     "a borrow of a boxed type"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for use of redundant allocations anywhere in the code.
+    ///
+    /// **Why is this bad?** Expressions such as `Rc<&T>`, `Rc<Rc<T>>`, `Rc<Box<T>>`, `Box<&T>`
+    /// add an unnecessary level of indirection.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// # use std::rc::Rc;
+    /// fn foo(bar: Rc<&usize>) {}
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// fn foo(bar: &usize) {}
+    /// ```
+    pub REDUNDANT_ALLOCATION,
+    perf,
+    "redundant allocation"
+}
+
 pub struct Types {
     vec_box_size_threshold: u64,
 }
 
-impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX]);
+impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
     fn check_fn(
@@ -217,7 +258,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
 }
 
 /// Checks if `qpath` has last segment with type parameter matching `path`
-fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, path: &[&str]) -> bool {
+fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, path: &[&str]) -> Option<Span> {
     let last = last_path_segment(qpath);
     if_chain! {
         if let Some(ref params) = last.args;
@@ -230,10 +271,27 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath<'_>, path: &[&st
         if let Some(did) = qpath_res(cx, qpath, ty.hir_id).opt_def_id();
         if match_def_path(cx, did, path);
         then {
-            return true;
+            return Some(ty.span);
         }
     }
-    false
+    None
+}
+
+fn match_borrows_parameter(_cx: &LateContext<'_, '_>, qpath: &QPath<'_>) -> Option<Span> {
+    let last = last_path_segment(qpath);
+    if_chain! {
+        if let Some(ref params) = last.args;
+        if !params.parenthesized;
+        if let Some(ty) = params.args.iter().find_map(|arg| match arg {
+            GenericArg::Type(ty) => Some(ty),
+            _ => None,
+        });
+        if let TyKind::Rptr(..) = ty.kind;
+        then {
+            return Some(ty.span);
+        }
+    }
+    None
 }
 
 impl Types {
@@ -267,7 +325,19 @@ impl Types {
                 let res = qpath_res(cx, qpath, hir_id);
                 if let Some(def_id) = res.opt_def_id() {
                     if Some(def_id) == cx.tcx.lang_items().owned_box() {
-                        if match_type_parameter(cx, qpath, &paths::VEC) {
+                        if let Some(span) = match_borrows_parameter(cx, qpath) {
+                            span_lint_and_sugg(
+                                cx,
+                                REDUNDANT_ALLOCATION,
+                                hir_ty.span,
+                                "usage of `Box<&T>`",
+                                "try",
+                                snippet(cx, span, "..").to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if match_type_parameter(cx, qpath, &paths::VEC).is_some() {
                             span_lint_and_help(
                                 cx,
                                 BOX_VEC,
@@ -277,7 +347,44 @@ impl Types {
                             );
                             return; // don't recurse into the type
                         }
-                    } else if cx.tcx.is_diagnostic_item(Symbol::intern("vec_type"), def_id) {
+                    } else if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
+                        if let Some(span) = match_type_parameter(cx, qpath, &paths::RC) {
+                            span_lint_and_sugg(
+                                cx,
+                                REDUNDANT_ALLOCATION,
+                                hir_ty.span,
+                                "usage of `Rc<Rc<T>>`",
+                                "try",
+                                snippet(cx, span, "..").to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if let Some(span) = match_type_parameter(cx, qpath, &paths::BOX) {
+                            span_lint_and_sugg(
+                                cx,
+                                REDUNDANT_ALLOCATION,
+                                hir_ty.span,
+                                "usage of `Rc<Box<T>>`",
+                                "try",
+                                snippet(cx, span, "..").to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                        if let Some(span) = match_borrows_parameter(cx, qpath) {
+                            span_lint_and_sugg(
+                                cx,
+                                REDUNDANT_ALLOCATION,
+                                hir_ty.span,
+                                "usage of `Rc<&T>`",
+                                "try",
+                                snippet(cx, span, "..").to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                            return; // don't recurse into the type
+                        }
+                    } else if cx.tcx.is_diagnostic_item(sym!(vec_type), def_id) {
                         if_chain! {
                             // Get the _ part of Vec<_>
                             if let Some(ref last) = last_path_segment(qpath).args;
@@ -313,8 +420,8 @@ impl Types {
                                 return; // don't recurse into the type
                             }
                         }
-                    } else if match_def_path(cx, def_id, &paths::OPTION) {
-                        if match_type_parameter(cx, qpath, &paths::OPTION) {
+                    } else if cx.tcx.is_diagnostic_item(sym!(option_type), def_id) {
+                        if match_type_parameter(cx, qpath, &paths::OPTION).is_some() {
                             span_lint(
                                 cx,
                                 OPTION_OPTION,
@@ -485,7 +592,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     pub LET_UNIT_VALUE,
-    style,
+    pedantic,
     "creating a `let` binding to a value of unit type, which usually can't be used afterwards"
 }
 
@@ -729,7 +836,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x = std::u64::MAX;
+    /// let x = u64::MAX;
     /// x as f64;
     /// ```
     pub CAST_PRECISION_LOSS,
@@ -796,7 +903,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// std::u32::MAX as i32; // will yield a value of `-1`
+    /// u32::MAX as i32; // will yield a value of `-1`
     /// ```
     pub CAST_POSSIBLE_WRAP,
     pedantic,
@@ -1644,7 +1751,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let vec: Vec<isize> = Vec::new();
     /// if vec.len() <= 0 {}
-    /// if 100 > std::i32::MAX {}
+    /// if 100 > i32::MAX {}
     /// ```
     pub ABSURD_EXTREME_COMPARISONS,
     correctness,
@@ -1865,8 +1972,6 @@ impl Ord for FullInt {
 }
 
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'_>) -> Option<(FullInt, FullInt)> {
-    use std::{i128, i16, i32, i64, i8, isize, u128, u16, u32, u64, u8, usize};
-
     if let ExprKind::Cast(ref cast_exp, _) = expr.kind {
         let pre_cast_ty = cx.tables.expr_ty(cast_exp);
         let cast_ty = cx.tables.expr_ty(expr);
@@ -2064,7 +2169,7 @@ declare_clippy_lint! {
     /// pub fn foo<S: BuildHasher>(map: &mut HashMap<i32, i32, S>) { }
     /// ```
     pub IMPLICIT_HASHER,
-    style,
+    pedantic,
     "missing generalization over different hashers"
 }
 

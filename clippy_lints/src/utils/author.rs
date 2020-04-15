@@ -2,7 +2,6 @@
 //! to generate a clippy lint detecting said code automatically.
 
 use crate::utils::{get_attr, higher};
-use rustc::hir::map::Map;
 use rustc_ast::ast::{Attribute, LitFloatType, LitKind};
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashMap;
@@ -10,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::hir::map::Map;
 use rustc_session::Session;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -468,9 +468,9 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     println!("Ret(None) = {};", current);
                 }
             },
-            ExprKind::InlineAsm(_) => {
-                println!("InlineAsm(_) = {};", current);
-                println!("    // unimplemented: `ExprKind::InlineAsm` is not further destructured at the moment");
+            ExprKind::LlvmInlineAsm(_) => {
+                println!("LlvmInlineAsm(_) = {};", current);
+                println!("    // unimplemented: `ExprKind::LlvmInlineAsm` is not further destructured at the moment");
             },
             ExprKind::Struct(ref path, ref fields, ref opt_base) => {
                 let path_pat = self.next("path");

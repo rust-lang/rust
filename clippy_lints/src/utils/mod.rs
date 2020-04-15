@@ -25,14 +25,6 @@ use std::borrow::Cow;
 use std::mem;
 
 use if_chain::if_chain;
-use rustc::hir::map::Map;
-use rustc::traits;
-use rustc::ty::{
-    self,
-    layout::{self, IntegerExt},
-    subst::GenericArg,
-    Binder, Ty, TyCtxt, TypeFoldable,
-};
 use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_attr as attr;
 use rustc_errors::Applicability;
@@ -47,10 +39,14 @@ use rustc_hir::{
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
+use rustc_middle::hir::map::Map;
+use rustc_middle::traits;
+use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Binder, Ty, TyCtxt, TypeFoldable};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+use rustc_target::abi::Integer;
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
@@ -230,7 +226,7 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
 /// }
 ///
 /// if match_path(ty_path, &["rustc", "lint", "Lint"]) {
-///     // This is a `rustc::lint::Lint`.
+///     // This is a `rustc_middle::lint::Lint`.
 /// }
 /// ```
 pub fn match_path(path: &Path<'_>, segments: &[&str]) -> bool {
@@ -832,7 +828,7 @@ pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
 /// Examples of coercions can be found in the Nomicon at
 /// <https://doc.rust-lang.org/nomicon/coercions.html>.
 ///
-/// See `rustc::ty::adjustment::Adjustment` and `rustc_typeck::check::coercion` for more
+/// See `rustc_middle::ty::adjustment::Adjustment` and `rustc_typeck::check::coercion` for more
 /// information on adjustments and coercions.
 pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr<'_>) -> bool {
     cx.tables.adjustments().get(e.hir_id).is_some()
@@ -1080,9 +1076,7 @@ pub fn get_arg_name(pat: &Pat<'_>) -> Option<ast::Name> {
 }
 
 pub fn int_bits(tcx: TyCtxt<'_>, ity: ast::IntTy) -> u64 {
-    layout::Integer::from_attr(&tcx, attr::IntType::SignedInt(ity))
-        .size()
-        .bits()
+    Integer::from_attr(&tcx, attr::IntType::SignedInt(ity)).size().bits()
 }
 
 #[allow(clippy::cast_possible_wrap)]
@@ -1101,9 +1095,7 @@ pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: ast::IntTy) -> u128 {
 
 /// clip unused bytes
 pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: ast::UintTy) -> u128 {
-    let bits = layout::Integer::from_attr(&tcx, attr::IntType::UnsignedInt(ity))
-        .size()
-        .bits();
+    let bits = Integer::from_attr(&tcx, attr::IntType::UnsignedInt(ity)).size().bits();
     let amt = 128 - bits;
     (u << amt) >> amt
 }
@@ -1224,14 +1216,16 @@ pub fn match_function_call<'a, 'tcx>(
 /// to avoid crashes on `layout_of`.
 pub fn is_normalizable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
     cx.tcx.infer_ctxt().enter(|infcx| {
-        let cause = rustc::traits::ObligationCause::dummy();
+        let cause = rustc_middle::traits::ObligationCause::dummy();
         infcx.at(&cause, param_env).normalize(&ty).is_ok()
     })
 }
 
 pub fn match_def_path<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, did: DefId, syms: &[&str]) -> bool {
-    let path = cx.get_def_path(did);
-    path.len() == syms.len() && path.into_iter().zip(syms.iter()).all(|(a, &b)| a.as_str() == b)
+    // We have to convert `syms` to `&[Symbol]` here because rustc's `match_def_path`
+    // accepts only that. We should probably move to Symbols in Clippy as well.
+    let syms = syms.iter().map(|p| Symbol::intern(p)).collect::<Vec<Symbol>>();
+    cx.match_def_path(did, &syms)
 }
 
 /// Returns the list of condition expressions and the list of blocks in a
@@ -1397,7 +1391,12 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_, '_>, did: DefId) -> bool 
         .iter()
         .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None })
         .collect();
-    !traits::normalize_and_test_predicates(cx.tcx, traits::elaborate_predicates(cx.tcx, predicates).collect())
+    !traits::normalize_and_test_predicates(
+        cx.tcx,
+        traits::elaborate_predicates(cx.tcx, predicates)
+            .map(|o| o.predicate)
+            .collect::<Vec<_>>(),
+    )
 }
 
 #[cfg(test)]

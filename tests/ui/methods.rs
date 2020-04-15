@@ -6,6 +6,7 @@
     clippy::blacklisted_name,
     clippy::default_trait_access,
     clippy::missing_docs_in_private_items,
+    clippy::missing_safety_doc,
     clippy::non_ascii_literal,
     clippy::new_without_default,
     clippy::needless_pass_by_value,
@@ -80,6 +81,20 @@ impl T {
 
     fn new(self) -> Self {
         unimplemented!();
+    }
+}
+
+pub struct T1;
+
+impl T1 {
+    // Shouldn't trigger lint as it is unsafe.
+    pub unsafe fn add(self, rhs: T1) -> T1 {
+        self
+    }
+
+    // Should not trigger lint since this is an async function.
+    pub async fn next(&mut self) -> Option<T1> {
+        None
     }
 }
 

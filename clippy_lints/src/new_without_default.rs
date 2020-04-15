@@ -2,13 +2,13 @@ use crate::utils::paths;
 use crate::utils::sugg::DiagnosticBuilderExt;
 use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_hir_and_then};
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
-use rustc::ty::{self, Ty};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirIdSet;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 
@@ -100,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
         } = item.kind
         {
             for assoc_item in items {
-                if let hir::AssocItemKind::Method { has_self: false } = assoc_item.kind {
+                if let hir::AssocItemKind::Fn { has_self: false } = assoc_item.kind {
                     let impl_item = cx.tcx.hir().impl_item(assoc_item.id);
                     if in_external_macro(cx.sess(), impl_item.span) {
                         return;

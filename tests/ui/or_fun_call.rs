@@ -55,8 +55,6 @@ fn or_fun_call() {
     let with_vec = Some(vec![1]);
     with_vec.unwrap_or(vec![]);
 
-    // FIXME #944: ~|SUGGESTION with_vec.unwrap_or_else(|| vec![]);
-
     let without_default = Some(Foo);
     without_default.unwrap_or(Foo::new());
 

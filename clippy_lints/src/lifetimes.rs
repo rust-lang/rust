@@ -1,5 +1,3 @@
-use rustc::hir::map::Map;
-use rustc::lint::in_external_macro;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{
@@ -11,13 +9,14 @@ use rustc_hir::{
     ItemKind, Lifetime, LifetimeName, ParamName, QPath, TraitBoundModifier, TraitFn, TraitItem, TraitItemKind, Ty,
     TyKind, WhereClause, WherePredicate,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::kw;
 
 use crate::reexport::Name;
-use crate::utils::{last_path_segment, span_lint, trait_ref_of_method};
+use crate::utils::{in_macro, last_path_segment, span_lint, trait_ref_of_method};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for lifetime annotations which can be removed by
@@ -125,7 +124,7 @@ fn check_fn_inner<'a, 'tcx>(
     span: Span,
     report_extra_lifetimes: bool,
 ) {
-    if in_external_macro(cx.sess(), span) || has_where_lifetimes(cx, &generics.where_clause) {
+    if in_macro(span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
 

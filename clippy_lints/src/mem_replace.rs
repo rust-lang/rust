@@ -3,12 +3,13 @@ use crate::utils::{
     span_lint_and_sugg, span_lint_and_then,
 };
 use if_chain::if_chain;
-use rustc::lint::in_external_macro;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `mem::replace()` on an `Option` with
@@ -141,7 +142,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, expr_span
             if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
             if let Some(repl_def_id) = cx.tables.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
             then {
-                if match_def_path(cx, repl_def_id, &paths::MEM_UNINITIALIZED) {
+                if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, repl_def_id) {
                     span_lint_and_help(
                         cx,
                         MEM_REPLACE_WITH_UNINIT,
@@ -149,7 +150,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, expr_span
                         "replacing with `mem::uninitialized()`",
                         "consider using the `take_mut` crate instead",
                     );
-                } else if match_def_path(cx, repl_def_id, &paths::MEM_ZEROED) &&
+                } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id) &&
                         !cx.tables.expr_ty(src).is_primitive() {
                     span_lint_and_help(
                         cx,

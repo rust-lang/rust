@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 bytecount = "0.6"
 clap = "2.33"
-itertools = "0.8"
+itertools = "0.9"
 regex = "1"
 lazy_static = "1.0"
 shell-escape = "0.1"

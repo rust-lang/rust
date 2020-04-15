@@ -1,5 +1,6 @@
-use crate::utils::{in_macro, snippet, span_lint_and_help, SpanlessHash};
+use crate::utils::{in_macro, snippet, snippet_with_applicability, span_lint_and_help, SpanlessHash};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::Applicability;
 use rustc_hir::{GenericBound, Generics, WherePredicate};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -41,6 +42,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
             hasher.finish()
         };
         let mut map = FxHashMap::default();
+        let mut applicability = Applicability::MaybeIncorrect;
         for bound in gen.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref p) = bound {
                 let h = hash(&p.bounded_ty);
@@ -52,13 +54,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
                     for b in v.iter() {
                         if let GenericBound::Trait(ref poly_trait_ref, _) = b {
                             let path = &poly_trait_ref.trait_ref.path;
-                            hint_string.push_str(&format!(" {} +", path));
+                            hint_string.push_str(&format!(
+                                " {} +",
+                                snippet_with_applicability(cx, path.span, "..", &mut applicability)
+                            ));
                         }
                     }
                     for b in p.bounds.iter() {
                         if let GenericBound::Trait(ref poly_trait_ref, _) = b {
                             let path = &poly_trait_ref.trait_ref.path;
-                            hint_string.push_str(&format!(" {} +", path));
+                            hint_string.push_str(&format!(
+                                " {} +",
+                                snippet_with_applicability(cx, path.span, "..", &mut applicability)
+                            ));
                         }
                     }
                     hint_string.truncate(hint_string.len() - 2);

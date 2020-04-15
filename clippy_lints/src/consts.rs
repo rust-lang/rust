@@ -2,14 +2,14 @@
 
 use crate::utils::{clip, higher, sext, unsext};
 use if_chain::if_chain;
-use rustc::ty::subst::{Subst, SubstsRef};
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::{bug, span_bug};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
 use std::convert::TryInto;
@@ -268,6 +268,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     }
                 }
             },
+            ExprKind::Index(ref arr, ref index) => self.index(arr, index),
             // TODO: add other expressions.
             _ => None,
         }
@@ -333,7 +334,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     .tcx
                     .const_eval_resolve(self.param_env, def_id, substs, None, None)
                     .ok()
-                    .map(|val| rustc::ty::Const::from_value(self.lcx.tcx, val, ty))?;
+                    .map(|val| rustc_middle::ty::Const::from_value(self.lcx.tcx, val, ty))?;
                 let result = miri_to_const(&result);
                 if result.is_some() {
                     self.needed_resolution = true;
@@ -341,6 +342,31 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 result
             },
             // FIXME: cover all usable cases.
+            _ => None,
+        }
+    }
+
+    fn index(&mut self, lhs: &'_ Expr<'_>, index: &'_ Expr<'_>) -> Option<Constant> {
+        let lhs = self.expr(lhs);
+        let index = self.expr(index);
+
+        match (lhs, index) {
+            (Some(Constant::Vec(vec)), Some(Constant::Int(index))) => match vec[index as usize] {
+                Constant::F32(x) => Some(Constant::F32(x)),
+                Constant::F64(x) => Some(Constant::F64(x)),
+                _ => None,
+            },
+            (Some(Constant::Vec(vec)), _) => {
+                if !vec.is_empty() && vec.iter().all(|x| *x == vec[0]) {
+                    match vec[0] {
+                        Constant::F32(x) => Some(Constant::F32(x)),
+                        Constant::F64(x) => Some(Constant::F64(x)),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            },
             _ => None,
         }
     }
@@ -460,7 +486,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 }
 
 pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
-    use rustc::mir::interpret::{ConstValue, Scalar};
+    use rustc_middle::mir::interpret::{ConstValue, Scalar};
     match result.val {
         ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: d, .. })) => match result.ty.kind {
             ty::Bool => Some(Constant::Bool(d == 1)),
@@ -488,6 +514,41 @@ pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
                 )
                 .ok()
                 .map(Constant::Str),
+                _ => None,
+            },
+            _ => None,
+        },
+        ty::ConstKind::Value(ConstValue::ByRef { alloc, offset: _ }) => match result.ty.kind {
+            ty::Array(sub_type, len) => match sub_type.kind {
+                ty::Float(FloatTy::F32) => match miri_to_const(len) {
+                    Some(Constant::Int(len)) => alloc
+                        .inspect_with_undef_and_ptr_outside_interpreter(0..(4 * len as usize))
+                        .to_owned()
+                        .chunks(4)
+                        .map(|chunk| {
+                            Some(Constant::F32(f32::from_le_bytes(
+                                chunk.try_into().expect("this shouldn't happen"),
+                            )))
+                        })
+                        .collect::<Option<Vec<Constant>>>()
+                        .map(Constant::Vec),
+                    _ => None,
+                },
+                ty::Float(FloatTy::F64) => match miri_to_const(len) {
+                    Some(Constant::Int(len)) => alloc
+                        .inspect_with_undef_and_ptr_outside_interpreter(0..(8 * len as usize))
+                        .to_owned()
+                        .chunks(8)
+                        .map(|chunk| {
+                            Some(Constant::F64(f64::from_le_bytes(
+                                chunk.try_into().expect("this shouldn't happen"),
+                            )))
+                        })
+                        .collect::<Option<Vec<Constant>>>()
+                        .map(Constant::Vec),
+                    _ => None,
+                },
+                // FIXME: implement other array type conversions.
                 _ => None,
             },
             _ => None,

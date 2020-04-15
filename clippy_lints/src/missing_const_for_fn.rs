@@ -1,9 +1,9 @@
 use crate::utils::{fn_has_unsatisfiable_preds, has_drop, is_entrypoint_fn, span_lint, trait_ref_of_method};
-use rustc::lint::in_external_macro;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Constness, FnDecl, GenericParamKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::lint::in_external_macro;
 use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;

@@ -1,9 +1,9 @@
 use crate::utils::{match_def_path, span_lint_and_help};
 use if_chain::if_chain;
-use rustc::ty;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {

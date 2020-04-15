@@ -37,8 +37,8 @@ fn main() {
     // no errors, zero and infinity values
     ONE != 0f32;
     TWO == 0f32;
-    ONE != ::std::f32::INFINITY;
-    ONE == ::std::f32::NEG_INFINITY;
+    ONE != f32::INFINITY;
+    ONE == f32::NEG_INFINITY;
 
     // no errors, but will warn clippy::float_cmp if '#![allow(float_cmp)]' above is removed
     let w = 1.1;
@@ -46,4 +46,17 @@ fn main() {
     v != w;
     v == 1.0;
     v != 1.0;
+
+    const ZERO_ARRAY: [f32; 3] = [0.0, 0.0, 0.0];
+    const ZERO_INF_ARRAY: [f32; 3] = [0.0, ::std::f32::INFINITY, ::std::f32::NEG_INFINITY];
+    const NON_ZERO_ARRAY: [f32; 3] = [0.0, 0.1, 0.2];
+    const NON_ZERO_ARRAY2: [f32; 3] = [0.2, 0.1, 0.0];
+
+    // no errors, zero and infinity values
+    NON_ZERO_ARRAY[0] == NON_ZERO_ARRAY2[1]; // lhs is 0.0
+    ZERO_ARRAY == NON_ZERO_ARRAY; // lhs is all zeros
+    ZERO_INF_ARRAY == NON_ZERO_ARRAY; // lhs is all zeros or infinities
+
+    // has errors
+    NON_ZERO_ARRAY == NON_ZERO_ARRAY2;
 }
