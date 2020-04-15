@@ -322,9 +322,17 @@ impl Socket {
         Ok(raw != 0)
     }
 
+    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as libc::c_int;
         cvt(unsafe { libc::ioctl(*self.as_inner(), libc::FIONBIO, &mut nonblocking) }).map(drop)
+    }
+
+    #[cfg(any(target_os = "solaris", target_os = "illumos"))]
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        // FIONBIO is inadequate for sockets on illumos/Solaris, so use the
+        // fcntl(F_[GS]ETFL)-based method provided by FileDesc instead.
+        self.0.set_nonblocking(nonblocking)
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {

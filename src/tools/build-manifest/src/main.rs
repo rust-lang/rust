@@ -139,6 +139,7 @@ static TARGETS: &[&str] = &[
     "x86_64-pc-solaris",
     "x86_64-unknown-cloudabi",
     "x86_64-unknown-freebsd",
+    "x86_64-unknown-illumos",
     "x86_64-unknown-linux-gnu",
     "x86_64-unknown-linux-gnux32",
     "x86_64-unknown-linux-musl",
