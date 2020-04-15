@@ -25,6 +25,14 @@ fn main() {
         println!("cargo:rustc-link-lib=posix4");
         println!("cargo:rustc-link-lib=pthread");
         println!("cargo:rustc-link-lib=resolv");
+    } else if target.contains("illumos") {
+        println!("cargo:rustc-link-lib=socket");
+        println!("cargo:rustc-link-lib=posix4");
+        println!("cargo:rustc-link-lib=pthread");
+        println!("cargo:rustc-link-lib=resolv");
+        println!("cargo:rustc-link-lib=nsl");
+        // Use libumem for the (malloc-compatible) allocator
+        println!("cargo:rustc-link-lib=umem");
     } else if target.contains("apple-darwin") {
         println!("cargo:rustc-link-lib=System");
 

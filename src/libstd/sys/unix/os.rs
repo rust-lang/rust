@@ -54,7 +54,7 @@ extern "C" {
         ),
         link_name = "__errno"
     )]
-    #[cfg_attr(target_os = "solaris", link_name = "___errno")]
+    #[cfg_attr(any(target_os = "solaris", target_os = "illumos"), link_name = "___errno")]
     #[cfg_attr(
         any(target_os = "macos", target_os = "ios", target_os = "freebsd"),
         link_name = "__error"
@@ -357,7 +357,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(any(target_os = "solaris"))]
+#[cfg(any(target_os = "solaris", target_os = "illumos"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     extern "C" {
         fn getexecname() -> *const c_char;

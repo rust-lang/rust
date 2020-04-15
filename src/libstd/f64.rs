@@ -919,7 +919,7 @@ impl f64 {
     // because of their non-standard behavior (e.g., log(-n) returns -Inf instead
     // of expected NaN).
     fn log_wrapper<F: Fn(f64) -> f64>(self, log_fn: F) -> f64 {
-        if !cfg!(target_os = "solaris") {
+        if !cfg!(any(target_os = "solaris", target_os = "illumos")) {
             log_fn(self)
         } else {
             if self.is_finite() {
