@@ -145,4 +145,8 @@ pub fn main() {
     assert_eq!(size_of::<Option<Option<(&(), bool)>>>(), size_of::<(bool, &())>());
     assert_eq!(size_of::<Option<Option2<bool, &()>>>(), size_of::<(bool, &())>());
     assert_eq!(size_of::<Option<Option2<&(), bool>>>(), size_of::<(bool, &())>());
+
+    struct S1{ a: u16, b: std::num::NonZeroU16, c: u16, d: u8, e: u32, f: u64, g:[u8;2] }
+    assert_eq!(size_of::<S1>(), 24);
+    assert_eq!(size_of::<Option<S1>>(), 24);
 }

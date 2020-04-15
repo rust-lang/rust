@@ -330,8 +330,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     optimizing.sort_by_key(|&x| field_align(&fields[x as usize]));
                 }
             }
-            // Rotate index array to put the largest niche first.
-            // Since it is already the first amongst the types with the same alignement,
+            // Rotate index array to put the largest niche first. Then reverse the ones with larger
+            // alignment. Since it is already the first amongst the types with the same alignment,
             // this will just move some of the potential padding within the structure.
             if let (Some(niche_index), StructKind::AlwaysSized) = (largest_niche_index, kind) {
                 // ZSTs are always first, and the largest niche is not one, so we can unwrap
@@ -342,6 +342,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let non_zsts = &mut inverse_memory_index[first_non_zst..];
                 let pivot = non_zsts.iter().position(|&x| x == niche_index).unwrap();
                 non_zsts.rotate_left(pivot);
+                let pivot = non_zsts.len() - pivot;
+                non_zsts[pivot..].reverse();
+                debug_assert_eq![non_zsts[0], niche_index];
             }
         }
 
