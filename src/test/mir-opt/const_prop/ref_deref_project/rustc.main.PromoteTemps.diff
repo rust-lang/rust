@@ -22,7 +22,14 @@
                                            // mir::Constant
 -                                          // + span: $DIR/ref_deref_project.rs:5:9: 5:10
 -                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000004)) }
--                                          // ty::Const
++                                          // + span: $DIR/ref_deref_project.rs:5:6: 5:17
++                                          // + literal: Const { ty: &(i32, i32), val: Unevaluated(DefId(0:3 ~ ref_deref_project[317d]::main[0]), [], Some(promoted[0])) }
++         _2 = &((*_4).1: i32);            // bb0[3]: scope 0 at $DIR/ref_deref_project.rs:5:6: 5:17
++         _1 = (*_2);                      // bb0[4]: scope 0 at $DIR/ref_deref_project.rs:5:5: 5:17
++         StorageDead(_2);                 // bb0[5]: scope 0 at $DIR/ref_deref_project.rs:5:17: 5:18
++         StorageDead(_1);                 // bb0[6]: scope 0 at $DIR/ref_deref_project.rs:5:17: 5:18
++         _0 = const ();                   // bb0[7]: scope 0 at $DIR/ref_deref_project.rs:4:11: 6:2
+                                           // ty::Const
 -                                          // + ty: i32
 -                                          // + val: Value(Scalar(0x00000005))
 -                                          // mir::Constant
@@ -33,15 +40,14 @@
 -         StorageDead(_3);                 // bb0[6]: scope 0 at $DIR/ref_deref_project.rs:5:17: 5:18
 -         StorageDead(_2);                 // bb0[7]: scope 0 at $DIR/ref_deref_project.rs:5:17: 5:18
 -         StorageDead(_1);                 // bb0[8]: scope 0 at $DIR/ref_deref_project.rs:5:17: 5:18
--         _0 = ();                         // bb0[9]: scope 0 at $DIR/ref_deref_project.rs:4:11: 6:2
+-         _0 = const ();                   // bb0[9]: scope 0 at $DIR/ref_deref_project.rs:4:11: 6:2
+-                                          // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/ref_deref_project.rs:4:11: 6:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
 -         return;                          // bb0[10]: scope 0 at $DIR/ref_deref_project.rs:6:2: 6:2
-+                                          // + span: $DIR/ref_deref_project.rs:5:6: 5:17
-+                                          // + literal: Const { ty: &(i32, i32), val: Unevaluated(DefId(0:3 ~ ref_deref_project[317d]::main[0]), [], Some(promoted[0])) }
-+         _2 = &((*_4).1: i32);            // bb0[3]: scope 0 at $DIR/ref_deref_project.rs:5:6: 5:17
-+         _1 = (*_2);                      // bb0[4]: scope 0 at $DIR/ref_deref_project.rs:5:5: 5:17
-+         StorageDead(_2);                 // bb0[5]: scope 0 at $DIR/ref_deref_project.rs:5:17: 5:18
-+         StorageDead(_1);                 // bb0[6]: scope 0 at $DIR/ref_deref_project.rs:5:17: 5:18
-+         _0 = ();                         // bb0[7]: scope 0 at $DIR/ref_deref_project.rs:4:11: 6:2
 +         return;                          // bb0[8]: scope 0 at $DIR/ref_deref_project.rs:6:2: 6:2
       }
   }

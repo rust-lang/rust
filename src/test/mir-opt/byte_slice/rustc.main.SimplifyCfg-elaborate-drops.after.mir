@@ -34,7 +34,13 @@ fn main() -> () {
                                          // mir::Constant
                                          // + span: $DIR/byte_slice.rs:6:19: 6:23
                                          // + literal: Const { ty: u8, val: Value(Scalar(0x78)) }
-        _0 = ();                         // bb0[4]: scope 0 at $DIR/byte_slice.rs:4:11: 7:2
+        _0 = const ();                   // bb0[4]: scope 0 at $DIR/byte_slice.rs:4:11: 7:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/byte_slice.rs:4:11: 7:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_2);                 // bb0[5]: scope 1 at $DIR/byte_slice.rs:7:1: 7:2
         StorageDead(_1);                 // bb0[6]: scope 0 at $DIR/byte_slice.rs:7:1: 7:2
         return;                          // bb0[7]: scope 0 at $DIR/byte_slice.rs:7:2: 7:2

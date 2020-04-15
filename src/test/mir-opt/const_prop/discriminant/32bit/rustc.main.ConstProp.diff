@@ -87,7 +87,13 @@
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
           StorageDead(_2);                 // bb4[1]: scope 0 at $DIR/discriminant.rs:6:67: 6:68
           StorageDead(_3);                 // bb4[2]: scope 0 at $DIR/discriminant.rs:6:68: 6:69
-          _0 = ();                         // bb4[3]: scope 0 at $DIR/discriminant.rs:5:11: 7:2
+          _0 = const ();                   // bb4[3]: scope 0 at $DIR/discriminant.rs:5:11: 7:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/discriminant.rs:5:11: 7:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // bb4[4]: scope 0 at $DIR/discriminant.rs:7:1: 7:2
           return;                          // bb4[5]: scope 0 at $DIR/discriminant.rs:7:2: 7:2
       }

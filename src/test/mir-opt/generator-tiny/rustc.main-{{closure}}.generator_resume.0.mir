@@ -54,7 +54,13 @@ fn main::{{closure}}#0(_1: std::pin::Pin<&mut [generator@$DIR/generator-tiny.rs:
 
     bb4: {
         StorageDead(_8);                 // bb4[0]: scope 1 at $DIR/generator-tiny.rs:22:21: 22:22
-        _5 = ();                         // bb4[1]: scope 1 at $DIR/generator-tiny.rs:20:14: 23:10
+        _5 = const ();                   // bb4[1]: scope 1 at $DIR/generator-tiny.rs:20:14: 23:10
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/generator-tiny.rs:20:14: 23:10
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         goto -> bb2;                     // bb4[2]: scope 1 at $DIR/generator-tiny.rs:20:9: 23:10
     }
 

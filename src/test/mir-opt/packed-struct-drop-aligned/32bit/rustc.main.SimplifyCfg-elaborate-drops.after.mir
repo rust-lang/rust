@@ -61,7 +61,13 @@ fn main() -> () {
         StorageDead(_6);                 // bb4[0]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:5: 7:8
         (_1.0: Aligned) = move _4;       // bb4[1]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:5: 7:8
         StorageDead(_4);                 // bb4[2]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:28: 7:29
-        _0 = ();                         // bb4[3]: scope 0 at $DIR/packed-struct-drop-aligned.rs:5:11: 8:2
+        _0 = const ();                   // bb4[3]: scope 0 at $DIR/packed-struct-drop-aligned.rs:5:11: 8:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/packed-struct-drop-aligned.rs:5:11: 8:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         drop(_1) -> [return: bb2, unwind: bb1]; // bb4[4]: scope 0 at $DIR/packed-struct-drop-aligned.rs:8:1: 8:2
     }
 }

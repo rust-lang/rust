@@ -54,7 +54,13 @@ fn main() -> () {
         StorageDead(_5);                 // bb0[9]: scope 1 at $DIR/storage_ranges.rs:6:24: 6:25
         _3 = &_4;                        // bb0[10]: scope 1 at $DIR/storage_ranges.rs:6:17: 6:25
         FakeRead(ForLet, _3);            // bb0[11]: scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
-        _2 = ();                         // bb0[12]: scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
+        _2 = const ();                   // bb0[12]: scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_ranges.rs:5:5: 7:6
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_4);                 // bb0[13]: scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
         StorageDead(_3);                 // bb0[14]: scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
         StorageDead(_2);                 // bb0[15]: scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
@@ -67,7 +73,13 @@ fn main() -> () {
                                          // + span: $DIR/storage_ranges.rs:8:13: 8:14
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
         FakeRead(ForLet, _6);            // bb0[18]: scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
-        _0 = ();                         // bb0[19]: scope 0 at $DIR/storage_ranges.rs:3:11: 9:2
+        _0 = const ();                   // bb0[19]: scope 0 at $DIR/storage_ranges.rs:3:11: 9:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/storage_ranges.rs:3:11: 9:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_6);                 // bb0[20]: scope 1 at $DIR/storage_ranges.rs:9:1: 9:2
         StorageDead(_1);                 // bb0[21]: scope 0 at $DIR/storage_ranges.rs:9:1: 9:2
         return;                          // bb0[22]: scope 0 at $DIR/storage_ranges.rs:9:2: 9:2

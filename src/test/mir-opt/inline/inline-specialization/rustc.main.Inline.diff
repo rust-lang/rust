@@ -25,12 +25,18 @@
 -     }
 - 
 -     bb1: {
--         _0 = ();                         // bb1[0]: scope 0 at $DIR/inline-specialization.rs:4:11: 6:2
--         StorageDead(_1);                 // bb1[1]: scope 0 at $DIR/inline-specialization.rs:6:1: 6:2
--         return;                          // bb1[2]: scope 0 at $DIR/inline-specialization.rs:6:2: 6:2
+-         _0 = const ();                   // bb1[0]: scope 0 at $DIR/inline-specialization.rs:4:11: 6:2
 +                                          // + span: $DIR/inline-specialization.rs:14:31: 14:34
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000007b)) }
-+         _0 = ();                         // bb0[2]: scope 0 at $DIR/inline-specialization.rs:4:11: 6:2
++         _0 = const ();                   // bb0[2]: scope 0 at $DIR/inline-specialization.rs:4:11: 6:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/inline-specialization.rs:4:11: 6:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
+-         StorageDead(_1);                 // bb1[1]: scope 0 at $DIR/inline-specialization.rs:6:1: 6:2
+-         return;                          // bb1[2]: scope 0 at $DIR/inline-specialization.rs:6:2: 6:2
 +         StorageDead(_1);                 // bb0[3]: scope 0 at $DIR/inline-specialization.rs:6:1: 6:2
 +         return;                          // bb0[4]: scope 0 at $DIR/inline-specialization.rs:6:2: 6:2
       }

@@ -35,7 +35,13 @@
       }
   
       bb2: {
-          _0 = ();                         // bb2[0]: scope 0 at $DIR/unreachable.rs:9:5: 19:6
+          _0 = const ();                   // bb2[0]: scope 0 at $DIR/unreachable.rs:9:5: 19:6
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/unreachable.rs:9:5: 19:6
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // bb2[1]: scope 0 at $DIR/unreachable.rs:20:1: 20:2
           return;                          // bb2[2]: scope 0 at $DIR/unreachable.rs:20:2: 20:2
 -     }
@@ -64,7 +70,13 @@
 -                                          // mir::Constant
 -                                          // + span: $DIR/unreachable.rs:15:18: 15:20
 -                                          // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
--         _5 = ();                         // bb4[1]: scope 2 at $DIR/unreachable.rs:14:16: 16:10
+-         _5 = const ();                   // bb4[1]: scope 2 at $DIR/unreachable.rs:14:16: 16:10
+-                                          // ty::Const
+-                                          // + ty: ()
+-                                          // + val: Value(Scalar(<ZST>))
+-                                          // mir::Constant
+-                                          // + span: $DIR/unreachable.rs:14:16: 16:10
+-                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
 -         goto -> bb6;                     // bb4[2]: scope 2 at $DIR/unreachable.rs:12:9: 16:10
 -     }
 - 
@@ -76,7 +88,13 @@
 -                                          // mir::Constant
 -                                          // + span: $DIR/unreachable.rs:13:18: 13:20
 -                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000015)) }
--         _5 = ();                         // bb5[1]: scope 2 at $DIR/unreachable.rs:12:17: 14:10
+-         _5 = const ();                   // bb5[1]: scope 2 at $DIR/unreachable.rs:12:17: 14:10
+-                                          // ty::Const
+-                                          // + ty: ()
+-                                          // + val: Value(Scalar(<ZST>))
+-                                          // mir::Constant
+-                                          // + span: $DIR/unreachable.rs:12:17: 14:10
+-                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
 -         goto -> bb6;                     // bb5[2]: scope 2 at $DIR/unreachable.rs:12:9: 16:10
 -     }
 - 

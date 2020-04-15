@@ -40,7 +40,13 @@
       }
   
       bb2: {
-          _0 = ();                         // bb2[0]: scope 0 at $DIR/unreachable_asm_2.rs:11:5: 25:6
+          _0 = const ();                   // bb2[0]: scope 0 at $DIR/unreachable_asm_2.rs:11:5: 25:6
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/unreachable_asm_2.rs:11:5: 25:6
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // bb2[1]: scope 0 at $DIR/unreachable_asm_2.rs:26:1: 26:2
           return;                          // bb2[2]: scope 0 at $DIR/unreachable_asm_2.rs:26:2: 26:2
       }
@@ -64,7 +70,13 @@
       bb4: {
           StorageLive(_8);                 // bb4[0]: scope 2 at $DIR/unreachable_asm_2.rs:20:13: 20:41
           llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []); // bb4[1]: scope 4 at $DIR/unreachable_asm_2.rs:20:22: 20:39
-          _8 = ();                         // bb4[2]: scope 4 at $DIR/unreachable_asm_2.rs:20:13: 20:41
+          _8 = const ();                   // bb4[2]: scope 4 at $DIR/unreachable_asm_2.rs:20:13: 20:41
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/unreachable_asm_2.rs:20:13: 20:41
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_8);                 // bb4[3]: scope 2 at $DIR/unreachable_asm_2.rs:20:40: 20:41
           _4 = const 42i32;                // bb4[4]: scope 2 at $DIR/unreachable_asm_2.rs:21:13: 21:20
                                            // ty::Const
@@ -73,7 +85,13 @@
                                            // mir::Constant
                                            // + span: $DIR/unreachable_asm_2.rs:21:18: 21:20
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
-          _5 = ();                         // bb4[5]: scope 2 at $DIR/unreachable_asm_2.rs:18:16: 22:10
+          _5 = const ();                   // bb4[5]: scope 2 at $DIR/unreachable_asm_2.rs:18:16: 22:10
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/unreachable_asm_2.rs:18:16: 22:10
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
 -         goto -> bb6;                     // bb4[6]: scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
 +         unreachable;                     // bb4[6]: scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
       }
@@ -81,7 +99,13 @@
       bb5: {
           StorageLive(_7);                 // bb5[0]: scope 2 at $DIR/unreachable_asm_2.rs:16:13: 16:41
           llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []); // bb5[1]: scope 3 at $DIR/unreachable_asm_2.rs:16:22: 16:39
-          _7 = ();                         // bb5[2]: scope 3 at $DIR/unreachable_asm_2.rs:16:13: 16:41
+          _7 = const ();                   // bb5[2]: scope 3 at $DIR/unreachable_asm_2.rs:16:13: 16:41
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/unreachable_asm_2.rs:16:13: 16:41
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_7);                 // bb5[3]: scope 2 at $DIR/unreachable_asm_2.rs:16:40: 16:41
           _4 = const 21i32;                // bb5[4]: scope 2 at $DIR/unreachable_asm_2.rs:17:13: 17:20
                                            // ty::Const
@@ -90,7 +114,13 @@
                                            // mir::Constant
                                            // + span: $DIR/unreachable_asm_2.rs:17:18: 17:20
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000015)) }
-          _5 = ();                         // bb5[5]: scope 2 at $DIR/unreachable_asm_2.rs:14:17: 18:10
+          _5 = const ();                   // bb5[5]: scope 2 at $DIR/unreachable_asm_2.rs:14:17: 18:10
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/unreachable_asm_2.rs:14:17: 18:10
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
 -         goto -> bb6;                     // bb5[6]: scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
 -     }
 - 
