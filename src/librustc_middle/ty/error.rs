@@ -584,6 +584,19 @@ impl<T> Trait<T> for X {
         false
     }
 
+    /// An associated type was expected and a different type was found.
+    ///
+    /// We perform a few different checks to see what we can suggest:
+    ///
+    ///  - In the current item, look for associated functions that return the expected type and
+    ///    suggest calling them. (Not a structured suggestion.)
+    ///  - If any of the item's generic bounds can be constrained, we suggest constraining the
+    ///    associated type to the found type.
+    ///  - If the associated type has a default type and was expected inside of a `trait`, we
+    ///    mention that this is disallowed.
+    ///  - If all other things fail, and the error is not because of a mismatch between the `trait`
+    ///    and the `impl`, we provide a generic `help` to constrain the assoc type or call an assoc
+    ///    fn that returns the type.
     fn expected_projection(
         &self,
         db: &mut DiagnosticBuilder<'_>,
@@ -600,6 +613,7 @@ impl<T> Trait<T> for X {
         let body_owner = self.hir().get_if_local(body_owner_def_id);
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
+        // We don't want to suggest calling an assoc fn in a scope where that isn't feasible.
         let callable_scope = match body_owner {
             Some(
                 hir::Node::Item(hir::Item {
@@ -784,6 +798,8 @@ fn foo(&self) -> Self::T { String::new() }
         }
     }
 
+    /// Given a slice of `hir::GenericBound`s, if any of them corresponds to the `trait_ref`
+    /// requirement, provide a strucuted suggestion to constrain it to a given type `ty`.
     fn constrain_generic_bound_associated_type_structured_suggestion(
         &self,
         db: &mut DiagnosticBuilder<'_>,
@@ -812,6 +828,8 @@ fn foo(&self) -> Self::T { String::new() }
         false
     }
 
+    /// Given a span corresponding to a bound, provide a structured suggestion to set an
+    /// associated type to a given type `ty`.
     fn constrain_associated_type_structured_suggestion(
         &self,
         db: &mut DiagnosticBuilder<'_>,
