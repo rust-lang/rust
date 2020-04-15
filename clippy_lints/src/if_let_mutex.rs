@@ -1,7 +1,7 @@
+use crate::utils::{match_type, paths, span_lint_and_help, SpanlessEq};
 use if_chain::if_chain;
-use crate::utils::{match_type, paths, span_lint_and_help};
 use rustc_hir::intravisit::{self as visit, NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, Expr, ExprKind, MatchSource, StmtKind};
+use rustc_hir::{Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -44,10 +44,12 @@ impl LateLintPass<'_, '_> for IfLetMutex {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, ex: &'_ Expr<'_>) {
         let mut arm_visit = ArmVisitor {
             mutex_lock_called: false,
+            found_mutex: None,
             cx,
         };
         let mut op_visit = OppVisitor {
             mutex_lock_called: false,
+            found_mutex: None,
             cx,
         };
         if let ExprKind::Match(
@@ -64,7 +66,7 @@ impl LateLintPass<'_, '_> for IfLetMutex {
                     arm_visit.visit_arm(arm);
                 }
 
-                if arm_visit.mutex_lock_called {
+                if arm_visit.mutex_lock_called && arm_visit.same_mutex(cx, op_visit.found_mutex.unwrap()) {
                     span_lint_and_help(
                         cx,
                         IF_LET_MUTEX,
@@ -80,8 +82,9 @@ impl LateLintPass<'_, '_> for IfLetMutex {
 
 /// Checks if `Mutex::lock` is called in the `if let _ = expr.
 pub struct OppVisitor<'tcx, 'l> {
-    pub mutex_lock_called: bool,
-    pub cx: &'tcx LateContext<'tcx, 'l>,
+    mutex_lock_called: bool,
+    found_mutex: Option<&'tcx Expr<'tcx>>,
+    cx: &'tcx LateContext<'tcx, 'l>,
 }
 
 impl<'tcx, 'l> Visitor<'tcx> for OppVisitor<'tcx, 'l> {
@@ -94,6 +97,7 @@ impl<'tcx, 'l> Visitor<'tcx> for OppVisitor<'tcx, 'l> {
             let ty = self.cx.tables.expr_ty(&args[0]);
             if match_type(self.cx, ty, &paths::MUTEX);
             then {
+                self.found_mutex = Some(&args[0]);
                 self.mutex_lock_called = true;
                 return;
             }
@@ -108,20 +112,22 @@ impl<'tcx, 'l> Visitor<'tcx> for OppVisitor<'tcx, 'l> {
 
 /// Checks if `Mutex::lock` is called in any of the branches.
 pub struct ArmVisitor<'tcx, 'l> {
-    pub mutex_lock_called: bool,
-    pub cx: &'tcx LateContext<'tcx, 'l>,
+    mutex_lock_called: bool,
+    found_mutex: Option<&'tcx Expr<'tcx>>,
+    cx: &'tcx LateContext<'tcx, 'l>,
 }
 
 impl<'tcx, 'l> Visitor<'tcx> for ArmVisitor<'tcx, 'l> {
     type Map = Map<'tcx>;
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if_chain! {
             if let ExprKind::MethodCall(path, _span, args) = &expr.kind;
             if path.ident.to_string() == "lock";
             let ty = self.cx.tables.expr_ty(&args[0]);
             if match_type(self.cx, ty, &paths::MUTEX);
             then {
+                self.found_mutex = Some(&args[0]);
                 self.mutex_lock_called = true;
                 return;
             }
@@ -129,25 +135,17 @@ impl<'tcx, 'l> Visitor<'tcx> for ArmVisitor<'tcx, 'l> {
         visit::walk_expr(self, expr);
     }
 
-    fn visit_arm(&mut self, arm: &'tcx Arm<'_>) {
-        if let ExprKind::Block(ref block, _l) = arm.body.kind {
-            for stmt in block.stmts {
-                match stmt.kind {
-                    StmtKind::Local(loc) => {
-                        if let Some(expr) = loc.init {
-                            self.visit_expr(expr)
-                        }
-                    },
-                    StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(expr),
-                    // we don't care about `Item`
-                    _ => {},
-                }
-            }
-        };
-        visit::walk_arm(self, arm);
-    }
-
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
+    }
+}
+
+impl<'tcx, 'l> ArmVisitor<'tcx, 'l> {
+    fn same_mutex(&self, cx: &LateContext<'_, '_>, op_mutex: &Expr<'_>) -> bool {
+        if let Some(arm_mutex) = self.found_mutex {
+            SpanlessEq::new(cx).eq_expr(op_mutex, arm_mutex)
+        } else {
+            false
+        }
     }
 }
