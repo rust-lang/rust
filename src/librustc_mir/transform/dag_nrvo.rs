@@ -125,7 +125,7 @@ pub struct Nrvo;
 
 impl<'tcx> MirPass<'tcx> for Nrvo {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
-        if tcx.crate_name(LOCAL_CRATE).as_str().starts_with("rustc_") {
+        if !tcx.crate_name(LOCAL_CRATE).as_str().starts_with("rustc_") {
             // Only run this pass on the compiler.
             return;
         }
