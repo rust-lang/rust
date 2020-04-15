@@ -949,6 +949,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "non_expressive_names",
     },
     Lint {
+        name: "large_const_arrays",
+        group: "perf",
+        desc: "large non-scalar const array may cause performance overhead",
+        deprecation: None,
+        module: "large_const_arrays",
+    },
+    Lint {
         name: "large_digit_groups",
         group: "pedantic",
         desc: "grouping digits into groups that are too large",

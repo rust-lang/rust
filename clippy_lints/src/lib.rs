@@ -232,6 +232,7 @@ mod inline_fn_without_body;
 mod int_plus_one;
 mod integer_division;
 mod items_after_statements;
+mod large_const_arrays;
 mod large_enum_variant;
 mod large_stack_arrays;
 mod len_zero;
@@ -582,6 +583,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &int_plus_one::INT_PLUS_ONE,
         &integer_division::INTEGER_DIVISION,
         &items_after_statements::ITEMS_AFTER_STATEMENTS,
+        &large_const_arrays::LARGE_CONST_ARRAYS,
         &large_enum_variant::LARGE_ENUM_VARIANT,
         &large_stack_arrays::LARGE_STACK_ARRAYS,
         &len_zero::LEN_WITHOUT_IS_EMPTY,
@@ -1026,6 +1028,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
     let array_size_threshold = conf.array_size_threshold;
     store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
+    store.register_late_pass(move || box large_const_arrays::LargeConstArrays::new(array_size_threshold));
     store.register_late_pass(move || box floating_point_arithmetic::FloatingPointArithmetic);
     store.register_early_pass(|| box as_conversions::AsConversions);
     store.register_early_pass(|| box utils::internal_lints::ProduceIce);
@@ -1225,6 +1228,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&inherent_to_string::INHERENT_TO_STRING_SHADOW_DISPLAY),
         LintId::of(&inline_fn_without_body::INLINE_FN_WITHOUT_BODY),
         LintId::of(&int_plus_one::INT_PLUS_ONE),
+        LintId::of(&large_const_arrays::LARGE_CONST_ARRAYS),
         LintId::of(&large_enum_variant::LARGE_ENUM_VARIANT),
         LintId::of(&len_zero::LEN_WITHOUT_IS_EMPTY),
         LintId::of(&len_zero::LEN_ZERO),
@@ -1656,6 +1660,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&bytecount::NAIVE_BYTECOUNT),
         LintId::of(&entry::MAP_ENTRY),
         LintId::of(&escape::BOXED_LOCAL),
+        LintId::of(&large_const_arrays::LARGE_CONST_ARRAYS),
         LintId::of(&large_enum_variant::LARGE_ENUM_VARIANT),
         LintId::of(&loops::MANUAL_MEMCPY),
         LintId::of(&loops::NEEDLESS_COLLECT),
