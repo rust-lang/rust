@@ -325,7 +325,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data,
         };
-        Self::from_inner(Box::into_raw_non_null(x))
+        Self::from_inner(Box::leak(x).into())
     }
 
     /// Constructs a new `Arc` with uninitialized contents.
