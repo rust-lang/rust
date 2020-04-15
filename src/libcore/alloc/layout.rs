@@ -258,9 +258,12 @@ impl Layout {
 
     /// Creates a layout describing the record for `self` followed by
     /// `next`, including any necessary padding to ensure that `next`
-    /// will be properly aligned, but *no trailing padding*. Note that
-    /// the resulting layout will satisfy the alignment properties of
-    /// both `self` and `next`, in order to ensure field alignment.
+    /// will be properly aligned, but *no trailing padding*. In order to
+    /// match C representation layout, you should call `pad_to_align`
+    /// after extending the layout with all fields.
+    ///
+    /// Note that the resulting layout will satisfy the alignment properties
+    /// of both `self` and `next`, in order to ensure alignment of both parts.
     ///
     /// Returns `Ok((k, offset))`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
@@ -268,6 +271,31 @@ impl Layout {
     /// (assuming that the record itself starts at offset 0).
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
+    ///
+    /// # Examples
+    ///
+    /// To calculate the layout of a `#[repr(C)]` structure from its fields' layouts:
+    ///
+    /// ```rust
+    /// # use std::alloc::{Layout, LayoutErr};
+    /// pub fn repr_c(fields: &[Layout]) -> Result<(Layout, Vec<usize>), LayoutErr> {
+    ///     let mut offsets = Vec::new();
+    ///     let mut layout = Layout::from_size_align(0, 1)?;
+    ///     for &field in fields {
+    ///         let (new_layout, offset) = layout.extend(field)?;
+    ///         layout = new_layout;
+    ///         offsets.push(offset);
+    ///     }
+    ///     Ok((layout.pad_to_align(), offsets))
+    /// }
+    /// # // test that it works
+    /// # #[repr(C)] struct S { a: u64, b: u32, c: u16, d: u32 }
+    /// # let s = Layout::new::<S>();
+    /// # let u16 = Layout::new::<u16>();
+    /// # let u32 = Layout::new::<u32>();
+    /// # let u64 = Layout::new::<u64>();
+    /// # assert_eq!(repr_c(&[u64, u32, u16, u32]), Ok((s, vec![0, 8, 12, 16])));
+    /// ```
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
