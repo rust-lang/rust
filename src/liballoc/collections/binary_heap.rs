@@ -622,7 +622,7 @@ impl<T: Ord> BinaryHeap<T> {
 
         // `rebuild` takes O(len1 + len2) operations
         // and about 2 * (len1 + len2) comparisons in the worst case
-        // while `extend` takes O(len2 * log_2(len1)) operations
+        // while `extend` takes O(len2 * log(len1)) operations
         // and about 1 * len2 * log_2(len1) comparisons in the worst case,
         // assuming len1 >= len2.
         #[inline]
@@ -643,7 +643,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// The remaining elements will be removed on drop in heap order.
     ///
     /// Note:
-    /// * `.drain_sorted()` is `O(n * lg(n))`; much slower than `.drain()`.
+    /// * `.drain_sorted()` is `O(n * log(n))`; much slower than `.drain()`.
     ///   You should use the latter for most cases.
     ///
     /// # Examples
