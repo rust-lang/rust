@@ -511,7 +511,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                         return;
                     }
                     _ => {
-                        span_bug!(terminator.source_info.span, "invalid callee of type {:?}", fn_ty,)
+                        span_bug!(terminator.source_info.span, "invalid callee of type {:?}", fn_ty)
                     }
                 };
 
