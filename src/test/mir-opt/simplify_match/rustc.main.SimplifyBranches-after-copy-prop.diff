@@ -26,7 +26,13 @@
       }
   
       bb1: {
-          nop;                             // bb1[0]: scope 0 at $DIR/simplify_match.rs:8:18: 8:20
+          _0 = const ();                   // bb1[0]: scope 0 at $DIR/simplify_match.rs:8:18: 8:20
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_match.rs:8:18: 8:20
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           goto -> bb3;                     // bb1[1]: scope 0 at $DIR/simplify_match.rs:6:5: 9:6
       }
   

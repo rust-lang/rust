@@ -72,7 +72,13 @@ fn main() -> () {
 
     bb6: {
         StorageDead(_6);                 // bb6[0]: scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
-        _0 = ();                         // bb6[1]: scope 0 at $DIR/basic_assignment.rs:10:11: 24:2
+        _0 = const ();                   // bb6[1]: scope 0 at $DIR/basic_assignment.rs:10:11: 24:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/basic_assignment.rs:10:11: 24:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         drop(_5) -> [return: bb7, unwind: bb3]; // bb6[2]: scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 

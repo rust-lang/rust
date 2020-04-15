@@ -331,7 +331,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::LlvmInlineAsm { .. }
             | ExprKind::Return { .. } => {
                 unpack!(block = this.stmt_expr(block, expr, None));
-                this.cfg.push_assign_unit(block, source_info, destination);
+                this.cfg.push_assign_unit(block, source_info, destination, this.hir.tcx());
                 block.unit()
             }
 

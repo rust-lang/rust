@@ -45,7 +45,13 @@
       bb1: {
           StorageDead(_2);                 // bb1[0]: scope 0 at $DIR/issue-66971.rs:16:22: 16:23
           StorageDead(_1);                 // bb1[1]: scope 0 at $DIR/issue-66971.rs:16:23: 16:24
-          _0 = ();                         // bb1[2]: scope 0 at $DIR/issue-66971.rs:15:11: 17:2
+          _0 = const ();                   // bb1[2]: scope 0 at $DIR/issue-66971.rs:15:11: 17:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/issue-66971.rs:15:11: 17:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           return;                          // bb1[3]: scope 0 at $DIR/issue-66971.rs:17:2: 17:2
       }
   }

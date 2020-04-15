@@ -80,7 +80,13 @@
           StorageDead(_2);                 // bb1[2]: scope 0 at $DIR/repeat.rs:6:31: 6:32
           StorageDead(_4);                 // bb1[3]: scope 0 at $DIR/repeat.rs:6:32: 6:33
           StorageDead(_3);                 // bb1[4]: scope 0 at $DIR/repeat.rs:6:32: 6:33
-          _0 = ();                         // bb1[5]: scope 0 at $DIR/repeat.rs:5:11: 7:2
+          _0 = const ();                   // bb1[5]: scope 0 at $DIR/repeat.rs:5:11: 7:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/repeat.rs:5:11: 7:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // bb1[6]: scope 0 at $DIR/repeat.rs:7:1: 7:2
           return;                          // bb1[7]: scope 0 at $DIR/repeat.rs:7:2: 7:2
       }

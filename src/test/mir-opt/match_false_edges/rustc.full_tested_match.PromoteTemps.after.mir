@@ -143,7 +143,13 @@ fn full_tested_match() -> () {
     bb11: {
         StorageDead(_2);                 // bb11[0]: scope 0 at $DIR/match_false_edges.rs:19:6: 19:7
         StorageDead(_1);                 // bb11[1]: scope 0 at $DIR/match_false_edges.rs:19:6: 19:7
-        _0 = ();                         // bb11[2]: scope 0 at $DIR/match_false_edges.rs:14:28: 20:2
+        _0 = const ();                   // bb11[2]: scope 0 at $DIR/match_false_edges.rs:14:28: 20:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/match_false_edges.rs:14:28: 20:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         return;                          // bb11[3]: scope 0 at $DIR/match_false_edges.rs:20:2: 20:2
     }
 }

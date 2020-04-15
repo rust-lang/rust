@@ -76,7 +76,13 @@
           StorageDead(_4);                 // bb1[2]: scope 0 at $DIR/slice_len.rs:5:33: 5:34
           StorageDead(_2);                 // bb1[3]: scope 0 at $DIR/slice_len.rs:5:33: 5:34
           StorageDead(_1);                 // bb1[4]: scope 0 at $DIR/slice_len.rs:5:33: 5:34
-          _0 = ();                         // bb1[5]: scope 0 at $DIR/slice_len.rs:4:11: 6:2
+          _0 = const ();                   // bb1[5]: scope 0 at $DIR/slice_len.rs:4:11: 6:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/slice_len.rs:4:11: 6:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           return;                          // bb1[6]: scope 0 at $DIR/slice_len.rs:6:2: 6:2
       }
   }

@@ -33,28 +33,40 @@
 -     bb3: {
 -         nop;                             // bb3[0]: scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
 -         switchInt(_2) -> [false: bb5, otherwise: bb4]; // bb3[1]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
-+     bb2: {
-+         _1 = ();                         // bb2[0]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
-+         StorageDead(_2);                 // bb2[1]: scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
-+         goto -> bb0;                     // bb2[2]: scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
-      }
-  
+-     }
+- 
 -     bb4: {
 -         goto -> bb6;                     // bb4[0]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
 -     }
 - 
 -     bb5: {
--         _1 = ();                         // bb5[0]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+-         _1 = const ();                   // bb5[0]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
++     bb2: {
++         _1 = const ();                   // bb2[0]: scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_cfg.rs:7:9: 9:10
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
 -         StorageDead(_2);                 // bb5[1]: scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
 -         goto -> bb0;                     // bb5[2]: scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
--     }
-- 
++         StorageDead(_2);                 // bb2[1]: scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
++         goto -> bb0;                     // bb2[2]: scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
+      }
+  
 -     bb6: {
--         _0 = ();                         // bb6[0]: scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
+-         _0 = const ();                   // bb6[0]: scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
++     bb3: {
++         _0 = const ();                   // bb3[0]: scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/simplify_cfg.rs:8:13: 8:18
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
 -         StorageDead(_2);                 // bb6[1]: scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
 -         return;                          // bb6[2]: scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
-+     bb3: {
-+         _0 = ();                         // bb3[0]: scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
 +         StorageDead(_2);                 // bb3[1]: scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
 +         return;                          // bb3[2]: scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
       }

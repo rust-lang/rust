@@ -137,13 +137,25 @@ fn main() -> () {
     bb6: {
         StorageDead(_9);                 // bb6[0]: scope 3 at $DIR/region-subtyping-basic.rs:19:17: 19:18
         StorageDead(_8);                 // bb6[1]: scope 3 at $DIR/region-subtyping-basic.rs:19:18: 19:19
-        _0 = ();                         // bb6[2]: scope 3 at $DIR/region-subtyping-basic.rs:18:13: 20:6
+        _0 = const Const(Value(Scalar(<ZST>)): ()); // bb6[2]: scope 3 at $DIR/region-subtyping-basic.rs:18:13: 20:6
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/region-subtyping-basic.rs:18:13: 20:6
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         goto -> bb8;                     // bb6[3]: scope 3 at $DIR/region-subtyping-basic.rs:18:5: 22:6
     }
 
     bb7: {
         StorageDead(_10);                // bb7[0]: scope 3 at $DIR/region-subtyping-basic.rs:21:18: 21:19
-        _0 = ();                         // bb7[1]: scope 3 at $DIR/region-subtyping-basic.rs:20:12: 22:6
+        _0 = const Const(Value(Scalar(<ZST>)): ()); // bb7[1]: scope 3 at $DIR/region-subtyping-basic.rs:20:12: 22:6
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/region-subtyping-basic.rs:20:12: 22:6
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         goto -> bb8;                     // bb7[2]: scope 3 at $DIR/region-subtyping-basic.rs:18:5: 22:6
     }
 

@@ -60,7 +60,13 @@
           StorageDead(_2);                 // bb0[11]: scope 0 at $DIR/read_immutable_static.rs:7:21: 7:22
           StorageDead(_5);                 // bb0[12]: scope 0 at $DIR/read_immutable_static.rs:7:22: 7:23
           StorageDead(_3);                 // bb0[13]: scope 0 at $DIR/read_immutable_static.rs:7:22: 7:23
-          _0 = ();                         // bb0[14]: scope 0 at $DIR/read_immutable_static.rs:6:11: 8:2
+          _0 = const ();                   // bb0[14]: scope 0 at $DIR/read_immutable_static.rs:6:11: 8:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/read_immutable_static.rs:6:11: 8:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // bb0[15]: scope 0 at $DIR/read_immutable_static.rs:8:1: 8:2
           return;                          // bb0[16]: scope 0 at $DIR/read_immutable_static.rs:8:2: 8:2
       }

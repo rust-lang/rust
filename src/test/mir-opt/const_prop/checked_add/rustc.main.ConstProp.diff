@@ -51,7 +51,13 @@
 +                                          // mir::Constant
 +                                          // + span: $DIR/checked_add.rs:5:18: 5:23
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
-          _0 = ();                         // bb1[1]: scope 0 at $DIR/checked_add.rs:4:11: 6:2
+          _0 = const ();                   // bb1[1]: scope 0 at $DIR/checked_add.rs:4:11: 6:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/checked_add.rs:4:11: 6:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // bb1[2]: scope 0 at $DIR/checked_add.rs:6:1: 6:2
           return;                          // bb1[3]: scope 0 at $DIR/checked_add.rs:6:2: 6:2
       }

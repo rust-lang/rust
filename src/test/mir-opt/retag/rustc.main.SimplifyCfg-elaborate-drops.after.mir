@@ -125,7 +125,13 @@ fn main() -> () {
         Retag([raw] _12);                // bb4[14]: scope 4 at $DIR/retag.rs:36:18: 36:19
         _11 = _12;                       // bb4[15]: scope 4 at $DIR/retag.rs:36:18: 36:29
         StorageDead(_12);                // bb4[16]: scope 4 at $DIR/retag.rs:36:29: 36:30
-        _2 = ();                         // bb4[17]: scope 1 at $DIR/retag.rs:31:5: 37:6
+        _2 = const ();                   // bb4[17]: scope 1 at $DIR/retag.rs:31:5: 37:6
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/retag.rs:31:5: 37:6
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_11);                // bb4[18]: scope 4 at $DIR/retag.rs:37:5: 37:6
         StorageDead(_10);                // bb4[19]: scope 3 at $DIR/retag.rs:37:5: 37:6
         StorageDead(_8);                 // bb4[20]: scope 2 at $DIR/retag.rs:37:5: 37:6
@@ -217,7 +223,13 @@ fn main() -> () {
         Retag([raw] _26);                // bb8[5]: scope 7 at $DIR/retag.rs:50:14: 50:16
         _25 = _26;                       // bb8[6]: scope 7 at $DIR/retag.rs:50:14: 50:28
         StorageDead(_26);                // bb8[7]: scope 7 at $DIR/retag.rs:50:28: 50:29
-        _0 = ();                         // bb8[8]: scope 0 at $DIR/retag.rs:29:11: 51:2
+        _0 = const ();                   // bb8[8]: scope 0 at $DIR/retag.rs:29:11: 51:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/retag.rs:29:11: 51:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_25);                // bb8[9]: scope 7 at $DIR/retag.rs:51:1: 51:2
         StorageDead(_15);                // bb8[10]: scope 6 at $DIR/retag.rs:51:1: 51:2
         StorageDead(_13);                // bb8[11]: scope 1 at $DIR/retag.rs:51:1: 51:2

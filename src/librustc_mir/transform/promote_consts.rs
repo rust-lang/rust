@@ -835,7 +835,11 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     if self.keep_original {
                         rhs.clone()
                     } else {
-                        let unit = Rvalue::Aggregate(box AggregateKind::Tuple, vec![]);
+                        let unit = Rvalue::Use(Operand::Constant(box Constant {
+                            span: statement.source_info.span,
+                            user_ty: None,
+                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit),
+                        }));
                         mem::replace(rhs, unit)
                     },
                     statement.source_info,
