@@ -58,7 +58,7 @@ pub fn main() {
 
 struct ClippyCmd {
     unstable_options: bool,
-    cmd: &'static str,
+    cargo_subcommand: &'static str,
     args: Vec<String>,
     clippy_args: String
 }
@@ -69,14 +69,14 @@ impl ClippyCmd
     where
         I: Iterator<Item = String>,
     {
-        let mut cmd = "check";
+        let mut cargo_subcommand = "check";
         let mut unstable_options = false;
         let mut args = vec![];
 
         for arg in old_args.by_ref() {
             match arg.as_str() {
                 "--fix" => {
-                    cmd = "fix";
+                    cargo_subcommand = "fix";
                     continue;
                 }
                 "--" => break,
@@ -88,7 +88,7 @@ impl ClippyCmd
             args.push(arg);
         }
 
-        if cmd == "fix" && !unstable_options {
+        if cargo_subcommand == "fix" && !unstable_options {
             panic!("Usage of `--fix` requires `-Z unstable-options`");
         }
 
@@ -105,7 +105,7 @@ impl ClippyCmd
 
         ClippyCmd {
             unstable_options,
-            cmd,
+            cargo_subcommand,
             args,
             clippy_args,
         }
@@ -153,7 +153,7 @@ impl ClippyCmd
         cmd.env(self.path_env(), self.path())
             .envs(ClippyCmd::target_dir())
             .env("CLIPPY_ARGS", self.clippy_args)
-            .arg(self.cmd)
+            .arg(self.cargo_subcommand)
             .args(&self.args);
 
         cmd
@@ -197,7 +197,7 @@ mod tests {
     fn fix_unstable() {
         let args = "cargo clippy --fix -Zunstable-options".split_whitespace().map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
-        assert_eq!("fix", cmd.cmd);
+        assert_eq!("fix", cmd.cargo_subcommand);
         assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
         assert!(cmd.args.iter().find(|arg| arg.ends_with("unstable-options")).is_some());
     }
@@ -206,7 +206,7 @@ mod tests {
     fn check() {
         let args = "cargo clippy".split_whitespace().map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
-        assert_eq!("check", cmd.cmd);
+        assert_eq!("check", cmd.cargo_subcommand);
         assert_eq!("RUSTC_WRAPPER", cmd.path_env());
     }
 
@@ -214,7 +214,7 @@ mod tests {
     fn check_unstable() {
         let args = "cargo clippy -Zunstable-options".split_whitespace().map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
-        assert_eq!("check", cmd.cmd);
+        assert_eq!("check", cmd.cargo_subcommand);
         assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
     }
 }
