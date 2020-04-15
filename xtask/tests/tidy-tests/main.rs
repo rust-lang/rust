@@ -26,6 +26,7 @@ fn check_todo(path: &Path, text: &str) {
         // Some of our assists generate `todo!()` so those files are whitelisted.
         "doc_tests/generated.rs",
         "handlers/add_missing_impl_members.rs",
+        "handlers/add_function.rs",
         // To support generating `todo!()` in assists, we have `expr_todo()` in ast::make.
         "ast/make.rs",
     ];
