@@ -39,7 +39,7 @@ MAINTAINERS = {
         'adamgreig', 'andre-richter', 'jamesmunns', 'korken89',
         'ryankurte', 'thejpster', 'therealprof',
     },
-    'edition-guide': {'ehuss', 'Centril', 'steveklabnik'},
+    'edition-guide': {'ehuss', 'steveklabnik'},
     'rustc-dev-guide': {'mark-i-m', 'spastorino', 'amanjeev', 'JohnTitor'},
 }
 
