@@ -607,12 +607,13 @@ impl<'a> TreeSink for TtTreeSink<'a> {
             let text: SmolStr = match self.cursor.token_tree() {
                 Some(tt::TokenTree::Leaf(leaf)) => {
                     // Mark the range if needed
-                    let id = match leaf {
-                        tt::Leaf::Ident(ident) => ident.id,
-                        tt::Leaf::Punct(punct) => punct.id,
-                        tt::Leaf::Literal(lit) => lit.id,
+                    let (text, id) = match leaf {
+                        tt::Leaf::Ident(ident) => (ident.text.clone(), ident.id),
+                        tt::Leaf::Punct(punct) => {
+                            (SmolStr::new_inline_from_ascii(1, &[punct.char as u8]), punct.id)
+                        }
+                        tt::Leaf::Literal(lit) => (lit.text.clone(), lit.id),
                     };
-                    let text = SmolStr::new(format!("{}", leaf));
                     let range = TextRange::offset_len(self.text_pos, TextUnit::of_str(&text));
                     self.token_map.insert(id, range);
                     self.cursor = self.cursor.bump();

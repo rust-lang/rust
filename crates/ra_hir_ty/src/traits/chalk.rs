@@ -673,6 +673,55 @@ fn convert_where_clauses(
     result
 }
 
+fn generic_predicate_to_inline_bound(
+    db: &dyn HirDatabase,
+    pred: &GenericPredicate,
+    self_ty: &Ty,
+) -> Option<chalk_rust_ir::InlineBound<Interner>> {
+    // An InlineBound is like a GenericPredicate, except the self type is left out.
+    // We don't have a special type for this, but Chalk does.
+    match pred {
+        GenericPredicate::Implemented(trait_ref) => {
+            if &trait_ref.substs[0] != self_ty {
+                // we can only convert predicates back to type bounds if they
+                // have the expected self type
+                return None;
+            }
+            let args_no_self = trait_ref.substs[1..]
+                .iter()
+                .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
+                .collect();
+            let trait_bound =
+                chalk_rust_ir::TraitBound { trait_id: trait_ref.trait_.to_chalk(db), args_no_self };
+            Some(chalk_rust_ir::InlineBound::TraitBound(trait_bound))
+        }
+        GenericPredicate::Projection(proj) => {
+            if &proj.projection_ty.parameters[0] != self_ty {
+                return None;
+            }
+            let trait_ = match proj.projection_ty.associated_ty.lookup(db.upcast()).container {
+                AssocContainerId::TraitId(t) => t,
+                _ => panic!("associated type not in trait"),
+            };
+            let args_no_self = proj.projection_ty.parameters[1..]
+                .iter()
+                .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
+                .collect();
+            let alias_eq_bound = chalk_rust_ir::AliasEqBound {
+                value: proj.ty.clone().to_chalk(db),
+                trait_bound: chalk_rust_ir::TraitBound {
+                    trait_id: trait_.to_chalk(db),
+                    args_no_self,
+                },
+                associated_ty_id: proj.projection_ty.associated_ty.to_chalk(db),
+                parameters: Vec::new(), // FIXME we don't support generic associated types yet
+            };
+            Some(chalk_rust_ir::InlineBound::AliasEqBound(alias_eq_bound))
+        }
+        GenericPredicate::Error => None,
+    }
+}
+
 impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn associated_ty_data(&self, id: AssocTypeId) -> Arc<AssociatedTyDatum> {
         self.db.associated_ty_data(id)
@@ -761,12 +810,25 @@ pub(crate) fn associated_ty_data_query(
         AssocContainerId::TraitId(t) => t,
         _ => panic!("associated type not in trait"),
     };
+
+    // Lower bounds -- we could/should maybe move this to a separate query in `lower`
+    let type_alias_data = db.type_alias_data(type_alias);
     let generic_params = generics(db.upcast(), type_alias.into());
-    let bound_data = chalk_rust_ir::AssociatedTyDatumBound {
-        // FIXME add bounds and where clauses
-        bounds: vec![],
-        where_clauses: vec![],
-    };
+    let bound_vars = Substs::bound_vars(&generic_params);
+    let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
+    let ctx = crate::TyLoweringContext::new(db, &resolver)
+        .with_type_param_mode(crate::lower::TypeParamLoweringMode::Variable);
+    let self_ty = Ty::Bound(crate::BoundVar::new(crate::DebruijnIndex::INNERMOST, 0));
+    let bounds = type_alias_data
+        .bounds
+        .iter()
+        .flat_map(|bound| GenericPredicate::from_type_bound(&ctx, bound, self_ty.clone()))
+        .filter_map(|pred| generic_predicate_to_inline_bound(db, &pred, &self_ty))
+        .map(|bound| make_binders(bound.shifted_in(&Interner), 0))
+        .collect();
+
+    let where_clauses = convert_where_clauses(db, type_alias.into(), &bound_vars);
+    let bound_data = chalk_rust_ir::AssociatedTyDatumBound { bounds, where_clauses };
     let datum = AssociatedTyDatum {
         trait_id: trait_.to_chalk(db),
         id,
