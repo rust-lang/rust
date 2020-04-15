@@ -623,35 +623,30 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let frame = M::init_frame_extra(self, pre_frame)?;
         self.stack_mut().push(frame);
 
-        // don't allocate at all for trivial constants
-        if body.local_decls.len() > 1 {
-            // Locals are initially uninitialized.
-            let dummy = LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
-            let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
-            // Return place is handled specially by the `eval_place` functions, and the
-            // entry in `locals` should never be used. Make it dead, to be sure.
-            locals[mir::RETURN_PLACE].value = LocalValue::Dead;
-            // Now mark those locals as dead that we do not want to initialize
-            match self.tcx.def_kind(instance.def_id()) {
-                // statics and constants don't have `Storage*` statements, no need to look for them
-                //
-                // FIXME: The above is likely untrue. See
-                // <https://github.com/rust-lang/rust/pull/70004#issuecomment-602022110>. Is it
-                // okay to ignore `StorageDead`/`StorageLive` annotations during CTFE?
-                Some(DefKind::Static | DefKind::Const | DefKind::AssocConst) => {}
-                _ => {
-                    // Mark locals that use `Storage*` annotations as dead on function entry.
-                    let always_live = AlwaysLiveLocals::new(self.body());
-                    for local in locals.indices() {
-                        if !always_live.contains(local) {
-                            locals[local].value = LocalValue::Dead;
-                        }
+        // Locals are initially uninitialized.
+        let dummy = LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
+        let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
+
+        // Now mark those locals as dead that we do not want to initialize
+        match self.tcx.def_kind(instance.def_id()) {
+            // statics and constants don't have `Storage*` statements, no need to look for them
+            //
+            // FIXME: The above is likely untrue. See
+            // <https://github.com/rust-lang/rust/pull/70004#issuecomment-602022110>. Is it
+            // okay to ignore `StorageDead`/`StorageLive` annotations during CTFE?
+            Some(DefKind::Static | DefKind::Const | DefKind::AssocConst) => {}
+            _ => {
+                // Mark locals that use `Storage*` annotations as dead on function entry.
+                let always_live = AlwaysLiveLocals::new(self.body());
+                for local in locals.indices() {
+                    if !always_live.contains(local) {
+                        locals[local].value = LocalValue::Dead;
                     }
                 }
             }
-            // done
-            self.frame_mut().locals = locals;
         }
+        // done
+        self.frame_mut().locals = locals;
 
         M::after_stack_push(self)?;
         info!("ENTERING({}) {}", self.frame_idx(), self.frame().instance);
@@ -728,6 +723,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ::log_settings::settings().indentation -= 1;
         let frame =
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
+
+        if let Some(return_place) = frame.return_place {
+            // Copy the return value to the caller's stack frame.
+            let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
+            self.copy_op(op, return_place)?;
+        }
 
         // Now where do we jump next?
 
