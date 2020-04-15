@@ -369,26 +369,28 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                             return;
                         }
                     }
-                    let (lint, msg) = if is_named_constant(cx, left) || is_named_constant(cx, right) {
-                        (FLOAT_CMP_CONST, "strict comparison of `f32` or `f64` constant")
-                    } else {
-                        (FLOAT_CMP, "strict comparison of `f32` or `f64`")
-                    };
+                    let is_comparing_arrays = is_array(cx, left) || is_array(cx, right);
+                    let (lint, msg) = get_lint_and_message(
+                        is_named_constant(cx, left) || is_named_constant(cx, right),
+                        is_comparing_arrays,
+                    );
                     span_lint_and_then(cx, lint, expr.span, msg, |db| {
                         let lhs = Sugg::hir(cx, left, "..");
                         let rhs = Sugg::hir(cx, right, "..");
 
-                        db.span_suggestion(
-                            expr.span,
-                            "consider comparing them within some error",
-                            format!(
-                                "({}).abs() {} error",
-                                lhs - rhs,
-                                if op == BinOpKind::Eq { '<' } else { '>' }
-                            ),
-                            Applicability::HasPlaceholders, // snippet
-                        );
-                        db.span_note(expr.span, "`f32::EPSILON` and `f64::EPSILON` are available.");
+                        if !is_comparing_arrays {
+                            db.span_suggestion(
+                                expr.span,
+                                "consider comparing them within some error",
+                                format!(
+                                    "({}).abs() {} error",
+                                    lhs - rhs,
+                                    if op == BinOpKind::Eq { '<' } else { '>' }
+                                ),
+                                Applicability::HasPlaceholders, // snippet
+                            );
+                        }
+                        db.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error`");
                     });
                 } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
@@ -440,6 +442,31 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
     }
 }
 
+fn get_lint_and_message(
+    is_comparing_constants: bool,
+    is_comparing_arrays: bool,
+) -> (&'static rustc_lint::Lint, &'static str) {
+    if is_comparing_constants {
+        (
+            FLOAT_CMP_CONST,
+            if is_comparing_arrays {
+                "strict comparison of `f32` or `f64` constant arrays"
+            } else {
+                "strict comparison of `f32` or `f64` constant"
+            },
+        )
+    } else {
+        (
+            FLOAT_CMP,
+            if is_comparing_arrays {
+                "strict comparison of `f32` or `f64` arrays"
+            } else {
+                "strict comparison of `f32` or `f64`"
+            },
+        )
+    }
+}
+
 fn check_nan(cx: &LateContext<'_, '_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
     if_chain! {
         if !in_constant(cx, cmp_expr.hir_id);
@@ -475,6 +502,11 @@ fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> boo
     match constant(cx, cx.tables, expr) {
         Some((Constant::F32(f), _)) => f == 0.0 || f.is_infinite(),
         Some((Constant::F64(f), _)) => f == 0.0 || f.is_infinite(),
+        Some((Constant::Vec(vec), _)) => vec.iter().all(|f| match f {
+            Constant::F32(f) => *f == 0.0 || (*f).is_infinite(),
+            Constant::F64(f) => *f == 0.0 || (*f).is_infinite(),
+            _ => false,
+        }),
         _ => false,
     }
 }
@@ -499,7 +531,17 @@ fn is_signum(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
 }
 
 fn is_float(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
-    matches!(walk_ptrs_ty(cx.tables.expr_ty(expr)).kind, ty::Float(_))
+    let value = &walk_ptrs_ty(cx.tables.expr_ty(expr)).kind;
+
+    if let ty::Array(arr_ty, _) = value {
+        return matches!(arr_ty.kind, ty::Float(_));
+    };
+
+    matches!(value, ty::Float(_))
+}
+
+fn is_array(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+    matches!(&walk_ptrs_ty(cx.tables.expr_ty(expr)).kind, ty::Array(_, _))
 }
 
 fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr<'_>, other: &Expr<'_>) {
