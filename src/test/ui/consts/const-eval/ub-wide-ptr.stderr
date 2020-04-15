@@ -62,7 +62,7 @@ LL | |
 LL | |     let uninit_len = MaybeUninit::<usize> { uninit: () };
 LL | |     mem::transmute((42, uninit_len))
 LL | | };
-   | |__^ type validation failed: encountered undefined pointer
+   | |__^ type validation failed: encountered uninitialized reference
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
@@ -130,7 +130,7 @@ LL | |
 LL | |     let uninit_len = MaybeUninit::<usize> { uninit: () };
 LL | |     mem::transmute((42, uninit_len))
 LL | | };
-   | |__^ type validation failed: encountered undefined pointer
+   | |__^ type validation failed: encountered uninitialized raw pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
