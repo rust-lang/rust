@@ -471,7 +471,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "exact_div" =>
                 this.exact_div(this.read_immediate(args[0])?, this.read_immediate(args[1])?, dest)?,
 
-            "forget" => {}
+            "forget" => {
+                // We get an argument... and forget about it.
+            }
 
             #[rustfmt::skip]
             | "likely"
