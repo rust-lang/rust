@@ -645,7 +645,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert_eq!(deref, "hello");
     /// ```
     #[unstable(feature = "rc_into_raw_non_null", issue = "47336")]
-    #[rustc_deprecated(since = "1.44.0", reason = "use `Rc::into_raw` instead")]
+    #[rustc_deprecated(since = "1.44.0", reason = "use `Arc::into_raw` instead")]
     #[inline]
     pub fn into_raw_non_null(this: Self) -> NonNull<T> {
         // safe because Arc guarantees its pointer is non-null

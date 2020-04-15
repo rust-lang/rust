@@ -481,7 +481,7 @@ impl<T: ?Sized> Box<T> {
     #[unstable(
         feature = "ptr_internals",
         issue = "none",
-        reason = "use `Box::leak(b).into()` or `NonNull::from(Box::leak(b))` instead"
+        reason = "use `Box::leak(b).into()` or `Unique::from(Box::leak(b))` instead"
     )]
     #[inline]
     #[doc(hidden)]
