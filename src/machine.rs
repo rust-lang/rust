@@ -22,7 +22,7 @@ use rustc_middle::{
         TyCtxt,
     },
 };
-use rustc_span::{def_id::DefId, symbol::{sym, Symbol}};
+use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
@@ -332,19 +332,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn stack<'a>(
-        ecx: &'a InterpCx<'mir, 'tcx, Self>
-    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
-        ecx.active_thread_stack()
-    }
-
-    fn stack_mut<'a>(
-        ecx: &'a mut InterpCx<'mir, 'tcx, Self>
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
-        ecx.active_thread_stack_mut()
-    }
-
-    #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         ecx.machine.validate
     }
@@ -434,63 +421,52 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         Ok(())
     }
 
-    fn access_local(
+    fn eval_maybe_thread_local_static_const(
         ecx: &InterpCx<'mir, 'tcx, Self>,
-        frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
-        local: mir::Local,
-    ) -> InterpResult<'tcx, Operand<Self::PointerTag>> {
-        match frame.body.local_decls[local].local_info {
-            mir::LocalInfo::StaticRef { def_id, is_thread_local: true } => {
-                let static_alloc_id = ecx.tcx.alloc_map.lock().create_static_alloc(def_id);
-                let alloc_id = ecx.memory.extra.tls.get_or_register_allocation(*ecx.memory.tcx, static_alloc_id);
-                let tag = Self::tag_global_base_pointer(&ecx.memory.extra, alloc_id);
-                let pointer: Pointer = alloc_id.into();
-                let pointer = pointer.with_tag(tag);
-                let scalar: Scalar<_> = pointer.into();
-                let scalar: ScalarMaybeUndef<_> = scalar.into();
-                let immediate: Immediate<_> = scalar.into();
-                Ok(
-                    Operand::Immediate(immediate)
-                )
-            },
-            _ => frame.locals[local].access(),
+        mut val: mir::interpret::ConstValue<'tcx>
+    )-> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
+        match &mut val {
+            mir::interpret::ConstValue::Scalar(Scalar::Ptr(ptr)) => {
+                let alloc_id = ptr.alloc_id;
+                let alloc = ecx.tcx.alloc_map.lock().get(alloc_id);
+                match alloc {
+                    Some(GlobalAlloc::Static(def_id))
+                        if ecx.tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) => {
+                        // We have a thread-local static.
+                        let new_alloc_id = ecx.memory.extra.tls.get_or_register_allocation(
+                            *ecx.memory.tcx, alloc_id);
+                        ptr.alloc_id = new_alloc_id;
+                    },
+                    _ => {},
+                }
+            }
+            _ => {},
         }
+        Ok(val)
     }
 
     fn canonical_alloc_id(mem: &Memory<'mir, 'tcx, Self>, id: AllocId) -> AllocId {
         let tcx = mem.tcx;
-        let alloc = tcx.alloc_map.lock().get(id);
-        fn is_thread_local<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-            tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
-        }
-        match alloc {
-            Some(GlobalAlloc::Static(def_id)) if tcx.is_foreign_item(def_id) => {
-                if is_thread_local(*tcx, def_id) {
-                    unimplemented!("Foreign thread local statics are not supported yet.");
-                }
-                // Figure out if this is an extern static, and if yes, which one.
-                let attrs = tcx.get_attrs(def_id);
-                let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
-                    Some(name) => name,
-                    None => tcx.item_name(def_id),
-                };
-                // Check if we know this one.
-                if let Some(canonical_id) = mem.extra.extern_statics.get(&link_name) {
-                    trace!("canonical_alloc_id: {:?} ({}) -> {:?}", id, link_name, canonical_id);
-                    *canonical_id
-                } else {
-                    // Return original id; `Memory::get_static_alloc` will throw an error.
-                    id
-                }
-            },
-            Some(GlobalAlloc::Static(def_id)) if is_thread_local(*tcx, def_id) => {
-                // We have a thread local, so we need to get a unique allocation id for it.
-                mem.extra.tls.get_or_register_allocation(*tcx, id)
-            },
+        // Figure out if this is an extern static, and if yes, which one.
+        let def_id = match tcx.alloc_map.lock().get(id) {
+            Some(GlobalAlloc::Static(def_id)) if tcx.is_foreign_item(def_id) => def_id,
             _ => {
                 // No need to canonicalize anything.
-                id
+                return id;
             }
+        };
+        let attrs = tcx.get_attrs(def_id);
+        let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
+            Some(name) => name,
+            None => tcx.item_name(def_id),
+        };
+        // Check if we know this one.
+        if let Some(canonical_id) = mem.extra.extern_statics.get(&link_name) {
+            trace!("canonical_alloc_id: {:?} ({}) -> {:?}", id, link_name, canonical_id);
+            *canonical_id
+        } else {
+            // Return original id; `Memory::get_static_alloc` will throw an error.
+            id
         }
     }
 
@@ -585,6 +561,18 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         });
         let extra = FrameData { call_id, catch_unwind: None };
         Ok(frame.with_extra(extra))
+    }
+
+    fn stack<'a>(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>
+    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
+        ecx.active_thread_stack()
+    }
+
+    fn stack_mut<'a>(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
+        ecx.active_thread_stack_mut()
     }
 
     #[inline(always)]
