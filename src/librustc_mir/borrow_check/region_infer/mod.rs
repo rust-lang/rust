@@ -495,7 +495,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // to store those. Otherwise, we'll pass in `None` to the
         // functions below, which will trigger them to report errors
         // eagerly.
-        let mut outlives_requirements = infcx.tcx.is_closure(mir_def_id).then(|| vec![]);
+        let mut outlives_requirements = infcx.tcx.is_closure(mir_def_id).then(Vec::new);
 
         self.check_type_tests(infcx, body, outlives_requirements.as_mut(), &mut errors_buffer);
 

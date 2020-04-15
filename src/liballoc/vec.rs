@@ -971,7 +971,7 @@ impl<T> Vec<T> {
         }
 
         let len = self.len();
-        if !(index < len) {
+        if index >= len {
             assert_failed(index, len);
         }
         unsafe {
@@ -1010,7 +1010,7 @@ impl<T> Vec<T> {
         }
 
         let len = self.len();
-        if !(index <= len) {
+        if index > len {
             assert_failed(index, len);
         }
 
@@ -1058,7 +1058,7 @@ impl<T> Vec<T> {
         }
 
         let len = self.len();
-        if !(index < len) {
+        if index >= len {
             assert_failed(index, len);
         }
         unsafe {
@@ -1331,10 +1331,10 @@ impl<T> Vec<T> {
             panic!("end drain index (is {}) should be <= len (is {})", end, len);
         }
 
-        if !(start <= end) {
+        if start > end {
             start_assert_failed(start, end);
         }
-        if !(end <= len) {
+        if end > len {
             end_assert_failed(end, len);
         }
 
@@ -1432,7 +1432,7 @@ impl<T> Vec<T> {
             panic!("`at` split index (is {}) should be <= len (is {})", at, len);
         }
 
-        if !(at <= self.len()) {
+        if at > self.len() {
             assert_failed(at, self.len());
         }
 
