@@ -22,7 +22,13 @@
           _1 = (*_2);                      // bb0[4]: scope 0 at $DIR/ref_deref_project.rs:5:5: 5:17
           StorageDead(_2);                 // bb0[5]: scope 0 at $DIR/ref_deref_project.rs:5:17: 5:18
           StorageDead(_1);                 // bb0[6]: scope 0 at $DIR/ref_deref_project.rs:5:17: 5:18
-          _0 = ();                         // bb0[7]: scope 0 at $DIR/ref_deref_project.rs:4:11: 6:2
+          _0 = const ();                   // bb0[7]: scope 0 at $DIR/ref_deref_project.rs:4:11: 6:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/ref_deref_project.rs:4:11: 6:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           return;                          // bb0[8]: scope 0 at $DIR/ref_deref_project.rs:6:2: 6:2
       }
   }

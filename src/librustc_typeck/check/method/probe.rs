@@ -865,9 +865,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &mut self,
         expr_hir_id: hir::HirId,
     ) -> Result<(), MethodError<'tcx>> {
-        if expr_hir_id == hir::DUMMY_HIR_ID {
-            return Ok(());
-        }
         let mut duplicates = FxHashSet::default();
         let opt_applicable_traits = self.tcx.in_scope_traits(expr_hir_id);
         if let Some(applicable_traits) = opt_applicable_traits {

@@ -215,7 +215,6 @@ fn late_report_deprecation(
     suggestion: Option<Symbol>,
     lint: &'static Lint,
     span: Span,
-    def_id: DefId,
     hir_id: HirId,
 ) {
     if span.in_derive_expansion() {
@@ -229,9 +228,6 @@ fn late_report_deprecation(
         }
         diag.emit()
     });
-    if hir_id == hir::DUMMY_HIR_ID {
-        span_bug!(span, "emitted a {} lint with dummy HIR id: {:?}", lint.name, def_id);
-    }
 }
 
 /// Result of `TyCtxt::eval_stability`.
@@ -296,7 +292,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 if !skip {
                     let (message, lint) =
                         deprecation_message(&depr_entry.attr, &self.def_path_str(def_id));
-                    late_report_deprecation(self, &message, None, lint, span, def_id, id);
+                    late_report_deprecation(self, &message, None, lint, span, id);
                 }
             };
         }
@@ -319,15 +315,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 if let Some(depr) = &stability.rustc_depr {
                     let (message, lint) =
                         rustc_deprecation_message(depr, &self.def_path_str(def_id));
-                    late_report_deprecation(
-                        self,
-                        &message,
-                        depr.suggestion,
-                        lint,
-                        span,
-                        def_id,
-                        id,
-                    );
+                    late_report_deprecation(self, &message, depr.suggestion, lint, span, id);
                 }
             }
         }

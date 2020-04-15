@@ -32,10 +32,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         Operand::Constant(constant)
     }
 
-    crate fn unit_rvalue(&mut self) -> Rvalue<'tcx> {
-        Rvalue::Aggregate(box AggregateKind::Tuple, vec![])
-    }
-
     // Returns a zero literal operand for the appropriate type, works for
     // bool, char and integers.
     crate fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {

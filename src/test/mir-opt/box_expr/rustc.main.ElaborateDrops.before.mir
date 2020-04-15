@@ -53,7 +53,13 @@ fn main() -> () {
     bb5: {
         StorageDead(_4);                 // bb5[0]: scope 1 at $DIR/box_expr.rs:8:11: 8:12
         StorageDead(_3);                 // bb5[1]: scope 1 at $DIR/box_expr.rs:8:12: 8:13
-        _0 = ();                         // bb5[2]: scope 0 at $DIR/box_expr.rs:6:11: 9:2
+        _0 = const ();                   // bb5[2]: scope 0 at $DIR/box_expr.rs:6:11: 9:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/box_expr.rs:6:11: 9:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         drop(_1) -> bb8;                 // bb5[3]: scope 0 at $DIR/box_expr.rs:9:1: 9:2
     }
 

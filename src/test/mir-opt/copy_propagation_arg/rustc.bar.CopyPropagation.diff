@@ -30,7 +30,13 @@
                                            // mir::Constant
                                            // + span: $DIR/copy_propagation_arg.rs:17:5: 17:10
                                            // + literal: Const { ty: u8, val: Value(Scalar(0x05)) }
-          nop;                             // bb1[3]: scope 0 at $DIR/copy_propagation_arg.rs:15:19: 18:2
+          _0 = const ();                   // bb1[3]: scope 0 at $DIR/copy_propagation_arg.rs:15:19: 18:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/copy_propagation_arg.rs:15:19: 18:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           return;                          // bb1[4]: scope 0 at $DIR/copy_propagation_arg.rs:18:2: 18:2
       }
   }

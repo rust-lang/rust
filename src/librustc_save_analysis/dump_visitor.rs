@@ -225,11 +225,14 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             collector.visit_pat(&arg.pat);
 
             for (id, ident, ..) in collector.collected_idents {
-                let hir_id = self.tcx.hir().node_id_to_hir_id(id);
-                let typ = match self.save_ctxt.tables.node_type_opt(hir_id) {
-                    Some(s) => s.to_string(),
-                    None => continue,
-                };
+                // FIXME(#71104) Should really be using just `node_id_to_hir_id` but
+                // some `NodeId` do not seem to have a corresponding HirId.
+                let hir_id = self.tcx.hir().opt_node_id_to_hir_id(id);
+                let typ =
+                    match hir_id.and_then(|hir_id| self.save_ctxt.tables.node_type_opt(hir_id)) {
+                        Some(s) => s.to_string(),
+                        None => continue,
+                    };
                 if !self.span.filter_generated(ident.span) {
                     let id = id_from_node_id(id, &self.save_ctxt);
                     let span = self.span_from_span(ident.span);

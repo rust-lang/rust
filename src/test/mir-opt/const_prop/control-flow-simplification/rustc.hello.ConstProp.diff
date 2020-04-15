@@ -29,7 +29,13 @@
       }
   
       bb1: {
-          _0 = ();                         // bb1[0]: scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
+          _0 = const ();                   // bb1[0]: scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/control-flow-simplification.rs:12:5: 14:6
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // bb1[1]: scope 0 at $DIR/control-flow-simplification.rs:15:1: 15:2
           return;                          // bb1[2]: scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
       }

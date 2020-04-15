@@ -112,7 +112,13 @@ yields ()
     bb10: {
         StorageDead(_10);                // bb10[0]: scope 2 at $DIR/generator-storage-dead-unwind.rs:27:15: 27:16
         StorageDead(_9);                 // bb10[1]: scope 2 at $DIR/generator-storage-dead-unwind.rs:27:16: 27:17
-        _0 = ();                         // bb10[2]: scope 0 at $DIR/generator-storage-dead-unwind.rs:22:19: 28:6
+        _0 = const ();                   // bb10[2]: scope 0 at $DIR/generator-storage-dead-unwind.rs:22:19: 28:6
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/generator-storage-dead-unwind.rs:22:19: 28:6
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_4);                 // bb10[3]: scope 1 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
         StorageDead(_3);                 // bb10[4]: scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
         drop(_1) -> [return: bb12, unwind: bb1]; // bb10[5]: scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6

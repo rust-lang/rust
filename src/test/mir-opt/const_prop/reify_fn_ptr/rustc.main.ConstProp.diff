@@ -25,7 +25,13 @@
           _1 = move _2 as *const fn() (Misc); // bb0[6]: scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:41
           StorageDead(_2);                 // bb0[7]: scope 0 at $DIR/reify_fn_ptr.rs:4:40: 4:41
           StorageDead(_1);                 // bb0[8]: scope 0 at $DIR/reify_fn_ptr.rs:4:41: 4:42
-          _0 = ();                         // bb0[9]: scope 0 at $DIR/reify_fn_ptr.rs:3:11: 5:2
+          _0 = const ();                   // bb0[9]: scope 0 at $DIR/reify_fn_ptr.rs:3:11: 5:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/reify_fn_ptr.rs:3:11: 5:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           return;                          // bb0[10]: scope 0 at $DIR/reify_fn_ptr.rs:5:2: 5:2
       }
   }

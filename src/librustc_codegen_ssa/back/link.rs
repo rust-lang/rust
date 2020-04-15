@@ -12,7 +12,7 @@ use rustc_session::search_paths::PathKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
+use rustc_target::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelroLevel};
 
 use super::archive::ArchiveBuilder;
 use super::command::Command;
@@ -182,7 +182,9 @@ fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> Command {
     // To comply with the Windows App Certification Kit,
     // MSVC needs to link with the Store versions of the runtime libraries (vcruntime, msvcrt, etc).
     let t = &sess.target.target;
-    if flavor == LinkerFlavor::Msvc && t.target_vendor == "uwp" {
+    if (flavor == LinkerFlavor::Msvc || flavor == LinkerFlavor::Lld(LldFlavor::Link))
+        && t.target_vendor == "uwp"
+    {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
@@ -1530,13 +1532,8 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     cmd.debuginfo();
 
     // OBJECT-FILES-NO, AUDIT-ORDER
-    // We want to, by default, prevent the compiler from accidentally leaking in
-    // any system libraries, so we may explicitly ask linkers to not link to any
-    // libraries by default. Note that this does not happen for windows because
-    // windows pulls in some large number of libraries and I couldn't quite
-    // figure out which subset we wanted.
-    //
-    // This is all naturally configurable via the standard methods as well.
+    // We want to prevent the compiler from accidentally leaking in any system libraries,
+    // so by default we tell linkers not to link to any default libraries.
     if !sess.opts.cg.default_linker_libraries.unwrap_or(false)
         && sess.target.target.options.no_default_libraries
     {

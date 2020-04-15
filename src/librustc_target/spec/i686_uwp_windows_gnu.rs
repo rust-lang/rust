@@ -1,7 +1,7 @@
 use crate::spec::{LinkerFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
-    let mut base = super::windows_uwp_base::opts();
+    let mut base = super::windows_uwp_gnu_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
     base.eliminate_frame_pointer = false; // Required for backtraces

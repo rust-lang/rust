@@ -1,5 +1,4 @@
 use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
-use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();

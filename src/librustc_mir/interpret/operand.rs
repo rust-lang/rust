@@ -87,7 +87,7 @@ impl<'tcx, Tag> Immediate<Tag> {
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
 pub struct ImmTy<'tcx, Tag = ()> {
-    pub(crate) imm: Immediate<Tag>,
+    imm: Immediate<Tag>,
     pub layout: TyAndLayout<'tcx>,
 }
 
@@ -181,6 +181,11 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn from_scalar(val: Scalar<Tag>, layout: TyAndLayout<'tcx>) -> Self {
         ImmTy { imm: val.into(), layout }
+    }
+
+    #[inline]
+    pub fn from_immediate(imm: Immediate<Tag>, layout: TyAndLayout<'tcx>) -> Self {
+        ImmTy { imm, layout }
     }
 
     #[inline]
@@ -424,7 +429,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(OpTy { op, layout })
     }
 
-    /// Every place can be read from, so we can turn them into an operand
+    /// Every place can be read from, so we can turn them into an operand.
+    /// This will definitely return `Indirect` if the place is a `Ptr`, i.e., this
+    /// will never actually read from memory.
     #[inline(always)]
     pub fn place_to_op(
         &self,

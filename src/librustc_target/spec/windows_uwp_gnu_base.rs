@@ -1,7 +1,9 @@
 use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
-use std::default::Default;
 
 pub fn opts() -> TargetOptions {
+    let base = super::windows_gnu_base::opts();
+
+    // FIXME: Consider adding `-nostdlib` and inheriting from `windows_gnu_base`.
     let mut pre_link_args = LinkArgs::new();
     pre_link_args.insert(
         LinkerFlavor::Gcc,
@@ -14,7 +16,10 @@ pub fn opts() -> TargetOptions {
         ],
     );
 
+    // FIXME: This should be updated for the exception machinery changes from #67502.
     let mut late_link_args = LinkArgs::new();
+    let late_link_args_dynamic = LinkArgs::new();
+    let late_link_args_static = LinkArgs::new();
     late_link_args.insert(
         LinkerFlavor::Gcc,
         vec![
@@ -33,31 +38,17 @@ pub fn opts() -> TargetOptions {
     );
 
     TargetOptions {
-        // FIXME(#13846) this should be enabled for windows
-        function_sections: false,
-        linker: Some("gcc".to_string()),
-        dynamic_linking: true,
         executables: false,
-        dll_prefix: String::new(),
-        dll_suffix: ".dll".to_string(),
-        exe_suffix: ".exe".to_string(),
-        staticlib_prefix: "lib".to_string(),
-        staticlib_suffix: ".a".to_string(),
-        target_family: Some("windows".to_string()),
-        is_like_windows: true,
-        allows_weak_linkage: false,
+        limit_rdylib_exports: false,
         pre_link_args,
-        pre_link_objects_exe: vec![
-            "rsbegin.o".to_string(), // Rust compiler runtime initialization, see rsbegin.rs
-        ],
+        // FIXME: Consider adding `-nostdlib` and inheriting from `windows_gnu_base`.
+        pre_link_objects_exe: vec!["rsbegin.o".to_string()],
+        // FIXME: Consider adding `-nostdlib` and inheriting from `windows_gnu_base`.
         pre_link_objects_dll: vec!["rsbegin.o".to_string()],
         late_link_args,
-        post_link_objects: vec!["rsend.o".to_string()],
-        abi_return_struct_as_int: true,
-        emit_debug_gdb_scripts: false,
-        requires_uwtable: true,
-        limit_rdylib_exports: false,
+        late_link_args_dynamic,
+        late_link_args_static,
 
-        ..Default::default()
+        ..base
     }
 }

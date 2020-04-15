@@ -85,7 +85,13 @@ fn main() -> () {
                                          // + span: $DIR/issue-41110.rs:8:27: 8:28
                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
         StorageDead(_2);                 // bb6[2]: scope 0 at $DIR/issue-41110.rs:8:27: 8:28
-        _0 = ();                         // bb6[3]: scope 0 at $DIR/issue-41110.rs:7:11: 9:2
+        _0 = const ();                   // bb6[3]: scope 0 at $DIR/issue-41110.rs:7:11: 9:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41110.rs:7:11: 9:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         StorageDead(_1);                 // bb6[4]: scope 0 at $DIR/issue-41110.rs:9:1: 9:2
         return;                          // bb6[5]: scope 0 at $DIR/issue-41110.rs:9:2: 9:2
     }

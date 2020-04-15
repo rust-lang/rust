@@ -54,7 +54,13 @@
 +                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
           StorageDead(_2);                 // bb0[6]: scope 0 at $DIR/aggregate.rs:5:27: 5:28
           StorageDead(_3);                 // bb0[7]: scope 0 at $DIR/aggregate.rs:5:28: 5:29
-          _0 = ();                         // bb0[8]: scope 0 at $DIR/aggregate.rs:4:11: 6:2
+          _0 = const ();                   // bb0[8]: scope 0 at $DIR/aggregate.rs:4:11: 6:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/aggregate.rs:4:11: 6:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_1);                 // bb0[9]: scope 0 at $DIR/aggregate.rs:6:1: 6:2
           return;                          // bb0[10]: scope 0 at $DIR/aggregate.rs:6:2: 6:2
       }

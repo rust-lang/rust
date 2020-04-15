@@ -87,7 +87,13 @@ fn test() -> () {
 
     bb8: {
         StorageDead(_5);                 // bb8[0]: scope 2 at $DIR/issue-41110.rs:18:9: 18:10
-        _0 = ();                         // bb8[1]: scope 0 at $DIR/issue-41110.rs:14:15: 19:2
+        _0 = const ();                   // bb8[1]: scope 0 at $DIR/issue-41110.rs:14:15: 19:2
+                                         // ty::Const
+                                         // + ty: ()
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-41110.rs:14:15: 19:2
+                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         drop(_2) -> [return: bb9, unwind: bb3]; // bb8[2]: scope 1 at $DIR/issue-41110.rs:19:1: 19:2
     }
 
