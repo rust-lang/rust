@@ -580,11 +580,7 @@ pub fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
 pub fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
-    if id == hir::DUMMY_HIR_ID {
-        debug!("resolve_type({:?})", path);
-    } else {
-        debug!("resolve_type({:?},{:?})", path, id);
-    }
+    debug!("resolve_type({:?},{:?})", path, id);
 
     let is_generic = match path.res {
         Res::PrimTy(p) => return Primitive(PrimitiveType::from(p)),

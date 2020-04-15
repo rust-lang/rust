@@ -2704,14 +2704,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     }
 
     fn insert_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime, def: Region) {
-        if lifetime_ref.hir_id == hir::DUMMY_HIR_ID {
-            span_bug!(
-                lifetime_ref.span,
-                "lifetime reference not renumbered, \
-                 probably a bug in rustc_ast::fold"
-            );
-        }
-
         debug!(
             "insert_lifetime: {} resolved to {:?} span={:?}",
             self.tcx.hir().node_to_string(lifetime_ref.hir_id),

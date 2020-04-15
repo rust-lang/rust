@@ -45,7 +45,4 @@ pub const CRATE_HIR_ID: HirId = HirId {
     local_id: ItemLocalId::from_u32(0),
 };
 
-pub const DUMMY_HIR_ID: HirId =
-    HirId { owner: LocalDefId { local_def_index: CRATE_DEF_INDEX }, local_id: DUMMY_ITEM_LOCAL_ID };
-
 pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId::MAX;

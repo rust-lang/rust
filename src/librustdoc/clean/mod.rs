@@ -375,18 +375,16 @@ impl<'tcx> Clean<Option<Vec<GenericBound>>> for InternalSubsts<'tcx> {
 
 impl Clean<Lifetime> for hir::Lifetime {
     fn clean(&self, cx: &DocContext<'_>) -> Lifetime {
-        if self.hir_id != hir::DUMMY_HIR_ID {
-            let def = cx.tcx.named_region(self.hir_id);
-            match def {
-                Some(rl::Region::EarlyBound(_, node_id, _))
-                | Some(rl::Region::LateBound(_, node_id, _))
-                | Some(rl::Region::Free(_, node_id)) => {
-                    if let Some(lt) = cx.lt_substs.borrow().get(&node_id).cloned() {
-                        return lt;
-                    }
+        let def = cx.tcx.named_region(self.hir_id);
+        match def {
+            Some(rl::Region::EarlyBound(_, node_id, _))
+            | Some(rl::Region::LateBound(_, node_id, _))
+            | Some(rl::Region::Free(_, node_id)) => {
+                if let Some(lt) = cx.lt_substs.borrow().get(&node_id).cloned() {
+                    return lt;
                 }
-                _ => {}
             }
+            _ => {}
         }
         Lifetime(self.name.ident().to_string())
     }
