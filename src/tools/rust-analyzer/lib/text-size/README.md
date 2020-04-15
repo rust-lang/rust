@@ -1,13 +1,13 @@
-# text_size
+# text-size
 
-[![Build Status](https://travis-ci.org/matklad/text_size.svg?branch=master)](https://travis-ci.org/matklad/text_size)
-[![Crates.io](https://img.shields.io/crates/v/text_size.svg)](https://crates.io/crates/text_size)
-[![API reference](https://docs.rs/text_size/badge.svg)](https://docs.rs/text_size/)
+[![Build Status](https://travis-ci.org/matklad/text-size.svg?branch=master)](https://travis-ci.org/matklad/text-size)
+[![Crates.io](https://img.shields.io/crates/v/text-size.svg)](https://crates.io/crates/text-size)
+[![API reference](https://docs.rs/text-size/badge.svg)](https://docs.rs/text-size/)
 
 
 A library that provides newtype wrappers for `u32` and `(u32, u32)` for use as text offsets.
 
-See the [docs](https://docs.rs/text_size/) for more.
+See the [docs](https://docs.rs/text-size/) for more.
 
 ## License
 
