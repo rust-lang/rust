@@ -135,12 +135,6 @@ impl<Tag> MemPlace<Tag> {
         MemPlace { ptr, align, meta: MemPlaceMeta::None }
     }
 
-    /// Produces a Place that will error if attempted to be read from or written to
-    #[inline(always)]
-    fn null(cx: &impl HasDataLayout) -> Self {
-        Self::from_scalar_ptr(Scalar::null_ptr(cx), Align::from_bytes(1).unwrap())
-    }
-
     #[inline(always)]
     pub fn from_ptr(ptr: Pointer<Tag>, align: Align) -> Self {
         Self::from_scalar_ptr(ptr.into(), align)
@@ -260,12 +254,6 @@ impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
 }
 
 impl<Tag: ::std::fmt::Debug> Place<Tag> {
-    /// Produces a Place that will error if attempted to be read from or written to
-    #[inline(always)]
-    fn null(cx: &impl HasDataLayout) -> Self {
-        Place::Ptr(MemPlace::null(cx))
-    }
-
     #[inline]
     pub fn assert_mem_place(self) -> MemPlace<Tag> {
         match self {
@@ -276,10 +264,6 @@ impl<Tag: ::std::fmt::Debug> Place<Tag> {
 }
 
 impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
-    pub fn null(cx: &impl HasDataLayout, layout: TyAndLayout<'tcx>) -> Self {
-        Self { place: Place::null(cx), layout }
-    }
-
     #[inline]
     pub fn assert_mem_place(self) -> MPlaceTy<'tcx, Tag> {
         MPlaceTy { mplace: self.place.assert_mem_place(), layout: self.layout }
