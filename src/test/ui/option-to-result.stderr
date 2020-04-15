@@ -8,8 +8,8 @@ LL |     a?;
    = note: required by `std::convert::From::from`
 help: consider converting the `Option<T>` into a `Result<T, _>` using `Option::ok_or` or `Option::ok_or_else`
    |
-LL |     a.ok_or_else(|_| /* error value */)?;
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     a.ok_or_else(|| /* error value */)?;
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `?` couldn't convert the error to `std::option::NoneError`
   --> $DIR/option-to-result.rs:11:6

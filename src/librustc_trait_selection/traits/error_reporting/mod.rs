@@ -321,7 +321,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err.span_suggestion_verbose(
                                 span.shrink_to_lo(),
                                 "consider converting the `Option<T>` into a `Result<T, _>` using `Option::ok_or` or `Option::ok_or_else`",
-                                ".ok_or_else(|_| /* error value */)".to_string(),
+                                ".ok_or_else(|| /* error value */)".to_string(),
                                 Applicability::HasPlaceholders,
                             );
                         } else if is_try && is_from && should_convert_result_to_option {
@@ -329,7 +329,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 span.shrink_to_lo(),
                                 "consider converting the `Result<T, _>` into an `Option<T>` using `Result::ok`",
                                 ".ok()".to_string(),
-                                Applicability::HasPlaceholders,
+                                Applicability::MachineApplicable,
                             );
                         }
 
