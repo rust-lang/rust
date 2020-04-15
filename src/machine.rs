@@ -481,30 +481,42 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         kind: mir::RetagKind,
         place: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
-        if ecx.memory.extra.stacked_borrows.is_none() {
-            // No tracking.
-            Ok(())
-        } else {
+        if ecx.memory.extra.stacked_borrows.is_some() {
             ecx.retag(kind, place)
+        } else {
+            Ok(())
         }
     }
 
     #[inline(always)]
-    fn stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, FrameData<'tcx>> {
+    fn init_frame_extra(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        frame: Frame<'mir, 'tcx, Tag>,
+    ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Tag, FrameData<'tcx>>> {
         let stacked_borrows = ecx.memory.extra.stacked_borrows.as_ref();
         let call_id = stacked_borrows.map_or(NonZeroU64::new(1).unwrap(), |stacked_borrows| {
             stacked_borrows.borrow_mut().new_call()
         });
-        Ok(FrameData { call_id, catch_unwind: None })
+        let extra = FrameData { call_id, catch_unwind: None };
+        Ok(frame.with_extra(extra))
     }
 
     #[inline(always)]
-    fn stack_pop(
+    fn after_stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        if ecx.memory.extra.stacked_borrows.is_some() {
+            ecx.retag_return_place()
+        } else {
+            Ok(())
+        }
+    }
+
+    #[inline(always)]
+    fn after_stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        extra: FrameData<'tcx>,
+        frame: Frame<'mir, 'tcx, Tag, FrameData<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
-        ecx.handle_stack_pop(extra, unwinding)
+        ecx.handle_stack_pop(frame.extra, unwinding)
     }
 
     #[inline(always)]
