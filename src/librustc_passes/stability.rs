@@ -610,7 +610,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             // Warn if the user enables a lib feature multiple times.
             duplicate_feature_err(tcx.sess, *span, *feature);
         }
-        remaining_lib_features.insert(feature, span.clone());
+        remaining_lib_features.insert(feature, *span);
     }
     // `stdbuild` has special handling for `libc`, so we need to
     // recognise the feature when building std.

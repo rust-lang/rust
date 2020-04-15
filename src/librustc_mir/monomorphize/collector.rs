@@ -335,7 +335,7 @@ fn collect_items_rec<'tcx>(
     recursion_depths: &mut DefIdMap<usize>,
     inlining_map: MTRef<'_, MTLock<InliningMap<'tcx>>>,
 ) {
-    if !visited.lock_mut().insert(starting_point.clone()) {
+    if !visited.lock_mut().insert(starting_point) {
         // We've been here already, no need to search again.
         return;
     }

@@ -509,7 +509,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         continue;
                     }
 
-                    let mut for_generics = self.extract_for_generics(tcx, orig_p.clone());
+                    let mut for_generics = self.extract_for_generics(tcx, orig_p);
 
                     assert!(bounds.len() == 1);
                     let mut b = bounds.pop().expect("bounds were empty");
