@@ -18,6 +18,7 @@ use rustc_middle::{
     mir,
     ty::{
         self,
+        Instance,
         layout::{LayoutCx, LayoutError, TyAndLayout},
         TyCtxt,
     },
@@ -27,7 +28,7 @@ use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
 
-pub use crate::threads::{ThreadId, ThreadManager, ThreadState, ThreadLocalStorage};
+pub use crate::threads::{ThreadId, ThreadManager, ThreadState};
 
 // Some global facts about the emulated machine.
 pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture
@@ -110,7 +111,6 @@ pub struct AllocExtra {
 pub struct MemoryExtra {
     pub stacked_borrows: Option<stacked_borrows::MemoryExtra>,
     pub intptrcast: intptrcast::MemoryExtra,
-    pub tls: ThreadLocalStorage,
 
     /// Mapping extern static names to their canonical allocation.
     extern_statics: FxHashMap<Symbol, AllocId>,
@@ -147,7 +147,6 @@ impl MemoryExtra {
             rng: RefCell::new(rng),
             tracked_alloc_id,
             check_alignment,
-            tls: Default::default(),
         }
     }
 
@@ -423,24 +422,58 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     fn eval_maybe_thread_local_static_const(
         ecx: &InterpCx<'mir, 'tcx, Self>,
-        mut val: mir::interpret::ConstValue<'tcx>
-    )-> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
+        mut val: mir::interpret::ConstValue<'tcx>,
+    ) -> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
         match &mut val {
             mir::interpret::ConstValue::Scalar(Scalar::Ptr(ptr)) => {
                 let alloc_id = ptr.alloc_id;
                 let alloc = ecx.tcx.alloc_map.lock().get(alloc_id);
                 match alloc {
                     Some(GlobalAlloc::Static(def_id))
-                        if ecx.tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) => {
+                        if ecx
+                            .tcx
+                            .codegen_fn_attrs(def_id)
+                            .flags
+                            .contains(CodegenFnAttrFlags::THREAD_LOCAL) =>
+                    {
                         // We have a thread-local static.
-                        let new_alloc_id = ecx.memory.extra.tls.get_or_register_allocation(
-                            *ecx.memory.tcx, alloc_id);
+                        let new_alloc_id = if let Some(new_alloc_id) =
+                            ecx.get_thread_local_alloc_id(alloc_id)
+                        {
+                            new_alloc_id
+                        } else {
+                            if ecx.tcx.is_foreign_item(def_id) {
+                                throw_unsup_format!(
+                                    "Foreign thread-local statics are not supported."
+                                )
+                            }
+                            let instance = Instance::mono(ecx.tcx.tcx, def_id);
+                            let gid = GlobalId { instance, promoted: None };
+                            let raw_const = ecx
+                                .tcx
+                                .const_eval_raw(ty::ParamEnv::reveal_all().and(gid))
+                                .map_err(|err| {
+                                    // no need to report anything, the const_eval call takes care of that
+                                    // for statics
+                                    assert!(ecx.tcx.is_static(def_id));
+                                    match err {
+                                        ErrorHandled::Reported => err_inval!(ReferencedConstant),
+                                        ErrorHandled::TooGeneric => err_inval!(TooGeneric),
+                                    }
+                                })?;
+                            let id = raw_const.alloc_id;
+                            let mut alloc_map = ecx.tcx.alloc_map.lock();
+                            let allocation = alloc_map.unwrap_memory(id);
+                            let new_alloc_id = alloc_map.create_memory_alloc(allocation);
+                            ecx.set_thread_local_alloc_id(alloc_id, new_alloc_id);
+                            new_alloc_id
+                        };
                         ptr.alloc_id = new_alloc_id;
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
-            _ => {},
+            _ => {}
         }
         Ok(val)
     }
@@ -468,15 +501,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             // Return original id; `Memory::get_static_alloc` will throw an error.
             id
         }
-    }
-
-    #[inline(always)]
-    fn resolve_maybe_global_alloc(
-        tcx: ty::query::TyCtxtAt<'tcx>,
-        extra: &Self::MemoryExtra,
-        id: AllocId,
-    ) -> Option<mir::interpret::GlobalAlloc<'tcx>> {
-        extra.tls.resolve_allocation(*tcx, id)
     }
 
     fn init_allocation_extra<'b>(

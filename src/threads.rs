@@ -1,15 +1,12 @@
 //! Implements threads.
 
 use std::cell::RefCell;
-use std::collections::hash_map::Entry;
 use std::convert::TryFrom;
 
 use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::mir;
-use rustc_middle::ty;
 
 use crate::*;
 
@@ -129,17 +126,41 @@ pub struct ThreadManager<'mir, 'tcx> {
     threads: IndexVec<ThreadId, Thread<'mir, 'tcx>>,
     /// A counter used to generate unique identifiers for blocksets.
     blockset_counter: u32,
+    /// A mapping from an allocation id of a thread-local static to an
+    /// allocation id of a thread specific allocation.
+    thread_local_alloc_ids: RefCell<FxHashMap<(AllocId, ThreadId), AllocId>>,
 }
 
 impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
     fn default() -> Self {
         let mut threads = IndexVec::new();
         threads.push(Default::default());
-        Self { active_thread: ThreadId::new(0), threads: threads, blockset_counter: 0 }
+        Self {
+            active_thread: ThreadId::new(0),
+            threads: threads,
+            blockset_counter: 0,
+            thread_local_alloc_ids: Default::default(),
+        }
     }
 }
 
 impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
+    /// Check if we have an allocation for the given thread local static for the
+    /// active thread.
+    pub fn get_thread_local_alloc_id(&self, static_alloc_id: AllocId) -> Option<AllocId> {
+        self.thread_local_alloc_ids.borrow().get(&(static_alloc_id, self.active_thread)).cloned()
+    }
+    /// Set the allocation id as the allocation id of the given thread local
+    /// static for the active thread.
+    pub fn set_thread_local_alloc_id(&self, static_alloc_id: AllocId, new_alloc_id: AllocId) {
+        assert!(
+            self.thread_local_alloc_ids
+                .borrow_mut()
+                .insert((static_alloc_id, self.active_thread), new_alloc_id)
+                .is_none(),
+            "Bug: a thread local initialized twice for the same thread."
+        );
+    }
     /// Borrow the stack of the active thread.
     fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Tag, FrameData<'tcx>>] {
         &self.threads[self.active_thread].stack
@@ -251,69 +272,16 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 }
 
-/// In Rust, a thread local variable is just a specially marked static. To
-/// ensure a property that each memory allocation has a globally unique
-/// allocation identifier, we create a fresh allocation id for each thread. This
-/// data structure keeps the track of the created allocation identifiers and
-/// their relation to the original static allocations.
-#[derive(Clone, Debug, Default)]
-pub struct ThreadLocalStorage {
-    /// A map from a thread local allocation identifier to the static from which
-    /// it was created.
-    thread_local_origin: RefCell<FxHashMap<AllocId, AllocId>>,
-    /// A map from a thread local static and thread id to the unique thread
-    /// local allocation.
-    thread_local_allocations: RefCell<FxHashMap<(AllocId, ThreadId), AllocId>>,
-    /// The currently active thread.
-    active_thread: Option<ThreadId>,
-}
-
-impl ThreadLocalStorage {
-    /// For static allocation identifier `original_id` get a thread local
-    /// allocation identifier. If it is not allocated yet, allocate.
-    pub fn get_or_register_allocation(&self, tcx: ty::TyCtxt<'_>, original_id: AllocId) -> AllocId {
-        match self
-            .thread_local_allocations
-            .borrow_mut()
-            .entry((original_id, self.active_thread.unwrap()))
-        {
-            Entry::Occupied(entry) => *entry.get(),
-            Entry::Vacant(entry) => {
-                let fresh_id = tcx.alloc_map.lock().reserve();
-                entry.insert(fresh_id);
-                self.thread_local_origin.borrow_mut().insert(fresh_id, original_id);
-                trace!(
-                    "get_or_register_allocation(original_id={:?}) -> {:?}",
-                    original_id,
-                    fresh_id
-                );
-                fresh_id
-            }
-        }
-    }
-    /// For thread local allocation identifier `alloc_id`, retrieve the original
-    /// static allocation identifier from which it was created.
-    pub fn resolve_allocation<'tcx>(
-        &self,
-        tcx: ty::TyCtxt<'tcx>,
-        alloc_id: AllocId,
-    ) -> Option<mir::interpret::GlobalAlloc<'tcx>> {
-        trace!("resolve_allocation(alloc_id: {:?})", alloc_id);
-        if let Some(original_id) = self.thread_local_origin.borrow().get(&alloc_id) {
-            trace!("resolve_allocation(alloc_id: {:?}) -> {:?}", alloc_id, original_id);
-            tcx.alloc_map.lock().get(*original_id)
-        } else {
-            tcx.alloc_map.lock().get(alloc_id)
-        }
-    }
-    /// Set which thread is currently active.
-    fn set_active_thread(&mut self, active_thread: ThreadId) {
-        self.active_thread = Some(active_thread);
-    }
-}
-
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    fn get_thread_local_alloc_id(&self, static_alloc_id: AllocId) -> Option<AllocId> {
+        let this = self.eval_context_ref();
+        this.machine.threads.get_thread_local_alloc_id(static_alloc_id)
+    }
+    fn set_thread_local_alloc_id(&self, static_alloc_id: AllocId, thread_local_alloc_id: AllocId) {
+        let this = self.eval_context_ref();
+        this.machine.threads.set_thread_local_alloc_id(static_alloc_id, thread_local_alloc_id)
+    }
     fn create_thread(&mut self) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_mut();
         Ok(this.machine.threads.create_thread())
@@ -330,7 +298,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
     fn set_active_thread(&mut self, thread_id: ThreadId) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_mut();
-        this.memory.extra.tls.set_active_thread(thread_id);
         Ok(this.machine.threads.set_active_thread_id(thread_id))
     }
     fn get_active_thread(&self) -> InterpResult<'tcx, ThreadId> {
@@ -370,13 +337,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Returns `false` if all threads terminated.
     fn schedule(&mut self) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
-        // Find the next thread to run.
-        if this.machine.threads.schedule()? {
-            let active_thread = this.machine.threads.get_active_thread_id();
-            this.memory.extra.tls.set_active_thread(active_thread);
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        this.machine.threads.schedule()
     }
 }
