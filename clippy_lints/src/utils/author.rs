@@ -97,7 +97,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Author {
             return;
         }
         prelude();
-        PrintVisitor::new("var").visit_variant(var, &hir::Generics::empty(), hir::DUMMY_HIR_ID);
+        let dummy_hir_id = cx.tcx.hir().get_parent_node(var.id);
+        PrintVisitor::new("var").visit_variant(var, &hir::Generics::empty(), dummy_hir_id);
         done();
     }
 
