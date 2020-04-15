@@ -17,6 +17,8 @@ fn main() {
     i / 2; // no error, this is part of the expression in the preceding line
     i - 2 + 2 - i;
     -i;
+    i >> 1;
+    i << 1;
 
     // no error, overflows are checked by `overflowing_literals`
     -1;
@@ -25,18 +27,16 @@ fn main() {
     i & 1; // no wrapping
     i | 1;
     i ^ 1;
-    i >> 1;
-    i << 1;
 
     i += 1;
     i -= 1;
     i *= 2;
     i /= 2;
     i %= 2;
-
-    // no errors
     i <<= 3;
     i >>= 2;
+
+    // no errors
     i |= 1;
     i &= 1;
     i ^= i;
@@ -72,8 +72,6 @@ fn main() {
             1 + 1
         };
     }
-
-
 }
 
 // warn on references as well! (#5328)
