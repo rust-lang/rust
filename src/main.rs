@@ -2,9 +2,9 @@
 
 use rustc_tools_util::VersionInfo;
 use std::env;
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::{self, Command};
-use std::ffi::OsString;
 
 const CARGO_CLIPPY_HELP: &str = r#"Checks a package to catch common mistakes and improve your Rust code.
 
@@ -60,11 +60,10 @@ struct ClippyCmd {
     unstable_options: bool,
     cargo_subcommand: &'static str,
     args: Vec<String>,
-    clippy_args: String
+    clippy_args: String,
 }
 
-impl ClippyCmd
-{
+impl ClippyCmd {
     fn new<I>(mut old_args: I) -> Self
     where
         I: Iterator<Item = String>,
@@ -98,10 +97,7 @@ impl ClippyCmd
             args.insert(0, "+nightly".to_string());
         }
 
-        let clippy_args: String =
-            old_args
-            .map(|arg| format!("{}__CLIPPY_HACKERY__", arg))
-            .collect();
+        let clippy_args: String = old_args.map(|arg| format!("{}__CLIPPY_HACKERY__", arg)).collect();
 
         ClippyCmd {
             unstable_options,
@@ -160,7 +156,6 @@ impl ClippyCmd
     }
 }
 
-
 fn process<I>(old_args: I) -> Result<(), i32>
 where
     I: Iterator<Item = String>,
@@ -195,7 +190,9 @@ mod tests {
 
     #[test]
     fn fix_unstable() {
-        let args = "cargo clippy --fix -Zunstable-options".split_whitespace().map(ToString::to_string);
+        let args = "cargo clippy --fix -Zunstable-options"
+            .split_whitespace()
+            .map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
         assert_eq!("fix", cmd.cargo_subcommand);
         assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
@@ -212,7 +209,9 @@ mod tests {
 
     #[test]
     fn check_unstable() {
-        let args = "cargo clippy -Zunstable-options".split_whitespace().map(ToString::to_string);
+        let args = "cargo clippy -Zunstable-options"
+            .split_whitespace()
+            .map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
         assert_eq!("check", cmd.cargo_subcommand);
         assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
