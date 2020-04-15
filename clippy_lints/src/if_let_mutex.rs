@@ -1,3 +1,4 @@
+use if_chain::if_chain;
 use crate::utils::{match_type, paths, span_lint_and_help};
 use rustc_hir::intravisit::{self as visit, NestedVisitorMap, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource, StmtKind};
@@ -42,13 +43,11 @@ declare_lint_pass!(IfLetMutex => [IF_LET_MUTEX]);
 impl LateLintPass<'_, '_> for IfLetMutex {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, ex: &'_ Expr<'_>) {
         let mut arm_visit = ArmVisitor {
-            arm_mutex: false,
-            arm_lock: false,
+            mutex_lock_called: false,
             cx,
         };
         let mut op_visit = OppVisitor {
-            op_mutex: false,
-            op_lock: false,
+            mutex_lock_called: false,
             cx,
         };
         if let ExprKind::Match(
@@ -60,12 +59,12 @@ impl LateLintPass<'_, '_> for IfLetMutex {
         ) = ex.kind
         {
             op_visit.visit_expr(op);
-            if op_visit.op_mutex && op_visit.op_lock {
+            if op_visit.mutex_lock_called {
                 for arm in *arms {
                     arm_visit.visit_arm(arm);
                 }
 
-                if arm_visit.arm_mutex && arm_visit.arm_lock {
+                if arm_visit.mutex_lock_called {
                     span_lint_and_help(
                         cx,
                         IF_LET_MUTEX,
@@ -81,8 +80,7 @@ impl LateLintPass<'_, '_> for IfLetMutex {
 
 /// Checks if `Mutex::lock` is called in the `if let _ = expr.
 pub struct OppVisitor<'tcx, 'l> {
-    pub op_mutex: bool,
-    pub op_lock: bool,
+    pub mutex_lock_called: bool,
     pub cx: &'tcx LateContext<'tcx, 'l>,
 }
 
@@ -90,13 +88,14 @@ impl<'tcx, 'l> Visitor<'tcx> for OppVisitor<'tcx, 'l> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(path, _span, args) = &expr.kind {
-            if path.ident.to_string() == "lock" {
-                self.op_lock = true;
-            }
+        if_chain! {
+            if let ExprKind::MethodCall(path, _span, args) = &expr.kind;
+            if path.ident.to_string() == "lock";
             let ty = self.cx.tables.expr_ty(&args[0]);
-            if match_type(self.cx, ty, &paths::MUTEX) {
-                self.op_mutex = true;
+            if match_type(self.cx, ty, &paths::MUTEX);
+            then {
+                self.mutex_lock_called = true;
+                return;
             }
         }
         visit::walk_expr(self, expr);
@@ -109,8 +108,7 @@ impl<'tcx, 'l> Visitor<'tcx> for OppVisitor<'tcx, 'l> {
 
 /// Checks if `Mutex::lock` is called in any of the branches.
 pub struct ArmVisitor<'tcx, 'l> {
-    pub arm_mutex: bool,
-    pub arm_lock: bool,
+    pub mutex_lock_called: bool,
     pub cx: &'tcx LateContext<'tcx, 'l>,
 }
 
@@ -118,13 +116,14 @@ impl<'tcx, 'l> Visitor<'tcx> for ArmVisitor<'tcx, 'l> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(path, _span, args) = &expr.kind {
-            if path.ident.to_string() == "lock" {
-                self.arm_lock = true;
-            }
+        if_chain! {
+            if let ExprKind::MethodCall(path, _span, args) = &expr.kind;
+            if path.ident.to_string() == "lock";
             let ty = self.cx.tables.expr_ty(&args[0]);
-            if match_type(self.cx, ty, &paths::MUTEX) {
-                self.arm_mutex = true;
+            if match_type(self.cx, ty, &paths::MUTEX);
+            then {
+                self.mutex_lock_called = true;
+                return;
             }
         }
         visit::walk_expr(self, expr);

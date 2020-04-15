@@ -102,8 +102,8 @@ Please note that, we should run `TESTNAME=foo_functions cargo uitest`
 every time before running `tests/ui/update-all-references.sh`.
 Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit
 our lint, we need to commit the generated `.stderr` files, too. In general you
-should only run `tests/ui/update-all-references.sh` for the specific lint you are
-creating/editing.
+should only commit changed files by `tests/ui/update-all-references.sh` for the
+specific lint you are creating/editing.
 
 ## Rustfix tests
 
