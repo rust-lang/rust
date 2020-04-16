@@ -62,12 +62,12 @@ attributes #6 = { nounwind }
 
 ; CHECK: define internal {} @diffefoo(float* nocapture %fdst, float* %"fdst'", float* nocapture readonly %fsrc, float* %"fsrc'", i32 %fN)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %_unwrap = bitcast float* %fdst to i8*
-; CHECK-NEXT:   %"'ipc" = bitcast float* %"fdst'" to i8*
-; CHECK-NEXT:   %_unwrap2 = bitcast float* %fsrc to i8*
-; CHECK-NEXT:   %"'ipc3" = bitcast float* %"fsrc'" to i8*
-; CHECK-NEXT:   %mul_unwrap = shl i32 %fN, 2
-; CHECK-NEXT:   call {} @diffesubmemcpy(i8* %_unwrap, i8* %"'ipc", i8* %_unwrap2, i8* %"'ipc3", i32 %mul_unwrap)
+; CHECK-NEXT:   %[[uw:.+]] = bitcast float* %fdst to i8*
+; CHECK-NEXT:   %[[ipc:.+]] = bitcast float* %"fdst'" to i8*
+; CHECK-NEXT:   %[[uw1:.+]] = bitcast float* %fsrc to i8*
+; CHECK-NEXT:   %[[ipc2:.+]] = bitcast float* %"fsrc'" to i8*
+; CHECK-NEXT:   %[[mul:.+]] = shl i32 %fN, 2
+; CHECK-NEXT:   call {} @diffesubmemcpy(i8* %[[uw]], i8* %[[ipc]], i8* %[[uw1]], i8* %[[ipc2]], i32 %[[mul]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

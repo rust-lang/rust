@@ -52,10 +52,10 @@ attributes #3 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffememcpy_ptr(double** nocapture %dst, double** %"dst'", double** nocapture readonly %src, double** %"src'", i64 %num)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = bitcast double** %dst to i8*
-; CHECK-NEXT:   %1 = bitcast double** %src to i8*
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %"dst'" to i8*
+; CHECK-NEXT:   %0 = bitcast double** %dst to i8*
 ; CHECK-NEXT:   %"'ipc1" = bitcast double** %"src'" to i8*
+; CHECK-NEXT:   %1 = bitcast double** %src to i8*
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %"'ipc", i8* align 1 %"'ipc1", i64 %num, i1 false)
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 %1, i64 %num, i1 false)
 ; CHECK-NEXT:   ret {} undef
@@ -72,10 +72,10 @@ attributes #3 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ {} } @augmented_submemcpy_ptr(double** nocapture %dst, double** %"dst'", double** nocapture readonly %src, double** %"src'", i64 %num)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = bitcast double** %dst to i8*
-; CHECK-NEXT:   %1 = bitcast double** %src to i8*
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %"dst'" to i8*
+; CHECK-NEXT:   %0 = bitcast double** %dst to i8*
 ; CHECK-NEXT:   %"'ipc1" = bitcast double** %"src'" to i8*
+; CHECK-NEXT:   %1 = bitcast double** %src to i8*
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %"'ipc", i8* align 1 %"'ipc1", i64 %num, i1 false)
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 %0, i8* align 1 %1, i64 %num, i1 false)
 ; CHECK-NEXT:   ret { {} } undef

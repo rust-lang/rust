@@ -48,7 +48,7 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   %3 = shl nuw i64 %iv.next, 3
 ; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %0, i64 %3)
 ; CHECK-NEXT:   %_realloccast = bitcast i8* %_realloccache to double*
-; CHECK-NEXT:   %4 = getelementptr double, double* %_realloccast, i64 %iv
+; CHECK-NEXT:   %4 = getelementptr inbounds double, double* %_realloccast, i64 %iv
 ; CHECK-NEXT:   store double %1, double* %4, align 8, !invariant.group !0
 ; CHECK-NEXT:   %inc = add nuw nsw i32 %2, 1
 ; CHECK-NEXT:   %mul2 = fmul fast double %1, %t
@@ -72,7 +72,7 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   %"t'de.0" = phi double [ 0.000000e+00, %exit ], [ %9, %incinvertwhile ]
 ; CHECK-NEXT:   %"mul2'de.0" = phi double [ %differeturn, %exit ], [ %[[m0diffe:.+]], %incinvertwhile ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %exit ], [ %11, %incinvertwhile ]
-; CHECK-NEXT:   %7 = getelementptr double, double* %_realloccast, i64 %"iv'ac.0"
+; CHECK-NEXT:   %7 = getelementptr inbounds double, double* %_realloccast, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %8 = load double, double* %7, align 8, !invariant.group !0
 ; CHECK-NEXT:   %[[m1diffet:.+]] = fmul fast double %"mul2'de.0", %8
 ; CHECK-NEXT:   %9 = fadd fast double %"t'de.0", %[[m1diffet]]

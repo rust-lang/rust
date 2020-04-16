@@ -442,7 +442,7 @@ attributes #11 = { alwaysinline cold }
 ; CHECK: define internal {} @diffematvec(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double* %B, double* %"B'", <2 x double>* %outvec, <2 x double>* %"outvec'") #3 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %B1 = load double, double* %B, align 8
-; CHECK-NEXT:   %"B2p'ipge" = getelementptr inbounds double, double* %"B'", i64 1
+; CHECK-NEXT:   %[[B2pprime:.+]] = getelementptr inbounds double, double* %"B'", i64 1
 ; CHECK-NEXT:   %B2p = getelementptr inbounds double, double* %B, i64 1
 ; CHECK-NEXT:   %B2 = load double, double* %B2p, align 8
 ; CHECK-NEXT:   %call_augmented = call { { { <2 x double> }, <2 x double>, <2 x double>, i8*, i8* }, <2 x double> } @augmented_subfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0)
@@ -453,9 +453,9 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %[[subfnret:.+]] = call { double, double } @diffesubfn(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double %B1, double %B2, i64 0, <2 x double> %[[copyext]], { { <2 x double> }, <2 x double>, <2 x double>, i8*, i8* } %[[calltape]])
 ; CHECK-NEXT:   %[[sub0:.+]] = extractvalue { double, double } %[[subfnret]], 0
 ; CHECK-NEXT:   %[[sub1:.+]] = extractvalue { double, double } %[[subfnret]], 1
-; CHECK-NEXT:   %[[preb2:.+]] = load double, double* %"B2p'ipge", align 8
+; CHECK-NEXT:   %[[preb2:.+]] = load double, double* %[[B2pprime]], align 8
 ; CHECK-NEXT:   %[[addb2:.+]] = fadd fast double %[[preb2]], %[[sub1]]
-; CHECK-NEXT:   store double %[[addb2]], double* %"B2p'ipge", align 8
+; CHECK-NEXT:   store double %[[addb2]], double* %[[B2pprime]], align 8
 ; CHECK-NEXT:   %[[preb:.+]] = load double, double* %"B'", align 8
 ; CHECK-NEXT:   %[[addb:.+]] = fadd fast double %[[preb]], %[[sub0]]
 ; CHECK-NEXT:   store double %[[addb]], double* %"B'", align 8

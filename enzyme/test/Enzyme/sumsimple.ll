@@ -58,7 +58,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %[[finaly:.+]] = load double, double* %[[yload]]
 ; CHECK-NEXT:   %add = fadd fast double %[[finaly]], %2
 ; CHECK-NEXT:   store double %add, double* %[[yload]]
-; CHECK-NEXT:   %[[cachegep:.+]] = getelementptr double*, double** %[[antimallocs]], i64 %iv
+; CHECK-NEXT:   %[[cachegep:.+]] = getelementptr inbounds double*, double** %[[antimallocs]], i64 %iv
 ; CHECK-NEXT:   store double* %[[ipload]], double** %[[cachegep]], align 8, !invariant.group !0
 ; CHECK-NEXT:   br label %for.cond
 
@@ -73,7 +73,7 @@ attributes #0 = { noinline nounwind uwtable }
 
 ; CHECK: incinvertfor.cond:
 ; CHECK-NEXT:   %[[sub]] = sub nuw nsw i64 %[[ivp]], 1
-; CHECK-NEXT:   %8 = getelementptr double*, double** %[[antimallocs]], i64 %[[sub]]
+; CHECK-NEXT:   %8 = getelementptr inbounds double*, double** %[[antimallocs]], i64 %[[sub]]
 ; CHECK-NEXT:   %9 = load double*, double** %8, align 8, !invariant.group !0
 ; CHECK-NEXT:   %10 = load double, double* %9
 ; CHECK-NEXT:   store double %10, double* %9

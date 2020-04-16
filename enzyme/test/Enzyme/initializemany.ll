@@ -149,11 +149,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   store i64 0, i64* %[[storeloc]], align 1
 ; CHECK-NEXT:   %[[bitcaster:.+]] = bitcast i8* %call to double*
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double*, double** %arrayp, i64 %[[iv]]
-; CHECK-NEXT:   %[[bctwo:.+]] = bitcast double** %arrayidx to i8**
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double*, double** %"arrayp'", i64 %[[iv]]
+; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double*, double** %"arrayp'", i64 %[[iv]]
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %"arrayidx'ipg" to i8**
+; CHECK-NEXT:   %[[bctwo:.+]] = bitcast double** %arrayidx to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %"'ipc", align 8
-; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %"call'mi_malloccache", i64 %[[iv]]
+; CHECK-NEXT:   %[[geper:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %[[geper]], align 8
 ; CHECK-NEXT:   store i8* %call, i8** %[[bctwo]], align 8, !tbaa !2
 ; CHECK-NEXT:   store double %x, double* %[[bitcaster]], align 8, !tbaa !6

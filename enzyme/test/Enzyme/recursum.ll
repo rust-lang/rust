@@ -66,24 +66,13 @@ attributes #2 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}double @differecsum.1(double* %x, double* %"x'", i32 %n)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   switch i32 %n, label %if.end3 [
+; CHECK-NEXT:   switch i32 %n, label %invertif.end3 [
 ; CHECK-NEXT:     i32 0, label %invertentry
 ; CHECK-NEXT:     i32 1, label %invertif.then2
 ; CHECK-NEXT:   ]
 
-; CHECK: if.end3:                                          ; preds = %entry
-; CHECK-NEXT:   %div = lshr i32 %n, 1
-; CHECK-NEXT:   %idx.ext = zext i32 %div to i64
-; CHECK-NEXT:   %add.ptr = getelementptr inbounds double, double* %x, i64 %idx.ext
-; CHECK-NEXT:   %"add.ptr'ipg" = getelementptr double, double* %"x'", i64 %idx.ext
-; CHECK-NEXT:   %[[sub:.+]] = sub i32 %n, %div
-; CHECK-NEXT:   %[[dsum1:.+]] = call double @differecsum.1(double* %add.ptr, double* %"add.ptr'ipg", i32 %[[sub]])
-; CHECK-NEXT:   %[[dsum2:.+]] = call double @differecsum.1(double* %x, double* %"x'", i32 %div)
-; CHECK-NEXT:   %add = fadd fast double %[[dsum1]], %[[dsum2]]
-; CHECK-NEXT:   br label %invertentry
-
 ; CHECK: invertentry: 
-; CHECK-NEXT:   %toreturn.0 = phi double [ %add, %if.end3 ], [ %[[xload:.+]], %invertif.then2 ], [ 0.000000e+00, %entry ]
+; CHECK-NEXT:   %toreturn.0 = phi double [ %add, %invertif.end3 ], [ %[[xload:.+]], %invertif.then2 ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   ret double %toreturn.0
 
 ; CHECK: invertif.then2:
@@ -91,5 +80,16 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[predx:.+]] = load double, double* %"x'", align 8
 ; CHECK-NEXT:   %[[postdx:.+]] = fadd fast double %[[predx]], 1.000000e+00
 ; CHECK-NEXT:   store double %[[postdx]], double* %"x'", align 8
+; CHECK-NEXT:   br label %invertentry
+
+; CHECK: invertif.end3:                                          ; preds = %entry
+; CHECK-NEXT:   %[[div:.+]] = lshr i32 %n, 1
+; CHECK-NEXT:   %[[idxext:.+]] = zext i32 %[[div]] to i64
+; CHECK-NEXT:   %[[addptr:.+]] = getelementptr inbounds double, double* %x, i64 %[[idxext]]
+; CHECK-NEXT:   %[[addptripg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[idxext]]
+; CHECK-NEXT:   %[[sub:.+]] = sub i32 %n, %[[div]]
+; CHECK-NEXT:   %[[dsum1:.+]] = call double @differecsum.1(double* %[[addptr]], double* %[[addptripg]], i32 %[[sub]])
+; CHECK-NEXT:   %[[dsum2:.+]] = call double @differecsum.1(double* %x, double* %"x'", i32 %[[div]])
+; CHECK-NEXT:   %add = fadd fast double %[[dsum1]], %[[dsum2]]
 ; CHECK-NEXT:   br label %invertentry
 ; CHECK-NEXT: }

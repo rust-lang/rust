@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
 
 %Type = type { float, double }
 
@@ -52,11 +52,11 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %call_augmented = call { {}, double } @augmented_total(double* nonnull %dims, double* nonnull %"dims'ipge")
 ; CHECK-NEXT:   %call = extractvalue { {}, double } %call_augmented, 1
 ; CHECK-NEXT:   %flt = fptrunc double %call to float
-; CHECK-NEXT:   %"data'ipge" = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 0
 ; CHECK-NEXT:   %data = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 0
 ; CHECK-NEXT:   store float %flt, float* %data, align 4
-; CHECK-NEXT:   %0 = load float, float* %"data'ipge", align 4
-; CHECK-NEXT:   store float 0.000000e+00, float* %"data'ipge", align 4
+; CHECK-NEXT:   %[[dataipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 0
+; CHECK-NEXT:   %0 = load float, float* %[[dataipge:.+]], align 4
+; CHECK-NEXT:   store float 0.000000e+00, float* %[[dataipge:.+]], align 4
 ; CHECK-NEXT:   %1 = fpext float %0 to double
 ; CHECK-NEXT:   %[[unused:.+]] = call {} @diffetotal(double* nonnull %dims, double* nonnull %"dims'ipge", double %1, {} undef)
 ; CHECK-NEXT:   ret {} undef
@@ -87,16 +87,13 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull i8* @malloc(i64 8)
 ; CHECK-NEXT:   %0 = bitcast i8* %"malloccall'mi" to i64*
 ; CHECK-NEXT:   store i64 0, i64* %0, align 1
+; CHECK-NEXT:   %"arr'ipc" = bitcast i8* %"malloccall'mi" to double*
 ; CHECK-NEXT:   %arr = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:   store double %inp, double* %arr, align 8
-; CHECK-NEXT:   %"arr'ipc1" = bitcast i8* %"malloccall'mi" to double*
-; CHECK-NEXT:   %call.i_augmented = call { {}, double* } @augmented_sub(double* %arr, double*{{( nonnull)?}} %"arr'ipc1")
-; CHECK-NEXT:   %"arr'ipc" = bitcast i8* %"malloccall'mi" to double*
+; CHECK-NEXT:   %call.i_augmented = call { {}, double* } @augmented_sub(double* %arr, double*{{( nonnull)?}} %"arr'ipc")
 ; CHECK-NEXT:   %1 = call {} @diffesub(double* %arr, double*{{( nonnull)?}} %"arr'ipc", {} undef)
-; CHECK-NEXT:   %"arr'ipc2" = bitcast i8* %"malloccall'mi" to double*
-; CHECK-NEXT:   %2 = load double, double* %"arr'ipc2", align 8
-; CHECK-NEXT:   %"arr'ipc3" = bitcast i8* %"malloccall'mi" to double*
-; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipc3", align 8
+; CHECK-NEXT:   %2 = load double, double* %"arr'ipc", align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipc", align 8
 ; CHECK-NEXT:   %3 = fadd fast double %2, %differeturn
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %malloccall)

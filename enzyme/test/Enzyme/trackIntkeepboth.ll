@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
 
 source_filename = "/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigen-made.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -87,23 +87,22 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %call.i.i4.i.i.i.i = call noalias i8* @malloc(i64 %mul.i.i.i.i) #3
 ; CHECK-NEXT:   %"call.i.i4.i.i.i.i'mi" = call noalias nonnull i8* @malloc(i64 %mul.i.i.i.i) #3
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"call.i.i4.i.i.i.i'mi", i8 0, i64 %mul.i.i.i.i, i1 false)
+; CHECK-NEXT:   %"res'ipc" = bitcast i8* %"call.i.i4.i.i.i.i'mi" to double*
 ; CHECK-NEXT:   %res = bitcast i8* %call.i.i4.i.i.i.i to double*
 ; CHECK-NEXT:   %div.i.i.i.i = sdiv i64 %z0, 2
 ; CHECK-NEXT:   %mul.i.i.i.i1 = shl nsw i64 %div.i.i.i.i, 1
+; CHECK-NEXT:   %"z2'ipc" = bitcast i8* %"call.i.i4.i.i.i.i'mi" to <2 x double>*
 ; CHECK-NEXT:   %z2 = bitcast i8* %call.i.i4.i.i.i.i to <2 x double>*
 ; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %z2, align 16, !tbaa !8
-; CHECK-NEXT:   %"res'ipc3" = bitcast i8* %"call.i.i4.i.i.i.i'mi" to double*
-; CHECK-NEXT:   %"arrayidx.i.i.i.i.i.i.i'ipge" = getelementptr inbounds double, double* %"res'ipc3", i64 %mul.i.i.i.i1
 ; CHECK-NEXT:   %arrayidx.i.i.i.i.i.i.i = getelementptr inbounds double, double* %res, i64 %mul.i.i.i.i1
 ; CHECK-NEXT:   %z3 = bitcast double* %arrayidx.i.i.i.i.i.i.i to i64*
 ; CHECK-NEXT:   store i64 0, i64* %z3, align 8, !tbaa !9
 ; CHECK-NEXT:   %lhs_unwrap = bitcast %"class.Eigen::Matrix"* %W to i64*
-; CHECK-NEXT:   %"lhs'ipc" = bitcast %"class.Eigen::Matrix"* %"W'" to i64*
-; CHECK-NEXT:   %"res'ipc" = bitcast i8* %"call.i.i4.i.i.i.i'mi" to double*
-; CHECK-NEXT:   %0 = call {} @diffesubfn(i64* %lhs_unwrap, i64* %"lhs'ipc", double* %res, double*{{( nonnull)?}} %"res'ipc", i1 true)
-; CHECK-NEXT:   %"z3'ipc" = bitcast double* %"arrayidx.i.i.i.i.i.i.i'ipge" to i64*
-; CHECK-NEXT:   store i64 0, i64* %"z3'ipc", align 8
-; CHECK-NEXT:   %"z2'ipc" = bitcast i8* %"call.i.i4.i.i.i.i'mi" to <2 x double>*
+; CHECK-NEXT:   %[[lhsipc:.+]] = bitcast %"class.Eigen::Matrix"* %"W'" to i64*
+; CHECK-NEXT:   %0 = call {} @diffesubfn(i64* %lhs_unwrap, i64* %[[lhsipc]], double* %res, double*{{( nonnull)?}} %"res'ipc", i1 true)
+; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double, double* %"res'ipc", i64 %mul.i.i.i.i1
+; CHECK-NEXT:   %[[z3ipc:.+]] = bitcast double* %[[arrayidxipge]] to i64*
+; CHECK-NEXT:   store i64 0, i64* %[[z3ipc]], align 8
 ; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %"z2'ipc", align 16
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"call.i.i4.i.i.i.i'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %call.i.i4.i.i.i.i)
@@ -120,18 +119,18 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %cond.i.i.i = select i1 %cmp.i.i.i, i64 %a2, i64 0
 ; CHECK-NEXT:   %cmp17 = icmp eq i64 %cond.i.i.i, %a0
 ; CHECK-NEXT:   %idx = zext i1 %cmp17 to i64
-; CHECK-NEXT:   %"arrayidx.i.i814'ipge" = getelementptr inbounds double, double* %[[a2p]], i64 %idx
 ; CHECK-NEXT:   %arrayidx.i.i814 = getelementptr inbounds double, double* %a3, i64 %idx
 ; CHECK-NEXT:   %a4 = bitcast double* %arrayidx.i.i814 to i64*
 ; CHECK-NEXT:   %a51 = load i64, i64* %a4, align 8
 ; CHECK-NEXT:   %a5 = bitcast double* %argres to i64*
 ; CHECK-NEXT:   store i64 %a51, i64* %a5, align 8
+; CHECK-NEXT:   %[[a5ipc:.+]] = bitcast double* %"argres'" to i64*
 ; CHECK-NEXT:   %1 = load double, double* %"argres'", align 8
-; CHECK-NEXT:   %"a5'ipc1" = bitcast double* %"argres'" to i64*
-; CHECK-NEXT:   store i64 0, i64* %"a5'ipc1", align 8
-; CHECK-NEXT:   %2 = load double, double* %"arrayidx.i.i814'ipge", align 8
+; CHECK-NEXT:   store i64 0, i64* %[[a5ipc]], align 8
+; CHECK-NEXT:   %[[arrayidxi814ipge:.+]] = getelementptr inbounds double, double* %[[a2p]], i64 %idx
+; CHECK-NEXT:   %2 = load double, double* %[[arrayidxi814ipge]], align 8
 ; CHECK-NEXT:   %3 = fadd fast double %2, %1
-; CHECK-NEXT:   store double %3, double* %"arrayidx.i.i814'ipge", align 8
+; CHECK-NEXT:   store double %3, double* %[[arrayidxi814ipge]], align 8
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

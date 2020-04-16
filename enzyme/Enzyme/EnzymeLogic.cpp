@@ -665,6 +665,7 @@ public:
     if (cache_reads_always || (!cache_reads_never && gutils->can_modref_map->find(orig)->second && is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(&LI), /*toplevel*/mode == DerivativeMode::Both))) {
       IRBuilder<> BuilderZ(LI.getNextNode());
       auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
+
       inst = gutils->addMalloc(BuilderZ, &LI, getIndex(orig, "self"));
       assert(inst->getType() == type);
 
@@ -2049,6 +2050,15 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
     if (called && (called->getName() == "printf" || called->getName() == "puts"))
         return;
 
+    // Handle lgamma, safe to recompute so no store/change to forward
+    if (called) {
+      auto n = called->getName();
+      if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
+        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite" ) {
+        return;
+      }
+    }
+
     if (called && (called->getName()=="malloc" || called->getName()=="_Znwm")) {
         if (is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false)) {
             IRBuilder<> BuilderZ(op);
@@ -2408,6 +2418,16 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
     llvm::errs() << "deleting without new " << *val << "\n";
     gutils->erase(op);
     return;
+  }
+
+  // Handle lgamma, safe to recompute so no store/change to forward
+  if (called) {
+    //TODO use doing a different location for the r variants
+      auto n = called->getName();
+      if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
+        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite" ) {
+        return;
+      }
   }
 
   //llvm::errs() << " considering op: " << *op << " isConstantInstruction:" << gutils->isConstantInstruction(op) << " subretused: " << subretused << " !op->doesNotAccessMemory: " << !op->doesNotAccessMemory() << "\n";

@@ -65,7 +65,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK: for.cond3.preheader:                              ; preds = %for.cond.cleanup6, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.cond.cleanup6 ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
-; CHECK-NEXT:   %[[mallocgep1:.+]] = getelementptr double*, double** %call_malloccache, i64 %iv
+; CHECK-NEXT:   %[[mallocgep1:.+]] = getelementptr inbounds double*, double** %call_malloccache, i64 %iv
 ; CHECK-NEXT:   %mallocsize3 = mul i64 %iv.next, 8
 ; CHECK-NEXT:   %malloccall4 = tail call noalias nonnull i8* @malloc(i64 %mallocsize3)
 ; CHECK-NEXT:   %call_malloccache5 = bitcast i8* %malloccall4 to double*
@@ -77,7 +77,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %iv.next2 = add nuw i64 %iv1, 1
 ; CHECK-NEXT:   %[[augmented:.+]] = call { {}, double } @augmented_get(double* %x, double* %"x'", i64 undef, i64 %iv1)
 ; CHECK-NEXT:   %[[retval:.+]] = extractvalue { {}, double } %[[augmented]], 1
-; CHECK-NEXT:   %[[mallocgep2:.+]] = getelementptr double, double* %call_malloccache5, i64 %iv1
+; CHECK-NEXT:   %[[mallocgep2:.+]] = getelementptr inbounds double, double* %call_malloccache5, i64 %iv1
 ; CHECK-NEXT:   store double %[[retval]], double* %[[mallocgep2]], align 8, !invariant.group !1
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv1, %iv
 ; CHECK-NEXT:   br i1 %exitcond, label %for.cond.cleanup6, label %for.body7
@@ -102,7 +102,7 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: invertfor.body7:
 ; CHECK-NEXT:   %[[iv1:.+]] = phi i64 [ %[[iv]], %invertfor.cond.cleanup6 ], [ %[[subinner:.+]], %incinvertfor.body7 ]
-; CHECK-NEXT:   %[[invertedgep2:.+]] = getelementptr double, double* %[[innerdata]], i64 %[[iv1]]
+; CHECK-NEXT:   %[[invertedgep2:.+]] = getelementptr inbounds double, double* %[[innerdata]], i64 %[[iv1]]
 ; CHECK-NEXT:   %[[cached:.+]] = load double, double* %[[invertedgep2]], align 8, !invariant.group !1
 ; CHECK-NEXT:   %m0diffecall = fmul fast double %differeturn, %[[cached]]
 ; CHECK-NEXT:   %[[innerdiffe:.+]] = fadd fast double %m0diffecall, %m0diffecall
@@ -116,7 +116,7 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: invertfor.cond.cleanup6:
 ; CHECK-NEXT:   %[[iv]] = phi i64 [ %[[subouter]], %incinvertfor.cond3.preheader ], [ %n, %for.cond.cleanup6 ]
-; CHECK-NEXT:   %[[invertedgep1:.+]] = getelementptr double*, double** %call_malloccache, i64 %[[iv]]
+; CHECK-NEXT:   %[[invertedgep1:.+]] = getelementptr inbounds double*, double** %call_malloccache, i64 %[[iv]]
 ; CHECK-NEXT:   %[[innerdata]] = load double*, double** %[[invertedgep1]], align 8, !invariant.group !0
 ; CHECK-NEXT:   br label %invertfor.body7
 ; CHECK-NEXT: }

@@ -31,7 +31,7 @@ loop2:
   %k = phi i64 [ %nextk, %loop2 ], [ 0, %loop1 ]
   %res = phi double [ %add, %loop2 ], [ %res1, %loop1 ]
   %nextk = add nuw nsw i64 %k, 1
-  %gepk3 = getelementptr inbounds double, double* %data, i64 %k
+  %gepk3 = getelementptr double, double* %data, i64 %k
   %datak = load double, double* %gepk3
   %add = fadd fast double %datak, %res
   %exitcond3 = icmp eq i64 %nextk, %a19
@@ -60,11 +60,11 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %res2_augmented = call { {} } @augmented_identity(double %res)
 ; CHECK-NEXT:   store i64 0, i64* %a4, align 4
 ; CHECK-NEXT:   store double 0.000000e+00, double* %data, align 8
-; CHECK-NEXT:   %0 = extractvalue { { i64, i64* }, double } %res_augmented, 0
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"data'", align 8
-; CHECK-NEXT:   %1 = call { double } @diffeidentity(double %res, double %differeturn, {} undef)
-; CHECK-NEXT:   %2 = extractvalue { double } %1, 0
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffebadfunc(double* %data, double* %"data'", i64* %a4, double %2, { i64, i64* } %0)
+; CHECK-NEXT:   %[[identr:.+]] = call { double } @diffeidentity(double %res, double %differeturn, {} undef)
+; CHECK-NEXT:   %[[iev:.+]] = extractvalue { double } %[[identr]], 0
+; CHECK-NEXT:   %[[resev:.+]] = extractvalue { { i64, i64* }, double } %res_augmented, 0
+; CHECK-NEXT:   %[[unused:.+]] = call {} @diffebadfunc(double* %data, double* %"data'", i64* %a4, double %[[iev]], { i64, i64* } %[[resev]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
@@ -75,8 +75,8 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 
 ; CHECK: define internal { double } @diffeidentity(double %res, double %differeturn, {} %tapeArg) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = insertvalue { double } undef, double %differeturn, 0
-; CHECK-NEXT:   ret { double } %0
+; CHECK-NEXT:   %[[drt:.+]] = insertvalue { double } undef, double %differeturn, 0
+; CHECK-NEXT:   ret { double } %[[drt]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal { { i64, i64* }, double } @augmented_badfunc(double* %data, double* %"data'", i64* %a4) {
@@ -92,7 +92,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %res1 = phi double [ %add, %exit ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
 ; CHECK-NEXT:   %a19 = load i64, i64* %a4, align 4
-; CHECK-NEXT:   %0 = getelementptr i64, i64* %a19_malloccache, i64 %iv
+; CHECK-NEXT:   %0 = getelementptr inbounds i64, i64* %a19_malloccache, i64 %iv
 ; CHECK-NEXT:   store i64 %a19, i64* %0, align 8, !invariant.group !0
 ; CHECK-NEXT:   store i64 %iv.next, i64* %a4, align 4
 ; CHECK-NEXT:   br label %loop2
@@ -101,7 +101,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %loop2 ], [ 0, %loop1 ]
 ; CHECK-NEXT:   %res = phi double [ %add, %loop2 ], [ %res1, %loop1 ]
 ; CHECK-NEXT:   %iv.next2 = add nuw i64 %iv1, 1
-; CHECK-NEXT:   %gepk3 = getelementptr inbounds double, double* %data, i64 %iv1
+; CHECK-NEXT:   %gepk3 = getelementptr double, double* %data, i64 %iv1
 ; CHECK-NEXT:   %datak = load double, double* %gepk3, align 8
 ; CHECK-NEXT:   %add = fadd fast double %datak, %res
 ; CHECK-NEXT:   %exitcond3 = icmp eq i64 %iv.next2, %a19
@@ -128,7 +128,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK: loop1:                                            ; preds = %exit, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %exit ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
-; CHECK-NEXT:   %1 = getelementptr i64, i64* %0, i64 %iv
+; CHECK-NEXT:   %1 = getelementptr inbounds i64, i64* %[[a19cache]], i64 %iv
 ; CHECK-NEXT:   %a19 = load i64, i64* %1, align 8, !invariant.group !1
 ; CHECK-NEXT:   br label %loop2
 
@@ -158,7 +158,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK: invertloop2:
 ; CHECK-NEXT:   %"res1'de.0" = phi double [ 0.000000e+00, %invertexit ], [ %[[dres]], %invertloop2 ]
 ; CHECK-NEXT:   %"add'de.0" = phi double [ %[[add1p:.+]], %invertexit ], [ %[[dadd]], %invertloop2 ]
-; CHECK-NEXT:   %"iv1'ac.0.in" = phi i64 [ %[[iv1p:.+]], %invertexit ], [ %"iv1'ac.0", %incinvertloop2 ]
+; CHECK-NEXT:   %"iv1'ac.0.in" = phi i64 [ %[[iv1p:.+]], %invertexit ], [ %"iv1'ac.0", %invertloop2 ]
 ; CHECK-NEXT:   %"iv1'ac.0" = add i64 %"iv1'ac.0.in", -1
 ; CHECK-NEXT:   %"gepk3'ipg" = getelementptr double, double* %"data'", i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %[[linv:.+]] = load double, double* %"gepk3'ipg", align 8
@@ -176,7 +176,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %"iv'ac.0" = add i64 %"iv'ac.0.in", -1
 ; CHECK-NEXT:   %[[datap:.+]] = load double, double* %"data'", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"data'", align 8
-; CHECK-NEXT:   %[[mci:.+]] = getelementptr i64, i64* %a19cache, i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[mci:.+]] = getelementptr inbounds i64, i64* %a19cache, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[iv1p]] = load i64, i64* %[[mci]], align 8
 ; CHECK-NEXT:   %[[add1p]] = fadd fast double %"add'de.1", %[[datap]]
 ; CHECK-NEXT:   br label %invertloop2

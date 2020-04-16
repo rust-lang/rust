@@ -123,6 +123,14 @@ public:
   Instruction* getNewFromOriginal(Instruction* newinst) const {
     return cast<Instruction>(getNewFromOriginal((Value*)newinst));
   }
+
+  Value* hasUninverted(Value* inverted) const {
+    for(auto v: invertedPointers) {
+        if (v.second == inverted) return const_cast<Value*>(v.first);
+    }
+    return nullptr;
+  }
+
   Value* getOriginal(Value* newinst) const {
     for(auto v: originalToNewFn) {
         if (v.second == newinst) return const_cast<Value*>(v.first);
@@ -151,6 +159,7 @@ private:
   std::map<std::pair<Value*, BasicBlock*>, Value*> unwrap_cache;
   std::map<std::pair<Value*, BasicBlock*>, Value*> lookup_cache;
 public:
+  bool legalRecompute(Value* val, const ValueToValueMapTy& available);
   bool shouldRecompute(Value* val, const ValueToValueMapTy& available);
 
   void replaceAWithB(Value* A, Value* B) {
@@ -485,7 +494,16 @@ public:
                 assert(isa<PointerType>(innerType));
                 innerType = cast<PointerType>(innerType)->getElementType();
             }
-            if (malloc) assert(innerType == malloc->getType());
+            if (malloc) {
+              if (innerType != malloc->getType()) {
+                llvm::errs() << *cast<Instruction>(malloc)->getParent()->getParent() << "\n";
+                llvm::errs() << "innerType: " << *innerType << "\n";
+                llvm::errs() << "malloc->getType(): " << *malloc->getType() << "\n";
+                llvm::errs() << "ret: " << *ret << "\n";
+                llvm::errs() << "malloc: " << *malloc << "\n";
+              }
+              assert(innerType == malloc->getType());
+            }
 
             AllocaInst* cache = createCacheForScope(BuilderQ.GetInsertBlock(), innerType, "mdyncache_fromtape", true, false);
             entryBuilder.CreateStore(ret, cache);
@@ -1061,7 +1079,12 @@ public:
     assert(val);
     assert(val->getName() != "<badref>");
 
-    assert(!val->getName().startswith("$truetape"));
+    if (isa<LoadInst>(val) && cast<LoadInst>(val)->getMetadata("enzyme_mustcache")) {
+      return val;
+    }
+
+    //assert(!val->getName().startswith("$tapeload"));
+
 
     auto cidx = std::make_pair(val, BuilderM.GetInsertBlock());
     if (unwrap_cache.find(cidx) != unwrap_cache.end()) {
@@ -1199,6 +1222,7 @@ public:
           ind.push_back(op);
         }
         auto toreturn = BuilderM.CreateGEP(ptr, ind, inst->getName() + "_unwrap");
+        cast<GetElementPtrInst>(toreturn)->setIsInBounds(inst->isInBounds());
         if (cached) {
               unwrap_cache[cidx] = toreturn;
         }
@@ -1318,7 +1342,7 @@ endCheck:
                 IRBuilder <> allocationBuilder(&allocationPreheaders[i]->back());
                 Value* limitMinus1 = nullptr;
 
-                if (shouldRecompute(contexts[i].limit, emptyMap)) {
+                if (legalRecompute(contexts[i].limit, emptyMap)) {
                     limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
                 }
 
@@ -1528,8 +1552,10 @@ endCheck:
                 //TODO
                 if (!sublimits[i].second.back().first.dynamic) {
                     storeInto = v.CreateGEP(v.CreateLoad(storeInto), sublimits[i].second.back().first.var);
+                    cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
                 } else {
                     storeInto = v.CreateGEP(v.CreateLoad(storeInto), sublimits[i].second.back().first.var);
+                    cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
                 }
             }
         }
@@ -1604,6 +1630,7 @@ endCheck:
                   idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[ind], limits[ind-1]));
                 }
                 next = BuilderM.CreateGEP(next, {idx});
+                cast<GetElementPtrInst>(next)->setIsInBounds(true);
                 if (storeInStoresMap && isa<AllocaInst>(cache)) scopeStores[cast<AllocaInst>(cache)].push_back(next);
             }
             assert(next->getType()->isPointerTy());
@@ -1917,6 +1944,7 @@ public:
       for(auto i : idxs)
         sv.push_back(i);
       Value* ptr = BuilderM.CreateGEP(getDifferential(val), sv);
+      cast<GetElementPtrInst>(ptr)->setIsInBounds(true);
       Value* old = BuilderM.CreateLoad(ptr);
 
       Value* res = nullptr;

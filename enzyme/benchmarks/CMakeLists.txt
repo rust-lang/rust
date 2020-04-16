@@ -48,3 +48,5 @@ add_subdirectory(nn)
 add_subdirectory(taylorlog)
 add_subdirectory(logsumexp)
 add_subdirectory(matdescent)
+
+add_subdirectory(gmm)

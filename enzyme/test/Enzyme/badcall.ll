@@ -43,9 +43,9 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:	%[[augsubf:.+]] = call { { {}, double } } @augmented_subf(double* %x, double* %"x'")
-; CHECK-NEXT:	%[[subfret:.+]] = extractvalue { { {}, double } } %[[augsubf]], 0
 ; CHECK-NEXT:	store double 2.000000e+00, double* %x, align 8
 ; CHECK-NEXT:	store double 0.000000e+00, double* %"x'"
+; CHECK-NEXT:	%[[subfret:.+]] = extractvalue { { {}, double } } %[[augsubf]], 0
 ; CHECK-NEXT:	%[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, double } %[[subfret]])
 ; CHECK-NEXT:	ret {} undef
 ; CHECK-NEXT: }

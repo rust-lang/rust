@@ -86,7 +86,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %arrayidx2.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %[[added]]
 ; CHECK-NEXT:   %.pre = load double, double* %arrayidx2.phi.trans.insert, align 8, !tbaa !2
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %cond.i12, %.pre
-; CHECK-NEXT:   %[[ptrstore:.+]] = getelementptr i8, i8* %malloccall, i64 %[[indvar]]
+; CHECK-NEXT:   %[[ptrstore:.+]] = getelementptr inbounds i8, i8* %malloccall, i64 %[[indvar]]
 ; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %[[ptrstore]] to i1*
 ; CHECK-NEXT:   store i1 %cmp.i, i1* %[[storeloc]]
 ; CHECK-NEXT:   %cond.i = select i1 %cmp.i, double %cond.i12, double %.pre
@@ -108,11 +108,11 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[iforde:.+]] = phi double [ %[[diffecond]], %[[thelabel]] ], [ 1.000000e+00, %for.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[iin:.+]] = phi i64 [ %[[isub:.+]], %[[thelabel]] ], [ %n, %for.body.for.body_crit_edge ] 
 ; CHECK-NEXT:   %[[isub]] = add i64 %[[iin]], -1
-; CHECK-NEXT:   %[[cmpcache:.+]] = getelementptr i1, i1* %cmp.i_malloccache, i64 %[[isub]]
+; CHECK-NEXT:   %[[cmpcache:.+]] = getelementptr inbounds i1, i1* %cmp.i_malloccache, i64 %[[isub]]
 ; CHECK-NEXT:   %[[toselect:.+]] = load i1, i1* %[[cmpcache]]
 ; CHECK-NEXT:   %[[diffecond]] = select{{( fast)?}} i1 %[[toselect]], double %[[iforde]], double 0.000000e+00
 ; CHECK-NEXT:   %[[diffepre:.+]] = select{{( fast)?}} i1 %[[toselect]], double 0.000000e+00, double %[[iforde]]
-; CHECK-NEXT:   %"arrayidx2.phi.trans.insert'ipg" = getelementptr double, double* %"x'", i64 %[[iin]]
+; CHECK-NEXT:   %"arrayidx2.phi.trans.insert'ipg" = getelementptr inbounds double, double* %"x'", i64 %[[iin]]
 ; CHECK-NEXT:   %[[prear:.+]] = load double, double* %"arrayidx2.phi.trans.insert'ipg"
 ; CHECK-NEXT:   %[[arradd:.+]] = fadd fast double %[[prear]], %[[diffepre]]
 ; CHECK-NEXT:   store double %[[arradd]], double* %"arrayidx2.phi.trans.insert'ipg"

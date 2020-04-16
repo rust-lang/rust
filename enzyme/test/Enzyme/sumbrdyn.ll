@@ -56,7 +56,7 @@ attributes #2 = { nounwind }
 
 ; CHECK: invertfor.body.i: 
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[iv]], %for.cond.cleanup.i ], [ %[[sub:.+]], %incinvertfor.body.i ]
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antivar]]
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr inbounds double, double* %xp, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[load:.+]] = load double, double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[load]], 1.000000e+00
 ; CHECK-NEXT:   store double %[[add]], double* %"arrayidx'ipg.i"

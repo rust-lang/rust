@@ -69,13 +69,13 @@ attributes #2 = { nounwind }
 
 ; CHECK: define internal { double } @diffeindirect(double (double)* nocapture %callee, double (double)* %"callee'", double %x, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = bitcast double (double)* %"callee'" to { i8*, double } (double)**
-; CHECK-NEXT:   %1 = load { i8*, double } (double)*, { i8*, double } (double)** %0
-; CHECK-NEXT:   %call_augmented = call { i8*, double } %1(double %x)
-; CHECK-NEXT:   %2 = extractvalue { i8*, double } %call_augmented, 0
-; CHECK-NEXT:   %3 = bitcast double (double)* %"callee'" to { double } (double, double, i8*)**
-; CHECK-NEXT:   %4 = getelementptr { double } (double, double, i8*)*, { double } (double, double, i8*)** %3, i64 1
-; CHECK-NEXT:   %5 = load { double } (double, double, i8*)*, { double } (double, double, i8*)** %4
-; CHECK-NEXT:   %6 = call { double } %5(double %x, double %differeturn, i8* %2)
-; CHECK-NEXT:   ret { double } %6
+; CHECK-NEXT:   %[[augloc:.+]] = bitcast double (double)* %"callee'" to { i8*, double } (double)**
+; CHECK-NEXT:   %[[augmentptr:.+]] = load { i8*, double } (double)*, { i8*, double } (double)** %[[augloc]]
+; CHECK-NEXT:   %call_augmented = call { i8*, double } %[[augmentptr]](double %x)
+; CHECK-NEXT:   %[[dcst:.+]] = bitcast double (double)* %"callee'" to { double } (double, double, i8*)**
+; CHECK-NEXT:   %[[dptrloc:.+]] = getelementptr { double } (double, double, i8*)*, { double } (double, double, i8*)** %[[dcst]], i64 1
+; CHECK-NEXT:   %[[diffeptr:.+]] = load { double } (double, double, i8*)*, { double } (double, double, i8*)** %[[dptrloc]]
+; CHECK-NEXT:   %[[tape:.+]] = extractvalue { i8*, double } %call_augmented, 0
+; CHECK-NEXT:   %[[ret:.+]] = call { double } %[[diffeptr]](double %x, double %differeturn, i8* %[[tape]])
+; CHECK-NEXT:   ret { double } %[[ret:.+]]
 ; CHECK-NEXT: }

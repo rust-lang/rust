@@ -214,6 +214,13 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
     llvm::errs() << "postfn:\n" << *newFunc << "\n";
   Builder.setFastMathFlags(getFast());
 
+  #if 0
+  llvm::errs() << "newFunc: " << *newFunc << "\n";
+  for(auto a : args) {
+    llvm::errs() << " + arg: " << *a << "\n";
+  }
+  #endif
+
   CallInst* diffret = cast<CallInst>(Builder.CreateCall(newFunc, args));
   diffret->setCallingConv(CI->getCallingConv());
   diffret->setDebugLoc(CI->getDebugLoc());

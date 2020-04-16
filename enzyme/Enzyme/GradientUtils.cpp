@@ -100,10 +100,49 @@
     }
   }
 
+bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& available) {
+  if (available.count(val)) return true;
+  if (isa<PHINode>(val)) return false;
+
+  if (isa<Instruction>(val) && cast<Instruction>(val)->getMetadata("enzyme_mustcache")) return false;
+
+  //TODO consider callinst here
+
+  if (auto li = dyn_cast<LoadInst>(val)) {
+    if (originalInstructions.find(li) != originalInstructions.end()) {
+        auto found = can_modref_map->find(getOriginal(li));
+        if(found == can_modref_map->end()) {
+            llvm::errs() << "can_modref_map:\n";
+            for(auto& pair : *can_modref_map) {
+                llvm::errs() << " + " << *pair.first << ": " << pair.second << " of func " << pair.first->getParent()->getParent()->getName() << "\n";
+            }
+            llvm::errs() << "couldn't find in can_modref_map: " << *getOriginal(li) << " in fn: " << getOriginal(li)->getParent()->getParent()->getName();
+        }
+        assert(found != can_modref_map->end());
+        //llvm::errs() << " legal [ " << legalRecompute << " ] recompute of " << *inst << "\n";
+        return !found->second;
+    } else {
+      if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(li))) {
+        return legalRecompute(dli, available);
+      }
+    }
+  }
+
+  return true;
+}
+
 //! Given the option to recompute a value or re-use an old one, return true if it is faster to recompute this value from scratch
 bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& available) {
   if (available.count(val)) return true;
   //TODO: remake such that this returns whether a load to a cache is more expensive than redoing the computation.
+
+  // if this has operands that need to be loaded and haven't already been loaded (TODO), just cache this
+  if (auto inst = dyn_cast<Instruction>(val)) {
+    for(auto &op : inst->operands()) {
+      if (!legalRecompute(op, available)) return false;
+    }
+  }
+
   if (auto op = dyn_cast<IntrinsicInst>(val)) {
     switch(op->getIntrinsicID()) {
       case Intrinsic::sin:
@@ -268,8 +307,9 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
 
       return BuilderM.CreatePointerCast(GV, fn->getType());
     } else if (auto arg = dyn_cast<CastInst>(val)) {
-      auto result = BuilderM.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), BuilderM), arg->getDestTy(), arg->getName()+"'ipc");
-      return result;
+      IRBuilder<> bb(arg);
+      invertedPointers[arg] = bb.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), bb), arg->getDestTy(), arg->getName()+"'ipc");
+      return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<ConstantExpr>(val)) {
       if (arg->isCast()) {
           auto result = ConstantExpr::getCast(arg->getOpcode(), cast<Constant>(invertPointerM(arg->getOperand(0), BuilderM)), arg->getType());
@@ -396,6 +436,8 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
           invertargs.push_back(b);
       }
       auto result = BuilderM.CreateGEP(invertPointerM(arg->getPointerOperand(), BuilderM), invertargs, arg->getName()+"'ipg");
+      if (auto gep = dyn_cast<GetElementPtrInst>(result))
+        gep->setIsInBounds(arg->isInBounds());
       return result;
     } else if (auto inst = dyn_cast<AllocaInst>(val)) {
         IRBuilder<> bb(inst);
@@ -868,24 +910,9 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
 
     if (available.count(inst)) return available[inst];
 
-    //TODO consider call as part of legalRecompute
-    bool legalRecompute = !isa<PHINode>(inst);
-    legalRecompute &= inst->getMetadata("enzyme_mustcache") == nullptr;
-    if (isa<LoadInst>(inst) && originalInstructions.find(inst) != originalInstructions.end()) {
-        auto found = can_modref_map->find(getOriginal(inst));
-        if(found == can_modref_map->end()) {
-            llvm::errs() << "can_modref_map:\n";
-            for(auto& pair : *can_modref_map) {
-                llvm::errs() << " + " << *pair.first << ": " << pair.second << " of func " << pair.first->getParent()->getParent()->getName() << "\n";
-            }
-            llvm::errs() << "couldn't find in can_modref_map: " << *getOriginal(inst) << " in fn: " << getOriginal(inst)->getParent()->getParent()->getName();
-        }
-        assert(found != can_modref_map->end());
-        legalRecompute &= !found->second;
-        //llvm::errs() << " legal [ " << legalRecompute << " ] recompute of " << *inst << "\n";
-    }
-
-    if (legalRecompute) {
+    //TODO consider call as part of
+    //llvm::errs() << " considering " << *inst << " legal: " << legalRecompute(inst, available) << " should: " << shouldRecompute(inst, available) << "\n";
+    if (legalRecompute(inst, available)) {
       if (shouldRecompute(inst, available)) {
           //llvm::errs() << "for op " << *inst << " choosing to unwrap\n";
           auto op = unwrapM(inst, BuilderM, available, /*lookupIfAble*/false, /*fullUnwrap*/false);

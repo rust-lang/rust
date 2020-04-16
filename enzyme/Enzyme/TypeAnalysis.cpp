@@ -840,6 +840,10 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
     auto pointerAnalysis = getAnalysis(gep.getPointerOperand());
     updateAnalysis(&gep, pointerAnalysis.KeepMinusOne(), &gep);
 
+    if (isa<UndefValue>(gep.getPointerOperand())) {
+        return;
+    }
+
     std::vector<std::set<Value*>> idnext;
 
     std::map<Value*, std::set<int64_t>> intseen;
@@ -857,6 +861,7 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
             updateAnalysis(ind, IntType::Integer, &gep);
         }
     }
+
 
 
 
@@ -905,6 +910,7 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
             llvm::errs() << "  + pa unmerge: " << pointerAnalysis.UnmergeIndices(off, maxSize).str() << "\n";
         }
         */
+        //llvm::errs() << "gep: " << gep << "\n";
 
         updateAnalysis(&gep, pointerAnalysis.UnmergeIndices(off, maxSize), &gep);
 
@@ -1197,6 +1203,13 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 		if (ci->getName() == "malloc") {
 			updateAnalysis(call.getArgOperand(0), IntType::Integer, &call);
 		}
+
+        if (ci->getName() == "__lgamma_r_finite") {
+            updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
+            updateAnalysis(call.getArgOperand(1), ValueData(IntType::Integer).Only({0}), &call);
+
+        }
+
 
 		//If memcpy / memmove of pointer, we can propagate type information from src to dst up to the length and vice versa
 		if (ci->getIntrinsicID() == Intrinsic::memcpy || ci->getIntrinsicID() == Intrinsic::memmove) {

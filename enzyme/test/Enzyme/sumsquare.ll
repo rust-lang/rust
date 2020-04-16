@@ -41,10 +41,10 @@ attributes #2 = { nounwind }
 
 ; CHECK: invertfor.body.i:
 ; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %n, %entry ], [ %[[antiivnext:.+]], %incinvertfor.body.i ]
-; CHECK-NEXT:   %[[ptr:.+]] = getelementptr double, double* %x, i64 %[[antiiv]]
+; CHECK-NEXT:   %[[ptr:.+]] = getelementptr inbounds double, double* %x, i64 %[[antiiv]]
 ; CHECK-NEXT:   %[[prev:.+]] = load double, double* %[[ptr]]
 ; CHECK-NEXT:   %[[times2:.+]] = fadd fast double %[[prev]], %[[prev]]
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antiiv]]
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr inbounds double, double* %xp, i64 %[[antiiv]]
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded:.+]], %[[times2]]
 ; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx'ipg.i"

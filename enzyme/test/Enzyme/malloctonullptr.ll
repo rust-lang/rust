@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
 
 source_filename = "/mnt/Data/git/Enzyme/enzyme/test/Integration/eigentensor.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -1207,8 +1207,7 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[callpmi:.+]] = extractvalue { i8* } %tapeArg, 0
 ; CHECK-NEXT:   %[[a0ipc:.+]] = bitcast i8* %[[callpmi:.+]] to float*
 ; CHECK-NEXT:   %0 = load float, float* %[[a0ipc]], align 4
-; CHECK-NEXT:   %[[a0ipc1:.+]] = bitcast i8* %[[callpmi:.+]] to float*
-; CHECK-NEXT:   store float 0.000000e+00, float* %[[a0ipc1]], align 4
+; CHECK-NEXT:   store float 0.000000e+00, float* %[[a0ipc]], align 4
 ; CHECK-NEXT:   %1 = load float, float* %"K'", align 4
 ; CHECK-NEXT:   %2 = fadd fast float %1, %0
 ; CHECK-NEXT:   store float %2, float* %"K'", align 4

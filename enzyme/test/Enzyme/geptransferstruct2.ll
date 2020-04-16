@@ -35,10 +35,10 @@ declare double @__enzyme_autodiff(i8*, ...)
 
 ; CHECK: define internal {} @diffecallee(i64* %ptr, i64* %"ptr'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"ptr2'ipge" = getelementptr inbounds i64, i64* %"ptr'", i64 2
 ; CHECK-NEXT:   %ptr2 = getelementptr inbounds i64, i64* %ptr, i64 2
+; CHECK-NEXT:   %[[ptr2ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 2
 ; CHECK-NEXT:   %loadnotype = load i64, i64* %ptr2, align 4
-; CHECK-NEXT:   %"ptr3'ipge" = getelementptr inbounds i64, i64* %"ptr'", i64 3
+; CHECK-NEXT:   %[[ptr3ipge:.+]] = getelementptr inbounds i64, i64* %"ptr'", i64 3
 ; CHECK-NEXT:   %ptr3 = getelementptr inbounds i64, i64* %ptr, i64 3
 ; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr3, align 4, !tbaa !0
 ; CHECK-NEXT:   %0 = getelementptr inbounds i64, i64* %"ptr'", i64 2
@@ -53,11 +53,11 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   %7 = fadd fast double %6, %4
 ; CHECK-NEXT:   %8 = bitcast i64* %0 to double*
 ; CHECK-NEXT:   store double %7, double* %8, align 8
-; CHECK-NEXT:   %9 = bitcast i64* %"ptr3'ipge" to double*
+; CHECK-NEXT:   %9 = bitcast i64* %[[ptr3ipge]] to double*
 ; CHECK-NEXT:   %10 = load double, double* %9, align 8
-; CHECK-NEXT:   store i64 0, i64* %"ptr3'ipge", align 4
+; CHECK-NEXT:   store i64 0, i64* %[[ptr3ipge]], align 4
 ; CHECK-NEXT:   %11 = fadd fast double %7, %10
-; CHECK-NEXT:   %12 = bitcast i64* %"ptr2'ipge" to double*
+; CHECK-NEXT:   %12 = bitcast i64* %[[ptr2ipge]] to double*
 ; CHECK-NEXT:   store double %11, double* %12, align 8
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

@@ -52,9 +52,9 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augsubf:.+]] = call { { {}, i1, {}, i1, double } } @augmented_subf(double* %x, double* %"x'")
-; CHECK-NEXT:   %[[augcache:.+]] = extractvalue { { {}, i1, {}, i1, double } } %[[augsubf]], 0
 ; CHECK-NEXT:   store double 2.000000e+00, double* %x, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
+; CHECK-NEXT:   %[[augcache:.+]] = extractvalue { { {}, i1, {}, i1, double } } %[[augsubf]], 0
 ; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, i1, {}, i1, double } %[[augcache]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

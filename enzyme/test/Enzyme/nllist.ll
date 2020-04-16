@@ -221,33 +221,33 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull i8* @malloc(i64 16) #4
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
 ; CHECK-NEXT:   %next.i = getelementptr inbounds i8, i8* %call.i, i64 8
-; CHECK-NEXT:   %[[bc4:.+]] = bitcast i8* %next.i to %struct.n**
-; CHECK-NEXT:   %"next'ipg.i" = getelementptr i8, i8* %"call'mi.i", i64 8
+; CHECK-NEXT:   %"next'ipg.i" = getelementptr inbounds i8, i8* %"call'mi.i", i64 8
 ; CHECK-NEXT:   %[[thisipc:.+]] = bitcast i8* %"next'ipg.i" to %struct.n**
+; CHECK-NEXT:   %[[bc4:.+]] = bitcast i8* %next.i to %struct.n**
 ; CHECK-NEXT:   store %struct.n* %[[dstruct]], %struct.n** %[[thisipc]]
-; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
+; CHECK-NEXT:   %[[callgep:.+]] = getelementptr inbounds i8*, i8** %call_malloccache.i, i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %call.i, i8** %[[callgep]]
-; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[iv]]
+; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache.i", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
 ; CHECK-NEXT:   store %struct.n* %list.029.i, %struct.n** %[[bc4]], align 8, !tbaa !7
 ; CHECK-NEXT:   %call2.i = call noalias i8* @malloc(i64 %mul.i) #4
 ; CHECK-NEXT:   %"call2'mi.i" = call noalias nonnull i8* @malloc(i64 %mul.i) #4
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call2'mi.i", i8 0, i64 %mul.i, {{(i32 1, )?}}i1 false) #4
-; CHECK-NEXT:   %[[herebc:.+]] = bitcast i8* %call.i to i8**
 ; CHECK-NEXT:   %[[thatipc:.+]] = bitcast i8* %"call'mi.i" to i8**
+; CHECK-NEXT:   %[[herebc:.+]] = bitcast i8* %call.i to i8**
 ; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[thatipc]], align 8
-; CHECK-NEXT:   %[[call2gep:.+]] = getelementptr i8*, i8** %call2_malloccache.i, i64 %[[iv]]
+; CHECK-NEXT:   %[[call2gep:.+]] = getelementptr inbounds i8*, i8** %call2_malloccache.i, i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %call2.i, i8** %[[call2gep]]
-; CHECK-NEXT:   %[[call2pgep:.+]] = getelementptr i8*, i8** %"call2'mi_malloccache.i", i64 %[[iv]]
+; CHECK-NEXT:   %[[call2pgep:.+]] = getelementptr inbounds i8*, i8** %"call2'mi_malloccache.i", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[call2pgep]]
 ; CHECK-NEXT:   store i8* %call2.i, i8** %[[herebc]], align 8, !tbaa !2
 ; CHECK-NEXT:   %.cast.i = bitcast i8* %call2.i to double*
 ; CHECK-NEXT:   br label %for.body8.i
 
 ; CHECK: for.cond.cleanup7.i:                              ; preds = %for.body8.i
+; CHECK-NEXT:   %[[ipci]] = bitcast i8* %"call'mi.i" to %struct.n*
 ; CHECK-NEXT:   %[[bccast]] = bitcast i8* %call.i to %struct.n*
 ; CHECK-NEXT:   %[[hcmp:.+]] = icmp eq i64 %[[iv]], %n
-; CHECK-NEXT:   %[[ipci]] = bitcast i8* %"call'mi.i" to %struct.n*
 ; CHECK-NEXT:   br i1 %[[hcmp]], label %[[invertforcondcleanup]], label %for.body.i
 
 ; CHECK: for.body8.i:                                      ; preds = %for.body8.i, %for.body.i
@@ -260,13 +260,13 @@ attributes #4 = { nounwind }
 
 ; CHECK: invertfor.body.i:                                 ; preds = %invertfor.body8.i
 ; CHECK-NEXT:   call void @free(i8* nonnull %[[loadcall2p:.+]]) #4
-; CHECK-NEXT:   %[[call2gep:.+]] = getelementptr i8*, i8** %call2_malloccache.i, i64 %[[antiiv:.+]]
+; CHECK-NEXT:   %[[call2gep:.+]] = getelementptr inbounds i8*, i8** %call2_malloccache.i, i64 %[[antiiv:.+]]
 ; CHECK-NEXT:   %[[call2ptr:.+]] = load i8*, i8** %[[call2gep]]
 ; CHECK-NEXT:   call void @free(i8* %[[call2ptr]]) #4
-; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[antiiv]]
+; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache.i", i64 %[[antiiv]]
 ; CHECK-NEXT:   %[[callpptr:.+]] = load i8*, i8** %[[callpgep]]
 ; CHECK-NEXT:   call void @free(i8* nonnull %[[callpptr]]) #4
-; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[antiiv]]
+; CHECK-NEXT:   %[[callgep:.+]] = getelementptr inbounds i8*, i8** %call_malloccache.i, i64 %[[antiiv]]
 ; CHECK-NEXT:   %[[callptr:.+]] = load i8*, i8** %[[callgep]]
 ; CHECK-NEXT:   call void @free(i8* %[[callptr]]) #4
 ; CHECK-NEXT:   %[[cmpne:.+]] = icmp eq i64 %[[antiiv]], 0
@@ -279,7 +279,7 @@ attributes #4 = { nounwind }
 ; CHECK: invertfor.cond.cleanup7.i:
 ; CHECK-NEXT:   %"x'de.0.i" = phi double [ 0.000000e+00, %[[invertforcondcleanup]] ], [ %[[faddloop:.+]], %incinvertfor.body.i ]
 ; CHECK-NEXT:   %[[antiiv]] = phi i64 [ %n, %[[invertforcondcleanup]] ], [ %[[iv7sub]], %incinvertfor.body.i ]
-; CHECK-NEXT:   %[[midcall2pgep:.+]] = getelementptr i8*, i8** %"call2'mi_malloccache.i", i64 %[[antiiv]]
+; CHECK-NEXT:   %[[midcall2pgep:.+]] = getelementptr inbounds i8*, i8** %"call2'mi_malloccache.i", i64 %[[antiiv]]
 ; CHECK-NEXT:   %[[loadcall2p]] = load i8*, i8** %[[midcall2pgep]]
 ; CHECK-NEXT:   %[[precast:.+]] = bitcast i8* %[[loadcall2p]] to double*
 ; CHECK-NEXT:   br label %invertfor.body8.i
@@ -287,7 +287,7 @@ attributes #4 = { nounwind }
 ; CHECK: invertfor.body8.i:
 ; CHECK-NEXT:   %"x'de.1.i" = phi double [ %"x'de.0.i", %invertfor.cond.cleanup7.i ], [ %[[faddloop]], %incinvertfor.body8.i ]
 ; CHECK-NEXT:   %[[antiiv2:.+]] = phi i64 [ %times, %invertfor.cond.cleanup7.i ], [ %[[idxsub:.+]], %incinvertfor.body8.i ]
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %[[precast]], i64 %[[antiiv2]]
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr inbounds double, double* %[[precast]], i64 %[[antiiv2]]
 ; CHECK-NEXT:   %[[looparray:.+]] = load double, double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %[[faddloop]] = fadd fast double %"x'de.1.i", %[[looparray]]
@@ -322,15 +322,15 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[added:.+]] = shl nuw i64 %[[postidx]], 3
 ; CHECK-NEXT:   %[[postrealloc]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[added]])
 ; CHECK-NEXT:   %[[todoublep:.+]] = bitcast i8* %[[postrealloc]] to double**
-; CHECK-NEXT:   %"values'ipg" = getelementptr %struct.n, %struct.n* %[[valstruct]], i64 0, i32 0
+; CHECK-NEXT:   %"values'ipg" = getelementptr inbounds %struct.n, %struct.n* %[[valstruct]], i64 0, i32 0
 ; CHECK-NEXT:   %[[ipload:.+]] = load double*, double** %"values'ipg", align 8
-; CHECK-NEXT:   %[[cache:.+]] = getelementptr double*, double** %[[todoublep]], i64 %[[preidx]]
+; CHECK-NEXT:   %[[cache:.+]] = getelementptr inbounds double*, double** %[[todoublep]], i64 %[[preidx]]
 ; CHECK-NEXT:   store double* %[[ipload]], double** %[[cache]]
 ; CHECK-NEXT:   br label %for.body5
 
 ; CHECK: for.cond.cleanup4:                                ; preds = %for.body5
 ; CHECK-NEXT:   %next = getelementptr inbounds %struct.n, %struct.n* %val.020, i64 0, i32 1
-; CHECK-NEXT:   %"next'ipg" = getelementptr %struct.n, %struct.n* %[[valstruct]], i64 0, i32 1
+; CHECK-NEXT:   %"next'ipg" = getelementptr inbounds %struct.n, %struct.n* %[[valstruct]], i64 0, i32 1
 ; CHECK-NEXT:   %[[dstructload]] = load %struct.n*, %struct.n** %"next'ipg", align 8
 ; CHECK-NEXT:   %[[nextstruct]] = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
 ; CHECK-NEXT:   %[[mycmp:.+]] = icmp eq %struct.n* %[[nextstruct]], null
@@ -359,14 +359,14 @@ attributes #4 = { nounwind }
 
 ; CHECK: [[invertforcondcleanup]]:
 ; CHECK-NEXT:   %[[antivar]] = phi i64 [ %[[isub]], %incinvertfor.cond1.preheader ], [ %[[preidx]], %for.cond.cleanup4 ]
-; CHECK-NEXT:   %[[toload:.+]] = getelementptr double*, double** %[[todoublep]], i64 %[[antivar]]
+; CHECK-NEXT:   %[[toload:.+]] = getelementptr inbounds double*, double** %[[todoublep]], i64 %[[antivar]]
 ; CHECK-NEXT:   br label %invertfor.body5
 
 ; CHECK: invertfor.body5:
 ; CHECK-NEXT:   %[[mantivar:.+]] = phi i64 [ %times, %[[invertforcondcleanup]] ], [ %[[idxsub:.+]], %incinvertfor.body5 ]
 ; //NOTE this should be LICM'd outside this loop (but LICM doesn't handle invariant group at the momeny :'( )
 ; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %[[toload]], align 8, !invariant.group
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double, double* %[[loadediv]], i64 %[[mantivar]]
+; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %[[loadediv]], i64 %[[mantivar]]
 ; CHECK-NEXT:   %[[arrayload:.+]] = load double, double* %"arrayidx'ipg"
 ; CHECK-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %differeturn
 ; CHECK-NEXT:   store double %[[arraytostore]], double* %"arrayidx'ipg"

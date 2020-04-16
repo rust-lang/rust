@@ -59,7 +59,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br label %for.outerbody
 
 ; CHECK: for.outerbody.loopexit:                           ; preds = %for.body
-; CHECK-NEXT:   %0 = getelementptr i64, i64* %loopLimit_realloccast, i64 %iv
+; CHECK-NEXT:   %0 = getelementptr inbounds i64, i64* %loopLimit_realloccast, i64 %iv
 ; CHECK-NEXT:   store i64 %iv1, i64* %0, align 8, !invariant.group !0
 ; CHECK-NEXT:   br label %for.outerbody
 
@@ -80,7 +80,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %exitcondi, label %invertfor.outerbody, label %for.body.ph
 
 ; CHECK: for.body.ph:                                      ; preds = %for.outerbody
-; CHECK-NEXT:   %4 = getelementptr double*, double** %phi_realloccast, i64 %iv
+; CHECK-NEXT:   %4 = getelementptr inbounds double*, double** %phi_realloccast, i64 %iv
 ; CHECK-NEXT:   store double* null, double** %4
 ; CHECK-NEXT:   br label %for.body
 
@@ -94,7 +94,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %phi_realloccache4 = call i8* @realloc(i8* %6, i64 %7)
 ; CHECK-NEXT:   %phi_realloccast5 = bitcast i8* %phi_realloccache4 to double*
 ; CHECK-NEXT:   store double* %phi_realloccast5, double** %4, align 8, !invariant.group !1
-; CHECK-NEXT:   %8 = getelementptr double, double* %phi_realloccast5, i64 %iv1
+; CHECK-NEXT:   %8 = getelementptr inbounds double, double* %phi_realloccast5, i64 %iv1
 ; CHECK-NEXT:   store double %phi, double* %8, align 8, !invariant.group !2
 ; CHECK-NEXT:   %phiadd = fadd fast double %phi, 1.000000e+00
 ; CHECK-NEXT:   %jand = and i64 %iv1, 1234
@@ -119,15 +119,15 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: incinvertfor.outerbody:                           ; preds = %invertfor.outerbody
 ; CHECK-NEXT:   %11 = sub nuw nsw i64 %"iv'ac.0", 1
-; CHECK-NEXT:   %12 = getelementptr i64, i64* %loopLimit_realloccast, i64 %11
+; CHECK-NEXT:   %12 = getelementptr inbounds i64, i64* %loopLimit_realloccast, i64 %11
 ; CHECK-NEXT:   %13 = load i64, i64* %12, align 8, !invariant.group !0
-; CHECK-NEXT:   %.phi.trans.insert = getelementptr double*, double** %phi_realloccast, i64 %11
-; CHECK-NEXT:   %.pre6 = load double*, double** %.phi.trans.insert, align 8, !invariant.group !1
+; CHECK-NEXT:   %.phi.trans.insert = getelementptr inbounds double*, double** %phi_realloccast, i64 %11
+; CHECK-NEXT:   %[[pre6:.+]] = load double*, double** %.phi.trans.insert, align 8, !invariant.group !1
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertfor.body.ph:                                ; preds = %invertfor.body
 ; CHECK-NEXT:   %14 = fadd fast double %"x'de.0", %20
-; CHECK-NEXT:   %15 = bitcast double* %.pre6 to i8*
+; CHECK-NEXT:   %15 = bitcast double* %[[pre6]] to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %15)
 ; CHECK-NEXT:   br label %invertfor.outerbody
 
@@ -137,7 +137,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %"innersum'de.1" = phi double [ %"outeradd'de.0", %incinvertfor.outerbody ], [ 0.000000e+00, %incinvertfor.body ]
 ; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %13, %incinvertfor.outerbody ], [ %22, %incinvertfor.body ]
 ; CHECK-NEXT:   %16 = fadd fast double %"innersum'de.1", %"add'de.1"
-; CHECK-NEXT:   %17 = getelementptr double, double* %.pre6, i64 %"iv1'ac.0"
+; CHECK-NEXT:   %17 = getelementptr inbounds double, double* %[[pre6]], i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %18 = load double, double* %17, align 8, !invariant.group !2
 ; CHECK-NEXT:   %m0diffephi = fmul fast double %"add'de.1", %18
 ; CHECK-NEXT:   %19 = fadd fast double %"phiadd'de.1", %m0diffephi

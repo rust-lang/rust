@@ -46,7 +46,7 @@ attributes #2 = { nounwind }
 ; CHECK: [[antiloop]]: 
 ; CHECK-NEXT:   %[[dadd:.+]] = phi double [ 1.000000e+00, %entry ], [ %[[m0dadd:.+]], %[[incantiloop:.+]] ]
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %n, %entry ], [ %[[sub:.+]], %[[incantiloop]] ] 
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %xp, i64 %[[antivar]]
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr inbounds double, double* %xp, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[toload:.+]] = load double, double* %"arrayidx'ipg.i", align 8
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[toload]], %[[dadd]]
 ; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx'ipg.i", align 8

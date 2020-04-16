@@ -55,9 +55,9 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %1 = bitcast double* %y to i64*
 ; CHECK-NEXT:   %2 = load i64, i64* %0
 ; CHECK-NEXT:   store i64 %2, i64* %1
-; CHECK-NEXT:   %"'ipc" = bitcast double* %"y'" to i64*
-; CHECK-NEXT:   %3 = load i64, i64* %"'ipc"
-; CHECK-NEXT:   store i64 0, i64* %"'ipc"
+; CHECK-NEXT:   %[[ipc:.+]] = bitcast double* %"y'" to i64*
+; CHECK-NEXT:   %3 = load i64, i64* %[[ipc]]
+; CHECK-NEXT:   store i64 0, i64* %[[ipc]]
 ; CHECK-NEXT:   %[[ipc2:.+]] = bitcast double* %"x'" to i64*
 ; CHECK-NEXT:   %4 = load i64, i64* %[[ipc2]]
 ; CHECK-NEXT:   %5 = bitcast i64 %3 to double

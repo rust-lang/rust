@@ -290,7 +290,7 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   %0 = xor i1 %cmp, true
 ; CHECK-NEXT:   call void @llvm.assume(i1 %0)
 ; CHECK-NEXT:   %idxprom_unwrap = sext i32 %i to i64
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr float, float* %"data'", i64 %idxprom_unwrap
+; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds float, float* %"data'", i64 %idxprom_unwrap
 ; CHECK-NEXT:   %1 = load float, float* %"arrayidx'ipg", align 4
 ; CHECK-NEXT:   %2 = fadd fast float %1, %differeturn
 ; CHECK-NEXT:   store float %2, float* %"arrayidx'ipg", align 4

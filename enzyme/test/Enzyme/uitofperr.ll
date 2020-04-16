@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
 
 %"class.std::ios_base::Init" = type { i8 }
 %struct._IO_FILE = type { i32, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, %struct._IO_marker*, %struct._IO_FILE*, i32, i32, i64, i16, i8, [1 x i8], i8*, i64, i8*, i8*, i8*, i8*, i64, i32, [20 x i8] }
@@ -178,7 +178,7 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %3 = shl nuw i64 %iv.next, 3
 ; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %0, i64 %3) #4
 ; CHECK-NEXT:   %_realloccast = bitcast i8* %_realloccache to double*
-; CHECK-NEXT:   %4 = getelementptr double, double* %_realloccast, i64 %iv
+; CHECK-NEXT:   %4 = getelementptr inbounds double, double* %_realloccast, i64 %iv
 ; CHECK-NEXT:   store double %1, double* %4, align 8, !invariant.group !8
 ; CHECK-NEXT:   %mul2 = fmul fast double %mul, %1
 ; CHECK-NEXT:   %add = fadd fast double %mul2, %1
@@ -204,7 +204,7 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %"add'de.0" = phi double [ %differeturn, %exit ], [ %11, %incinvertwhile ]
 ; CHECK-NEXT:   %"mul'de.0" = phi double [ 0.000000e+00, %exit ], [ %9, %incinvertwhile ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %exit ], [ %12, %incinvertwhile ]
-; CHECK-NEXT:   %7 = getelementptr double, double* %_realloccast, i64 %"iv'ac.0"
+; CHECK-NEXT:   %7 = getelementptr inbounds double, double* %_realloccast, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %8 = load double, double* %7, align 8, !invariant.group !8
 ; CHECK-NEXT:   %m0diffemul = fmul fast double %"add'de.0", %8
 ; CHECK-NEXT:   %9 = fadd fast double %"mul'de.0", %m0diffemul
@@ -212,8 +212,7 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   br i1 %10, label %invertentry, label %incinvertwhile
 
 ; CHECK: incinvertwhile:                                   ; preds = %invertwhile
-; CHECK-NEXT:   %mul_unwrap = fmul fast double %t, -1.200000e+00
-; CHECK-NEXT:   %m1diffe = fmul fast double %"add'de.0", %mul_unwrap
+; CHECK-NEXT:   %m1diffe = fmul fast double %"add'de.0", %mul
 ; CHECK-NEXT:   %11 = fadd fast double %"add'de.0", %m1diffe
 ; CHECK-NEXT:   %12 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertwhile

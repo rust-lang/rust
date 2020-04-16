@@ -44,11 +44,11 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augf:.+]] = call { { {}, double }, i1 } @augmented_subf(double* %x, double* %"x'")
-; CHECK-NEXT:   %[[tapef:.+]] = extractvalue { { {}, double }, i1 } %[[augf]], 0
 ; CHECK-NEXT:   %[[fret:.+]] = extractvalue { { {}, double }, i1 } %[[augf]], 1
 ; CHECK-NEXT:   %sel = select i1 %[[fret]], double 2.000000e+00, double 3.000000e+00
 ; CHECK-NEXT:   store double %sel, double* %x, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
+; CHECK-NEXT:   %[[tapef:.+]] = extractvalue { { {}, double }, i1 } %[[augf]], 0
 ; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, double } %[[tapef]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

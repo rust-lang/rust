@@ -68,14 +68,13 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %arraydecay, i64 2
 ; CHECK-NEXT:   %a8 = bitcast double* %arrayidx to <2 x double>*
 ; CHECK-NEXT:   store <2 x double> %add, <2 x double>* %a8, align 16, !tbaa !2
-; CHECK-NEXT:   %"a8'ipc" = bitcast double* %"arrayidx'ipge" to <2 x double>*
-; CHECK-NEXT:   %0 = load <2 x double>, <2 x double>* %"a8'ipc", align 16
-; CHECK-NEXT:   %"a8'ipc1" = bitcast double* %"arrayidx'ipge" to <2 x double>*
-; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %"a8'ipc1", align 16
+; CHECK-NEXT:   %[[a8ipc:.+]] = bitcast double* %"arrayidx'ipge" to <2 x double>*
+; CHECK-NEXT:   %0 = load <2 x double>, <2 x double>* %[[a8ipc]], align 16
+; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %[[a8ipc]], align 16
 ; CHECK-NEXT:   %1 = fadd fast <2 x double> %0, %0
-; CHECK-NEXT:   %"a1'ipc" = bitcast double* %"ad'" to <2 x double>*
-; CHECK-NEXT:   %2 = load <2 x double>, <2 x double>* %"a1'ipc", align 16
+; CHECK-NEXT:   %[[a1ipc:.+]] = bitcast double* %"ad'" to <2 x double>*
+; CHECK-NEXT:   %2 = load <2 x double>, <2 x double>* %[[a1ipc]], align 16
 ; CHECK-NEXT:   %3 = fadd fast <2 x double> %2, %1
-; CHECK-NEXT:   store <2 x double> %3, <2 x double>* %"a1'ipc", align 16
+; CHECK-NEXT:   store <2 x double> %3, <2 x double>* %[[a1ipc]], align 16
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

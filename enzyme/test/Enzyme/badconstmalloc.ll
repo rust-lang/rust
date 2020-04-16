@@ -755,8 +755,8 @@ attributes #12 = { cold }
 ; CHECK-NEXT:   %call.i.i = tail call noalias i8* @malloc(i64 16) #10
 ; CHECK-NEXT:   %"call.i.i'mi" = tail call noalias nonnull i8* @malloc(i64 16) #10
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"call.i.i'mi", i8 0, i64 16, i1 false)
-; CHECK-NEXT:   %0 = bitcast i8* %call.i.i to double*
 ; CHECK-NEXT:   %"'ipc" = bitcast i8* %"call.i.i'mi" to double*
+; CHECK-NEXT:   %0 = bitcast i8* %call.i.i to double*
 ; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i8* }, double*, double* } undef, i8* %"call.i.i'mi", 0, 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { { i8* }, double*, double* } %.fca.0.0.insert, double* %0, 1
 ; CHECK-NEXT:   %.fca.2.insert = insertvalue { { i8* }, double*, double* } %.fca.1.insert, double* %"'ipc", 2
