@@ -83,11 +83,11 @@ cargo clippy
 
 #### Automatically applying Clippy suggestions
 
-Some Clippy lint suggestions can be automatically applied by `cargo fix`.
+Clippy can automatically apply some lint suggestions.
 Note that this is still experimental and only supported on the nightly channel:
 
 ```terminal
-cargo fix -Z unstable-options --clippy
+cargo clippy --fix -Z unstable-options
 ```
 
 ### Running Clippy from the command line without installing it
