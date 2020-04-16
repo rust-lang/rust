@@ -14,11 +14,9 @@ use rand::rngs::StdRng;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::{
-    middle::codegen_fn_attrs::CodegenFnAttrFlags,
     mir,
     ty::{
         self,
-        Instance,
         layout::{LayoutCx, LayoutError, TyAndLayout},
         TyCtxt,
     },
@@ -422,53 +420,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ecx: &InterpCx<'mir, 'tcx, Self>,
         mut val: mir::interpret::ConstValue<'tcx>,
     ) -> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
-        match &mut val {
-            mir::interpret::ConstValue::Scalar(Scalar::Ptr(ptr)) => {
-                let alloc_id = ptr.alloc_id;
-                let alloc = ecx.tcx.alloc_map.lock().get(alloc_id);
-                let tcx = ecx.tcx;
-                let is_thread_local = |def_id| {
-                    tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
-                };
-                match alloc {
-                    Some(GlobalAlloc::Static(def_id)) if is_thread_local(def_id) => {
-                        let new_alloc_id = if let Some(new_alloc_id) =
-                            ecx.get_thread_local_alloc_id(alloc_id)
-                        {
-                            new_alloc_id
-                        } else {
-                            if tcx.is_foreign_item(def_id) {
-                                throw_unsup_format!(
-                                    "Foreign thread-local statics are not supported."
-                                )
-                            }
-                            let instance = Instance::mono(tcx.tcx, def_id);
-                            let gid = GlobalId { instance, promoted: None };
-                            let raw_const = tcx
-                                .const_eval_raw(ty::ParamEnv::reveal_all().and(gid))
-                                .map_err(|err| {
-                                    // no need to report anything, the const_eval call takes care of that
-                                    // for statics
-                                    assert!(tcx.is_static(def_id));
-                                    match err {
-                                        ErrorHandled::Reported => err_inval!(ReferencedConstant),
-                                        ErrorHandled::TooGeneric => err_inval!(TooGeneric),
-                                    }
-                                })?;
-                            let id = raw_const.alloc_id;
-                            let mut alloc_map = tcx.alloc_map.lock();
-                            let allocation = alloc_map.unwrap_memory(id);
-                            let new_alloc_id = alloc_map.create_memory_alloc(allocation);
-                            ecx.set_thread_local_alloc_id(alloc_id, new_alloc_id);
-                            new_alloc_id
-                        };
-                        ptr.alloc_id = new_alloc_id;
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
+        ecx.remap_thread_local_alloc_ids(&mut val)?;
         Ok(val)
     }
 

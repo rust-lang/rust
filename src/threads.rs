@@ -7,7 +7,13 @@ use std::num::NonZeroU32;
 use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::{
+    middle::codegen_fn_attrs::CodegenFnAttrFlags,
+    mir,
+    ty::{self, Instance},
+};
 
 use crate::*;
 
@@ -124,9 +130,9 @@ pub struct ThreadManager<'mir, 'tcx> {
     threads: IndexVec<ThreadId, Thread<'mir, 'tcx>>,
     /// A counter used to generate unique identifiers for blocksets.
     blockset_counter: u32,
-    /// A mapping from an allocation id of a thread-local static to an
-    /// allocation id of a thread specific allocation.
-    thread_local_alloc_ids: RefCell<FxHashMap<(AllocId, ThreadId), AllocId>>,
+    /// A mapping from a thread-local static to an allocation id of a thread
+    /// specific allocation.
+    thread_local_alloc_ids: RefCell<FxHashMap<(DefId, ThreadId), AllocId>>,
 }
 
 impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
@@ -145,19 +151,19 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
 impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// Check if we have an allocation for the given thread local static for the
     /// active thread.
-    pub fn get_thread_local_alloc_id(&self, static_alloc_id: AllocId) -> Option<AllocId> {
-        self.thread_local_alloc_ids.borrow().get(&(static_alloc_id, self.active_thread)).cloned()
+    pub fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<AllocId> {
+        self.thread_local_alloc_ids.borrow().get(&(def_id, self.active_thread)).cloned()
     }
 
     /// Set the allocation id as the allocation id of the given thread local
     /// static for the active thread.
-    pub fn set_thread_local_alloc_id(&self, static_alloc_id: AllocId, new_alloc_id: AllocId) {
+    pub fn set_thread_local_alloc_id(&self, def_id: DefId, new_alloc_id: AllocId) {
         assert!(
             self.thread_local_alloc_ids
                 .borrow_mut()
-                .insert((static_alloc_id, self.active_thread), new_alloc_id)
+                .insert((def_id, self.active_thread), new_alloc_id)
                 .is_none(),
-            "Bug: a thread local initialized twice for the same thread."
+            "a thread local initialized twice for the same thread"
         );
     }
 
@@ -291,14 +297,88 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    fn get_thread_local_alloc_id(&self, static_alloc_id: AllocId) -> Option<AllocId> {
+    /// A workaround for thread-local statics until
+    /// https://github.com/rust-lang/rust/issues/70685 is fixed: change the
+    /// thread-local allocation id with a freshly generated allocation id for
+    /// the currently active thread.
+    fn remap_thread_local_alloc_ids(
+        &self,
+        val: &mut mir::interpret::ConstValue<'tcx>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
-        this.machine.threads.get_thread_local_alloc_id(static_alloc_id)
+        match val {
+            mir::interpret::ConstValue::Scalar(Scalar::Ptr(ptr)) => {
+                let alloc_id = ptr.alloc_id;
+                let alloc = this.tcx.alloc_map.lock().get(alloc_id);
+                let tcx = this.tcx;
+                let is_thread_local = |def_id| {
+                    tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
+                };
+                match alloc {
+                    Some(GlobalAlloc::Static(def_id)) if is_thread_local(def_id) => {
+                        ptr.alloc_id = this.get_or_create_thread_local_alloc_id(def_id)?;
+                    }
+                    _ => {}
+                }
+            }
+            _ => {
+                // FIXME: Handling only `Scalar` seems to work for now, but at
+                // least in principle thread-locals could be in any constant, so
+                // we should also consider other cases. However, once
+                // https://github.com/rust-lang/rust/issues/70685 gets fixed,
+                // this code will have to be rewritten anyway.
+            }
+        }
+        Ok(())
     }
-
-    fn set_thread_local_alloc_id(&self, static_alloc_id: AllocId, thread_local_alloc_id: AllocId) {
+    /// Get a thread-specific allocation id for the given thread-local static.
+    /// If needed, allocate a new one.
+    ///
+    /// FIXME: This method should be replaced as soon as
+    /// https://github.com/rust-lang/rust/issues/70685 gets fixed.
+    fn get_or_create_thread_local_alloc_id(&self, def_id: DefId) -> InterpResult<'tcx, AllocId> {
         let this = self.eval_context_ref();
-        this.machine.threads.set_thread_local_alloc_id(static_alloc_id, thread_local_alloc_id)
+        let tcx = this.tcx;
+        if let Some(new_alloc_id) = this.machine.threads.get_thread_local_alloc_id(def_id) {
+            // We already have a thread-specific allocation id for this
+            // thread-local static.
+            Ok(new_alloc_id)
+        } else {
+            // We need to allocate a thread-specific allocation id for this
+            // thread-local static.
+            //
+            // At first, we invoke the `const_eval_raw` query and extract the
+            // allocation from it. Unfortunately, we have to duplicate the code
+            // from `Memory::get_global_alloc` that does this.
+            //
+            // Then we store the retrieved allocation back into the `alloc_map`
+            // to get a fresh allocation id, which we can use as a
+            // thread-specific allocation id for the thread-local static.
+            if tcx.is_foreign_item(def_id) {
+                throw_unsup_format!("foreign thread-local statics are not supported");
+            }
+            // Invoke the `const_eval_raw` query.
+            let instance = Instance::mono(tcx.tcx, def_id);
+            let gid = GlobalId { instance, promoted: None };
+            let raw_const =
+                tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
+                    // no need to report anything, the const_eval call takes care of that
+                    // for statics
+                    assert!(tcx.is_static(def_id));
+                    err
+                })?;
+            let id = raw_const.alloc_id;
+            // Extract the allocation from the query result.
+            let mut alloc_map = tcx.alloc_map.lock();
+            let allocation = alloc_map.unwrap_memory(id);
+            // Create a new allocation id for the same allocation in this hacky
+            // way. Internally, `alloc_map` deduplicates allocations, but this
+            // is fine because Miri will make a copy before a first mutable
+            // access.
+            let new_alloc_id = alloc_map.create_memory_alloc(allocation);
+            this.machine.threads.set_thread_local_alloc_id(def_id, new_alloc_id);
+            Ok(new_alloc_id)
+        }
     }
 
     fn create_thread(&mut self) -> InterpResult<'tcx, ThreadId> {
