@@ -77,6 +77,8 @@ jobs:
       run: |
         sudo dpkg --add-architecture i386
         sudo apt-get update
+        # perform system upgrade to work around https://github.com/rust-lang/rust-clippy/issues/5477 , revert as soon as that is fixed
+        sudo apt-get -y upgrade
         sudo apt-get install gcc-multilib libssl-dev:i386 libgit2-dev:i386
       if: matrix.host == 'i686-unknown-linux-gnu'
 
