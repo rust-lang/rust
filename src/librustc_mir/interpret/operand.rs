@@ -453,13 +453,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         place: mir::Place<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let base_op = {
-            // Do not use the layout passed in as argument if the base we are looking at
-            // here is not the entire place.
-            let layout = if place.projection.is_empty() { layout } else { None };
+        // Do not use the layout passed in as argument if the base we are looking at
+        // here is not the entire place.
+        let layout = if place.projection.is_empty() { layout } else { None };
 
-            self.access_local(self.frame(), place.local, layout)?
-        };
+        let base_op = self.access_local(self.frame(), place.local, layout)?;
 
         let op = place
             .projection
