@@ -27,7 +27,7 @@ pub(crate) fn load_cargo(
     load_out_dirs_from_check: bool,
 ) -> Result<(AnalysisHost, FxHashMap<SourceRootId, PackageRoot>)> {
     let root = std::env::current_dir()?.join(root);
-    let root = ProjectRoot::discover(&root)?;
+    let root = ProjectRoot::discover_single(&root)?;
     let ws = ProjectWorkspace::load(
         root,
         &CargoConfig { load_out_dirs_from_check, ..Default::default() },

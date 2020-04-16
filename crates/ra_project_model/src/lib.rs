@@ -5,9 +5,8 @@ mod json_project;
 mod sysroot;
 
 use std::{
-    error::Error,
     fs::{read_dir, File, ReadDir},
-    io::BufReader,
+    io::{self, BufReader},
     path::{Path, PathBuf},
     process::Command,
 };
@@ -24,25 +23,6 @@ pub use crate::{
     sysroot::Sysroot,
 };
 pub use ra_proc_macro::ProcMacroClient;
-
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct CargoTomlNotFoundError {
-    pub searched_at: PathBuf,
-    pub reason: String,
-}
-
-impl std::fmt::Display for CargoTomlNotFoundError {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            fmt,
-            "can't find Cargo.toml at {}, due to {}",
-            self.searched_at.display(),
-            self.reason
-        )
-    }
-}
-
-impl Error for CargoTomlNotFoundError {}
 
 #[derive(Debug, Clone)]
 pub enum ProjectWorkspace {
@@ -94,11 +74,25 @@ impl ProjectRoot {
         bail!("project root must point to Cargo.toml or rust-project.json: {}", path.display())
     }
 
-    pub fn discover(path: &Path) -> Result<ProjectRoot, CargoTomlNotFoundError> {
-        if let Some(project_json) = find_rust_project_json(path) {
-            return Ok(ProjectRoot::ProjectJson(project_json));
+    pub fn discover_single(path: &Path) -> Result<ProjectRoot> {
+        let mut candidates = ProjectRoot::discover(path)?;
+        let res = match candidates.pop() {
+            None => bail!("no projects"),
+            Some(it) => it,
+        };
+
+        if !candidates.is_empty() {
+            bail!("more than one project")
         }
-        return find_cargo_toml(path).map(ProjectRoot::CargoToml);
+        Ok(res)
+    }
+
+    pub fn discover(path: &Path) -> io::Result<Vec<ProjectRoot>> {
+        if let Some(project_json) = find_rust_project_json(path) {
+            return Ok(vec![ProjectRoot::ProjectJson(project_json)]);
+        }
+        return find_cargo_toml(path)
+            .map(|paths| paths.into_iter().map(ProjectRoot::CargoToml).collect());
 
         fn find_rust_project_json(path: &Path) -> Option<PathBuf> {
             if path.ends_with("rust-project.json") {
@@ -117,43 +111,17 @@ impl ProjectRoot {
             None
         }
 
-        fn find_cargo_toml(path: &Path) -> Result<PathBuf, CargoTomlNotFoundError> {
+        fn find_cargo_toml(path: &Path) -> io::Result<Vec<PathBuf>> {
             if path.ends_with("Cargo.toml") {
-                return Ok(path.to_path_buf());
+                return Ok(vec![path.to_path_buf()]);
             }
 
             if let Some(p) = find_cargo_toml_in_parent_dir(path) {
-                return Ok(p);
+                return Ok(vec![p]);
             }
 
-            let entities = match read_dir(path) {
-                Ok(entities) => entities,
-                Err(e) => {
-                    return Err(CargoTomlNotFoundError {
-                        searched_at: path.to_path_buf(),
-                        reason: format!("file system error: {}", e),
-                    }
-                    .into());
-                }
-            };
-
-            let mut valid_canditates = find_cargo_toml_in_child_dir(entities);
-            return match valid_canditates.len() {
-                1 => Ok(valid_canditates.remove(0)),
-                0 => Err(CargoTomlNotFoundError {
-                    searched_at: path.to_path_buf(),
-                    reason: "no Cargo.toml file found".to_string(),
-                }
-                .into()),
-                _ => Err(CargoTomlNotFoundError {
-                    searched_at: path.to_path_buf(),
-                    reason: format!(
-                        "multiple equally valid Cargo.toml files found: {:?}",
-                        valid_canditates
-                    ),
-                }
-                .into()),
-            };
+            let entities = read_dir(path)?;
+            Ok(find_cargo_toml_in_child_dir(entities))
         }
 
         fn find_cargo_toml_in_parent_dir(path: &Path) -> Option<PathBuf> {

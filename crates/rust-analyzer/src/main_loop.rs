@@ -15,6 +15,7 @@ use std::{
 };
 
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
+use itertools::Itertools;
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
     NumberOrString, WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressCreateParams,
@@ -93,27 +94,24 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
             let mut visited = FxHashSet::default();
             let project_roots = ws_roots
                 .iter()
-                .map(|it| ra_project_model::ProjectRoot::discover(it))
-                .filter_map(|dir| {
-                    dir.map_err(|cargo_toml_not_found| {
-                        log::error!("discovering workspace failed: {:?}", cargo_toml_not_found);
+                .filter_map(|it| ra_project_model::ProjectRoot::discover(it).ok())
+                .flatten()
+                .filter(|it| visited.insert(it.clone()))
+                .collect::<Vec<_>>();
 
-                        if config.notifications.cargo_toml_not_found {
-                            show_message(
-                                req::MessageType::Error,
-                                format!(
-                                    "rust-analyzer failed to discover workspace: {:?}",
-                                    cargo_toml_not_found
-                                ),
-                                &connection.sender,
-                            );
-                        }
-                    })
-                    .ok()
-                })
-                .filter(|it| visited.insert(it.clone()));
+            if project_roots.is_empty() && config.notifications.cargo_toml_not_found {
+                show_message(
+                        req::MessageType::Error,
+                        format!(
+                            "rust-analyzer failed to discover workspace, no Cargo.toml found, dirs searched: {}",
+                            ws_roots.iter().format_with(", ", |it, f| f(&it.display()))
+                        ),
+                        &connection.sender,
+                    );
+            };
 
             project_roots
+                .into_iter()
                 .filter_map(|root| {
                     ra_project_model::ProjectWorkspace::load(
                         root,
