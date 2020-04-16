@@ -77,31 +77,131 @@ impl PackageRoot {
     }
 }
 
-impl ProjectWorkspace {
-    pub fn discover(path: &Path, cargo_features: &CargoConfig) -> Result<ProjectWorkspace> {
-        ProjectWorkspace::discover_with_sysroot(path, true, cargo_features)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ProjectRoot {
+    ProjectJson(PathBuf),
+    CargoToml(PathBuf),
+}
+
+impl ProjectRoot {
+    pub fn from_manifest_file(path: PathBuf) -> Result<ProjectRoot> {
+        if path.ends_with("rust-project.json") {
+            return Ok(ProjectRoot::ProjectJson(path));
+        }
+        if path.ends_with("Cargo.toml") {
+            return Ok(ProjectRoot::CargoToml(path));
+        }
+        bail!("project root must point to Cargo.toml or rust-project.json: {}", path.display())
     }
 
-    pub fn discover_with_sysroot(
-        path: &Path,
-        with_sysroot: bool,
-        cargo_features: &CargoConfig,
-    ) -> Result<ProjectWorkspace> {
-        match find_rust_project_json(path) {
-            Some(json_path) => {
-                let file = File::open(&json_path)
-                    .with_context(|| format!("Failed to open json file {}", json_path.display()))?;
-                let reader = BufReader::new(file);
-                Ok(ProjectWorkspace::Json {
-                    project: from_reader(reader).with_context(|| {
-                        format!("Failed to deserialize json file {}", json_path.display())
-                    })?,
-                })
+    pub fn discover(path: &Path) -> Result<ProjectRoot, CargoTomlNotFoundError> {
+        if let Some(project_json) = find_rust_project_json(path) {
+            return Ok(ProjectRoot::ProjectJson(project_json));
+        }
+        return find_cargo_toml(path).map(ProjectRoot::CargoToml);
+
+        fn find_rust_project_json(path: &Path) -> Option<PathBuf> {
+            if path.ends_with("rust-project.json") {
+                return Some(path.to_path_buf());
             }
-            None => {
-                let cargo_toml = find_cargo_toml(path).with_context(|| {
-                    format!("Failed to find Cargo.toml for path {}", path.display())
+
+            let mut curr = Some(path);
+            while let Some(path) = curr {
+                let candidate = path.join("rust-project.json");
+                if candidate.exists() {
+                    return Some(candidate);
+                }
+                curr = path.parent();
+            }
+
+            None
+        }
+
+        fn find_cargo_toml(path: &Path) -> Result<PathBuf, CargoTomlNotFoundError> {
+            if path.ends_with("Cargo.toml") {
+                return Ok(path.to_path_buf());
+            }
+
+            if let Some(p) = find_cargo_toml_in_parent_dir(path) {
+                return Ok(p);
+            }
+
+            let entities = match read_dir(path) {
+                Ok(entities) => entities,
+                Err(e) => {
+                    return Err(CargoTomlNotFoundError {
+                        searched_at: path.to_path_buf(),
+                        reason: format!("file system error: {}", e),
+                    }
+                    .into());
+                }
+            };
+
+            let mut valid_canditates = find_cargo_toml_in_child_dir(entities);
+            return match valid_canditates.len() {
+                1 => Ok(valid_canditates.remove(0)),
+                0 => Err(CargoTomlNotFoundError {
+                    searched_at: path.to_path_buf(),
+                    reason: "no Cargo.toml file found".to_string(),
+                }
+                .into()),
+                _ => Err(CargoTomlNotFoundError {
+                    searched_at: path.to_path_buf(),
+                    reason: format!(
+                        "multiple equally valid Cargo.toml files found: {:?}",
+                        valid_canditates
+                    ),
+                }
+                .into()),
+            };
+        }
+
+        fn find_cargo_toml_in_parent_dir(path: &Path) -> Option<PathBuf> {
+            let mut curr = Some(path);
+            while let Some(path) = curr {
+                let candidate = path.join("Cargo.toml");
+                if candidate.exists() {
+                    return Some(candidate);
+                }
+                curr = path.parent();
+            }
+
+            None
+        }
+
+        fn find_cargo_toml_in_child_dir(entities: ReadDir) -> Vec<PathBuf> {
+            // Only one level down to avoid cycles the easy way and stop a runaway scan with large projects
+            let mut valid_canditates = vec![];
+            for entity in entities.filter_map(Result::ok) {
+                let candidate = entity.path().join("Cargo.toml");
+                if candidate.exists() {
+                    valid_canditates.push(candidate)
+                }
+            }
+            valid_canditates
+        }
+    }
+}
+
+impl ProjectWorkspace {
+    pub fn load(
+        root: ProjectRoot,
+        cargo_features: &CargoConfig,
+        with_sysroot: bool,
+    ) -> Result<ProjectWorkspace> {
+        let res = match root {
+            ProjectRoot::ProjectJson(project_json) => {
+                let file = File::open(&project_json).with_context(|| {
+                    format!("Failed to open json file {}", project_json.display())
                 })?;
+                let reader = BufReader::new(file);
+                ProjectWorkspace::Json {
+                    project: from_reader(reader).with_context(|| {
+                        format!("Failed to deserialize json file {}", project_json.display())
+                    })?,
+                }
+            }
+            ProjectRoot::CargoToml(cargo_toml) => {
                 let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_features)
                     .with_context(|| {
                         format!(
@@ -119,9 +219,11 @@ impl ProjectWorkspace {
                 } else {
                     Sysroot::default()
                 };
-                Ok(ProjectWorkspace::Cargo { cargo, sysroot })
+                ProjectWorkspace::Cargo { cargo, sysroot }
             }
-        }
+        };
+
+        Ok(res)
     }
 
     /// Returns the roots for the current `ProjectWorkspace`
@@ -466,87 +568,6 @@ impl ProjectWorkspace {
                 .find(|root| path.starts_with(&root.path))
                 .map(|root| root.path.as_ref()),
         }
-    }
-}
-
-fn find_rust_project_json(path: &Path) -> Option<PathBuf> {
-    if path.ends_with("rust-project.json") {
-        return Some(path.to_path_buf());
-    }
-
-    let mut curr = Some(path);
-    while let Some(path) = curr {
-        let candidate = path.join("rust-project.json");
-        if candidate.exists() {
-            return Some(candidate);
-        }
-        curr = path.parent();
-    }
-
-    None
-}
-
-fn find_cargo_toml_in_parent_dir(path: &Path) -> Option<PathBuf> {
-    let mut curr = Some(path);
-    while let Some(path) = curr {
-        let candidate = path.join("Cargo.toml");
-        if candidate.exists() {
-            return Some(candidate);
-        }
-        curr = path.parent();
-    }
-
-    None
-}
-
-fn find_cargo_toml_in_child_dir(entities: ReadDir) -> Vec<PathBuf> {
-    // Only one level down to avoid cycles the easy way and stop a runaway scan with large projects
-    let mut valid_canditates = vec![];
-    for entity in entities.filter_map(Result::ok) {
-        let candidate = entity.path().join("Cargo.toml");
-        if candidate.exists() {
-            valid_canditates.push(candidate)
-        }
-    }
-    valid_canditates
-}
-
-fn find_cargo_toml(path: &Path) -> Result<PathBuf> {
-    if path.ends_with("Cargo.toml") {
-        return Ok(path.to_path_buf());
-    }
-
-    if let Some(p) = find_cargo_toml_in_parent_dir(path) {
-        return Ok(p);
-    }
-
-    let entities = match read_dir(path) {
-        Ok(entities) => entities,
-        Err(e) => {
-            return Err(CargoTomlNotFoundError {
-                searched_at: path.to_path_buf(),
-                reason: format!("file system error: {}", e),
-            }
-            .into());
-        }
-    };
-
-    let mut valid_canditates = find_cargo_toml_in_child_dir(entities);
-    match valid_canditates.len() {
-        1 => Ok(valid_canditates.remove(0)),
-        0 => Err(CargoTomlNotFoundError {
-            searched_at: path.to_path_buf(),
-            reason: "no Cargo.toml file found".to_string(),
-        }
-        .into()),
-        _ => Err(CargoTomlNotFoundError {
-            searched_at: path.to_path_buf(),
-            reason: format!(
-                "multiple equally valid Cargo.toml files found: {:?}",
-                valid_canditates
-            ),
-        }
-        .into()),
     }
 }
 
