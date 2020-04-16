@@ -495,11 +495,11 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         }
     }
 
-    fn visit_terminator_kind(&mut self, kind: &TerminatorKind<'tcx>, location: Location) {
-        trace!("visit_terminator_kind: kind={:?} location={:?}", kind, location);
-        self.super_terminator_kind(kind, location);
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        trace!("visit_terminator: terminator={:?} location={:?}", terminator, location);
+        self.super_terminator(terminator, location);
 
-        match kind {
+        match &terminator.kind {
             TerminatorKind::Call { func, .. } => {
                 let fn_ty = func.ty(*self.body, self.tcx);
 
@@ -511,8 +511,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                         return;
                     }
                     _ => {
-                        self.check_op(ops::FnCallOther);
-                        return;
+                        span_bug!(terminator.source_info.span, "invalid callee of type {:?}", fn_ty)
                     }
                 };
 
