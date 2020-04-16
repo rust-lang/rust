@@ -305,7 +305,7 @@ impl fmt::Debug for InvalidProgramInfo<'_> {
             Layout(ref err) => write!(f, "{}", err),
             TransmuteSizeDiff(from_ty, to_ty) => write!(
                 f,
-                "transmuting from {:?} to {:?}, which do not have the same size",
+                "transmuting `{}` to `{}` is not possible, because these types do not have the same size",
                 from_ty, to_ty
             ),
         }
@@ -464,7 +464,7 @@ impl fmt::Debug for UnsupportedOpInfo {
             ReadForeignStatic(did) => {
                 write!(f, "cannot read from foreign (extern) static {:?}", did)
             }
-            NoMirFor(did) => write!(f, "cannot load MIR for {:?}", did),
+            NoMirFor(did) => write!(f, "no MIR body is available for {:?}", did),
             ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
             ReadBytesAsPointer => write!(f, "unable to turn bytes into a pointer"),
         }
