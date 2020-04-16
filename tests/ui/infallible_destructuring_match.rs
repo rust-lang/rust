@@ -11,6 +11,14 @@ struct TupleStruct(i32);
 
 enum EmptyEnum {}
 
+macro_rules! match_enum {
+    ($param:expr) => {
+        let data = match $param {
+            SingleVariantEnum::Variant(i) => i,
+        };
+    };
+}
+
 fn infallible_destructuring_match_enum() {
     let wrapper = SingleVariantEnum::Variant(0);
 
@@ -18,6 +26,9 @@ fn infallible_destructuring_match_enum() {
     let data = match wrapper {
         SingleVariantEnum::Variant(i) => i,
     };
+
+    // This shouldn't (inside macro)
+    match_enum!(wrapper);
 
     // This shouldn't!
     let data = match wrapper {
@@ -32,6 +43,14 @@ fn infallible_destructuring_match_enum() {
     let SingleVariantEnum::Variant(data) = wrapper;
 }
 
+macro_rules! match_struct {
+    ($param:expr) => {
+        let data = match $param {
+            TupleStruct(i) => i,
+        };
+    };
+}
+
 fn infallible_destructuring_match_struct() {
     let wrapper = TupleStruct(0);
 
@@ -39,6 +58,9 @@ fn infallible_destructuring_match_struct() {
     let data = match wrapper {
         TupleStruct(i) => i,
     };
+
+    // This shouldn't (inside macro)
+    match_struct!(wrapper);
 
     // This shouldn't!
     let data = match wrapper {
@@ -53,6 +75,14 @@ fn infallible_destructuring_match_struct() {
     let TupleStruct(data) = wrapper;
 }
 
+macro_rules! match_never_enum {
+    ($param:expr) => {
+        let data = match $param {
+            Ok(i) => i,
+        };
+    };
+}
+
 fn never_enum() {
     let wrapper: Result<i32, !> = Ok(23);
 
@@ -60,6 +90,9 @@ fn never_enum() {
     let data = match wrapper {
         Ok(i) => i,
     };
+
+    // This shouldn't (inside macro)
+    match_never_enum!(wrapper);
 
     // This shouldn't!
     let data = match wrapper {

@@ -6,6 +6,15 @@ struct A {
     c: &'static str,
 }
 
+macro_rules! foo {
+    ($param:expr) => {
+        match $param {
+            A { a: 0, b: 0, c: "", .. } => {},
+            _ => {},
+        }
+    };
+}
+
 fn main() {
     let a_struct = A { a: 5, b: 42, c: "A" };
 
@@ -27,4 +36,7 @@ fn main() {
         A { a: 0, b: 0, .. } => {},
         _ => {},
     }
+
+    // No lint
+    foo!(a_struct);
 }

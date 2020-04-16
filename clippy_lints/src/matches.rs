@@ -389,6 +389,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 
     fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>) {
         if_chain! {
+            if !in_external_macro(cx.sess(), local.span);
+            if !in_macro(local.span);
             if let Some(ref expr) = local.init;
             if let ExprKind::Match(ref target, ref arms, MatchSource::Normal) = expr.kind;
             if arms.len() == 1 && arms[0].guard.is_none();
@@ -423,6 +425,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
         if_chain! {
+            if !in_external_macro(cx.sess(), pat.span);
+            if !in_macro(pat.span);
             if let PatKind::Struct(ref qpath, fields, true) = pat.kind;
             if let QPath::Resolved(_, ref path) = qpath;
             if let Some(def_id) = path.res.opt_def_id();
