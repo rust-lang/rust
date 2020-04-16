@@ -2484,7 +2484,7 @@ fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, ok_args: &[hir
     }
 }
 
-/// lint use of `map().flatten()` for `Iterators`
+/// lint use of `map().flatten()` for `Iterators` and 'Options'
 fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>, map_args: &'tcx [hir::Expr<'_>]) {
     // lint if caller of `.map().flatten()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
@@ -2499,6 +2499,24 @@ fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<
             expr.span,
             msg,
             "try using `flat_map` instead",
+            hint,
+            Applicability::MachineApplicable,
+        );
+    }
+
+    // lint if caller of `.map().flatten()` is an Option
+    if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
+        let msg = "called `map(..).flatten()` on an `Option`. \
+                    This is more succinctly expressed by calling `.and_then(..)`";
+        let self_snippet = snippet(cx, map_args[0].span, "..");
+        let func_snippet = snippet(cx, map_args[1].span, "..");
+        let hint = format!("{0}.and_then({1})", self_snippet, func_snippet);
+        span_lint_and_sugg(
+            cx,
+            MAP_FLATTEN,
+            expr.span,
+            msg,
+            "try using `and_then` instead",
             hint,
             Applicability::MachineApplicable,
         );

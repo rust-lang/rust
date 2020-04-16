@@ -6,5 +6,11 @@ LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(|x| 0..x).flatten().colle
    |
    = note: `-D clippy::map-flatten` implied by `-D warnings`
 
-error: aborting due to previous error
+error: called `map(..).flatten()` on an `Option`. This is more succinctly expressed by calling `.and_then(..)`
+  --> $DIR/map_flatten.rs:8:24
+   |
+LL |     let _: Option<_> = (Some(Some(1))).map(|x| x).flatten();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `and_then` instead: `(Some(Some(1))).and_then(|x| x)`
+
+error: aborting due to 2 previous errors
 

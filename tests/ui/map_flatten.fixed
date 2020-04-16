@@ -5,4 +5,5 @@
 
 fn main() {
     let _: Vec<_> = vec![5_i8; 6].into_iter().flat_map(|x| 0..x).collect();
+    let _: Option<_> = (Some(Some(1))).and_then(|x| x);
 }
