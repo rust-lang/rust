@@ -898,8 +898,6 @@ default_test!(CompileFail {
     suite: "compile-fail"
 });
 
-default_test!(RunFail { path: "src/test/run-fail", mode: "run-fail", suite: "run-fail" });
-
 default_test!(RunPassValgrind {
     path: "src/test/run-pass-valgrind",
     mode: "run-pass-valgrind",
@@ -929,13 +927,6 @@ host_test!(UiFullDeps { path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-ful
 host_test!(Rustdoc { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" });
 
 host_test!(Pretty { path: "src/test/pretty", mode: "pretty", suite: "pretty" });
-test!(RunFailPretty {
-    path: "src/test/run-fail/pretty",
-    mode: "pretty",
-    suite: "run-fail",
-    default: false,
-    host: true
-});
 test!(RunPassValgrindPretty {
     path: "src/test/run-pass-valgrind/pretty",
     mode: "pretty",
