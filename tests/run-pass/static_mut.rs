@@ -1,8 +1,7 @@
-#![allow(dead_code)]
-
 static mut FOO: i32 = 42;
 static BAR: Foo = Foo(unsafe { &FOO as *const _} );
 
+#[allow(dead_code)]
 struct Foo(*const i32);
 
 unsafe impl Sync for Foo {}

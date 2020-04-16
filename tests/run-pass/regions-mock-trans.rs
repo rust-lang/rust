@@ -2,8 +2,6 @@
 
 #![feature(rustc_private)]
 
-#![allow(dead_code)]
-
 extern crate libc;
 use std::mem;
 
@@ -13,11 +11,13 @@ struct Bcx<'a> {
     fcx: &'a Fcx<'a>
 }
 
+#[allow(dead_code)]
 struct Fcx<'a> {
     arena: &'a Arena,
     ccx: &'a Ccx
 }
 
+#[allow(dead_code)]
 struct Ccx {
     x: isize
 }

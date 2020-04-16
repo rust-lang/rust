@@ -2,14 +2,12 @@
 // compile-flags: -Zmiri-disable-isolation
 
 #![feature(rustc_private)]
-#![allow(unused)] // necessary on macos due to conditional compilation
-
-use std::path::PathBuf;
 
 extern crate libc;
 
-fn tmp() -> PathBuf {
-    std::env::var("MIRI_TEMP").map(PathBuf::from).unwrap_or_else(|_| std::env::temp_dir())
+#[cfg(target_os = "linux")]
+fn tmp() -> std::path::PathBuf {
+    std::env::var("MIRI_TEMP").map(std::path::PathBuf::from).unwrap_or_else(|_| std::env::temp_dir())
 }
 
 #[cfg(target_os = "linux")]

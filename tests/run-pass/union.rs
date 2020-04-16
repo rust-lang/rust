@@ -1,5 +1,4 @@
 #![feature(untagged_unions)]
-#![allow(dead_code, unused_variables)]
 
 fn main() {
     a();
@@ -9,6 +8,7 @@ fn main() {
 }
 
 fn a() {
+    #[allow(dead_code)]
     union U {
         f1: u32,
         f2: f32,
@@ -27,6 +27,7 @@ fn b() {
         y: u32,
     }
 
+    #[allow(dead_code)]
     union U {
         s: S,
         both: u64,
@@ -82,7 +83,7 @@ fn d() {
     unsafe {
         match u {
             MyUnion { f1: 10 } => { }
-            MyUnion { f2 } => { panic!("foo"); }
+            MyUnion { f2: _f2 } => { panic!("foo"); }
         }
     }
 }

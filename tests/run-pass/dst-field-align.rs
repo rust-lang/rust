@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-
+#[allow(dead_code)]
 struct Foo<T: ?Sized> {
     a: u16,
     b: T
@@ -17,6 +16,7 @@ struct Baz<T: ?Sized> {
     a: T
 }
 
+#[allow(dead_code)]
 struct HasDrop<T: ?Sized> {
     ptr: Box<usize>,
     data: T

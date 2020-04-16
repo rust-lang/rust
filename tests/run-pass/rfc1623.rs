@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code)] // tons of unused statics here...
 
 // very simple test for a 'static static with default lifetime
 static STATIC_STR: &str = "&'static str";
