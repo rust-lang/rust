@@ -1,7 +1,6 @@
-#![allow(dead_code)]
-
 use std::mem;
 
+#[allow(dead_code)]
 struct Foo<T: ?Sized> {
     a: i64,
     b: bool,

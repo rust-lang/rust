@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 #![feature(unsize, coerce_unsized)]
 
 #[repr(packed)]
@@ -8,12 +7,14 @@ struct S {
 }
 
 #[repr(packed)]
+#[allow(dead_code)]
 struct Test1<'a> {
     x: u8,
     other: &'a u32,
 }
 
 #[repr(packed)]
+#[allow(dead_code)]
 struct Test2<'a> {
     x: u8,
     other: &'a Test1<'a>,
@@ -26,6 +27,7 @@ fn test(t: Test2) {
 
 fn test_unsizing() {
     #[repr(packed)]
+    #[allow(dead_code)]
     struct UnalignedPtr<'a, T: ?Sized>
     where T: 'a,
     {

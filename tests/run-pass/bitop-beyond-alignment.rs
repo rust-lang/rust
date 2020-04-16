@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
-
 use std::mem;
 
 enum Tag<A> {
     Tag2(A)
 }
 
+#[allow(dead_code)]
 struct Rec {
     c8: u8,
     t: Tag<u64>
