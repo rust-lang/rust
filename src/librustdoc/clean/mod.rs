@@ -377,9 +377,11 @@ impl Clean<Lifetime> for hir::Lifetime {
     fn clean(&self, cx: &DocContext<'_>) -> Lifetime {
         let def = cx.tcx.named_region(self.hir_id);
         match def {
-            Some(rl::Region::EarlyBound(_, node_id, _))
-            | Some(rl::Region::LateBound(_, node_id, _))
-            | Some(rl::Region::Free(_, node_id)) => {
+            Some(
+                rl::Region::EarlyBound(_, node_id, _)
+                | rl::Region::LateBound(_, node_id, _)
+                | rl::Region::Free(_, node_id),
+            ) => {
                 if let Some(lt) = cx.lt_substs.borrow().get(&node_id).cloned() {
                     return lt;
                 }

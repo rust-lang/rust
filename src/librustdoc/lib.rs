@@ -7,6 +7,7 @@
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
