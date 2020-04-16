@@ -59,15 +59,19 @@ struct EncodeContext<'tcx> {
 
 macro_rules! encoder_methods {
     ($($name:ident($ty:ty);)*) => {
-        $(fn $name(&mut self, value: $ty) -> Result<(), Self::Error> {
-            self.opaque.$name(value)
-        })*
+        $(
+            #[inline]
+            fn $name(&mut self, value: $ty) -> Result<(), Self::Error> {
+                self.opaque.$name(value)
+            }
+        )*
     }
 }
 
 impl<'tcx> Encoder for EncodeContext<'tcx> {
     type Error = <opaque::Encoder as Encoder>::Error;
 
+    #[inline]
     fn emit_unit(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }

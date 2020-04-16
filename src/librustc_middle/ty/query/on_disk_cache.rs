@@ -922,6 +922,7 @@ where
 {
     type Error = E::Error;
 
+    #[inline]
     fn emit_unit(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
