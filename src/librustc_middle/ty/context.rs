@@ -314,8 +314,8 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
     pub span: Span,
     /// Span of the scope of the captured binding.
     pub scope_span: Option<Span>,
-    /// Span of `.await` statement.
-    pub await_span: Span,
+    /// Span of `.await` or `yield` expression.
+    pub yield_span: Span,
     /// Expr which the type evaluated from.
     pub expr: Option<hir::HirId>,
 }
