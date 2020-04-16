@@ -641,13 +641,17 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
         }
     }
 
-    let mut unsafe_blocks: Vec<_> = unsafe_blocks.iter().collect();
-    unsafe_blocks.sort_by_cached_key(|(hir_id, _)| tcx.hir().hir_id_to_node_id(*hir_id));
-    let used_unsafe: FxHashSet<_> =
-        unsafe_blocks.iter().flat_map(|&&(id, used)| used.then_some(id)).collect();
-    for &(block_id, is_used) in unsafe_blocks {
-        if !is_used {
-            report_unused_unsafe(tcx, &used_unsafe, block_id);
+    let (mut unsafe_used, mut unsafe_unused): (FxHashSet<_>, Vec<_>) = Default::default();
+    for &(block_id, is_used) in unsafe_blocks.iter() {
+        if is_used {
+            unsafe_used.insert(block_id);
+        } else {
+            unsafe_unused.push(block_id);
         }
+    }
+    unsafe_unused.sort_by_cached_key(|hir_id| tcx.hir().hir_id_to_node_id(*hir_id));
+
+    for &block_id in &unsafe_unused {
+        report_unused_unsafe(tcx, &unsafe_used, block_id);
     }
 }
