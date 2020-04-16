@@ -420,7 +420,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         Ok(())
     }
 
-    fn eval_maybe_thread_local_static_const(
+    fn adjust_global_const(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         mut val: mir::interpret::ConstValue<'tcx>,
     ) -> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
