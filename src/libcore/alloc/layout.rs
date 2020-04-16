@@ -274,7 +274,8 @@ impl Layout {
     ///
     /// # Examples
     ///
-    /// To calculate the layout of a `#[repr(C)]` structure from its fields' layouts:
+    /// To calculate the layout of a `#[repr(C)]` structure and the offsets of
+    /// the fields from its fields' layouts:
     ///
     /// ```rust
     /// # use std::alloc::{Layout, LayoutErr};
@@ -286,6 +287,7 @@ impl Layout {
     ///         layout = new_layout;
     ///         offsets.push(offset);
     ///     }
+    ///     // Remember to finalize with `pad_to_align`!
     ///     Ok((layout.pad_to_align(), offsets))
     /// }
     /// # // test that it works
