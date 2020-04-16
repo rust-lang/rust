@@ -11,12 +11,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         start_routine: OpTy<'tcx, Tag>,
         arg: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
-        println!(
-            "WARNING: The thread support is experimental. \
-                  For example, Miri does not detect data races yet."
-        );
-
         let this = self.eval_context_mut();
+
+        this.tcx.sess.warn(
+            "The thread support is experimental. \
+             For example, Miri does not detect data races yet.",
+        );
 
         let new_thread_id = this.create_thread()?;
         let old_thread_id = this.set_active_thread(new_thread_id)?;
@@ -57,6 +57,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(0)
     }
+
     fn pthread_join(
         &mut self,
         thread: OpTy<'tcx, Tag>,
@@ -73,6 +74,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(0)
     }
+
     fn pthread_detach(&mut self, thread: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -81,12 +83,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(0)
     }
+
     fn pthread_self(&mut self, dest: PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let thread_id = this.get_active_thread()?;
         this.write_scalar(Scalar::from_uint(thread_id.index() as u128, dest.layout.size), dest)
     }
+
     fn prctl(
         &mut self,
         option: OpTy<'tcx, Tag>,

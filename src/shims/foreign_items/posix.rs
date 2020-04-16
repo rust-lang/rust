@@ -293,26 +293,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
-            // Miscellaneous
-            "isatty" => {
-                let _fd = this.read_scalar(args[0])?.to_i32()?;
-                // "returns 1 if fd is an open file descriptor referring to a terminal; otherwise 0 is returned, and errno is set to indicate the error"
-                // FIXME: we just say nothing is a terminal.
-                let enotty = this.eval_libc("ENOTTY")?;
-                this.set_last_error(enotty)?;
-                this.write_null(dest)?;
-            }
-            "pthread_atfork" => {
-                let _prepare = this.read_scalar(args[0])?.not_undef()?;
-                let _parent = this.read_scalar(args[1])?.not_undef()?;
-                let _child = this.read_scalar(args[1])?.not_undef()?;
-                // We do not support forking, so there is nothing to do here.
-                this.write_null(dest)?;
-            }
-            "sched_yield" => {
-                this.write_null(dest)?;
-            }
-
             // Threading
             "pthread_create" => {
                 assert_eq!(args.len(), 4);
@@ -339,20 +319,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
-            "pthread_attr_getguardsize" => {
-                assert_eq!(args.len(), 2);
-
-                let guard_size = this.deref_operand(args[1])?;
-                let guard_size_type = args[1].layout.ty
-                    .builtin_deref(true)
-                    .ok_or_else(|| err_ub_format!(
-                        "wrong signature used for `pthread_attr_getguardsize`: first argument must be a raw pointer."
-                    ))?
-                    .ty;
-                let guard_size_layout = this.layout_of(guard_size_type)?;
-                this.write_scalar(Scalar::from_uint(crate::PAGE_SIZE, guard_size_layout.size), guard_size.into())?;
-
-                // Return success (`0`).
+            // Miscellaneous
+            "isatty" => {
+                let _fd = this.read_scalar(args[0])?.to_i32()?;
+                // "returns 1 if fd is an open file descriptor referring to a terminal; otherwise 0 is returned, and errno is set to indicate the error"
+                // FIXME: we just say nothing is a terminal.
+                let enotty = this.eval_libc("ENOTTY")?;
+                this.set_last_error(enotty)?;
+                this.write_null(dest)?;
+            }
+            "pthread_atfork" => {
+                let _prepare = this.read_scalar(args[0])?.not_undef()?;
+                let _parent = this.read_scalar(args[1])?.not_undef()?;
+                let _child = this.read_scalar(args[1])?.not_undef()?;
+                // We do not support forking, so there is nothing to do here.
                 this.write_null(dest)?;
             }
 
@@ -367,6 +347,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "pthread_condattr_destroy"
             | "pthread_cond_destroy" if this.frame().instance.to_string().starts_with("std::sys::unix::")
             => {
+                this.write_null(dest)?;
+            }
+            "pthread_attr_getguardsize" if this.frame().instance.to_string().starts_with("std::sys::unix::")
+            => {
+                let guard_size = this.deref_operand(args[1])?;
+                let guard_size_layout = this.libc_ty_layout("size_t")?;
+                this.write_scalar(Scalar::from_uint(crate::PAGE_SIZE, guard_size_layout.size), guard_size.into())?;
+
+                // Return success (`0`).
                 this.write_null(dest)?;
             }
 

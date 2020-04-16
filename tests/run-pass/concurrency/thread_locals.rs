@@ -1,3 +1,5 @@
+// ignore-windows
+
 #![feature(thread_local)]
 
 use std::thread;

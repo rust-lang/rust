@@ -1,3 +1,5 @@
+// ignore-windows
+
 use std::thread;
 
 fn create_and_detach() {

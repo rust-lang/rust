@@ -1,3 +1,5 @@
+// ignore-windows
+
 //! This test just calls the relevant APIs to check if Miri crashes.
 
 use std::sync::{Arc, Mutex};

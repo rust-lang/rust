@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::convert::TryFrom;
+use std::num::NonZeroU32;
 
 use log::trace;
 
@@ -42,21 +43,18 @@ impl ThreadId {
 }
 
 /// An identifier of a set of blocked threads.
-///
-/// Note: 0 is not a valid identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct BlockSetId(u32);
+pub struct BlockSetId(NonZeroU32);
 
 impl From<u32> for BlockSetId {
     fn from(id: u32) -> Self {
-        assert_ne!(id, 0, "0 is not a valid blockset id");
-        Self(id)
+        Self(NonZeroU32::new(id).expect("0 is not a valid blockset id"))
     }
 }
 
 impl BlockSetId {
     pub fn to_u32_scalar<'tcx>(&self) -> Scalar<Tag> {
-        Scalar::from_u32(self.0)
+        Scalar::from_u32(self.0.get())
     }
 }
 
@@ -150,6 +148,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     pub fn get_thread_local_alloc_id(&self, static_alloc_id: AllocId) -> Option<AllocId> {
         self.thread_local_alloc_ids.borrow().get(&(static_alloc_id, self.active_thread)).cloned()
     }
+
     /// Set the allocation id as the allocation id of the given thread local
     /// static for the active thread.
     pub fn set_thread_local_alloc_id(&self, static_alloc_id: AllocId, new_alloc_id: AllocId) {
@@ -161,20 +160,24 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             "Bug: a thread local initialized twice for the same thread."
         );
     }
+
     /// Borrow the stack of the active thread.
     fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Tag, FrameData<'tcx>>] {
         &self.threads[self.active_thread].stack
     }
+
     /// Mutably borrow the stack of the active thread.
     fn active_thread_stack_mut(&mut self) -> &mut Vec<Frame<'mir, 'tcx, Tag, FrameData<'tcx>>> {
         &mut self.threads[self.active_thread].stack
     }
+
     /// Create a new thread and returns its id.
     fn create_thread(&mut self) -> ThreadId {
         let new_thread_id = ThreadId::new(self.threads.len());
         self.threads.push(Default::default());
         new_thread_id
     }
+
     /// Set an active thread and return the id of the thread that was active before.
     fn set_active_thread_id(&mut self, id: ThreadId) -> ThreadId {
         let active_thread_id = self.active_thread;
@@ -182,19 +185,23 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         assert!(self.active_thread.index() < self.threads.len());
         active_thread_id
     }
+
     /// Get the id of the currently active thread.
     fn get_active_thread_id(&self) -> ThreadId {
         self.active_thread
     }
+
     /// Get the borrow of the currently active thread.
     fn active_thread_mut(&mut self) -> &mut Thread<'mir, 'tcx> {
         &mut self.threads[self.active_thread]
     }
+
     /// Mark the thread as detached, which means that no other thread will try
     /// to join it and the thread is responsible for cleaning up.
     fn detach_thread(&mut self, id: ThreadId) {
         self.threads[id].detached = true;
     }
+
     /// Mark that the active thread tries to join the thread with `joined_thread_id`.
     fn join_thread(&mut self, joined_thread_id: ThreadId) {
         assert!(!self.threads[joined_thread_id].detached, "Bug: trying to join a detached thread.");
@@ -215,23 +222,32 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             );
         }
     }
+
     /// Set the name of the active thread.
     fn set_thread_name(&mut self, new_thread_name: Vec<u8>) {
         self.active_thread_mut().thread_name = Some(new_thread_name);
     }
+
     /// Get ids and states of all threads ever allocated.
     fn get_all_thread_ids_with_states(&self) -> Vec<(ThreadId, ThreadState)> {
         self.threads.iter_enumerated().map(|(id, thread)| (id, thread.state)).collect()
     }
+
+    /// Allocate a new blockset id.
     fn create_blockset(&mut self) -> BlockSetId {
         self.blockset_counter = self.blockset_counter.checked_add(1).unwrap();
         self.blockset_counter.into()
     }
+
+    /// Block the currently active thread and put it into the given blockset.
     fn block_active_thread(&mut self, set: BlockSetId) {
         let state = &mut self.active_thread_mut().state;
         assert_eq!(*state, ThreadState::Enabled);
         *state = ThreadState::Blocked(set);
     }
+
+    /// Unblock any one thread from the given blockset if it contains at least
+    /// one. Return the id of the unblocked thread.
     fn unblock_random_thread(&mut self, set: BlockSetId) -> Option<ThreadId> {
         for (id, thread) in self.threads.iter_enumerated_mut() {
             if thread.state == ThreadState::Blocked(set) {
@@ -242,6 +258,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         }
         None
     }
+
     /// Decide which thread to run next.
     ///
     /// Returns `false` if all threads terminated.
@@ -278,60 +295,74 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         this.machine.threads.get_thread_local_alloc_id(static_alloc_id)
     }
+
     fn set_thread_local_alloc_id(&self, static_alloc_id: AllocId, thread_local_alloc_id: AllocId) {
         let this = self.eval_context_ref();
         this.machine.threads.set_thread_local_alloc_id(static_alloc_id, thread_local_alloc_id)
     }
+
     fn create_thread(&mut self) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_mut();
         Ok(this.machine.threads.create_thread())
     }
+
     fn detach_thread(&mut self, thread_id: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.machine.threads.detach_thread(thread_id);
         Ok(())
     }
+
     fn join_thread(&mut self, joined_thread_id: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.machine.threads.join_thread(joined_thread_id);
         Ok(())
     }
+
     fn set_active_thread(&mut self, thread_id: ThreadId) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_mut();
         Ok(this.machine.threads.set_active_thread_id(thread_id))
     }
+
     fn get_active_thread(&self) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_ref();
         Ok(this.machine.threads.get_active_thread_id())
     }
+
     fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Tag, FrameData<'tcx>>] {
         let this = self.eval_context_ref();
         this.machine.threads.active_thread_stack()
     }
+
     fn active_thread_stack_mut(&mut self) -> &mut Vec<Frame<'mir, 'tcx, Tag, FrameData<'tcx>>> {
         let this = self.eval_context_mut();
         this.machine.threads.active_thread_stack_mut()
     }
+
     fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
         Ok(this.machine.threads.set_thread_name(new_thread_name))
     }
+
     fn get_all_thread_ids_with_states(&mut self) -> Vec<(ThreadId, ThreadState)> {
         let this = self.eval_context_mut();
         this.machine.threads.get_all_thread_ids_with_states()
     }
+
     fn create_blockset(&mut self) -> InterpResult<'tcx, BlockSetId> {
         let this = self.eval_context_mut();
         Ok(this.machine.threads.create_blockset())
     }
+
     fn block_active_thread(&mut self, set: BlockSetId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         Ok(this.machine.threads.block_active_thread(set))
     }
+
     fn unblock_random_thread(&mut self, set: BlockSetId) -> InterpResult<'tcx, Option<ThreadId>> {
         let this = self.eval_context_mut();
         Ok(this.machine.threads.unblock_random_thread(set))
     }
+
     /// Decide which thread to run next.
     ///
     /// Returns `false` if all threads terminated.
