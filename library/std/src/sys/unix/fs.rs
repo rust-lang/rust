@@ -984,6 +984,7 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_os = "horizon"))]
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     let c_path = cstr(p)?;
     let p = c_path.as_ptr();
@@ -1011,11 +1012,22 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     }
 }
 
+#[cfg(target_os = "horizon")]
+pub fn readlink(p: &Path) -> io::Result<PathBuf> {
+    Ok(p.to_path_buf()) // horizon doesn't have symlinks
+}
+
+#[cfg(not(target_os = "horizon"))]
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
     let src = cstr(src)?;
     let dst = cstr(dst)?;
     cvt(unsafe { libc::symlink(src.as_ptr(), dst.as_ptr()) })?;
     Ok(())
+}
+
+#[cfg(target_os = "horizon")]
+pub fn symlink(_src: &Path, _dst: &Path) -> io::Result<()> {
+    Err(io::Error::new(io::ErrorKind::Other, "not supported")) // horizon doesn't have symlinks
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
