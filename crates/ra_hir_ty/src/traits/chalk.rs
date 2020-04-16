@@ -511,13 +511,13 @@ impl ToChalk for ProjectionTy {
 }
 
 impl ToChalk for super::ProjectionPredicate {
-    type Chalk = chalk_ir::Normalize<Interner>;
+    type Chalk = chalk_ir::AliasEq<Interner>;
 
-    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Normalize<Interner> {
-        chalk_ir::Normalize { alias: self.projection_ty.to_chalk(db), ty: self.ty.to_chalk(db) }
+    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::AliasEq<Interner> {
+        chalk_ir::AliasEq { alias: self.projection_ty.to_chalk(db), ty: self.ty.to_chalk(db) }
     }
 
-    fn from_chalk(_db: &dyn HirDatabase, _normalize: chalk_ir::Normalize<Interner>) -> Self {
+    fn from_chalk(_db: &dyn HirDatabase, _normalize: chalk_ir::AliasEq<Interner>) -> Self {
         unimplemented!()
     }
 }
