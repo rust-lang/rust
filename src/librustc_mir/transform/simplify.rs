@@ -307,6 +307,8 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         trace!("running SimplifyLocals on {:?}", source);
 
+        // First, we're going to get a count of *actual* uses for every `Local`.
+        // Take a look at `DeclMarker::visit_local()` to see exactly what is ignored.
         let mut used_locals = {
             let read_only_cache = read_only!(body);
             let mut marker = DeclMarker::new(body);
@@ -317,6 +319,11 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
 
         let arg_count = body.arg_count;
 
+        // Next, we're going to remove any `Local` with zero actual uses. When we remove those
+        // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
+        // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
+        // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
+        // fixedpoint where there are no more unused locals.
         loop {
             let mut remove_statements = RemoveStatements::new(&mut used_locals, arg_count, tcx);
             remove_statements.visit_body(body);
@@ -326,6 +333,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
             }
         }
 
+        // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
         let map = make_local_map(&mut body.local_decls, used_locals, arg_count);
 
         // Only bother running the `LocalUpdater` if we actually found locals to remove.
@@ -402,7 +410,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
 
                 fn can_skip_operand(o: &Operand<'_>) -> bool {
                     match o {
-                        Operand::Copy(p) | Operand::Move(p) => !p.is_indirect(),
+                        Operand::Copy(_) | Operand::Move(_) => true,
                         Operand::Constant(c) => can_skip_constant(c.literal),
                     }
                 }
