@@ -2260,13 +2260,19 @@ fn fn_sig_suggestion(
         .map(|(i, ty)| {
             Some(match ty.kind {
                 ty::Param(_) if assoc.fn_has_self_parameter && i == 0 => "self".to_string(),
-                ty::Ref(reg, _ref_ty, mutability) => {
+                ty::Ref(reg, ref_ty, mutability) if i == 0 => {
                     let reg = match &format!("{}", reg)[..] {
                         "'_" | "" => String::new(),
                         reg => format!("{} ", reg),
                     };
-                    if assoc.fn_has_self_parameter && i == 0 {
-                        format!("&{}{}self", reg, mutability.prefix_str())
+                    if assoc.fn_has_self_parameter {
+                        match ref_ty.kind {
+                            ty::Param(param) if param.name == kw::SelfUpper => {
+                                format!("&{}{}self", reg, mutability.prefix_str())
+                            }
+
+                            _ => format!("self: {}", ty),
+                        }
                     } else {
                         format!("_: {:?}", ty)
                     }

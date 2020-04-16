@@ -5,4 +5,5 @@ pub trait X {
     fn method2(self: Box<Self>, s: String) -> Self::Type;
     fn method3(other: &Self, s: String) -> Self::Type;
     fn method4(&self, other: &Self) -> Self::Type;
+    fn method5(self: &Box<Self>) -> Self::Type;
 }
