@@ -649,6 +649,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
             unsafe_unused.push(block_id);
         }
     }
+    // The unused unsafe blocks might not be in source order; sort them so that the unused unsafe
+    // error messages are properly aligned and the issue-45107 and lint-unused-unsafe tests pass.
     unsafe_unused.sort_by_cached_key(|hir_id| tcx.hir().span(*hir_id));
 
     for &block_id in &unsafe_unused {
