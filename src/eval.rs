@@ -206,7 +206,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
     let res: InterpResult<'_, i64> = (|| {
         // Main loop.
         while ecx.schedule()? {
-            assert!(ecx.step()?, "Bug: a terminated thread was scheduled for execution.");
+            assert!(ecx.step()?, "a terminated thread was scheduled for execution");
             ecx.process_diagnostics();
         }
         // Read the return code pointer *before* we run TLS destructors, to assert
