@@ -66,7 +66,7 @@ fn doctest_add_function() {
 struct Baz;
 fn baz() -> Baz { Baz }
 fn foo() {
-     bar<|>("", baz());
+    bar<|>("", baz());
 }
 
 "#####,
@@ -74,7 +74,7 @@ fn foo() {
 struct Baz;
 fn baz() -> Baz { Baz }
 fn foo() {
-     bar("", baz());
+    bar("", baz());
 }
 
 fn bar(arg: &str, baz: Baz) {

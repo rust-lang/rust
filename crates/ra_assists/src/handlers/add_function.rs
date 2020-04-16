@@ -4,7 +4,7 @@ use ra_syntax::{
 };
 
 use crate::{Assist, AssistCtx, AssistId};
-use ast::{edit::IndentLevel, ArgListOwner, CallExpr, Expr};
+use ast::{edit::IndentLevel, ArgListOwner, ModuleItemOwner};
 use hir::HirDisplay;
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -16,7 +16,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 // struct Baz;
 // fn baz() -> Baz { Baz }
 // fn foo() {
-//      bar<|>("", baz());
+//     bar<|>("", baz());
 // }
 //
 // ```
@@ -25,7 +25,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 // struct Baz;
 // fn baz() -> Baz { Baz }
 // fn foo() {
-//      bar("", baz());
+//     bar("", baz());
 // }
 //
 // fn bar(arg: &str, baz: Baz) {
@@ -38,16 +38,24 @@ pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
     let call = path_expr.syntax().parent().and_then(ast::CallExpr::cast)?;
     let path = path_expr.path()?;
 
-    if path.qualifier().is_some() {
-        return None;
-    }
-
     if ctx.sema.resolve_path(&path).is_some() {
         // The function call already resolves, no need to add a function
         return None;
     }
 
-    let function_builder = FunctionBuilder::from_call(&ctx, &call)?;
+    let target_module = if let Some(qualifier) = path.qualifier() {
+        if let Some(hir::PathResolution::Def(hir::ModuleDef::Module(resolved))) =
+            ctx.sema.resolve_path(&qualifier)
+        {
+            Some(resolved.definition_source(ctx.sema.db).value)
+        } else {
+            return None;
+        }
+    } else {
+        None
+    };
+
+    let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
 
     ctx.add_assist(AssistId("add_function"), "Add function", |edit| {
         edit.target(call.syntax().text_range());
@@ -66,26 +74,54 @@ struct FunctionTemplate {
 }
 
 struct FunctionBuilder {
-    append_fn_at: SyntaxNode,
+    target: GeneratedFunctionTarget,
     fn_name: ast::Name,
     type_params: Option<ast::TypeParamList>,
     params: ast::ParamList,
 }
 
 impl FunctionBuilder {
-    fn from_call(ctx: &AssistCtx, call: &ast::CallExpr) -> Option<Self> {
-        let append_fn_at = next_space_for_fn(&call)?;
-        let fn_name = fn_name(&call)?;
+    /// Prepares a generated function that matches `call` in `generate_in`
+    /// (or as close to `call` as possible, if `generate_in` is `None`)
+    fn from_call(
+        ctx: &AssistCtx,
+        call: &ast::CallExpr,
+        path: &ast::Path,
+        generate_in: Option<hir::ModuleSource>,
+    ) -> Option<Self> {
+        let target = if let Some(generate_in_module) = generate_in {
+            next_space_for_fn_in_module(generate_in_module)?
+        } else {
+            next_space_for_fn_after_call_site(&call)?
+        };
+        let fn_name = fn_name(&path)?;
         let (type_params, params) = fn_args(ctx, &call)?;
-        Some(Self { append_fn_at, fn_name, type_params, params })
+        Some(Self { target, fn_name, type_params, params })
     }
     fn render(self) -> Option<FunctionTemplate> {
         let placeholder_expr = ast::make::expr_todo();
         let fn_body = ast::make::block_expr(vec![], Some(placeholder_expr));
         let fn_def = ast::make::fn_def(self.fn_name, self.type_params, self.params, fn_body);
-        let fn_def = ast::make::add_newlines(2, fn_def);
-        let fn_def = IndentLevel::from_node(&self.append_fn_at).increase_indent(fn_def);
-        let insert_offset = self.append_fn_at.text_range().end();
+
+        let (fn_def, insert_offset) = match self.target {
+            GeneratedFunctionTarget::BehindItem(it) => {
+                let with_leading_blank_line = ast::make::add_leading_newlines(2, fn_def);
+                let indented = IndentLevel::from_node(&it).increase_indent(with_leading_blank_line);
+                (indented, it.text_range().end())
+            }
+            GeneratedFunctionTarget::InEmptyItemList(it) => {
+                let with_leading_newline = ast::make::add_leading_newlines(1, fn_def);
+                let indent = IndentLevel::from_node(it.syntax()).indented();
+                let mut indented = indent.increase_indent(with_leading_newline);
+                if !item_list_has_whitespace(&it) {
+                    // In this case we want to make sure there's a newline between the closing
+                    // function brace and the closing module brace (so it doesn't end in `}}`).
+                    indented = ast::make::add_trailing_newlines(1, indented);
+                }
+                (indented, it.syntax().text_range().start() + TextUnit::from_usize(1))
+            }
+        };
+
         let cursor_offset_from_fn_start = fn_def
             .syntax()
             .descendants()
@@ -98,15 +134,25 @@ impl FunctionBuilder {
     }
 }
 
-fn fn_name(call: &CallExpr) -> Option<ast::Name> {
-    let name = call.expr()?.syntax().to_string();
+/// Returns true if the given ItemList contains whitespace.
+fn item_list_has_whitespace(it: &ast::ItemList) -> bool {
+    it.syntax().descendants_with_tokens().find(|it| it.kind() == SyntaxKind::WHITESPACE).is_some()
+}
+
+enum GeneratedFunctionTarget {
+    BehindItem(SyntaxNode),
+    InEmptyItemList(ast::ItemList),
+}
+
+fn fn_name(call: &ast::Path) -> Option<ast::Name> {
+    let name = call.segment()?.syntax().to_string();
     Some(ast::make::name(&name))
 }
 
 /// Computes the type variables and arguments required for the generated function
 fn fn_args(
     ctx: &AssistCtx,
-    call: &CallExpr,
+    call: &ast::CallExpr,
 ) -> Option<(Option<ast::TypeParamList>, ast::ParamList)> {
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
@@ -158,9 +204,9 @@ fn deduplicate_arg_names(arg_names: &mut Vec<String>) {
     }
 }
 
-fn fn_arg_name(fn_arg: &Expr) -> Option<String> {
+fn fn_arg_name(fn_arg: &ast::Expr) -> Option<String> {
     match fn_arg {
-        Expr::CastExpr(cast_expr) => fn_arg_name(&cast_expr.expr()?),
+        ast::Expr::CastExpr(cast_expr) => fn_arg_name(&cast_expr.expr()?),
         _ => Some(
             fn_arg
                 .syntax()
@@ -172,7 +218,7 @@ fn fn_arg_name(fn_arg: &Expr) -> Option<String> {
     }
 }
 
-fn fn_arg_type(ctx: &AssistCtx, fn_arg: &Expr) -> Option<String> {
+fn fn_arg_type(ctx: &AssistCtx, fn_arg: &ast::Expr) -> Option<String> {
     let ty = ctx.sema.type_of_expr(fn_arg)?;
     if ty.is_unknown() {
         return None;
@@ -184,7 +230,7 @@ fn fn_arg_type(ctx: &AssistCtx, fn_arg: &Expr) -> Option<String> {
 /// directly after the current block
 /// We want to write the generated function directly after
 /// fns, impls or macro calls, but inside mods
-fn next_space_for_fn(expr: &CallExpr) -> Option<SyntaxNode> {
+fn next_space_for_fn_after_call_site(expr: &ast::CallExpr) -> Option<GeneratedFunctionTarget> {
     let mut ancestors = expr.syntax().ancestors().peekable();
     let mut last_ancestor: Option<SyntaxNode> = None;
     while let Some(next_ancestor) = ancestors.next() {
@@ -201,7 +247,26 @@ fn next_space_for_fn(expr: &CallExpr) -> Option<SyntaxNode> {
         }
         last_ancestor = Some(next_ancestor);
     }
-    last_ancestor
+    last_ancestor.map(GeneratedFunctionTarget::BehindItem)
+}
+
+fn next_space_for_fn_in_module(module: hir::ModuleSource) -> Option<GeneratedFunctionTarget> {
+    match module {
+        hir::ModuleSource::SourceFile(it) => {
+            if let Some(last_item) = it.items().last() {
+                Some(GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()))
+            } else {
+                Some(GeneratedFunctionTarget::BehindItem(it.syntax().clone()))
+            }
+        }
+        hir::ModuleSource::Module(it) => {
+            if let Some(last_item) = it.item_list().and_then(|it| it.items().last()) {
+                Some(GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()))
+            } else {
+                it.item_list().map(GeneratedFunctionTarget::InEmptyItemList)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -710,6 +775,112 @@ fn bar(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) {
     <|>todo!()
 }
 "#,
+        )
+    }
+
+    #[test]
+    fn add_function_in_module() {
+        check_assist(
+            add_function,
+            r"
+mod bar {}
+
+fn foo() {
+    bar::my_fn<|>()
+}
+",
+            r"
+mod bar {
+    fn my_fn() {
+        <|>todo!()
+    }
+}
+
+fn foo() {
+    bar::my_fn()
+}
+",
+        );
+        check_assist(
+            add_function,
+            r"
+mod bar {
+}
+
+fn foo() {
+    bar::my_fn<|>()
+}
+",
+            r"
+mod bar {
+    fn my_fn() {
+        <|>todo!()
+    }
+}
+
+fn foo() {
+    bar::my_fn()
+}
+",
+        )
+    }
+
+    #[test]
+    fn add_function_in_module_containing_other_items() {
+        check_assist(
+            add_function,
+            r"
+mod bar {
+    fn something_else() {}
+}
+
+fn foo() {
+    bar::my_fn<|>()
+}
+",
+            r"
+mod bar {
+    fn something_else() {}
+
+    fn my_fn() {
+        <|>todo!()
+    }
+}
+
+fn foo() {
+    bar::my_fn()
+}
+",
+        )
+    }
+
+    #[test]
+    fn add_function_in_nested_module() {
+        check_assist(
+            add_function,
+            r"
+mod bar {
+    mod baz {
+    }
+}
+
+fn foo() {
+    bar::baz::my_fn<|>()
+}
+",
+            r"
+mod bar {
+    mod baz {
+        fn my_fn() {
+            <|>todo!()
+        }
+    }
+}
+
+fn foo() {
+    bar::baz::my_fn()
+}
+",
         )
     }
 
