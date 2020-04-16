@@ -549,7 +549,7 @@ where
                 let n = base.len(self)?;
                 if n < u64::from(min_length) {
                     // This can only be reached in ConstProp and non-rustc-MIR.
-                    throw_ub!(BoundsCheckFailed { len: min_length.into(), index: n.into() });
+                    throw_ub!(BoundsCheckFailed { len: min_length.into(), index: n });
                 }
 
                 let index = if from_end {
