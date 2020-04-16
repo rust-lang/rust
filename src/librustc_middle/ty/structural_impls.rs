@@ -237,8 +237,8 @@ impl fmt::Debug for ty::Predicate<'tcx> {
             ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
                 write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_substs, kind)
             }
-            ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
+            ty::Predicate::ConstEvaluable(def_id, substs) => {
+                write!(f, "ConstEvaluable({:?}, {:?})", def_id, substs)
             }
         }
     }
@@ -489,8 +489,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
             ty::Predicate::ObjectSafe(trait_def_id) => {
                 Some(ty::Predicate::ObjectSafe(trait_def_id))
             }
-            ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                tcx.lift(&substs).map(|substs| ty::Predicate::ConstEvaluatable(def_id, substs))
+            ty::Predicate::ConstEvaluable(def_id, substs) => {
+                tcx.lift(&substs).map(|substs| ty::Predicate::ConstEvaluable(def_id, substs))
             }
         }
     }

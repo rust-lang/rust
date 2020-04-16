@@ -3335,7 +3335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_predicate(traits::Obligation::new(
                 cause,
                 self.param_env,
-                ty::Predicate::ConstEvaluatable(def_id, substs),
+                ty::Predicate::ConstEvaluable(def_id, substs),
             ));
         }
 
@@ -3823,7 +3823,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Predicate::TypeOutlives(..) => None,
                 ty::Predicate::WellFormed(..) => None,
                 ty::Predicate::ObjectSafe(..) => None,
-                ty::Predicate::ConstEvaluatable(..) => None,
+                ty::Predicate::ConstEvaluable(..) => None,
                 // N.B., this predicate is created by breaking down a
                 // `ClosureType: FnFoo()` predicate, where
                 // `ClosureType` represents some `Closure`. It can't

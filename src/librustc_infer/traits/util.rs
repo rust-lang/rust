@@ -39,8 +39,8 @@ pub fn anonymize_predicate<'tcx>(
             ty::Predicate::Subtype(tcx.anonymize_late_bound_regions(data))
         }
 
-        ty::Predicate::ConstEvaluatable(def_id, substs) => {
-            ty::Predicate::ConstEvaluatable(def_id, substs)
+        ty::Predicate::ConstEvaluable(def_id, substs) => {
+            ty::Predicate::ConstEvaluable(def_id, substs)
         }
     }
 }
@@ -187,8 +187,8 @@ impl Elaborator<'tcx> {
             ty::Predicate::ClosureKind(..) => {
                 // Nothing to elaborate when waiting for a closure's kind to be inferred.
             }
-            ty::Predicate::ConstEvaluatable(..) => {
-                // Currently, we do not elaborate const-evaluatable
+            ty::Predicate::ConstEvaluable(..) => {
+                // Currently, we do not elaborate const-evaluable
                 // predicates.
             }
             ty::Predicate::RegionOutlives(..) => {

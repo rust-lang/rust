@@ -1,4 +1,4 @@
-// The `?` operator is still not const-evaluatable because it calls `From::from` on the error
+// The `?` operator is still not const-evaluable because it calls `From::from` on the error
 // variant.
 
 #![feature(const_if_match)]

@@ -1192,7 +1192,7 @@ pub enum Predicate<'tcx> {
     Subtype(PolySubtypePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(DefId, SubstsRef<'tcx>),
+    ConstEvaluable(DefId, SubstsRef<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -1308,8 +1308,8 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
                 Predicate::ClosureKind(closure_def_id, closure_substs.subst(tcx, substs), kind)
             }
-            Predicate::ConstEvaluatable(def_id, const_substs) => {
-                Predicate::ConstEvaluatable(def_id, const_substs.subst(tcx, substs))
+            Predicate::ConstEvaluable(def_id, const_substs) => {
+                Predicate::ConstEvaluable(def_id, const_substs.subst(tcx, substs))
             }
         }
     }
@@ -1488,7 +1488,7 @@ impl<'tcx> Predicate<'tcx> {
             | Predicate::ObjectSafe(..)
             | Predicate::ClosureKind(..)
             | Predicate::TypeOutlives(..)
-            | Predicate::ConstEvaluatable(..) => None,
+            | Predicate::ConstEvaluable(..) => None,
         }
     }
 
@@ -1502,7 +1502,7 @@ impl<'tcx> Predicate<'tcx> {
             | Predicate::WellFormed(..)
             | Predicate::ObjectSafe(..)
             | Predicate::ClosureKind(..)
-            | Predicate::ConstEvaluatable(..) => None,
+            | Predicate::ConstEvaluable(..) => None,
         }
     }
 }

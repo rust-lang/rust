@@ -281,7 +281,7 @@ fn predicates_reference_self(
                 | ty::Predicate::RegionOutlives(..)
                 | ty::Predicate::ClosureKind(..)
                 | ty::Predicate::Subtype(..)
-                | ty::Predicate::ConstEvaluatable(..) => None,
+                | ty::Predicate::ConstEvaluable(..) => None,
             }
         })
         .collect()
@@ -313,7 +313,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | ty::Predicate::ObjectSafe(..)
         | ty::Predicate::ClosureKind(..)
         | ty::Predicate::TypeOutlives(..)
-        | ty::Predicate::ConstEvaluatable(..) => false,
+        | ty::Predicate::ConstEvaluable(..) => false,
     })
 }
 

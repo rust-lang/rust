@@ -500,7 +500,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
             }
 
-            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+            ty::Predicate::ConstEvaluable(def_id, substs) => {
                 match self.selcx.infcx().const_eval_resolve(
                     obligation.param_env,
                     def_id,

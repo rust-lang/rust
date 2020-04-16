@@ -48,6 +48,6 @@ fn not_outlives_predicate(p: &ty::Predicate<'_>) -> bool {
         | ty::Predicate::ObjectSafe(..)
         | ty::Predicate::ClosureKind(..)
         | ty::Predicate::Subtype(..)
-        | ty::Predicate::ConstEvaluatable(..) => true,
+        | ty::Predicate::ConstEvaluable(..) => true,
     }
 }

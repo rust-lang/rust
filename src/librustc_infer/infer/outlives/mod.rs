@@ -19,7 +19,7 @@ pub fn explicit_outlives_bounds<'tcx>(
         | ty::Predicate::ObjectSafe(..)
         | ty::Predicate::ClosureKind(..)
         | ty::Predicate::TypeOutlives(..)
-        | ty::Predicate::ConstEvaluatable(..) => None,
+        | ty::Predicate::ConstEvaluable(..) => None,
         ty::Predicate::RegionOutlives(ref data) => data
             .no_bound_vars()
             .map(|ty::OutlivesPredicate(r_a, r_b)| OutlivesBound::RegionSubRegion(r_b, r_a)),

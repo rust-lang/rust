@@ -493,7 +493,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+            ty::Predicate::ConstEvaluable(def_id, substs) => {
                 match self.tcx().const_eval_resolve(
                     obligation.param_env,
                     def_id,

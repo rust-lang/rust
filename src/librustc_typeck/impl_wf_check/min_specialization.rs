@@ -407,6 +407,6 @@ fn trait_predicate_kind<'tcx>(
         | ty::Predicate::Subtype(_)
         | ty::Predicate::ObjectSafe(_)
         | ty::Predicate::ClosureKind(..)
-        | ty::Predicate::ConstEvaluatable(..) => None,
+        | ty::Predicate::ConstEvaluable(..) => None,
     }
 }

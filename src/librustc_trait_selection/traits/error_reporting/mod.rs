@@ -548,13 +548,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span_bug!(span, "WF predicate not satisfied for {:?}", ty);
                     }
 
-                    ty::Predicate::ConstEvaluatable(..) => {
-                        // Errors for `ConstEvaluatable` predicates show up as
+                    ty::Predicate::ConstEvaluable(..) => {
+                        // Errors for `ConstEvaluable` predicates show up as
                         // `SelectionError::ConstEvalFailure`,
                         // not `Unimplemented`.
                         span_bug!(
                             span,
-                            "const-evaluatable requirement gave wrong error: `{:?}`",
+                            "const-evaluable requirement gave wrong error: `{:?}`",
                             obligation
                         )
                     }
