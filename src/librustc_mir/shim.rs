@@ -538,7 +538,7 @@ impl CloneShimBuilder<'tcx> {
         // BB #2
         // `dest[i] = Clone::clone(src[beg])`;
         // Goto #3 if ok, #5 if unwinding happens.
-        let dest_field = self.tcx.mk_place_index(dest.clone(), beg);
+        let dest_field = self.tcx.mk_place_index(dest, beg);
         let src_field = self.tcx.mk_place_index(src, beg);
         self.make_clone_call(dest_field, src_field, ty, BasicBlock::new(3), BasicBlock::new(5));
 
@@ -620,9 +620,9 @@ impl CloneShimBuilder<'tcx> {
         let mut previous_field = None;
         for (i, ity) in tys.enumerate() {
             let field = Field::new(i);
-            let src_field = self.tcx.mk_place_field(src.clone(), field, ity);
+            let src_field = self.tcx.mk_place_field(src, field, ity);
 
-            let dest_field = self.tcx.mk_place_field(dest.clone(), field, ity);
+            let dest_field = self.tcx.mk_place_field(dest, field, ity);
 
             // #(2i + 1) is the cleanup block for the previous clone operation
             let cleanup_block = self.block_index_offset(1);
@@ -633,7 +633,7 @@ impl CloneShimBuilder<'tcx> {
             // BB #(2i)
             // `dest.i = Clone::clone(&src.i);`
             // Goto #(2i + 2) if ok, #(2i + 1) if unwinding happens.
-            self.make_clone_call(dest_field.clone(), src_field, ity, next_block, cleanup_block);
+            self.make_clone_call(dest_field, src_field, ity, next_block, cleanup_block);
 
             // BB #(2i + 1) (cleanup)
             if let Some((previous_field, previous_cleanup)) = previous_field.take() {

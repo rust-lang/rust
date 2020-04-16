@@ -286,7 +286,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     // Box starts out uninitialized - need to create a separate
                     // move-path for the interior so it will be separate from
                     // the exterior.
-                    self.create_move_path(self.builder.tcx.mk_place_deref(place.clone()));
+                    self.create_move_path(self.builder.tcx.mk_place_deref(*place));
                     self.gather_init(place.as_ref(), InitKind::Shallow);
                 } else {
                     self.gather_init(place.as_ref(), InitKind::Deep);
@@ -458,9 +458,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             for offset in from..to {
                 let elem =
                     ProjectionElem::ConstantIndex { offset, min_length: len, from_end: false };
-                let path = self.add_move_path(base_path, &elem, |tcx| {
-                    tcx.mk_place_elem(base_place.clone(), elem)
-                });
+                let path =
+                    self.add_move_path(base_path, &elem, |tcx| tcx.mk_place_elem(base_place, elem));
                 self.record_move(place, path);
             }
         } else {

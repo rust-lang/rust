@@ -683,7 +683,7 @@ impl Tester for Collector {
         let name = self.generate_name(line, &filename);
         let cratename = self.cratename.to_string();
         let opts = self.opts.clone();
-        let edition = config.edition.unwrap_or(self.options.edition.clone());
+        let edition = config.edition.unwrap_or(self.options.edition);
         let options = self.options.clone();
         let runtool = self.options.runtool.clone();
         let runtool_args = self.options.runtool_args.clone();

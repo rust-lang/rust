@@ -47,7 +47,7 @@ pub fn try_inline(
     }
     let mut ret = Vec::new();
 
-    let attrs_clone = attrs.clone();
+    let attrs_clone = attrs;
 
     let inner = match res {
         Res::Def(DefKind::Trait, did) => {
@@ -292,7 +292,7 @@ pub fn build_impls(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>) ->
     let mut impls = Vec::new();
 
     for &did in tcx.inherent_impls(did).iter() {
-        build_impl(cx, did, attrs.clone(), &mut impls);
+        build_impl(cx, did, attrs, &mut impls);
     }
 
     impls

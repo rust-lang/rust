@@ -56,7 +56,7 @@ pub fn expand_aggregate<'tcx>(
                 let offset = i as u32;
                 assert_eq!(offset as usize, i);
                 tcx.mk_place_elem(
-                    lhs.clone(),
+                    lhs,
                     ProjectionElem::ConstantIndex {
                         offset,
                         // FIXME(eddyb) `min_length` doesn't appear to be used.
@@ -66,7 +66,7 @@ pub fn expand_aggregate<'tcx>(
                 )
             } else {
                 let field = Field::new(active_field_index.unwrap_or(i));
-                tcx.mk_place_field(lhs.clone(), field, ty)
+                tcx.mk_place_field(lhs, field, ty)
             };
             Statement { source_info, kind: StatementKind::Assign(box (lhs_field, Rvalue::Use(op))) }
         })

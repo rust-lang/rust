@@ -452,7 +452,7 @@ where
         // even though a satisfactory solution exists.
         let generic = GenericKind::Projection(projection_ty);
         let verify_bound = self.verify_bound.generic_bound(generic);
-        self.delegate.push_verify(origin, generic.clone(), region, verify_bound);
+        self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 }
 

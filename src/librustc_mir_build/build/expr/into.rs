@@ -3,10 +3,10 @@
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc_middle::mir::*;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
 use rustc_span::symbol::sym;
 
 use rustc_target::spec::abi::Abi;
@@ -139,31 +139,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Start the loop.
                 this.cfg.goto(block, source_info, loop_block);
 
-                this.in_breakable_scope(
-                    Some(loop_block),
-                    exit_block,
-                    destination.clone(),
-                    move |this| {
-                        // conduct the test, if necessary
-                        let body_block = this.cfg.start_new_block();
-                        let diverge_cleanup = this.diverge_cleanup();
-                        this.cfg.terminate(
-                            loop_block,
-                            source_info,
-                            TerminatorKind::FalseUnwind {
-                                real_target: body_block,
-                                unwind: Some(diverge_cleanup),
-                            },
-                        );
+                this.in_breakable_scope(Some(loop_block), exit_block, destination, move |this| {
+                    // conduct the test, if necessary
+                    let body_block = this.cfg.start_new_block();
+                    let diverge_cleanup = this.diverge_cleanup();
+                    this.cfg.terminate(
+                        loop_block,
+                        source_info,
+                        TerminatorKind::FalseUnwind {
+                            real_target: body_block,
+                            unwind: Some(diverge_cleanup),
+                        },
+                    );
 
-                        // The “return” value of the loop body must always be an unit. We therefore
-                        // introduce a unit temporary as the destination for the loop body.
-                        let tmp = this.get_unit_temp();
-                        // Execute the body, branching back to the test.
-                        let body_block_end = unpack!(this.into(tmp, body_block, body));
-                        this.cfg.goto(body_block_end, source_info, loop_block);
-                    },
-                );
+                    // The “return” value of the loop body must always be an unit. We therefore
+                    // introduce a unit temporary as the destination for the loop body.
+                    let tmp = this.get_unit_temp();
+                    // Execute the body, branching back to the test.
+                    let body_block_end = unpack!(this.into(tmp, body_block, body));
+                    this.cfg.goto(body_block_end, source_info, loop_block);
+                });
                 exit_block.unit()
             }
             ExprKind::Call { ty, fun, args, from_hir_call } => {
@@ -278,26 +273,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let field_names = this.hir.all_fields(adt_def, variant_index);
 
-                let fields =
-                    if let Some(FruInfo { base, field_types }) = base {
-                        let base = unpack!(block = this.as_place(block, base));
+                let fields = if let Some(FruInfo { base, field_types }) = base {
+                    let base = unpack!(block = this.as_place(block, base));
 
-                        // MIR does not natively support FRU, so for each
-                        // base-supplied field, generate an operand that
-                        // reads it from the base.
-                        field_names
-                            .into_iter()
-                            .zip(field_types.into_iter())
-                            .map(|(n, ty)| match fields_map.get(&n) {
-                                Some(v) => v.clone(),
-                                None => this.consume_by_copy_or_move(
-                                    this.hir.tcx().mk_place_field(base.clone(), n, ty),
-                                ),
-                            })
-                            .collect()
-                    } else {
-                        field_names.iter().filter_map(|n| fields_map.get(n).cloned()).collect()
-                    };
+                    // MIR does not natively support FRU, so for each
+                    // base-supplied field, generate an operand that
+                    // reads it from the base.
+                    field_names
+                        .into_iter()
+                        .zip(field_types.into_iter())
+                        .map(|(n, ty)| match fields_map.get(&n) {
+                            Some(v) => v.clone(),
+                            None => this.consume_by_copy_or_move(
+                                this.hir.tcx().mk_place_field(base, n, ty),
+                            ),
+                        })
+                        .collect()
+                } else {
+                    field_names.iter().filter_map(|n| fields_map.get(n).cloned()).collect()
+                };
 
                 let inferred_ty = expr.ty;
                 let user_ty = user_ty.map(|ty| {

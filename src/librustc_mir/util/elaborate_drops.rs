@@ -212,7 +212,7 @@ where
                 assert_eq!(self.elaborator.param_env().reveal, Reveal::All);
                 let field_ty =
                     tcx.normalize_erasing_regions(self.elaborator.param_env(), f.ty(tcx, substs));
-                (tcx.mk_place_field(base_place.clone(), field, field_ty), subpath)
+                (tcx.mk_place_field(base_place, field, field_ty), subpath)
             })
             .collect()
     }
@@ -340,7 +340,7 @@ where
             .enumerate()
             .map(|(i, &ty)| {
                 (
-                    self.tcx().mk_place_field(self.place.clone(), Field::new(i), ty),
+                    self.tcx().mk_place_field(self.place, Field::new(i), ty),
                     self.elaborator.field_subpath(self.path, Field::new(i)),
                 )
             })
@@ -353,7 +353,7 @@ where
     fn open_drop_for_box(&mut self, adt: &'tcx ty::AdtDef, substs: SubstsRef<'tcx>) -> BasicBlock {
         debug!("open_drop_for_box({:?}, {:?}, {:?})", self, adt, substs);
 
-        let interior = self.tcx().mk_place_deref(self.place.clone());
+        let interior = self.tcx().mk_place_deref(self.place);
         let interior_path = self.elaborator.deref_subpath(self.path);
 
         let succ = self.succ; // FIXME(#43234)
@@ -434,7 +434,7 @@ where
 
             if let Some(variant_path) = subpath {
                 let base_place = tcx.mk_place_elem(
-                    self.place.clone(),
+                    self.place,
                     ProjectionElem::Downcast(Some(variant.ident.name), variant_index),
                 );
                 let fields = self.move_paths_for_fields(base_place, variant_path, &variant, substs);
@@ -622,7 +622,7 @@ where
             (Rvalue::Use(copy(cur.into())), Rvalue::BinaryOp(BinOp::Offset, move_(cur.into()), one))
         } else {
             (
-                Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place.clone(), cur)),
+                Rvalue::AddressOf(Mutability::Mut, tcx.mk_place_index(self.place, cur)),
                 Rvalue::BinaryOp(BinOp::Add, move_(cur.into()), one),
             )
         };
@@ -654,7 +654,7 @@ where
         self.elaborator.patch().patch_terminator(
             drop_block,
             TerminatorKind::Drop {
-                location: tcx.mk_place_deref(ptr.clone()),
+                location: tcx.mk_place_deref(ptr),
                 target: loop_block,
                 unwind: unwind.into_option(),
             },
@@ -682,7 +682,7 @@ where
                 .map(|i| {
                     (
                         tcx.mk_place_elem(
-                            self.place.clone(),
+                            self.place,
                             ProjectionElem::ConstantIndex {
                                 offset: i,
                                 min_length: size,
@@ -719,8 +719,8 @@ where
                     switch_ty: tcx.types.usize,
                     values: From::from(USIZE_SWITCH_ZERO),
                     targets: vec![
-                        self.drop_loop_pair(ety, false, len.clone()),
-                        self.drop_loop_pair(ety, true, len.clone()),
+                        self.drop_loop_pair(ety, false, len),
+                        self.drop_loop_pair(ety, true, len),
                     ],
                 },
             }),
@@ -912,7 +912,7 @@ where
             .map(|(i, f)| {
                 let field = Field::new(i);
                 let field_ty = f.ty(tcx, substs);
-                Operand::Move(tcx.mk_place_field(self.place.clone(), field, field_ty))
+                Operand::Move(tcx.mk_place_field(self.place, field, field_ty))
             })
             .collect();
 

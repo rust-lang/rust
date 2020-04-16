@@ -2005,7 +2005,7 @@ fn emit_to_destination(
     let _buffer_lock = lock::acquire_global_lock("rustc_errors");
     for (pos, line) in rendered_buffer.iter().enumerate() {
         for part in line {
-            dst.apply_style(lvl.clone(), part.style)?;
+            dst.apply_style(*lvl, part.style)?;
             write!(dst, "{}", part.text)?;
             dst.reset()?;
         }

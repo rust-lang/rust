@@ -126,7 +126,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 .borrow_mut()
                 .entry(span)
                 .or_default()
-                .push(error.obligation.predicate.clone());
+                .push(error.obligation.predicate);
         }
 
         // We do this in 2 passes because we want to display errors in order, though
@@ -1409,7 +1409,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     (self.tcx.sess.source_map().span_to_snippet(span), &obligation.cause.code)
                 {
                     let generics = self.tcx.generics_of(*def_id);
-                    if generics.params.iter().filter(|p| p.name.as_str() != "Self").next().is_some()
+                    if generics.params.iter().any(|p| p.name.as_str() != "Self")
                         && !snippet.ends_with('>')
                     {
                         // FIXME: To avoid spurious suggestions in functions where type arguments
@@ -1838,7 +1838,7 @@ pub fn suggest_constraining_type_param(
         // Account for `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
         let mut trailing_comma = false;
         if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(where_clause_span) {
-            trailing_comma = snippet.ends_with(",");
+            trailing_comma = snippet.ends_with(',');
         }
         let where_clause_span = if trailing_comma {
             let hi = where_clause_span.hi();
