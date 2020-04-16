@@ -649,7 +649,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
             unsafe_unused.push(block_id);
         }
     }
-    unsafe_unused.sort_by_cached_key(|hir_id| tcx.hir().hir_id_to_node_id(*hir_id));
+    unsafe_unused.sort_by_cached_key(|hir_id| tcx.hir().span(*hir_id));
 
     for &block_id in &unsafe_unused {
         report_unused_unsafe(tcx, &unsafe_used, block_id);
