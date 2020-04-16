@@ -44,8 +44,9 @@ impl Drop for Process {
 }
 
 impl Process {
-    fn run(process_path: &Path) -> Result<Process, io::Error> {
+    fn run<T: AsRef<str>>(process_path: &Path, args: &[T]) -> Result<Process, io::Error> {
         let child = Command::new(process_path.clone())
+            .args(args.iter().map(|it| it.as_ref()))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -74,10 +75,11 @@ impl Process {
 }
 
 impl ProcMacroProcessSrv {
-    pub fn run(
+    pub fn run<T: AsRef<str>>(
         process_path: &Path,
+        args: &[T],
     ) -> Result<(ProcMacroProcessThread, ProcMacroProcessSrv), io::Error> {
-        let process = Process::run(process_path)?;
+        let process = Process::run(process_path, args)?;
 
         let (task_tx, task_rx) = bounded(0);
         let handle = jod_thread::spawn(move || {

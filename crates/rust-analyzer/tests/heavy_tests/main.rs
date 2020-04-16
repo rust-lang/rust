@@ -692,13 +692,15 @@ pub fn foo(_input: TokenStream) -> TokenStream {
 "###,
     )
     .with_config(|config| {
+        // FIXME: Use env!("CARGO_BIN_EXE_ra-analyzer") instead after
+        // https://github.com/rust-lang/cargo/pull/7697 landed
         let macro_srv_path = std::path::Path::new(std::env!("CARGO_MANIFEST_DIR"))
-            .join("../../target/debug/ra_proc_macro_srv")
+            .join("../../target/debug/rust-analyzer")
             .to_string_lossy()
             .to_string();
 
         config.cargo.load_out_dirs_from_check = true;
-        config.proc_macro_srv = Some(macro_srv_path)
+        config.proc_macro_srv = Some((macro_srv_path, vec!["proc-macro".to_string()]));
     })
     .root("foo")
     .root("bar")

@@ -51,6 +51,7 @@ fn main() -> Result<()> {
             cli::diagnostics(path.as_ref(), load_output_dirs, with_proc_macro, all)?
         }
 
+        args::Command::ProcMacro => run_proc_macro_sv()?,
         args::Command::RunServer => run_server()?,
         args::Command::Version => println!("rust-analyzer {}", env!("REV")),
     }
@@ -61,6 +62,11 @@ fn setup_logging() -> Result<()> {
     std::env::set_var("RUST_BACKTRACE", "short");
     env_logger::try_init()?;
     ra_prof::init();
+    Ok(())
+}
+
+fn run_proc_macro_sv() -> Result<()> {
+    ra_proc_macro_srv::cli::run();
     Ok(())
 }
 

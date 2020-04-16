@@ -148,9 +148,9 @@ impl WorldState {
 
         let proc_macro_client = match &config.proc_macro_srv {
             None => ProcMacroClient::dummy(),
-            Some(srv) => {
-                let path = Path::new(&srv);
-                match ProcMacroClient::extern_process(path) {
+            Some((path, args)) => {
+                let path = std::path::Path::new(path);
+                match ProcMacroClient::extern_process(path, args) {
                     Ok(it) => it,
                     Err(err) => {
                         log::error!(

@@ -56,8 +56,11 @@ pub struct ProcMacroClient {
 }
 
 impl ProcMacroClient {
-    pub fn extern_process(process_path: &Path) -> Result<ProcMacroClient, std::io::Error> {
-        let (thread, process) = ProcMacroProcessSrv::run(process_path)?;
+    pub fn extern_process<T: AsRef<str>>(
+        process_path: &Path,
+        args: &[T],
+    ) -> Result<ProcMacroClient, std::io::Error> {
+        let (thread, process) = ProcMacroProcessSrv::run(process_path, args)?;
         Ok(ProcMacroClient {
             kind: ProcMacroClientKind::Process { process: Arc::new(process), thread },
         })

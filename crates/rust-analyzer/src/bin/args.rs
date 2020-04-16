@@ -45,6 +45,7 @@ pub(crate) enum Command {
         /// this would include the parser test files.
         all: bool,
     },
+    ProcMacro,
     RunServer,
     Version,
 }
@@ -264,6 +265,7 @@ ARGS:
 
                 Command::Diagnostics { path, load_output_dirs, with_proc_macro, all }
             }
+            "proc-macro" => Command::ProcMacro,
             _ => {
                 eprintln!(
                     "\

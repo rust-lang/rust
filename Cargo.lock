@@ -1341,6 +1341,7 @@ dependencies = [
  "ra_hir_def",
  "ra_hir_ty",
  "ra_ide",
+ "ra_proc_macro_srv",
  "ra_prof",
  "ra_project_model",
  "ra_syntax",

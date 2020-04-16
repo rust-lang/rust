@@ -22,7 +22,7 @@ mod dylib;
 use proc_macro::bridge::client::TokenStream;
 use ra_proc_macro::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
 
-pub fn expand_task(task: &ExpansionTask) -> Result<ExpansionResult, String> {
+pub(crate) fn expand_task(task: &ExpansionTask) -> Result<ExpansionResult, String> {
     let expander = dylib::Expander::new(&task.lib)
         .expect(&format!("Cannot expand with provided libraries: ${:?}", &task.lib));
 
@@ -39,7 +39,7 @@ pub fn expand_task(task: &ExpansionTask) -> Result<ExpansionResult, String> {
     }
 }
 
-pub fn list_macros(task: &ListMacrosTask) -> Result<ListMacrosResult, String> {
+pub(crate) fn list_macros(task: &ListMacrosTask) -> Result<ListMacrosResult, String> {
     let expander = dylib::Expander::new(&task.lib)
         .expect(&format!("Cannot expand with provided libraries: ${:?}", &task.lib));
 
@@ -52,6 +52,8 @@ pub fn list_macros(task: &ListMacrosTask) -> Result<ListMacrosResult, String> {
         }
     }
 }
+
+pub mod cli;
 
 #[cfg(test)]
 mod tests;

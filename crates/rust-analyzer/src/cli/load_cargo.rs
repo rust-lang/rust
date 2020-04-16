@@ -73,7 +73,10 @@ pub(crate) fn load_cargo(
     let proc_macro_client = if !with_proc_macro {
         ProcMacroClient::dummy()
     } else {
-        ProcMacroClient::extern_process(Path::new("ra_proc_macro_srv")).unwrap()
+        let mut path = std::env::current_exe()?;
+        path.pop();
+        path.push("rust-analyzer");
+        ProcMacroClient::extern_process(&path, &["proc-macro"]).unwrap()
     };
     let host = load(&source_roots, ws, &mut vfs, receiver, extern_dirs, &proc_macro_client);
     Ok((host, source_roots))

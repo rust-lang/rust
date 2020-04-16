@@ -393,11 +393,6 @@
                     "description": "Enable Proc macro support, cargo.loadOutDirsFromCheck must be enabled.",
                     "type": "boolean",
                     "default": false
-                },
-                "rust-analyzer.procMacro.serverPath": {
-                    "description": "Proc macro server path",
-                    "type": "string",
-                    "default": "ra_proc_macro_srv"
                 }
             }
         },

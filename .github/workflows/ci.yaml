@@ -85,9 +85,9 @@ jobs:
     - name: Compile
       run: cargo test --no-run
 
-    # We have to build ra_proc_macro_srv first for running related heavy tests
-    - name: Build ra_proc_macro_srv
-      run: cargo build -p ra_proc_macro_srv
+    # We have to build rust-analyzer first for running related heavy tests
+    - name: Build rust-analyzer
+      run: cargo build -p rust-analyzer
 
     - name: Test
       run: cargo test

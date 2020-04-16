@@ -20,7 +20,7 @@ pub struct Config {
     pub with_sysroot: bool,
     pub publish_diagnostics: bool,
     pub lru_capacity: Option<usize>,
-    pub proc_macro_srv: Option<String>,
+    pub proc_macro_srv: Option<(String, Vec<String>)>,
     pub files: FilesConfig,
     pub notifications: NotificationsConfig,
 
@@ -134,7 +134,11 @@ impl Config {
 
         match get::<bool>(value, "/procMacro/enabled") {
             Some(true) => {
-                set(value, "/procMacro/serverPath", &mut self.proc_macro_srv);
+                if let Ok(mut path) = std::env::current_exe() {
+                    path.pop();
+                    path.push("rust-analyzer");
+                    self.proc_macro_srv = Some((path.to_string_lossy().to_string(), vec!["proc-macro".to_string()]));
+                }
             }
             _ => self.proc_macro_srv = None,
         }
