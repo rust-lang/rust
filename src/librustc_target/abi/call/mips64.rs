@@ -88,6 +88,7 @@ where
     let mut prefix_index = 0;
 
     match arg.layout.fields {
+        abi::FieldsShape::Primitive => unreachable!(),
         abi::FieldsShape::Array { .. } => {
             // Arrays are passed indirectly
             arg.make_indirect();
