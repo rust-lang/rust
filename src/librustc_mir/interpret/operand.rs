@@ -537,7 +537,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             ty::ConstKind::Value(val_val) => val_val,
         };
-        let val_val = M::eval_maybe_thread_local_static_const(self, val_val)?;
+        // This call allows the machine to create fresh allocation ids for
+        // thread-local statics (see the `adjust_global_const` function
+        // documentation). Please note that the `const_eval` call in the early
+        // return above calls `eval_const_to_op` again, so `adjust_global_const`
+        // is guaranteed to be called for all constants.
+        let val_val = M::adjust_global_const(self, val_val)?;
         // Other cases need layout.
         let layout = from_known_layout(self.tcx, layout, || self.layout_of(val.ty))?;
         let op = match val_val {

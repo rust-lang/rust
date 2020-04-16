@@ -251,7 +251,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// `canonical_alloc_id` would result in pointer pointing to `t2`'s thread
     /// local and not `t1` as it should.
     #[inline]
-    fn eval_maybe_thread_local_static_const(
+    fn adjust_global_const(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         val: mir::interpret::ConstValue<'tcx>,
     ) -> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
