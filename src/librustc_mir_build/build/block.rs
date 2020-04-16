@@ -173,7 +173,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Some(expr) = expr {
             let tail_result_is_ignored =
                 destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
-            this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored });
+            let span = match expr {
+                ExprRef::Hair(expr) => expr.span,
+                ExprRef::Mirror(ref expr) => expr.span,
+            };
+            this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored, span });
 
             unpack!(block = this.into(destination, block, expr));
             let popped = this.block_context.pop();
