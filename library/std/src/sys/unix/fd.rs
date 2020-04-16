@@ -99,7 +99,7 @@ impl FileDesc {
         #[cfg(target_os = "android")]
         use super::android::cvt_pread64;
 
-        #[cfg(not(target_os = "android"))]
+        #[cfg(not(any(target_os = "android", target_env = "newlib")))]
         unsafe fn cvt_pread64(
             fd: c_int,
             buf: *mut c_void,
@@ -111,6 +111,21 @@ impl FileDesc {
             #[cfg(target_os = "linux")]
             use libc::pread64;
             cvt(pread64(fd, buf, count, offset))
+        }
+
+        #[cfg(target_env = "newlib")]
+        unsafe fn cvt_pread64(
+            fd: c_int,
+            buf: *mut c_void,
+            count: usize,
+            offset: i64,
+        ) -> io::Result<isize> {
+            // ported from newlib, because it inexplicably was not being compiled
+            let cur_pos = cvt(libc::lseek(fd, 0, libc::SEEK_CUR))?;
+            cvt(libc::lseek(fd, offset, libc::SEEK_SET))?;
+            let num_read = cvt(libc::read(fd, buf, count))?;
+            cvt(libc::lseek(fd, cur_pos, libc::SEEK_SET))?;
+            Ok(num_read as _)
         }
 
         unsafe {
@@ -152,7 +167,7 @@ impl FileDesc {
         #[cfg(target_os = "android")]
         use super::android::cvt_pwrite64;
 
-        #[cfg(not(target_os = "android"))]
+        #[cfg(not(any(target_os = "android", target_env = "newlib")))]
         unsafe fn cvt_pwrite64(
             fd: c_int,
             buf: *const c_void,
@@ -164,6 +179,21 @@ impl FileDesc {
             #[cfg(target_os = "linux")]
             use libc::pwrite64;
             cvt(pwrite64(fd, buf, count, offset))
+        }
+
+        #[cfg(target_env = "newlib")]
+        unsafe fn cvt_pwrite64(
+            fd: c_int,
+            buf: *const c_void,
+            count: usize,
+            offset: i64,
+        ) -> io::Result<isize> {
+            // see pread
+            let cur_pos = cvt(libc::lseek(fd, 0, libc::SEEK_CUR))?;
+            cvt(libc::lseek(fd, offset, libc::SEEK_SET))?;
+            let num_written = cvt(libc::write(fd, buf, count))?;
+            cvt(libc::lseek(fd, cur_pos, libc::SEEK_SET))?;
+            Ok(num_written)
         }
 
         unsafe {
