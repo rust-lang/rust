@@ -1,5 +1,5 @@
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-unboxed-closures.rs:9:12
+  --> $DIR/feature-gate-unboxed-closures.rs:10:12
    |
 LL |     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
    |            ^^^^^^^^^^^
@@ -16,6 +16,14 @@ LL | impl FnOnce<(u32, u32)> for Test {
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
-error: aborting due to 2 previous errors
+error[E0183]: manual implementations of `FnOnce` are experimental
+  --> $DIR/feature-gate-unboxed-closures.rs:5:1
+   |
+LL | impl FnOnce<(u32, u32)> for Test {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ manual implementations of `FnOnce` are experimental
+   |
+   = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

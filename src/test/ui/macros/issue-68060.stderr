@@ -1,5 +1,5 @@
 error: `#[target_feature(..)]` can only be applied to `unsafe` functions
-  --> $DIR/issue-68060.rs:8:13
+  --> $DIR/issue-68060.rs:6:13
    |
 LL |             #[target_feature(enable = "")]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only be applied to `unsafe` functions
@@ -8,13 +8,13 @@ LL |             |_| (),
    |             ------ not an `unsafe` function
 
 error: the feature named `` is not valid for this target
-  --> $DIR/issue-68060.rs:8:30
+  --> $DIR/issue-68060.rs:6:30
    |
 LL |             #[target_feature(enable = "")]
    |                              ^^^^^^^^^^^ `` is not valid for this target
 
 error[E0737]: `#[track_caller]` requires Rust ABI
-  --> $DIR/issue-68060.rs:11:13
+  --> $DIR/issue-68060.rs:9:13
    |
 LL |             #[track_caller]
    |             ^^^^^^^^^^^^^^^
