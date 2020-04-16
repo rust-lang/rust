@@ -297,7 +297,6 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         self.collect_outlives_from_predicate_list(
             move |ty| ty == identity_proj,
             traits::elaborate_predicates(tcx, trait_predicates)
-                .into_iter()
                 .map(|o| o.predicate)
                 .collect::<Vec<_>>(),
         )

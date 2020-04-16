@@ -1056,7 +1056,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                  place: {:?}",
                                 place_span.0
                             );
-                            this.reservation_error_reported.insert(place_span.0.clone());
+                            this.reservation_error_reported.insert(place_span.0);
                         }
                         Activation(_, activating) => {
                             debug!(
