@@ -6,12 +6,25 @@ use std::marker::PhantomData;
 use std::mem;
 use std::slice;
 
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+
 #[cfg(test)]
 mod tests;
 
 pub type Word = u64;
 pub const WORD_BYTES: usize = mem::size_of::<Word>();
 pub const WORD_BITS: usize = WORD_BYTES * 8;
+
+/// The maximum number of `Word`s that can fit in the inline version of `BitSetStorage`.
+pub const INLINE_WORDS: usize = 3;
+
+/// The maximum number of bits that can fit in the inline version of `BitSetStorage`.
+pub const INLINE_BITS: usize = INLINE_WORDS * WORD_BITS;
+
+union BitSetStorage {
+    stack: [Word; INLINE_WORDS],
+    heap: *mut Word,
+}
 
 /// A fixed-size bitset type with a dense representation.
 ///
@@ -25,28 +38,96 @@ pub const WORD_BITS: usize = WORD_BYTES * 8;
 /// will panic if the bitsets have differing domain sizes.
 ///
 /// [`GrowableBitSet`]: struct.GrowableBitSet.html
-#[derive(Clone, Eq, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct BitSet<T: Idx> {
     domain_size: usize,
-    words: Vec<Word>,
+    storage: BitSetStorage,
     marker: PhantomData<T>,
+}
+
+unsafe impl<T: Idx> Send for BitSet<T> {}
+unsafe impl<T: Idx> Sync for BitSet<T> {}
+
+impl<T: Idx> Eq for BitSet<T> {}
+impl<T: Idx> PartialEq for BitSet<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.domain_size == other.domain_size && self.words() == other.words()
+    }
+}
+
+impl<T: Idx> Clone for BitSet<T> {
+    fn clone(&self) -> Self {
+        let mut ret = Self::new_empty(self.domain_size());
+        ret.words_mut().copy_from_slice(self.words());
+        ret
+    }
+}
+
+impl<T: Idx> Encodable for BitSet<T> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        Encodable::encode(&self.domain_size, s)?;
+        Encodable::encode(self.words(), s)
+    }
+}
+
+impl<T: Idx> Decodable for BitSet<T> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        let domain_size: usize = Decodable::decode(d)?;
+        let mut ret = Self::new_empty(domain_size);
+
+        let words: &[Word] = Decodable::decode(d)?;
+        ret.words_mut().copy_from_slice(words);
+        Ok(ret)
+    }
+}
+
+impl<T: Idx> Drop for BitSet<T> {
+    fn drop(&mut self) {
+        if !self.is_inline() {
+            let num_words = self.num_words();
+            let buf = unsafe { Vec::from_raw_parts(self.storage.heap, num_words, num_words) };
+            std::mem::drop(buf)
+        }
+    }
 }
 
 impl<T: Idx> BitSet<T> {
     /// Creates a new, empty bitset with a given `domain_size`.
     #[inline]
     pub fn new_empty(domain_size: usize) -> BitSet<T> {
+        if domain_size <= INLINE_BITS {
+            // This `BitSet` is small enough to fit on the stack.
+            return BitSet {
+                domain_size,
+                marker: PhantomData,
+                storage: BitSetStorage { stack: [0; INLINE_WORDS] },
+            };
+        }
+
+        // Otherwise we need to allocate space on the heap.
+
         let num_words = num_words(domain_size);
-        BitSet { domain_size, words: vec![0; num_words], marker: PhantomData }
+        let words: Vec<Word> = vec![0; num_words];
+        let (ptr, len, cap) = words.into_raw_parts();
+
+        // When we drop a `BitSet` that stores its data on the heap, we need to recreate this `Vec` via
+        // `from_raw_parts` to drop it. This requires that we know the capacity as well as the
+        // length. The capacity of the result of `vec![x; n]` is guaranteed to be exactly `n` in
+        // the `Vec` docs, but check to be sure.
+        debug_assert_eq!(len, cap);
+
+        BitSet { domain_size, marker: PhantomData, storage: BitSetStorage { heap: ptr } }
     }
 
     /// Creates a new, filled bitset with a given `domain_size`.
     #[inline]
     pub fn new_filled(domain_size: usize) -> BitSet<T> {
-        let num_words = num_words(domain_size);
-        let mut result = BitSet { domain_size, words: vec![!0; num_words], marker: PhantomData };
-        result.clear_excess_bits();
-        result
+        let mut ret = BitSet::new_empty(domain_size);
+        ret.insert_all();
+        ret
+    }
+
+    fn num_words(&self) -> usize {
+        num_words(self.domain_size)
     }
 
     /// Gets the domain size.
@@ -57,7 +138,7 @@ impl<T: Idx> BitSet<T> {
     /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {
-        for word in &mut self.words {
+        for word in self.words_mut() {
             *word = 0;
         }
     }
@@ -67,20 +148,19 @@ impl<T: Idx> BitSet<T> {
         let num_bits_in_final_word = self.domain_size % WORD_BITS;
         if num_bits_in_final_word > 0 {
             let mask = (1 << num_bits_in_final_word) - 1;
-            let final_word_idx = self.words.len() - 1;
-            self.words[final_word_idx] &= mask;
+            *self.words_mut().last_mut().unwrap() &= mask;
         }
     }
 
     /// Efficiently overwrite `self` with `other`.
     pub fn overwrite(&mut self, other: &BitSet<T>) {
         assert!(self.domain_size == other.domain_size);
-        self.words.clone_from_slice(&other.words);
+        self.words_mut().clone_from_slice(other.words())
     }
 
     /// Count the number of set bits in the set.
     pub fn count(&self) -> usize {
-        self.words.iter().map(|e| e.count_ones() as usize).sum()
+        self.words().iter().map(|e| e.count_ones() as usize).sum()
     }
 
     /// Returns `true` if `self` contains `elem`.
@@ -88,20 +168,20 @@ impl<T: Idx> BitSet<T> {
     pub fn contains(&self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
         let (word_index, mask) = word_index_and_mask(elem);
-        (self.words[word_index] & mask) != 0
+        (self.words()[word_index] & mask) != 0
     }
 
     /// Is `self` is a (non-strict) superset of `other`?
     #[inline]
     pub fn superset(&self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        self.words.iter().zip(&other.words).all(|(a, b)| (a & b) == *b)
+        self.words().iter().zip(other.words().iter()).all(|(a, b)| (a & b) == *b)
     }
 
     /// Is the set empty?
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.words.iter().all(|a| *a == 0)
+        self.words().iter().all(|a| *a == 0)
     }
 
     /// Insert `elem`. Returns whether the set has changed.
@@ -109,7 +189,7 @@ impl<T: Idx> BitSet<T> {
     pub fn insert(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
         let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
+        let word_ref = &mut self.words_mut()[word_index];
         let word = *word_ref;
         let new_word = word | mask;
         *word_ref = new_word;
@@ -118,7 +198,7 @@ impl<T: Idx> BitSet<T> {
 
     /// Sets all bits to true.
     pub fn insert_all(&mut self) {
-        for word in &mut self.words {
+        for word in self.words_mut() {
             *word = !0;
         }
         self.clear_excess_bits();
@@ -129,7 +209,7 @@ impl<T: Idx> BitSet<T> {
     pub fn remove(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
         let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
+        let word_ref = &mut self.words_mut()[word_index];
         let word = *word_ref;
         let new_word = word & !mask;
         *word_ref = new_word;
@@ -152,18 +232,38 @@ impl<T: Idx> BitSet<T> {
     /// (i.e., if any bits were removed).
     pub fn intersect(&mut self, other: &BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut self.words, &other.words, |a, b| a & b)
+        bitwise(self.words_mut(), other.words(), |a, b| a & b)
+    }
+
+    /// Returns `true` if this `BitSet` is stored inline.
+    fn is_inline(&self) -> bool {
+        self.domain_size <= INLINE_BITS
     }
 
     /// Gets a slice of the underlying words.
     pub fn words(&self) -> &[Word] {
-        &self.words
+        let num_words = self.num_words();
+        if self.is_inline() {
+            unsafe { &self.storage.stack[..num_words] }
+        } else {
+            unsafe { std::slice::from_raw_parts(self.storage.heap, num_words) }
+        }
+    }
+
+    /// Gets a mut slice of the underlying words.
+    fn words_mut(&mut self) -> &mut [Word] {
+        let num_words = self.num_words();
+        if self.is_inline() {
+            unsafe { &mut self.storage.stack[..num_words] }
+        } else {
+            unsafe { std::slice::from_raw_parts_mut(self.storage.heap, num_words) }
+        }
     }
 
     /// Iterates over the indices of set bits in a sorted order.
     #[inline]
     pub fn iter(&self) -> BitIter<'_, T> {
-        BitIter::new(&self.words)
+        BitIter::new(self.words())
     }
 
     /// Duplicates the set as a hybrid set.
@@ -185,14 +285,17 @@ impl<T: Idx> BitSet<T> {
         let mut current_index = 0;
         // Mask of bits that came from the sparse set in the current word.
         let mut new_bit_mask = 0;
+
+        let words = self.words_mut();
+
         for (word_index, mask) in sparse.iter().map(|x| word_index_and_mask(*x)) {
             // Next bit is in a word not inspected yet.
             if word_index > current_index {
-                self.words[current_index] |= new_bit_mask;
+                words[current_index] |= new_bit_mask;
                 // Were there any bits in the old word that did not occur in the sparse set?
-                not_already |= (self.words[current_index] ^ new_bit_mask) != 0;
+                not_already |= (words[current_index] ^ new_bit_mask) != 0;
                 // Check all words we skipped for any set bit.
-                not_already |= self.words[current_index + 1..word_index].iter().any(|&x| x != 0);
+                not_already |= words[current_index + 1..word_index].iter().any(|&x| x != 0);
                 // Update next word.
                 current_index = word_index;
                 // Reset bit mask, no bits have been merged yet.
@@ -202,11 +305,11 @@ impl<T: Idx> BitSet<T> {
             // self.words[word_index] |= mask;
             new_bit_mask |= mask;
         }
-        self.words[current_index] |= new_bit_mask;
+        words[current_index] |= new_bit_mask;
         // Any bits in the last inspected word that were not in the sparse set?
-        not_already |= (self.words[current_index] ^ new_bit_mask) != 0;
+        not_already |= (words[current_index] ^ new_bit_mask) != 0;
         // Any bits in the tail? Note `clear_excess_bits` before.
-        not_already |= self.words[current_index + 1..].iter().any(|&x| x != 0);
+        not_already |= words[current_index + 1..].iter().any(|&x| x != 0);
 
         not_already
     }
@@ -229,14 +332,14 @@ pub trait SubtractFromBitSet<T: Idx> {
 impl<T: Idx> UnionIntoBitSet<T> for BitSet<T> {
     fn union_into(&self, other: &mut BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut other.words, &self.words, |a, b| a | b)
+        bitwise(other.words_mut(), self.words(), |a, b| a | b)
     }
 }
 
 impl<T: Idx> SubtractFromBitSet<T> for BitSet<T> {
     fn subtract_from(&self, other: &mut BitSet<T>) -> bool {
         assert_eq!(self.domain_size, other.domain_size);
-        bitwise(&mut other.words, &self.words, |a, b| a & !b)
+        bitwise(other.words_mut(), self.words(), |a, b| a & !b)
     }
 }
 
@@ -255,7 +358,7 @@ impl<T: Idx> ToString for BitSet<T> {
 
         // i tracks how many bits we have printed so far.
         let mut i = 0;
-        for word in &self.words {
+        for word in self.words() {
             let mut word = *word;
             for _ in 0..WORD_BYTES {
                 // for each byte in `word`:
@@ -653,6 +756,8 @@ impl<'a, T: Idx> Iterator for HybridIter<'a, T> {
 ///
 /// All operations that involve an element will panic if the element is equal
 /// to or greater than the domain size.
+//
+// FIXME: `GrowableBitSet` should probably not use the small vector optimization like `BitSet`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GrowableBitSet<T: Idx> {
     bit_set: BitSet<T>,
@@ -661,14 +766,21 @@ pub struct GrowableBitSet<T: Idx> {
 impl<T: Idx> GrowableBitSet<T> {
     /// Ensure that the set can hold at least `min_domain_size` elements.
     pub fn ensure(&mut self, min_domain_size: usize) {
-        if self.bit_set.domain_size < min_domain_size {
-            self.bit_set.domain_size = min_domain_size;
+        // If we are already big enough, return immediately
+        if self.bit_set.domain_size >= min_domain_size {
+            return;
         }
 
-        let min_num_words = num_words(min_domain_size);
-        if self.bit_set.words.len() < min_num_words {
-            self.bit_set.words.resize(min_num_words, 0)
+        // If we already have enough words to store the new domain size, there's no need to
+        // reallocate, just update the domain size and continue.
+        if self.bit_set.num_words() == num_words(min_domain_size) {
+            self.bit_set.domain_size = min_domain_size;
+            return;
         }
+
+        let mut new = BitSet::new_empty(min_domain_size);
+        new.words_mut()[..self.bit_set.num_words()].copy_from_slice(self.bit_set.words());
+        self.bit_set = new;
     }
 
     pub fn new_empty() -> GrowableBitSet<T> {
@@ -689,7 +801,11 @@ impl<T: Idx> GrowableBitSet<T> {
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
-        if let Some(word) = self.bit_set.words.get(word_index) { (word & mask) != 0 } else { false }
+        if let Some(word) = self.bit_set.words().get(word_index) {
+            (word & mask) != 0
+        } else {
+            false
+        }
     }
 }
 

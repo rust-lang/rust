@@ -5,6 +5,7 @@
 #![feature(unboxed_closures)]
 #![feature(test)]
 #![feature(fn_traits)]
+#![feature(vec_into_raw_parts)]
 
 pub mod bit_set;
 pub mod vec;
