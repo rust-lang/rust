@@ -191,20 +191,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     #[inline(always)]
-    fn stack(
-        ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
-        &ecx.machine.stack
-    }
-
-    #[inline(always)]
-    fn stack_mut(
-        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
-        &mut ecx.machine.stack
-    }
-
-    #[inline(always)]
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         false // for now, we don't enforce validity
     }
@@ -365,6 +351,20 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         frame: Frame<'mir, 'tcx>,
     ) -> InterpResult<'tcx, Frame<'mir, 'tcx>> {
         Ok(frame)
+    }
+
+    #[inline(always)]
+    fn stack(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
+        &ecx.machine.stack
+    }
+
+    #[inline(always)]
+    fn stack_mut(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
+        &mut ecx.machine.stack
     }
 
     fn before_access_global(
