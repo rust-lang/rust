@@ -6,7 +6,7 @@ pub mod intrinsics;
 pub mod os_str;
 pub mod panic;
 pub mod sync;
-pub mod threads;
+pub mod thread;
 pub mod time;
 pub mod tls;
 

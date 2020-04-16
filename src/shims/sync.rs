@@ -2,7 +2,7 @@ use rustc_middle::ty::{layout::TyAndLayout, TyKind, TypeAndMut};
 use rustc_target::abi::{LayoutOf, Size};
 
 use crate::stacked_borrows::Tag;
-use crate::threads::{BlockSetId, ThreadId};
+use crate::thread::BlockSetId;
 use crate::*;
 
 fn assert_ptr_target_min_size<'mir, 'tcx: 'mir>(
