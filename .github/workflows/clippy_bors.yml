@@ -236,8 +236,7 @@ jobs:
         - 'rust-lang/cargo'
         - 'rust-lang/rls'
         - 'rust-lang/chalk'
-        # FIXME: Disabled until https://github.com/rust-lang/rust/issues/71077 is fixed
-        # - 'rust-lang/rustfmt'
+        - 'rust-lang/rustfmt'
         - 'Marwes/combine'
         - 'Geal/nom'
         - 'rust-lang/stdarch'
