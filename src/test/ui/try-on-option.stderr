@@ -6,6 +6,10 @@ LL |     x?;
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = note: required by `std::convert::From::from`
+help: consider converting the `Option<T>` into a `Result<T, _>` using `Option::ok_or` or `Option::ok_or_else`
+   |
+LL |     x.ok_or_else(|| /* error value */)?;
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
   --> $DIR/try-on-option.rs:13:5

@@ -63,7 +63,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     let span = cx.with_def_site_ctxt(span);
     let name = cx.expr_lit(span, ast::LitKind::Str(ident.name, ast::StrStyle::Cooked));
     let builder = cx.ident_of("debug_trait_builder", span);
-    let builder_expr = cx.expr_ident(span, builder.clone());
+    let builder_expr = cx.expr_ident(span, builder);
 
     let fmt = substr.nonself_args[0].clone();
 

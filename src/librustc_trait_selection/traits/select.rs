@@ -413,7 +413,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match obligation.predicate {
             ty::Predicate::Trait(ref t, _) => {
                 debug_assert!(!t.has_escaping_bound_vars());
-                let obligation = obligation.with(t.clone());
+                let obligation = obligation.with(*t);
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
 
@@ -460,7 +460,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Predicate::Projection(ref data) => {
-                let project_obligation = obligation.with(data.clone());
+                let project_obligation = obligation.with(*data);
                 match project::poly_project_and_unify_type(self, &project_obligation) {
                     Ok(Some(mut subobligations)) => {
                         self.add_depth(subobligations.iter_mut(), obligation.recursion_depth);
@@ -910,7 +910,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // separately rather than using `stack.fresh_trait_ref` --
         // this is because we want the unbound variables to be
         // replaced with fresh types starting from index 0.
-        let cache_fresh_trait_pred = self.infcx.freshen(stack.obligation.predicate.clone());
+        let cache_fresh_trait_pred = self.infcx.freshen(stack.obligation.predicate);
         debug!(
             "candidate_from_obligation(cache_fresh_trait_pred={:?}, obligation={:?})",
             cache_fresh_trait_pred, stack
@@ -1448,8 +1448,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.infcx.probe(|_| {
                 self.match_projection(
                     obligation,
-                    bound.clone(),
-                    placeholder_trait_predicate.trait_ref.clone(),
+                    *bound,
+                    placeholder_trait_predicate.trait_ref,
                     &placeholder_map,
                     snapshot,
                 )
@@ -1468,7 +1468,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let result = self.match_projection(
                     obligation,
                     bound,
-                    placeholder_trait_predicate.trait_ref.clone(),
+                    placeholder_trait_predicate.trait_ref,
                     &placeholder_map,
                     snapshot,
                 );
@@ -1520,7 +1520,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         let mut param_candidates = vec![];
         for bound in matching_bounds {
-            let wc = self.evaluate_where_clause(stack, bound.clone())?;
+            let wc = self.evaluate_where_clause(stack, bound)?;
             if wc.may_apply() {
                 param_candidates.push(ParamCandidate(bound));
             }
@@ -2496,7 +2496,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // where-clause trait-ref could be unified with the obligation
         // trait-ref. Repeat that unification now without any
         // transactional boundary; it should not fail.
-        match self.match_where_clause_trait_ref(obligation, param.clone()) {
+        match self.match_where_clause_trait_ref(obligation, param) {
             Ok(obligations) => obligations,
             Err(()) => {
                 bug!(

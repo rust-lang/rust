@@ -2,8 +2,8 @@ use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc_middle::mir::*;
 use rustc_hir as hir;
+use rustc_middle::mir::*;
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -29,7 +29,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // This is a `break`-able block
                     let exit_block = this.cfg.start_new_block();
                     let block_exit =
-                        this.in_breakable_scope(None, exit_block, destination.clone(), |this| {
+                        this.in_breakable_scope(None, exit_block, destination, |this| {
                             this.ast_block_stmts(destination, block, span, stmts, expr, safety_mode)
                         });
                     this.cfg.goto(unpack!(block_exit), source_info, exit_block);

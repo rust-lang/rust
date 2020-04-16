@@ -643,13 +643,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 if param_name.name == kw::UnderscoreLifetime {
                                     // Pick the elided lifetime "definition" if one exists
                                     // and use it to make an elision scope.
-                                    self.lifetime_uses.insert(def_id.clone(), LifetimeUseSet::Many);
+                                    self.lifetime_uses.insert(def_id, LifetimeUseSet::Many);
                                     elision = Some(reg);
                                 } else {
                                     lifetimes.insert(name, reg);
                                 }
                             } else {
-                                self.lifetime_uses.insert(def_id.clone(), LifetimeUseSet::Many);
+                                self.lifetime_uses.insert(def_id, LifetimeUseSet::Many);
                                 lifetimes.insert(name, reg);
                             }
                         }

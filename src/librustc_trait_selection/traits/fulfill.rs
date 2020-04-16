@@ -314,7 +314,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         match obligation.predicate {
             ty::Predicate::Trait(ref data, _) => {
-                let trait_obligation = obligation.with(data.clone());
+                let trait_obligation = obligation.with(*data);
 
                 if data.is_global() {
                     // no type variables present, can use evaluation for better caching.
@@ -420,7 +420,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::Projection(ref data) => {
-                let project_obligation = obligation.with(data.clone());
+                let project_obligation = obligation.with(*data);
                 match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
                     Ok(None) => {
                         let tcx = self.selcx.tcx();

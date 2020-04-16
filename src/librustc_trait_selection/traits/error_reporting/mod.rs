@@ -126,7 +126,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 .borrow_mut()
                 .entry(span)
                 .or_default()
-                .push(error.obligation.predicate.clone());
+                .push(error.obligation.predicate);
         }
 
         // We do this in 2 passes because we want to display errors in order, though
@@ -292,7 +292,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 )),
                                 Some(
                                     "the question mark operation (`?`) implicitly performs a \
-                                     conversion on the error value using the `From` trait"
+                                        conversion on the error value using the `From` trait"
                                         .to_owned(),
                                 ),
                             )
@@ -311,6 +311,27 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 post_message,
                             ))
                         );
+
+                        let should_convert_option_to_result =
+                            format!("{}", trait_ref.print_only_trait_path())
+                                .starts_with("std::convert::From<std::option::NoneError");
+                        let should_convert_result_to_option = format!("{}", trait_ref)
+                            .starts_with("<std::option::NoneError as std::convert::From<");
+                        if is_try && is_from && should_convert_option_to_result {
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
+                                "consider converting the `Option<T>` into a `Result<T, _>` using `Option::ok_or` or `Option::ok_or_else`",
+                                ".ok_or_else(|| /* error value */)".to_string(),
+                                Applicability::HasPlaceholders,
+                            );
+                        } else if is_try && is_from && should_convert_result_to_option {
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
+                                "consider converting the `Result<T, _>` into an `Option<T>` using `Result::ok`",
+                                ".ok()".to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                        }
 
                         let explanation =
                             if obligation.cause.code == ObligationCauseCode::MainFunctionType {
@@ -1388,7 +1409,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     (self.tcx.sess.source_map().span_to_snippet(span), &obligation.cause.code)
                 {
                     let generics = self.tcx.generics_of(*def_id);
-                    if generics.params.iter().filter(|p| p.name.as_str() != "Self").next().is_some()
+                    if generics.params.iter().any(|p| p.name.as_str() != "Self")
                         && !snippet.ends_with('>')
                     {
                         // FIXME: To avoid spurious suggestions in functions where type arguments
@@ -1817,7 +1838,7 @@ pub fn suggest_constraining_type_param(
         // Account for `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
         let mut trailing_comma = false;
         if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(where_clause_span) {
-            trailing_comma = snippet.ends_with(",");
+            trailing_comma = snippet.ends_with(',');
         }
         let where_clause_span = if trailing_comma {
             let hi = where_clause_span.hi();

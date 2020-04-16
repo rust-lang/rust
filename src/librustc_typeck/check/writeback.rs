@@ -373,7 +373,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 );
             };
 
-            self.tables.user_provided_types_mut().insert(hir_id, c_ty.clone());
+            self.tables.user_provided_types_mut().insert(hir_id, *c_ty);
 
             if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
                 if self.rustc_dump_user_substs {
@@ -411,7 +411,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 );
             };
 
-            self.tables.user_provided_sigs.insert(def_id, c_sig.clone());
+            self.tables.user_provided_sigs.insert(def_id, *c_sig);
         }
     }
 
@@ -562,7 +562,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (&local_id, fn_sig) in fcx_tables.liberated_fn_sigs().iter() {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let fn_sig = self.resolve(fn_sig, &hir_id);
-            self.tables.liberated_fn_sigs_mut().insert(hir_id, fn_sig.clone());
+            self.tables.liberated_fn_sigs_mut().insert(hir_id, fn_sig);
         }
     }
 
