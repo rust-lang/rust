@@ -909,10 +909,12 @@ where
 
 macro_rules! encoder_methods {
     ($($name:ident($ty:ty);)*) => {
-        #[inline]
-        $(fn $name(&mut self, value: $ty) -> Result<(), Self::Error> {
-            self.encoder.$name(value)
-        })*
+        $(
+            #[inline]
+            fn $name(&mut self, value: $ty) -> Result<(), Self::Error> {
+                self.encoder.$name(value)
+            }
+        )*
     }
 }
 
