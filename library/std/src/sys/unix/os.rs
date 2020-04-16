@@ -619,8 +619,14 @@ pub fn getpid() -> u32 {
     unsafe { libc::getpid() as u32 }
 }
 
+#[cfg(not(target_os = "horizon"))]
 pub fn getppid() -> u32 {
     unsafe { libc::getppid() as u32 }
+}
+
+#[cfg(target_os = "horizon")]
+pub fn getppid() -> u32 {
+    1 // horizon doesn't have a process hierarchy
 }
 
 #[cfg(target_env = "gnu")]
