@@ -63,11 +63,8 @@ pub trait AstConv<'tcx> {
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx>;
 
     /// Returns the lifetime to use when a lifetime is omitted (and not elided).
-    fn re_infer(
-        &self,
-        param: Option<&ty::GenericParamDef>,
-        span: Span,
-    ) -> Option<ty::Region<'tcx>>;
+    fn re_infer(&self, param: Option<&ty::GenericParamDef>, span: Span)
+    -> Option<ty::Region<'tcx>>;
 
     /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;

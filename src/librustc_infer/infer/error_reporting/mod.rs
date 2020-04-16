@@ -1591,9 +1591,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
 
             if let &TypeError::Traits(ref exp_found_traits) = terr {
-                self.note_enable_trait_upcasting_where_appropriate(
-                    &exp_found_traits, diag
-                );
+                self.note_enable_trait_upcasting_where_appropriate(&exp_found_traits, diag);
             }
         }
 
@@ -1688,7 +1686,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if supertraits.into_iter().any(|trait_ref| trait_ref.def_id() == exp_found.expected) {
             diag.note(
                 "add `#![feature(trait_upcasting)]` to the crate attributes to enable \
-                 trait upcasting");
+                 trait upcasting",
+            );
         }
     }
 

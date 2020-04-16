@@ -166,7 +166,8 @@ pub fn unsized_info<'tcx, 'a, Bx: BuilderMethods<'a, 'tcx>>(
             let target_ptr = if let Some(target_trait_ref) = target_data.principal() {
                 // Find the offset of the supertrait's vtable within the subtrait (parent) vtable.
                 let trait_ref = target_trait_ref.with_self_ty(tcx, source);
-                let vtable = tcx.codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref))
+                let vtable = tcx
+                    .codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref))
                     .unwrap_or_else(|| bug!("unsized_info: vtable not found"));
                 let offset = match vtable {
                     Vtable::VtableObject(ref data) => data.vtable_base,
@@ -271,19 +272,14 @@ pub fn coerce_ptr_unsized<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // existing vtable. See the `get_vtable` fn in `meth.rs` for more details of vtable
             // layout.
 
-            let base = bx.pointercast(
-                base,
-                bx.cx().scalar_pair_element_backend_type(dst, 0, true),
-            );
+            let base = bx.pointercast(base, bx.cx().scalar_pair_element_backend_type(dst, 0, true));
             let info = match (&src.ty.kind, &dst.ty.kind) {
-                (&ty::Ref(_, a, _),
-                 &ty::Ref(_, b, _)) |
-                (&ty::Ref(_, a, _),
-                 &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) |
-                (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
-                 &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
-                    unsized_info(bx, a, b, Some(info))
-                }
+                (&ty::Ref(_, a, _), &ty::Ref(_, b, _))
+                | (&ty::Ref(_, a, _), &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
+                | (
+                    &ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
+                    &ty::RawPtr(ty::TypeAndMut { ty: b, .. }),
+                ) => unsized_info(bx, a, b, Some(info)),
                 (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
                     assert_eq!(def_a, def_b);
 
@@ -313,17 +309,14 @@ pub fn coerce_ptr_unsized<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
             // FIXME(eddyb) move these out of this `match` arm, so they're always
             // applied, uniformly, no matter the source/destination types.
-            (bx.bitcast(base, bx.cx().scalar_pair_element_backend_type(dst, 0, true)),
-             bx.bitcast(info, bx.cx().scalar_pair_element_backend_type(dst, 1, true)))
+            (
+                bx.bitcast(base, bx.cx().scalar_pair_element_backend_type(dst, 0, true)),
+                bx.bitcast(info, bx.cx().scalar_pair_element_backend_type(dst, 1, true)),
+            )
         }
-        OperandValue::Immediate(base) => {
-            unsize_thin_ptr(bx, base, src.ty, dst.ty)
-        }
+        OperandValue::Immediate(base) => unsize_thin_ptr(bx, base, src.ty, dst.ty),
         OperandValue::Ref(..) => {
-            bug!(
-                "coerce_ptr_unsized: unexpected by-ref operand {:?}",
-                op
-            );
+            bug!("coerce_ptr_unsized: unexpected by-ref operand {:?}", op);
         }
     };
     OperandValue::Pair(base, info)

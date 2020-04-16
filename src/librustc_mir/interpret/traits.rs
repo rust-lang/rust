@@ -58,12 +58,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let vtable = self.memory.allocate(
             // Compute size of vtable, including 3 entries per supertrait for (drop, size, align)
             // metadata.
-            ptr_size * (
-                methods
+            ptr_size
+                * (methods
                     .iter()
                     .map(|l| u64::try_from(l.len()).unwrap().checked_add(3).unwrap())
-                    .sum()
-            ),
+                    .sum()),
             ptr_align,
             MemoryKind::Vtable,
         );
@@ -73,9 +72,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // one pointer size each time.
         let mut cur_ptr = vtable;
         let mut write_ptr = |memory: &mut Memory<'mir, 'tcx, M>, val| -> InterpResult<'_> {
-            let res = memory
-                .get_raw_mut(cur_ptr.alloc_id)?
-                .write_ptr_sized(tcx, cur_ptr, val)?;
+            let res = memory.get_raw_mut(cur_ptr.alloc_id)?.write_ptr_sized(tcx, cur_ptr, val)?;
             cur_ptr = cur_ptr.offset(ptr_size, tcx)?;
             Ok(res)
         };

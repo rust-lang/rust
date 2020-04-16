@@ -1869,8 +1869,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     true
                 } else {
                     // Just allow upcast kinds 2 and 3 from above.
-                    data_a.principal_def_id() == data_b.principal_def_id() &&
-                        data_b.auto_traits()
+                    data_a.principal_def_id() == data_b.principal_def_id()
+                        && data_b
+                            .auto_traits()
                             // All of a's auto traits need to be in b's auto traits.
                             .all(|b| data_a.auto_traits().any(|a| a == b))
                 }
@@ -2696,19 +2697,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // where we can unify, because otherwise select would have
             // reported an ambiguity. (When we do find a match, also
             // record it for later.)
-            let nonmatching = util::supertraits_with_repetitions(tcx, poly_trait_ref)
-                .take_while(
-                    |&trait_ref| match self.infcx.commit_if_ok(
-                        |_| self.match_poly_trait_ref(obligation, trait_ref)
-                    ) {
+            let nonmatching =
+                util::supertraits_with_repetitions(tcx, poly_trait_ref).take_while(|&trait_ref| {
+                    match self
+                        .infcx
+                        .commit_if_ok(|_| self.match_poly_trait_ref(obligation, trait_ref))
+                    {
                         Ok(obligations) => {
                             upcast_trait_ref = Some(trait_ref);
                             nested.extend(obligations);
                             false
                         }
                         Err(_) => true,
-                    },
-                );
+                    }
+                });
 
             // Additionally, for each of the non-matching predicates that
             // we pass over, we sum up the set of number of vtable
@@ -2716,7 +2718,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // trait.
             vtable_base = nonmatching
                 // Skip 3 entries in vtable per supertrait for `(drop, size, align)` metadata.
-                .map(|trait_ref| util::count_own_vtable_entries(tcx, trait_ref).checked_add(3).unwrap())
+                .map(|trait_ref| {
+                    util::count_own_vtable_entries(tcx, trait_ref).checked_add(3).unwrap()
+                })
                 .sum();
         }
 
@@ -2956,16 +2960,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let iter = data_a
                         .principal()
                         .map(ty::ExistentialPredicate::Trait)
-                        .into_iter().chain(
+                        .into_iter()
+                        .chain(
                             data_a
                                 .projection_bounds()
                                 .map(|x| ty::ExistentialPredicate::Projection(x)),
                         )
-                        .chain(
-                            data_b
-                                .auto_traits()
-                                .map(ty::ExistentialPredicate::AutoTrait),
-                        );
+                        .chain(data_b.auto_traits().map(ty::ExistentialPredicate::AutoTrait));
                     tcx.mk_existential_predicates(iter)
                 });
                 let source_with_target_auto_traits =
@@ -2995,7 +2996,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // (it doesn't matter which one we choose), but rather than resolve that in the
                     // general case (which is subtle), we can screen it out here easily enough.
                     nested.extend(
-                        data_b.iter()
+                        data_b
+                            .iter()
                             // HACK(alexreg | nikomatsakis): we handle auto traits specially here
                             // because of cases like like `dyn Foo + Send + 'a` ->
                             // `dyn Foo + Send + 'b`, which requires proving the obligation
@@ -3003,16 +3005,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // current trait solver model: it holds both because `Send` is a
                             // supertrait of `Foo + Send` and because there's an automatic impl of
                             // `Send` for the trait object.
-                            .filter(|predicate| {
-                                match predicate.skip_binder() {
-                                    ty::ExistentialPredicate::AutoTrait(did) =>
-                                        !data_a.auto_traits().any(|did_a| did_a == *did),
-                                    _ => true,
+                            .filter(|predicate| match predicate.skip_binder() {
+                                ty::ExistentialPredicate::AutoTrait(did) => {
+                                    !data_a.auto_traits().any(|did_a| did_a == *did)
                                 }
+                                _ => true,
                             })
-                            .map(|predicate|
+                            .map(|predicate| {
                                 predicate_to_obligation(predicate.with_self_ty(tcx, source))
-                            ),
+                            }),
                     );
                 } else {
                     // Require that the traits involved in this upcast are **equal**;
@@ -3031,7 +3032,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // because I want to continue rejecting that test (as we have
                     // done for quite some time) before we are firmly comfortable
                     // with what our behavior should be there. -nikomatsakis
-                    let InferOk { obligations, .. } = self.infcx
+                    let InferOk { obligations, .. } = self
+                        .infcx
                         .at(&obligation.cause, obligation.param_env)
                         .eq(target, source_with_target_auto_traits) // FIXME: see above.
                         .map_err(|_| Unimplemented)?;
@@ -3040,9 +3042,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Register an obligation for `'a: 'b`.
                 let outlives = ty::OutlivesPredicate(region_a, region_b);
-                nested.push(predicate_to_obligation(
-                    ty::Binder::bind(outlives).to_predicate(),
-                ));
+                nested.push(predicate_to_obligation(ty::Binder::bind(outlives).to_predicate()));
             }
 
             // `T` -> `Trait`
