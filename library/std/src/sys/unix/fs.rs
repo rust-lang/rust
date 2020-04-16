@@ -1075,6 +1075,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     Ok(FileAttr::from_stat64(stat))
 }
 
+#[cfg(not(target_os = "horizon"))]
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     let path = CString::new(p.as_os_str().as_bytes())?;
     let buf;
@@ -1087,6 +1088,14 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
         libc::free(r as *mut _);
     }
     Ok(PathBuf::from(OsString::from_vec(buf)))
+}
+
+#[cfg(target_os = "horizon")]
+pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
+    // horizon has no symlinks or realpath
+    let mut cwd = crate::env::current_dir()?;
+    cwd.push(p);
+    Ok(cwd)
 }
 
 fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
