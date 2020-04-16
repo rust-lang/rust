@@ -788,7 +788,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                     .unwrap();
                                 self.path.push(PathElem::ArrayElem(i));
 
-                                throw_validation_failure!("uninitialized value", self.path)
+                                throw_validation_failure!("uninitialized bytes", self.path)
                             }
                             // Other errors shouldn't be possible
                             _ => return Err(err),
