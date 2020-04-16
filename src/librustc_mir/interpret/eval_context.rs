@@ -760,7 +760,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.deallocate_local(local.value)?;
         }
 
-        let return_place = frame.return_place;
         if M::after_stack_pop(self, frame, unwinding)? == StackPopJump::NoJump {
             // The hook already did everything.
             // We want to skip the `info!` below, hence early return.
