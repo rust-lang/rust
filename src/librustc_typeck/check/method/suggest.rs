@@ -1052,9 +1052,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let generics = self.tcx.generics_of(table_owner.to_def_id());
                     let type_param = generics.type_param(param, self.tcx);
                     let hir = &self.tcx.hir();
-                    if let Some(id) =
-                        type_param.def_id.as_local().map(|def_id| hir.as_local_hir_id(def_id))
-                    {
+                    if let Some(def_id) = type_param.def_id.as_local() {
+                        let id = hir.as_local_hir_id(def_id);
                         // Get the `hir::Param` to verify whether it already has any bounds.
                         // We do this to avoid suggesting code that ends up as `T: FooBar`,
                         // instead we suggest `T: Foo + Bar` in that case.

@@ -340,7 +340,8 @@ pub fn build_impl(
         }
     }
 
-    let for_ = if let Some(hir_id) = did.as_local().map(|did| tcx.hir().as_local_hir_id(did)) {
+    let for_ = if let Some(did) = did.as_local() {
+        let hir_id = tcx.hir().as_local_hir_id(did);
         match tcx.hir().expect_item(hir_id).kind {
             hir::ItemKind::Impl { self_ty, .. } => self_ty.clean(cx),
             _ => panic!("did given to build_impl was not an impl"),
@@ -360,9 +361,8 @@ pub fn build_impl(
     }
 
     let predicates = tcx.explicit_predicates_of(did);
-    let (trait_items, generics) = if let Some(hir_id) =
-        did.as_local().map(|did| tcx.hir().as_local_hir_id(did))
-    {
+    let (trait_items, generics) = if let Some(did) = did.as_local() {
+        let hir_id = tcx.hir().as_local_hir_id(did);
         match tcx.hir().expect_item(hir_id).kind {
             hir::ItemKind::Impl { ref generics, ref items, .. } => (
                 items.iter().map(|item| tcx.hir().impl_item(item.id).clean(cx)).collect::<Vec<_>>(),
@@ -488,7 +488,8 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
 }
 
 pub fn print_inlined_const(cx: &DocContext<'_>, did: DefId) -> String {
-    if let Some(hir_id) = did.as_local().map(|did| cx.tcx.hir().as_local_hir_id(did)) {
+    if let Some(did) = did.as_local() {
+        let hir_id = cx.tcx.hir().as_local_hir_id(did);
         rustc_hir_pretty::id_to_string(&cx.tcx.hir(), hir_id)
     } else {
         cx.tcx.rendered_const(did)

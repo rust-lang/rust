@@ -1036,9 +1036,8 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                     //     let x = || foo(); // returns the Opaque assoc with `foo`
                     // }
                     // ```
-                    if let Some(opaque_hir_id) =
-                        def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
-                    {
+                    if let Some(def_id) = def_id.as_local() {
+                        let opaque_hir_id = tcx.hir().as_local_hir_id(def_id);
                         let parent_def_id = self.parent_def_id;
                         let def_scope_default = || {
                             let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
@@ -1085,7 +1084,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                             ),
                         };
                         if in_definition_scope {
-                            return self.fold_opaque_ty(ty, def_id, substs, origin);
+                            return self.fold_opaque_ty(ty, def_id.to_def_id(), substs, origin);
                         }
 
                         debug!(
