@@ -2267,7 +2267,7 @@ fn fn_sig_suggestion(
                     };
                     if assoc.fn_has_self_parameter && i == 0 {
                         format!("&{}{}self", reg, mutability.prefix_str())
-                    }else {
+                    } else {
                         format!("_: {:?}", ty)
                     }
                 }
