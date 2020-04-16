@@ -123,7 +123,7 @@ impl<'tcx> CValue<'tcx> {
                         scalar_to_clif_type(fx.tcx, element.clone())
                             .by(u16::try_from(count).unwrap()).unwrap()
                     }
-                    _ => unreachable!(),
+                    _ => unreachable!("{:?}", layout.ty),
                 };
                 ptr.load(fx, clif_ty, MemFlags::new())
             }
@@ -458,7 +458,7 @@ impl<'tcx> CPlace<'tcx> {
         let dst_layout = self.layout();
         let to_ptr = match self.inner {
             CPlaceInner::Var(var) => {
-                let data = from.load_scalar(fx);
+                let data = CValue(from.0, dst_layout).load_scalar(fx);
                 let src_ty = fx.bcx.func.dfg.value_type(data);
                 let dst_ty = fx.clif_type(self.layout().ty).unwrap();
                 let data = match (src_ty, dst_ty) {
@@ -487,7 +487,7 @@ impl<'tcx> CPlace<'tcx> {
             CPlaceInner::Addr(_, Some(_)) => bug!("Can't write value to unsized place {:?}", self),
         };
 
-        match self.layout().abi {
+        match from.layout().abi {
             // FIXME make Abi::Vector work too
             Abi::Scalar(_) => {
                 let val = from.load_scalar(fx);
