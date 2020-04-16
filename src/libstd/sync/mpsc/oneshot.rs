@@ -260,7 +260,7 @@ impl<T> Packet<T> {
         let state = match self.state.load(Ordering::SeqCst) {
             // Each of these states means that no further activity will happen
             // with regard to abortion selection
-            s @ EMPTY | s @ DATA | s @ DISCONNECTED => s,
+            s @ (EMPTY | DATA | DISCONNECTED) => s,
 
             // If we've got a blocked thread, then use an atomic to gain ownership
             // of it (may fail)
