@@ -394,6 +394,7 @@ E0703: include_str!("./error_codes/E0703.md"),
 E0704: include_str!("./error_codes/E0704.md"),
 E0705: include_str!("./error_codes/E0705.md"),
 E0706: include_str!("./error_codes/E0706.md"),
+E0708: include_str!("./error_codes/E0708.md"),
 E0710: include_str!("./error_codes/E0710.md"),
 E0712: include_str!("./error_codes/E0712.md"),
 E0713: include_str!("./error_codes/E0713.md"),
@@ -604,8 +605,6 @@ E0751: include_str!("./error_codes/E0751.md"),
     E0696, // `continue` pointing to a labeled block
 //  E0702, // replaced with a generic attribute input check
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
-    E0708, // `async` non-`move` closures with parameters are not currently
-           // supported
 //  E0709, // multiple different lifetimes used in arguments of `async fn`
     E0711, // a feature has been declared with conflicting stability attributes
     E0717, // rustc_promotable without stability attribute
