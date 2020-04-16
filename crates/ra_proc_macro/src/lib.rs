@@ -12,6 +12,7 @@ pub mod msg;
 use process::{ProcMacroProcessSrv, ProcMacroProcessThread};
 use ra_tt::{SmolStr, Subtree};
 use std::{
+    ffi::OsStr,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -56,8 +57,15 @@ pub struct ProcMacroClient {
 }
 
 impl ProcMacroClient {
-    pub fn extern_process(process_path: &Path) -> Result<ProcMacroClient, std::io::Error> {
-        let (thread, process) = ProcMacroProcessSrv::run(process_path)?;
+    pub fn extern_process<I, S>(
+        process_path: &Path,
+        args: I,
+    ) -> Result<ProcMacroClient, std::io::Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let (thread, process) = ProcMacroProcessSrv::run(process_path, args)?;
         Ok(ProcMacroClient {
             kind: ProcMacroClientKind::Process { process: Arc::new(process), thread },
         })

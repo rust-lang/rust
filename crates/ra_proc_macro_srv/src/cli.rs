@@ -1,7 +1,7 @@
 //! Driver for proc macro server
 
+use crate::{expand_task, list_macros};
 use ra_proc_macro::msg::{self, Message};
-use ra_proc_macro_srv::{expand_task, list_macros};
 
 use std::io;
 
@@ -24,7 +24,8 @@ fn write_response(res: Result<msg::Response, String>) -> Result<(), io::Error> {
     let mut stdout = stdout.lock();
     msg.write(&mut stdout)
 }
-fn main() {
+
+pub fn run() {
     loop {
         let req = match read_request() {
             Err(err) => {

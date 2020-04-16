@@ -9,6 +9,7 @@ use crate::rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTas
 use io::{BufRead, BufReader};
 use std::{
     convert::{TryFrom, TryInto},
+    ffi::OsStr,
     io::{self, Write},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
@@ -44,8 +45,13 @@ impl Drop for Process {
 }
 
 impl Process {
-    fn run(process_path: &Path) -> Result<Process, io::Error> {
+    fn run<I, S>(process_path: &Path, args: I) -> Result<Process, io::Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
         let child = Command::new(process_path.clone())
+            .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -74,10 +80,15 @@ impl Process {
 }
 
 impl ProcMacroProcessSrv {
-    pub fn run(
+    pub fn run<I, S>(
         process_path: &Path,
-    ) -> Result<(ProcMacroProcessThread, ProcMacroProcessSrv), io::Error> {
-        let process = Process::run(process_path)?;
+        args: I,
+    ) -> Result<(ProcMacroProcessThread, ProcMacroProcessSrv), io::Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let process = Process::run(process_path, args)?;
 
         let (task_tx, task_rx) = bounded(0);
         let handle = jod_thread::spawn(move || {
