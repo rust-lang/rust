@@ -567,8 +567,8 @@ bitflags! {
                                           | TypeFlags::HAS_TY_OPAQUE.bits
                                           | TypeFlags::HAS_CT_PROJECTION.bits;
 
-        /// Is an error type reachable?
-        const HAS_TY_ERR                  = 1 << 13;
+        /// Is an error type/const reachable?
+        const HAS_ERROR                   = 1 << 13;
 
         /// Does this have any region that "appears free" in the type?
         /// Basically anything but [ReLateBound] and [ReErased].

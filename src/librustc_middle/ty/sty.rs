@@ -2429,6 +2429,10 @@ pub enum ConstKind<'tcx> {
 
     /// Used to hold computed value.
     Value(ConstValue<'tcx>),
+
+    /// A placeholder for a const which could not be computed; this is
+    /// propagated to avoid useless error messages.
+    Error,
 }
 
 #[cfg(target_arch = "x86_64")]

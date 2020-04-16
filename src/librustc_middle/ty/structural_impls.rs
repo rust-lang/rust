@@ -1022,9 +1022,10 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ConstKind<'tcx> {
             ty::ConstKind::Unevaluated(did, substs, promoted) => {
                 ty::ConstKind::Unevaluated(did, substs.fold_with(folder), promoted)
             }
-            ty::ConstKind::Value(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(..) => {
-                *self
-            }
+            ty::ConstKind::Value(_)
+            | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Placeholder(..)
+            | ty::ConstKind::Error => *self,
         }
     }
 
@@ -1033,9 +1034,10 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ConstKind<'tcx> {
             ty::ConstKind::Infer(ic) => ic.visit_with(visitor),
             ty::ConstKind::Param(p) => p.visit_with(visitor),
             ty::ConstKind::Unevaluated(_, substs, _) => substs.visit_with(visitor),
-            ty::ConstKind::Value(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
-                false
-            }
+            ty::ConstKind::Value(_)
+            | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Placeholder(_)
+            | ty::ConstKind::Error => false,
         }
     }
 }

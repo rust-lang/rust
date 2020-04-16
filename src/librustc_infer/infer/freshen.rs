@@ -251,7 +251,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 bug!("unexpected const {:?}", ct)
             }
 
-            ty::ConstKind::Param(_) | ty::ConstKind::Value(_) | ty::ConstKind::Unevaluated(..) => {}
+            ty::ConstKind::Param(_)
+            | ty::ConstKind::Value(_)
+            | ty::ConstKind::Unevaluated(..)
+            | ty::ConstKind::Error => {}
         }
 
         ct.super_fold_with(self)

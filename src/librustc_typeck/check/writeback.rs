@@ -673,7 +673,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 // FIXME: we'd like to use `self.report_error`, but it doesn't yet
                 // accept a &'tcx ty::Const.
                 self.replaced_with_error = true;
-                self.tcx().consts.err
+                self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty: ct.ty })
             }
         }
     }

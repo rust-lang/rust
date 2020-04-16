@@ -182,7 +182,7 @@ pub struct CommonLifetimes<'tcx> {
 }
 
 pub struct CommonConsts<'tcx> {
-    pub err: &'tcx Const<'tcx>,
+    pub unit: &'tcx Const<'tcx>,
 }
 
 pub struct LocalTableInContext<'a, V> {
@@ -858,9 +858,9 @@ impl<'tcx> CommonConsts<'tcx> {
         let mk_const = |c| interners.const_.intern(c, |c| Interned(interners.arena.alloc(c))).0;
 
         CommonConsts {
-            err: mk_const(ty::Const {
+            unit: mk_const(ty::Const {
                 val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())),
-                ty: types.err,
+                ty: types.unit,
             }),
         }
     }

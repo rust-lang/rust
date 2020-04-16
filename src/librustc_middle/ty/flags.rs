@@ -70,14 +70,7 @@ impl FlagComputation {
             | &ty::Str
             | &ty::Foreign(..) => {}
 
-            // You might think that we could just return Error for
-            // any type containing Error as a component, and get
-            // rid of the TypeFlags::HAS_TY_ERR flag -- likewise for ty_bot (with
-            // the exception of function types that return bot).
-            // But doing so caused sporadic memory corruption, and
-            // neither I (tjc) nor nmatsakis could figure out why,
-            // so we're doing it this way.
-            &ty::Error => self.add_flags(TypeFlags::HAS_TY_ERR),
+            &ty::Error => self.add_flags(TypeFlags::HAS_ERROR),
 
             &ty::Param(_) => {
                 self.add_flags(TypeFlags::HAS_TY_PARAM);
@@ -239,6 +232,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Value(_) => {}
+            ty::ConstKind::Error => self.add_flags(TypeFlags::HAS_ERROR),
         }
     }
 

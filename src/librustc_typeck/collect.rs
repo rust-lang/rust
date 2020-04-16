@@ -316,13 +316,13 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
 
     fn ct_infer(
         &self,
-        _: Ty<'tcx>,
+        ty: Ty<'tcx>,
         _: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> &'tcx Const<'tcx> {
         bad_placeholder_type(self.tcx(), vec![span]).emit();
 
-        self.tcx().consts.err
+        self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty })
     }
 
     fn projected_ty_from_poly_trait_ref(
@@ -2037,7 +2037,8 @@ fn associated_item_predicates(
             }
             ty::GenericParamDefKind::Const => {
                 unimplemented_error("const");
-                tcx.consts.err.into()
+                tcx.mk_const(ty::Const { val: ty::ConstKind::Error, ty: tcx.type_of(param.def_id) })
+                    .into()
             }
         }
     };
