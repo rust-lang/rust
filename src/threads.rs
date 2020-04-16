@@ -331,6 +331,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         Ok(())
     }
+
     /// Get a thread-specific allocation id for the given thread-local static.
     /// If needed, allocate a new one.
     ///
