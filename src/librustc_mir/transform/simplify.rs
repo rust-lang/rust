@@ -306,47 +306,80 @@ pub struct SimplifyLocals;
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         trace!("running SimplifyLocals on {:?}", source);
-        let locals = {
-            let read_only_cache = read_only!(body);
-            let mut marker = DeclMarker { locals: BitSet::new_empty(body.local_decls.len()), body };
-            marker.visit_body(&read_only_cache);
-            // Return pointer and arguments are always live
-            marker.locals.insert(RETURN_PLACE);
-            for arg in body.args_iter() {
-                marker.locals.insert(arg);
-            }
 
-            marker.locals
+        // First, we're going to get a count of *actual* uses for every `Local`.
+        // Take a look at `DeclMarker::visit_local()` to see exactly what is ignored.
+        let mut used_locals = {
+            let read_only_cache = read_only!(body);
+            let mut marker = DeclMarker::new(body);
+            marker.visit_body(&read_only_cache);
+
+            marker.local_counts
         };
 
-        let map = make_local_map(&mut body.local_decls, locals);
-        // Update references to all vars and tmps now
-        LocalUpdater { map, tcx }.visit_body(body);
-        body.local_decls.shrink_to_fit();
+        let arg_count = body.arg_count;
+
+        // Next, we're going to remove any `Local` with zero actual uses. When we remove those
+        // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
+        // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
+        // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
+        // fixedpoint where there are no more unused locals.
+        loop {
+            let mut remove_statements = RemoveStatements::new(&mut used_locals, arg_count, tcx);
+            remove_statements.visit_body(body);
+
+            if !remove_statements.modified {
+                break;
+            }
+        }
+
+        // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
+        let map = make_local_map(&mut body.local_decls, used_locals, arg_count);
+
+        // Only bother running the `LocalUpdater` if we actually found locals to remove.
+        if map.iter().any(Option::is_none) {
+            // Update references to all vars and tmps now
+            let mut updater = LocalUpdater { map, tcx };
+            updater.visit_body(body);
+
+            body.local_decls.shrink_to_fit();
+        }
     }
 }
 
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
 fn make_local_map<V>(
-    vec: &mut IndexVec<Local, V>,
-    mask: BitSet<Local>,
+    local_decls: &mut IndexVec<Local, V>,
+    used_locals: IndexVec<Local, usize>,
+    arg_count: usize,
 ) -> IndexVec<Local, Option<Local>> {
-    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*vec);
+    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*local_decls);
     let mut used = Local::new(0);
-    for alive_index in mask.iter() {
+    for (alive_index, count) in used_locals.iter_enumerated() {
+        // The `RETURN_PLACE` and arguments are always live.
+        if alive_index.as_usize() > arg_count && *count == 0 {
+            continue;
+        }
+
         map[alive_index] = Some(used);
         if alive_index != used {
-            vec.swap(alive_index, used);
+            local_decls.swap(alive_index, used);
         }
         used.increment_by(1);
     }
-    vec.truncate(used.index());
+    local_decls.truncate(used.index());
     map
 }
 
 struct DeclMarker<'a, 'tcx> {
-    pub locals: BitSet<Local>,
+    pub local_counts: IndexVec<Local, usize>,
     pub body: &'a Body<'tcx>,
+}
+
+impl<'a, 'tcx> DeclMarker<'a, 'tcx> {
+    pub fn new(body: &'a Body<'tcx>) -> Self {
+        Self { local_counts: IndexVec::from_elem(0, &body.local_decls), body }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
@@ -368,21 +401,39 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
             if location.statement_index != block.statements.len() {
                 let stmt = &block.statements[location.statement_index];
 
+                fn can_skip_constant(c: &ty::Const<'tcx>) -> bool {
+                    // Keep assignments from unevaluated constants around, since the
+                    // evaluation may report errors, even if the use of the constant
+                    // is dead code.
+                    !matches!(c.val, ty::ConstKind::Unevaluated(..))
+                }
+
+                fn can_skip_operand(o: &Operand<'_>) -> bool {
+                    match o {
+                        Operand::Copy(_) | Operand::Move(_) => true,
+                        Operand::Constant(c) => can_skip_constant(c.literal),
+                    }
+                }
+
                 if let StatementKind::Assign(box (dest, rvalue)) = &stmt.kind {
                     if !dest.is_indirect() && dest.local == *local {
-                        if let Rvalue::Use(Operand::Constant(c)) = rvalue {
-                            match c.literal.val {
-                                // Keep assignments from unevaluated constants around, since the
-                                // evaluation may report errors, even if the use of the constant
-                                // is dead code.
-                                ty::ConstKind::Unevaluated(..) => {}
-                                _ => {
-                                    trace!("skipping store of const value {:?} to {:?}", c, dest);
-                                    return;
-                                }
+                        let can_skip = match rvalue {
+                            Rvalue::Use(op) => can_skip_operand(op),
+                            Rvalue::Discriminant(_) => true,
+                            Rvalue::BinaryOp(_, l, r) | Rvalue::CheckedBinaryOp(_, l, r) => {
+                                can_skip_operand(l) && can_skip_operand(r)
                             }
-                        } else if let Rvalue::Discriminant(d) = rvalue {
-                            trace!("skipping store of discriminant value {:?} to {:?}", d, dest);
+                            Rvalue::Repeat(op, c) => can_skip_operand(op) && can_skip_constant(c),
+                            Rvalue::AddressOf(_, _) => true,
+                            Rvalue::Len(_) => true,
+                            Rvalue::UnaryOp(_, op) => can_skip_operand(op),
+                            Rvalue::Aggregate(_, operands) => operands.iter().all(can_skip_operand),
+
+                            _ => false,
+                        };
+
+                        if can_skip {
+                            trace!("skipping store of {:?} to {:?}", rvalue, dest);
                             return;
                         }
                     }
@@ -390,7 +441,94 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
             }
         }
 
-        self.locals.insert(*local);
+        self.local_counts[*local] += 1;
+    }
+}
+
+struct StatementDeclMarker<'a, 'tcx> {
+    used_locals: &'a mut IndexVec<Local, usize>,
+    statement: &'a Statement<'tcx>,
+}
+
+impl<'a, 'tcx> StatementDeclMarker<'a, 'tcx> {
+    pub fn new(
+        used_locals: &'a mut IndexVec<Local, usize>,
+        statement: &'a Statement<'tcx>,
+    ) -> Self {
+        Self { used_locals, statement }
+    }
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for StatementDeclMarker<'a, 'tcx> {
+    fn visit_local(&mut self, local: &Local, context: PlaceContext, _location: Location) {
+        // Skip the lvalue for assignments
+        if let StatementKind::Assign(box (p, _)) = self.statement.kind {
+            if p.local == *local && context.is_place_assignment() {
+                return;
+            }
+        }
+
+        let use_count = &mut self.used_locals[*local];
+        // If this is the local we're removing...
+        if *use_count != 0 {
+            *use_count -= 1;
+        }
+    }
+}
+
+struct RemoveStatements<'a, 'tcx> {
+    used_locals: &'a mut IndexVec<Local, usize>,
+    arg_count: usize,
+    tcx: TyCtxt<'tcx>,
+    modified: bool,
+}
+
+impl<'a, 'tcx> RemoveStatements<'a, 'tcx> {
+    fn new(
+        used_locals: &'a mut IndexVec<Local, usize>,
+        arg_count: usize,
+        tcx: TyCtxt<'tcx>,
+    ) -> Self {
+        Self { used_locals, arg_count, tcx, modified: false }
+    }
+
+    fn keep_local(&self, l: Local) -> bool {
+        trace!("keep_local({:?}): count: {:?}", l, self.used_locals[l]);
+        l.as_usize() <= self.arg_count || self.used_locals[l] != 0
+    }
+}
+
+impl<'a, 'tcx> MutVisitor<'tcx> for RemoveStatements<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
+        // Remove unnecessary StorageLive and StorageDead annotations.
+        let mut i = 0usize;
+        data.statements.retain(|stmt| {
+            let keep = match &stmt.kind {
+                StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
+                    self.keep_local(*l)
+                }
+                StatementKind::Assign(box (place, _)) => self.keep_local(place.local),
+                _ => true,
+            };
+
+            if !keep {
+                trace!("removing statement {:?}", stmt);
+                self.modified = true;
+
+                let mut visitor = StatementDeclMarker::new(self.used_locals, stmt);
+                visitor.visit_statement(stmt, Location { block, statement_index: i });
+            }
+
+            i += 1;
+
+            keep
+        });
+
+        self.super_basic_block_data(block, data);
     }
 }
 
@@ -402,16 +540,6 @@ struct LocalUpdater<'tcx> {
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
-    }
-
-    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
-        // Remove unnecessary StorageLive and StorageDead annotations.
-        data.statements.retain(|stmt| match &stmt.kind {
-            StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => self.map[*l].is_some(),
-            StatementKind::Assign(box (place, _)) => self.map[place.local].is_some(),
-            _ => true,
-        });
-        self.super_basic_block_data(block, data);
     }
 
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
