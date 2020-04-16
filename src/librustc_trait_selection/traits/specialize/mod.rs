@@ -452,7 +452,7 @@ fn report_conflicting_impls(
             };
             tcx.struct_span_lint_hir(
                 lint,
-                tcx.hir().as_local_hir_id(impl_def_id).unwrap(),
+                tcx.hir().as_local_hir_id(impl_def_id),
                 impl_span,
                 decorate,
             )

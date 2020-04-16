@@ -53,7 +53,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         return;
     }
 
-    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did).expect("foreign Drop impl on non-ADT");
+    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did);
     let sp = match tcx.hir().expect_item(impl_hir_id).kind {
         ItemKind::Impl { self_ty, .. } => self_ty.span,
         _ => bug!("expected Drop impl item"),
@@ -72,12 +72,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let impl_hir_id = if let Some(n) = tcx.hir().as_local_hir_id(impl_did) {
-        n
-    } else {
-        debug!("visit_implementation_of_copy(): impl not in this crate");
-        return;
-    };
+    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did);
 
     let self_type = tcx.type_of(impl_did);
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
@@ -152,7 +147,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
 
     let dispatch_from_dyn_trait = tcx.lang_items().dispatch_from_dyn_trait().unwrap();
 
-    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did).unwrap();
+    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did);
     let span = tcx.hir().span(impl_hir_id);
 
     let source = tcx.type_of(impl_did);
@@ -326,7 +321,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
     });
 
     // this provider should only get invoked for local def-ids
-    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did.expect_local()).unwrap();
+    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did.expect_local());
 
     let source = tcx.type_of(impl_did);
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();

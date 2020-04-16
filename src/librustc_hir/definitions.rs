@@ -342,8 +342,8 @@ impl Definitions {
     }
 
     #[inline]
-    pub fn as_local_hir_id(&self, def_id: LocalDefId) -> Option<hir::HirId> {
-        Some(self.local_def_id_to_hir_id(def_id))
+    pub fn as_local_hir_id(&self, def_id: LocalDefId) -> hir::HirId {
+        self.local_def_id_to_hir_id(def_id)
     }
 
     #[inline]

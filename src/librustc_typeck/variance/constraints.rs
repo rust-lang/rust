@@ -137,7 +137,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             return;
         }
 
-        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let id = tcx.hir().as_local_hir_id(def_id);
         let inferred_start = self.terms_cx.inferred_starts[&id];
         let current_item = &CurrentItem { inferred_start };
         match tcx.type_of(def_id).kind {
@@ -378,7 +378,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         }
 
         let (local, remote) = if let Some(id) =
-            def_id.as_local().map(|def_id| self.tcx().hir().as_local_hir_id(def_id).unwrap())
+            def_id.as_local().map(|def_id| self.tcx().hir().as_local_hir_id(def_id))
         {
             (Some(self.terms_cx.inferred_starts[&id]), None)
         } else {
