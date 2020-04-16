@@ -334,7 +334,7 @@ dependencies = [
  "pretty_env_logger",
  "remove_dir_all",
  "rustc-workspace-hack",
- "rustfix 0.5.0",
+ "rustfix",
  "same-file",
  "semver",
  "serde",
@@ -463,7 +463,7 @@ dependencies = [
  "cargo_metadata 0.9.1",
  "clippy-mini-macro-test",
  "clippy_lints",
- "compiletest_rs 0.5.0",
+ "compiletest_rs",
  "derive-new",
  "lazy_static 1.4.0",
  "regex",
@@ -585,32 +585,10 @@ dependencies = [
  "log",
  "miow 0.3.3",
  "regex",
- "rustfix 0.5.0",
+ "rustfix",
  "serde",
  "serde_json",
  "walkdir",
- "winapi 0.3.8",
-]
-
-[[package]]
-name = "compiletest_rs"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7b678957210a00ba0fbeacc23d38cbfbf29895564da1616564634351e1dac5e"
-dependencies = [
- "diff",
- "filetime",
- "getopts",
- "libc",
- "log",
- "miow 0.3.3",
- "regex",
- "rustfix 0.4.6",
- "serde",
- "serde_derive",
- "serde_json",
- "tempfile",
- "tester",
  "winapi 0.3.8",
 ]
 
@@ -627,7 +605,7 @@ dependencies = [
  "log",
  "miow 0.3.3",
  "regex",
- "rustfix 0.5.0",
+ "rustfix",
  "serde",
  "serde_derive",
  "serde_json",
@@ -2190,7 +2168,7 @@ dependencies = [
  "byteorder",
  "cargo_metadata 0.9.1",
  "colored",
- "compiletest_rs 0.4.0",
+ "compiletest_rs",
  "directories",
  "env_logger 0.7.1",
  "getrandom",
@@ -4393,18 +4371,6 @@ name = "rustdoc-tool"
 version = "0.0.0"
 dependencies = [
  "rustdoc",
-]
-
-[[package]]
-name = "rustfix"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7150ac777a2931a53489f5a41eb0937b84e3092a20cd0e73ad436b65b507f607"
-dependencies = [
- "failure",
- "log",
- "serde",
- "serde_json",
 ]
 
 [[package]]
