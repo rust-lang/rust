@@ -6,12 +6,11 @@ use hir::{
     Type,
 };
 
-use crate::completion::completion_item::CompletionKind;
 use crate::{
     call_info::call_info,
     completion::{
         completion_context::CompletionContext,
-        completion_item::{Completions, SortOption},
+        completion_item::{CompletionKind, Completions, ScoreOption},
     },
     // CallInfo,
     CompletionItem,
@@ -49,39 +48,11 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Ty
     for receiver in receiver.autoderef(ctx.db) {
         let fields = receiver.fields(ctx.db);
 
-        // If we use this implementation we can delete call_info in the CompletionContext
         if let Some(record_field) = &ctx.record_field_syntax {
-            acc.with_sort_option(SortOption::RecordField(record_field.clone()));
+            acc.with_score_option(ScoreOption::RecordField(record_field.clone()));
         } else if let Some(call_info) = call_info(ctx.db, ctx.file_position) {
-            acc.with_sort_option(SortOption::CallFn(call_info));
+            acc.with_score_option(ScoreOption::CallFn(call_info));
         }
-
-        // // For Call Fn
-        // if let Some(call_info) = &ctx.call_info {
-        //     if let Some(active_parameter_type) = call_info.active_parameter_type() {
-        //         let active_parameter_name = call_info.active_parameter_name().unwrap();
-        //         fields.sort_by(|a, b| {
-        //             // For the same type
-        //             if active_parameter_type == a.1.display(ctx.db).to_string() {
-        //                 // If same type + same name then go top position
-        //                 if active_parameter_name == a.0.name(ctx.db).to_string() {
-        //                     Ordering::Less
-        //                 } else {
-        //                     if active_parameter_type == b.1.display(ctx.db).to_string() {
-        //                         Ordering::Equal
-        //                     } else {
-        //                         Ordering::Less
-        //                     }
-        //                 }
-        //             } else {
-        //                 Ordering::Greater
-        //             }
-        //         });
-        //     }
-        // }
-
-        // For Lit struct fields
-        // ---
 
         for (field, ty) in fields {
             if ctx.scope().module().map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
@@ -116,18 +87,11 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &T
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{
-        test_utils::{do_completion, do_completion_without_sort},
-        CompletionItem, CompletionKind,
-    };
+    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
 
     fn do_ref_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
-    }
-
-    fn do_ref_completion_without_sort(code: &str) -> Vec<CompletionItem> {
-        do_completion_without_sort(code, CompletionKind::Reference)
     }
 
     #[test]
@@ -159,7 +123,7 @@ mod tests {
     #[test]
     fn test_struct_field_completion_in_func_call() {
         assert_debug_snapshot!(
-        do_ref_completion_without_sort(
+        do_ref_completion(
                 r"
                 struct A { another_field: i64, the_field: u32, my_string: String }
                 fn test(my_param: u32) -> u32 { my_param }
@@ -170,14 +134,6 @@ mod tests {
         ),
             @r###"
         [
-            CompletionItem {
-                label: "the_field",
-                source_range: [201; 201),
-                delete: [201; 201),
-                insert: "the_field",
-                kind: Field,
-                detail: "u32",
-            },
             CompletionItem {
                 label: "another_field",
                 source_range: [201; 201),
@@ -194,6 +150,15 @@ mod tests {
                 kind: Field,
                 detail: "{unknown}",
             },
+            CompletionItem {
+                label: "the_field",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                score: TypeMatch,
+            },
         ]
         "###
         );
@@ -202,7 +167,7 @@ mod tests {
     #[test]
     fn test_struct_field_completion_in_func_call_with_type_and_name() {
         assert_debug_snapshot!(
-        do_ref_completion_without_sort(
+        do_ref_completion(
                 r"
                 struct A { another_field: i64, another_good_type: u32, the_field: u32 }
                 fn test(the_field: u32) -> u32 { the_field }
@@ -214,12 +179,12 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "the_field",
+                label: "another_field",
                 source_range: [208; 208),
                 delete: [208; 208),
-                insert: "the_field",
+                insert: "another_field",
                 kind: Field,
-                detail: "u32",
+                detail: "i64",
             },
             CompletionItem {
                 label: "another_good_type",
@@ -228,14 +193,16 @@ mod tests {
                 insert: "another_good_type",
                 kind: Field,
                 detail: "u32",
+                score: TypeMatch,
             },
             CompletionItem {
-                label: "another_field",
+                label: "the_field",
                 source_range: [208; 208),
                 delete: [208; 208),
-                insert: "another_field",
+                insert: "the_field",
                 kind: Field,
-                detail: "i64",
+                detail: "u32",
+                score: TypeAndNameMatch,
             },
         ]
         "###
@@ -245,7 +212,7 @@ mod tests {
     #[test]
     fn test_struct_field_completion_in_record_lit() {
         assert_debug_snapshot!(
-        do_ref_completion_without_sort(
+        do_ref_completion(
                 r"
                 struct A { another_field: i64, another_good_type: u32, the_field: u32 }
                 struct B { my_string: String, my_vec: Vec<u32>, the_field: u32 }
@@ -259,12 +226,12 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "the_field",
+                label: "another_field",
                 source_range: [270; 270),
                 delete: [270; 270),
-                insert: "the_field",
+                insert: "another_field",
                 kind: Field,
-                detail: "u32",
+                detail: "i64",
             },
             CompletionItem {
                 label: "another_good_type",
@@ -273,14 +240,16 @@ mod tests {
                 insert: "another_good_type",
                 kind: Field,
                 detail: "u32",
+                score: TypeMatch,
             },
             CompletionItem {
-                label: "another_field",
+                label: "the_field",
                 source_range: [270; 270),
                 delete: [270; 270),
-                insert: "another_field",
+                insert: "the_field",
                 kind: Field,
-                detail: "i64",
+                detail: "u32",
+                score: TypeAndNameMatch,
             },
         ]
         "###
@@ -290,7 +259,7 @@ mod tests {
     #[test]
     fn test_struct_field_completion_in_record_lit_and_fn_call() {
         assert_debug_snapshot!(
-        do_ref_completion_without_sort(
+        do_ref_completion(
                 r"
                 struct A { another_field: i64, another_good_type: u32, the_field: u32 }
                 struct B { my_string: String, my_vec: Vec<u32>, the_field: u32 }
@@ -311,6 +280,7 @@ mod tests {
                 insert: "another_field",
                 kind: Field,
                 detail: "i64",
+                score: TypeMatch,
             },
             CompletionItem {
                 label: "another_good_type",
@@ -336,7 +306,7 @@ mod tests {
     #[test]
     fn test_struct_field_completion_in_fn_call_and_record_lit() {
         assert_debug_snapshot!(
-        do_ref_completion_without_sort(
+        do_ref_completion(
                 r"
                 struct A { another_field: i64, another_good_type: u32, the_field: u32 }
                 struct B { my_string: String, my_vec: Vec<u32>, the_field: u32 }
@@ -351,12 +321,12 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "the_field",
+                label: "another_field",
                 source_range: [328; 328),
                 delete: [328; 328),
-                insert: "the_field",
+                insert: "another_field",
                 kind: Field,
-                detail: "u32",
+                detail: "i64",
             },
             CompletionItem {
                 label: "another_good_type",
@@ -365,14 +335,16 @@ mod tests {
                 insert: "another_good_type",
                 kind: Field,
                 detail: "u32",
+                score: TypeMatch,
             },
             CompletionItem {
-                label: "another_field",
+                label: "the_field",
                 source_range: [328; 328),
                 delete: [328; 328),
-                insert: "another_field",
+                insert: "the_field",
                 kind: Field,
-                detail: "i64",
+                detail: "u32",
+                score: TypeAndNameMatch,
             },
         ]
         "###

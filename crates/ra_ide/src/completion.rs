@@ -29,7 +29,7 @@ use crate::{
 };
 
 pub use crate::completion::completion_item::{
-    CompletionItem, CompletionItemKind, InsertTextFormat,
+    CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -94,8 +94,8 @@ pub(crate) fn completions(
     complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
     complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
 
-    // Reorder completion items if there is a sort_option
-    acc.sort(&ctx);
+    // Compute score for completion items
+    acc.compute_score(&ctx);
 
     Some(acc)
 }

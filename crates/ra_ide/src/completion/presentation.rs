@@ -367,7 +367,7 @@ mod tests {
         ra_fixture: &str,
         options: CompletionConfig,
     ) -> Vec<CompletionItem> {
-        do_completion_with_options(ra_fixture, CompletionKind::Reference, &options, true)
+        do_completion_with_options(ra_fixture, CompletionKind::Reference, &options)
     }
 
     #[test]

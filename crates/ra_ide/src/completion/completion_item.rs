@@ -53,6 +53,9 @@ pub struct CompletionItem {
     /// If completing a function call, ask the editor to show parameter popup
     /// after completion.
     trigger_call_info: bool,
+
+    /// Score is usefull to pre select or display in better order completion items
+    score: Option<CompletionScore>,
 }
 
 // We use custom debug for CompletionItem to make `insta`'s diffs more readable.
@@ -81,6 +84,9 @@ impl fmt::Debug for CompletionItem {
         }
         if self.deprecated {
             s.field("deprecated", &true);
+        }
+        if let Some(score) = &self.score {
+            s.field("score", score);
         }
         if self.trigger_call_info {
             s.field("trigger_call_info", &true);
@@ -149,6 +155,7 @@ impl CompletionItem {
             text_edit: None,
             deprecated: None,
             trigger_call_info: None,
+            score: None,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -188,6 +195,10 @@ impl CompletionItem {
         self.deprecated
     }
 
+    pub fn score(&self) -> Option<CompletionScore> {
+        self.score.clone()
+    }
+
     pub fn trigger_call_info(&self) -> bool {
         self.trigger_call_info
     }
@@ -208,6 +219,7 @@ pub(crate) struct Builder {
     text_edit: Option<TextEdit>,
     deprecated: Option<bool>,
     trigger_call_info: Option<bool>,
+    score: Option<CompletionScore>,
 }
 
 impl Builder {
@@ -237,6 +249,7 @@ impl Builder {
             completion_kind: self.completion_kind,
             deprecated: self.deprecated.unwrap_or(false),
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
+            score: self.score,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -287,6 +300,10 @@ impl Builder {
         self.deprecated = Some(deprecated);
         self
     }
+    pub(crate) fn set_score(mut self, score: CompletionScore) -> Builder {
+        self.score = Some(score);
+        self
+    }
     pub(crate) fn trigger_call_info(mut self) -> Builder {
         self.trigger_call_info = Some(true);
         self
@@ -300,16 +317,22 @@ impl<'a> Into<CompletionItem> for Builder {
 }
 
 #[derive(Debug)]
-pub(crate) enum SortOption {
+pub(crate) enum ScoreOption {
     CallFn(CallInfo),
     RecordField(RecordField),
+}
+
+#[derive(Debug, Clone)]
+pub enum CompletionScore {
+    TypeMatch,
+    TypeAndNameMatch,
 }
 
 /// Represents an in-progress set of completions being built.
 #[derive(Debug, Default)]
 pub(crate) struct Completions {
     buf: Vec<CompletionItem>,
-    sort_option: Option<SortOption>,
+    score_option: Option<ScoreOption>,
 }
 
 impl Completions {
@@ -324,17 +347,17 @@ impl Completions {
         items.into_iter().for_each(|item| self.add(item.into()))
     }
 
-    pub(crate) fn with_sort_option(&mut self, sort_option: SortOption) {
-        self.sort_option = Some(sort_option);
+    pub(crate) fn with_score_option(&mut self, score_option: ScoreOption) {
+        self.score_option = Some(score_option);
     }
 
-    pub(crate) fn sort(&mut self, ctx: &CompletionContext) {
-        if self.sort_option.is_none() {
+    pub(crate) fn compute_score(&mut self, ctx: &CompletionContext) {
+        if self.score_option.is_none() {
             return;
         }
 
-        let (active_name, active_type) = match self.sort_option.as_ref().unwrap() {
-            SortOption::CallFn(call_info) => {
+        let (active_name, active_type) = match self.score_option.as_ref().unwrap() {
+            ScoreOption::CallFn(call_info) => {
                 if call_info.active_parameter_type().is_none()
                     || call_info.active_parameter_name().is_none()
                 {
@@ -345,7 +368,7 @@ impl Completions {
                     call_info.active_parameter_type().unwrap(),
                 )
             }
-            SortOption::RecordField(record_field) => {
+            ScoreOption::RecordField(record_field) => {
                 if let Some((struct_field, _)) = ctx.sema.resolve_record_field(record_field) {
                     (
                         struct_field.name(ctx.db).to_string(),
@@ -357,26 +380,19 @@ impl Completions {
             }
         };
 
-        self.buf.sort_by(|a, b| {
+        for completion_item in &mut self.buf {
             // For the same type
-            if let Some(a_parameter_type) = &a.detail {
+            if let Some(a_parameter_type) = &completion_item.detail {
                 if &active_type == a_parameter_type {
                     // If same type + same name then go top position
-                    if active_name != a.label {
-                        if let Some(b_parameter_type) = &b.detail {
-                            if &active_type == b_parameter_type {
-                                return Ordering::Equal;
-                            }
-                        }
+                    if active_name == completion_item.label {
+                        completion_item.score = Some(CompletionScore::TypeAndNameMatch);
+                    } else {
+                        completion_item.score = Some(CompletionScore::TypeMatch);
                     }
-                    Ordering::Less
-                } else {
-                    Ordering::Greater
                 }
-            } else {
-                Ordering::Greater
             }
-        });
+        }
     }
 }
 

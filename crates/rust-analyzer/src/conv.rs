@@ -9,10 +9,10 @@ use lsp_types::{
     TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, WorkspaceEdit,
 };
 use ra_ide::{
-    translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
-    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag,
-    InlayHint, InlayKind, InsertTextFormat, LineCol, LineIndex, NavigationTarget, RangeInfo,
-    ReferenceAccess, Severity, SourceChange, SourceFileEdit,
+    translate_offset_with_edit, CompletionItem, CompletionItemKind, CompletionScore, FileId,
+    FilePosition, FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier,
+    HighlightTag, InlayHint, InlayKind, InsertTextFormat, LineCol, LineIndex, NavigationTarget,
+    RangeInfo, ReferenceAccess, Severity, SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
@@ -147,7 +147,6 @@ impl ConvWith<(&LineIndex, LineEndings, usize)> for CompletionItem {
             filter_text: Some(self.lookup().to_string()),
             kind: self.kind().map(|it| it.conv()),
             text_edit: Some(text_edit),
-            sort_text: Some(format!("{:02}", ctx.2)),
             additional_text_edits: Some(additional_text_edits),
             documentation: self.documentation().map(|it| it.conv()),
             deprecated: Some(self.deprecated()),
@@ -163,6 +162,14 @@ impl ConvWith<(&LineIndex, LineEndings, usize)> for CompletionItem {
             },
             ..Default::default()
         };
+
+        if let Some(score) = self.score() {
+            match score {
+                CompletionScore::TypeAndNameMatch => res.preselect = Some(true),
+                CompletionScore::TypeMatch => {}
+            }
+            res.sort_text = Some(format!("{:02}", ctx.2));
+        }
 
         if self.deprecated() {
             res.tags = Some(vec![lsp_types::CompletionItemTag::Deprecated])

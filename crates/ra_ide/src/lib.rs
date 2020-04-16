@@ -67,7 +67,9 @@ use crate::display::ToNav;
 pub use crate::{
     assists::{Assist, AssistId},
     call_hierarchy::CallItem,
-    completion::{CompletionConfig, CompletionItem, CompletionItemKind, InsertTextFormat},
+    completion::{
+        CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
+    },
     diagnostics::Severity,
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
     expand_macro::ExpandedMacro,
