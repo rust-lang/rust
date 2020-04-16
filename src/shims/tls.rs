@@ -8,8 +8,10 @@ use log::trace;
 use rustc_middle::ty;
 use rustc_target::abi::{Size, HasDataLayout};
 
-use crate::{HelpersEvalContextExt, ThreadsEvalContextExt, InterpResult, MPlaceTy, Scalar, StackPopCleanup, Tag};
-use crate::machine::{ThreadId, ThreadState};
+use crate::{
+    HelpersEvalContextExt, InterpResult, MPlaceTy, Scalar, StackPopCleanup, Tag, ThreadId,
+    ThreadState, ThreadsEvalContextExt,
+};
 
 pub type TlsKey = u128;
 

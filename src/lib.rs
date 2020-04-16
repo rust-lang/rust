@@ -63,7 +63,9 @@ pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
     EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, Stack, Stacks, Tag,
 };
-pub use crate::threads::EvalContextExt as ThreadsEvalContextExt;
+pub use crate::threads::{
+    EvalContextExt as ThreadsEvalContextExt, ThreadId, ThreadManager, ThreadState,
+};
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.

@@ -28,8 +28,6 @@ use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
 
-pub use crate::threads::{ThreadId, ThreadManager, ThreadState};
-
 // Some global facts about the emulated machine.
 pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture
 pub const STACK_ADDR: u64 = 32 * PAGE_SIZE; // not really about the "stack", but where we start assigning integer addresses to allocations
