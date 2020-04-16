@@ -812,10 +812,6 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        #[cfg(target_os = "android")]
-        return crate::sys::android::ftruncate64(self.0.raw(), size);
-
-        #[cfg(not(target_os = "android"))]
         {
             use crate::convert::TryInto;
             let size: off64_t =

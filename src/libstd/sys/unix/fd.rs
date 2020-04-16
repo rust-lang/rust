@@ -75,10 +75,6 @@ impl FileDesc {
     }
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-        #[cfg(target_os = "android")]
-        use super::android::cvt_pread64;
-
-        #[cfg(not(target_os = "android"))]
         unsafe fn cvt_pread64(
             fd: c_int,
             buf: *mut c_void,
@@ -127,10 +123,6 @@ impl FileDesc {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-        #[cfg(target_os = "android")]
-        use super::android::cvt_pwrite64;
-
-        #[cfg(not(target_os = "android"))]
         unsafe fn cvt_pwrite64(
             fd: c_int,
             buf: *const c_void,
