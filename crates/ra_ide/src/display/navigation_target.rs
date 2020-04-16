@@ -175,7 +175,7 @@ impl ToNav for FileSymbol {
         NavigationTarget {
             file_id: self.file_id,
             name: self.name.clone(),
-            kind: self.ptr.kind(),
+            kind: self.kind,
             full_range: self.ptr.range(),
             focus_range: self.name_range,
             container_name: self.container_name.clone(),

@@ -351,7 +351,7 @@ fn with_children(
     // FIXME: use a more elegant way to re-fetch the node (#1185), make
     // `range` private afterwards
     let mut ptr = SyntaxNodePtr::new(parent);
-    ptr.range = TextRange::offset_len(ptr.range().start(), len);
+    ptr.range = TextRange::offset_len(ptr.range.start(), len);
     ptr.to_node(&new_root_node)
 }
 
