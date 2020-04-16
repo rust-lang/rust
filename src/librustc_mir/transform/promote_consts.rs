@@ -732,6 +732,10 @@ pub fn validate_candidates(
 
             let is_promotable = validator.validate_candidate(candidate).is_ok();
 
+            // If we use explicit validation, we carry the risk of turning a legitimate run-time
+            // operation into a failing compile-time operation. Make sure that does not happen
+            // by asserting that there is no possible run-time behavior here in case promotion
+            // fails.
             if validator.explicit && !is_promotable {
                 ccx.tcx.sess.delay_span_bug(
                     ccx.body.span,
