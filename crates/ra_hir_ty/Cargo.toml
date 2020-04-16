@@ -27,9 +27,9 @@ test_utils = { path = "../test_utils" }
 
 scoped-tls = "1"
 
-chalk-solve =   { git = "https://github.com/rust-lang/chalk.git", rev = "6222e416b96892b2a86bc08de7dbc9826ff1acea" }
-chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "6222e416b96892b2a86bc08de7dbc9826ff1acea" }
-chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "6222e416b96892b2a86bc08de7dbc9826ff1acea" }
+chalk-solve =   { git = "https://github.com/rust-lang/chalk.git", rev = "28cef6ff403d403e6ad2f3d27d944e9ffac1bce8" }
+chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "28cef6ff403d403e6ad2f3d27d944e9ffac1bce8" }
+chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "28cef6ff403d403e6ad2f3d27d944e9ffac1bce8" }
 
 [dev-dependencies]
 insta = "0.16.0"
