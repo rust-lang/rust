@@ -2338,9 +2338,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }
 
                     AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
-                        if let Some(hir_id) = def_id
-                            .as_local()
-                            .map(|def_id| tcx.hir().as_local_hir_id(def_id).unwrap())
+                        if let Some(hir_id) =
+                            def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
                         {
                             let name = if tcx.sess.opts.debugging_opts.span_free_formats {
                                 let substs = tcx.lift(&substs).unwrap();
@@ -2367,9 +2366,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }),
 
                     AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
-                        if let Some(hir_id) = def_id
-                            .as_local()
-                            .map(|def_id| tcx.hir().as_local_hir_id(def_id).unwrap())
+                        if let Some(hir_id) =
+                            def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
                         {
                             let name = format!("[generator@{:?}]", tcx.hir().span(hir_id));
                             let mut struct_fmt = fmt.debug_struct(&name);

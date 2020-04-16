@@ -469,7 +469,7 @@ fn check_unused_unsafe(
     used_unsafe: &FxHashSet<hir::HirId>,
     unsafe_blocks: &mut Vec<(hir::HirId, bool)>,
 ) {
-    let body_id = tcx.hir().maybe_body_owned_by(tcx.hir().as_local_hir_id(def_id).unwrap());
+    let body_id = tcx.hir().maybe_body_owned_by(tcx.hir().as_local_hir_id(def_id));
 
     let body_id = match body_id {
         Some(body) => body,
@@ -494,7 +494,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
 
     let param_env = tcx.param_env(def_id);
 
-    let id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
+    let id = tcx.hir().as_local_hir_id(def_id.expect_local());
     let (const_context, min_const_fn) = match tcx.hir().body_owner_kind(id) {
         hir::BodyOwnerKind::Closure => (false, false),
         hir::BodyOwnerKind::Fn => (is_const_fn(tcx, def_id), is_min_const_fn(tcx, def_id)),
@@ -516,7 +516,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
 }
 
 fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: DefId) {
-    let lint_hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
+    let lint_hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
 
     tcx.struct_span_lint_hir(SAFE_PACKED_BORROWS, lint_hir_id, tcx.def_span(def_id), |lint| {
         // FIXME: when we make this a hard error, this should have its

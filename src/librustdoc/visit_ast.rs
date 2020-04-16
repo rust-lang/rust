@@ -332,7 +332,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
 
         let res_hir_id = match res_did.as_local() {
-            Some(n) => tcx.hir().as_local_hir_id(n).unwrap(),
+            Some(n) => tcx.hir().as_local_hir_id(n),
             None => return false,
         };
 

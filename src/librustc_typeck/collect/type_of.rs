@@ -21,7 +21,7 @@ use super::{bad_placeholder_type, is_suggestable_infer_ty};
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     use rustc_hir::*;
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local()).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
 
     let icx = ItemCtxt::new(tcx, def_id);
 
@@ -514,7 +514,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         }
     }
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
     let scope = tcx.hir().get_defining_scope(hir_id);
     let mut locator = ConstraintLocator { def_id: def_id.to_def_id(), tcx, found: None };
 

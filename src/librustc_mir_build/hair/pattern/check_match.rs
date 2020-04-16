@@ -23,7 +23,7 @@ use std::slice;
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {
         None => return,
-        Some(id) => tcx.hir().body_owned_by(tcx.hir().as_local_hir_id(id).unwrap()),
+        Some(id) => tcx.hir().body_owned_by(tcx.hir().as_local_hir_id(id)),
     };
 
     let mut visitor =

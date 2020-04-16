@@ -175,7 +175,7 @@ fn compute_symbol_name(
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
         }
-        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let hir_id = tcx.hir().as_local_hir_id(def_id);
         match tcx.hir().get(hir_id) {
             Node::ForeignItem(_) => true,
             _ => false,

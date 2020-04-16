@@ -72,7 +72,7 @@ impl ConstKind {
     pub fn for_item(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Option<Self> {
         use hir::BodyOwnerKind as HirKind;
 
-        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let hir_id = tcx.hir().as_local_hir_id(def_id);
 
         let mode = match tcx.hir().body_owner_kind(hir_id) {
             HirKind::Closure => return None,

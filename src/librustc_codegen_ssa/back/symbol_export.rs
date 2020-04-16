@@ -362,7 +362,7 @@ fn upstream_drop_glue_for_provider<'tcx>(
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     if let Some(def_id) = def_id.as_local() {
-        !tcx.reachable_set(LOCAL_CRATE).contains(&tcx.hir().as_local_hir_id(def_id).unwrap())
+        !tcx.reachable_set(LOCAL_CRATE).contains(&tcx.hir().as_local_hir_id(def_id))
     } else {
         bug!("is_unreachable_local_definition called with non-local DefId: {:?}", def_id)
     }

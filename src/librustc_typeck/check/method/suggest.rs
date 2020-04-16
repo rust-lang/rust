@@ -580,9 +580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             {
                                 if let ty::Adt(def, _) = p.skip_binder().trait_ref.self_ty().kind {
                                     let node = def.did.as_local().map(|def_id| {
-                                        self.tcx
-                                            .hir()
-                                            .get(self.tcx.hir().as_local_hir_id(def_id).unwrap())
+                                        self.tcx.hir().get(self.tcx.hir().as_local_hir_id(def_id))
                                     });
                                     if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
                                         if let Some(g) = kind.generics() {
@@ -857,7 +855,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         candidates: Vec<DefId>,
     ) {
         let module_did = self.tcx.parent_module(self.body_id);
-        let module_id = self.tcx.hir().as_local_hir_id(module_did).unwrap();
+        let module_id = self.tcx.hir().as_local_hir_id(module_did);
         let krate = self.tcx.hir().krate();
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
         if let Some(span) = span {
@@ -961,7 +959,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .filter(|item| {
                                 if let ty::AssocKind::Fn = item.kind {
                                     let id = item.def_id.as_local().map(|def_id| {
-                                        self.tcx.hir().as_local_hir_id(def_id).unwrap()
+                                        self.tcx.hir().as_local_hir_id(def_id)
                                     });
                                     if let Some(hir::Node::TraitItem(hir::TraitItem {
                                         kind: hir::TraitItemKind::Fn(fn_sig, method),
@@ -1054,10 +1052,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let generics = self.tcx.generics_of(table_owner.to_def_id());
                     let type_param = generics.type_param(param, self.tcx);
                     let hir = &self.tcx.hir();
-                    if let Some(id) = type_param
-                        .def_id
-                        .as_local()
-                        .map(|def_id| hir.as_local_hir_id(def_id).unwrap())
+                    if let Some(id) =
+                        type_param.def_id.as_local().map(|def_id| hir.as_local_hir_id(def_id))
                     {
                         // Get the `hir::Param` to verify whether it already has any bounds.
                         // We do this to avoid suggesting code that ends up as `T: FooBar`,

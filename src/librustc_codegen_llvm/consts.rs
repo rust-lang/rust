@@ -210,7 +210,7 @@ impl CodegenCx<'ll, 'tcx> {
         debug!("get_static: sym={} instance={:?}", sym, instance);
 
         let g = if let Some(id) =
-            def_id.as_local().map(|def_id| self.tcx.hir().as_local_hir_id(def_id).unwrap())
+            def_id.as_local().map(|def_id| self.tcx.hir().as_local_hir_id(def_id))
         {
             let llty = self.layout_of(ty).llvm_type(self);
             let (g, attrs) = match self.tcx.hir().get(id) {
