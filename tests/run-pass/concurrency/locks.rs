@@ -6,7 +6,6 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 fn main() {
-
     let data = Arc::new(Mutex::new(0));
     let mut threads = Vec::new();
 
@@ -27,5 +26,4 @@ fn main() {
 
     let data = Arc::try_unwrap(data).unwrap().into_inner().unwrap();
     assert_eq!(data, 3);
-
 }
