@@ -8,7 +8,7 @@ on:
   pull_request:
     # Only run on paths, that get checked by the clippy_dev tool
     paths:
-    - 'CAHNGELOG.md'
+    - 'CHANGELOG.md'
     - 'README.md'
     - '**.stderr'
     - '**.rs'
