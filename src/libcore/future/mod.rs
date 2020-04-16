@@ -77,9 +77,6 @@ where
 #[unstable(feature = "gen_future", issue = "50547")]
 #[cfg(not(bootstrap))]
 #[inline]
-pub unsafe fn poll_with_context<F>(f: Pin<&mut F>, mut cx: ResumeTy) -> Poll<F::Output>
-where
-    F: Future,
-{
-    F::poll(f, cx.0.as_mut())
+pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
+    &mut *cx.0.as_ptr().cast()
 }
