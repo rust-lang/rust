@@ -528,6 +528,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // potentially requiring the current static to be evaluated again. This is not a
                 // problem here, because we are building an operand which means an actual read is
                 // happening.
+                //
+                // The machine callback `adjust_global_const` below is guaranteed to
+                // be called for all constants because `const_eval` calls
+                // `eval_const_to_op` recursively.
                 return Ok(self.const_eval(GlobalId { instance, promoted }, val.ty)?);
             }
             ty::ConstKind::Infer(..)
@@ -539,9 +543,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         // This call allows the machine to create fresh allocation ids for
         // thread-local statics (see the `adjust_global_const` function
-        // documentation). Please note that the `const_eval` call in the early
-        // return above calls `eval_const_to_op` again, so `adjust_global_const`
-        // is guaranteed to be called for all constants.
+        // documentation).
         let val_val = M::adjust_global_const(self, val_val)?;
         // Other cases need layout.
         let layout = from_known_layout(self.tcx, layout, || self.layout_of(val.ty))?;
