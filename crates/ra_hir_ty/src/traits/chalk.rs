@@ -795,8 +795,9 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn well_known_trait_id(
         &self,
         _well_known_trait: chalk_rust_ir::WellKnownTrait,
-    ) -> chalk_ir::TraitId<Interner> {
-        unimplemented!()
+    ) -> Option<chalk_ir::TraitId<Interner>> {
+        // FIXME tell Chalk about well-known traits (here and in trait_datum)
+        None
     }
 }
 
