@@ -184,7 +184,7 @@ pub(crate) fn combine_strs_with_missing_comments(
     let missing_comment = rewrite_missing_comment(span, shape, context)?;
 
     if missing_comment.is_empty() {
-        if allow_extend && prev_str.len() + first_sep.len() + next_str.len() <= shape.width {
+        if allow_extend && one_line_width <= shape.width {
             result.push_str(first_sep);
         } else if !prev_str.is_empty() {
             result.push_str(&indent.to_string_with_newline(config))
