@@ -850,7 +850,7 @@ pub fn plain_summary_line(md: &str) -> String {
                 Event::Start(Tag::Heading(_)) => (None, 1),
                 Event::Code(code) => (Some(format!("`{}`", code)), 0),
                 Event::Text(ref s) if self.is_in > 0 => (Some(s.as_ref().to_owned()), 0),
-                Event::End(Tag::Paragraph) | Event::End(Tag::Heading(_)) => (None, -1),
+                Event::End(Tag::Paragraph | Tag::Heading(_)) => (None, -1),
                 _ => (None, 0),
             };
             if is_in > 0 || (is_in < 0 && self.is_in > 0) {
@@ -909,7 +909,7 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
                 debug!("found link: {}", dest);
                 links.push(match dest {
                     CowStr::Borrowed(s) => (s.to_owned(), locate(s)),
-                    s @ CowStr::Boxed(..) | s @ CowStr::Inlined(..) => (s.into_string(), None),
+                    s @ (CowStr::Boxed(..) | CowStr::Inlined(..)) => (s.into_string(), None),
                 });
             }
         }

@@ -586,7 +586,7 @@ pub fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
             return Generic(format!("{:#}", path.print()));
         }
-        Res::SelfTy(..) | Res::Def(DefKind::TyParam, _) | Res::Def(DefKind::AssocTy, _) => true,
+        Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
         _ => false,
     };
     let did = register_res(&*cx, path.res);

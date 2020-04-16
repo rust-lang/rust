@@ -149,7 +149,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // In case this is a trait item, skip the
                 // early return and try looking for the trait.
                 let value = match res {
-                    Res::Def(DefKind::AssocFn, _) | Res::Def(DefKind::AssocConst, _) => true,
+                    Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => true,
                     Res::Def(DefKind::AssocTy, _) => false,
                     Res::Def(DefKind::Variant, _) => {
                         return handle_variant(cx, res, extra_fragment);
@@ -226,10 +226,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             }
             let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
             match ty_res {
-                Res::Def(DefKind::Struct, did)
-                | Res::Def(DefKind::Union, did)
-                | Res::Def(DefKind::Enum, did)
-                | Res::Def(DefKind::TyAlias, did) => {
+                Res::Def(
+                    DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::TyAlias,
+                    did,
+                ) => {
                     let item = cx
                         .tcx
                         .inherent_impls(did)
@@ -814,7 +814,7 @@ fn ambiguity_error(
 
                     for (res, ns) in candidates {
                         let (action, mut suggestion) = match res {
-                            Res::Def(DefKind::AssocFn, _) | Res::Def(DefKind::Fn, _) => {
+                            Res::Def(DefKind::AssocFn | DefKind::Fn, _) => {
                                 ("add parentheses", format!("{}()", path_str))
                             }
                             Res::Def(DefKind::Macro(..), _) => {
