@@ -1001,11 +1001,13 @@ impl<'a> Parser<'a> {
 
     fn parse_lit_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
+        let is_try = self.token.is_keyword(kw::Try);
         match self.parse_opt_lit() {
             Some(literal) => {
                 let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Lit(literal), attrs);
                 self.maybe_recover_from_bad_qpath(expr, true)
             }
+            None if is_try => Err(self.try_macro_suggestion()),
             None => Err(self.expected_expression_found()),
         }
     }
