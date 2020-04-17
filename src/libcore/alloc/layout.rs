@@ -258,9 +258,11 @@ impl Layout {
 
     /// Creates a layout describing the record for `self` followed by
     /// `next`, including any necessary padding to ensure that `next`
-    /// will be properly aligned, but *no trailing padding*. In order to
-    /// match C representation layout, you should call `pad_to_align`
-    /// after extending the layout with all fields.
+    /// will be properly aligned, but *no trailing padding*. In order
+    /// to match C representation layout `repr(C)`, you should call
+    /// `pad_to_align` after extending the layout with all fields.
+    /// (There is no way to match the default Rust representation
+    /// layout `repr(Rust)`, as it is unspecified.)
     ///
     /// Note that the resulting layout will satisfy the alignment properties
     /// of both `self` and `next`, in order to ensure alignment of both parts.
