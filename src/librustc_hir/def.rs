@@ -128,7 +128,7 @@ impl DefKind {
             DefKind::LifetimeParam => "lifetime parameter",
             DefKind::Use => "import",
             DefKind::ForeignMod => "foreign module",
-            DefKind::AnonConst => "anonymous constant",
+            DefKind::AnonConst => "constant expression",
             DefKind::Field => "field",
             DefKind::Impl => "implementation",
             DefKind::Closure => "closure",
@@ -147,8 +147,9 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::Enum
             | DefKind::OpaqueTy
-            | DefKind::AnonConst
-            | DefKind::Impl => "an",
+            | DefKind::Impl
+            | DefKind::Use
+            | DefKind::ExternCrate => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),
             _ => "a",
         }
