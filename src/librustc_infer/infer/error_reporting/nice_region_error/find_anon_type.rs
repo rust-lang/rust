@@ -29,7 +29,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     ) -> Option<(&hir::Ty<'_>, &hir::FnDecl<'_>)> {
         if let Some(anon_reg) = self.tcx().is_suitable_region(region) {
             let def_id = anon_reg.def_id;
-            if let Some(hir_id) = self.tcx().hir().as_local_hir_id(def_id) {
+            if let Some(def_id) = def_id.as_local() {
+                let hir_id = self.tcx().hir().as_local_hir_id(def_id);
                 let fndecl = match self.tcx().hir().get(hir_id) {
                     Node::Item(&hir::Item { kind: hir::ItemKind::Fn(ref m, ..), .. })
                     | Node::TraitItem(&hir::TraitItem {

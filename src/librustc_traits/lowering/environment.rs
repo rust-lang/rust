@@ -174,7 +174,7 @@ crate fn environment(tcx: TyCtxt<'_>, def_id: DefId) -> Environment<'_> {
         // could bound lifetimes.
         .map(Clause::ForAll);
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
     let node = tcx.hir().get(hir_id);
 
     enum NodeKind {

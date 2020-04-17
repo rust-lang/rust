@@ -226,7 +226,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let upvar_ty = self.node_ty(var_hir_id);
                     let upvar_id = ty::UpvarId {
                         var_path: ty::UpvarPath { hir_id: var_hir_id },
-                        closure_expr_id: closure_def_id.expect_local(),
+                        closure_expr_id: closure_def_id,
                     };
                     let capture = self.tables.borrow().upvar_capture(upvar_id);
 

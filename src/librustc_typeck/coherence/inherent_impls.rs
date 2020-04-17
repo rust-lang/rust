@@ -9,7 +9,7 @@
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::{self, CrateInherentImpls, TyCtxt};
 
@@ -327,7 +327,7 @@ impl InherentCollect<'tcx> {
             // the implementation does not have any associated traits.
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
             let vec = self.impls_map.inherent_impls.entry(def_id).or_default();
-            vec.push(impl_def_id);
+            vec.push(impl_def_id.to_def_id());
         } else {
             struct_span_err!(
                 self.tcx.sess,
@@ -344,7 +344,7 @@ impl InherentCollect<'tcx> {
 
     fn check_primitive_impl(
         &self,
-        impl_def_id: DefId,
+        impl_def_id: LocalDefId,
         lang_def_id: Option<DefId>,
         lang_def_id2: Option<DefId>,
         lang: &str,
@@ -352,10 +352,10 @@ impl InherentCollect<'tcx> {
         span: Span,
     ) {
         match (lang_def_id, lang_def_id2) {
-            (Some(lang_def_id), _) if lang_def_id == impl_def_id => {
+            (Some(lang_def_id), _) if lang_def_id == impl_def_id.to_def_id() => {
                 // OK
             }
-            (_, Some(lang_def_id)) if lang_def_id == impl_def_id => {
+            (_, Some(lang_def_id)) if lang_def_id == impl_def_id.to_def_id() => {
                 // OK
             }
             _ => {

@@ -51,7 +51,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         };
 
         let hir = &self.tcx().hir();
-        let hir_id = hir.as_local_hir_id(id)?;
+        let hir_id = hir.as_local_hir_id(id.as_local()?);
         let body_id = hir.maybe_body_owned_by(hir_id)?;
         let body = hir.body(body_id);
         let owner_id = hir.body_owner(body_id);

@@ -16,7 +16,7 @@ use either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items;
 use rustc_hir::{BodyOwnerKind, HirId};
 use rustc_index::vec::{Idx, IndexVec};
@@ -220,12 +220,13 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// known between those regions.
     pub fn new(
         infcx: &InferCtxt<'_, 'tcx>,
-        mir_def_id: DefId,
+        mir_def_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
         let tcx = infcx.tcx;
-        let mir_hir_id = tcx.hir().as_local_hir_id(mir_def_id).unwrap();
-        UniversalRegionsBuilder { infcx, mir_def_id, mir_hir_id, param_env }.build()
+        let mir_hir_id = tcx.hir().as_local_hir_id(mir_def_id);
+        UniversalRegionsBuilder { infcx, mir_def_id: mir_def_id.to_def_id(), mir_hir_id, param_env }
+            .build()
     }
 
     /// Given a reference to a closure type, extracts all the values
@@ -777,7 +778,7 @@ fn for_each_late_bound_region_defined_on<'tcx>(
             let region_def_id = tcx.hir().local_def_id(hir_id);
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: fn_def_id,
-                bound_region: ty::BoundRegion::BrNamed(region_def_id, name),
+                bound_region: ty::BoundRegion::BrNamed(region_def_id.to_def_id(), name),
             }));
             f(liberated_region);
         }

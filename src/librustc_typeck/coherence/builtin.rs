@@ -3,7 +3,7 @@
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::UnsizeTraitLangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer;
@@ -35,7 +35,7 @@ struct Checker<'tcx> {
 impl<'tcx> Checker<'tcx> {
     fn check<F>(&self, trait_def_id: Option<DefId>, mut f: F) -> &Self
     where
-        F: FnMut(TyCtxt<'tcx>, DefId),
+        F: FnMut(TyCtxt<'tcx>, LocalDefId),
     {
         if Some(self.trait_def_id) == trait_def_id {
             for &impl_id in self.tcx.hir().trait_impls(self.trait_def_id) {
@@ -47,13 +47,13 @@ impl<'tcx> Checker<'tcx> {
     }
 }
 
-fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: DefId) {
+fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     // Destructors only work on nominal types.
     if let ty::Adt(..) | ty::Error = tcx.type_of(impl_did).kind {
         return;
     }
 
-    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did).expect("foreign Drop impl on non-ADT");
+    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did);
     let sp = match tcx.hir().expect_item(impl_hir_id).kind {
         ItemKind::Impl { self_ty, .. } => self_ty.span,
         _ => bug!("expected Drop impl item"),
@@ -69,15 +69,10 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: DefId) {
     .emit();
 }
 
-fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
+fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let impl_hir_id = if let Some(n) = tcx.hir().as_local_hir_id(impl_did) {
-        n
-    } else {
-        debug!("visit_implementation_of_copy(): impl not in this crate");
-        return;
-    };
+    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did);
 
     let self_type = tcx.type_of(impl_did);
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
@@ -137,187 +132,184 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
     }
 }
 
-fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'tcx>, impl_did: DefId) {
+fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}", impl_did);
 
     // Just compute this for the side-effects, in particular reporting
     // errors; other parts of the code may demand it for the info of
     // course.
-    if impl_did.is_local() {
-        let span = tcx.def_span(impl_did);
-        tcx.at(span).coerce_unsized_info(impl_did);
-    }
+    let span = tcx.def_span(impl_did);
+    tcx.at(span).coerce_unsized_info(impl_did);
 }
 
-fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
+fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
-    if impl_did.is_local() {
-        let dispatch_from_dyn_trait = tcx.lang_items().dispatch_from_dyn_trait().unwrap();
 
-        let impl_hir_id = tcx.hir().as_local_hir_id(impl_did).unwrap();
-        let span = tcx.hir().span(impl_hir_id);
+    let dispatch_from_dyn_trait = tcx.lang_items().dispatch_from_dyn_trait().unwrap();
 
-        let source = tcx.type_of(impl_did);
-        assert!(!source.has_escaping_bound_vars());
-        let target = {
-            let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
-            assert_eq!(trait_ref.def_id, dispatch_from_dyn_trait);
+    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did);
+    let span = tcx.hir().span(impl_hir_id);
 
-            trait_ref.substs.type_at(1)
-        };
+    let source = tcx.type_of(impl_did);
+    assert!(!source.has_escaping_bound_vars());
+    let target = {
+        let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
+        assert_eq!(trait_ref.def_id, dispatch_from_dyn_trait);
 
-        debug!("visit_implementation_of_dispatch_from_dyn: {:?} -> {:?}", source, target);
+        trait_ref.substs.type_at(1)
+    };
 
-        let param_env = tcx.param_env(impl_did);
+    debug!("visit_implementation_of_dispatch_from_dyn: {:?} -> {:?}", source, target);
 
-        let create_err = |msg: &str| struct_span_err!(tcx.sess, span, E0378, "{}", msg);
+    let param_env = tcx.param_env(impl_did);
 
-        tcx.infer_ctxt().enter(|infcx| {
-            let cause = ObligationCause::misc(span, impl_hir_id);
+    let create_err = |msg: &str| struct_span_err!(tcx.sess, span, E0378, "{}", msg);
 
-            use ty::TyKind::*;
-            match (&source.kind, &target.kind) {
-                (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-                    if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok() && mutbl_a == *mutbl_b => {}
-                (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
-                (&Adt(def_a, substs_a), &Adt(def_b, substs_b))
-                    if def_a.is_struct() && def_b.is_struct() =>
-                {
-                    if def_a != def_b {
-                        let source_path = tcx.def_path_str(def_a.did);
-                        let target_path = tcx.def_path_str(def_b.did);
+    tcx.infer_ctxt().enter(|infcx| {
+        let cause = ObligationCause::misc(span, impl_hir_id);
 
-                        create_err(&format!(
-                            "the trait `DispatchFromDyn` may only be implemented \
+        use ty::TyKind::*;
+        match (&source.kind, &target.kind) {
+            (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
+                if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok() && mutbl_a == *mutbl_b => {}
+            (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
+            (&Adt(def_a, substs_a), &Adt(def_b, substs_b))
+                if def_a.is_struct() && def_b.is_struct() =>
+            {
+                if def_a != def_b {
+                    let source_path = tcx.def_path_str(def_a.did);
+                    let target_path = tcx.def_path_str(def_b.did);
+
+                    create_err(&format!(
+                        "the trait `DispatchFromDyn` may only be implemented \
                                 for a coercion between structures with the same \
                                 definition; expected `{}`, found `{}`",
-                            source_path, target_path,
-                        ))
-                        .emit();
+                        source_path, target_path,
+                    ))
+                    .emit();
 
-                        return;
-                    }
-
-                    if def_a.repr.c() || def_a.repr.packed() {
-                        create_err(
-                            "structs implementing `DispatchFromDyn` may not have \
-                             `#[repr(packed)]` or `#[repr(C)]`",
-                        )
-                        .emit();
-                    }
-
-                    let fields = &def_a.non_enum_variant().fields;
-
-                    let coerced_fields = fields
-                        .iter()
-                        .filter_map(|field| {
-                            let ty_a = field.ty(tcx, substs_a);
-                            let ty_b = field.ty(tcx, substs_b);
-
-                            if let Ok(layout) = tcx.layout_of(param_env.and(ty_a)) {
-                                if layout.is_zst() && layout.align.abi.bytes() == 1 {
-                                    // ignore ZST fields with alignment of 1 byte
-                                    return None;
-                                }
-                            }
-
-                            if let Ok(ok) = infcx.at(&cause, param_env).eq(ty_a, ty_b) {
-                                if ok.obligations.is_empty() {
-                                    create_err(
-                                        "the trait `DispatchFromDyn` may only be implemented \
-                                     for structs containing the field being coerced, \
-                                     ZST fields with 1 byte alignment, and nothing else",
-                                    )
-                                    .note(&format!(
-                                        "extra field `{}` of type `{}` is not allowed",
-                                        field.ident, ty_a,
-                                    ))
-                                    .emit();
-
-                                    return None;
-                                }
-                            }
-
-                            Some(field)
-                        })
-                        .collect::<Vec<_>>();
-
-                    if coerced_fields.is_empty() {
-                        create_err(
-                            "the trait `DispatchFromDyn` may only be implemented \
-                            for a coercion between structures with a single field \
-                            being coerced, none found",
-                        )
-                        .emit();
-                    } else if coerced_fields.len() > 1 {
-                        create_err(
-                            "implementing the `DispatchFromDyn` trait requires multiple coercions",
-                        )
-                        .note(
-                            "the trait `DispatchFromDyn` may only be implemented \
-                                for a coercion between structures with a single field \
-                                being coerced",
-                        )
-                        .note(&format!(
-                            "currently, {} fields need coercions: {}",
-                            coerced_fields.len(),
-                            coerced_fields
-                                .iter()
-                                .map(|field| {
-                                    format!(
-                                        "`{}` (`{}` to `{}`)",
-                                        field.ident,
-                                        field.ty(tcx, substs_a),
-                                        field.ty(tcx, substs_b),
-                                    )
-                                })
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        ))
-                        .emit();
-                    } else {
-                        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
-
-                        for field in coerced_fields {
-                            let predicate = predicate_for_trait_def(
-                                tcx,
-                                param_env,
-                                cause.clone(),
-                                dispatch_from_dyn_trait,
-                                0,
-                                field.ty(tcx, substs_a),
-                                &[field.ty(tcx, substs_b).into()],
-                            );
-
-                            fulfill_cx.register_predicate_obligation(&infcx, predicate);
-                        }
-
-                        // Check that all transitive obligations are satisfied.
-                        if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
-                            infcx.report_fulfillment_errors(&errors, None, false);
-                        }
-
-                        // Finally, resolve all regions.
-                        let region_scope_tree = region::ScopeTree::default();
-                        let outlives_env = OutlivesEnvironment::new(param_env);
-                        infcx.resolve_regions_and_report_errors(
-                            impl_did,
-                            &region_scope_tree,
-                            &outlives_env,
-                            RegionckMode::default(),
-                        );
-                    }
+                    return;
                 }
-                _ => {
+
+                if def_a.repr.c() || def_a.repr.packed() {
                     create_err(
-                        "the trait `DispatchFromDyn` may only be implemented \
-                        for a coercion between structures",
+                        "structs implementing `DispatchFromDyn` may not have \
+                             `#[repr(packed)]` or `#[repr(C)]`",
                     )
                     .emit();
                 }
+
+                let fields = &def_a.non_enum_variant().fields;
+
+                let coerced_fields = fields
+                    .iter()
+                    .filter_map(|field| {
+                        let ty_a = field.ty(tcx, substs_a);
+                        let ty_b = field.ty(tcx, substs_b);
+
+                        if let Ok(layout) = tcx.layout_of(param_env.and(ty_a)) {
+                            if layout.is_zst() && layout.align.abi.bytes() == 1 {
+                                // ignore ZST fields with alignment of 1 byte
+                                return None;
+                            }
+                        }
+
+                        if let Ok(ok) = infcx.at(&cause, param_env).eq(ty_a, ty_b) {
+                            if ok.obligations.is_empty() {
+                                create_err(
+                                    "the trait `DispatchFromDyn` may only be implemented \
+                                     for structs containing the field being coerced, \
+                                     ZST fields with 1 byte alignment, and nothing else",
+                                )
+                                .note(&format!(
+                                    "extra field `{}` of type `{}` is not allowed",
+                                    field.ident, ty_a,
+                                ))
+                                .emit();
+
+                                return None;
+                            }
+                        }
+
+                        Some(field)
+                    })
+                    .collect::<Vec<_>>();
+
+                if coerced_fields.is_empty() {
+                    create_err(
+                        "the trait `DispatchFromDyn` may only be implemented \
+                            for a coercion between structures with a single field \
+                            being coerced, none found",
+                    )
+                    .emit();
+                } else if coerced_fields.len() > 1 {
+                    create_err(
+                        "implementing the `DispatchFromDyn` trait requires multiple coercions",
+                    )
+                    .note(
+                        "the trait `DispatchFromDyn` may only be implemented \
+                                for a coercion between structures with a single field \
+                                being coerced",
+                    )
+                    .note(&format!(
+                        "currently, {} fields need coercions: {}",
+                        coerced_fields.len(),
+                        coerced_fields
+                            .iter()
+                            .map(|field| {
+                                format!(
+                                    "`{}` (`{}` to `{}`)",
+                                    field.ident,
+                                    field.ty(tcx, substs_a),
+                                    field.ty(tcx, substs_b),
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ))
+                    .emit();
+                } else {
+                    let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+
+                    for field in coerced_fields {
+                        let predicate = predicate_for_trait_def(
+                            tcx,
+                            param_env,
+                            cause.clone(),
+                            dispatch_from_dyn_trait,
+                            0,
+                            field.ty(tcx, substs_a),
+                            &[field.ty(tcx, substs_b).into()],
+                        );
+
+                        fulfill_cx.register_predicate_obligation(&infcx, predicate);
+                    }
+
+                    // Check that all transitive obligations are satisfied.
+                    if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
+                        infcx.report_fulfillment_errors(&errors, None, false);
+                    }
+
+                    // Finally, resolve all regions.
+                    let region_scope_tree = region::ScopeTree::default();
+                    let outlives_env = OutlivesEnvironment::new(param_env);
+                    infcx.resolve_regions_and_report_errors(
+                        impl_did.to_def_id(),
+                        &region_scope_tree,
+                        &outlives_env,
+                        RegionckMode::default(),
+                    );
+                }
             }
-        })
-    }
+            _ => {
+                create_err(
+                    "the trait `DispatchFromDyn` may only be implemented \
+                        for a coercion between structures",
+                )
+                .emit();
+            }
+        }
+    })
 }
 
 pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
@@ -329,9 +321,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
     });
 
     // this provider should only get invoked for local def-ids
-    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did).unwrap_or_else(|| {
-        bug!("coerce_unsized_info: invoked for non-local def-id {:?}", impl_did)
-    });
+    let impl_hir_id = tcx.hir().as_local_hir_id(impl_did.expect_local());
 
     let source = tcx.type_of(impl_did);
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();

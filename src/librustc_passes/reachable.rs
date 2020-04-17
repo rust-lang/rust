@@ -53,13 +53,9 @@ fn method_might_be_inlined(
             return true;
         }
     }
-    if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_src.to_def_id()) {
-        match tcx.hir().find(impl_hir_id) {
-            Some(Node::Item(item)) => item_might_be_inlined(tcx, &item, codegen_fn_attrs),
-            Some(..) | None => span_bug!(impl_item.span, "impl did is not an item"),
-        }
-    } else {
-        span_bug!(impl_item.span, "found a foreign impl as a parent of a local method")
+    match tcx.hir().find(tcx.hir().as_local_hir_id(impl_src)) {
+        Some(Node::Item(item)) => item_might_be_inlined(tcx, &item, codegen_fn_attrs),
+        Some(..) | None => span_bug!(impl_item.span, "impl did is not an item"),
     }
 }
 
@@ -108,9 +104,9 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
             }
             Some(res) => {
                 if let Some((hir_id, def_id)) = res.opt_def_id().and_then(|def_id| {
-                    self.tcx.hir().as_local_hir_id(def_id).map(|hir_id| (hir_id, def_id))
+                    def_id.as_local().map(|def_id| (self.tcx.hir().as_local_hir_id(def_id), def_id))
                 }) {
-                    if self.def_id_represents_local_inlined_item(def_id) {
+                    if self.def_id_represents_local_inlined_item(def_id.to_def_id()) {
                         self.worklist.push(hir_id);
                     } else {
                         match res {
@@ -141,8 +137,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // Returns true if the given def ID represents a local item that is
     // eligible for inlining and false otherwise.
     fn def_id_represents_local_inlined_item(&self, def_id: DefId) -> bool {
-        let hir_id = match self.tcx.hir().as_local_hir_id(def_id) {
-            Some(hir_id) => hir_id,
+        let hir_id = match def_id.as_local() {
+            Some(def_id) => self.tcx.hir().as_local_hir_id(def_id),
             None => {
                 return false;
             }
@@ -170,11 +166,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         if generics.requires_monomorphization(self.tcx) || attrs.requests_inline() {
                             true
                         } else {
-                            let impl_did = self.tcx.hir().get_parent_did(hir_id).to_def_id();
+                            let impl_did = self.tcx.hir().get_parent_did(hir_id);
                             // Check the impl. If the generics on the self
                             // type of the impl require inlining, this method
                             // does too.
-                            let impl_hir_id = self.tcx.hir().as_local_hir_id(impl_did).unwrap();
+                            let impl_hir_id = self.tcx.hir().as_local_hir_id(impl_did);
                             match self.tcx.hir().expect_item(impl_hir_id).kind {
                                 hir::ItemKind::Impl { .. } => {
                                     let generics = self.tcx.generics_of(impl_did);
@@ -361,7 +357,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
                 let tcx = self.tcx;
                 self.worklist.extend(
                     tcx.provided_trait_methods(trait_def_id)
-                        .map(|assoc| tcx.hir().as_local_hir_id(assoc.def_id).unwrap()),
+                        .map(|assoc| tcx.hir().as_local_hir_id(assoc.def_id.expect_local())),
                 );
             }
         }
@@ -400,7 +396,7 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet
     reachable_context.worklist.extend(access_levels.map.iter().map(|(id, _)| *id));
     for item in tcx.lang_items().items().iter() {
         if let Some(did) = *item {
-            if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
+            if let Some(hir_id) = did.as_local().map(|did| tcx.hir().as_local_hir_id(did)) {
                 reachable_context.worklist.push(hir_id);
             }
         }

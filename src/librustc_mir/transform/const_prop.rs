@@ -66,10 +66,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         }
 
         use rustc_middle::hir::map::blocks::FnLikeNode;
-        let hir_id = tcx
-            .hir()
-            .as_local_hir_id(source.def_id())
-            .expect("Non-local call to local provider is_const_fn");
+        let hir_id = tcx.hir().as_local_hir_id(source.def_id().expect_local());
 
         let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
         let is_assoc_const = match tcx.def_kind(source.def_id()) {

@@ -190,7 +190,7 @@ impl Validator<'a, 'mir, 'tcx> {
             const_kind == Some(ConstKind::Static) && !tcx.has_attr(def_id, sym::thread_local);
 
         if should_check_for_sync {
-            let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+            let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
             check_return_ty_is_sync(tcx, &body, hir_id);
         }
     }

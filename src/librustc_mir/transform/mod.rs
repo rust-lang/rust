@@ -80,7 +80,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
             _: Span,
         ) {
             if let hir::VariantData::Tuple(_, hir_id) = *v {
-                self.set.insert(self.tcx.hir().local_def_id(hir_id));
+                self.set.insert(self.tcx.hir().local_def_id(hir_id).to_def_id());
             }
             intravisit::walk_struct_def(self, v)
         }
@@ -176,7 +176,7 @@ pub fn run_passes(
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
-    let const_kind = check_consts::ConstKind::for_item(tcx, def_id);
+    let const_kind = check_consts::ConstKind::for_item(tcx, def_id.expect_local());
 
     // No need to const-check a non-const `fn`.
     if const_kind.is_none() {

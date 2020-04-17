@@ -5,7 +5,7 @@ use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
 use rustc_hir::lang_items;
 use rustc_hir::ItemKind;
@@ -70,14 +70,14 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
 /// We do this check as a pre-pass before checking fn bodies because if these constraints are
 /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
 /// the types first.
-pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
     let item = tcx.hir().expect_item(hir_id);
 
     debug!(
         "check_item_well_formed(it.hir_id={:?}, it.name={})",
         item.hir_id,
-        tcx.def_path_str(def_id)
+        tcx.def_path_str(def_id.to_def_id())
     );
 
     match item.kind {
@@ -183,8 +183,8 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
     }
 }
 
-pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
     let trait_item = tcx.hir().expect_trait_item(hir_id);
 
     let method_sig = match trait_item.kind {
@@ -195,10 +195,10 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: DefId) {
     check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
 }
 
-fn could_be_self(trait_def_id: DefId, ty: &hir::Ty<'_>) -> bool {
+fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
     match ty.kind {
         hir::TyKind::TraitObject([trait_ref], ..) => match trait_ref.trait_ref.path.segments {
-            [s] => s.res.and_then(|r| r.opt_def_id()) == Some(trait_def_id),
+            [s] => s.res.and_then(|r| r.opt_def_id()) == Some(trait_def_id.to_def_id()),
             _ => false,
         },
         _ => false,
@@ -257,8 +257,8 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
     }
 }
 
-pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: DefId) {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
     let impl_item = tcx.hir().expect_impl_item(hir_id);
 
     let method_sig = match impl_item.kind {
@@ -330,7 +330,7 @@ fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>) -> CheckWfFcxBuilder<
 }
 
 fn for_id(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'_> {
-    let def_id = tcx.hir().local_def_id(id).expect_local();
+    let def_id = tcx.hir().local_def_id(id);
     CheckWfFcxBuilder {
         inherited: Inherited::build(tcx, def_id),
         id,
@@ -413,7 +413,7 @@ fn check_type_defn<'tcx, F>(
             }
         }
 
-        check_where_clauses(tcx, fcx, item.span, def_id, None);
+        check_where_clauses(tcx, fcx, item.span, def_id.to_def_id(), None);
 
         // No implied bounds in a struct definition.
         vec![]
@@ -441,8 +441,8 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     }
 
     for_item(tcx, item).with_fcx(|fcx, _| {
-        check_where_clauses(tcx, fcx, item.span, trait_def_id, None);
-        check_associated_type_defaults(fcx, trait_def_id);
+        check_where_clauses(tcx, fcx, item.span, trait_def_id.to_def_id(), None);
+        check_associated_type_defaults(fcx, trait_def_id.to_def_id());
 
         vec![]
     });
@@ -555,7 +555,15 @@ fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
             ItemKind::Fn(sig, ..) => sig,
             _ => bug!("expected `ItemKind::Fn`, found `{:?}`", item.kind),
         };
-        check_fn_or_method(tcx, fcx, item.ident.span, sig, hir_sig, def_id, &mut implied_bounds);
+        check_fn_or_method(
+            tcx,
+            fcx,
+            item.ident.span,
+            sig,
+            hir_sig,
+            def_id.to_def_id(),
+            &mut implied_bounds,
+        );
         implied_bounds
     })
 }
@@ -631,9 +639,9 @@ fn check_impl<'tcx>(
             }
         }
 
-        check_where_clauses(tcx, fcx, item.span, item_def_id, None);
+        check_where_clauses(tcx, fcx, item.span, item_def_id.to_def_id(), None);
 
-        fcx.impl_implied_bounds(item_def_id, item.span)
+        fcx.impl_implied_bounds(item_def_id.to_def_id(), item.span)
     });
 }
 
@@ -781,7 +789,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     let mut predicates = predicates.instantiate_identity(fcx.tcx);
 
     if let Some((return_ty, span)) = return_ty {
-        let opaque_types = check_opaque_types(tcx, fcx, def_id, span, return_ty);
+        let opaque_types = check_opaque_types(tcx, fcx, def_id.expect_local(), span, return_ty);
         for _ in 0..opaque_types.len() {
             predicates.spans.push(span);
         }
@@ -854,7 +862,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
 fn check_opaque_types<'fcx, 'tcx>(
     tcx: TyCtxt<'tcx>,
     fcx: &FnCtxt<'fcx, 'tcx>,
-    fn_def_id: DefId,
+    fn_def_id: LocalDefId,
     span: Span,
     ty: Ty<'tcx>,
 ) -> Vec<ty::Predicate<'tcx>> {
@@ -870,7 +878,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                 // FIXME(eddyb) is  `generics.parent.is_none()` correct? It seems
                 // potentially risky wrt associated types in `impl`s.
                 if generics.parent.is_none() && def_id.is_local() {
-                    let opaque_hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+                    let opaque_hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
                     if may_define_opaque_type(tcx, fn_def_id, opaque_hir_id) {
                         trace!("check_opaque_types: may define, generics={:#?}", generics);
                         let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();

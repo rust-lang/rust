@@ -17,7 +17,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     par_iter(&hir_map.krate().modules).for_each(|(module_id, _)| {
         let local_def_id = hir_map.local_def_id(*module_id);
         hir_map.visit_item_likes_in_module(
-            local_def_id,
+            local_def_id.to_def_id(),
             &mut OuterVisitor { hir_map, errors: &errors },
         );
     });
@@ -79,7 +79,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
 
     fn check<F: FnOnce(&mut HirIdValidator<'a, 'hir>)>(&mut self, hir_id: HirId, walk: F) {
         assert!(self.owner.is_none());
-        let owner = self.hir_map.local_def_id(hir_id).expect_local();
+        let owner = self.hir_map.local_def_id(hir_id);
         self.owner = Some(owner);
         walk(self);
 

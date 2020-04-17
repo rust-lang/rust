@@ -142,8 +142,10 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     pred: &ty::Predicate<'_>,
     mut trait_assoc_items: impl Iterator<Item = ty::AssocItem>,
 ) {
-    let trait_item =
-        tcx.hir().as_local_hir_id(trait_ref.def_id).and_then(|trait_id| tcx.hir().find(trait_id));
+    let trait_item = trait_ref
+        .def_id
+        .as_local()
+        .and_then(|def_id| tcx.hir().find(tcx.hir().as_local_hir_id(def_id)));
     let (trait_name, trait_generics) = match trait_item {
         Some(hir::Node::Item(hir::Item {
             ident,
