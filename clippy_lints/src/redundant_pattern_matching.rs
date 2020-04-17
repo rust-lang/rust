@@ -1,4 +1,5 @@
-use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
+use crate::utils::{match_qpath, match_trait_method, paths, snippet, span_lint_and_then};
+use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource, PatKind, QPath};
@@ -48,9 +49,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPatternMatching {
         if let ExprKind::Match(op, arms, ref match_source) = &expr.kind {
             match match_source {
                 MatchSource::Normal => find_sugg_for_match(cx, expr, op, arms),
-                MatchSource::IfLetDesugar { contains_else_clause } => {
-                    find_sugg_for_if_let(cx, expr, op, arms, *contains_else_clause)
-                },
+                MatchSource::IfLetDesugar { .. } => find_sugg_for_if_let(cx, expr, op, arms, "if"),
+                MatchSource::WhileLetDesugar => find_sugg_for_if_let(cx, expr, op, arms, "while"),
                 _ => return,
             }
         }
@@ -62,7 +62,7 @@ fn find_sugg_for_if_let<'a, 'tcx>(
     expr: &'tcx Expr<'_>,
     op: &Expr<'_>,
     arms: &[Arm<'_>],
-    has_else: bool,
+    keyword: &'static str,
 ) {
     let good_method = match arms[0].pat.kind {
         PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
@@ -86,7 +86,16 @@ fn find_sugg_for_if_let<'a, 'tcx>(
         _ => return,
     };
 
-    let maybe_semi = if has_else { "" } else { ";" };
+    // check that `while_let_on_iterator` lint does not trigger
+    if_chain! {
+        if keyword == "while";
+        if let ExprKind::MethodCall(method_path, _, _) = op.kind;
+        if method_path.ident.name == sym!(next);
+        if match_trait_method(cx, op, &paths::ITERATOR);
+        then {
+            return;
+        }
+    }
 
     span_lint_and_then(
         cx,
@@ -94,12 +103,15 @@ fn find_sugg_for_if_let<'a, 'tcx>(
         arms[0].pat.span,
         &format!("redundant pattern matching, consider using `{}`", good_method),
         |diag| {
-            let span = expr.span.to(op.span);
+            // in the case of WhileLetDesugar expr.span == op.span incorrectly.
+            // this is a workaround to restore true value of expr.span
+            let expr_span = expr.span.to(arms[1].span);
+            let span = expr_span.until(op.span.shrink_to_hi());
             diag.span_suggestion(
                 span,
                 "try this",
-                format!("{}.{}{}", snippet(cx, op.span, "_"), good_method, maybe_semi),
-                Applicability::MaybeIncorrect, // snippet
+                format!("{} {}.{}", keyword, snippet(cx, op.span, "_"), good_method),
+                Applicability::MachineApplicable, // snippet
             );
         },
     );

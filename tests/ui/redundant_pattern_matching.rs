@@ -2,7 +2,7 @@
 
 #![warn(clippy::all)]
 #![warn(clippy::redundant_pattern_matching)]
-#![allow(clippy::unit_arg, unused_must_use)]
+#![allow(clippy::unit_arg, unused_must_use, clippy::needless_bool)]
 
 fn main() {
     if let Ok(_) = Ok::<i32, i32>(42) {}
@@ -12,6 +12,27 @@ fn main() {
     if let None = None::<()> {}
 
     if let Some(_) = Some(42) {}
+
+    if let Some(_) = Some(42) {
+        foo();
+    } else {
+        bar();
+    }
+
+    while let Some(_) = Some(42) {}
+
+    while let None = Some(42) {}
+
+    while let None = None::<()> {}
+
+    while let Ok(_) = Ok::<i32, i32>(10) {}
+
+    while let Err(_) = Ok::<i32, i32>(10) {}
+
+    let mut v = vec![1, 2, 3];
+    while let Some(_) = v.pop() {
+        foo();
+    }
 
     if Ok::<i32, i32>(42).is_ok() {}
 
@@ -71,6 +92,10 @@ fn main() {
 }
 
 fn takes_bool(_: bool) {}
+
+fn foo() {}
+
+fn bar() {}
 
 fn does_something() -> bool {
     if let Ok(_) = Ok::<i32, i32>(4) {
