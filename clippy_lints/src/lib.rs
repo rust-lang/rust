@@ -218,6 +218,7 @@ mod floating_point_arithmetic;
 mod format;
 mod formatting;
 mod functions;
+mod future_not_send;
 mod get_last_with_len;
 mod identity_conversion;
 mod identity_op;
@@ -566,6 +567,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &functions::NOT_UNSAFE_PTR_ARG_DEREF,
         &functions::TOO_MANY_ARGUMENTS,
         &functions::TOO_MANY_LINES,
+        &future_not_send::FUTURE_NOT_SEND,
         &get_last_with_len::GET_LAST_WITH_LEN,
         &identity_conversion::IDENTITY_CONVERSION,
         &identity_op::IDENTITY_OP,
@@ -1045,6 +1047,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box redundant_pub_crate::RedundantPubCrate::default());
     store.register_late_pass(|| box unnamed_address::UnnamedAddress);
     store.register_late_pass(|| box dereference::Dereferencing);
+    store.register_late_pass(|| box future_not_send::FutureNotSend);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1689,6 +1692,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
         LintId::of(&floating_point_arithmetic::IMPRECISE_FLOPS),
         LintId::of(&floating_point_arithmetic::SUBOPTIMAL_FLOPS),
+        LintId::of(&future_not_send::FUTURE_NOT_SEND),
         LintId::of(&missing_const_for_fn::MISSING_CONST_FOR_FN),
         LintId::of(&mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL),
         LintId::of(&mutex_atomic::MUTEX_INTEGER),
