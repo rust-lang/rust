@@ -396,12 +396,12 @@ impl Substs {
     }
 
     /// Return Substs that replace each parameter by a bound variable.
-    pub(crate) fn bound_vars(generic_params: &Generics) -> Substs {
+    pub(crate) fn bound_vars(generic_params: &Generics, debruijn: DebruijnIndex) -> Substs {
         Substs(
             generic_params
                 .iter()
                 .enumerate()
-                .map(|(idx, _)| Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, idx)))
+                .map(|(idx, _)| Ty::Bound(BoundVar::new(debruijn, idx)))
                 .collect(),
         )
     }

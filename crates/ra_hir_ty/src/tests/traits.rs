@@ -1211,6 +1211,42 @@ fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
 }
 
 #[test]
+fn dyn_trait_in_impl() {
+    assert_snapshot!(
+        infer(r#"
+trait Trait<T, U> {
+    fn foo(&self) -> (T, U);
+}
+struct S<T, U> {}
+impl<T, U> S<T, U> {
+    fn bar(&self) -> &dyn Trait<T, U> { loop {} }
+}
+trait Trait2<T, U> {
+    fn baz(&self) -> (T, U);
+}
+impl<T, U> Trait2<T, U> for dyn Trait<T, U> { }
+
+fn test(s: S<u32, i32>) {
+    s.bar().baz();
+}
+"#),
+        @r###"
+    [33; 37) 'self': &Self
+    [103; 107) 'self': &S<T, U>
+    [129; 140) '{ loop {} }': &dyn Trait<T, U>
+    [131; 138) 'loop {}': !
+    [136; 138) '{}': ()
+    [176; 180) 'self': &Self
+    [252; 253) 's': S<u32, i32>
+    [268; 290) '{     ...z(); }': ()
+    [274; 275) 's': S<u32, i32>
+    [274; 281) 's.bar()': &dyn Trait<u32, i32>
+    [274; 287) 's.bar().baz()': (u32, i32)
+    "###
+    );
+}
+
+#[test]
 fn dyn_trait_bare() {
     assert_snapshot!(
         infer(r#"

@@ -39,6 +39,7 @@ use crate::{
 pub struct TyLoweringContext<'a> {
     pub db: &'a dyn HirDatabase,
     pub resolver: &'a Resolver,
+    in_binders: DebruijnIndex,
     /// Note: Conceptually, it's thinkable that we could be in a location where
     /// some type params should be represented as placeholders, and others
     /// should be converted to variables. I think in practice, this isn't
@@ -53,7 +54,27 @@ impl<'a> TyLoweringContext<'a> {
         let impl_trait_counter = std::cell::Cell::new(0);
         let impl_trait_mode = ImplTraitLoweringMode::Disallowed;
         let type_param_mode = TypeParamLoweringMode::Placeholder;
-        Self { db, resolver, impl_trait_mode, impl_trait_counter, type_param_mode }
+        let in_binders = DebruijnIndex::INNERMOST;
+        Self { db, resolver, in_binders, impl_trait_mode, impl_trait_counter, type_param_mode }
+    }
+
+    pub fn with_shifted_in<T>(
+        &self,
+        debruijn: DebruijnIndex,
+        f: impl FnOnce(&TyLoweringContext) -> T,
+    ) -> T {
+        let new_ctx = Self {
+            in_binders: self.in_binders.shifted_in_from(debruijn),
+            impl_trait_counter: std::cell::Cell::new(self.impl_trait_counter.get()),
+            ..*self
+        };
+        let result = f(&new_ctx);
+        self.impl_trait_counter.set(new_ctx.impl_trait_counter.get());
+        result
+    }
+
+    pub fn shifted_in(self, debruijn: DebruijnIndex) -> Self {
+        Self { in_binders: self.in_binders.shifted_in_from(debruijn), ..self }
     }
 
     pub fn with_impl_trait_mode(self, impl_trait_mode: ImplTraitLoweringMode) -> Self {
@@ -134,22 +155,26 @@ impl Ty {
             }
             TypeRef::DynTrait(bounds) => {
                 let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
-                let predicates = bounds
-                    .iter()
-                    .flat_map(|b| GenericPredicate::from_type_bound(ctx, b, self_ty.clone()))
-                    .collect();
+                let predicates = ctx.with_shifted_in(DebruijnIndex::ONE, |ctx| {
+                    bounds
+                        .iter()
+                        .flat_map(|b| GenericPredicate::from_type_bound(ctx, b, self_ty.clone()))
+                        .collect()
+                });
                 Ty::Dyn(predicates)
             }
             TypeRef::ImplTrait(bounds) => {
                 match ctx.impl_trait_mode {
                     ImplTraitLoweringMode::Opaque => {
                         let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
-                        let predicates = bounds
-                            .iter()
-                            .flat_map(|b| {
-                                GenericPredicate::from_type_bound(ctx, b, self_ty.clone())
-                            })
-                            .collect();
+                        let predicates = ctx.with_shifted_in(DebruijnIndex::ONE, |ctx| {
+                            bounds
+                                .iter()
+                                .flat_map(|b| {
+                                    GenericPredicate::from_type_bound(ctx, b, self_ty.clone())
+                                })
+                                .collect()
+                        });
                         Ty::Opaque(predicates)
                     }
                     ImplTraitLoweringMode::Param => {
@@ -180,7 +205,7 @@ impl Ty {
                                 (0, 0, 0, 0)
                             };
                         Ty::Bound(BoundVar::new(
-                            DebruijnIndex::INNERMOST,
+                            ctx.in_binders,
                             idx as usize + parent_params + self_params + list_params,
                         ))
                     }
@@ -293,7 +318,7 @@ impl Ty {
                     TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
                     TypeParamLoweringMode::Variable => {
                         let idx = generics.param_idx(param_id).expect("matching generics");
-                        Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, idx))
+                        Ty::Bound(BoundVar::new(ctx.in_binders, idx))
                     }
                 }
             }
@@ -303,7 +328,9 @@ impl Ty {
                     TypeParamLoweringMode::Placeholder => {
                         Substs::type_params_for_generics(&generics)
                     }
-                    TypeParamLoweringMode::Variable => Substs::bound_vars(&generics),
+                    TypeParamLoweringMode::Variable => {
+                        Substs::bound_vars(&generics, ctx.in_binders)
+                    }
                 };
                 ctx.db.impl_self_ty(impl_id).subst(&substs)
             }
@@ -313,7 +340,9 @@ impl Ty {
                     TypeParamLoweringMode::Placeholder => {
                         Substs::type_params_for_generics(&generics)
                     }
-                    TypeParamLoweringMode::Variable => Substs::bound_vars(&generics),
+                    TypeParamLoweringMode::Variable => {
+                        Substs::bound_vars(&generics, ctx.in_binders)
+                    }
                 };
                 ctx.db.ty(adt.into()).subst(&substs)
             }
@@ -797,7 +826,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
 /// function body.
 fn type_for_fn(db: &dyn HirDatabase, def: FunctionId) -> Binders<Ty> {
     let generics = generics(db.upcast(), def.into());
-    let substs = Substs::bound_vars(&generics);
+    let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
     Binders::new(substs.len(), Ty::apply(TypeCtor::FnDef(def.into()), substs))
 }
 
@@ -851,7 +880,7 @@ fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<T
         return type_for_adt(db, def.into());
     }
     let generics = generics(db.upcast(), def.into());
-    let substs = Substs::bound_vars(&generics);
+    let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
     Binders::new(substs.len(), Ty::apply(TypeCtor::FnDef(def.into()), substs))
 }
 
@@ -876,13 +905,13 @@ fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -
         return type_for_adt(db, def.parent.into());
     }
     let generics = generics(db.upcast(), def.parent.into());
-    let substs = Substs::bound_vars(&generics);
+    let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
     Binders::new(substs.len(), Ty::apply(TypeCtor::FnDef(def.into()), substs))
 }
 
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
     let generics = generics(db.upcast(), adt.into());
-    let substs = Substs::bound_vars(&generics);
+    let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
     Binders::new(substs.len(), Ty::apply(TypeCtor::Adt(adt), substs))
 }
 
@@ -892,7 +921,7 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let type_ref = &db.type_alias_data(t).type_ref;
-    let substs = Substs::bound_vars(&generics);
+    let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
     let inner = Ty::from_hir(&ctx, type_ref.as_ref().unwrap_or(&TypeRef::Error));
     Binders::new(substs.len(), inner)
 }
