@@ -295,7 +295,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
-        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id))
+        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id.expect_local()))
     }
 
     fn re_infer(&self, _: Option<&ty::GenericParamDef>, _: Span) -> Option<ty::Region<'tcx>> {
@@ -478,7 +478,7 @@ fn get_new_lifetime_name<'tcx>(
 /// `X: Foo` where `X` is the type parameter `def_id`.
 fn type_param_predicates(
     tcx: TyCtxt<'_>,
-    (item_def_id, def_id): (DefId, DefId),
+    (item_def_id, def_id): (DefId, LocalDefId),
 ) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
 
@@ -486,11 +486,11 @@ fn type_param_predicates(
     // written inline like `<T: Foo>` or in a where-clause like
     // `where T: Foo`.
 
-    let param_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+    let param_id = tcx.hir().as_local_hir_id(def_id);
     let param_owner = tcx.hir().ty_param_owner(param_id);
     let param_owner_def_id = tcx.hir().local_def_id(param_owner);
     let generics = tcx.generics_of(param_owner_def_id);
-    let index = generics.param_def_id_to_index[&def_id];
+    let index = generics.param_def_id_to_index[&def_id.to_def_id()];
     let ty = tcx.mk_ty_param(index, tcx.hir().ty_param_name(param_id));
 
     // Don't look for bounds where the type parameter isn't in scope.
@@ -503,7 +503,7 @@ fn type_param_predicates(
     let mut result = parent
         .map(|parent| {
             let icx = ItemCtxt::new(tcx, parent);
-            icx.get_type_parameter_bounds(DUMMY_SP, def_id)
+            icx.get_type_parameter_bounds(DUMMY_SP, def_id.to_def_id())
         })
         .unwrap_or_default();
     let mut extend = None;
