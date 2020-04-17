@@ -104,14 +104,16 @@ impl EarlyLintPass for Precedence {
 
         if let ExprKind::Unary(UnOp::Neg, ref rhs) = expr.kind {
             if let ExprKind::MethodCall(ref path_segment, ref args) = rhs.kind {
+                let path_segment_str = path_segment.ident.name.as_str();
                 if let Some(slf) = args.first() {
                     if let ExprKind::Lit(ref lit) = slf.kind {
                         match lit.kind {
                             LitKind::Int(..) | LitKind::Float(..) => {
-                                for &odd_function in &ODD_FUNCTIONS_WHITELIST {
-                                    if odd_function == &*path_segment.ident.name.as_str() {
-                                        return;
-                                    }
+                                if ODD_FUNCTIONS_WHITELIST
+                                    .iter()
+                                    .any(|odd_function| **odd_function == *path_segment_str)
+                                {
+                                    return;
                                 }
                                 let mut applicability = Applicability::MachineApplicable;
                                 span_lint_and_sugg(
