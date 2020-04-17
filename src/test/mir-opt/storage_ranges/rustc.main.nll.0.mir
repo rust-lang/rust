@@ -50,7 +50,7 @@ fn main() -> () {
         StorageLive(_4);                 // bb0[5]: scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
         StorageLive(_5);                 // bb0[6]: scope 1 at $DIR/storage_ranges.rs:6:23: 6:24
         _5 = _1;                         // bb0[7]: scope 1 at $DIR/storage_ranges.rs:6:23: 6:24
-        _4 = std::option::Option::<i32>::Some(move _5,); // bb0[8]: scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
+        _4 = std::option::Option::<i32>::Some(move _5); // bb0[8]: scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
         StorageDead(_5);                 // bb0[9]: scope 1 at $DIR/storage_ranges.rs:6:24: 6:25
         _3 = &_4;                        // bb0[10]: scope 1 at $DIR/storage_ranges.rs:6:17: 6:25
         FakeRead(ForLet, _3);            // bb0[11]: scope 1 at $DIR/storage_ranges.rs:6:13: 6:14

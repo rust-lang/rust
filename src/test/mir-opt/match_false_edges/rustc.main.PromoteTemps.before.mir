@@ -36,7 +36,7 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/match_false_edges.rs:35:13: 40:6
         StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/match_false_edges.rs:35:19: 35:26
-        _2 = std::option::Option::<i32>::Some(const 1i32,); // bb0[2]: scope 0 at $DIR/match_false_edges.rs:35:19: 35:26
+        _2 = std::option::Option::<i32>::Some(const 1i32); // bb0[2]: scope 0 at $DIR/match_false_edges.rs:35:19: 35:26
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000001))

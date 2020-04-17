@@ -115,7 +115,7 @@ fn test() -> std::option::Option<std::boxed::Box<u32>> {
 
     bb12: {
         StorageDead(_2);                 // bb12[0]: scope 0 at $DIR/issue-62289.rs:9:20: 9:21
-        _0 = std::option::Option::<std::boxed::Box<u32>>::Some(move _1,); // bb12[1]: scope 0 at $DIR/issue-62289.rs:9:5: 9:22
+        _0 = std::option::Option::<std::boxed::Box<u32>>::Some(move _1); // bb12[1]: scope 0 at $DIR/issue-62289.rs:9:5: 9:22
         drop(_1) -> bb13;                // bb12[2]: scope 0 at $DIR/issue-62289.rs:9:21: 9:22
     }
 
