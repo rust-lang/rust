@@ -166,6 +166,7 @@ pub fn span_lint_hir_and_then(
 ///     |
 ///     = note: `-D fold-any` implied by `-D warnings`
 /// ```
+#[allow(clippy::collapsible_span_lint_calls)]
 pub fn span_lint_and_sugg<'a, T: LintContext>(
     cx: &'a T,
     lint: &'static Lint,

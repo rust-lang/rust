@@ -838,6 +838,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unwrap::UNNECESSARY_UNWRAP,
         &use_self::USE_SELF,
         &utils::internal_lints::CLIPPY_LINTS_INTERNAL,
+        &utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
         &utils::internal_lints::COMPILER_LINT_FUNCTIONS,
         &utils::internal_lints::DEFAULT_LINT,
         &utils::internal_lints::LINT_WITHOUT_LINT_PASS,
@@ -1051,6 +1052,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box unnamed_address::UnnamedAddress);
     store.register_late_pass(|| box dereference::Dereferencing);
     store.register_late_pass(|| box future_not_send::FutureNotSend);
+    store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1162,6 +1164,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
 
     store.register_group(true, "clippy::internal", Some("clippy_internal"), vec![
         LintId::of(&utils::internal_lints::CLIPPY_LINTS_INTERNAL),
+        LintId::of(&utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS),
         LintId::of(&utils::internal_lints::COMPILER_LINT_FUNCTIONS),
         LintId::of(&utils::internal_lints::DEFAULT_LINT),
         LintId::of(&utils::internal_lints::LINT_WITHOUT_LINT_PASS),
