@@ -1729,6 +1729,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
+                        // FIXME: these can be redundant with E0106, but not always.
                         struct_span_err!(
                             tcx.sess,
                             span,
