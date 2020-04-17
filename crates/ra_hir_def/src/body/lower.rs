@@ -320,7 +320,8 @@ impl ExprCollector<'_> {
 
                 let res = self.alloc_expr(record_lit, syntax_ptr);
                 for (i, ptr) in field_ptrs.into_iter().enumerate() {
-                    self.source_map.field_map.insert((res, i), ptr);
+                    let src = self.expander.to_source(ptr);
+                    self.source_map.field_map.insert((res, i), src);
                 }
                 res
             }

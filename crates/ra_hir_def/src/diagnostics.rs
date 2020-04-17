@@ -4,7 +4,7 @@ use std::any::Any;
 
 use hir_expand::diagnostics::Diagnostic;
 use ra_db::RelativePathBuf;
-use ra_syntax::{ast, AstPtr, SyntaxNodePtr};
+use ra_syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
 use hir_expand::{HirFileId, InFile};
 
@@ -12,12 +12,16 @@ use hir_expand::{HirFileId, InFile};
 pub struct UnresolvedModule {
     pub file: HirFileId,
     pub decl: AstPtr<ast::Module>,
+    pub highlight_range: TextRange,
     pub candidate: RelativePathBuf,
 }
 
 impl Diagnostic for UnresolvedModule {
     fn message(&self) -> String {
         "unresolved module".to_string()
+    }
+    fn highlight_range(&self) -> TextRange {
+        self.highlight_range
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.decl.clone().into() }
