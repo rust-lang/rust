@@ -8,7 +8,8 @@ use test_utils::tested_by;
 
 use super::{InferenceContext, Obligation};
 use crate::{
-    BoundVar, Canonical, DebruijnIndex, InEnvironment, InferTy, Substs, Ty, TypeCtor, TypeWalk,
+    BoundVar, Canonical, DebruijnIndex, GenericPredicate, InEnvironment, InferTy, Substs, Ty,
+    TypeCtor, TypeWalk,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -226,15 +227,25 @@ impl InferenceTable {
             (Ty::Apply(a_ty1), Ty::Apply(a_ty2)) if a_ty1.ctor == a_ty2.ctor => {
                 self.unify_substs(&a_ty1.parameters, &a_ty2.parameters, depth + 1)
             }
-            _ => self.unify_inner_trivial(&ty1, &ty2),
+
+            _ => self.unify_inner_trivial(&ty1, &ty2, depth),
         }
     }
 
-    pub(super) fn unify_inner_trivial(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
+    pub(super) fn unify_inner_trivial(&mut self, ty1: &Ty, ty2: &Ty, depth: usize) -> bool {
         match (ty1, ty2) {
             (Ty::Unknown, _) | (_, Ty::Unknown) => true,
 
             (Ty::Placeholder(p1), Ty::Placeholder(p2)) if *p1 == *p2 => true,
+
+            (Ty::Dyn(dyn1), Ty::Dyn(dyn2)) if dyn1.len() == dyn2.len() => {
+                for (pred1, pred2) in dyn1.iter().zip(dyn2.iter()) {
+                    if !self.unify_preds(pred1, pred2, depth + 1) {
+                        return false;
+                    }
+                }
+                true
+            }
 
             (Ty::Infer(InferTy::TypeVar(tv1)), Ty::Infer(InferTy::TypeVar(tv2)))
             | (Ty::Infer(InferTy::IntVar(tv1)), Ty::Infer(InferTy::IntVar(tv2)))
@@ -264,6 +275,31 @@ impl InferenceTable {
                 true
             }
 
+            _ => false,
+        }
+    }
+
+    fn unify_preds(
+        &mut self,
+        pred1: &GenericPredicate,
+        pred2: &GenericPredicate,
+        depth: usize,
+    ) -> bool {
+        match (pred1, pred2) {
+            (GenericPredicate::Implemented(tr1), GenericPredicate::Implemented(tr2))
+                if tr1.trait_ == tr2.trait_ =>
+            {
+                self.unify_substs(&tr1.substs, &tr2.substs, depth + 1)
+            }
+            (GenericPredicate::Projection(proj1), GenericPredicate::Projection(proj2))
+                if proj1.projection_ty.associated_ty == proj2.projection_ty.associated_ty =>
+            {
+                self.unify_substs(
+                    &proj1.projection_ty.parameters,
+                    &proj2.projection_ty.parameters,
+                    depth + 1,
+                ) && self.unify_inner(&proj1.ty, &proj2.ty, depth + 1)
+            }
             _ => false,
         }
     }
