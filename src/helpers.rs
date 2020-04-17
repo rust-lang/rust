@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 use std::mem;
+use std::num::NonZeroUsize;
 
 use log::trace;
 
@@ -333,17 +334,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         places.sort_by_key(|place| place.ptr.assert_ptr().offset);
                         self.walk_aggregate(place, places.into_iter().map(Ok))
                     }
-                    FieldsShape::Union { .. } => {
+                    FieldsShape::Union { .. } | FieldsShape::Primitive => {
                         // Uh, what?
-                        bug!("a union is not an aggregate we should ever visit")
+                        bug!("unions/primitives are not aggregates we should ever visit")
                     }
                 }
             }
 
             // We have to do *something* for unions.
-            fn visit_union(&mut self, v: MPlaceTy<'tcx, Tag>, fields: usize) -> InterpResult<'tcx> {
-                assert!(fields > 0); // we should never reach "pseudo-unions" with 0 fields, like primitives
-
+            fn visit_union(&mut self, v: MPlaceTy<'tcx, Tag>, _fields: NonZeroUsize) -> InterpResult<'tcx> {
                 // With unions, we fall back to whatever the type says, to hopefully be consistent
                 // with LLVM IR.
                 // FIXME: are we consistent, and is this really the behavior we want?
