@@ -6,6 +6,15 @@ be hacking on `rustc`, you'll want to tweak the configuration of the compiler.
 The default configuration is oriented towards running the compiler as a user,
 not a developer.
 
+## Get the source code
+
+The very first step to work on `rustc` is to clone the repository:
+
+```bash
+git clone https://github.com/rust-lang/rust.git
+cd rust
+```
+
 ## Create a config.toml
 
 To start, copy [`config.toml.example`] to `config.toml`:
@@ -13,8 +22,7 @@ To start, copy [`config.toml.example`] to `config.toml`:
 [`config.toml.example`]: https://github.com/rust-lang/rust/blob/master/config.toml.example
 
 ```bash
-> cd $RUST_CHECKOUT
-> cp config.toml.example config.toml
+cp config.toml.example config.toml
 ```
 
 Then you will want to open up the file and change the following
