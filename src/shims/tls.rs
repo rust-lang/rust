@@ -114,8 +114,21 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    /// Set global dtor for the given thread.
-    pub fn set_global_dtor(&mut self, thread: ThreadId, dtor: ty::Instance<'tcx>, data: Scalar<Tag>) -> InterpResult<'tcx> {
+    /// Set global dtor for the given thread. This function is used to implement
+    /// `_tlv_atexit` shim on MacOS.
+    ///
+    /// Global destructors are available only on MacOS and (potentially
+    /// confusingly) they seem to be still per thread as can be guessed from the
+    /// following comment in the [`_tlv_atexit`
+    /// implementation](https://github.com/opensource-apple/dyld/blob/195030646877261f0c8c7ad8b001f52d6a26f514/src/threadLocalVariables.c#L389):
+    ///
+    ///     // NOTE: this does not need locks because it only operates on current thread data
+    pub fn set_global_dtor(
+        &mut self,
+        thread: ThreadId,
+        dtor: ty::Instance<'tcx>,
+        data: Scalar<Tag>
+    ) -> InterpResult<'tcx> {
         if self.dtors_running.contains(&thread) {
             // UB, according to libstd docs.
             throw_ub_format!("setting global destructor while destructors are already running");
