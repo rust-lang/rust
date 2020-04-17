@@ -2,16 +2,37 @@
 
 #![warn(clippy::all)]
 #![warn(clippy::redundant_pattern_matching)]
-#![allow(clippy::unit_arg, unused_must_use)]
+#![allow(clippy::unit_arg, unused_must_use, clippy::needless_bool)]
 
 fn main() {
-    Ok::<i32, i32>(42).is_ok();
+    if Ok::<i32, i32>(42).is_ok() {}
 
-    Err::<i32, i32>(42).is_err();
+    if Err::<i32, i32>(42).is_err() {}
 
-    None::<()>.is_none();
+    if None::<()>.is_none() {}
 
-    Some(42).is_some();
+    if Some(42).is_some() {}
+
+    if Some(42).is_some() {
+        foo();
+    } else {
+        bar();
+    }
+
+    while Some(42).is_some() {}
+
+    while Some(42).is_none() {}
+
+    while None::<()>.is_none() {}
+
+    while Ok::<i32, i32>(10).is_ok() {}
+
+    while Ok::<i32, i32>(10).is_err() {}
+
+    let mut v = vec![1, 2, 3];
+    while v.pop().is_some() {
+        foo();
+    }
 
     if Ok::<i32, i32>(42).is_ok() {}
 
@@ -39,22 +60,34 @@ fn main() {
 
     let _ = None::<()>.is_none();
 
-    let _ = Ok::<usize, ()>(4).is_ok();
+    let _ = if Ok::<usize, ()>(4).is_ok() { true } else { false };
 
     let _ = does_something();
     let _ = returns_unit();
 
     let opt = Some(false);
-    let x = opt.is_some();
+    let x = if opt.is_some() { true } else { false };
     takes_bool(x);
 }
 
 fn takes_bool(_: bool) {}
 
+fn foo() {}
+
+fn bar() {}
+
 fn does_something() -> bool {
-    Ok::<i32, i32>(4).is_ok()
+    if Ok::<i32, i32>(4).is_ok() {
+        true
+    } else {
+        false
+    }
 }
 
 fn returns_unit() {
-    Ok::<i32, i32>(4).is_ok();
+    if Ok::<i32, i32>(4).is_ok() {
+        true
+    } else {
+        false
+    };
 }
