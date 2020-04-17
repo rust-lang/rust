@@ -16,53 +16,51 @@ fn invalid_data_err(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> I
     IoError::new(IoErrorKind::InvalidData, e)
 }
 
-fn get_symbols_from_lib(file: &Path) -> Result<Vec<String>, IoError> {
+fn is_derive_registrar_symbol(symbol: &str) -> bool {
+    symbol.contains(NEW_REGISTRAR_SYMBOL)
+}
+
+fn find_registrar_symbol(file: &Path) -> Result<Option<String>, IoError> {
     let buffer = std::fs::read(file)?;
     let object = Object::parse(&buffer).map_err(invalid_data_err)?;
 
     match object {
         Object::Elf(elf) => {
             let symbols = elf.dynstrtab.to_vec().map_err(invalid_data_err)?;
-            let names = symbols.iter().map(|s| s.to_string()).collect();
-            Ok(names)
+            let name =
+                symbols.iter().find(|s| is_derive_registrar_symbol(s)).map(|s| s.to_string());
+            Ok(name)
         }
         Object::PE(pe) => {
-            let symbol_names =
-                pe.exports.iter().flat_map(|s| s.name).map(|n| n.to_string()).collect();
-            Ok(symbol_names)
+            let name = pe
+                .exports
+                .iter()
+                .flat_map(|s| s.name)
+                .find(|s| is_derive_registrar_symbol(s))
+                .map(|s| s.to_string());
+            Ok(name)
         }
-        Object::Mach(mach) => match mach {
-            Mach::Binary(binary) => {
-                let exports = binary.exports().map_err(invalid_data_err)?;
-                let names = exports
-                    .into_iter()
-                    .map(|s| {
-                        // In macos doc:
-                        // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html
-                        // Unlike other dyld API's, the symbol name passed to dlsym() must NOT be
-                        // prepended with an underscore.
-                        if s.name.starts_with("_") {
-                            s.name[1..].to_string()
-                        } else {
-                            s.name
-                        }
-                    })
-                    .collect();
-                Ok(names)
-            }
-            Mach::Fat(_) => Ok(vec![]),
-        },
-        Object::Archive(_) | Object::Unknown(_) => Ok(vec![]),
+        Object::Mach(Mach::Binary(binary)) => {
+            let exports = binary.exports().map_err(invalid_data_err)?;
+            let name = exports
+                .iter()
+                .map(|s| {
+                    // In macos doc:
+                    // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html
+                    // Unlike other dyld API's, the symbol name passed to dlsym() must NOT be
+                    // prepended with an underscore.
+                    if s.name.starts_with("_") {
+                        &s.name[1..]
+                    } else {
+                        &s.name
+                    }
+                })
+                .find(|s| is_derive_registrar_symbol(&s))
+                .map(|s| s.to_string());
+            Ok(name)
+        }
+        _ => Ok(None),
     }
-}
-
-fn is_derive_registrar_symbol(symbol: &str) -> bool {
-    symbol.contains(NEW_REGISTRAR_SYMBOL)
-}
-
-fn find_registrar_symbol(file: &Path) -> Result<Option<String>, IoError> {
-    let symbols = get_symbols_from_lib(file)?;
-    Ok(symbols.into_iter().find(|s| is_derive_registrar_symbol(s)))
 }
 
 /// Loads dynamic library in platform dependent manner.
