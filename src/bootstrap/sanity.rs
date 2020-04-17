@@ -92,7 +92,17 @@ pub fn check(build: &mut Build) {
         })
         .any(|build_llvm_ourselves| build_llvm_ourselves);
     if building_llvm || build.config.sanitizers {
-        cmd_finder.must_have("cmake");
+        // Choose CMake executable with the following priority:
+        // 1. `CMAKE` env var, if set.
+        // 2. `cmake3`, if it exists.
+        // 3. `cmake`.
+        if let Some(cmake_path) = env::var_os("CMAKE") {
+            cmd_finder.must_have(cmake_path);
+        } else if cmd_finder.maybe_have("cmake3").is_some() {
+            env::set_var("CMAKE", "cmake3");
+        } else {
+            cmd_finder.must_have("cmake");
+        }
     }
 
     // Ninja is currently only used for LLVM itself.
@@ -228,7 +238,8 @@ pub fn check(build: &mut Build) {
             // There are three builds of cmake on windows: MSVC, MinGW, and
             // Cygwin. The Cygwin build does not have generators for Visual
             // Studio, so detect that here and error.
-            let out = output(Command::new("cmake").arg("--help"));
+            let cmake_path = env::var("CMAKE").unwrap_or("cmake".into());
+            let out = output(Command::new(cmake_path).arg("--help"));
             if !out.contains("Visual Studio") {
                 panic!(
                     "
