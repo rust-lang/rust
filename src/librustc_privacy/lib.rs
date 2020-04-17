@@ -538,11 +538,10 @@ impl EmbargoVisitor<'tcx> {
         for item_id in module.item_ids {
             let hir_id = item_id.id;
             let item_def_id = self.tcx.hir().local_def_id(hir_id);
-            if let Some(def_kind) = self.tcx.def_kind(item_def_id) {
-                let item = self.tcx.hir().expect_item(hir_id);
-                let vis = ty::Visibility::from_hir(&item.vis, hir_id, self.tcx);
-                self.update_macro_reachable_def(hir_id, def_kind, vis, defining_mod);
-            }
+            let def_kind = self.tcx.def_kind(item_def_id);
+            let item = self.tcx.hir().expect_item(hir_id);
+            let vis = ty::Visibility::from_hir(&item.vis, hir_id, self.tcx);
+            self.update_macro_reachable_def(hir_id, def_kind, vis, defining_mod);
         }
         if let Some(exports) = self.tcx.module_exports(module_def_id) {
             for export in exports {

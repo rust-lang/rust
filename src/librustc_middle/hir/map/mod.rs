@@ -227,15 +227,14 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions.opt_local_def_id_to_hir_id(def_id)
     }
 
-    pub fn def_kind(&self, local_def_id: LocalDefId) -> Option<DefKind> {
+    pub fn def_kind(&self, local_def_id: LocalDefId) -> DefKind {
+        // FIXME(eddyb) support `find` on the crate root.
         if local_def_id.to_def_id().index == CRATE_DEF_INDEX {
-            return Some(DefKind::Mod);
+            return DefKind::Mod;
         }
 
         let hir_id = self.local_def_id_to_hir_id(local_def_id);
-        let node = self.find(hir_id)?;
-
-        Some(match node {
+        match self.get(hir_id) {
             Node::Item(item) => match item.kind {
                 ItemKind::Static(..) => DefKind::Static,
                 ItemKind::Const(..) => DefKind::Const,
@@ -273,7 +272,7 @@ impl<'hir> Map<'hir> {
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
                 // FIXME(eddyb) is this even possible, if we have a `Node::Ctor`?
-                variant_data.ctor_hir_id()?;
+                assert_ne!(variant_data.ctor_hir_id(), None);
 
                 let ctor_of = match self.find(self.get_parent_node(hir_id)) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
@@ -308,7 +307,7 @@ impl<'hir> Map<'hir> {
             | Node::Visibility(_)
             | Node::Block(_)
             | Node::Crate(_) => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
-        })
+        }
     }
 
     fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {

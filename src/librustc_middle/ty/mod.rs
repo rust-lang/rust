@@ -2680,7 +2680,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         } else {
             match self.def_kind(def_id) {
-                Some(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy) => true,
+                DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => true,
                 _ => false,
             }
         };

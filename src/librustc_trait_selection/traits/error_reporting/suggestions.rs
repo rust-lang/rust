@@ -1487,7 +1487,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // ```
                 debug!("parent_def_kind: {:?}", self.tcx.def_kind(parent_did));
                 let is_raw_borrow_inside_fn_like_call = match self.tcx.def_kind(parent_did) {
-                    Some(DefKind::Fn | DefKind::Ctor(..)) => target_ty.is_unsafe_ptr(),
+                    DefKind::Fn | DefKind::Ctor(..) => target_ty.is_unsafe_ptr(),
                     _ => false,
                 };
 

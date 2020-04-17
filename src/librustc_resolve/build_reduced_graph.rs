@@ -917,7 +917,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 | DefKind::LifetimeParam
                 | DefKind::GlobalAsm
                 | DefKind::Closure
-                | DefKind::Impl,
+                | DefKind::Impl
+                | DefKind::Generator,
                 _,
             )
             | Res::Local(..)
