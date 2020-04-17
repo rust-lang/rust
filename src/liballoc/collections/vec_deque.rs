@@ -1391,7 +1391,7 @@ impl<T> VecDeque<T> {
     /// Removes an element from anywhere in the `VecDeque` and returns it,
     /// replacing it with the first element.
     ///
-    /// This does not preserve ordering, but is O(1).
+    /// This does not preserve ordering, but is `O(1)`.
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
@@ -1426,7 +1426,7 @@ impl<T> VecDeque<T> {
     /// Removes an element from anywhere in the `VecDeque` and returns it, replacing it with the
     /// last element.
     ///
-    /// This does not preserve ordering, but is O(1).
+    /// This does not preserve ordering, but is `O(1)`.
     ///
     /// Returns `None` if `index` is out of bounds.
     ///
@@ -2927,7 +2927,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
     /// [`Vec<T>`]: crate::vec::Vec
     /// [`VecDeque<T>`]: crate::collections::VecDeque
     ///
-    /// This never needs to re-allocate, but does need to do O(n) data movement if
+    /// This never needs to re-allocate, but does need to do `O(n)` data movement if
     /// the circular buffer doesn't happen to be at the beginning of the allocation.
     ///
     /// # Examples

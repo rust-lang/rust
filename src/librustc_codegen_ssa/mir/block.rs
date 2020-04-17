@@ -111,7 +111,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
     ) {
-        if let Some(cleanup) = cleanup {
+        // If there is a cleanup block and the function we're calling can unwind, then
+        // do an invoke, otherwise do a call.
+        if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
             let ret_bx = if let Some((_, target)) = destination {
                 fx.blocks[target]
             } else {

@@ -1006,7 +1006,7 @@ impl<'a> Parser<'a> {
                 let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Lit(literal), attrs);
                 self.maybe_recover_from_bad_qpath(expr, true)
             }
-            None => Err(self.expected_expression_found()),
+            None => self.try_macro_suggestion(),
         }
     }
 

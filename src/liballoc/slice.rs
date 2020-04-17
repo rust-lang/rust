@@ -165,7 +165,7 @@ mod hack {
 impl<T> [T] {
     /// Sorts the slice.
     ///
-    /// This sort is stable (i.e., does not reorder equal elements) and `O(n log n)` worst-case.
+    /// This sort is stable (i.e., does not reorder equal elements) and `O(n * log(n))` worst-case.
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
@@ -200,7 +200,7 @@ impl<T> [T] {
 
     /// Sorts the slice with a comparator function.
     ///
-    /// This sort is stable (i.e., does not reorder equal elements) and `O(n log n)` worst-case.
+    /// This sort is stable (i.e., does not reorder equal elements) and `O(n * log(n))` worst-case.
     ///
     /// The comparator function must define a total ordering for the elements in the slice. If
     /// the ordering is not total, the order of the elements is unspecified. An order is a
@@ -254,7 +254,7 @@ impl<T> [T] {
 
     /// Sorts the slice with a key extraction function.
     ///
-    /// This sort is stable (i.e., does not reorder equal elements) and `O(m n log n)`
+    /// This sort is stable (i.e., does not reorder equal elements) and `O(m * n * log(n))`
     /// worst-case, where the key function is `O(m)`.
     ///
     /// For expensive key functions (e.g. functions that are not simple property accesses or
@@ -297,7 +297,7 @@ impl<T> [T] {
     ///
     /// During sorting, the key function is called only once per element.
     ///
-    /// This sort is stable (i.e., does not reorder equal elements) and `O(m n + n log n)`
+    /// This sort is stable (i.e., does not reorder equal elements) and `O(m * n + n * log(n))`
     /// worst-case, where the key function is `O(m)`.
     ///
     /// For simple key functions (e.g., functions that are property accesses or
@@ -935,7 +935,7 @@ where
 /// 1. for every `i` in `1..runs.len()`: `runs[i - 1].len > runs[i].len`
 /// 2. for every `i` in `2..runs.len()`: `runs[i - 2].len > runs[i - 1].len + runs[i].len`
 ///
-/// The invariants ensure that the total running time is `O(n log n)` worst-case.
+/// The invariants ensure that the total running time is `O(n * log(n))` worst-case.
 fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,
