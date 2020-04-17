@@ -174,7 +174,8 @@ pub(crate) fn highlight(
     }
 
     assert_eq!(res.len(), 1, "after DFS traversal, the stack should only contain a single element");
-    let res = res.pop().unwrap();
+    let mut res = res.pop().unwrap();
+    res.sort_by_key(|range| range.range.start());
     // Check that ranges are sorted and disjoint
     assert!(res
         .iter()

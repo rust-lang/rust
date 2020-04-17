@@ -156,3 +156,15 @@ fn main() {
     fs::write(dst_file, &actual_html).unwrap();
     assert_eq_text!(expected_html, actual_html);
 }
+
+#[test]
+fn ranges_sorted() {
+    let (analysis, file_id) = single_file(
+        r#"
+#[foo(bar = "bar")]
+macro_rules! test {}
+}"#
+        .trim(),
+    );
+    let _ = analysis.highlight(file_id).unwrap();
+}
