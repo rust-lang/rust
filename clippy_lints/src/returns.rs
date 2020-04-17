@@ -8,7 +8,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;
 
-use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then};
+use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_sugg, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for return statements at the end of a block.
@@ -162,24 +162,26 @@ impl Return {
             },
             None => match replacement {
                 RetReplacement::Empty => {
-                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
-                        diag.span_suggestion(
-                            ret_span,
-                            "remove `return`",
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        );
-                    });
+                    span_lint_and_sugg(
+                        cx,
+                        NEEDLESS_RETURN,
+                        ret_span,
+                        "unneeded `return` statement",
+                        "remove `return`",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
                 },
                 RetReplacement::Block => {
-                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
-                        diag.span_suggestion(
-                            ret_span,
-                            "replace `return` with an empty block",
-                            "{}".to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                    });
+                    span_lint_and_sugg(
+                        cx,
+                        NEEDLESS_RETURN,
+                        ret_span,
+                        "unneeded `return` statement",
+                        "replace `return` with an empty block",
+                        "{}".to_string(),
+                        Applicability::MachineApplicable,
+                    );
                 },
             },
         }
@@ -259,14 +261,15 @@ impl EarlyLintPass for Return {
                 } else {
                     (ty.span, Applicability::MaybeIncorrect)
                 };
-                span_lint_and_then(cx, UNUSED_UNIT, rspan, "unneeded unit return type", |diag| {
-                    diag.span_suggestion(
-                        rspan,
-                        "remove the `-> ()`",
-                        String::new(),
-                        appl,
-                    );
-                });
+                span_lint_and_sugg(
+                    cx,
+                    UNUSED_UNIT,
+                    rspan,
+                    "unneeded unit return type",
+                    "remove the `-> ()`",
+                    String::new(),
+                    appl,
+                );
             }
         }
     }
@@ -279,14 +282,16 @@ impl EarlyLintPass for Return {
             if is_unit_expr(expr) && !stmt.span.from_expansion();
             then {
                 let sp = expr.span;
-                span_lint_and_then(cx, UNUSED_UNIT, sp, "unneeded unit expression", |diag| {
-                    diag.span_suggestion(
-                        sp,
-                        "remove the final `()`",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    );
-                });
+                span_lint_and_sugg(
+                    cx,
+                    UNUSED_UNIT,
+                    sp,
+                    "unneeded unit expression",
+                    "remove the final `()`",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+
             }
         }
     }
@@ -295,14 +300,15 @@ impl EarlyLintPass for Return {
         match e.kind {
             ast::ExprKind::Ret(Some(ref expr)) | ast::ExprKind::Break(_, Some(ref expr)) => {
                 if is_unit_expr(expr) && !expr.span.from_expansion() {
-                    span_lint_and_then(cx, UNUSED_UNIT, expr.span, "unneeded `()`", |diag| {
-                        diag.span_suggestion(
-                            expr.span,
-                            "remove the `()`",
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        );
-                    });
+                    span_lint_and_sugg(
+                        cx,
+                        UNUSED_UNIT,
+                        expr.span,
+                        "unneeded `()`",
+                        "remove the `()`",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    );
                 }
             },
             _ => (),

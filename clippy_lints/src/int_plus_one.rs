@@ -5,7 +5,7 @@ use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::{snippet_opt, span_lint_and_then};
+use crate::utils::{snippet_opt, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `x >= y + 1` or `x - 1 >= y` (and `<=`) in a block
@@ -149,19 +149,14 @@ impl IntPlusOne {
     }
 
     fn emit_warning(cx: &EarlyContext<'_>, block: &Expr, recommendation: String) {
-        span_lint_and_then(
+        span_lint_and_sugg(
             cx,
             INT_PLUS_ONE,
             block.span,
             "Unnecessary `>= y + 1` or `x - 1 >=`",
-            |diag| {
-                diag.span_suggestion(
-                    block.span,
-                    "change it to",
-                    recommendation,
-                    Applicability::MachineApplicable, // snippet
-                );
-            },
+            "change it to",
+            recommendation,
+            Applicability::MachineApplicable, // snippet
         );
     }
 }

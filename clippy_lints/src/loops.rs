@@ -2471,45 +2471,50 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
                 match_type(cx, ty, &paths::HASHMAP) {
                 if method.ident.name == sym!(len) {
                     let span = shorten_needless_collect_span(expr);
-                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |diag| {
-                        diag.span_suggestion(
-                            span,
+                    span_lint_and_sugg(cx,
+                        NEEDLESS_COLLECT,
+                        span,
+                        NEEDLESS_COLLECT_MSG,
                             "replace with",
                             ".count()".to_string(),
                             Applicability::MachineApplicable,
                         );
-                    });
                 }
                 if method.ident.name == sym!(is_empty) {
                     let span = shorten_needless_collect_span(expr);
-                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |diag| {
-                        diag.span_suggestion(
-                            span,
-                            "replace with",
-                            ".next().is_none()".to_string(),
-                            Applicability::MachineApplicable,
+                    span_lint_and_sugg(cx,
+                        NEEDLESS_COLLECT,
+                        span,
+                        NEEDLESS_COLLECT_MSG,
+                        "replace with",
+                        ".next().is_none()".to_string(),
+                        Applicability::MachineApplicable,
                         );
-                    });
                 }
                 if method.ident.name == sym!(contains) {
                     let contains_arg = snippet(cx, args[1].span, "??");
                     let span = shorten_needless_collect_span(expr);
-                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |diag| {
-                        let (arg, pred) = if contains_arg.starts_with('&') {
-                            ("x", &contains_arg[1..])
-                        } else {
-                            ("&x", &*contains_arg)
-                        };
-                        diag.span_suggestion(
-                            span,
-                            "replace with",
-                            format!(
-                                ".any(|{}| x == {})",
-                                arg, pred
-                            ),
-                            Applicability::MachineApplicable,
-                        );
-                    });
+                    span_lint_and_then(cx,
+                        NEEDLESS_COLLECT,
+                        span,
+                        NEEDLESS_COLLECT_MSG,
+                    |db| {
+                            let (arg, pred) = if contains_arg.starts_with('&') {
+                                ("x", &contains_arg[1..])
+                            } else {
+                                ("&x", &*contains_arg)
+                            };
+                            db.span_suggestion(
+                                span,
+                                "replace with",
+                                format!(
+                                    ".any(|{}| x == {})",
+                                    arg, pred
+                                ),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                    );
                 }
             }
         }

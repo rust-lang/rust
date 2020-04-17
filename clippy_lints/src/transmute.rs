@@ -1,5 +1,6 @@
 use crate::utils::{
-    is_normalizable, last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then, sugg,
+    is_normalizable, last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_sugg,
+    span_lint_and_then, sugg,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -441,24 +442,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     ""
                                 };
 
-                                span_lint_and_then(
+                                span_lint_and_sugg(
                                     cx,
                                     TRANSMUTE_BYTES_TO_STR,
                                     e.span,
                                     &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
-                                    |diag| {
-                                        diag.span_suggestion(
-                                            e.span,
-                                            "consider using",
-                                            format!(
-                                                "std::str::from_utf8{}({}).unwrap()",
-                                                postfix,
-                                                snippet(cx, args[0].span, ".."),
-                                            ),
-                                            Applicability::Unspecified,
-                                        );
-                                    }
-                                )
+                                    "consider using",
+                                    format!(
+                                        "std::str::from_utf8{}({}).unwrap()",
+                                        postfix,
+                                        snippet(cx, args[0].span, ".."),
+                                    ),
+                                    Applicability::Unspecified,
+                                );
                             } else {
                                 if cx.tcx.erase_regions(&from_ty) != cx.tcx.erase_regions(&to_ty) {
                                     span_lint_and_then(
