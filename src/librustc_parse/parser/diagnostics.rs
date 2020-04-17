@@ -1054,7 +1054,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn try_macro_suggestion(&mut self) -> DiagnosticBuilder<'a> {
+    pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, P<Expr>> {
         let is_try = self.token.is_keyword(kw::Try);
         let is_questionmark = self.look_ahead(1, |t| t == &token::Not); //check for !
         let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(token::Paren)); //check for (
@@ -1082,9 +1082,10 @@ impl<'a> Parser<'a> {
                 //if the try! macro is empty, it isn't possible to suggest something using the `?` operator
                 err.span_suggestion(lo.shrink_to_lo(), "you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax", "r#".to_string(), Applicability::MachineApplicable);
             }
-            err
+            err.emit();
+            Ok(self.mk_expr_err(lo.to(hi)))
         } else {
-            self.expected_expression_found() // The user isn't trying to invoke the try! macro
+            Err(self.expected_expression_found()) // The user isn't trying to invoke the try! macro
         }
     }
 
