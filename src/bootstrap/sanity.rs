@@ -1,4 +1,4 @@
-//! Sanity checking performed by rustbuild before actually executing anything.
+//! Sanity-checking performed by rustbuild before actually executing anything.
 //!
 //! This module contains the implementation of ensuring that the build
 //! environment looks reasonable before progressing. This will verify that
@@ -41,10 +41,10 @@ impl Finder {
                     let mut cmd_exe = cmd.clone();
                     cmd_exe.push(".exe");
 
-                    if target.is_file()                   // some/path/git
-                    || path.join(&cmd_exe).exists()   // some/path/git.exe
+                    if target.is_file()               // `some/path/git`
+                    || path.join(&cmd_exe).exists()   // `some/path/git.exe`
                     || target.join(&cmd_exe).exists()
-                    // some/path/git/git.exe
+                    // `some/path/git/git.exe`
                     {
                         return Some(target);
                     }
@@ -68,7 +68,7 @@ pub fn check(build: &mut Build) {
     // being unable to identify the files properly. See
     // https://github.com/rust-lang/rust/issues/34959 for more details.
     if cfg!(windows) && path.to_string_lossy().contains('\"') {
-        panic!("PATH contains invalid character '\"'");
+        panic!("`PATH` contains invalid character '\"'");
     }
 
     let mut cmd_finder = Finder::new();
@@ -78,7 +78,7 @@ pub fn check(build: &mut Build) {
         cmd_finder.must_have("git");
     }
 
-    // We need cmake, but only if we're actually building LLVM or sanitizers.
+    // We need CMake, but only if we're actually building LLVM or sanitizers.
     let building_llvm = build
         .hosts
         .iter()
@@ -105,7 +105,7 @@ pub fn check(build: &mut Build) {
             }
         }
 
-        // If ninja isn't enabled but we're building for MSVC then we try
+        // If Ninja isn't enabled but we're building for MSVC then we try
         // doubly hard to enable it. It was realized in #43767 that the msbuild
         // CMake generator for MSVC doesn't respect configuration options like
         // disabling LLVM assertions, which can often be quite important!
@@ -182,7 +182,7 @@ pub fn check(build: &mut Build) {
     // Externally configured LLVM requires FileCheck to exist
     let filecheck = build.llvm_filecheck(build.build);
     if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
-        panic!("FileCheck executable {:?} does not exist", filecheck);
+        panic!("FileCheck executable `{:?}` does not exist", filecheck);
     }
 
     for target in &build.targets {
@@ -210,13 +210,16 @@ pub fn check(build: &mut Build) {
             match build.musl_root(*target) {
                 Some(root) => {
                     if fs::metadata(root.join("lib/libc.a")).is_err() {
-                        panic!("couldn't find libc.a in musl dir: {}", root.join("lib").display());
+                        panic!(
+                            "couldn't find `libc.a` in musl dir: {}",
+                            root.join("lib").display()
+                        );
                     }
                 }
                 None => panic!(
-                    "when targeting MUSL either the rust.musl-root \
-                            option or the target.$TARGET.musl-root option must \
-                            be specified in config.toml"
+                    "when targeting MUSL, either the `rust.musl-root` \
+                     option or the `target.$TARGET.musl-root` option must \
+                     be specified in `config.toml`"
                 ),
             }
         }
@@ -254,7 +257,7 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
         if stage0.contains("\ndev:") {
             panic!(
                 "bootstrapping from a dev compiler in a stable release, but \
-                    should only be bootstrapping from a released compiler!"
+                 should only be bootstrapping from a released compiler!"
             );
         }
     }

@@ -66,7 +66,7 @@ def download(path, url, probably_big, verbose):
 def _download(path, url, probably_big, verbose, exception):
     if probably_big or verbose:
         print("downloading {}".format(url))
-    # see http://serverfault.com/questions/301128/how-to-download
+    # See http://serverfault.com/questions/301128/how-to-download.
     if sys.platform == 'win32':
         run(["PowerShell.exe", "/nologo", "-Command",
              "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
@@ -79,7 +79,7 @@ def _download(path, url, probably_big, verbose, exception):
         else:
             option = "-s"
         run(["curl", option,
-             "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
+             "-y", "30", "-Y", "10",     # timeout if speed is < 10 bytes/sec for > 30 seconds
              "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
              "--retry", "3", "-Sf", "-o", path, url],
             verbose=verbose,
@@ -131,7 +131,7 @@ def run(args, verbose=False, exception=False, **kwargs):
     if verbose:
         print("running: " + ' '.join(args))
     sys.stdout.flush()
-    # Use Popen here instead of call() as it apparently allows powershell on
+    # Use `Popen` here instead of `call()` as it apparently allows powershell on
     # Windows to not lock up waiting for input presumably.
     ret = subprocess.Popen(args, **kwargs)
     code = ret.wait()
@@ -660,6 +660,7 @@ class RustBuild(object):
 
     def build_bootstrap(self):
         """Build bootstrap"""
+
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -680,7 +681,7 @@ class RustBuild(object):
         env["LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
-        # preserve existing RUSTFLAGS
+        # Preserve existing `RUSTFLAGS`.
         env.setdefault("RUSTFLAGS", "")
         env["RUSTFLAGS"] += " -Cdebuginfo=2"
 
@@ -748,7 +749,7 @@ class RustBuild(object):
                  "--init", "--recursive", "--progress", module],
                 cwd=self.rust_root, verbose=self.verbose, exception=True)
         except RuntimeError:
-            # Some versions of git don't support --progress.
+            # Some versions of Git don't support `--progress`.
             run(["git", "submodule", "update",
                  "--init", "--recursive", module],
                 cwd=self.rust_root, verbose=self.verbose)
@@ -763,7 +764,7 @@ class RustBuild(object):
                 self.get_toml('submodules') == "false":
             return
 
-        # check the existence of 'git' command
+        # Check for the existence of the `git` executable.
         try:
             subprocess.check_output(['git', '--version'])
         except (subprocess.CalledProcessError, OSError):
@@ -878,7 +879,7 @@ def bootstrap(help_triggered):
     args = [a for a in sys.argv if a != '-h' and a != '--help']
     args, _ = parser.parse_known_args(args)
 
-    # Configure initial bootstrap
+    # Configure initial bootstrap.
     build = RustBuild()
     build.rust_root = args.src or os.path.abspath(os.path.join(__file__, '../../..'))
     build.verbose = args.verbose
@@ -944,7 +945,7 @@ def main():
     """Entry point for the bootstrap process"""
     start_time = time()
 
-    # x.py help <cmd> ...
+    # `x.py help <cmd> ...`
     if len(sys.argv) > 1 and sys.argv[1] == 'help':
         sys.argv = [sys.argv[0], '-h'] + sys.argv[2:]
 
