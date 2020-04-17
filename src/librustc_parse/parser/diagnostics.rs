@@ -1054,6 +1054,39 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, P<Expr>> {
+        let is_try = self.token.is_keyword(kw::Try);
+        let is_questionmark = self.look_ahead(1, |t| t == &token::Not); //check for !
+        let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(token::Paren)); //check for (
+
+        if is_try && is_questionmark && is_open {
+            let lo = self.token.span;
+            self.bump(); //remove try
+            self.bump(); //remove !
+            let try_span = lo.to(self.token.span); //we take the try!( span
+            self.bump(); //remove (
+            let is_empty = self.token == token::CloseDelim(token::Paren); //check if the block is empty
+            self.consume_block(token::Paren, ConsumeClosingDelim::No); //eat the block
+            let hi = self.token.span;
+            self.bump(); //remove )
+            let mut err = self.struct_span_err(lo.to(hi), "use of deprecated `try` macro");
+            err.note("in the 2018 edition `try` is a reserved keyword, and the `try!()` macro is deprecated");
+            let prefix = if is_empty { "" } else { "alternatively, " };
+            if !is_empty {
+                err.multipart_suggestion(
+                    "you can use the `?` operator instead",
+                    vec![(try_span, "".to_owned()), (hi, "?".to_owned())],
+                    Applicability::MachineApplicable,
+                );
+            }
+            err.span_suggestion(lo.shrink_to_lo(), &format!("{}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax", prefix), "r#".to_string(), Applicability::MachineApplicable);
+            err.emit();
+            Ok(self.mk_expr_err(lo.to(hi)))
+        } else {
+            Err(self.expected_expression_found()) // The user isn't trying to invoke the try! macro
+        }
+    }
+
     /// Recovers a situation like `for ( $pat in $expr )`
     /// and suggest writing `for $pat in $expr` instead.
     ///
