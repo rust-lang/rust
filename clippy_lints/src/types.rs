@@ -786,7 +786,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
                             "passing a unit value to a function",
                             "if you intended to pass a unit value, use a unit literal instead",
                             "()".to_string(),
-                            Applicability::MachineApplicable,
+                            Applicability::MaybeIncorrect,
                         );
                     }
                 }
