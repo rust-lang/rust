@@ -2452,27 +2452,6 @@ pub enum ItemKind<'hir> {
 }
 
 impl ItemKind<'_> {
-    pub fn descr(&self) -> &str {
-        match *self {
-            ItemKind::ExternCrate(..) => "extern crate",
-            ItemKind::Use(..) => "`use` import",
-            ItemKind::Static(..) => "static item",
-            ItemKind::Const(..) => "constant item",
-            ItemKind::Fn(..) => "function",
-            ItemKind::Mod(..) => "module",
-            ItemKind::ForeignMod(..) => "extern block",
-            ItemKind::GlobalAsm(..) => "global asm item",
-            ItemKind::TyAlias(..) => "type alias",
-            ItemKind::OpaqueTy(..) => "opaque type",
-            ItemKind::Enum(..) => "enum",
-            ItemKind::Struct(..) => "struct",
-            ItemKind::Union(..) => "union",
-            ItemKind::Trait(..) => "trait",
-            ItemKind::TraitAlias(..) => "trait alias",
-            ItemKind::Impl { .. } => "implementation",
-        }
-    }
-
     pub fn generics(&self) -> Option<&Generics<'_>> {
         Some(match *self {
             ItemKind::Fn(_, ref generics, _)
@@ -2549,16 +2528,6 @@ pub enum ForeignItemKind<'hir> {
     Static(&'hir Ty<'hir>, Mutability),
     /// A foreign type.
     Type,
-}
-
-impl ForeignItemKind<'hir> {
-    pub fn descriptive_variant(&self) -> &str {
-        match *self {
-            ForeignItemKind::Fn(..) => "foreign function",
-            ForeignItemKind::Static(..) => "foreign static item",
-            ForeignItemKind::Type => "foreign type",
-        }
-    }
 }
 
 /// A variable captured by a closure.
