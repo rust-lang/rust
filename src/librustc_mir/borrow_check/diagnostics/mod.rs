@@ -97,7 +97,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
                 if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind {
-                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(did.expect_local());
+                    let did = did.expect_local();
+                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(did);
 
                     if let Some((span, name)) =
                         self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id)
@@ -119,7 +120,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Check if we are just moving a closure after it has been invoked.
         if let Some(target) = target {
             if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind {
-                let hir_id = self.infcx.tcx.hir().as_local_hir_id(did.expect_local());
+                let did = did.expect_local();
+                let hir_id = self.infcx.tcx.hir().as_local_hir_id(did);
 
                 if let Some((span, name)) =
                     self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id)
