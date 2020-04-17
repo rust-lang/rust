@@ -592,7 +592,7 @@ impl EntryKind {
             EntryKind::ForeignMod => DefKind::ForeignMod,
             EntryKind::GlobalAsm => DefKind::GlobalAsm,
             EntryKind::Field => DefKind::Field,
-            EntryKind::Generator(_) => DefKind::Closure,
+            EntryKind::Generator(_) => DefKind::Generator,
         }
     }
 }

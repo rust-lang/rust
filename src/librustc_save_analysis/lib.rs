@@ -771,7 +771,8 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 | HirDefKind::Field
                 | HirDefKind::GlobalAsm
                 | HirDefKind::Impl
-                | HirDefKind::Closure,
+                | HirDefKind::Closure
+                | HirDefKind::Generator,
                 _,
             )
             | Res::PrimTy(..)
