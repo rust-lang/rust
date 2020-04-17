@@ -215,8 +215,33 @@ pub(crate) fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
     }
 }
 
-pub(crate) fn type_min_max_value(ty: Type, signed: bool) -> (i64, i64) {
+pub(crate) fn type_min_max_value(bcx: &mut FunctionBuilder<'_>, ty: Type, signed: bool) -> (Value, Value) {
     assert!(ty.is_int());
+
+    if ty == types::I128 {
+        if signed {
+            let min = i128::MIN as u128;
+            let min_lsb = bcx.ins().iconst(types::I64, min as u64 as i64);
+            let min_msb = bcx.ins().iconst(types::I64, (min >> 64) as u64 as i64);
+            let min = bcx.ins().iconcat(min_lsb, min_msb);
+
+            let max = i128::MIN as u128;
+            let max_lsb = bcx.ins().iconst(types::I64, max as u64 as i64);
+            let max_msb = bcx.ins().iconst(types::I64, (max >> 64) as u64 as i64);
+            let max = bcx.ins().iconcat(max_lsb, max_msb);
+
+            return (min, max);
+        } else {
+            let min_half = bcx.ins().iconst(types::I64, 0);
+            let min = bcx.ins().iconcat(min_half, min_half);
+
+            let max_half = bcx.ins().iconst(types::I64, u64::MAX as i64);
+            let max = bcx.ins().iconcat(max_half, max_half);
+
+            return (min, max);
+        }
+    }
+
     let min = match (ty, signed) {
         (types::I8, false) | (types::I16, false) | (types::I32, false) | (types::I64, false) => {
             0i64
@@ -225,7 +250,6 @@ pub(crate) fn type_min_max_value(ty: Type, signed: bool) -> (i64, i64) {
         (types::I16, true) => i16::MIN as i64,
         (types::I32, true) => i32::MIN as i64,
         (types::I64, true) => i64::MIN,
-        (types::I128, _) => unimplemented!(),
         _ => unreachable!(),
     };
 
@@ -238,9 +262,10 @@ pub(crate) fn type_min_max_value(ty: Type, signed: bool) -> (i64, i64) {
         (types::I16, true) => i16::MAX as i64,
         (types::I32, true) => i32::MAX as i64,
         (types::I64, true) => i64::MAX,
-        (types::I128, _) => unimplemented!(),
         _ => unreachable!(),
     };
+
+    let (min, max) = (bcx.ins().iconst(ty, min), bcx.ins().iconst(ty, max));
 
     (min, max)
 }

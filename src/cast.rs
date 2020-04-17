@@ -159,7 +159,13 @@ pub(crate) fn clif_int_or_float_cast(
             } else {
                 fx.bcx.ins().fcvt_to_uint_sat(types::I32, from)
             };
-            let (min, max) = type_min_max_value(to_ty, to_signed);
+            let (min, max) = match (to_ty, to_signed) {
+                (types::I8, false) => (0, u8::MAX as i64),
+                (types::I16, false) => (0, u16::MAX as i64),
+                (types::I8, true) => (i8::MIN as i64, i8::MAX as i64),
+                (types::I16, true) => (i16::MIN as i64, i16::MAX as i64),
+                _ => unreachable!(),
+            };
             let min_val = fx.bcx.ins().iconst(types::I32, min);
             let max_val = fx.bcx.ins().iconst(types::I32, max);
 

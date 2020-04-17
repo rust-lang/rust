@@ -583,9 +583,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             // `select.i8` is not implemented by Cranelift.
             let has_overflow = fx.bcx.ins().uextend(types::I32, has_overflow);
 
-            let (min, max) = type_min_max_value(clif_ty, signed);
-            let min = fx.bcx.ins().iconst(clif_ty, min);
-            let max = fx.bcx.ins().iconst(clif_ty, max);
+            let (min, max) = type_min_max_value(&mut fx.bcx, clif_ty, signed);
 
             let val = match (intrinsic, signed) {
                 ("saturating_add", false) => fx.bcx.ins().select(has_overflow, max, val),
