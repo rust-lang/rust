@@ -205,15 +205,25 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
     // Perform the main execution.
     let res: InterpResult<'_, i64> = (|| {
         // Main loop.
-        while ecx.schedule()? {
-            assert!(ecx.step()?, "a terminated thread was scheduled for execution");
+        loop {
+            match ecx.schedule()? {
+                SchedulingAction::ExecuteStep => {
+                    assert!(ecx.step()?, "a terminated thread was scheduled for execution");
+                }
+                SchedulingAction::ExecuteDtors => {
+                    ecx.run_tls_dtors_for_active_thread()?;
+                }
+                SchedulingAction::Stop => {
+                    break;
+                }
+            }
             ecx.process_diagnostics();
         }
         // Read the return code pointer *before* we run TLS destructors, to assert
         // that it was written to by the time that `start` lang item returned.
         let return_code = ecx.read_scalar(ret_place.into())?.not_undef()?.to_machine_isize(&ecx)?;
         // Global destructors.
-        ecx.run_tls_dtors()?;
+        ecx.run_windows_tls_dtors()?;
         Ok(return_code)
     })();
 

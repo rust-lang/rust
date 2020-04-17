@@ -2,15 +2,17 @@
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::collections::HashSet;
 
 use log::trace;
 
+use rustc_index::vec::Idx;
 use rustc_middle::ty;
 use rustc_target::abi::{Size, HasDataLayout};
 
 use crate::{
     HelpersEvalContextExt, InterpResult, MPlaceTy, Scalar, StackPopCleanup, Tag, ThreadId,
-    ThreadState, ThreadsEvalContextExt,
+    ThreadsEvalContextExt,
 };
 
 pub type TlsKey = u128;
@@ -32,11 +34,11 @@ pub struct TlsData<'tcx> {
     /// pthreads-style thread-local storage.
     keys: BTreeMap<TlsKey, TlsEntry<'tcx>>,
 
-    /// A single global dtor (that's how things work on macOS) with a data argument.
-    global_dtor: Option<(ty::Instance<'tcx>, Scalar<Tag>)>,
+    /// A single global per thread dtor (that's how things work on macOS) with a data argument.
+    global_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar<Tag>)>,
 
     /// Whether we are in the "destruct" phase, during which some operations are UB.
-    dtors_running: bool,
+    dtors_running: HashSet<ThreadId>,
 }
 
 impl<'tcx> Default for TlsData<'tcx> {
@@ -44,8 +46,8 @@ impl<'tcx> Default for TlsData<'tcx> {
         TlsData {
             next_key: 1, // start with 1 as we must not use 0 on Windows
             keys: Default::default(),
-            global_dtor: None,
-            dtors_running: false,
+            global_dtors: Default::default(),
+            dtors_running: Default::default(),
         }
     }
 }
@@ -112,16 +114,15 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn set_global_dtor(&mut self, dtor: ty::Instance<'tcx>, data: Scalar<Tag>) -> InterpResult<'tcx> {
-        if self.dtors_running {
+    /// Set global dtor for the given thread.
+    pub fn set_global_dtor(&mut self, thread: ThreadId, dtor: ty::Instance<'tcx>, data: Scalar<Tag>) -> InterpResult<'tcx> {
+        if self.dtors_running.contains(&thread) {
             // UB, according to libstd docs.
             throw_ub_format!("setting global destructor while destructors are already running");
         }
-        if self.global_dtor.is_some() {
-            throw_unsup_format!("setting more than one global destructor is not supported");
+        if self.global_dtors.insert(thread, (dtor, data)).is_some() {
+            throw_unsup_format!("setting more than one global destructor for the same thread is not supported");
         }
-
-        self.global_dtor = Some((dtor, data));
         Ok(())
     }
 
@@ -148,7 +149,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: Option<TlsKey>,
         thread_id: ThreadId,
-    ) -> Option<(ty::Instance<'tcx>, ThreadId, Scalar<Tag>, TlsKey)> {
+    ) -> Option<(ty::Instance<'tcx>, Scalar<Tag>, TlsKey)> {
         use std::collections::Bound::*;
 
         let thread_local = &mut self.keys;
@@ -161,9 +162,9 @@ impl<'tcx> TlsData<'tcx> {
         {
             match data.entry(thread_id) {
                 Entry::Occupied(entry) => {
-                    let (thread_id, data_scalar) = entry.remove_entry();
+                    let data_scalar = entry.remove();
                     if let Some(dtor) = dtor {
-                        let ret = Some((*dtor, thread_id, data_scalar, key));
+                        let ret = Some((*dtor, data_scalar, key));
                         return ret;
                     }
                 }
@@ -176,41 +177,61 @@ impl<'tcx> TlsData<'tcx> {
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    /// Run TLS destructors for all threads.
-    fn run_tls_dtors(&mut self) -> InterpResult<'tcx> {
+
+    /// Run TLS destructors for the main thread on Windows. The implementation
+    /// assumes that we do not support concurrency on Windows yet.
+    ///
+    /// Note: on non-Windows OS this function is a no-op.
+    fn run_windows_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        assert!(!this.machine.tls.dtors_running, "running TLS dtors twice");
-        this.machine.tls.dtors_running = true;
-
-        if this.tcx.sess.target.target.target_os == "windows" {
-            // Windows has a special magic linker section that is run on certain events.
-            // Instead of searching for that section and supporting arbitrary hooks in there
-            // (that would be basically https://github.com/rust-lang/miri/issues/450),
-            // we specifically look up the static in libstd that we know is placed
-            // in that section.
-            let thread_callback = this.eval_path_scalar(&["std", "sys", "windows", "thread_local", "p_thread_callback"])?;
-            let thread_callback = this.memory.get_fn(thread_callback.not_undef()?)?.as_instance()?;
-
-            // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
-            let reason = this.eval_path_scalar(&["std", "sys", "windows", "c", "DLL_PROCESS_DETACH"])?;
-            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
-            this.call_function(
-                thread_callback,
-                &[Scalar::null_ptr(this).into(), reason.into(), Scalar::null_ptr(this).into()],
-                Some(ret_place),
-                StackPopCleanup::None { cleanup: true },
-            )?;
-
-            // step until out of stackframes
-            this.run()?;
-
-            // Windows doesn't have other destructors.
+        if this.tcx.sess.target.target.target_os != "windows" {
             return Ok(());
         }
+        let active_thread = this.get_active_thread()?;
+        assert_eq!(active_thread.index(), 0, "concurrency on Windows not supported");
+        assert!(!this.machine.tls.dtors_running.contains(&active_thread), "running TLS dtors twice");
+        this.machine.tls.dtors_running.insert(active_thread);
+        // Windows has a special magic linker section that is run on certain events.
+        // Instead of searching for that section and supporting arbitrary hooks in there
+        // (that would be basically https://github.com/rust-lang/miri/issues/450),
+        // we specifically look up the static in libstd that we know is placed
+        // in that section.
+        let thread_callback = this.eval_path_scalar(&["std", "sys", "windows", "thread_local", "p_thread_callback"])?;
+        let thread_callback = this.memory.get_fn(thread_callback.not_undef()?)?.as_instance()?;
+
+        // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
+        let reason = this.eval_path_scalar(&["std", "sys", "windows", "c", "DLL_PROCESS_DETACH"])?;
+        let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
+        this.call_function(
+            thread_callback,
+            &[Scalar::null_ptr(this).into(), reason.into(), Scalar::null_ptr(this).into()],
+            Some(ret_place),
+            StackPopCleanup::None { cleanup: true },
+        )?;
+
+        // step until out of stackframes
+        this.run()?;
+
+        // Windows doesn't have other destructors.
+        Ok(())
+    }
+
+    /// Run TLS destructors for the active thread.
+    ///
+    /// Note: on Windows OS this function is a no-op because we do not support
+    /// concurrency on Windows yet.
+    fn run_tls_dtors_for_active_thread(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        if this.tcx.sess.target.target.target_os == "windows" {
+            return Ok(());
+        }
+        let thread_id = this.get_active_thread()?;
+        assert!(!this.machine.tls.dtors_running.contains(&thread_id), "running TLS dtors twice");
+        this.machine.tls.dtors_running.insert(thread_id);
 
         // The macOS global dtor runs "before any TLS slots get freed", so do that first.
-        if let Some((instance, data)) = this.machine.tls.global_dtor {
-            trace!("Running global dtor {:?} on {:?}", instance, data);
+        if let Some(&(instance, data)) = this.machine.tls.global_dtors.get(&thread_id) {
+            trace!("Running global dtor {:?} on {:?} at {:?}", instance, data, thread_id);
 
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
             this.call_function(
@@ -224,35 +245,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.run()?;
         }
 
-        // Now run the "keyed" destructors.
-        for (thread_id, thread_state) in this.get_all_thread_ids_with_states() {
-            assert!(thread_state == ThreadState::Terminated,
-                    "TLS destructors should be executed after all threads terminated.");
-            this.set_active_thread(thread_id)?;
-            let mut dtor = this.machine.tls.fetch_tls_dtor(None, thread_id);
-            while let Some((instance, thread_id, ptr, key)) = dtor {
-                trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, thread_id);
-                assert!(!this.is_null(ptr).unwrap(), "Data can't be NULL when dtor is called!");
+        assert!(this.has_terminated(thread_id)?, "running TLS dtors for non-terminated thread");
+        let mut dtor = this.machine.tls.fetch_tls_dtor(None, thread_id);
+        while let Some((instance, ptr, key)) = dtor {
+            trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, thread_id);
+            assert!(!this.is_null(ptr).unwrap(), "Data can't be NULL when dtor is called!");
 
-                let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
-                this.call_function(
-                    instance,
-                    &[ptr.into()],
-                    Some(ret_place),
-                    StackPopCleanup::None { cleanup: true },
-                )?;
+            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
+            this.call_function(
+                instance,
+                &[ptr.into()],
+                Some(ret_place),
+                StackPopCleanup::None { cleanup: true },
+            )?;
 
-                // step until out of stackframes
-                this.run()?;
+            // step until out of stackframes
+            this.run()?;
 
-                // Fetch next dtor after `key`.
-                dtor = match this.machine.tls.fetch_tls_dtor(Some(key), thread_id) {
-                    dtor @ Some(_) => dtor,
-                    // We ran each dtor once, start over from the beginning.
-                    None => this.machine.tls.fetch_tls_dtor(None, thread_id),
-                };
-            }
+            // Fetch next dtor after `key`.
+            dtor = match this.machine.tls.fetch_tls_dtor(Some(key), thread_id) {
+                dtor @ Some(_) => dtor,
+                // We ran each dtor once, start over from the beginning.
+                None => this.machine.tls.fetch_tls_dtor(None, thread_id),
+            };
         }
+
         Ok(())
     }
 }

@@ -82,7 +82,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let dtor = this.read_scalar(args[0])?.not_undef()?;
                 let dtor = this.memory.get_fn(dtor)?.as_instance()?;
                 let data = this.read_scalar(args[1])?.not_undef()?;
-                this.machine.tls.set_global_dtor(dtor, data)?;
+                let active_thread = this.get_active_thread()?;
+                this.machine.tls.set_global_dtor(active_thread, dtor, data)?;
             }
 
             // Querying system information

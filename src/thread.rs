@@ -17,6 +17,16 @@ use rustc_middle::{
 
 use crate::*;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SchedulingAction {
+    /// Execute step on the active thread.
+    ExecuteStep,
+    /// Execute destructors of the active thread.
+    ExecuteDtors,
+    /// Stop the program.
+    Stop,
+}
+
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct ThreadId(usize);
@@ -197,6 +207,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         self.active_thread
     }
 
+    /// Has the given thread terminated?
+    fn has_terminated(&self, thread_id: ThreadId) -> bool {
+        self.threads[thread_id].state == ThreadState::Terminated
+    }
+
     /// Get the borrow of the currently active thread.
     fn active_thread_mut(&mut self) -> &mut Thread<'mir, 'tcx> {
         &mut self.threads[self.active_thread]
@@ -234,11 +249,6 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         self.active_thread_mut().thread_name = Some(new_thread_name);
     }
 
-    /// Get ids and states of all threads ever allocated.
-    fn get_all_thread_ids_with_states(&self) -> Vec<(ThreadId, ThreadState)> {
-        self.threads.iter_enumerated().map(|(id, thread)| (id, thread.state)).collect()
-    }
-
     /// Allocate a new blockset id.
     fn create_blockset(&mut self) -> BlockSetId {
         self.blockset_counter = self.blockset_counter.checked_add(1).unwrap();
@@ -265,10 +275,8 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         None
     }
 
-    /// Decide which thread to run next.
-    ///
-    /// Returns `false` if all threads terminated.
-    fn schedule(&mut self) -> InterpResult<'tcx, bool> {
+    /// Decide which action to take next and on which thread.
+    fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         if self.threads[self.active_thread].check_terminated() {
             // Check if we need to unblock any threads.
             for (i, thread) in self.threads.iter_enumerated_mut() {
@@ -277,18 +285,19 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
                     thread.state = ThreadState::Enabled;
                 }
             }
+            return Ok(SchedulingAction::ExecuteDtors);
         }
         if self.threads[self.active_thread].state == ThreadState::Enabled {
-            return Ok(true);
+            return Ok(SchedulingAction::ExecuteStep);
         }
         if let Some(enabled_thread) =
             self.threads.iter().position(|thread| thread.state == ThreadState::Enabled)
         {
             self.active_thread = ThreadId::new(enabled_thread);
-            return Ok(true);
+            return Ok(SchedulingAction::ExecuteStep);
         }
         if self.threads.iter().all(|thread| thread.state == ThreadState::Terminated) {
-            Ok(false)
+            Ok(SchedulingAction::Stop)
         } else {
             throw_machine_stop!(TerminationInfo::Deadlock);
         }
@@ -409,6 +418,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(this.machine.threads.get_active_thread_id())
     }
 
+    fn has_terminated(&self, thread_id: ThreadId) -> InterpResult<'tcx, bool> {
+        let this = self.eval_context_ref();
+        Ok(this.machine.threads.has_terminated(thread_id))
+    }
+
     fn active_thread_stack(&self) -> &[Frame<'mir, 'tcx, Tag, FrameData<'tcx>>] {
         let this = self.eval_context_ref();
         this.machine.threads.active_thread_stack()
@@ -422,11 +436,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
         Ok(this.machine.threads.set_thread_name(new_thread_name))
-    }
-
-    fn get_all_thread_ids_with_states(&mut self) -> Vec<(ThreadId, ThreadState)> {
-        let this = self.eval_context_mut();
-        this.machine.threads.get_all_thread_ids_with_states()
     }
 
     fn create_blockset(&mut self) -> InterpResult<'tcx, BlockSetId> {
@@ -444,10 +453,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(this.machine.threads.unblock_random_thread(set))
     }
 
-    /// Decide which thread to run next.
-    ///
-    /// Returns `false` if all threads terminated.
-    fn schedule(&mut self) -> InterpResult<'tcx, bool> {
+    /// Decide which action to take next and on which thread.
+    fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         let this = self.eval_context_mut();
         this.machine.threads.schedule()
     }

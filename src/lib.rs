@@ -64,7 +64,7 @@ pub use crate::stacked_borrows::{
     EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, Stack, Stacks, Tag,
 };
 pub use crate::thread::{
-    EvalContextExt as ThreadsEvalContextExt, ThreadId, ThreadManager, ThreadState,
+    EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager, ThreadState,
 };
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
