@@ -21,12 +21,12 @@ impl Diagnostic for NoSuchField {
         "no such field".to_string()
     }
 
-    fn highlight_range(&self) -> TextRange {
-        self.highlight_range
+    fn highlight_range(&self) -> InFile<TextRange> {
+        InFile::new(self.file, self.highlight_range)
     }
 
     fn source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.field.clone().into() }
+        InFile::new(self.file, self.field.clone().into())
     }
 
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -50,8 +50,8 @@ impl Diagnostic for MissingFields {
         }
         buf
     }
-    fn highlight_range(&self) -> TextRange {
-        self.highlight_range
+    fn highlight_range(&self) -> InFile<TextRange> {
+        InFile::new(self.file, self.highlight_range)
     }
 
     fn source(&self) -> InFile<SyntaxNodePtr> {
@@ -88,8 +88,8 @@ impl Diagnostic for MissingPatFields {
         }
         buf
     }
-    fn highlight_range(&self) -> TextRange {
-        self.highlight_range
+    fn highlight_range(&self) -> InFile<TextRange> {
+        InFile::new(self.file, self.highlight_range)
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.field_list.clone().into() }
@@ -111,8 +111,8 @@ impl Diagnostic for MissingMatchArms {
     fn message(&self) -> String {
         String::from("Missing match arm")
     }
-    fn highlight_range(&self) -> TextRange {
-        self.highlight_range
+    fn highlight_range(&self) -> InFile<TextRange> {
+        InFile::new(self.file, self.highlight_range)
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.match_expr.clone().into() }
@@ -133,8 +133,8 @@ impl Diagnostic for MissingOkInTailExpr {
     fn message(&self) -> String {
         "wrap return expression in Ok".to_string()
     }
-    fn highlight_range(&self) -> TextRange {
-        self.highlight_range
+    fn highlight_range(&self) -> InFile<TextRange> {
+        InFile::new(self.file, self.highlight_range)
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }

@@ -20,6 +20,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     db::HirDatabase,
+    diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     AssocItem, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef, Name,
@@ -124,6 +125,13 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
         let node = self.find_file(node.clone());
         original_range(self.db, node.as_ref())
+    }
+
+    pub fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+        let src = diagnostics.source();
+        let root = self.db.parse_or_expand(src.file_id).unwrap();
+        let node = src.value.to_node(&root);
+        original_range(self.db, src.with_value(&node))
     }
 
     pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {

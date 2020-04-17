@@ -20,11 +20,11 @@ impl Diagnostic for UnresolvedModule {
     fn message(&self) -> String {
         "unresolved module".to_string()
     }
-    fn highlight_range(&self) -> TextRange {
-        self.highlight_range
+    fn highlight_range(&self) -> InFile<TextRange> {
+        InFile::new(self.file, self.highlight_range)
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.decl.clone().into() }
+        InFile::new(self.file, self.decl.clone().into())
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
