@@ -2611,14 +2611,14 @@ impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
     type Iter = iter::Cloned<Successors<'b>>;
 }
 
+/// `Location` represents the position of the start of the statement; or, if
+/// `statement_index` equals the number of statements, then the start of the
+/// terminator.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
 pub struct Location {
     /// The block that the location is within.
     pub block: BasicBlock,
 
-    /// The location is the position of the start of the statement; or, if
-    /// `statement_index` equals the number of statements, then the start of the
-    /// terminator.
     pub statement_index: usize,
 }
 
