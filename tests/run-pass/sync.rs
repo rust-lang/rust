@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 
 use std::sync::{Mutex, TryLockError};
+use std::sync::atomic;
 
 fn main() {
     test_mutex_stdlib();
@@ -8,6 +9,7 @@ fn main() {
     {
         test_rwlock_stdlib();
     }
+    test_spin_loop_hint();
 }
 
 fn test_mutex_stdlib() {
@@ -49,4 +51,8 @@ impl<T> TryLockErrorExt<T> for TryLockError<T> {
             TryLockError::Poisoned(_) => false,
         }
     }
+}
+
+fn test_spin_loop_hint() {
+    atomic::spin_loop_hint();
 }
