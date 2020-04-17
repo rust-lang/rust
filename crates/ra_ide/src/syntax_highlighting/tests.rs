@@ -168,3 +168,68 @@ macro_rules! test {}
     );
     let _ = analysis.highlight(file_id).unwrap();
 }
+
+#[test]
+fn test_string_highlighting() {
+    // The format string detection is based on macro-expansion,
+    // thus, we have to copy the macro definition from `std`
+    let (analysis, file_id) = single_file(
+        r#"
+macro_rules! println {
+    ($($arg:tt)*) => ({
+        $crate::io::_print($crate::format_args_nl!($($arg)*));
+    })
+}
+#[rustc_builtin_macro]
+macro_rules! format_args_nl {
+    ($fmt:expr) => {{ /* compiler built-in */ }};
+    ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
+}
+
+fn main() {
+    // from https://doc.rust-lang.org/std/fmt/index.html
+    println!("Hello");                 // => "Hello"
+    println!("Hello, {}!", "world");   // => "Hello, world!"
+    println!("The number is {}", 1);   // => "The number is 1"
+    println!("{:?}", (3, 4));          // => "(3, 4)"
+    println!("{value}", value=4);      // => "4"
+    println!("{} {}", 1, 2);           // => "1 2"
+    println!("{:04}", 42);             // => "0042" with leading zerosV
+    println!("{1} {} {0} {}", 1, 2);   // => "2 1 1 2"
+    println!("{argument}", argument = "test");   // => "test"
+    println!("{name} {}", 1, name = 2);          // => "2 1"
+    println!("{a} {c} {b}", a="a", b='b', c=3);  // => "a 3 b"
+    println!("Hello {:5}!", "x");
+    println!("Hello {:1$}!", "x", 5);
+    println!("Hello {1:0$}!", 5, "x");
+    println!("Hello {:width$}!", "x", width = 5);
+    println!("Hello {:<5}!", "x");
+    println!("Hello {:-<5}!", "x");
+    println!("Hello {:^5}!", "x");
+    println!("Hello {:>5}!", "x");
+    println!("Hello {:+}!", 5);
+    println!("{:#x}!", 27);
+    println!("Hello {:05}!", 5);
+    println!("Hello {:05}!", -5);
+    println!("{:#010x}!", 27);
+    println!("Hello {0} is {1:.5}", "x", 0.01);
+    println!("Hello {1} is {2:.0$}", 5, "x", 0.01);
+    println!("Hello {0} is {2:.1$}", "x", 5, 0.01);
+    println!("Hello {} is {:.*}",    "x", 5, 0.01);
+    println!("Hello {} is {2:.*}",   "x", 5, 0.01);
+    println!("Hello {} is {number:.prec$}", "x", prec = 5, number = 0.01);
+    println!("{}, `{name:.*}` has 3 fractional digits", "Hello", 3, name=1234.56);
+    println!("{}, `{name:.*}` has 3 characters", "Hello", 3, name="1234.56");
+    println!("{}, `{name:>8.*}` has 3 right-aligned characters", "Hello", 3, name="1234.56");
+    println!("Hello {{}}");
+    println!("{{ Hello");
+}"#
+        .trim(),
+    );
+
+    let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlight_strings.html");
+    let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
+    let expected_html = &read_text(&dst_file);
+    fs::write(dst_file, &actual_html).unwrap();
+    assert_eq_text!(expected_html, actual_html);
+}

@@ -12,7 +12,7 @@ use ra_ide_db::{
 };
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, HasQuotes, HasStringValue},
+    ast::{self, HasFormatSpecifier, HasQuotes, HasStringValue},
     AstNode, AstToken, Direction, NodeOrToken, SyntaxElement,
     SyntaxKind::*,
     SyntaxToken, TextRange, WalkEvent, T,
@@ -21,6 +21,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{call_info::call_info_for_token, Analysis, FileId};
 
+use ast::FormatSpecifier;
 pub(crate) use html::highlight_as_html;
 pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
 
@@ -95,7 +96,8 @@ impl HighlightedRangeStack {
             1,
             "after DFS traversal, the stack should only contain a single element"
         );
-        let res = self.stack.pop().unwrap();
+        let mut res = self.stack.pop().unwrap();
+        res.sort_by_key(|range| range.range.start());
         // Check that ranges are sorted and disjoint
         assert!(res
             .iter()
@@ -134,6 +136,7 @@ pub(crate) fn highlight(
     let mut stack = HighlightedRangeStack::new();
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
+    let mut format_string: Option<SyntaxElement> = None;
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -169,6 +172,7 @@ pub(crate) fn highlight(
             WalkEvent::Leave(Some(mc)) => {
                 assert!(current_macro_call == Some(mc));
                 current_macro_call = None;
+                format_string = None;
                 continue;
             }
             _ => (),
@@ -189,6 +193,30 @@ pub(crate) fn highlight(
             };
             let token = sema.descend_into_macros(token.clone());
             let parent = token.parent();
+
+            // Check if macro takes a format string and remeber it for highlighting later.
+            // The macros that accept a format string expand to a compiler builtin macros
+            // `format_args` and `format_args_nl`.
+            if let Some(fmt_macro_call) = parent.parent().and_then(ast::MacroCall::cast) {
+                if let Some(name) =
+                    fmt_macro_call.path().and_then(|p| p.segment()).and_then(|s| s.name_ref())
+                {
+                    match name.text().as_str() {
+                        "format_args" | "format_args_nl" => {
+                            format_string = parent
+                                .children_with_tokens()
+                                .filter(|t| t.kind() != WHITESPACE)
+                                .nth(1)
+                                .filter(|e| {
+                                    ast::String::can_cast(e.kind())
+                                        || ast::RawString::can_cast(e.kind())
+                                })
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
             // We only care Name and Name_ref
             match (token.kind(), parent.kind()) {
                 (IDENT, NAME) | (IDENT, NAME_REF) => parent.into(),
@@ -205,10 +233,45 @@ pub(crate) fn highlight(
             }
         }
 
+        let is_format_string =
+            format_string.as_ref().map(|fs| fs == &element_to_highlight).unwrap_or_default();
+
         if let Some((highlight, binding_hash)) =
-            highlight_element(&sema, &mut bindings_shadow_count, element_to_highlight)
+            highlight_element(&sema, &mut bindings_shadow_count, element_to_highlight.clone())
         {
             stack.add(HighlightedRange { range, highlight, binding_hash });
+            if let Some(string) =
+                element_to_highlight.as_token().cloned().and_then(ast::String::cast)
+            {
+                stack.push();
+                if is_format_string {
+                    string.lex_format_specifier(&mut |piece_range, kind| {
+                        let highlight = match kind {
+                            FormatSpecifier::Open
+                            | FormatSpecifier::Close
+                            | FormatSpecifier::Colon
+                            | FormatSpecifier::Fill
+                            | FormatSpecifier::Align
+                            | FormatSpecifier::Sign
+                            | FormatSpecifier::NumberSign
+                            | FormatSpecifier::DollarSign
+                            | FormatSpecifier::Dot
+                            | FormatSpecifier::Asterisk
+                            | FormatSpecifier::QuestionMark => HighlightTag::Attribute,
+                            FormatSpecifier::Integer | FormatSpecifier::Zero => {
+                                HighlightTag::NumericLiteral
+                            }
+                            FormatSpecifier::Identifier => HighlightTag::Local,
+                        };
+                        stack.add(HighlightedRange {
+                            range: piece_range + range.start(),
+                            highlight: highlight.into(),
+                            binding_hash: None,
+                        });
+                    });
+                }
+                stack.pop();
+            }
         }
     }
 

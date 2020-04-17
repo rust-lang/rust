@@ -172,3 +172,327 @@ impl RawString {
         Some(range + contents_range.start())
     }
 }
+
+#[derive(Debug)]
+pub enum FormatSpecifier {
+    Open,
+    Close,
+    Integer,
+    Identifier,
+    Colon,
+    Fill,
+    Align,
+    Sign,
+    NumberSign,
+    Zero,
+    DollarSign,
+    Dot,
+    Asterisk,
+    QuestionMark,
+}
+
+pub trait HasFormatSpecifier: AstToken {
+    fn lex_format_specifier<F>(&self, callback: &mut F)
+    where
+        F: FnMut(TextRange, FormatSpecifier),
+    {
+        let src = self.text().as_str();
+        let initial_len = src.len();
+        let mut chars = src.chars();
+
+        while let Some(first_char) = chars.next() {
+            match first_char {
+                '{' => {
+                    // Format specifier, see syntax at https://doc.rust-lang.org/std/fmt/index.html#syntax
+                    if chars.clone().next() == Some('{') {
+                        // Escaped format specifier, `{{`
+                        chars.next();
+                        continue;
+                    }
+
+                    let start = initial_len - chars.as_str().len() - first_char.len_utf8();
+                    let end = initial_len - chars.as_str().len();
+                    callback(
+                        TextRange::from_to(TextUnit::from_usize(start), TextUnit::from_usize(end)),
+                        FormatSpecifier::Open,
+                    );
+
+                    let next_char = if let Some(c) = chars.clone().next() {
+                        c
+                    } else {
+                        break;
+                    };
+
+                    // check for integer/identifier
+                    match next_char {
+                        '0'..='9' => {
+                            // integer
+                            read_integer(&mut chars, initial_len, callback);
+                        }
+                        'a'..='z' | 'A'..='Z' | '_' => {
+                            // identifier
+                            read_identifier(&mut chars, initial_len, callback);
+                        }
+                        _ => {}
+                    }
+
+                    if chars.clone().next() == Some(':') {
+                        skip_char_and_emit(
+                            &mut chars,
+                            initial_len,
+                            FormatSpecifier::Colon,
+                            callback,
+                        );
+
+                        // check for fill/align
+                        let mut cloned = chars.clone().take(2);
+                        let first = cloned.next().unwrap_or_default();
+                        let second = cloned.next().unwrap_or_default();
+                        match second {
+                            '<' | '^' | '>' => {
+                                // alignment specifier, first char specifies fillment
+                                skip_char_and_emit(
+                                    &mut chars,
+                                    initial_len,
+                                    FormatSpecifier::Fill,
+                                    callback,
+                                );
+                                skip_char_and_emit(
+                                    &mut chars,
+                                    initial_len,
+                                    FormatSpecifier::Align,
+                                    callback,
+                                );
+                            }
+                            _ => match first {
+                                '<' | '^' | '>' => {
+                                    skip_char_and_emit(
+                                        &mut chars,
+                                        initial_len,
+                                        FormatSpecifier::Align,
+                                        callback,
+                                    );
+                                }
+                                _ => {}
+                            },
+                        }
+
+                        // check for sign
+                        match chars.clone().next().unwrap_or_default() {
+                            '+' | '-' => {
+                                skip_char_and_emit(
+                                    &mut chars,
+                                    initial_len,
+                                    FormatSpecifier::Sign,
+                                    callback,
+                                );
+                            }
+                            _ => {}
+                        }
+
+                        // check for `#`
+                        if let Some('#') = chars.clone().next() {
+                            skip_char_and_emit(
+                                &mut chars,
+                                initial_len,
+                                FormatSpecifier::NumberSign,
+                                callback,
+                            );
+                        }
+
+                        // check for `0`
+                        let mut cloned = chars.clone().take(2);
+                        let first = cloned.next();
+                        let second = cloned.next();
+
+                        if first == Some('0') && second != Some('$') {
+                            skip_char_and_emit(
+                                &mut chars,
+                                initial_len,
+                                FormatSpecifier::Zero,
+                                callback,
+                            );
+                        }
+
+                        // width
+                        match chars.clone().next().unwrap_or_default() {
+                            '0'..='9' => {
+                                read_integer(&mut chars, initial_len, callback);
+                                if chars.clone().next() == Some('$') {
+                                    skip_char_and_emit(
+                                        &mut chars,
+                                        initial_len,
+                                        FormatSpecifier::DollarSign,
+                                        callback,
+                                    );
+                                }
+                            }
+                            'a'..='z' | 'A'..='Z' | '_' => {
+                                read_identifier(&mut chars, initial_len, callback);
+                                if chars.clone().next() != Some('$') {
+                                    continue;
+                                }
+                                skip_char_and_emit(
+                                    &mut chars,
+                                    initial_len,
+                                    FormatSpecifier::DollarSign,
+                                    callback,
+                                );
+                            }
+                            _ => {}
+                        }
+
+                        // precision
+                        if chars.clone().next() == Some('.') {
+                            skip_char_and_emit(
+                                &mut chars,
+                                initial_len,
+                                FormatSpecifier::Dot,
+                                callback,
+                            );
+
+                            match chars.clone().next().unwrap_or_default() {
+                                '*' => {
+                                    skip_char_and_emit(
+                                        &mut chars,
+                                        initial_len,
+                                        FormatSpecifier::Asterisk,
+                                        callback,
+                                    );
+                                }
+                                '0'..='9' => {
+                                    read_integer(&mut chars, initial_len, callback);
+                                    if chars.clone().next() == Some('$') {
+                                        skip_char_and_emit(
+                                            &mut chars,
+                                            initial_len,
+                                            FormatSpecifier::DollarSign,
+                                            callback,
+                                        );
+                                    }
+                                }
+                                'a'..='z' | 'A'..='Z' | '_' => {
+                                    read_identifier(&mut chars, initial_len, callback);
+                                    if chars.clone().next() != Some('$') {
+                                        continue;
+                                    }
+                                    skip_char_and_emit(
+                                        &mut chars,
+                                        initial_len,
+                                        FormatSpecifier::DollarSign,
+                                        callback,
+                                    );
+                                }
+                                _ => {
+                                    continue;
+                                }
+                            }
+                        }
+
+                        // type
+                        match chars.clone().next().unwrap_or_default() {
+                            '?' => {
+                                skip_char_and_emit(
+                                    &mut chars,
+                                    initial_len,
+                                    FormatSpecifier::QuestionMark,
+                                    callback,
+                                );
+                            }
+                            'a'..='z' | 'A'..='Z' | '_' => {
+                                read_identifier(&mut chars, initial_len, callback);
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    let mut cloned = chars.clone().take(2);
+                    let first = cloned.next();
+                    let second = cloned.next();
+                    if first != Some('}') {
+                        continue;
+                    }
+                    if second == Some('}') {
+                        // Escaped format end specifier, `}}`
+                        continue;
+                    }
+                    skip_char_and_emit(&mut chars, initial_len, FormatSpecifier::Close, callback);
+                }
+                _ => {
+                    while let Some(next_char) = chars.clone().next() {
+                        match next_char {
+                            '{' => break,
+                            _ => {}
+                        }
+                        chars.next();
+                    }
+                }
+            };
+        }
+
+        fn skip_char_and_emit<F>(
+            chars: &mut std::str::Chars,
+            initial_len: usize,
+            emit: FormatSpecifier,
+            callback: &mut F,
+        ) where
+            F: FnMut(TextRange, FormatSpecifier),
+        {
+            let start = initial_len - chars.as_str().len();
+            chars.next();
+            let end = initial_len - chars.as_str().len();
+            callback(
+                TextRange::from_to(TextUnit::from_usize(start), TextUnit::from_usize(end)),
+                emit,
+            );
+        }
+
+        fn read_integer<F>(chars: &mut std::str::Chars, initial_len: usize, callback: &mut F)
+        where
+            F: FnMut(TextRange, FormatSpecifier),
+        {
+            let start = initial_len - chars.as_str().len();
+            chars.next();
+            while let Some(next_char) = chars.clone().next() {
+                match next_char {
+                    '0'..='9' => {
+                        chars.next();
+                    }
+                    _ => {
+                        break;
+                    }
+                }
+            }
+            let end = initial_len - chars.as_str().len();
+            callback(
+                TextRange::from_to(TextUnit::from_usize(start), TextUnit::from_usize(end)),
+                FormatSpecifier::Integer,
+            );
+        }
+        fn read_identifier<F>(chars: &mut std::str::Chars, initial_len: usize, callback: &mut F)
+        where
+            F: FnMut(TextRange, FormatSpecifier),
+        {
+            let start = initial_len - chars.as_str().len();
+            chars.next();
+            while let Some(next_char) = chars.clone().next() {
+                match next_char {
+                    'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => {
+                        chars.next();
+                    }
+                    _ => {
+                        break;
+                    }
+                }
+            }
+            let end = initial_len - chars.as_str().len();
+            callback(
+                TextRange::from_to(TextUnit::from_usize(start), TextUnit::from_usize(end)),
+                FormatSpecifier::Identifier,
+            );
+        }
+    }
+}
+
+impl HasFormatSpecifier for String {}
+impl HasFormatSpecifier for RawString {}
