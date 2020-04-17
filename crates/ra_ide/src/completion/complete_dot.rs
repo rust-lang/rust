@@ -1,16 +1,11 @@
 //! FIXME: write short doc here
 
-use hir::{
-    HasVisibility,
-    // HirDisplay,
-    Type,
-};
+use hir::{HasVisibility, Type};
 
 use crate::{
-    call_info::call_info,
     completion::{
         completion_context::CompletionContext,
-        completion_item::{CompletionKind, Completions, ScoreOption},
+        completion_item::{CompletionKind, Completions},
     },
     // CallInfo,
     CompletionItem,
@@ -46,15 +41,7 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
 
 fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
     for receiver in receiver.autoderef(ctx.db) {
-        let fields = receiver.fields(ctx.db);
-
-        if let Some(record_field) = &ctx.record_field_syntax {
-            acc.with_score_option(ScoreOption::RecordField(record_field.clone()));
-        } else if let Some(call_info) = call_info(ctx.db, ctx.file_position) {
-            acc.with_score_option(ScoreOption::CallFn(call_info));
-        }
-
-        for (field, ty) in fields {
+        for (field, ty) in receiver.fields(ctx.db) {
             if ctx.scope().module().map_or(false, |m| !field.is_visible_from(ctx.db, m)) {
                 // Skip private field. FIXME: If the definition location of the
                 // field is editable, we should show the completion

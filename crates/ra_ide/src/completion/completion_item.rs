@@ -1,11 +1,11 @@
 //! FIXME: write short doc here
 
-use std::{cmp::Ordering, fmt};
+use std::fmt;
 
 use super::completion_context::CompletionContext;
-use crate::CallInfo;
+use crate::call_info::call_info;
 use hir::{Documentation, HirDisplay};
-use ra_syntax::{ast::RecordField, TextRange};
+use ra_syntax::TextRange;
 use ra_text_edit::TextEdit;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
@@ -199,6 +199,10 @@ impl CompletionItem {
         self.score.clone()
     }
 
+    pub fn set_score(&mut self, score: CompletionScore) {
+        self.score = Some(score);
+    }
+
     pub fn trigger_call_info(&self) -> bool {
         self.trigger_call_info
     }
@@ -300,6 +304,47 @@ impl Builder {
         self.deprecated = Some(deprecated);
         self
     }
+    #[allow(unused)]
+    pub(crate) fn compute_score(mut self, ctx: &CompletionContext) -> Builder {
+        let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
+            if let Some((struct_field, _)) = ctx.sema.resolve_record_field(record_field) {
+                (
+                    struct_field.name(ctx.db).to_string(),
+                    struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
+                )
+            } else {
+                return self;
+            }
+        } else if let Some(call_info) = call_info(ctx.db, ctx.file_position) {
+            if call_info.active_parameter_type().is_some()
+                && call_info.active_parameter_name().is_some()
+            {
+                (
+                    call_info.active_parameter_name().unwrap(),
+                    call_info.active_parameter_type().unwrap(),
+                )
+            } else {
+                return self;
+            }
+        } else {
+            return self;
+        };
+
+        // Compute score
+        // For the same type
+        if let Some(a_parameter_type) = &self.detail {
+            if &active_type == a_parameter_type {
+                // If same type + same name then go top position
+                if active_name == self.label {
+                    return self.set_score(CompletionScore::TypeAndNameMatch);
+                } else {
+                    return self.set_score(CompletionScore::TypeMatch);
+                }
+            }
+        }
+
+        self
+    }
     pub(crate) fn set_score(mut self, score: CompletionScore) -> Builder {
         self.score = Some(score);
         self
@@ -316,12 +361,6 @@ impl<'a> Into<CompletionItem> for Builder {
     }
 }
 
-#[derive(Debug)]
-pub(crate) enum ScoreOption {
-    CallFn(CallInfo),
-    RecordField(RecordField),
-}
-
 #[derive(Debug, Clone)]
 pub enum CompletionScore {
     TypeMatch,
@@ -332,7 +371,6 @@ pub enum CompletionScore {
 #[derive(Debug, Default)]
 pub(crate) struct Completions {
     buf: Vec<CompletionItem>,
-    score_option: Option<ScoreOption>,
 }
 
 impl Completions {
@@ -345,54 +383,6 @@ impl Completions {
         I::Item: Into<CompletionItem>,
     {
         items.into_iter().for_each(|item| self.add(item.into()))
-    }
-
-    pub(crate) fn with_score_option(&mut self, score_option: ScoreOption) {
-        self.score_option = Some(score_option);
-    }
-
-    pub(crate) fn compute_score(&mut self, ctx: &CompletionContext) {
-        if self.score_option.is_none() {
-            return;
-        }
-
-        let (active_name, active_type) = match self.score_option.as_ref().unwrap() {
-            ScoreOption::CallFn(call_info) => {
-                if call_info.active_parameter_type().is_none()
-                    || call_info.active_parameter_name().is_none()
-                {
-                    return;
-                }
-                (
-                    call_info.active_parameter_name().unwrap(),
-                    call_info.active_parameter_type().unwrap(),
-                )
-            }
-            ScoreOption::RecordField(record_field) => {
-                if let Some((struct_field, _)) = ctx.sema.resolve_record_field(record_field) {
-                    (
-                        struct_field.name(ctx.db).to_string(),
-                        struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
-                    )
-                } else {
-                    return;
-                }
-            }
-        };
-
-        for completion_item in &mut self.buf {
-            // For the same type
-            if let Some(a_parameter_type) = &completion_item.detail {
-                if &active_type == a_parameter_type {
-                    // If same type + same name then go top position
-                    if active_name == completion_item.label {
-                        completion_item.score = Some(CompletionScore::TypeAndNameMatch);
-                    } else {
-                        completion_item.score = Some(CompletionScore::TypeMatch);
-                    }
-                }
-            }
-        }
     }
 }
 

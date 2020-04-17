@@ -31,6 +31,7 @@ impl Completions {
         .detail(ty.display(ctx.db).to_string())
         .set_documentation(field.docs(ctx.db))
         .set_deprecated(is_deprecated)
+        .compute_score(ctx)
         .add_to(self);
     }
 
