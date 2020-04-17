@@ -1,10 +1,12 @@
 //! Handles dynamic library loading for proc macro
 
 use crate::{proc_macro::bridge, rustc_server::TokenStream};
+use std::fs::File;
 use std::path::Path;
 
 use goblin::{mach::Mach, Object};
 use libloading::Library;
+use memmap::Mmap;
 use ra_proc_macro::ProcMacroKind;
 
 use std::io::Error as IoError;
@@ -21,7 +23,8 @@ fn is_derive_registrar_symbol(symbol: &str) -> bool {
 }
 
 fn find_registrar_symbol(file: &Path) -> Result<Option<String>, IoError> {
-    let buffer = std::fs::read(file)?;
+    let file = File::open(file)?;
+    let buffer = unsafe { Mmap::map(&file)? };
     let object = Object::parse(&buffer).map_err(invalid_data_err)?;
 
     match object {
@@ -55,7 +58,7 @@ fn find_registrar_symbol(file: &Path) -> Result<Option<String>, IoError> {
                         &s.name
                     }
                 })
-                .find(|s| is_derive_registrar_symbol(&s))
+                .find(|s| is_derive_registrar_symbol(s))
                 .map(|s| s.to_string());
             Ok(name)
         }
