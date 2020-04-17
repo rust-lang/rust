@@ -1,6 +1,10 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
+use hir::ScopeDef;
+use test_utils::tested_by;
+
 use crate::completion::{CompletionContext, Completions};
+use ra_syntax::AstNode;
 
 pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path {
@@ -14,17 +18,51 @@ pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
 
-    ctx.scope().process_all_names(&mut |name, res| acc.add_resolution(ctx, name.to_string(), &res));
+    ctx.scope().process_all_names(&mut |name, res| {
+        if ctx.use_item_syntax.is_some() {
+            if let (ScopeDef::Unknown, Some(name_ref)) = (&res, &ctx.name_ref_syntax) {
+                if name_ref.syntax().text() == name.to_string().as_str() {
+                    tested_by!(self_fulfilling_completion);
+                    return;
+                }
+            }
+        }
+        acc.add_resolution(ctx, name.to_string(), &res)
+    });
 }
 
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot;
+    use test_utils::covers;
 
     use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
 
     fn do_reference_completion(ra_fixture: &str) -> Vec<CompletionItem> {
         do_completion(ra_fixture, CompletionKind::Reference)
+    }
+
+    #[test]
+    fn self_fulfilling_completion() {
+        covers!(self_fulfilling_completion);
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r#"
+                use foo<|>
+                use std::collections;
+                "#,
+            ),
+            @r###"
+            [
+                CompletionItem {
+                    label: "collections",
+                    source_range: [21; 24),
+                    delete: [21; 24),
+                    insert: "collections",
+                },
+            ]
+            "###
+        );
     }
 
     #[test]
