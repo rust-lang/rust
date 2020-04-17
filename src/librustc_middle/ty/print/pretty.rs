@@ -9,7 +9,7 @@ use rustc_apfloat::Float;
 use rustc_ast::ast;
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_span::symbol::{kw, Symbol};
@@ -1037,19 +1037,6 @@ pub trait PrettyPrinter<'tcx>:
             }
             // For function type zsts just printing the path is enough
             (Scalar::Raw { size: 0, .. }, ty::FnDef(d, s)) => p!(print_value_path(*d, s)),
-            // Empty tuples are frequently occurring, so don't print the fallback.
-            (Scalar::Raw { size: 0, .. }, ty::Tuple(ts)) if ts.is_empty() => p!(write("()")),
-            // Zero element arrays have a trivial representation.
-            (
-                Scalar::Raw { size: 0, .. },
-                ty::Array(
-                    _,
-                    ty::Const {
-                        val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: 0, .. })),
-                        ..
-                    },
-                ),
-            ) => p!(write("[]")),
             // Nontrivial types with scalar bit representation
             (Scalar::Raw { data, size }, _) => {
                 let print = |mut this: Self| {
@@ -1118,14 +1105,14 @@ pub trait PrettyPrinter<'tcx>:
         define_scoped_cx!(self);
 
         if self.tcx().sess.verbose() {
-            p!(write("ConstValue({:?}: {:?})", ct, ty));
+            p!(write("ConstValue({:?}: ", ct), print(ty), write(")"));
             return Ok(self);
         }
 
         let u8_type = self.tcx().types.u8;
 
         match (ct, &ty.kind) {
-            (ConstValue::Scalar(scalar), _) => self.pretty_print_const_scalar(scalar, ty, print_ty),
+            // Byte/string slices, printed as (byte) string literals.
             (
                 ConstValue::Slice { data, start, end },
                 ty::Ref(_, ty::TyS { kind: ty::Slice(t), .. }, _),
@@ -1159,6 +1146,66 @@ pub trait PrettyPrinter<'tcx>:
                 p!(pretty_print_byte_str(byte_str));
                 Ok(self)
             }
+
+            // Aggregates, printed as array/tuple/struct/variant construction syntax.
+            //
+            // NB: the `has_param_types_or_consts` check ensures that we can use
+            // the `destructure_const` query with an empty `ty::ParamEnv` without
+            // introducing ICEs (e.g. via `layout_of`) from missing bounds.
+            // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
+            // to be able to destructure the tuple into `(0u8, *mut T)
+            //
+            // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
+            // correct `ty::ParamEnv` to allow printing *all* constant values.
+            (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_param_types_or_consts() => {
+                let contents = self.tcx().destructure_const(
+                    ty::ParamEnv::reveal_all()
+                        .and(self.tcx().mk_const(ty::Const { val: ty::ConstKind::Value(ct), ty })),
+                );
+                let fields = contents.fields.iter().copied();
+
+                match ty.kind {
+                    ty::Array(..) => {
+                        p!(write("["), comma_sep(fields), write("]"));
+                    }
+                    ty::Tuple(..) => {
+                        p!(write("("), comma_sep(fields));
+                        if contents.fields.len() == 1 {
+                            p!(write(","));
+                        }
+                        p!(write(")"));
+                    }
+                    ty::Adt(def, substs) => {
+                        let variant_def = &def.variants[contents.variant];
+                        p!(print_value_path(variant_def.def_id, substs));
+
+                        match variant_def.ctor_kind {
+                            CtorKind::Const => {}
+                            CtorKind::Fn => {
+                                p!(write("("), comma_sep(fields), write(")"));
+                            }
+                            CtorKind::Fictive => {
+                                p!(write(" {{ "));
+                                let mut first = true;
+                                for (field_def, field) in variant_def.fields.iter().zip(fields) {
+                                    if !first {
+                                        p!(write(", "));
+                                    }
+                                    p!(write("{}: ", field_def.ident), print(field));
+                                    first = false;
+                                }
+                                p!(write(" }}"));
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+
+                Ok(self)
+            }
+
+            (ConstValue::Scalar(scalar), _) => self.pretty_print_const_scalar(scalar, ty, print_ty),
+
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
             // their fields instead of just dumping the memory.
             _ => {
