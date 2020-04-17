@@ -913,6 +913,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 | DefKind::ExternCrate
                 | DefKind::ForeignMod
                 | DefKind::Closure
+                | DefKind::Generator
                 | DefKind::Field
                 | DefKind::Impl
                 | DefKind::GlobalAsm

@@ -88,6 +88,7 @@ pub enum DefKind {
     GlobalAsm,
     Impl,
     Closure,
+    Generator,
 }
 
 impl DefKind {
@@ -131,6 +132,7 @@ impl DefKind {
             DefKind::Field => "field",
             DefKind::Impl => "implementation",
             DefKind::Closure => "closure",
+            DefKind::Generator => "generator",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
         }
@@ -184,6 +186,7 @@ impl DefKind {
             | DefKind::LifetimeParam
             | DefKind::ExternCrate
             | DefKind::Closure
+            | DefKind::Generator
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
