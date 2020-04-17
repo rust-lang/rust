@@ -1956,6 +1956,7 @@ extern "C" {
         AsmComments: bool,
         EmitStackSizeSection: bool,
         RelaxELFRelocations: bool,
+        UseInitArray: bool,
     ) -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
     pub fn LLVMRustAddBuilderLibraryInfo(

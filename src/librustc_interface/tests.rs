@@ -571,6 +571,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
     tracked!(treat_err_as_bug, Some(1));
     tracked!(unleash_the_miri_inside_of_you, true);
+    tracked!(use_ctors_section, Some(true));
     tracked!(verify_llvm_ir, true);
 }
 
