@@ -1,11 +1,30 @@
-use crate::ffi::{OsString, CStr};
+use crate::ffi::{OsString, CStr, OsStr};
+use crate::os::switch::ffi::OsStrExt;
 use crate::fmt;
 use crate::hash::Hash;
 use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::{SystemTime, UNIX_EPOCH};
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::sync::atomic::{AtomicU64, Ordering};
+
+use nnsdk::fs::{FileHandle, DirectoryEntry as NinDirEntry};
+use nnsdk::fs::DirectoryEntryType_DirectoryEntryType_Directory as NN_ENTRY_DIR;
+use nnsdk::fs::DirectoryEntryType_DirectoryEntryType_File as NN_ENTRY_FILE;
+use crate::ffi::CString;
+
+macro_rules! r_try {
+    ($expr:expr) => {
+        {
+            let rc = $expr;
+            if rc == 0 {
+                Ok(())
+            } else {
+                Err(io::Error::from_raw_os_error(rc as _))
+            }
+        }
+    };
+}
 
 #[derive(Debug)]
 pub struct FileAttr {
@@ -13,9 +32,14 @@ pub struct FileAttr {
     file_type: FileType
 }
 
-pub struct ReadDir(Void);
+pub struct ReadDir {
+    inner_iter: crate::vec::IntoIter<NinDirEntry>
+}
 
-pub struct DirEntry(Void);
+pub struct DirEntry {
+    path: PathBuf,
+    file_type: FileType
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FilePermissions {
@@ -103,8 +127,8 @@ impl FileType {
 }
 
 impl fmt::Debug for ReadDir {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[Directory]")
     }
 }
 
@@ -112,25 +136,41 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        match self.0 {}
+        let val = self.inner_iter.next()?;
+
+        let len = unsafe { libc::strlen(val.name.as_ptr()) };
+        let path = Path::new(OsStr::from_bytes(&val.name[..len])).to_owned();
+
+        let file_type = match val.type_ as u32 {
+            NN_ENTRY_DIR => FileType::Dir,
+            NN_ENTRY_FILE => FileType::File,
+            _ => panic!("Invalid entry type in directory")
+        };
+
+        Some(Ok(DirEntry {
+            path, file_type
+        }))
     }
 }
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        match self.0 {}
+        self.path.clone()
     }
 
     pub fn file_name(&self) -> OsString {
-        match self.0 {}
+        match self.path.file_name() {
+            Some(file_name) => file_name.to_os_string(),
+            None => panic!("Could not get file name of DirEntry")
+        }
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        match self.0 {}
+        stat(&self.path)
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        match self.0 {}
+        Ok(self.file_type)
     }
 }
 
@@ -185,18 +225,17 @@ impl OpenOptions {
     }
 }
 
-use nnsdk::fs::FileHandle;
-
 pub struct File {
     inner: FileHandle,
     pos: AtomicU64,
     attr: FileAttr
 }
 
-use crate::ffi::CString;
-
 impl crate::ops::Drop for File {
     fn drop(&mut self) {
+        if self.inner.handle.is_null() {
+            return;
+        }
         unsafe {
             nnsdk::fs::CloseFile(
                 self.inner
@@ -205,43 +244,83 @@ impl crate::ops::Drop for File {
     }
 }
 
+fn cstr(path: &Path) -> io::Result<CString> {
+    CString::new(
+        path.to_str()
+            .ok_or(io::Error::from(io::ErrorKind::InvalidInput))?
+            .as_bytes()
+    ).map_err(io::Error::from)
+}
+
+macro_rules! ret_if_null {
+    ($expr:expr) => {
+        if ($expr.handle).is_null() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Cannot treat directory as file"
+            ))
+        }
+    };
+}
+
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let path = CString::new(
-            path.to_str()
-                .ok_or(io::Error::from(io::ErrorKind::InvalidInput))?
-                .as_bytes()
-        ).map_err(io::Error::from)?;
-
+        let path = cstr(path)?;
 
         let mut inner = FileHandle { handle: 0 as _ };
+        
+        let mut entry_type = 0u32;
 
-        let res = unsafe { 
-            nnsdk::fs::OpenFile(
-                &mut inner,
-                path.as_ptr() as _,
-                opts.flags as _
-            )
+        unsafe {
+            r_try!(
+                nnsdk::fs::GetEntryType(
+                    &mut entry_type,
+                    path.as_ptr() as _
+                )
+            )?;
+        }
+        
+        let file_type = match entry_type {
+            NN_ENTRY_DIR => FileType::Dir,
+            NN_ENTRY_FILE => FileType::File,
+            _ => panic!("Invalid entry type in directory")
         };
 
-        if res != 0 {
-            Err(io::Error::from_raw_os_error(res as _))
-        } else if inner.handle.is_null() {
+        if let FileType::Dir = file_type {
+            let attr = FileAttr {
+                size: AtomicU64::new(0),
+                file_type
+            };
+            return Ok(File {
+                inner, pos: AtomicU64::new(0), attr
+            })
+        }
+
+        unsafe { 
+            r_try!(
+                nnsdk::fs::OpenFile(
+                    &mut inner,
+                    path.as_ptr() as _,
+                    opts.flags as _
+                )
+            )?;
+        }
+
+        if inner.handle.is_null() {
             Err(io::Error::new(io::ErrorKind::NotFound, "Returned file handle was null"))
         } else {
             let mut size = 0;
-            let rc = unsafe { nnsdk::fs::GetFileSize(&mut size, inner) };
-            if rc != 0 {
-                return Err(io::Error::from_raw_os_error(rc as _));
-            }
-            let pos;
-            if opts.flags & APPEND_MODE != 0 {
-                pos = AtomicU64::new(size as u64);
-            } else {
-                pos = AtomicU64::new(0);
+             unsafe { 
+                r_try!(nnsdk::fs::GetFileSize(&mut size, inner))?;
             }
             
-            let attr = stat_internal(&path, size as u64)?;
+            let pos = if opts.flags & APPEND_MODE != 0 {
+                AtomicU64::new(size as u64)
+            } else {
+                AtomicU64::new(0)
+            };
+
+            let attr = stat_internal(&path, size as _)?;
 
             let file = File { inner, pos, attr };
 
@@ -258,12 +337,8 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        let rc = unsafe { nnsdk::fs::FlushFile(self.inner) };
-        if rc == 0 {
-            Ok(())
-        } else {
-            Err(io::Error::from_raw_os_error(rc as _))
-        }
+        ret_if_null!(self.inner);
+        unsafe { r_try!(nnsdk::fs::FlushFile(self.inner)) }
     }
 
     pub fn datasync(&self) -> io::Result<()> {
@@ -271,20 +346,18 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
+        ret_if_null!(self.inner);
         let rc = unsafe {
             nnsdk::fs::SetFileSize(self.inner, size as _)
         };
 
         self.attr.set_size(size);
 
-        if rc == 0 {
-            Ok(())
-        } else {
-            Err(io::Error::from_raw_os_error(rc as _))
-        }
+        r_try!(rc)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        ret_if_null!(self.inner);
         let mut out_size = 0;
         let rc = unsafe {
             nnsdk::fs::ReadFile1(
@@ -317,6 +390,7 @@ impl File {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        ret_if_null!(self.inner);
         let rc = unsafe {
             nnsdk::fs::WriteFile(
                 self.inner,
@@ -410,8 +484,12 @@ impl DirBuilder {
         DirBuilder {}
     }
 
-    pub fn mkdir(&self, _p: &Path) -> io::Result<()> {
-        unsupported()
+    pub fn mkdir(&self, path: &Path) -> io::Result<()> {
+        let path = cstr(path)?;
+
+        unsafe {
+            r_try!(nnsdk::fs::CreateDirectory(path.as_ptr() as *const _))
+        }
     }
 }
 
@@ -421,28 +499,97 @@ impl fmt::Debug for File {
     }
 }
 
-pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
-    unsupported()
+pub fn readdir(path: &Path) -> io::Result<ReadDir> {
+    let path = cstr(path)?;
+
+    let mut dir_handle = nnsdk::fs::DirectoryHandle { handle: 0 as *mut _ };
+    let mut count: i64 = 0;
+
+    unsafe {
+        r_try!(
+            nnsdk::fs::OpenDirectory(
+                &mut dir_handle as _,
+                path.as_ptr() as _,
+                nnsdk::fs::OpenDirectoryMode_OpenDirectoryMode_All as _
+            )
+        )?;
+
+        r_try!(
+            nnsdk::fs::GetDirectoryEntryCount(
+                &mut count as _,
+                dir_handle
+            )
+        )?;
+    }
+
+    let mut entries: Vec<NinDirEntry> = Vec::with_capacity(count as usize);
+
+    unsafe {
+        entries.set_len(count as usize);
+
+        r_try!(
+            nnsdk::fs::ReadDirectory(
+                &mut count,
+                entries.as_mut_ptr(),
+                dir_handle,
+                count
+            )
+        )?;
+
+        nnsdk::fs::CloseDirectory(dir_handle);
+    }
+
+    Ok(ReadDir {
+        inner_iter: entries.into_iter()
+    })
 }
 
 pub fn unlink(_p: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
-    unsupported()
+pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
+    let stat = stat(old)?;
+    let old = cstr(old)?;
+    let new = cstr(new)?;
+
+    r_try!(if let FileType::File = stat.file_type() {
+        unsafe {
+            nnsdk::fs::RenameFile(old.as_ptr() as _, new.as_ptr() as _)
+        }
+    } else {
+        unsafe {
+            nnsdk::fs::RenameDirectory(old.as_ptr() as _, new.as_ptr() as _)
+        }
+    })
 }
 
 pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
     Ok(())
 }
 
-pub fn rmdir(_p: &Path) -> io::Result<()> {
-    unsupported()
+pub fn rmdir(path: &Path) -> io::Result<()> {
+    let path = cstr(path)?;
+
+    if (nnsdk::fs::DeleteDirectory as *const ()).is_null() {
+        panic!("DeleteDirectory is null");
+    }
+
+    unsafe {
+        r_try!(nnsdk::fs::DeleteDirectory(path.as_ptr() as _))
+    }
 }
 
-pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
-    unsupported()
+pub fn remove_dir_all(path: &Path) -> io::Result<()> {
+    let path = cstr(path)?;
+
+    if (nnsdk::fs::DeleteDirectoryRecursively as *const ()).is_null() {
+        panic!("DeleteDirectoryRecursively is null");
+    }
+
+    unsafe {
+        r_try!(nnsdk::fs::DeleteDirectoryRecursively(path.as_ptr() as _))
+    }
 }
 
 pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
@@ -457,25 +604,29 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
     unsupported()
 }
 
-fn stat_internal(cstr: &CStr, size: u64) -> io::Result<FileAttr> {
+fn get_entry_type(cstr: &CStr) -> io::Result<FileType> {
     let mut entry_type: u32 = 0;
-
-    let rc = unsafe {
-        nnsdk::fs::GetEntryType(
-            &mut entry_type,
-            cstr.as_ptr() as _
-        )
-    };
-
-    if rc != 0 {
-        return Err(io::Error::from_raw_os_error(rc as _));
+    unsafe {
+        r_try!(
+            nnsdk::fs::GetEntryType(
+                &mut entry_type,
+                cstr.as_ptr() as _
+            )
+        )?;
     }
 
-    let file_type = match entry_type {
-        0 => FileType::Dir,
-        1 => FileType::File,
-        _ => panic!("Invalid file type")
-    };
+    match entry_type {
+        NN_ENTRY_DIR => Ok(FileType::Dir),
+        NN_ENTRY_FILE => Ok(FileType::File),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Could not stat directory type"
+        ))
+    }
+}
+
+fn stat_internal(cstr: &CStr, size: u64) -> io::Result<FileAttr> {
+    let file_type = get_entry_type(cstr)?;
 
     Ok(FileAttr {
         size: AtomicU64::new(size),
@@ -484,17 +635,25 @@ fn stat_internal(cstr: &CStr, size: u64) -> io::Result<FileAttr> {
 }
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
-    File::open(path, &OpenOptions::new())?.file_attr()
+    match get_entry_type(&(cstr(path)?))? {
+        file_type @ FileType::Dir => Ok(FileAttr { size: AtomicU64::new(0), file_type }),
+        file_type @ FileType::File => Ok(FileAttr { size: AtomicU64::new(0), file_type }),
+        _ => panic!("Bad entry type")
+    }
+    //File::open(path, &OpenOptions::new())?.file_attr()
 }
 
-pub fn lstat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+pub fn lstat(path: &Path) -> io::Result<FileAttr> {
+    stat(path)
 }
 
 pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
     unsupported()
 }
 
-pub fn copy(_from: &Path, _to: &Path) -> io::Result<u64> {
-    unsupported()
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    crate::io::copy(
+        &mut crate::fs::File::open(from)?,
+        &mut crate::fs::File::create(to)?,
+    )
 }

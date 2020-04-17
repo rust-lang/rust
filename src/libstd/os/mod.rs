@@ -68,5 +68,7 @@ pub mod solaris;
 pub mod vxworks;
 #[cfg(target_os = "wasi")]
 pub mod wasi;
+#[cfg(target_os = "switch")]
+pub mod switch;
 
 pub mod raw;

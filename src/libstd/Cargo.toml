@@ -50,6 +50,7 @@ wasi = { version = "0.9.0", features = ['rustc-dep-of-std'], default-features = 
 
 [target.aarch64-skyline-switch.dependencies]
 nnsdk = { git = "https://github.com/ultimate-research/nnsdk-rs.git", features = ["rustc-dep-of-std"] }
+#nnsdk = { path = "../../../nnsdk-rs", features = ["rustc-dep-of-std"] }
 
 [features]
 default = ["std_detect_file_io", "std_detect_dlsym_getauxval"]
