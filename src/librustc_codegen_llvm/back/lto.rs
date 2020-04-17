@@ -500,11 +500,11 @@ fn thin_lto(
             let module_name = module_name_to_str(module_name);
 
             // If (1.) the module hasn't changed, and (2.) none of the modules
-            // it imports from nor exports to have changed, *and* (3.) the
-            // import and export sets themselves have not changed from the
-            // previous compile when it was last ThinLTO'ed, then we can re-use
-            // the post-ThinLTO version of the module. Otherwise, freshly
-            // perform LTO optimization.
+            // it imports from have changed, *and* (3.) the import and export
+            // sets themselves have not changed from the previous compile when
+            // it was last ThinLTO'ed, then we can re-use the post-ThinLTO
+            // version of the module. Otherwise, freshly perform LTO
+            // optimization.
             //
             // (Note that globally, the export set is just the inverse of the
             // import set.)
@@ -531,13 +531,8 @@ fn thin_lto(
                 let imports_all_green = curr_imports
                     .iter()
                     .all(|imported_module| green_modules.contains_key(imported_module));
-                let exports_all_green = curr_exports
-                    .iter()
-                    .all(|exported_module| green_modules.contains_key(exported_module));
-
                 if imports_all_green
                     && equivalent_as_sets(prev_imports, curr_imports)
-                    && exports_all_green
                     && equivalent_as_sets(prev_exports, curr_exports)
                 {
                     let work_product = green_modules[module_name].clone();
