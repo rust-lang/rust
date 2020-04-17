@@ -547,8 +547,7 @@ impl<'a> Parser<'a> {
                 // Rewind to before attempting to parse the type with generics, to recover
                 // from situations like `x as usize < y` in which we first tried to parse
                 // `usize < y` as a type with generic arguments.
-                let parser_snapshot_after_type = self.clone();
-                mem::replace(self, parser_snapshot_before_type);
+                let parser_snapshot_after_type = mem::replace(self, parser_snapshot_before_type);
 
                 match self.parse_path(PathStyle::Expr) {
                     Ok(path) => {
@@ -560,7 +559,7 @@ impl<'a> Parser<'a> {
                                 // example because `parse_ty_no_plus` returns `Err` on keywords,
                                 // but `parse_path` returns `Ok` on them due to error recovery.
                                 // Return original error and parser state.
-                                mem::replace(self, parser_snapshot_after_type);
+                                *self = parser_snapshot_after_type;
                                 return Err(type_err);
                             }
                         };
@@ -601,7 +600,7 @@ impl<'a> Parser<'a> {
                     Err(mut path_err) => {
                         // Couldn't parse as a path, return original error and parser state.
                         path_err.cancel();
-                        mem::replace(self, parser_snapshot_after_type);
+                        *self = parser_snapshot_after_type;
                         return Err(type_err);
                     }
                 }
