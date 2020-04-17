@@ -26,7 +26,7 @@ pub enum MemPlaceMeta<Tag = (), Id = AllocId> {
     /// `Sized` types or unsized `extern type`
     None,
     /// The address of this place may not be taken. This protects the `MemPlace` from coming from
-    /// a ZST Operand with a backing allocation and being converted to an integer address. This
+    /// a ZST Operand without a backing allocation and being converted to an integer address. This
     /// should be impossible, because you can't take the address of an operand, but this is a second
     /// protection layer ensuring that we don't mess up.
     Poison,
