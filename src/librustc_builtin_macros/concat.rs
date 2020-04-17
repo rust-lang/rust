@@ -26,9 +26,12 @@ pub fn expand_concat(
                 ast::LitKind::Char(c) => {
                     accumulator.push(c);
                 }
-                ast::LitKind::Int(i, ast::LitIntType::Unsigned(_))
-                | ast::LitKind::Int(i, ast::LitIntType::Signed(_))
-                | ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
+                ast::LitKind::Int(
+                    i,
+                    ast::LitIntType::Unsigned(_)
+                    | ast::LitIntType::Signed(_)
+                    | ast::LitIntType::Unsuffixed,
+                ) => {
                     accumulator.push_str(&i.to_string());
                 }
                 ast::LitKind::Bool(b) => {

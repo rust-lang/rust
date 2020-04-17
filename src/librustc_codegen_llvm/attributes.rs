@@ -124,7 +124,7 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
     match cx.sess().opts.debugging_opts.sanitizer {
-        Some(Sanitizer::Address) | Some(Sanitizer::Thread) => return,
+        Some(Sanitizer::Address | Sanitizer::Thread) => return,
         _ => {}
     }
 

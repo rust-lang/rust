@@ -237,18 +237,21 @@ impl<'a> PathSource<'a> {
     crate fn is_expected(self, res: Res) -> bool {
         match self {
             PathSource::Type => match res {
-                Res::Def(DefKind::Struct, _)
-                | Res::Def(DefKind::Union, _)
-                | Res::Def(DefKind::Enum, _)
-                | Res::Def(DefKind::Trait, _)
-                | Res::Def(DefKind::TraitAlias, _)
-                | Res::Def(DefKind::TyAlias, _)
-                | Res::Def(DefKind::AssocTy, _)
+                Res::Def(
+                    DefKind::Struct
+                    | DefKind::Union
+                    | DefKind::Enum
+                    | DefKind::Trait
+                    | DefKind::TraitAlias
+                    | DefKind::TyAlias
+                    | DefKind::AssocTy
+                    | DefKind::TyParam
+                    | DefKind::OpaqueTy
+                    | DefKind::ForeignTy,
+                    _,
+                )
                 | Res::PrimTy(..)
-                | Res::Def(DefKind::TyParam, _)
-                | Res::SelfTy(..)
-                | Res::Def(DefKind::OpaqueTy, _)
-                | Res::Def(DefKind::ForeignTy, _) => true,
+                | Res::SelfTy(..) => true,
                 _ => false,
             },
             PathSource::Trait(AliasPossibility::No) => match res {
@@ -256,27 +259,29 @@ impl<'a> PathSource<'a> {
                 _ => false,
             },
             PathSource::Trait(AliasPossibility::Maybe) => match res {
-                Res::Def(DefKind::Trait, _) => true,
-                Res::Def(DefKind::TraitAlias, _) => true,
+                Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => true,
                 _ => false,
             },
             PathSource::Expr(..) => match res {
-                Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
-                | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
-                | Res::Def(DefKind::Const, _)
-                | Res::Def(DefKind::Static, _)
+                Res::Def(
+                    DefKind::Ctor(_, CtorKind::Const | CtorKind::Fn)
+                    | DefKind::Const
+                    | DefKind::Static
+                    | DefKind::Fn
+                    | DefKind::AssocFn
+                    | DefKind::AssocConst
+                    | DefKind::ConstParam,
+                    _,
+                )
                 | Res::Local(..)
-                | Res::Def(DefKind::Fn, _)
-                | Res::Def(DefKind::AssocFn, _)
-                | Res::Def(DefKind::AssocConst, _)
-                | Res::SelfCtor(..)
-                | Res::Def(DefKind::ConstParam, _) => true,
+                | Res::SelfCtor(..) => true,
                 _ => false,
             },
             PathSource::Pat => match res {
-                Res::Def(DefKind::Ctor(_, CtorKind::Const), _)
-                | Res::Def(DefKind::Const, _)
-                | Res::Def(DefKind::AssocConst, _)
+                Res::Def(
+                    DefKind::Ctor(_, CtorKind::Const) | DefKind::Const | DefKind::AssocConst,
+                    _,
+                )
                 | Res::SelfCtor(..) => true,
                 _ => false,
             },
@@ -285,20 +290,19 @@ impl<'a> PathSource<'a> {
                 _ => false,
             },
             PathSource::Struct => match res {
-                Res::Def(DefKind::Struct, _)
-                | Res::Def(DefKind::Union, _)
-                | Res::Def(DefKind::Variant, _)
-                | Res::Def(DefKind::TyAlias, _)
-                | Res::Def(DefKind::AssocTy, _)
+                Res::Def(
+                    DefKind::Struct
+                    | DefKind::Union
+                    | DefKind::Variant
+                    | DefKind::TyAlias
+                    | DefKind::AssocTy,
+                    _,
+                )
                 | Res::SelfTy(..) => true,
                 _ => false,
             },
             PathSource::TraitItem(ns) => match res {
-                Res::Def(DefKind::AssocConst, _) | Res::Def(DefKind::AssocFn, _)
-                    if ns == ValueNS =>
-                {
-                    true
-                }
+                Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
                 _ => false,
             },
@@ -316,8 +320,8 @@ impl<'a> PathSource<'a> {
             (PathSource::Struct, false) => error_code!(E0422),
             (PathSource::Expr(..), true) => error_code!(E0423),
             (PathSource::Expr(..), false) => error_code!(E0425),
-            (PathSource::Pat, true) | (PathSource::TupleStruct, true) => error_code!(E0532),
-            (PathSource::Pat, false) | (PathSource::TupleStruct, false) => error_code!(E0531),
+            (PathSource::Pat | PathSource::TupleStruct, true) => error_code!(E0532),
+            (PathSource::Pat | PathSource::TupleStruct, false) => error_code!(E0531),
             (PathSource::TraitItem(..), true) => error_code!(E0575),
             (PathSource::TraitItem(..), false) => error_code!(E0576),
         }
@@ -459,7 +463,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         let rib_kind = match fn_kind {
             // Bail if there's no body.
             FnKind::Fn(.., None) => return visit::walk_fn(self, fn_kind, sp),
-            FnKind::Fn(FnCtxt::Free, ..) | FnKind::Fn(FnCtxt::Foreign, ..) => FnItemRibKind,
+            FnKind::Fn(FnCtxt::Free | FnCtxt::Foreign, ..) => FnItemRibKind,
             FnKind::Fn(FnCtxt::Assoc(_), ..) | FnKind::Closure(..) => NormalRibKind,
         };
         let previous_value = replace(&mut self.diagnostic_metadata.current_function, Some(sp));
@@ -2147,7 +2151,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     return;
                 }
                 match binding.res() {
-                    Res::Def(DefKind::Trait, _) | Res::Def(DefKind::TraitAlias, _) => {
+                    Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
                         collected_traits.push((name, binding))
                     }
                     _ => (),

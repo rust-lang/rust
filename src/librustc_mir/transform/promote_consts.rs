@@ -543,7 +543,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
-                    (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FnPtr, CastTy::Int(_)) => {
+                    (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
                         // in normal functions, mark such casts as not promotable
                         return Err(Unpromotable);
                     }

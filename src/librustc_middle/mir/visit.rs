@@ -1115,9 +1115,11 @@ impl PlaceContext {
     /// Returns `true` if this place context represents a borrow.
     pub fn is_borrow(&self) -> bool {
         match *self {
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
+            PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::SharedBorrow
+                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::UniqueBorrow,
+            )
             | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => true,
             _ => false,
         }
@@ -1126,8 +1128,7 @@ impl PlaceContext {
     /// Returns `true` if this place context represents a storage live or storage dead marker.
     pub fn is_storage_marker(&self) -> bool {
         match *self {
-            PlaceContext::NonUse(NonUseContext::StorageLive)
-            | PlaceContext::NonUse(NonUseContext::StorageDead) => true,
+            PlaceContext::NonUse(NonUseContext::StorageLive | NonUseContext::StorageDead) => true,
             _ => false,
         }
     }
@@ -1175,9 +1176,11 @@ impl PlaceContext {
     /// Returns `true` if this place context represents an assignment statement.
     pub fn is_place_assignment(&self) -> bool {
         match *self {
-            PlaceContext::MutatingUse(MutatingUseContext::Store)
-            | PlaceContext::MutatingUse(MutatingUseContext::Call)
-            | PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) => true,
+            PlaceContext::MutatingUse(
+                MutatingUseContext::Store
+                | MutatingUseContext::Call
+                | MutatingUseContext::AsmOutput,
+            ) => true,
             _ => false,
         }
     }

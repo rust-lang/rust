@@ -216,8 +216,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     .to_ty(tcx),
 
                 Node::Ty(&Ty { kind: TyKind::Path(_), .. })
-                | Node::Expr(&Expr { kind: ExprKind::Struct(..), .. })
-                | Node::Expr(&Expr { kind: ExprKind::Path(_), .. })
+                | Node::Expr(&Expr { kind: ExprKind::Struct(..) | ExprKind::Path(_), .. })
                 | Node::TraitRef(..) => {
                     let path = match parent_node {
                         Node::Ty(&Ty { kind: TyKind::Path(QPath::Resolved(_, path)), .. })

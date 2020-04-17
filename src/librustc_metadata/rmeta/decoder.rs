@@ -1138,8 +1138,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn mir_const_qualif(&self, id: DefIndex) -> mir::ConstQualifs {
         match self.kind(id) {
             EntryKind::Const(qualif, _)
-            | EntryKind::AssocConst(AssocContainer::ImplDefault, qualif, _)
-            | EntryKind::AssocConst(AssocContainer::ImplFinal, qualif, _) => qualif,
+            | EntryKind::AssocConst(
+                AssocContainer::ImplDefault | AssocContainer::ImplFinal,
+                qualif,
+                _,
+            ) => qualif,
             _ => bug!(),
         }
     }

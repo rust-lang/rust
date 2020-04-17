@@ -909,9 +909,9 @@ pub trait PrettyPrinter<'tcx>:
                     p!(write("::{:?}", promoted));
                 } else {
                     match self.tcx().def_kind(did) {
-                        Some(DefKind::Static)
-                        | Some(DefKind::Const)
-                        | Some(DefKind::AssocConst) => p!(print_value_path(did, substs)),
+                        Some(DefKind::Static | DefKind::Const | DefKind::AssocConst) => {
+                            p!(print_value_path(did, substs))
+                        }
                         _ => {
                             if did.is_local() {
                                 let span = self.tcx().def_span(did);

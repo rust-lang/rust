@@ -319,10 +319,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     );
                     return;
                 }
-                hir::Node::Item(
-                    hir::Item { kind: hir::ItemKind::Trait(_, _, generics, _, _), .. }
-                    | hir::Item { kind: hir::ItemKind::Impl { generics, .. }, .. },
-                ) if projection.is_some() => {
+                hir::Node::Item(hir::Item {
+                    kind:
+                        hir::ItemKind::Trait(_, _, generics, _, _)
+                        | hir::ItemKind::Impl { generics, .. },
+                    ..
+                }) if projection.is_some() => {
                     // Missing restriction on associated type of type parameter (unmet projection).
                     suggest_restriction(
                         &generics,
@@ -335,19 +337,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                hir::Node::Item(
-                    hir::Item { kind: hir::ItemKind::Struct(_, generics), .. }
-                    | hir::Item { kind: hir::ItemKind::Enum(_, generics), .. }
-                    | hir::Item { kind: hir::ItemKind::Union(_, generics), .. }
-                    | hir::Item { kind: hir::ItemKind::Trait(_, _, generics, ..), .. }
-                    | hir::Item { kind: hir::ItemKind::Impl { generics, .. }, .. }
-                    | hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }
-                    | hir::Item { kind: hir::ItemKind::TyAlias(_, generics), .. }
-                    | hir::Item { kind: hir::ItemKind::TraitAlias(generics, _), .. }
-                    | hir::Item {
-                        kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }), ..
-                    },
-                )
+                hir::Node::Item(hir::Item {
+                    kind:
+                        hir::ItemKind::Struct(_, generics)
+                        | hir::ItemKind::Enum(_, generics)
+                        | hir::ItemKind::Union(_, generics)
+                        | hir::ItemKind::Trait(_, _, generics, ..)
+                        | hir::ItemKind::Impl { generics, .. }
+                        | hir::ItemKind::Fn(_, generics, _)
+                        | hir::ItemKind::TyAlias(_, generics)
+                        | hir::ItemKind::TraitAlias(generics, _)
+                        | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
+                    ..
+                })
                 | hir::Node::TraitItem(hir::TraitItem { generics, .. })
                 | hir::Node::ImplItem(hir::ImplItem { generics, .. })
                     if param_ty =>
@@ -466,9 +468,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         );
 
         match self.evaluate_obligation(&obligation) {
-            Ok(EvaluationResult::EvaluatedToOk)
-            | Ok(EvaluationResult::EvaluatedToOkModuloRegions)
-            | Ok(EvaluationResult::EvaluatedToAmbig) => {}
+            Ok(
+                EvaluationResult::EvaluatedToOk
+                | EvaluationResult::EvaluatedToOkModuloRegions
+                | EvaluationResult::EvaluatedToAmbig,
+            ) => {}
             _ => return,
         }
         let hir = self.tcx.hir();
@@ -1448,7 +1452,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // ```
                 debug!("parent_def_kind: {:?}", self.tcx.def_kind(parent_did));
                 let is_raw_borrow_inside_fn_like_call = match self.tcx.def_kind(parent_did) {
-                    Some(DefKind::Fn) | Some(DefKind::Ctor(..)) => target_ty.is_unsafe_ptr(),
+                    Some(DefKind::Fn | DefKind::Ctor(..)) => target_ty.is_unsafe_ptr(),
                     _ => false,
                 };
 

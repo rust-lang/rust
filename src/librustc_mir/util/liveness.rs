@@ -232,7 +232,7 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
         match categorize(context) {
             Some(DefUse::Def) => self.defs_uses.add_def(local),
-            Some(DefUse::Use) | Some(DefUse::Drop) => self.defs_uses.add_use(local),
+            Some(DefUse::Use | DefUse::Drop) => self.defs_uses.add_use(local),
             _ => (),
         }
     }

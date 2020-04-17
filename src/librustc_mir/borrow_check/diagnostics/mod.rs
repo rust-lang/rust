@@ -484,9 +484,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
         match ty.kind {
-            ty::Ref(ty::RegionKind::ReLateBound(_, br), _, _)
-            | ty::Ref(
-                ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
+            ty::Ref(
+                ty::RegionKind::ReLateBound(_, br)
+                | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
                 _,
                 _,
             ) => printer.region_highlight_mode.highlighting_bound_region(*br, counter),

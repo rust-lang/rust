@@ -1415,7 +1415,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let hir_id = self.hir().as_local_hir_id(suitable_region_binding_scope).unwrap();
         let is_impl_item = match self.hir().find(hir_id) {
-            Some(Node::Item(..)) | Some(Node::TraitItem(..)) => false,
+            Some(Node::Item(..) | Node::TraitItem(..)) => false,
             Some(Node::ImplItem(..)) => {
                 self.is_bound_region_in_impl_item(suitable_region_binding_scope)
             }

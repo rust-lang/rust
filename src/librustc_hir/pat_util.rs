@@ -62,8 +62,9 @@ impl hir::Pat<'_> {
         match self.kind {
             PatKind::Lit(_)
             | PatKind::Range(..)
-            | PatKind::Path(hir::QPath::Resolved(Some(..), _))
-            | PatKind::Path(hir::QPath::TypeRelative(..)) => true,
+            | PatKind::Path(hir::QPath::Resolved(Some(..), _) | hir::QPath::TypeRelative(..)) => {
+                true
+            }
 
             PatKind::Path(hir::QPath::Resolved(_, ref path))
             | PatKind::TupleStruct(hir::QPath::Resolved(_, ref path), ..)
@@ -141,8 +142,12 @@ impl hir::Pat<'_> {
 
     pub fn simple_ident(&self) -> Option<ast::Ident> {
         match self.kind {
-            PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, None)
-            | PatKind::Binding(hir::BindingAnnotation::Mutable, _, ident, None) => Some(ident),
+            PatKind::Binding(
+                hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Mutable,
+                _,
+                ident,
+                None,
+            ) => Some(ident),
             _ => None,
         }
     }
@@ -155,8 +160,8 @@ impl hir::Pat<'_> {
             PatKind::Path(hir::QPath::Resolved(_, path))
             | PatKind::TupleStruct(hir::QPath::Resolved(_, path), ..)
             | PatKind::Struct(hir::QPath::Resolved(_, path), ..) => {
-                if let Res::Def(DefKind::Variant, id)
-                | Res::Def(DefKind::Ctor(CtorOf::Variant, ..), id) = path.res
+                if let Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), id) =
+                    path.res
                 {
                     variants.push(id);
                 }

@@ -165,21 +165,26 @@ fn check_rvalue(
             let cast_in = CastTy::from_ty(operand.ty(body, tcx)).expect("bad input type for cast");
             let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
             match (cast_in, cast_out) {
-                (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FnPtr, CastTy::Int(_)) => {
+                (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
                     Err((span, "casting pointers to ints is unstable in const fn".into()))
                 }
                 _ => check_operand(tcx, operand, span, def_id, body),
             }
         }
-        Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _)
-        | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), operand, _) => {
-            check_operand(tcx, operand, span, def_id, body)
-        }
-        Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), _, _)
-        | Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), _, _)
-        | Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), _, _) => {
-            Err((span, "function pointer casts are not allowed in const fn".into()))
-        }
+        Rvalue::Cast(
+            CastKind::Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer),
+            operand,
+            _,
+        ) => check_operand(tcx, operand, span, def_id, body),
+        Rvalue::Cast(
+            CastKind::Pointer(
+                PointerCast::UnsafeFnPointer
+                | PointerCast::ClosureFnPointer(_)
+                | PointerCast::ReifyFnPointer,
+            ),
+            _,
+            _,
+        ) => Err((span, "function pointer casts are not allowed in const fn".into())),
         Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
             Err((span, "unsizing casts are not allowed in const fn".into()))
         }

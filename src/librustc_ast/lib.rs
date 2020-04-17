@@ -14,6 +14,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 #![recursion_limit = "256"]

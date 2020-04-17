@@ -421,12 +421,15 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         debug!("cat_res: id={:?} expr={:?} def={:?}", hir_id, expr_ty, res);
 
         match res {
-            Res::Def(DefKind::Ctor(..), _)
-            | Res::Def(DefKind::Const, _)
-            | Res::Def(DefKind::ConstParam, _)
-            | Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::Fn, _)
-            | Res::Def(DefKind::AssocFn, _)
+            Res::Def(
+                DefKind::Ctor(..)
+                | DefKind::Const
+                | DefKind::ConstParam
+                | DefKind::AssocConst
+                | DefKind::Fn
+                | DefKind::AssocFn,
+                _,
+            )
             | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, span, expr_ty)),
 
             Res::Def(DefKind::Static, _) => Ok(Place {

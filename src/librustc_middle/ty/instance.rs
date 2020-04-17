@@ -426,8 +426,7 @@ fn needs_fn_once_adapter_shim(
             // basically the same thing, so we can just return llfn.
             Ok(false)
         }
-        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce)
-        | (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+        (ty::ClosureKind::Fn | ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
             // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
             // self, ...)`.  We want a `fn(self, ...)`. We can produce
             // this by doing something like:
@@ -438,6 +437,6 @@ fn needs_fn_once_adapter_shim(
             // These are both the same at codegen time.
             Ok(true)
         }
-        (ty::ClosureKind::FnMut, _) | (ty::ClosureKind::FnOnce, _) => Err(()),
+        (ty::ClosureKind::FnMut | ty::ClosureKind::FnOnce, _) => Err(()),
     }
 }

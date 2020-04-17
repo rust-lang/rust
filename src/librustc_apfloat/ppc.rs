@@ -186,9 +186,7 @@ where
                 Status::OK.and(self)
             }
 
-            (Category::Zero, _) | (_, Category::NaN) | (_, Category::Infinity) => {
-                Status::OK.and(rhs)
-            }
+            (Category::Zero, _) | (_, Category::NaN | Category::Infinity) => Status::OK.and(rhs),
 
             (Category::Normal, Category::Normal) => {
                 let mut status = Status::OK;
@@ -288,9 +286,9 @@ where
                 Status::OK.and(Self::NAN)
             }
 
-            (Category::Zero, _) | (Category::Infinity, _) => Status::OK.and(self),
+            (Category::Zero | Category::Infinity, _) => Status::OK.and(self),
 
-            (_, Category::Zero) | (_, Category::Infinity) => Status::OK.and(rhs),
+            (_, Category::Zero | Category::Infinity) => Status::OK.and(rhs),
 
             (Category::Normal, Category::Normal) => {
                 let mut status = Status::OK;

@@ -137,8 +137,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // operating on scalars, we clear the overload.
     fn fix_scalar_builtin_expr(&mut self, e: &hir::Expr<'_>) {
         match e.kind {
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref inner)
-            | hir::ExprKind::Unary(hir::UnOp::UnNot, ref inner) => {
+            hir::ExprKind::Unary(hir::UnOp::UnNeg | hir::UnOp::UnNot, ref inner) => {
                 let inner_ty = self.fcx.node_ty(inner.hir_id);
                 let inner_ty = self.fcx.resolve_vars_if_possible(&inner_ty);
 

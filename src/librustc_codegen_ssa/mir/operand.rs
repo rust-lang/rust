@@ -193,7 +193,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             }
 
             // Newtype of a scalar, scalar pair or vector.
-            (OperandValue::Immediate(_), _) | (OperandValue::Pair(..), _)
+            (OperandValue::Immediate(_) | OperandValue::Pair(..), _)
                 if field.size == self.layout.size =>
             {
                 assert_eq!(offset.bytes(), 0);

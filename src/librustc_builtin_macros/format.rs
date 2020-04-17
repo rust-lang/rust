@@ -918,24 +918,15 @@ pub fn expand_preparsed_format_args(
                     skips.push(*next_pos);
                     let _ = s.next();
                 }
-                ('\\', Some((next_pos, '\n')))
-                | ('\\', Some((next_pos, 'n')))
-                | ('\\', Some((next_pos, 't')))
-                    if eat_ws =>
-                {
+                ('\\', Some((next_pos, '\n' | 'n' | 't'))) if eat_ws => {
                     skips.push(pos);
                     skips.push(*next_pos);
                     let _ = s.next();
                 }
-                (' ', _) | ('\n', _) | ('\t', _) if eat_ws => {
+                (' ' | '\n' | '\t', _) if eat_ws => {
                     skips.push(pos);
                 }
-                ('\\', Some((next_pos, 'n')))
-                | ('\\', Some((next_pos, 't')))
-                | ('\\', Some((next_pos, '0')))
-                | ('\\', Some((next_pos, '\\')))
-                | ('\\', Some((next_pos, '\'')))
-                | ('\\', Some((next_pos, '\"'))) => {
+                ('\\', Some((next_pos, 'n' | 't' | '0' | '\\' | '\'' | '\"'))) => {
                     skips.push(*next_pos);
                     let _ = s.next();
                 }

@@ -1230,7 +1230,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         // reference to the closure.
         if let ty::Closure(_, substs) = ty.kind {
             match self.infcx.closure_kind(substs) {
-                Some(ty::ClosureKind::Fn) | Some(ty::ClosureKind::FnMut) => {
+                Some(ty::ClosureKind::Fn | ty::ClosureKind::FnMut) => {
                     // Region of environment pointer
                     let env_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
                         scope: upvar_id.closure_expr_id.to_def_id(),

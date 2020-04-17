@@ -807,12 +807,12 @@ fn write_mir_sig(
     trace!("write_mir_sig: {:?}", src.instance);
     let kind = tcx.def_kind(src.def_id());
     let is_function = match kind {
-        Some(DefKind::Fn) | Some(DefKind::AssocFn) | Some(DefKind::Ctor(..)) => true,
+        Some(DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..)) => true,
         _ => tcx.is_closure(src.def_id()),
     };
     match (kind, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
-        (Some(DefKind::Const), _) | (Some(DefKind::AssocConst), _) => write!(w, "const ")?,
+        (Some(DefKind::Const | DefKind::AssocConst), _) => write!(w, "const ")?,
         (Some(DefKind::Static), _) => {
             write!(w, "static {}", if tcx.is_mutable_static(src.def_id()) { "mut " } else { "" })?
         }

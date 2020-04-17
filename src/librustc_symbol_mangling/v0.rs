@@ -153,7 +153,7 @@ impl SymbolMangler<'tcx> {
 
         // Write a separating `_` if necessary (leading digit or `_`).
         match ident.chars().next() {
-            Some('_') | Some('0'..='9') => {
+            Some('_' | '0'..='9') => {
                 self.push("_");
             }
             _ => {}

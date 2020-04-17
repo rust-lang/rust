@@ -149,7 +149,7 @@ pub mod printf {
             };
 
             let alt = match type_ {
-                Some("x") | Some("X") => alt,
+                Some("x" | "X") => alt,
                 _ => false,
             };
 
@@ -506,7 +506,7 @@ pub mod printf {
                     move_to!(next1);
                 }
 
-                ('h', _) | ('l', _) | ('L', _) | ('z', _) | ('j', _) | ('t', _) | ('q', _) => {
+                ('h' | 'l' | 'L' | 'z' | 'j' | 't' | 'q', _) => {
                     state = Type;
                     length = Some(at.slice_between(next).unwrap());
                     move_to!(next);

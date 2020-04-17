@@ -262,7 +262,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // Deallocating global memory -- always an error
                 return Err(match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
                     Some(GlobalAlloc::Function(..)) => err_ub_format!("deallocating a function"),
-                    Some(GlobalAlloc::Static(..)) | Some(GlobalAlloc::Memory(..)) => {
+                    Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
                         err_ub_format!("deallocating static memory")
                     }
                     None => err_ub!(PointerUseAfterFree(ptr.alloc_id)),

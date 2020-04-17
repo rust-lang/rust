@@ -137,12 +137,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            PlaceRef { local: _, projection: [.., ProjectionElem::Index(_)] }
-            | PlaceRef { local: _, projection: [.., ProjectionElem::ConstantIndex { .. }] }
-            | PlaceRef { local: _, projection: [.., ProjectionElem::Subslice { .. }] }
-            | PlaceRef { local: _, projection: [.., ProjectionElem::Downcast(..)] } => {
-                bug!("Unexpected immutable place.")
-            }
+            PlaceRef {
+                local: _,
+                projection:
+                    [.., ProjectionElem::Index(_)
+                    | ProjectionElem::ConstantIndex { .. }
+                    | ProjectionElem::Subslice { .. }
+                    | ProjectionElem::Downcast(..)],
+            } => bug!("Unexpected immutable place."),
         }
 
         debug!("report_mutability_error: item_msg={:?}, reason={:?}", item_msg, reason);
@@ -510,21 +512,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 tables.node_type_opt(func.hir_id).as_ref().map(|ty| &ty.kind)
             {
                 let arg = match hir.get_if_local(*def_id) {
-                    Some(hir::Node::Item(hir::Item {
-                        ident,
-                        kind: hir::ItemKind::Fn(sig, ..),
-                        ..
-                    }))
-                    | Some(hir::Node::TraitItem(hir::TraitItem {
-                        ident,
-                        kind: hir::TraitItemKind::Fn(sig, _),
-                        ..
-                    }))
-                    | Some(hir::Node::ImplItem(hir::ImplItem {
-                        ident,
-                        kind: hir::ImplItemKind::Fn(sig, _),
-                        ..
-                    })) => Some(
+                    Some(
+                        hir::Node::Item(hir::Item {
+                            ident, kind: hir::ItemKind::Fn(sig, ..), ..
+                        })
+                        | hir::Node::TraitItem(hir::TraitItem {
+                            ident,
+                            kind: hir::TraitItemKind::Fn(sig, _),
+                            ..
+                        })
+                        | hir::Node::ImplItem(hir::ImplItem {
+                            ident,
+                            kind: hir::ImplItemKind::Fn(sig, _),
+                            ..
+                        }),
+                    ) => Some(
                         arg_pos
                             .and_then(|pos| {
                                 sig.decl.inputs.get(

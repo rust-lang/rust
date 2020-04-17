@@ -565,8 +565,10 @@ fn resolve_local<'tcx>(
             PatKind::Box(ref subpat) => is_binding_pat(&subpat),
 
             PatKind::Ref(_, _)
-            | PatKind::Binding(hir::BindingAnnotation::Unannotated, ..)
-            | PatKind::Binding(hir::BindingAnnotation::Mutable, ..)
+            | PatKind::Binding(
+                hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Mutable,
+                ..,
+            )
             | PatKind::Wild
             | PatKind::Path(_)
             | PatKind::Lit(_)

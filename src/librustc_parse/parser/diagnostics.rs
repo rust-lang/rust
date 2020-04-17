@@ -508,11 +508,11 @@ impl<'a> Parser<'a> {
                 // `x == y == z`
                 (BinOpKind::Eq, AssocOp::Equal) |
                 // `x < y < z` and friends.
-                (BinOpKind::Lt, AssocOp::Less) | (BinOpKind::Lt, AssocOp::LessEqual) |
-                (BinOpKind::Le, AssocOp::LessEqual) | (BinOpKind::Le, AssocOp::Less) |
+                (BinOpKind::Lt, AssocOp::Less | AssocOp::LessEqual) |
+                (BinOpKind::Le, AssocOp::LessEqual | AssocOp::Less) |
                 // `x > y > z` and friends.
-                (BinOpKind::Gt, AssocOp::Greater) | (BinOpKind::Gt, AssocOp::GreaterEqual) |
-                (BinOpKind::Ge, AssocOp::GreaterEqual) | (BinOpKind::Ge, AssocOp::Greater) => {
+                (BinOpKind::Gt, AssocOp::Greater | AssocOp::GreaterEqual) |
+                (BinOpKind::Ge, AssocOp::GreaterEqual | AssocOp::Greater) => {
                     let expr_to_str = |e: &Expr| {
                         self.span_to_snippet(e.span)
                             .unwrap_or_else(|_| pprust::expr_to_string(&e))
@@ -526,8 +526,7 @@ impl<'a> Parser<'a> {
                     false // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
                 // `x == y < z`
-                (BinOpKind::Eq, AssocOp::Less) | (BinOpKind::Eq, AssocOp::LessEqual) |
-                (BinOpKind::Eq, AssocOp::Greater) | (BinOpKind::Eq, AssocOp::GreaterEqual) => {
+                (BinOpKind::Eq, AssocOp::Less | AssocOp::LessEqual | AssocOp::Greater | AssocOp::GreaterEqual) => {
                     // Consume `z`/outer-op-rhs.
                     let snapshot = self.clone();
                     match self.parse_expr() {
@@ -545,8 +544,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 // `x > y == z`
-                (BinOpKind::Lt, AssocOp::Equal) | (BinOpKind::Le, AssocOp::Equal) |
-                (BinOpKind::Gt, AssocOp::Equal) | (BinOpKind::Ge, AssocOp::Equal) => {
+                (BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge, AssocOp::Equal) => {
                     let snapshot = self.clone();
                     // At this point it is always valid to enclose the lhs in parentheses, no
                     // further checks are necessary.

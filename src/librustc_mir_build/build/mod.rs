@@ -46,8 +46,10 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
             kind: hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitFn::Provided(body_id)),
             ..
         }) => (*body_id, decl.output.span()),
-        Node::Item(hir::Item { kind: hir::ItemKind::Static(ty, _, body_id), .. })
-        | Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, body_id), .. })
+        Node::Item(hir::Item {
+            kind: hir::ItemKind::Static(ty, _, body_id) | hir::ItemKind::Const(ty, body_id),
+            ..
+        })
         | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, body_id), .. })
         | Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Const(ty, Some(body_id)),
@@ -394,8 +396,10 @@ impl BlockContext {
             Some(BlockFrame::SubExpr) => false,
 
             // otherwise: use accumulated is_ignored state.
-            Some(BlockFrame::TailExpr { tail_result_is_ignored: ignored })
-            | Some(BlockFrame::Statement { ignores_expr_result: ignored }) => *ignored,
+            Some(
+                BlockFrame::TailExpr { tail_result_is_ignored: ignored }
+                | BlockFrame::Statement { ignores_expr_result: ignored },
+            ) => *ignored,
         }
     }
 }

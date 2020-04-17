@@ -398,9 +398,11 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                         _ => {}
                     }
                 }
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Struct(..), .. })
-                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(..), .. })
-                | hir::Node::Item(hir::Item { kind: hir::ItemKind::Union(..), .. }) => {}
+                hir::Node::Item(hir::Item {
+                    kind:
+                        hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..),
+                    ..
+                }) => {}
                 hir::Node::Item(_)
                 | hir::Node::ForeignItem(_)
                 | hir::Node::TraitItem(_)
@@ -1089,13 +1091,15 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             }
 
             match self.tcx.named_region(lt.hir_id) {
-                Some(rl::Region::Static) | Some(rl::Region::EarlyBound(..)) => {}
-                Some(rl::Region::LateBound(debruijn, _, _))
-                | Some(rl::Region::LateBoundAnon(debruijn, _))
-                    if debruijn < self.outer_index => {}
-                Some(rl::Region::LateBound(..))
-                | Some(rl::Region::LateBoundAnon(..))
-                | Some(rl::Region::Free(..))
+                Some(rl::Region::Static | rl::Region::EarlyBound(..)) => {}
+                Some(
+                    rl::Region::LateBound(debruijn, _, _) | rl::Region::LateBoundAnon(debruijn, _),
+                ) if debruijn < self.outer_index => {}
+                Some(
+                    rl::Region::LateBound(..)
+                    | rl::Region::LateBoundAnon(..)
+                    | rl::Region::Free(..),
+                )
                 | None => {
                     self.has_late_bound_regions = Some(lt.span);
                 }
@@ -2188,11 +2192,13 @@ fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 fn static_mutability(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Mutability> {
     match tcx.hir().get_if_local(def_id) {
-        Some(Node::Item(&hir::Item { kind: hir::ItemKind::Static(_, mutbl, _), .. }))
-        | Some(Node::ForeignItem(&hir::ForeignItem {
-            kind: hir::ForeignItemKind::Static(_, mutbl),
-            ..
-        })) => Some(mutbl),
+        Some(
+            Node::Item(&hir::Item { kind: hir::ItemKind::Static(_, mutbl, _), .. })
+            | Node::ForeignItem(&hir::ForeignItem {
+                kind: hir::ForeignItemKind::Static(_, mutbl),
+                ..
+            }),
+        ) => Some(mutbl),
         Some(_) => None,
         _ => bug!("static_mutability applied to non-local def-id {:?}", def_id),
     }

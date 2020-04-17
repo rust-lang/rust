@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
             _ => false,
         });
         match (is_end_ahead, &self.token.kind) {
-            (true, token::BinOp(token::Or)) | (true, token::OrOr) => {
+            (true, token::BinOp(token::Or) | token::OrOr) => {
                 self.ban_illegal_vert(lo, "trailing", "not allowed in an or-pattern");
                 self.bump();
                 true

@@ -87,7 +87,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
 fn match_get_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local, VarField<'tcx>)> {
     match &stmt.kind {
         StatementKind::Assign(box (place_into, rvalue_from)) => match rvalue_from {
-            Rvalue::Use(Operand::Copy(pf)) | Rvalue::Use(Operand::Move(pf)) => {
+            Rvalue::Use(Operand::Copy(pf) | Operand::Move(pf)) => {
                 let local_into = place_into.as_local()?;
                 let (local_from, vf) = match_variant_field_place(*pf)?;
                 Some((local_into, local_from, vf))
