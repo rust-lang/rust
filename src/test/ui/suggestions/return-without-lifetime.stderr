@@ -4,7 +4,7 @@ error[E0106]: missing lifetime specifier
 LL | struct Foo<'a>(&usize);
    |                ^ expected named lifetime parameter
    |
-help: consider using the named lifetime
+help: consider using the `'a` lifetime
    |
 LL | struct Foo<'a>(&'a usize);
    |                ^^^
@@ -16,7 +16,7 @@ LL | fn func1<'a>(_arg: &'a Thing) -> &() { unimplemented!() }
    |                    ---------     ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say which one of `_arg`'s 2 lifetimes it is borrowed from
-help: consider using the named lifetime
+help: consider using the `'a` lifetime
    |
 LL | fn func1<'a>(_arg: &'a Thing) -> &'a () { unimplemented!() }
    |                                  ^^^
@@ -28,7 +28,7 @@ LL | fn func2<'a>(_arg: &Thing<'a>) -> &() { unimplemented!() }
    |                    ----------     ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say which one of `_arg`'s 2 lifetimes it is borrowed from
-help: consider using the named lifetime
+help: consider using the `'a` lifetime
    |
 LL | fn func2<'a>(_arg: &Thing<'a>) -> &'a () { unimplemented!() }
    |                                   ^^^

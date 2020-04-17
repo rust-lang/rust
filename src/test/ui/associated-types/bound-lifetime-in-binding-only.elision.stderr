@@ -5,7 +5,7 @@ LL | fn elision<T: Fn() -> &i32>() {
    |                       ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL | fn elision<T: Fn() -> &'static i32>() {
    |                       ^^^^^^^^

@@ -1034,6 +1034,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         lifetime_names: &FxHashSet<ast::Ident>,
         params: &[ElisionFailureInfo],
     ) {
+        let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok();
+
         err.span_label(
             span,
             &format!(
@@ -1043,11 +1045,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             ),
         );
 
-        let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok();
         let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
             err.span_suggestion_verbose(
                 span,
-                "consider using the named lifetime",
+                &format!("consider using the `{}` lifetime", lifetime_names.iter().next().unwrap()),
                 sugg,
                 Applicability::MaybeIncorrect,
             );
@@ -1136,6 +1137,20 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             }
             (0, _, Some(snippet)) if !snippet.ends_with('>') && count == 1 => {
                 suggest_new(err, &format!("{}<'a>", snippet));
+            }
+            (n, ..) if n > 1 => {
+                let spans: Vec<Span> = lifetime_names.iter().map(|lt| lt.span).collect();
+                err.span_note(spans, "these named lifetimes are available to use");
+                if Some("") == snippet.as_deref() {
+                    // This happens when we have `Foo<T>` where we point at the space before `T`,
+                    // but this can be confusing so we give a suggestion with placeholders.
+                    err.span_suggestion_verbose(
+                        span,
+                        "consider using one of the available lifetimes here",
+                        "'lifetime, ".repeat(count),
+                        Applicability::HasPlaceholders,
+                    );
+                }
             }
             _ => {}
         }

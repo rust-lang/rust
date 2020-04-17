@@ -17,7 +17,7 @@ LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
    |                                        ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &'static str { iter() }
    |                                        ^^^^^^^^
@@ -29,7 +29,7 @@ LL | fn parse_type_3() -> &str { unimplemented!() }
    |                      ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL | fn parse_type_3() -> &'static str { unimplemented!() }
    |                      ^^^^^^^^
