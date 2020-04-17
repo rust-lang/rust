@@ -1,6 +1,7 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::ich::NodeIdHashingMode;
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::interpret::{sign_extend, truncate};
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
@@ -526,6 +527,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.
     pub fn is_static(&self, def_id: DefId) -> bool {
         self.static_mutability(def_id).is_some()
+    }
+
+    /// Returns `true` if this is a `static` item with the `#[thread_local]` attribute.
+    pub fn is_thread_local_static(&self, def_id: DefId) -> bool {
+        self.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.

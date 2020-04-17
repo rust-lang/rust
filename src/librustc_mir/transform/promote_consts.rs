@@ -522,7 +522,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                         return Err(Unpromotable);
                     }
 
-                    let is_thread_local = self.tcx.has_attr(def_id, sym::thread_local);
+                    let is_thread_local = self.tcx.is_thread_local_static(def_id);
                     if is_thread_local {
                         return Err(Unpromotable);
                     }
