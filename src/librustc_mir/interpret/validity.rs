@@ -6,6 +6,7 @@
 
 use std::convert::TryFrom;
 use std::fmt::Write;
+use std::num::NonZeroUsize;
 use std::ops::RangeInclusive;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -647,10 +648,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn visit_union(&mut self, op: OpTy<'tcx, M::PointerTag>, fields: usize) -> InterpResult<'tcx> {
-        // Empty unions are not accepted by rustc. But uninhabited enums
-        // claim to be unions, so allow them, too.
-        assert!(op.layout.abi.is_uninhabited() || fields > 0);
+    fn visit_union(
+        &mut self,
+        _op: OpTy<'tcx, M::PointerTag>,
+        _fields: NonZeroUsize,
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
