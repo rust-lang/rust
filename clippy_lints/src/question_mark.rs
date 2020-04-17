@@ -70,10 +70,12 @@ impl QuestionMark {
                             replacement = Some(format!("Some({}?)", receiver_str));
                         }
                     }
-                } else if Self::moves_by_default(cx, subject) {
-                        replacement = Some(format!("{}.as_ref()?;", receiver_str));
+                } else if Self::moves_by_default(cx, subject)
+                    && !matches!(subject.kind, ExprKind::Call(..) | ExprKind::MethodCall(..))
+                {
+                    replacement = Some(format!("{}.as_ref()?;", receiver_str));
                 } else {
-                        replacement = Some(format!("{}?;", receiver_str));
+                    replacement = Some(format!("{}?;", receiver_str));
                 }
 
                 if let Some(replacement_str) = replacement {
