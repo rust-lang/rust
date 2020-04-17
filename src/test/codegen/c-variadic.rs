@@ -16,13 +16,13 @@ extern "C" {
 #[unwind(aborts)] // FIXME(#58794)
 pub unsafe extern "C" fn use_foreign_c_variadic_0() {
     // Ensure that we correctly call foreign C-variadic functions.
-    // CHECK: invoke void (i32, ...) @foreign_c_variadic_0([[PARAM:i32( signext)?]] 0)
+    // CHECK: call void (i32, ...) @foreign_c_variadic_0([[PARAM:i32( signext)?]] 0)
     foreign_c_variadic_0(0);
-    // CHECK: invoke void (i32, ...) @foreign_c_variadic_0([[PARAM]] 0, [[PARAM]] 42)
+    // CHECK: call void (i32, ...) @foreign_c_variadic_0([[PARAM]] 0, [[PARAM]] 42)
     foreign_c_variadic_0(0, 42i32);
-    // CHECK: invoke void (i32, ...) @foreign_c_variadic_0([[PARAM]] 0, [[PARAM]] 42, [[PARAM]] 1024)
+    // CHECK: call void (i32, ...) @foreign_c_variadic_0([[PARAM]] 0, [[PARAM]] 42, [[PARAM]] 1024)
     foreign_c_variadic_0(0, 42i32, 1024i32);
-    // CHECK: invoke void (i32, ...) @foreign_c_variadic_0([[PARAM]] 0, [[PARAM]] 42, [[PARAM]] 1024, [[PARAM]] 0)
+    // CHECK: call void (i32, ...) @foreign_c_variadic_0([[PARAM]] 0, [[PARAM]] 42, [[PARAM]] 1024, [[PARAM]] 0)
     foreign_c_variadic_0(0, 42i32, 1024i32, 0i32);
 }
 
@@ -30,24 +30,24 @@ pub unsafe extern "C" fn use_foreign_c_variadic_0() {
 // removing the "spoofed" `VaListImpl` that is used by Rust defined C-variadics.
 #[unwind(aborts)] // FIXME(#58794)
 pub unsafe extern "C" fn use_foreign_c_variadic_1_0(ap: VaList) {
-    // CHECK: invoke void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap)
+    // CHECK: call void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap)
     foreign_c_variadic_1(ap);
 }
 
 #[unwind(aborts)] // FIXME(#58794)
 pub unsafe extern "C" fn use_foreign_c_variadic_1_1(ap: VaList) {
-    // CHECK: invoke void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap, [[PARAM]] 42)
+    // CHECK: call void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap, [[PARAM]] 42)
     foreign_c_variadic_1(ap, 42i32);
 }
 #[unwind(aborts)] // FIXME(#58794)
 pub unsafe extern "C" fn use_foreign_c_variadic_1_2(ap: VaList) {
-    // CHECK: invoke void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap, [[PARAM]] 2, [[PARAM]] 42)
+    // CHECK: call void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap, [[PARAM]] 2, [[PARAM]] 42)
     foreign_c_variadic_1(ap, 2i32, 42i32);
 }
 
 #[unwind(aborts)] // FIXME(#58794)
 pub unsafe extern "C" fn use_foreign_c_variadic_1_3(ap: VaList) {
-    // CHECK: invoke void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap, [[PARAM]] 2, [[PARAM]] 42, [[PARAM]] 0)
+    // CHECK: call void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap, [[PARAM]] 2, [[PARAM]] 42, [[PARAM]] 0)
     foreign_c_variadic_1(ap, 2i32, 42i32, 0i32);
 }
 
