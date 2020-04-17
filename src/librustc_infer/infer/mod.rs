@@ -13,7 +13,7 @@ use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::undo_log::{Rollback, Snapshots};
+use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
@@ -151,16 +151,16 @@ pub struct InferCtxtInner<'tcx> {
     /// We instantiate `UnificationTable` with `bounds<Ty>` because the types
     /// that might instantiate a general type variable have an order,
     /// represented by its upper and lower bounds.
-    type_variables: type_variable::TypeVariableStorage<'tcx>,
+    type_variable_storage: type_variable::TypeVariableStorage<'tcx>,
 
     /// Map from const parameter variable to the kind of const it represents.
-    const_unification_table: ut::UnificationTableStorage<ty::ConstVid<'tcx>>,
+    const_unification_storage: ut::UnificationTableStorage<ty::ConstVid<'tcx>>,
 
     /// Map from integral variable to the kind of integer it represents.
-    int_unification_table: ut::UnificationTableStorage<ty::IntVid>,
+    int_unification_storage: ut::UnificationTableStorage<ty::IntVid>,
 
     /// Map from floating variable to the kind of float it represents.
-    float_unification_table: ut::UnificationTableStorage<ty::FloatVid>,
+    float_unification_storage: ut::UnificationTableStorage<ty::FloatVid>,
 
     /// Tracks the set of region variables and the constraints between them.
     /// This is initially `Some(_)` but when
@@ -209,11 +209,11 @@ impl<'tcx> InferCtxtInner<'tcx> {
     fn new() -> InferCtxtInner<'tcx> {
         InferCtxtInner {
             projection_cache: Default::default(),
-            type_variables: type_variable::TypeVariableStorage::new(),
+            type_variable_storage: type_variable::TypeVariableStorage::new(),
             undo_log: InferCtxtUndoLogs::default(),
-            const_unification_table: ut::UnificationTableStorage::new(),
-            int_unification_table: ut::UnificationTableStorage::new(),
-            float_unification_table: ut::UnificationTableStorage::new(),
+            const_unification_storage: ut::UnificationTableStorage::new(),
+            int_unification_storage: ut::UnificationTableStorage::new(),
+            float_unification_storage: ut::UnificationTableStorage::new(),
             region_constraints: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
         }
@@ -223,12 +223,12 @@ impl<'tcx> InferCtxtInner<'tcx> {
         &self.region_obligations
     }
 
-    pub fn projection_cache(&mut self) -> traits::ProjectionCache<'tcx, '_> {
+    pub fn projection_cache(&mut self) -> traits::ProjectionCache<'_, 'tcx> {
         self.projection_cache.with_log(&mut self.undo_log)
     }
 
-    fn type_variables(&mut self) -> type_variable::TypeVariableTable<'tcx, '_> {
-        self.type_variables.with_log(&mut self.undo_log)
+    fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
+        self.type_variable_storage.with_log(&mut self.undo_log)
     }
 
     fn int_unification_table(
@@ -240,7 +240,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             &mut InferCtxtUndoLogs<'tcx>,
         >,
     > {
-        self.int_unification_table.with_log(&mut self.undo_log)
+        self.int_unification_storage.with_log(&mut self.undo_log)
     }
 
     fn float_unification_table(
@@ -252,7 +252,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             &mut InferCtxtUndoLogs<'tcx>,
         >,
     > {
-        self.float_unification_table.with_log(&mut self.undo_log)
+        self.float_unification_storage.with_log(&mut self.undo_log)
     }
 
     fn const_unification_table(
@@ -264,7 +264,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             &mut InferCtxtUndoLogs<'tcx>,
         >,
     > {
-        self.const_unification_table.with_log(&mut self.undo_log)
+        self.const_unification_storage.with_log(&mut self.undo_log)
     }
 
     pub fn unwrap_region_constraints(&mut self) -> RegionConstraintCollector<'tcx, '_> {
@@ -868,29 +868,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.in_snapshot.set(was_in_snapshot);
         self.universe.set(universe);
 
-        let InferCtxtInner {
-            type_variables,
-            const_unification_table,
-            int_unification_table,
-            float_unification_table,
-            region_constraints,
-            projection_cache,
-            region_obligations,
-            undo_log,
-            ..
-        } = &mut *self.inner.borrow_mut();
-        undo_log.rollback_to(
-            || undo_log::RollbackView {
-                type_variables,
-                const_unification_table,
-                int_unification_table,
-                float_unification_table,
-                region_constraints: region_constraints.as_mut().unwrap(),
-                projection_cache,
-                region_obligations,
-            },
-            undo_snapshot,
-        );
+        self.inner.borrow_mut().rollback_to(undo_snapshot);
     }
 
     fn commit_from(&self, snapshot: CombinedSnapshot<'a, 'tcx>) {
@@ -900,8 +878,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         self.in_snapshot.set(was_in_snapshot);
 
-        let mut inner = self.inner.borrow_mut();
-        inner.undo_log.commit(undo_snapshot);
+        self.inner.borrow_mut().commit(undo_snapshot);
     }
 
     /// Executes `f` and commit the bindings.

@@ -11,7 +11,7 @@ use std::cmp;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use rustc_data_structures::undo_log::{Rollback, Snapshots, UndoLogs};
+use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 
 pub(crate) enum UndoLog<'tcx> {
     EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
@@ -81,7 +81,7 @@ pub struct TypeVariableStorage<'tcx> {
     sub_relations: ut::UnificationTableStorage<ty::TyVid>,
 }
 
-pub struct TypeVariableTable<'tcx, 'a> {
+pub struct TypeVariableTable<'a, 'tcx> {
     values: &'a mut sv::SnapshotVecStorage<Delegate>,
 
     eq_relations: &'a mut ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
@@ -168,13 +168,13 @@ impl<'tcx> TypeVariableStorage<'tcx> {
     pub(crate) fn with_log<'a>(
         &'a mut self,
         undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
-    ) -> TypeVariableTable<'tcx, 'a> {
+    ) -> TypeVariableTable<'a, 'tcx> {
         let TypeVariableStorage { values, eq_relations, sub_relations } = self;
         TypeVariableTable { values, eq_relations, sub_relations, undo_log }
     }
 }
 
-impl<'tcx> TypeVariableTable<'tcx, '_> {
+impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Returns the diverges flag given when `vid` was created.
     ///
     /// Note that this function does not return care whether

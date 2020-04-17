@@ -65,7 +65,7 @@ impl<'tcx, T> Normalized<'tcx, T> {
 //
 // FIXME: we probably also want some sort of cross-infcx cache here to
 // reduce the amount of duplication. Let's see what we get with the Chalk reforms.
-pub struct ProjectionCache<'tcx, 'a> {
+pub struct ProjectionCache<'a, 'tcx> {
     map: &'a mut SnapshotMapStorage<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>,
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
@@ -98,12 +98,12 @@ impl<'tcx> ProjectionCacheStorage<'tcx> {
     pub(crate) fn with_log<'a>(
         &'a mut self,
         undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
-    ) -> ProjectionCache<'tcx, 'a> {
+    ) -> ProjectionCache<'a, 'tcx> {
         ProjectionCache { map: &mut self.map, undo_log }
     }
 }
 
-impl<'tcx> ProjectionCache<'tcx, '_> {
+impl<'tcx> ProjectionCache<'_, 'tcx> {
     fn map(
         &mut self,
     ) -> SnapshotMapRef<
