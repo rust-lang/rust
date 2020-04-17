@@ -779,7 +779,7 @@ fn compute_codegen_unit_name(
                 cgu_def_id = Some(DefId { krate: def_id.krate, index: CRATE_DEF_INDEX });
             }
             break;
-        } else if tcx.def_kind(current_def_id) == Some(DefKind::Mod) {
+        } else if tcx.def_kind(current_def_id) == DefKind::Mod {
             if cgu_def_id.is_none() {
                 cgu_def_id = Some(current_def_id);
             }

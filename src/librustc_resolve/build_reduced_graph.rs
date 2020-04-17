@@ -906,7 +906,21 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
                 self.r.define(parent, ident, MacroNS, (res, vis, span, expansion))
             }
-            Res::Def(DefKind::TyParam | DefKind::ConstParam, _)
+            Res::Def(
+                DefKind::TyParam
+                | DefKind::ConstParam
+                | DefKind::ExternCrate
+                | DefKind::Use
+                | DefKind::ForeignMod
+                | DefKind::AnonConst
+                | DefKind::Field
+                | DefKind::LifetimeParam
+                | DefKind::GlobalAsm
+                | DefKind::Closure
+                | DefKind::Impl
+                | DefKind::Generator,
+                _,
+            )
             | Res::Local(..)
             | Res::SelfTy(..)
             | Res::SelfCtor(..)

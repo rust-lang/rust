@@ -127,7 +127,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     static_mutability => { cdata.static_mutability(def_id.index) }
     generator_kind => { cdata.generator_kind(def_id.index) }
-    def_kind => { Some(cdata.def_kind(def_id.index)) }
+    def_kind => { cdata.def_kind(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     lookup_stability => {
         cdata.get_stability(def_id.index).map(|s| tcx.intern_stability(s))
