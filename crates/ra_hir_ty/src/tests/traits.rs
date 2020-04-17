@@ -2378,3 +2378,27 @@ fn main() {
     );
     assert_eq!(t, "Foo");
 }
+
+#[test]
+fn trait_object_no_coercion() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Foo {}
+
+fn foo(x: &dyn Foo) {}
+
+fn test(x: &dyn Foo) {
+    foo(x);
+}
+"#, true),
+        @r###"
+    [22; 23) 'x': &dyn Foo
+    [35; 37) '{}': ()
+    [47; 48) 'x': &dyn Foo
+    [60; 75) '{     foo(x); }': ()
+    [66; 69) 'foo': fn foo(&dyn Foo)
+    [66; 72) 'foo(x)': ()
+    [70; 71) 'x': &dyn Foo
+    "###
+    );
+}
