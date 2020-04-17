@@ -23,7 +23,7 @@ use hir_ty::{
 };
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxNode, SyntaxNodePtr, TextUnit,
+    SyntaxNode, TextRange, TextUnit,
 };
 
 use crate::{
@@ -56,7 +56,7 @@ impl SourceAnalyzer {
         let scopes = db.expr_scopes(def);
         let scope = match offset {
             None => scope_for(&scopes, &source_map, node),
-            Some(offset) => scope_for_offset(&scopes, &source_map, node.with_value(offset)),
+            Some(offset) => scope_for_offset(db, &scopes, &source_map, node.with_value(offset)),
         };
         let resolver = resolver_for_scope(db.upcast(), def, scope);
         SourceAnalyzer {
@@ -304,6 +304,7 @@ fn scope_for(
 }
 
 fn scope_for_offset(
+    db: &dyn HirDatabase,
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
     offset: InFile<TextUnit>,
@@ -317,19 +318,61 @@ fn scope_for_offset(
             if source.file_id != offset.file_id {
                 return None;
             }
-            let syntax_node_ptr = source.value.syntax_node_ptr();
-            Some((syntax_node_ptr, scope))
+            let root = source.file_syntax(db.upcast());
+            let node = source.value.to_node(&root);
+            Some((node.syntax().text_range(), scope))
         })
         // find containing scope
-        .min_by_key(|(ptr, _scope)| {
+        .min_by_key(|(expr_range, _scope)| {
             (
-                !(ptr.range().start() <= offset.value && offset.value <= ptr.range().end()),
-                ptr.range().len(),
+                !(expr_range.start() <= offset.value && offset.value <= expr_range.end()),
+                expr_range.len(),
             )
         })
-        .map(|(ptr, scope)| {
-            adjust(scopes, source_map, ptr, offset.file_id, offset.value).unwrap_or(*scope)
+        .map(|(expr_range, scope)| {
+            adjust(db, scopes, source_map, expr_range, offset.file_id, offset.value)
+                .unwrap_or(*scope)
         })
+}
+
+// XXX: during completion, cursor might be outside of any particular
+// expression. Try to figure out the correct scope...
+fn adjust(
+    db: &dyn HirDatabase,
+    scopes: &ExprScopes,
+    source_map: &BodySourceMap,
+    expr_range: TextRange,
+    file_id: HirFileId,
+    offset: TextUnit,
+) -> Option<ScopeId> {
+    let child_scopes = scopes
+        .scope_by_expr()
+        .iter()
+        .filter_map(|(id, scope)| {
+            let source = source_map.expr_syntax(*id).ok()?;
+            // FIXME: correctly handle macro expansion
+            if source.file_id != file_id {
+                return None;
+            }
+            let root = source.file_syntax(db.upcast());
+            let node = source.value.to_node(&root);
+            Some((node.syntax().text_range(), scope))
+        })
+        .filter(|(range, _)| {
+            range.start() <= offset && range.is_subrange(&expr_range) && *range != expr_range
+        });
+
+    child_scopes
+        .max_by(|(r1, _), (r2, _)| {
+            if r2.is_subrange(&r1) {
+                std::cmp::Ordering::Greater
+            } else if r1.is_subrange(&r2) {
+                std::cmp::Ordering::Less
+            } else {
+                r1.start().cmp(&r2.start())
+            }
+        })
+        .map(|(_ptr, scope)| *scope)
 }
 
 pub(crate) fn resolve_hir_path(
@@ -375,42 +418,4 @@ pub(crate) fn resolve_hir_path(
             .resolve_path_as_macro(db.upcast(), path.mod_path())
             .map(|def| PathResolution::Macro(def.into()))
     })
-}
-
-// XXX: during completion, cursor might be outside of any particular
-// expression. Try to figure out the correct scope...
-fn adjust(
-    scopes: &ExprScopes,
-    source_map: &BodySourceMap,
-    ptr: SyntaxNodePtr,
-    file_id: HirFileId,
-    offset: TextUnit,
-) -> Option<ScopeId> {
-    let r = ptr.range();
-    let child_scopes = scopes
-        .scope_by_expr()
-        .iter()
-        .filter_map(|(id, scope)| {
-            let source = source_map.expr_syntax(*id).ok()?;
-            // FIXME: correctly handle macro expansion
-            if source.file_id != file_id {
-                return None;
-            }
-            let syntax_node_ptr = source.value.syntax_node_ptr();
-            Some((syntax_node_ptr, scope))
-        })
-        .map(|(ptr, scope)| (ptr.range(), scope))
-        .filter(|(range, _)| range.start() <= offset && range.is_subrange(&r) && *range != r);
-
-    child_scopes
-        .max_by(|(r1, _), (r2, _)| {
-            if r2.is_subrange(&r1) {
-                std::cmp::Ordering::Greater
-            } else if r1.is_subrange(&r2) {
-                std::cmp::Ordering::Less
-            } else {
-                r1.start().cmp(&r2.start())
-            }
-        })
-        .map(|(_ptr, scope)| *scope)
 }
