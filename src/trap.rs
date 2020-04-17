@@ -12,7 +12,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
             &Signature {
                 call_conv: CallConv::triple_default(fx.triple()),
                 params: vec![AbiParam::new(pointer_ty(fx.tcx))],
-                returns: vec![],
+                returns: vec![AbiParam::new(types::I32)],
             },
         )
         .unwrap();

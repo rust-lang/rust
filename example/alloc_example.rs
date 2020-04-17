@@ -13,7 +13,7 @@ static ALLOC: System = System;
 
 #[link(name = "c")]
 extern "C" {
-    fn puts(s: *const u8);
+    fn puts(s: *const u8) -> i32;
 }
 
 #[panic_handler]
