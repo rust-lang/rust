@@ -402,9 +402,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let did = instance.def_id();
-        if did.is_local() && self.tcx.has_typeck_tables(did) {
-            if let Some(error_reported) = self.tcx.typeck_tables_of(did).tainted_by_errors {
-                throw_inval!(TypeckError(error_reported))
+        if let Some(did) = did.as_local() {
+            if self.tcx.has_typeck_tables(did) {
+                if let Some(error_reported) = self.tcx.typeck_tables_of(did).tainted_by_errors {
+                    throw_inval!(TypeckError(error_reported))
+                }
             }
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);

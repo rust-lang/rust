@@ -459,12 +459,13 @@ rustc_queries! {
             desc { "type-checking all item bodies" }
         }
 
-        query typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
-            desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }
-            cache_on_disk_if { key.is_local() }
+        query typeck_tables_of(key: LocalDefId) -> &'tcx ty::TypeckTables<'tcx> {
+            desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
         }
-        query diagnostic_only_typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
-            cache_on_disk_if { key.is_local() }
+        query diagnostic_only_typeck_tables_of(key: LocalDefId) -> &'tcx ty::TypeckTables<'tcx> {
+            desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
             load_cached(tcx, id) {
                 let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
                     .queries.on_disk_cache
@@ -476,8 +477,9 @@ rustc_queries! {
     }
 
     Other {
-        query used_trait_imports(key: DefId) -> &'tcx DefIdSet {
-            cache_on_disk_if { key.is_local() }
+        query used_trait_imports(key: LocalDefId) -> &'tcx DefIdSet {
+            desc { |tcx| "used_trait_imports `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
         }
     }
 

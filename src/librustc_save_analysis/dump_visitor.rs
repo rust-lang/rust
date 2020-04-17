@@ -107,7 +107,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     where
         F: FnOnce(&mut Self),
     {
-        let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id).to_def_id();
+        let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id);
 
         let tables = if self.tcx.has_typeck_tables(item_def_id) {
             self.tcx.typeck_tables_of(item_def_id)
