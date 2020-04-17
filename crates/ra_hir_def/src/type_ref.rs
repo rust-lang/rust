@@ -163,8 +163,16 @@ impl TypeRef {
                         let crate::path::GenericArg::Type(type_ref) = arg;
                         go(type_ref, f);
                     }
-                    for (_, type_ref) in &args_and_bindings.bindings {
-                        go(type_ref, f);
+                    for binding in &args_and_bindings.bindings {
+                        if let Some(type_ref) = &binding.type_ref {
+                            go(type_ref, f);
+                        }
+                        for bound in &binding.bounds {
+                            match bound {
+                                TypeBound::Path(path) => go_path(path, f),
+                                TypeBound::Error => (),
+                            }
+                        }
                     }
                 }
             }

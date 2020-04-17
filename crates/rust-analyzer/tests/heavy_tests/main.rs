@@ -9,7 +9,7 @@ use lsp_types::{
 };
 use rust_analyzer::req::{
     CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
-    Formatting, GotoDefinition, OnEnter, Runnables, RunnablesParams,
+    Formatting, GotoDefinition, HoverRequest, OnEnter, Runnables, RunnablesParams,
 };
 use serde_json::json;
 use tempfile::TempDir;
@@ -624,4 +624,93 @@ fn main() { message(); }
         Position::new(2, 15),
     ));
     assert!(format!("{}", res).contains("hello.rs"));
+}
+
+#[test]
+fn resolve_proc_macro() {
+    if skip_slow_tests() {
+        return;
+    }
+    let server = Project::with_fixture(
+        r###"
+//- foo/Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+edition = "2018"
+[dependencies]
+bar = {path = "../bar"}
+
+//- foo/src/main.rs
+use bar::Bar;
+trait Bar {
+  fn bar();
+}
+#[derive(Bar)]
+struct Foo {}
+fn main() {
+  Foo::bar();
+}
+
+//- bar/Cargo.toml
+[package]
+name = "bar"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+//- bar/src/lib.rs
+extern crate proc_macro;
+use proc_macro::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
+macro_rules! t {
+    ($n:literal) => {
+        TokenTree::from(Ident::new($n, Span::call_site()))
+    };
+    ({}) => {
+        TokenTree::from(Group::new(Delimiter::Brace, TokenStream::new()))
+    };
+    (()) => {
+        TokenTree::from(Group::new(Delimiter::Parenthesis, TokenStream::new()))
+    };
+}
+#[proc_macro_derive(Bar)]
+pub fn foo(_input: TokenStream) -> TokenStream {
+    // We hard code the output here for preventing to use any deps
+    let mut res = TokenStream::new();
+
+    // impl Bar for Foo { fn bar() {} }
+    let mut tokens = vec![t!("impl"), t!("Bar"), t!("for"), t!("Foo")];
+    let mut fn_stream = TokenStream::new();
+    fn_stream.extend(vec![t!("fn"), t!("bar"), t!(()), t!({})]);
+    tokens.push(Group::new(Delimiter::Brace, fn_stream).into());
+    res.extend(tokens);
+    res
+}
+
+"###,
+    )
+    .with_config(|config| {
+        // FIXME: Use env!("CARGO_BIN_EXE_ra-analyzer") instead after
+        // https://github.com/rust-lang/cargo/pull/7697 landed
+        let macro_srv_path = std::path::Path::new(std::env!("CARGO_MANIFEST_DIR"))
+            .join("../../target/debug/rust-analyzer")
+            .to_string_lossy()
+            .to_string();
+
+        config.cargo.load_out_dirs_from_check = true;
+        config.proc_macro_srv = Some((macro_srv_path, vec!["proc-macro".to_string()]));
+    })
+    .root("foo")
+    .root("bar")
+    .server();
+    server.wait_until_workspace_is_loaded();
+    let res = server.send_request::<HoverRequest>(TextDocumentPositionParams::new(
+        server.doc_id("foo/src/main.rs"),
+        Position::new(7, 9),
+    ));
+
+    let value = res.get("contents").unwrap().get("value").unwrap().to_string();
+    assert_eq!(value, r#""```rust\nfoo::Bar\nfn bar()\n```""#)
 }

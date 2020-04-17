@@ -680,6 +680,16 @@ impl Ty {
         }
     }
 
+    pub fn strip_references(&self) -> &Ty {
+        let mut t: &Ty = self;
+
+        while let Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(_mutability), parameters }) = t {
+            t = parameters.as_single();
+        }
+
+        t
+    }
+
     pub fn as_adt(&self) -> Option<(AdtId, &Substs)> {
         match self {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(adt_def), parameters }) => {

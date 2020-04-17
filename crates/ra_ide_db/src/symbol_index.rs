@@ -285,7 +285,7 @@ impl Query {
                 let (start, end) = SymbolIndex::map_value_to_range(indexed_value.value);
 
                 for symbol in &symbol_index.symbols[start..end] {
-                    if self.only_types && !is_type(symbol.ptr.kind()) {
+                    if self.only_types && !is_type(symbol.kind) {
                         continue;
                     }
                     if self.exact && symbol.name != self.query {
@@ -312,6 +312,7 @@ fn is_type(kind: SyntaxKind) -> bool {
 pub struct FileSymbol {
     pub file_id: FileId,
     pub name: SmolStr,
+    pub kind: SyntaxKind,
     pub ptr: SyntaxNodePtr,
     pub name_range: Option<TextRange>,
     pub container_name: Option<SmolStr>,
@@ -377,6 +378,7 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
 fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
     to_symbol(node).map(move |(name, ptr, name_range)| FileSymbol {
         name,
+        kind: node.kind(),
         ptr,
         file_id,
         name_range: Some(name_range),

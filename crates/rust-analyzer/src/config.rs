@@ -20,7 +20,7 @@ pub struct Config {
     pub with_sysroot: bool,
     pub publish_diagnostics: bool,
     pub lru_capacity: Option<usize>,
-    pub proc_macro_srv: Option<String>,
+    pub proc_macro_srv: Option<(String, Vec<String>)>,
     pub files: FilesConfig,
     pub notifications: NotificationsConfig,
 
@@ -131,6 +131,18 @@ impl Config {
         set(value, "/cargo/allFeatures", &mut self.cargo.all_features);
         set(value, "/cargo/features", &mut self.cargo.features);
         set(value, "/cargo/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
+
+        match get::<bool>(value, "/procMacro/enabled") {
+            Some(true) => {
+                if let Ok(mut path) = std::env::current_exe() {
+                    path.pop();
+                    path.push("rust-analyzer");
+                    self.proc_macro_srv = Some((path.to_string_lossy().to_string(), vec!["proc-macro".to_string()]));
+                }
+            }
+            _ => self.proc_macro_srv = None,
+        }
+
         match get::<Vec<String>>(value, "/rustfmt/overrideCommand") {
             Some(mut args) if !args.is_empty() => {
                 let command = args.remove(0);

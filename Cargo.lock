@@ -114,17 +114,18 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 [[package]]
 name = "chalk-derive"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=28cef6ff403d403e6ad2f3d27d944e9ffac1bce8#28cef6ff403d403e6ad2f3d27d944e9ffac1bce8"
 dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+ "synstructure",
 ]
 
 [[package]]
 name = "chalk-engine"
 version = "0.9.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=28cef6ff403d403e6ad2f3d27d944e9ffac1bce8#28cef6ff403d403e6ad2f3d27d944e9ffac1bce8"
 dependencies = [
  "chalk-macros",
  "rustc-hash",
@@ -133,7 +134,7 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=28cef6ff403d403e6ad2f3d27d944e9ffac1bce8#28cef6ff403d403e6ad2f3d27d944e9ffac1bce8"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -143,7 +144,7 @@ dependencies = [
 [[package]]
 name = "chalk-macros"
 version = "0.1.1"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=28cef6ff403d403e6ad2f3d27d944e9ffac1bce8#28cef6ff403d403e6ad2f3d27d944e9ffac1bce8"
 dependencies = [
  "lazy_static",
 ]
@@ -151,7 +152,7 @@ dependencies = [
 [[package]]
 name = "chalk-rust-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=28cef6ff403d403e6ad2f3d27d944e9ffac1bce8#28cef6ff403d403e6ad2f3d27d944e9ffac1bce8"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -162,7 +163,7 @@ dependencies = [
 [[package]]
 name = "chalk-solve"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=039fc904a05f8cb3d0c682c9a57a63dda7a35356#039fc904a05f8cb3d0c682c9a57a63dda7a35356"
+source = "git+https://github.com/rust-lang/chalk.git?rev=28cef6ff403d403e6ad2f3d27d944e9ffac1bce8#28cef6ff403d403e6ad2f3d27d944e9ffac1bce8"
 dependencies = [
  "chalk-derive",
  "chalk-engine",
@@ -446,9 +447,9 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "725cf19794cf90aa94e65050cb4191ff5d8fa87a498383774c47b332e3af952e"
+checksum = "8a0d737e0f947a1864e93d33fdef4af8445a00d1ed8dc0c8ddb73139ea6abf15"
 dependencies = [
  "libc",
 ]
@@ -495,9 +496,9 @@ dependencies = [
 
 [[package]]
 name = "insta"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8de3f029212a3fe78a6090f1f2b993877ca245a9ded863f3fcbd6eae084fc1ed"
+checksum = "8386e795fb3927131ea4cede203c529a333652eb6dc4ff29616b832b27e9b096"
 dependencies = [
  "console",
  "difference",
@@ -593,15 +594,15 @@ checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
 
 [[package]]
 name = "libc"
-version = "0.2.68"
+version = "0.2.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dea0c0405123bba743ee3f91f49b1c7cfb684eef0da0a50110f758ccf24cdff0"
+checksum = "99e85c08494b21a9054e7fe1374a732aeadaff3980b6990b94bfd3a70f690005"
 
 [[package]]
 name = "libloading"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c979a19ffb457f0273965c333053f3d586bf759bf7b683fbebc37f9a9ebedc4"
+checksum = "3c4f51b790f5bdb65acb4cc94bb81d7b2ee60348a5431ac1467d390b017600b0"
 dependencies = [
  "winapi 0.3.8",
 ]
@@ -757,9 +758,9 @@ dependencies = [
 
 [[package]]
 name = "num_cpus"
-version = "1.12.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46203554f085ff89c235cd12f7075f3233af9b11ed7c9e16dfe2560d03313ce6"
+checksum = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
 dependencies = [
  "hermit-abi",
  "libc",
@@ -779,9 +780,9 @@ checksum = "a86ed3f5f244b372d6b1a00b72ef7f8876d0bc6a78a4c9985c53614041512063"
 
 [[package]]
 name = "parking_lot"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fdfcb5f20930a79e326f7ec992a9fdb5b7bd809254b1e735bdd5a99f78bee0d"
+checksum = "d3a704eb390aafdc107b0e392f56a82b668e3a71366993b5340f5833fd62505e"
 dependencies = [
  "lock_api",
  "parking_lot_core",
@@ -1013,6 +1014,7 @@ dependencies = [
  "chalk-solve",
  "ena",
  "insta",
+ "itertools",
  "log",
  "ra_arena",
  "ra_db",
@@ -1339,6 +1341,7 @@ dependencies = [
  "ra_hir_def",
  "ra_hir_ty",
  "ra_ide",
+ "ra_proc_macro_srv",
  "ra_prof",
  "ra_project_model",
  "ra_syntax",
@@ -1561,6 +1564,18 @@ checksum = "0df0eb663f387145cab623dea85b09c2c5b4b0aef44e945d928e682fce71bb03"
 dependencies = [
  "proc-macro2",
  "quote",
+ "unicode-xid",
+]
+
+[[package]]
+name = "synstructure"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67656ea1dc1b41b1451851562ea232ec2e5a80242139f7e679ceccfb5d61f545"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
  "unicode-xid",
 ]
 

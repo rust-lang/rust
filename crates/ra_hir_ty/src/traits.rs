@@ -16,10 +16,12 @@ use self::chalk::{from_chalk, Interner, ToChalk};
 pub(crate) mod chalk;
 mod builtin;
 
-/// This controls the maximum size of types Chalk considers. If we set this too
-/// high, we can run into slow edge cases; if we set it too low, Chalk won't
-/// find some solutions.
-const CHALK_SOLVER_MAX_SIZE: usize = 10;
+// This controls the maximum size of types Chalk considers. If we set this too
+// high, we can run into slow edge cases; if we set it too low, Chalk won't
+// find some solutions.
+// FIXME this is currently hardcoded in the recursive solver
+// const CHALK_SOLVER_MAX_SIZE: usize = 10;
+
 /// This controls how much 'time' we give the Chalk solver before giving up.
 const CHALK_SOLVER_FUEL: i32 = 100;
 
@@ -30,8 +32,7 @@ struct ChalkContext<'a> {
 }
 
 fn create_chalk_solver() -> chalk_solve::Solver<Interner> {
-    let solver_choice =
-        chalk_solve::SolverChoice::SLG { max_size: CHALK_SOLVER_MAX_SIZE, expected_answers: None };
+    let solver_choice = chalk_solve::SolverChoice::recursive();
     solver_choice.into_solver()
 }
 
@@ -194,13 +195,16 @@ fn solve(
         }
         remaining > 0
     };
-    let mut solve = || solver.solve_limited(&context, goal, should_continue);
+    let mut solve = || {
+        let solution = solver.solve_limited(&context, goal, should_continue);
+        log::debug!("solve({:?}) => {:?}", goal, solution);
+        solution
+    };
     // don't set the TLS for Chalk unless Chalk debugging is active, to make
     // extra sure we only use it for debugging
     let solution =
         if is_chalk_debug() { chalk::tls::set_current_program(db, solve) } else { solve() };
 
-    log::debug!("solve({:?}) => {:?}", goal, solution);
     solution
 }
 

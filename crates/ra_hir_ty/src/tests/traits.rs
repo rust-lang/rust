@@ -349,7 +349,6 @@ trait Trait: SuperTrait {
 
 #[test]
 fn infer_project_associated_type() {
-    // y, z, a don't yet work because of https://github.com/rust-lang/chalk/issues/234
     assert_snapshot!(
         infer(r#"
 trait Iterable {
@@ -368,12 +367,12 @@ fn test<T: Iterable>() {
     [108; 261) '{     ...ter; }': ()
     [118; 119) 'x': u32
     [145; 146) '1': u32
-    [156; 157) 'y': {unknown}
-    [183; 192) 'no_matter': {unknown}
-    [202; 203) 'z': {unknown}
-    [215; 224) 'no_matter': {unknown}
-    [234; 235) 'a': {unknown}
-    [249; 258) 'no_matter': {unknown}
+    [156; 157) 'y': Iterable::Item<T>
+    [183; 192) 'no_matter': Iterable::Item<T>
+    [202; 203) 'z': Iterable::Item<T>
+    [215; 224) 'no_matter': Iterable::Item<T>
+    [234; 235) 'a': Iterable::Item<T>
+    [249; 258) 'no_matter': Iterable::Item<T>
     "###
     );
 }
@@ -433,8 +432,8 @@ fn test<T: Iterable<Item=u32>>() {
 "#),
         @r###"
     [67; 100) '{     ...own; }': ()
-    [77; 78) 'y': {unknown}
-    [90; 97) 'unknown': {unknown}
+    [77; 78) 'y': u32
+    [90; 97) 'unknown': u32
     "###
     );
 }
@@ -549,7 +548,7 @@ impl std::ops::Index<u32> for Bar {
 
 fn test() {
     let a = Bar;
-    let b = a[1];
+    let b = a[1u32];
     b<|>;
 }
 
@@ -574,7 +573,7 @@ fn infer_ops_index_autoderef() {
 //- /main.rs crate:main deps:std
 fn test() {
     let a = &[1u32, 2, 3];
-    let b = a[1];
+    let b = a[1u32];
     b<|>;
 }
 
@@ -916,11 +915,7 @@ fn test<T: ApplyL>(t: T) {
 }
 "#,
     );
-    // FIXME here Chalk doesn't normalize the type to a placeholder. I think we
-    // need to add a rule like Normalize(<T as ApplyL>::Out -> ApplyL::Out<T>)
-    // to the trait env ourselves here; probably Chalk can't do this by itself.
-    // assert_eq!(t, "ApplyL::Out<[missing name]>");
-    assert_eq!(t, "{unknown}");
+    assert_eq!(t, "ApplyL::Out<T>");
 }
 
 #[test]
@@ -1329,16 +1324,16 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
     [263; 264) 'y': impl Trait<Type = i64>
     [290; 398) '{     ...r>); }': ()
     [296; 299) 'get': fn get<T>(T) -> <T as Trait>::Type
-    [296; 302) 'get(x)': {unknown}
+    [296; 302) 'get(x)': u32
     [300; 301) 'x': T
-    [308; 312) 'get2': fn get2<{unknown}, T>(T) -> {unknown}
-    [308; 315) 'get2(x)': {unknown}
+    [308; 312) 'get2': fn get2<u32, T>(T) -> u32
+    [308; 315) 'get2(x)': u32
     [313; 314) 'x': T
     [321; 324) 'get': fn get<impl Trait<Type = i64>>(impl Trait<Type = i64>) -> <impl Trait<Type = i64> as Trait>::Type
-    [321; 327) 'get(y)': {unknown}
+    [321; 327) 'get(y)': i64
     [325; 326) 'y': impl Trait<Type = i64>
-    [333; 337) 'get2': fn get2<{unknown}, impl Trait<Type = i64>>(impl Trait<Type = i64>) -> {unknown}
-    [333; 340) 'get2(y)': {unknown}
+    [333; 337) 'get2': fn get2<i64, impl Trait<Type = i64>>(impl Trait<Type = i64>) -> i64
+    [333; 340) 'get2(y)': i64
     [338; 339) 'y': impl Trait<Type = i64>
     [346; 349) 'get': fn get<S<u64>>(S<u64>) -> <S<u64> as Trait>::Type
     [346; 357) 'get(set(S))': u64
@@ -1402,7 +1397,6 @@ mod iter {
 
 #[test]
 fn projection_eq_within_chalk() {
-    // std::env::set_var("CHALK_DEBUG", "1");
     assert_snapshot!(
         infer(r#"
 trait Trait1 {
@@ -1422,7 +1416,7 @@ fn test<T: Trait1<Type = u32>>(x: T) {
     [164; 165) 'x': T
     [170; 186) '{     ...o(); }': ()
     [176; 177) 'x': T
-    [176; 183) 'x.foo()': {unknown}
+    [176; 183) 'x.foo()': u32
     "###
     );
 }
@@ -1578,7 +1572,7 @@ fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
     [150; 151) 'f': F
     [156; 184) '{     ...2)); }': ()
     [162; 163) 'f': F
-    [162; 181) 'f.call...1, 2))': {unknown}
+    [162; 181) 'f.call...1, 2))': u128
     [174; 180) '(1, 2)': (u32, u64)
     [175; 176) '1': u32
     [178; 179) '2': u64
@@ -1803,7 +1797,7 @@ fn test<T, U>() where T::Item: Trait2, T: Trait<U::Item>, U: Trait<()> {
 }
 
 #[test]
-fn unselected_projection_on_trait_self() {
+fn unselected_projection_on_impl_self() {
     assert_snapshot!(infer(
         r#"
 //- /main.rs
@@ -1829,7 +1823,7 @@ impl Trait for S2 {
 "#,
     ), @r###"
     [54; 58) 'self': &Self
-    [60; 61) 'x': {unknown}
+    [60; 61) 'x': Trait::Item<Self>
     [140; 144) 'self': &S
     [146; 147) 'x': u32
     [161; 175) '{ let y = x; }': ()
@@ -1841,6 +1835,30 @@ impl Trait for S2 {
     [271; 272) 'y': i32
     [275; 276) 'x': i32
     "###);
+}
+
+#[test]
+fn unselected_projection_on_trait_self() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait {
+    type Item;
+
+    fn f(&self) -> Self::Item { loop {} }
+}
+
+struct S;
+impl Trait for S {
+    type Item = u32;
+}
+
+fn test() {
+    S.f()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
 }
 
 #[test]
@@ -1921,6 +1939,119 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
     );
     // this is a legitimate cycle
     assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn inline_assoc_type_bounds_1() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Iterator {
+    type Item;
+}
+trait OtherTrait<T> {
+    fn foo(&self) -> T;
+}
+
+// workaround for Chalk assoc type normalization problems
+pub struct S<T>;
+impl<T: Iterator> Iterator for S<T> {
+    type Item = <T as Iterator>::Item;
+}
+
+fn test<I: Iterator<Item: OtherTrait<u32>>>() {
+    let x: <S<I> as Iterator>::Item;
+    x.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
+fn inline_assoc_type_bounds_2() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Iterator {
+    type Item;
+}
+
+fn test<I: Iterator<Item: Iterator<Item = u32>>>() {
+    let x: <<I as Iterator>::Item as Iterator>::Item;
+    x<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
+fn proc_macro_server_types() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+macro_rules! with_api {
+    ($S:ident, $self:ident, $m:ident) => {
+        $m! {
+            TokenStream {
+                fn new() -> $S::TokenStream;
+            },
+            Group {
+            },
+        }
+    };
+}
+macro_rules! associated_item {
+    (type TokenStream) =>
+        (type TokenStream: 'static + Clone;);
+    (type Group) =>
+        (type Group: 'static + Clone;);
+    ($($item:tt)*) => ($($item)*;)
+}
+macro_rules! declare_server_traits {
+    ($($name:ident {
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+    }),* $(,)?) => {
+        pub trait Types {
+            $(associated_item!(type $name);)*
+        }
+
+        $(pub trait $name: Types {
+            $(associated_item!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
+        })*
+
+        pub trait Server: Types $(+ $name)* {}
+        impl<S: Types $(+ $name)*> Server for S {}
+    }
+}
+with_api!(Self, self_, declare_server_traits);
+struct Group {}
+struct TokenStream {}
+struct Rustc;
+impl Types for Rustc {
+    type TokenStream = TokenStream;
+    type Group = Group;
+}
+fn make<T>() -> T { loop {} }
+impl TokenStream for Rustc {
+    fn new() -> Self::TokenStream {
+        let group: Self::Group = make();
+        make()
+    }
+}
+"#, true),
+        @r###"
+    [1115; 1126) '{ loop {} }': T
+    [1117; 1124) 'loop {}': !
+    [1122; 1124) '{}': ()
+    [1190; 1253) '{     ...     }': {unknown}
+    [1204; 1209) 'group': {unknown}
+    [1225; 1229) 'make': fn make<{unknown}>() -> {unknown}
+    [1225; 1231) 'make()': {unknown}
+    [1241; 1245) 'make': fn make<{unknown}>() -> {unknown}
+    [1241; 1247) 'make()': {unknown}
+    "###
+    );
 }
 
 #[test]
@@ -2020,6 +2151,33 @@ fn main() {
     [230; 231) 'z': &()
     "###
     );
+}
+
+#[test]
+fn associated_type_bound() {
+    let t = type_at(
+        r#"
+//- /main.rs
+pub trait Trait {
+    type Item: OtherTrait<u32>;
+}
+pub trait OtherTrait<T> {
+    fn foo(&self) -> T;
+}
+
+// this is just a workaround for chalk#234
+pub struct S<T>;
+impl<T: Trait> Trait for S<T> {
+    type Item = <T as Trait>::Item;
+}
+
+fn test<T: Trait>() {
+    let y: <S<T> as Trait>::Item = no_matter;
+    y.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "u32");
 }
 
 #[test]

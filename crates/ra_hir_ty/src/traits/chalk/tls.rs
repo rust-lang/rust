@@ -2,10 +2,11 @@
 use std::fmt;
 
 use chalk_ir::{AliasTy, Goal, Goals, Lifetime, Parameter, ProgramClauseImplication, TypeName};
+use itertools::Itertools;
 
 use super::{from_chalk, Interner};
 use crate::{db::HirDatabase, CallableDef, TypeCtor};
-use hir_def::{AdtId, AssocContainerId, Lookup, TypeAliasId};
+use hir_def::{AdtId, AssocContainerId, DefWithBodyId, Lookup, TypeAliasId};
 
 pub use unsafe_tls::{set_current_program, with_current_program};
 
@@ -69,7 +70,27 @@ impl DebugContext<'_> {
                 write!(f, "{}::{}", trait_name, name)?;
             }
             TypeCtor::Closure { def, expr } => {
-                write!(f, "{{closure {:?} in {:?}}}", expr.into_raw(), def)?;
+                write!(f, "{{closure {:?} in ", expr.into_raw())?;
+                match def {
+                    DefWithBodyId::FunctionId(func) => {
+                        write!(f, "fn {}", self.0.function_data(func).name)?
+                    }
+                    DefWithBodyId::StaticId(s) => {
+                        if let Some(name) = self.0.static_data(s).name.as_ref() {
+                            write!(f, "body of static {}", name)?;
+                        } else {
+                            write!(f, "body of unnamed static {:?}", s)?;
+                        }
+                    }
+                    DefWithBodyId::ConstId(c) => {
+                        if let Some(name) = self.0.const_data(c).name.as_ref() {
+                            write!(f, "body of const {}", name)?;
+                        } else {
+                            write!(f, "body of unnamed const {:?}", c)?;
+                        }
+                    }
+                };
+                write!(f, "}}")?;
             }
         }
         Ok(())
@@ -113,14 +134,15 @@ impl DebugContext<'_> {
         };
         let trait_data = self.0.trait_data(trait_);
         let params = alias.substitution.parameters(&Interner);
-        write!(
-            fmt,
-            "<{:?} as {}<{:?}>>::{}",
-            &params[0],
-            trait_data.name,
-            &params[1..],
-            type_alias_data.name
-        )
+        write!(fmt, "<{:?} as {}", &params[0], trait_data.name,)?;
+        if params.len() > 1 {
+            write!(
+                fmt,
+                "<{}>",
+                &params[1..].iter().format_with(", ", |x, f| f(&format_args!("{:?}", x))),
+            )?;
+        }
+        write!(fmt, ">::{}", type_alias_data.name)
     }
 
     pub fn debug_ty(

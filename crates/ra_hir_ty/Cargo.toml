@@ -8,6 +8,7 @@ authors = ["rust-analyzer developers"]
 doctest = false
 
 [dependencies]
+itertools = "0.9.0"
 arrayvec = "0.5.1"
 smallvec = "1.2.0"
 ena = "0.13.1"
@@ -26,9 +27,9 @@ test_utils = { path = "../test_utils" }
 
 scoped-tls = "1"
 
-chalk-solve =   { git = "https://github.com/rust-lang/chalk.git", rev = "039fc904a05f8cb3d0c682c9a57a63dda7a35356" }
-chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "039fc904a05f8cb3d0c682c9a57a63dda7a35356" }
-chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "039fc904a05f8cb3d0c682c9a57a63dda7a35356" }
+chalk-solve =   { git = "https://github.com/rust-lang/chalk.git", rev = "28cef6ff403d403e6ad2f3d27d944e9ffac1bce8" }
+chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "28cef6ff403d403e6ad2f3d27d944e9ffac1bce8" }
+chalk-ir =      { git = "https://github.com/rust-lang/chalk.git", rev = "28cef6ff403d403e6ad2f3d27d944e9ffac1bce8" }
 
 [dev-dependencies]
-insta = "0.15.0"
+insta = "0.16.0"

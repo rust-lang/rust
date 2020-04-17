@@ -3,13 +3,13 @@ import * as vscode from 'vscode';
 import * as ra from './rust-analyzer-api';
 
 import { Ctx, Disposable } from './ctx';
-import { sendRequestWithRetry, isRustDocument, RustDocument, RustEditor } from './util';
+import { sendRequestWithRetry, isRustDocument, RustDocument, RustEditor, sleep } from './util';
 
 
 export function activateInlayHints(ctx: Ctx) {
     const maybeUpdater = {
         updater: null as null | HintsUpdater,
-        onConfigChange() {
+        async onConfigChange() {
             if (
                 !ctx.config.inlayHints.typeHints &&
                 !ctx.config.inlayHints.parameterHints &&
@@ -17,6 +17,7 @@ export function activateInlayHints(ctx: Ctx) {
             ) {
                 return this.dispose();
             }
+            await sleep(100);
             if (this.updater) {
                 this.updater.syncCacheAndRenderHints();
             } else {

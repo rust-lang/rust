@@ -25,9 +25,10 @@ pub fn analysis_stats(
     with_deps: bool,
     randomize: bool,
     load_output_dirs: bool,
+    with_proc_macro: bool,
 ) -> Result<()> {
     let db_load_time = Instant::now();
-    let (mut host, roots) = load_cargo(path, load_output_dirs)?;
+    let (mut host, roots) = load_cargo(path, load_output_dirs, with_proc_macro)?;
     let db = host.raw_database();
     println!("Database loaded, {} roots, {:?}", roots.len(), db_load_time.elapsed());
     let analysis_time = Instant::now();

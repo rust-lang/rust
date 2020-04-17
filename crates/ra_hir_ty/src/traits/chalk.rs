@@ -32,6 +32,9 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
     type InternedSubstitution = Vec<Parameter<Self>>;
+    type InternedProgramClause = chalk_ir::ProgramClauseData<Self>;
+    type InternedProgramClauses = Vec<chalk_ir::ProgramClause<Self>>;
+    type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
     type Identifier = TypeAliasId;
     type DefId = InternId;
 
@@ -181,6 +184,48 @@ impl chalk_ir::interner::Interner for Interner {
     ) -> &'a [Parameter<Self>] {
         substitution
     }
+
+    fn intern_program_clause(
+        &self,
+        data: chalk_ir::ProgramClauseData<Self>,
+    ) -> chalk_ir::ProgramClauseData<Self> {
+        data
+    }
+
+    fn program_clause_data<'a>(
+        &self,
+        clause: &'a chalk_ir::ProgramClauseData<Self>,
+    ) -> &'a chalk_ir::ProgramClauseData<Self> {
+        clause
+    }
+
+    fn intern_program_clauses(
+        &self,
+        data: impl IntoIterator<Item = chalk_ir::ProgramClause<Self>>,
+    ) -> Vec<chalk_ir::ProgramClause<Self>> {
+        data.into_iter().collect()
+    }
+
+    fn program_clauses_data<'a>(
+        &self,
+        clauses: &'a Vec<chalk_ir::ProgramClause<Self>>,
+    ) -> &'a [chalk_ir::ProgramClause<Self>] {
+        clauses
+    }
+
+    fn intern_quantified_where_clauses(
+        &self,
+        data: impl IntoIterator<Item = chalk_ir::QuantifiedWhereClause<Self>>,
+    ) -> Self::InternedQuantifiedWhereClauses {
+        data.into_iter().collect()
+    }
+
+    fn quantified_where_clauses_data<'a>(
+        &self,
+        clauses: &'a Self::InternedQuantifiedWhereClauses,
+    ) -> &'a [chalk_ir::QuantifiedWhereClause<Self>] {
+        clauses
+    }
 }
 
 impl chalk_ir::interner::HasInterner for Interner {
@@ -238,12 +283,10 @@ impl ToChalk for Ty {
             Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx).intern(&Interner),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             Ty::Dyn(predicates) => {
-                let where_clauses = predicates
-                    .iter()
-                    .filter(|p| !p.is_error())
-                    .cloned()
-                    .map(|p| p.to_chalk(db))
-                    .collect();
+                let where_clauses = chalk_ir::QuantifiedWhereClauses::from(
+                    &Interner,
+                    predicates.iter().filter(|p| !p.is_error()).cloned().map(|p| p.to_chalk(db)),
+                );
                 let bounded_ty = chalk_ir::DynTy { bounds: make_binders(where_clauses, 1) };
                 chalk_ir::TyData::Dyn(bounded_ty).intern(&Interner)
             }
@@ -281,8 +324,12 @@ impl ToChalk for Ty {
             chalk_ir::TyData::InferenceVar(_iv) => Ty::Unknown,
             chalk_ir::TyData::Dyn(where_clauses) => {
                 assert_eq!(where_clauses.bounds.binders.len(), 1);
-                let predicates =
-                    where_clauses.bounds.value.into_iter().map(|c| from_chalk(db, c)).collect();
+                let predicates = where_clauses
+                    .bounds
+                    .skip_binders()
+                    .iter(&Interner)
+                    .map(|c| from_chalk(db, c.clone()))
+                    .collect();
                 Ty::Dyn(predicates)
             }
         }
@@ -426,7 +473,7 @@ impl ToChalk for GenericPredicate {
     ) -> GenericPredicate {
         // we don't produce any where clauses with binders and can't currently deal with them
         match where_clause
-            .value
+            .skip_binders()
             .shifted_out(&Interner)
             .expect("unexpected bound vars in where clause")
         {
@@ -464,13 +511,13 @@ impl ToChalk for ProjectionTy {
 }
 
 impl ToChalk for super::ProjectionPredicate {
-    type Chalk = chalk_ir::Normalize<Interner>;
+    type Chalk = chalk_ir::AliasEq<Interner>;
 
-    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Normalize<Interner> {
-        chalk_ir::Normalize { alias: self.projection_ty.to_chalk(db), ty: self.ty.to_chalk(db) }
+    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::AliasEq<Interner> {
+        chalk_ir::AliasEq { alias: self.projection_ty.to_chalk(db), ty: self.ty.to_chalk(db) }
     }
 
-    fn from_chalk(_db: &dyn HirDatabase, _normalize: chalk_ir::Normalize<Interner>) -> Self {
+    fn from_chalk(_db: &dyn HirDatabase, _normalize: chalk_ir::AliasEq<Interner>) -> Self {
         unimplemented!()
     }
 }
@@ -521,7 +568,7 @@ impl ToChalk for Arc<super::TraitEnvironment> {
                 pred.clone().to_chalk(db).cast(&Interner);
             clauses.push(program_clause.into_from_env_clause(&Interner));
         }
-        chalk_ir::Environment::new().add_clauses(clauses)
+        chalk_ir::Environment::new(&Interner).add_clauses(&Interner, clauses)
     }
 
     fn from_chalk(
@@ -603,10 +650,10 @@ impl ToChalk for builtin::BuiltinImplAssocTyValueData {
 }
 
 fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T> {
-    chalk_ir::Binders {
+    chalk_ir::Binders::new(
+        std::iter::repeat(chalk_ir::ParameterKind::Ty(())).take(num_vars).collect(),
         value,
-        binders: std::iter::repeat(chalk_ir::ParameterKind::Ty(())).take(num_vars).collect(),
-    }
+    )
 }
 
 fn convert_where_clauses(
@@ -624,6 +671,55 @@ fn convert_where_clauses(
         result.push(pred.clone().subst(substs).to_chalk(db));
     }
     result
+}
+
+fn generic_predicate_to_inline_bound(
+    db: &dyn HirDatabase,
+    pred: &GenericPredicate,
+    self_ty: &Ty,
+) -> Option<chalk_rust_ir::InlineBound<Interner>> {
+    // An InlineBound is like a GenericPredicate, except the self type is left out.
+    // We don't have a special type for this, but Chalk does.
+    match pred {
+        GenericPredicate::Implemented(trait_ref) => {
+            if &trait_ref.substs[0] != self_ty {
+                // we can only convert predicates back to type bounds if they
+                // have the expected self type
+                return None;
+            }
+            let args_no_self = trait_ref.substs[1..]
+                .iter()
+                .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
+                .collect();
+            let trait_bound =
+                chalk_rust_ir::TraitBound { trait_id: trait_ref.trait_.to_chalk(db), args_no_self };
+            Some(chalk_rust_ir::InlineBound::TraitBound(trait_bound))
+        }
+        GenericPredicate::Projection(proj) => {
+            if &proj.projection_ty.parameters[0] != self_ty {
+                return None;
+            }
+            let trait_ = match proj.projection_ty.associated_ty.lookup(db.upcast()).container {
+                AssocContainerId::TraitId(t) => t,
+                _ => panic!("associated type not in trait"),
+            };
+            let args_no_self = proj.projection_ty.parameters[1..]
+                .iter()
+                .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
+                .collect();
+            let alias_eq_bound = chalk_rust_ir::AliasEqBound {
+                value: proj.ty.clone().to_chalk(db),
+                trait_bound: chalk_rust_ir::TraitBound {
+                    trait_id: trait_.to_chalk(db),
+                    args_no_self,
+                },
+                associated_ty_id: proj.projection_ty.associated_ty.to_chalk(db),
+                parameters: Vec::new(), // FIXME we don't support generic associated types yet
+            };
+            Some(chalk_rust_ir::InlineBound::AliasEqBound(alias_eq_bound))
+        }
+        GenericPredicate::Error => None,
+    }
 }
 
 impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
@@ -696,6 +792,13 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn interner(&self) -> &Interner {
         &Interner
     }
+    fn well_known_trait_id(
+        &self,
+        _well_known_trait: chalk_rust_ir::WellKnownTrait,
+    ) -> Option<chalk_ir::TraitId<Interner>> {
+        // FIXME tell Chalk about well-known traits (here and in trait_datum)
+        None
+    }
 }
 
 pub(crate) fn associated_ty_data_query(
@@ -708,12 +811,25 @@ pub(crate) fn associated_ty_data_query(
         AssocContainerId::TraitId(t) => t,
         _ => panic!("associated type not in trait"),
     };
+
+    // Lower bounds -- we could/should maybe move this to a separate query in `lower`
+    let type_alias_data = db.type_alias_data(type_alias);
     let generic_params = generics(db.upcast(), type_alias.into());
-    let bound_data = chalk_rust_ir::AssociatedTyDatumBound {
-        // FIXME add bounds and where clauses
-        bounds: vec![],
-        where_clauses: vec![],
-    };
+    let bound_vars = Substs::bound_vars(&generic_params);
+    let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
+    let ctx = crate::TyLoweringContext::new(db, &resolver)
+        .with_type_param_mode(crate::lower::TypeParamLoweringMode::Variable);
+    let self_ty = Ty::Bound(crate::BoundVar::new(crate::DebruijnIndex::INNERMOST, 0));
+    let bounds = type_alias_data
+        .bounds
+        .iter()
+        .flat_map(|bound| GenericPredicate::from_type_bound(&ctx, bound, self_ty.clone()))
+        .filter_map(|pred| generic_predicate_to_inline_bound(db, &pred, &self_ty))
+        .map(|bound| make_binders(bound.shifted_in(&Interner), 0))
+        .collect();
+
+    let where_clauses = convert_where_clauses(db, type_alias.into(), &bound_vars);
+    let bound_data = chalk_rust_ir::AssociatedTyDatumBound { bounds, where_clauses };
     let datum = AssociatedTyDatum {
         trait_id: trait_.to_chalk(db),
         id,

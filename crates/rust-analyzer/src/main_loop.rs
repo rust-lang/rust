@@ -15,6 +15,7 @@ use std::{
 };
 
 use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
+use itertools::Itertools;
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
     NumberOrString, WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressCreateParams,
@@ -88,37 +89,46 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
 
     let mut loop_state = LoopState::default();
     let mut world_state = {
-        // FIXME: support dynamic workspace loading.
         let workspaces = {
-            let mut loaded_workspaces = Vec::new();
-            for ws_root in &ws_roots {
-                let workspace = ra_project_model::ProjectWorkspace::discover_with_sysroot(
-                    ws_root.as_path(),
-                    config.with_sysroot,
-                    &config.cargo,
-                );
-                match workspace {
-                    Ok(workspace) => loaded_workspaces.push(workspace),
-                    Err(e) => {
-                        log::error!("loading workspace failed: {:?}", e);
+            // FIXME: support dynamic workspace loading.
+            let mut visited = FxHashSet::default();
+            let project_roots = ws_roots
+                .iter()
+                .filter_map(|it| ra_project_model::ProjectRoot::discover(it).ok())
+                .flatten()
+                .filter(|it| visited.insert(it.clone()))
+                .collect::<Vec<_>>();
 
-                        if let Some(ra_project_model::CargoTomlNotFoundError { .. }) =
-                            e.downcast_ref()
-                        {
-                            if !config.notifications.cargo_toml_not_found {
-                                continue;
-                            }
-                        }
+            if project_roots.is_empty() && config.notifications.cargo_toml_not_found {
+                show_message(
+                        req::MessageType::Error,
+                        format!(
+                            "rust-analyzer failed to discover workspace, no Cargo.toml found, dirs searched: {}",
+                            ws_roots.iter().format_with(", ", |it, f| f(&it.display()))
+                        ),
+                        &connection.sender,
+                    );
+            };
 
+            project_roots
+                .into_iter()
+                .filter_map(|root| {
+                    ra_project_model::ProjectWorkspace::load(
+                        root,
+                        &config.cargo,
+                        config.with_sysroot,
+                    )
+                    .map_err(|err| {
+                        log::error!("failed to load workspace: {:#}", err);
                         show_message(
                             req::MessageType::Error,
-                            format!("rust-analyzer failed to load workspace: {:?}", e),
+                            format!("rust-analyzer failed to load workspace: {:#}", err),
                             &connection.sender,
                         );
-                    }
-                }
-            }
-            loaded_workspaces
+                    })
+                    .ok()
+                })
+                .collect::<Vec<_>>()
         };
 
         let globs = config

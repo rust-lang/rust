@@ -156,7 +156,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             None => return,
         };
 
-        let cx = MatchCheckCtx { body, infer: infer.clone(), db };
+        let cx = MatchCheckCtx { match_expr, body, infer: infer.clone(), db };
         let pats = arms.iter().map(|arm| arm.pat);
 
         let mut seen = Matrix::empty();

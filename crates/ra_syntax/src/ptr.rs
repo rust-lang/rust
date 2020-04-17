@@ -34,12 +34,8 @@ impl SyntaxNodePtr {
         self.range
     }
 
-    pub fn kind(&self) -> SyntaxKind {
-        self.kind
-    }
-
     pub fn cast<N: AstNode>(self) -> Option<AstPtr<N>> {
-        if !N::can_cast(self.kind()) {
+        if !N::can_cast(self.kind) {
             return None;
         }
         Some(AstPtr { raw: self, _ty: PhantomData })
@@ -88,7 +84,7 @@ impl<N: AstNode> AstPtr<N> {
     }
 
     pub fn cast<U: AstNode>(self) -> Option<AstPtr<U>> {
-        if !U::can_cast(self.raw.kind()) {
+        if !U::can_cast(self.raw.kind) {
             return None;
         }
         Some(AstPtr { raw: self.raw, _ty: PhantomData })

@@ -47,12 +47,13 @@ pub fn analysis_bench(
     path: &Path,
     what: BenchWhat,
     load_output_dirs: bool,
+    with_proc_macro: bool,
 ) -> Result<()> {
     ra_prof::init();
 
     let start = Instant::now();
     eprint!("loading: ");
-    let (mut host, roots) = load_cargo(path, load_output_dirs)?;
+    let (mut host, roots) = load_cargo(path, load_output_dirs, with_proc_macro)?;
     let db = host.raw_database();
     eprintln!("{:?}\n", start.elapsed());
 
