@@ -728,7 +728,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Copy the return value to the caller's stack frame.
             if let Some(return_place) = frame.return_place {
                 let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
-                self.copy_op(op, return_place)?;
+                self.copy_op_transmute(op, return_place)?;
                 self.dump_place(*return_place);
             } else {
                 throw_ub!(Unreachable);
