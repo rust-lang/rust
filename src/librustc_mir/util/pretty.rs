@@ -254,6 +254,7 @@ pub fn write_mir_pretty<'tcx>(
     Ok(())
 }
 
+/// Write out a human-readable textual representation for the given function.
 pub fn write_mir_fn<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     src: MirSource<'tcx>,
