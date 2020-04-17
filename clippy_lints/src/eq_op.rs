@@ -124,15 +124,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                             && !rcpy
                             && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right).into()])
                         {
-                            span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |diag| {
-                                let lsnip = snippet(cx, l.span, "...").to_string();
-                                diag.span_suggestion(
-                                    left.span,
-                                    "use the left value directly",
-                                    lsnip,
-                                    Applicability::MaybeIncorrect, // FIXME #2597
-                                );
-                            })
+                            span_lint_and_then(
+                                cx,
+                                OP_REF,
+                                e.span,
+                                "needlessly taken reference of left operand",
+                                |diag| {
+                                    let lsnip = snippet(cx, l.span, "...").to_string();
+                                    diag.span_suggestion(
+                                        left.span,
+                                        "use the left value directly",
+                                        lsnip,
+                                        Applicability::MaybeIncorrect, // FIXME #2597
+                                    );
+                                },
+                            )
                         } else if !lcpy
                             && rcpy
                             && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty.into()])
@@ -161,15 +167,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         if (requires_ref || lcpy)
                             && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right).into()])
                         {
-                            span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |diag| {
-                                let lsnip = snippet(cx, l.span, "...").to_string();
-                                diag.span_suggestion(
-                                    left.span,
-                                    "use the left value directly",
-                                    lsnip,
-                                    Applicability::MaybeIncorrect, // FIXME #2597
-                                );
-                            })
+                            span_lint_and_then(
+                                cx,
+                                OP_REF,
+                                e.span,
+                                "needlessly taken reference of left operand",
+                                |diag| {
+                                    let lsnip = snippet(cx, l.span, "...").to_string();
+                                    diag.span_suggestion(
+                                        left.span,
+                                        "use the left value directly",
+                                        lsnip,
+                                        Applicability::MaybeIncorrect, // FIXME #2597
+                                    );
+                                },
+                            )
                         }
                     },
                     // foo == &bar

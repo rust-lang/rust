@@ -608,17 +608,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
                 if higher::is_from_for_desugar(local) {
                     return;
                 }
-                span_lint_and_then(cx, LET_UNIT_VALUE, stmt.span, "this let-binding has unit value", |diag| {
-                    if let Some(expr) = &local.init {
-                        let snip = snippet_with_macro_callsite(cx, expr.span, "()");
-                        diag.span_suggestion(
-                            stmt.span,
-                            "omit the `let` binding",
-                            format!("{};", snip),
-                            Applicability::MachineApplicable, // snippet
-                        );
-                    }
-                });
+                span_lint_and_then(
+                    cx,
+                    LET_UNIT_VALUE,
+                    stmt.span,
+                    "this let-binding has unit value",
+                    |diag| {
+                        if let Some(expr) = &local.init {
+                            let snip = snippet_with_macro_callsite(cx, expr.span, "()");
+                            diag.span_suggestion(
+                                stmt.span,
+                                "omit the `let` binding",
+                                format!("{};", snip),
+                                Applicability::MachineApplicable, // snippet
+                            );
+                        }
+                    },
+                );
             }
         }
     }
