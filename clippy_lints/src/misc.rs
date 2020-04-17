@@ -290,8 +290,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                         init.hir_id,
                         local.pat.span,
                         "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
-                        |db| {
-                            db.span_suggestion(
+                        |diag| {
+                            diag.span_suggestion(
                                 stmt.span,
                                 "try",
                                 format!(
@@ -317,9 +317,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                     SHORT_CIRCUIT_STATEMENT,
                     stmt.span,
                     "boolean short circuit operator in statement may be clearer using an explicit test",
-                    |db| {
+                    |diag| {
                         let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
-                        db.span_suggestion(
+                        diag.span_suggestion(
                             stmt.span,
                             "replace it with",
                             format!(
@@ -374,12 +374,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                         is_named_constant(cx, left) || is_named_constant(cx, right),
                         is_comparing_arrays,
                     );
-                    span_lint_and_then(cx, lint, expr.span, msg, |db| {
+                    span_lint_and_then(cx, lint, expr.span, msg, |diag| {
                         let lhs = Sugg::hir(cx, left, "..");
                         let rhs = Sugg::hir(cx, right, "..");
 
                         if !is_comparing_arrays {
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 expr.span,
                                 "consider comparing them within some error",
                                 format!(
@@ -390,7 +390,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                                 Applicability::HasPlaceholders, // snippet
                             );
                         }
-                        db.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error`");
+                        diag.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error`");
                     });
                 } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
@@ -601,10 +601,10 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr<'_>, other: &Expr<'_>) {
         CMP_OWNED,
         lint_span,
         "this creates an owned instance just for comparison",
-        |db| {
+        |diag| {
             // This also catches `PartialEq` implementations that call `to_owned`.
             if other_gets_derefed {
-                db.span_label(lint_span, "try implementing the comparison without allocating");
+                diag.span_label(lint_span, "try implementing the comparison without allocating");
                 return;
             }
 
@@ -616,7 +616,7 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr<'_>, other: &Expr<'_>) {
                 snip.to_string()
             };
 
-            db.span_suggestion(
+            diag.span_suggestion(
                 lint_span,
                 "try",
                 try_hint,

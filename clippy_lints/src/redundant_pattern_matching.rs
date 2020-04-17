@@ -93,9 +93,9 @@ fn find_sugg_for_if_let<'a, 'tcx>(
         REDUNDANT_PATTERN_MATCHING,
         arms[0].pat.span,
         &format!("redundant pattern matching, consider using `{}`", good_method),
-        |db| {
+        |diag| {
             let span = expr.span.to(op.span);
-            db.span_suggestion(
+            diag.span_suggestion(
                 span,
                 "try this",
                 format!("{}.{}{}", snippet(cx, op.span, "_"), good_method, maybe_semi),
@@ -155,9 +155,9 @@ fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_
                 REDUNDANT_PATTERN_MATCHING,
                 expr.span,
                 &format!("redundant pattern matching, consider using `{}`", good_method),
-                |db| {
+                |diag| {
                     let span = expr.span.to(op.span);
-                    db.span_suggestion(
+                    diag.span_suggestion(
                         span,
                         "try this",
                         format!("{}.{}", snippet(cx, op.span, "_"), good_method),

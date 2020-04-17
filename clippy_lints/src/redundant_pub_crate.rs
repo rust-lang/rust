@@ -50,8 +50,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPubCrate {
                         REDUNDANT_PUB_CRATE,
                         span,
                         &format!("pub(crate) {} inside private module", item.kind.descr()),
-                        |db| {
-                            db.span_suggestion(
+                        |diag| {
+                            diag.span_suggestion(
                                 item.vis.span,
                                 "consider using",
                                 "pub".to_string(),

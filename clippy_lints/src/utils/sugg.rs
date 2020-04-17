@@ -515,7 +515,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext> {
     /// # Example
     ///
     /// ```rust,ignore
-    /// db.suggest_item_with_attr(cx, item, "#[derive(Default)]");
+    /// diag.suggest_item_with_attr(cx, item, "#[derive(Default)]");
     /// ```
     fn suggest_item_with_attr<D: Display + ?Sized>(
         &mut self,
@@ -533,7 +533,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext> {
     /// # Example
     ///
     /// ```rust,ignore
-    /// db.suggest_prepend_item(cx, item,
+    /// diag.suggest_prepend_item(cx, item,
     /// "fn foo() {
     ///     bar();
     /// }");
@@ -549,7 +549,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext> {
     /// # Example
     ///
     /// ```rust,ignore
-    /// db.suggest_remove_item(cx, item, "remove this")
+    /// diag.suggest_remove_item(cx, item, "remove this")
     /// ```
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability);
 }

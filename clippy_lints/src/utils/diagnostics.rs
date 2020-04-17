@@ -6,9 +6,9 @@ use rustc_lint::{LateContext, Lint, LintContext};
 use rustc_span::source_map::{MultiSpan, Span};
 use std::env;
 
-fn docs_link(db: &mut DiagnosticBuilder<'_>, lint: &'static Lint) {
+fn docs_link(diag: &mut DiagnosticBuilder<'_>, lint: &'static Lint) {
     if env::var("CLIPPY_DISABLE_DOCS_LINKS").is_err() {
-        db.help(&format!(
+        diag.help(&format!(
             "for further information visit https://rust-lang.github.io/rust-clippy/{}/index.html#{}",
             &option_env!("RUST_RELEASE_NUM").map_or("master".to_string(), |n| {
                 // extract just major + minor version and ignore patch versions
@@ -37,10 +37,10 @@ fn docs_link(db: &mut DiagnosticBuilder<'_>, lint: &'static Lint) {
 ///    |     ^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
 pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: &str) {
-    cx.struct_span_lint(lint, sp, |ldb| {
-        let mut db = ldb.build(msg);
-        docs_link(&mut db, lint);
-        db.emit();
+    cx.struct_span_lint(lint, sp, |diag| {
+        let mut diag = diag.build(msg);
+        docs_link(&mut diag, lint);
+        diag.emit();
     });
 }
 
@@ -63,11 +63,11 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 ///    = help: Consider using `f64::NAN` if you would like a constant representing NaN
 /// ```
 pub fn span_lint_and_help<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str) {
-    cx.struct_span_lint(lint, span, |ldb| {
-        let mut db = ldb.build(msg);
-        db.help(help);
-        docs_link(&mut db, lint);
-        db.emit();
+    cx.struct_span_lint(lint, span, |diag| {
+        let mut diag = diag.build(msg);
+        diag.help(help);
+        docs_link(&mut diag, lint);
+        diag.emit();
     });
 }
 
@@ -100,35 +100,38 @@ pub fn span_lint_and_note<'a, T: LintContext>(
     note_span: Span,
     note: &str,
 ) {
-    cx.struct_span_lint(lint, span, |ldb| {
-        let mut db = ldb.build(msg);
+    cx.struct_span_lint(lint, span, |diag| {
+        let mut diag = diag.build(msg);
         if note_span == span {
-            db.note(note);
+            diag.note(note);
         } else {
-            db.span_note(note_span, note);
+            diag.span_note(note_span, note);
         }
-        docs_link(&mut db, lint);
-        db.emit();
+        docs_link(&mut diag, lint);
+        diag.emit();
     });
 }
 
+/// Like `span_lint` but allows to add notes, help and suggestions using a closure.
+///
+/// If you need to customize your lint output a lot, use this function.
 pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str, f: F)
 where
     F: for<'b> FnOnce(&mut DiagnosticBuilder<'b>),
 {
-    cx.struct_span_lint(lint, sp, |ldb| {
-        let mut db = ldb.build(msg);
-        f(&mut db);
-        docs_link(&mut db, lint);
-        db.emit();
+    cx.struct_span_lint(lint, sp, |diag| {
+        let mut diag = diag.build(msg);
+        f(&mut diag);
+        docs_link(&mut diag, lint);
+        diag.emit();
     });
 }
 
 pub fn span_lint_hir(cx: &LateContext<'_, '_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
-    cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |ldb| {
-        let mut db = ldb.build(msg);
-        docs_link(&mut db, lint);
-        db.emit();
+    cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |diag| {
+        let mut diag = diag.build(msg);
+        docs_link(&mut diag, lint);
+        diag.emit();
     });
 }
 
@@ -140,11 +143,11 @@ pub fn span_lint_hir_and_then(
     msg: &str,
     f: impl FnOnce(&mut DiagnosticBuilder<'_>),
 ) {
-    cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |ldb| {
-        let mut db = ldb.build(msg);
-        f(&mut db);
-        docs_link(&mut db, lint);
-        db.emit();
+    cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |diag| {
+        let mut diag = diag.build(msg);
+        f(&mut diag);
+        docs_link(&mut diag, lint);
+        diag.emit();
     });
 }
 
@@ -172,8 +175,8 @@ pub fn span_lint_and_sugg<'a, T: LintContext>(
     sugg: String,
     applicability: Applicability,
 ) {
-    span_lint_and_then(cx, lint, sp, msg, |db| {
-        db.span_suggestion(sp, help, sugg, applicability);
+    span_lint_and_then(cx, lint, sp, msg, |diag| {
+        diag.span_suggestion(sp, help, sugg, applicability);
     });
 }
 
@@ -183,7 +186,7 @@ pub fn span_lint_and_sugg<'a, T: LintContext>(
 /// appear once per
 /// replacement. In human-readable format though, it only appears once before
 /// the whole suggestion.
-pub fn multispan_sugg<I>(db: &mut DiagnosticBuilder<'_>, help_msg: String, sugg: I)
+pub fn multispan_sugg<I>(diag: &mut DiagnosticBuilder<'_>, help_msg: String, sugg: I)
 where
     I: IntoIterator<Item = (Span, String)>,
 {
@@ -198,5 +201,5 @@ where
         style: SuggestionStyle::ShowCode,
         applicability: Applicability::Unspecified,
     };
-    db.suggestions.push(sugg);
+    diag.suggestions.push(sugg);
 }

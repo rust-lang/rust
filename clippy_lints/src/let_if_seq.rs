@@ -120,15 +120,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                                        USELESS_LET_IF_SEQ,
                                        span,
                                        "`if _ { .. } else { .. }` is an expression",
-                                       |db| {
-                                           db.span_suggestion(
+                                       |diag| {
+                                           diag.span_suggestion(
                                                 span,
                                                 "it is more idiomatic to write",
                                                 sug,
                                                 Applicability::HasPlaceholders,
                                             );
                                            if !mutability.is_empty() {
-                                               db.note("you might not need `mut` at all");
+                                               diag.note("you might not need `mut` at all");
                                            }
                                        });
                 }

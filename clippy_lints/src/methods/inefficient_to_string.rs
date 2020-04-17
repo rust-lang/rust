@@ -22,14 +22,14 @@ pub fn lint<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>, arg: &hir::E
                 INEFFICIENT_TO_STRING,
                 expr.span,
                 &format!("calling `to_string` on `{}`", arg_ty),
-                |db| {
-                    db.help(&format!(
+                |diag| {
+                    diag.help(&format!(
                         "`{}` implements `ToString` through a slower blanket impl, but `{}` has a fast specialization of `ToString`",
                         self_ty, deref_self_ty
                     ));
                     let mut applicability = Applicability::MachineApplicable;
                     let arg_snippet = snippet_with_applicability(cx, arg.span, "..", &mut applicability);
-                    db.span_suggestion(
+                    diag.span_suggestion(
                         expr.span,
                         "try dereferencing the receiver",
                         format!("({}{}).to_string()", "*".repeat(deref_count), arg_snippet),

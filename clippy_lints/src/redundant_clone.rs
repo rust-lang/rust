@@ -243,20 +243,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                             }
                         }
 
-                        span_lint_hir_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |db| {
-                            db.span_suggestion(
+                        span_lint_hir_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |diag| {
+                            diag.span_suggestion(
                                 sugg_span,
                                 "remove this",
                                 String::new(),
                                 app,
                             );
                             if used {
-                                db.span_note(
+                                diag.span_note(
                                     span,
                                     "cloned value is neither consumed nor mutated",
                                 );
                             } else {
-                                db.span_note(
+                                diag.span_note(
                                     span.with_hi(span.lo() + BytePos(u32::try_from(dot).unwrap())),
                                     "this value is dropped without further use",
                                 );

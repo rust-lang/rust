@@ -61,8 +61,8 @@ fn span_useless_format<T: LintContext>(cx: &T, span: Span, help: &str, mut sugg:
         sugg.push(';');
     }
 
-    span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
-        db.span_suggestion(
+    span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |diag| {
+        diag.span_suggestion(
             to_replace,
             help,
             sugg,

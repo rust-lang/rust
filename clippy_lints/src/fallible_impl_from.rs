@@ -117,11 +117,11 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
                         FALLIBLE_IMPL_FROM,
                         impl_span,
                         "consider implementing `TryFrom` instead",
-                        move |db| {
-                            db.help(
+                        move |diag| {
+                            diag.help(
                                 "`From` is intended for infallible conversions only. \
                                  Use `TryFrom` if there's a possibility for the conversion to fail.");
-                            db.span_note(fpu.result, "potential failure(s)");
+                            diag.span_note(fpu.result, "potential failure(s)");
                         });
                 }
             }

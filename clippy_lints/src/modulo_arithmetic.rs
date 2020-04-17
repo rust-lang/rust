@@ -95,10 +95,10 @@ fn check_const_operands<'a, 'tcx>(
                 lhs_operand.string_representation.as_ref().unwrap(),
                 rhs_operand.string_representation.as_ref().unwrap()
             ),
-            |db| {
-                db.note("double check for expected result especially when interoperating with different languages");
+            |diag| {
+                diag.note("double check for expected result especially when interoperating with different languages");
                 if lhs_operand.is_integral {
-                    db.note("or consider using `rem_euclid` or similar function");
+                    diag.note("or consider using `rem_euclid` or similar function");
                 }
             },
         );
@@ -113,10 +113,10 @@ fn check_non_const_operands<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Ex
             MODULO_ARITHMETIC,
             expr.span,
             "you are using modulo operator on types that might have different signs",
-            |db| {
-                db.note("double check for expected result especially when interoperating with different languages");
+            |diag| {
+                diag.note("double check for expected result especially when interoperating with different languages");
                 if operand_type.is_integral() {
-                    db.note("or consider using `rem_euclid` or similar function");
+                    diag.note("or consider using `rem_euclid` or similar function");
                 }
             },
         );

@@ -77,9 +77,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
                 let mut applicability = Applicability::MachineApplicable;
                 span_lint_and_then(cx, NEEDLESS_BORROWED_REFERENCE, pat.span,
                                    "this pattern takes a reference on something that is being de-referenced",
-                                   |db| {
+                                   |diag| {
                                        let hint = snippet_with_applicability(cx, spanned_name.span, "..", &mut applicability).into_owned();
-                                       db.span_suggestion(
+                                       diag.span_suggestion(
                                            pat.span,
                                            "try removing the `&ref` part and just keep",
                                            hint,

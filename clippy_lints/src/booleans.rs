@@ -376,13 +376,13 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                             LOGIC_BUG,
                             e.span,
                             "this boolean expression contains a logic bug",
-                            |db| {
-                                db.span_help(
+                            |diag| {
+                                diag.span_help(
                                     h2q.terminals[i].span,
                                     "this expression can be optimized out by applying boolean operations to the \
                                      outer expression",
                                 );
-                                db.span_suggestion(
+                                diag.span_suggestion(
                                     e.span,
                                     "it would look like the following",
                                     suggest(self.cx, suggestion, &h2q.terminals),
@@ -411,8 +411,8 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     NONMINIMAL_BOOL,
                     e.span,
                     "this boolean expression can be simplified",
-                    |db| {
-                        db.span_suggestions(
+                    |diag| {
+                        diag.span_suggestions(
                             e.span,
                             "try",
                             suggestions.into_iter(),

@@ -167,7 +167,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             &format!("You checked before that `{}()` cannot fail. \
                             Instead of checking and unwrapping, it's better to use `if let` or `match`.",
                             method_name.ident.name),
-                            |db| { db.span_label(unwrappable.check.span, "the check is happening here"); },
+                            |diag| { diag.span_label(unwrappable.check.span, "the check is happening here"); },
                         );
                     } else {
                         span_lint_and_then(
@@ -176,7 +176,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             expr.span,
                             &format!("This call to `{}()` will always panic.",
                             method_name.ident.name),
-                            |db| { db.span_label(unwrappable.check.span, "because of this check"); },
+                            |diag| { diag.span_label(unwrappable.check.span, "because of this check"); },
                         );
                     }
                 }

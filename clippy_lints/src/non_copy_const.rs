@@ -118,22 +118,22 @@ fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, source: S
     }
 
     let (lint, msg, span) = source.lint();
-    span_lint_and_then(cx, lint, span, msg, |db| {
+    span_lint_and_then(cx, lint, span, msg, |diag| {
         if span.from_expansion() {
             return; // Don't give suggestions into macros.
         }
         match source {
             Source::Item { .. } => {
                 let const_kw_span = span.from_inner(InnerSpan::new(0, 5));
-                db.span_label(const_kw_span, "make this a static item (maybe with lazy_static)");
+                diag.span_label(const_kw_span, "make this a static item (maybe with lazy_static)");
             },
             Source::Assoc { ty: ty_span, .. } => {
                 if ty.flags.intersects(TypeFlags::HAS_FREE_LOCAL_NAMES) {
-                    db.span_label(ty_span, &format!("consider requiring `{}` to be `Copy`", ty));
+                    diag.span_label(ty_span, &format!("consider requiring `{}` to be `Copy`", ty));
                 }
             },
             Source::Expr { .. } => {
-                db.help("assign this const to a local or static variable, and use the variable here");
+                diag.help("assign this const to a local or static variable, and use the variable here");
             },
         }
     });

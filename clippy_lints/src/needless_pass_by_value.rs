@@ -203,11 +203,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     }
 
                     // Dereference suggestion
-                    let sugg = |db: &mut DiagnosticBuilder<'_>| {
+                    let sugg = |diag: &mut DiagnosticBuilder<'_>| {
                         if let ty::Adt(def, ..) = ty.kind {
                             if let Some(span) = cx.tcx.hir().span_if_local(def.did) {
                                 if can_type_implement_copy(cx.tcx, cx.param_env, ty).is_ok() {
-                                    db.span_help(span, "consider marking this type as `Copy`");
+                                    diag.span_help(span, "consider marking this type as `Copy`");
                                 }
                             }
                         }
@@ -227,7 +227,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                 }).unwrap());
                             then {
                                 let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
-                                db.span_suggestion(
+                                diag.span_suggestion(
                                     input.span,
                                     "consider changing the type to",
                                     slice_ty,
@@ -235,7 +235,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                 );
 
                                 for (span, suggestion) in clone_spans {
-                                    db.span_suggestion(
+                                    diag.span_suggestion(
                                         span,
                                         &snippet_opt(cx, span)
                                             .map_or(
@@ -256,7 +256,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                         if match_type(cx, ty, &paths::STRING) {
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
-                                db.span_suggestion(
+                                diag.span_suggestion(
                                     input.span,
                                     "consider changing the type to",
                                     "&str".to_string(),
@@ -264,7 +264,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                 );
 
                                 for (span, suggestion) in clone_spans {
-                                    db.span_suggestion(
+                                    diag.span_suggestion(
                                         span,
                                         &snippet_opt(cx, span)
                                             .map_or(
@@ -293,7 +293,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             );
                             spans.sort_by_key(|&(span, _)| span);
                         }
-                        multispan_sugg(db, "consider taking a reference instead".to_string(), spans);
+                        multispan_sugg(diag, "consider taking a reference instead".to_string(), spans);
                     };
 
                     span_lint_and_then(

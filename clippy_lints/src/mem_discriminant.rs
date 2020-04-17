@@ -47,7 +47,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
                     MEM_DISCRIMINANT_NON_ENUM,
                     expr.span,
                     &format!("calling `mem::discriminant` on non-enum type `{}`", ty_param),
-                    |db| {
+                    |diag| {
                         // if this is a reference to an enum, suggest dereferencing
                         let (base_ty, ptr_depth) = walk_ptrs_ty_depth(ty_param);
                         if ptr_depth >= 1 && base_ty.is_enum() {
@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
                             }
 
                             let derefs: String = iter::repeat('*').take(derefs_needed).collect();
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 param.span,
                                 "try dereferencing",
                                 format!("{}{}", derefs, snippet(cx, cur_expr.span, "<param>")),

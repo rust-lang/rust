@@ -66,7 +66,7 @@ pub(super) fn lint<'a, 'tcx>(
             arg, suggest
         );
 
-        span_lint_and_then(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg, |db| {
+        span_lint_and_then(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg, |diag| {
             let map_arg_span = map_args[1].span;
 
             let mut suggestion = vec![
@@ -81,7 +81,7 @@ pub(super) fn lint<'a, 'tcx>(
                 suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{}, ", unwrap_snippet)));
             }
 
-            db.multipart_suggestion(&format!("use `{}` instead", suggest), suggestion, applicability);
+            diag.multipart_suggestion(&format!("use `{}` instead", suggest), suggestion, applicability);
         });
     }
 }

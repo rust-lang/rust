@@ -119,9 +119,9 @@ fn check_hash_peq<'a, 'tcx>(
                     span_lint_and_then(
                         cx, DERIVE_HASH_XOR_EQ, span,
                         mess,
-                        |db| {
+                        |diag| {
                         if let Some(node_id) = cx.tcx.hir().as_local_hir_id(impl_id) {
-                            db.span_note(
+                            diag.span_note(
                                 cx.tcx.hir().span(node_id),
                                 "`PartialEq` implemented here"
                             );
@@ -168,8 +168,8 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item<'_>, trait
             EXPL_IMPL_CLONE_ON_COPY,
             item.span,
             "you are implementing `Clone` explicitly on a `Copy` type",
-            |db| {
-                db.span_note(item.span, "consider deriving `Clone` or removing `Copy`");
+            |diag| {
+                diag.span_note(item.span, "consider deriving `Clone` or removing `Copy`");
             },
         );
     }
