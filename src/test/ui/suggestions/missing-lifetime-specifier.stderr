@@ -5,7 +5,7 @@ LL |     static a: RefCell<HashMap<i32, Vec<Vec<Foo>>>> = RefCell::new(HashMap::
    |                                            ^^^ expected 2 lifetime parameters
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static a: RefCell<HashMap<i32, Vec<Vec<Foo<'static, 'static>>>>> = RefCell::new(HashMap::new());
    |                                            ^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     static a: RefCell<HashMap<i32, Vec<Vec<Foo>>>> = RefCell::new(HashMap::
    |                                            ^^^ expected 2 lifetime parameters
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static a: RefCell<HashMap<i32, Vec<Vec<Foo<'static, 'static>>>>> = RefCell::new(HashMap::new());
    |                                            ^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap:
    |                                            ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static b: RefCell<HashMap<i32, Vec<Vec<&'static Bar>>>> = RefCell::new(HashMap::new());
    |                                            ^^^^^^^^
@@ -41,7 +41,7 @@ LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap:
    |                                             ^^^ expected 2 lifetime parameters
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar<'static, 'static>>>>> = RefCell::new(HashMap::new());
    |                                             ^^^^^^^^^^^^^^^^^^^^^
@@ -53,7 +53,7 @@ LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap:
    |                                            ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static b: RefCell<HashMap<i32, Vec<Vec<&'static Bar>>>> = RefCell::new(HashMap::new());
    |                                            ^^^^^^^^
@@ -65,7 +65,7 @@ LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar>>>> = RefCell::new(HashMap:
    |                                             ^^^ expected 2 lifetime parameters
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static b: RefCell<HashMap<i32, Vec<Vec<&Bar<'static, 'static>>>>> = RefCell::new(HashMap::new());
    |                                             ^^^^^^^^^^^^^^^^^^^^^
@@ -77,7 +77,7 @@ LL |     static c: RefCell<HashMap<i32, Vec<Vec<Qux<i32>>>>> = RefCell::new(Hash
    |                                                ^ expected 2 lifetime parameters
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static c: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
    |                                                ^^^^^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL |     static c: RefCell<HashMap<i32, Vec<Vec<Qux<i32>>>>> = RefCell::new(Hash
    |                                                ^ expected 2 lifetime parameters
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static c: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
    |                                                ^^^^^^^^^^^^^^^^^
@@ -101,7 +101,7 @@ LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(Has
    |                                            ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static d: RefCell<HashMap<i32, Vec<Vec<&'static Tar<i32>>>>> = RefCell::new(HashMap::new());
    |                                            ^^^^^^^^
@@ -113,7 +113,7 @@ LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(Has
    |                                                 ^ expected 2 lifetime parameters
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
    |                                                 ^^^^^^^^^^^^^^^^^
@@ -125,7 +125,7 @@ LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(Has
    |                                            ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static d: RefCell<HashMap<i32, Vec<Vec<&'static Tar<i32>>>>> = RefCell::new(HashMap::new());
    |                                            ^^^^^^^^
@@ -137,7 +137,7 @@ LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<i32>>>>> = RefCell::new(Has
    |                                                 ^ expected 2 lifetime parameters
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static d: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'static, i32>>>>> = RefCell::new(HashMap::new());
    |                                                 ^^^^^^^^^^^^^^^^^
@@ -149,7 +149,7 @@ LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell
    |                                            ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&'static Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
    |                                            ^^^^^^^^
@@ -161,7 +161,7 @@ LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell
    |                                            ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&'static Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
    |                                            ^^^^^^^^

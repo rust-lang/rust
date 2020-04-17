@@ -7,7 +7,7 @@ LL |     ) -> &dyn Foo
    |          ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `foo` or `bar`
-help: consider using the named lifetime
+help: consider using the `'a` lifetime
    |
 LL |     ) -> &'a dyn Foo
    |          ^^^

@@ -5,7 +5,7 @@ LL | fn f() -> &isize {
    |           ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL | fn f() -> &'static isize {
    |           ^^^^^^^^
@@ -41,7 +41,7 @@ LL | fn i(_x: isize) -> &isize {
    |                    ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL | fn i(_x: isize) -> &'static isize {
    |                    ^^^^^^^^
@@ -53,7 +53,7 @@ LL | fn j(_x: StaticStr) -> &isize {
    |                        ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
-help: consider using the named lifetime
+help: consider using the `'static` lifetime
    |
 LL | fn j(_x: StaticStr) -> &'static isize {
    |                        ^^^^^^^^
@@ -65,7 +65,7 @@ LL | fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &isize {
    |                                                 ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
-help: consider using the named lifetime
+help: consider using the `'a` lifetime
    |
 LL | fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &'a isize {
    |                                                 ^^^
