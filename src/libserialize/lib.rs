@@ -25,7 +25,6 @@ pub use self::serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
 mod collection_impls;
 mod serialize;
 
-pub mod hex;
 pub mod json;
 
 pub mod leb128;
