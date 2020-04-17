@@ -498,16 +498,9 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Never => p!(write("!")),
             ty::Tuple(ref tys) => {
-                p!(write("("));
-                let mut tys = tys.iter();
-                if let Some(&ty) = tys.next() {
-                    p!(print(ty), write(","));
-                    if let Some(&ty) = tys.next() {
-                        p!(write(" "), print(ty));
-                        for &ty in tys {
-                            p!(write(", "), print(ty));
-                        }
-                    }
+                p!(write("("), comma_sep(tys.iter().copied()));
+                if tys.len() == 1 {
+                    p!(write(","));
                 }
                 p!(write(")"))
             }
@@ -570,15 +563,10 @@ pub trait PrettyPrinter<'tcx>:
                     let def_key = self.tcx().def_key(def_id);
                     if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
                         p!(write("{}", name));
-                        let mut substs = substs.iter();
                         // FIXME(eddyb) print this with `print_def_path`.
-                        if let Some(first) = substs.next() {
-                            p!(write("::<"));
-                            p!(print(first));
-                            for subst in substs {
-                                p!(write(", "), print(subst));
-                            }
-                            p!(write(">"));
+                        if !substs.is_empty() {
+                            p!(write("::"));
+                            p!(generic_delimiters(|cx| cx.comma_sep(substs.iter().copied())));
                         }
                         return Ok(self);
                     }
@@ -854,16 +842,12 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self, Self::Error> {
         define_scoped_cx!(self);
 
-        p!(write("("));
-        let mut inputs = inputs.iter();
-        if let Some(&ty) = inputs.next() {
-            p!(print(ty));
-            for &ty in inputs {
-                p!(write(", "), print(ty));
+        p!(write("("), comma_sep(inputs.iter().copied()));
+        if c_variadic {
+            if !inputs.is_empty() {
+                p!(write(", "));
             }
-            if c_variadic {
-                p!(write(", ..."));
-            }
+            p!(write("..."));
         }
         p!(write(")"));
         if !output.is_unit() {
@@ -1913,15 +1897,7 @@ define_print_and_forward_display! {
     (self, cx):
 
     &'tcx ty::List<Ty<'tcx>> {
-        p!(write("{{"));
-        let mut tys = self.iter();
-        if let Some(&ty) = tys.next() {
-            p!(print(ty));
-            for &ty in tys {
-                p!(write(", "), print(ty));
-            }
-        }
-        p!(write("}}"))
+        p!(write("{{"), comma_sep(self.iter().copied()), write("}}"))
     }
 
     ty::TypeAndMut<'tcx> {
