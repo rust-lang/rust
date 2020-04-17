@@ -12,7 +12,7 @@ use ra_db::{
 };
 use stdx::format_to;
 
-use crate::{db::HirDatabase, expr::ExprValidator};
+use crate::{db::HirDatabase, diagnostics::Diagnostic, expr::ExprValidator};
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
@@ -104,10 +104,7 @@ impl TestDB {
         panic!("Can't find module for file")
     }
 
-    // FIXME: don't duplicate this
-    pub fn diagnostics(&self) -> (String, u32) {
-        let mut buf = String::new();
-        let mut count = 0;
+    fn diag<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {
             let crate_def_map = self.crate_def_map(krate);
@@ -132,15 +129,36 @@ impl TestDB {
 
             for f in fns {
                 let infer = self.infer(f.into());
-                let mut sink = DiagnosticSink::new(|d| {
-                    format_to!(buf, "{:?}: {}\n", d.syntax_node(self).text(), d.message());
-                    count += 1;
-                });
+                let mut sink = DiagnosticSink::new(&mut cb);
                 infer.add_diagnostics(self, f, &mut sink);
                 let mut validator = ExprValidator::new(f, infer, &mut sink);
                 validator.validate_body(self);
             }
         }
+    }
+
+    pub fn diagnostics(&self) -> (String, u32) {
+        let mut buf = String::new();
+        let mut count = 0;
+        self.diag(|d| {
+            format_to!(buf, "{:?}: {}\n", d.syntax_node(self).text(), d.message());
+            count += 1;
+        });
+        (buf, count)
+    }
+
+    /// Like `diagnostics`, but filtered for a single diagnostic.
+    pub fn diagnostic<D: Diagnostic>(&self) -> (String, u32) {
+        let mut buf = String::new();
+        let mut count = 0;
+        self.diag(|d| {
+            // We want to filter diagnostics by the particular one we are testing for, to
+            // avoid surprising results in tests.
+            if d.downcast_ref::<D>().is_some() {
+                format_to!(buf, "{:?}: {}\n", d.syntax_node(self).text(), d.message());
+                count += 1;
+            };
+        });
         (buf, count)
     }
 }
