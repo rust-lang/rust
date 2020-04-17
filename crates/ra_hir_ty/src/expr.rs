@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use hir_def::{path::path, resolver::HasResolver, AdtId, FunctionId};
 use hir_expand::diagnostics::DiagnosticSink;
-use ra_syntax::{ast, AstNode, AstPtr};
+use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -100,7 +100,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                     self.sink.push(MissingFields {
                         file: source_ptr.file_id,
                         field_list: AstPtr::new(&field_list),
-                        highlight_range: field_list.syntax().text_range(),
                         missed_fields,
                     })
                 }
@@ -131,7 +130,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                         self.sink.push(MissingPatFields {
                             file: source_ptr.file_id,
                             field_list: AstPtr::new(&field_list),
-                            highlight_range: field_list.syntax().text_range(),
                             missed_fields,
                         })
                     }
@@ -215,7 +213,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                         file: source_ptr.file_id,
                         match_expr: AstPtr::new(&match_expr),
                         arms: AstPtr::new(&arms),
-                        highlight_range: match_expr.syntax().text_range(),
                     })
                 }
             }
@@ -247,13 +244,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             let (_, source_map) = db.body_with_source_map(self.func.into());
 
             if let Ok(source_ptr) = source_map.expr_syntax(id) {
-                let root = source_ptr.file_syntax(db.upcast());
-                let highlight_range = source_ptr.value.to_node(&root).syntax().text_range();
-                self.sink.push(MissingOkInTailExpr {
-                    file: source_ptr.file_id,
-                    expr: source_ptr.value,
-                    highlight_range,
-                });
+                self.sink
+                    .push(MissingOkInTailExpr { file: source_ptr.file_id, expr: source_ptr.value });
             }
         }
     }

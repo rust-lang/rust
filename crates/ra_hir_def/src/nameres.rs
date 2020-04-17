@@ -297,7 +297,7 @@ pub enum ModuleSource {
 mod diagnostics {
     use hir_expand::diagnostics::DiagnosticSink;
     use ra_db::RelativePathBuf;
-    use ra_syntax::{ast, AstNode, AstPtr};
+    use ra_syntax::{ast, AstPtr};
 
     use crate::{db::DefDatabase, diagnostics::UnresolvedModule, nameres::LocalModuleId, AstId};
 
@@ -326,7 +326,6 @@ mod diagnostics {
                     sink.push(UnresolvedModule {
                         file: declaration.file_id,
                         decl: AstPtr::new(&decl),
-                        highlight_range: decl.syntax().text_range(),
                         candidate: candidate.clone(),
                     })
                 }

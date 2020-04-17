@@ -3,7 +3,7 @@
 use std::any::Any;
 
 use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
-use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr, TextRange};
+use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 use stdx::format_to;
 
 pub use hir_def::{diagnostics::UnresolvedModule, expr::MatchArm};
@@ -13,16 +13,11 @@ pub use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};
 pub struct NoSuchField {
     pub file: HirFileId,
     pub field: AstPtr<ast::RecordField>,
-    pub highlight_range: TextRange,
 }
 
 impl Diagnostic for NoSuchField {
     fn message(&self) -> String {
         "no such field".to_string()
-    }
-
-    fn highlight_range(&self) -> InFile<TextRange> {
-        InFile::new(self.file, self.highlight_range)
     }
 
     fn source(&self) -> InFile<SyntaxNodePtr> {
@@ -38,7 +33,6 @@ impl Diagnostic for NoSuchField {
 pub struct MissingFields {
     pub file: HirFileId,
     pub field_list: AstPtr<ast::RecordFieldList>,
-    pub highlight_range: TextRange,
     pub missed_fields: Vec<Name>,
 }
 
@@ -50,10 +44,6 @@ impl Diagnostic for MissingFields {
         }
         buf
     }
-    fn highlight_range(&self) -> InFile<TextRange> {
-        InFile::new(self.file, self.highlight_range)
-    }
-
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.field_list.clone().into() }
     }
@@ -76,7 +66,6 @@ impl AstDiagnostic for MissingFields {
 pub struct MissingPatFields {
     pub file: HirFileId,
     pub field_list: AstPtr<ast::RecordFieldPatList>,
-    pub highlight_range: TextRange,
     pub missed_fields: Vec<Name>,
 }
 
@@ -87,9 +76,6 @@ impl Diagnostic for MissingPatFields {
             format_to!(buf, "- {}", field);
         }
         buf
-    }
-    fn highlight_range(&self) -> InFile<TextRange> {
-        InFile::new(self.file, self.highlight_range)
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.field_list.clone().into() }
@@ -104,15 +90,11 @@ pub struct MissingMatchArms {
     pub file: HirFileId,
     pub match_expr: AstPtr<ast::Expr>,
     pub arms: AstPtr<ast::MatchArmList>,
-    pub highlight_range: TextRange,
 }
 
 impl Diagnostic for MissingMatchArms {
     fn message(&self) -> String {
         String::from("Missing match arm")
-    }
-    fn highlight_range(&self) -> InFile<TextRange> {
-        InFile::new(self.file, self.highlight_range)
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.match_expr.clone().into() }
@@ -126,15 +108,11 @@ impl Diagnostic for MissingMatchArms {
 pub struct MissingOkInTailExpr {
     pub file: HirFileId,
     pub expr: AstPtr<ast::Expr>,
-    pub highlight_range: TextRange,
 }
 
 impl Diagnostic for MissingOkInTailExpr {
     fn message(&self) -> String {
         "wrap return expression in Ok".to_string()
-    }
-    fn highlight_range(&self) -> InFile<TextRange> {
-        InFile::new(self.file, self.highlight_range)
     }
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }

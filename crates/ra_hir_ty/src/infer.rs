@@ -665,7 +665,6 @@ impl Expectation {
 mod diagnostics {
     use hir_def::{expr::ExprId, src::HasSource, FunctionId, Lookup};
     use hir_expand::diagnostics::DiagnosticSink;
-    use ra_syntax::AstNode;
 
     use crate::{db::HirDatabase, diagnostics::NoSuchField};
 
@@ -686,13 +685,7 @@ mod diagnostics {
                     let source = owner.lookup(db.upcast()).source(db.upcast());
                     let (_, source_map) = db.body_with_source_map(owner.into());
                     let field = source_map.field_syntax(*expr, *field);
-                    let root = field.file_syntax(db.upcast());
-                    let highlight_range = field.value.to_node(&root).syntax().text_range();
-                    sink.push(NoSuchField {
-                        file: source.file_id,
-                        field: field.value,
-                        highlight_range,
-                    })
+                    sink.push(NoSuchField { file: source.file_id, field: field.value })
                 }
             }
         }
