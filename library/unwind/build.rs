@@ -48,6 +48,8 @@ fn main() {
         // redox is handled in lib.rs
     } else if target.contains("cloudabi") {
         println!("cargo:rustc-link-lib=unwind");
+    } else if target.contains("libnx") {
+        llvm_libunwind::compile();
     }
 }
 
@@ -118,6 +120,12 @@ mod llvm_libunwind {
             cfg.flag("-fvisibility=hidden");
             cfg.flag_if_supported("-fvisibility-global-new-delete-hidden");
             cfg.define("_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS", None);
+        }
+
+        if target_vendor == "libnx" {
+            cfg.define("_LIBUNWIND_IS_BAREMETAL", None);
+            cfg.define("_LIBUNWIND_SUPPORT_DWARF_UNWIND", None);
+            cfg.define("_LIBUNWIND_SUPPORT_DWARF_INDEX", Some("0"));
         }
 
         let mut unwind_sources = vec![
