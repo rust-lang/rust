@@ -142,11 +142,11 @@ fn add_function_impl(
         CompletionItemKind::Function
     };
 
-    let snippet = format!("{} {{}}", display);
+    let snippet = format!("{} {{\n    $0\n}}", display);
 
     let range = TextRange::from_to(fn_def_node.text_range().start(), ctx.source_range().end());
 
-    builder.text_edit(TextEdit::replace(range, snippet)).kind(completion_kind).add_to(acc);
+    builder.snippet_edit(TextEdit::replace(range, snippet)).kind(completion_kind).add_to(acc);
 }
 
 fn add_type_alias_impl(
@@ -217,8 +217,9 @@ fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
     use insta::assert_debug_snapshot;
+
+    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
 
     fn complete(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Magic)
@@ -255,7 +256,7 @@ mod tests {
                 label: "fn test()",
                 source_range: [209; 210),
                 delete: [209; 210),
-                insert: "fn test() {}",
+                insert: "fn test() {\n    $0\n}",
                 kind: Function,
                 lookup: "test",
             },
@@ -313,7 +314,7 @@ mod tests {
                 label: "fn test()",
                 source_range: [139; 140),
                 delete: [139; 140),
-                insert: "fn test() {}",
+                insert: "fn test() {\n    $0\n}",
                 kind: Function,
                 lookup: "test",
             },
@@ -342,7 +343,7 @@ mod tests {
                 label: "fn foo()",
                 source_range: [141; 142),
                 delete: [138; 142),
-                insert: "fn foo() {}",
+                insert: "fn foo() {\n    $0\n}",
                 kind: Function,
                 lookup: "foo",
             },
@@ -374,7 +375,7 @@ mod tests {
                 label: "fn foo_bar()",
                 source_range: [200; 201),
                 delete: [197; 201),
-                insert: "fn foo_bar() {}",
+                insert: "fn foo_bar() {\n    $0\n}",
                 kind: Function,
                 lookup: "foo_bar",
             },
@@ -425,7 +426,7 @@ mod tests {
                 label: "fn foo()",
                 source_range: [144; 145),
                 delete: [141; 145),
-                insert: "fn foo<T>() {}",
+                insert: "fn foo<T>() {\n    $0\n}",
                 kind: Function,
                 lookup: "foo",
             },
@@ -454,7 +455,7 @@ mod tests {
                 label: "fn foo()",
                 source_range: [166; 167),
                 delete: [163; 167),
-                insert: "fn foo<T>()\nwhere T: Into<String> {}",
+                insert: "fn foo<T>()\nwhere T: Into<String> {\n    $0\n}",
                 kind: Function,
                 lookup: "foo",
             },
