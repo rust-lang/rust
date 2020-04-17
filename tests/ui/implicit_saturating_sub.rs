@@ -1,5 +1,5 @@
 // run-rustfix
-#![allow(unused_assignments, unused_mut)]
+#![allow(unused_assignments, unused_mut, clippy::assign_op_pattern)]
 #![warn(clippy::implicit_saturating_sub)]
 
 fn main() {
@@ -11,7 +11,7 @@ fn main() {
 
     // Lint
     if u_8 > 0 {
-        u_8 -= 1;
+        u_8 = u_8 - 1;
     }
 
     match end_8 {
