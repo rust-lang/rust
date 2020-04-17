@@ -285,7 +285,8 @@ impl<'hir> Map<'hir> {
             Node::AnonConst(_) => DefKind::AnonConst,
             Node::Field(_) => DefKind::Field,
             Node::Expr(expr) => match expr.kind {
-                ExprKind::Closure { .. } => DefKind::Closure,
+                ExprKind::Closure(.., None) => DefKind::Closure,
+                ExprKind::Closure(.., Some(_)) => DefKind::Generator,
                 _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
             },
             Node::MacroDef(_) => DefKind::Macro(MacroKind::Bang),

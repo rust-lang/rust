@@ -613,8 +613,8 @@ impl EmbargoVisitor<'tcx> {
                 }
             }
 
-            // These have type privacy or are not namespaced, so are not reachable unless they're
-            // public.
+            // These have type privacy, so are not reachable unless they're
+            // public, or are not namespaced at all.
             DefKind::AssocConst
             | DefKind::AssocTy
             | DefKind::AssocOpaqueTy
@@ -636,7 +636,8 @@ impl EmbargoVisitor<'tcx> {
             | DefKind::Field
             | DefKind::GlobalAsm
             | DefKind::Impl
-            | DefKind::Closure => (),
+            | DefKind::Closure
+            | DefKind::Generator => (),
         }
     }
 
