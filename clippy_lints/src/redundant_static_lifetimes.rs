@@ -53,14 +53,20 @@ impl RedundantStaticLifetimes {
                             if lifetime.ident.name == rustc_span::symbol::kw::StaticLifetime {
                                 let snip = snippet(cx, borrow_type.ty.span, "<type>");
                                 let sugg = format!("&{}", snip);
-                                span_lint_and_then(cx, REDUNDANT_STATIC_LIFETIMES, lifetime.ident.span, reason, |db| {
-                                    db.span_suggestion(
-                                        ty.span,
-                                        "consider removing `'static`",
-                                        sugg,
-                                        Applicability::MachineApplicable, //snippet
-                                    );
-                                });
+                                span_lint_and_then(
+                                    cx,
+                                    REDUNDANT_STATIC_LIFETIMES,
+                                    lifetime.ident.span,
+                                    reason,
+                                    |diag| {
+                                        diag.span_suggestion(
+                                            ty.span,
+                                            "consider removing `'static`",
+                                            sugg,
+                                            Applicability::MachineApplicable, //snippet
+                                        );
+                                    },
+                                );
                             }
                         },
                         _ => {},

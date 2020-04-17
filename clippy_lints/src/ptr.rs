@@ -175,9 +175,9 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_
                         arg.span,
                         "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
                          with non-Vec-based slices.",
-                        |db| {
+                        |diag| {
                             if let Some(ref snippet) = ty_snippet {
-                                db.span_suggestion(
+                                diag.span_suggestion(
                                     arg.span,
                                     "change this to",
                                     format!("&[{}]", snippet),
@@ -185,7 +185,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_
                                 );
                             }
                             for (clonespan, suggestion) in spans {
-                                db.span_suggestion(
+                                diag.span_suggestion(
                                     clonespan,
                                     &snippet_opt(cx, clonespan).map_or("change the call to".into(), |x| {
                                         Cow::Owned(format!("change `{}` to", x))
@@ -204,10 +204,10 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_
                         PTR_ARG,
                         arg.span,
                         "writing `&String` instead of `&str` involves a new object where a slice will do.",
-                        |db| {
-                            db.span_suggestion(arg.span, "change this to", "&str".into(), Applicability::Unspecified);
+                        |diag| {
+                            diag.span_suggestion(arg.span, "change this to", "&str".into(), Applicability::Unspecified);
                             for (clonespan, suggestion) in spans {
-                                db.span_suggestion_short(
+                                diag.span_suggestion_short(
                                     clonespan,
                                     &snippet_opt(cx, clonespan).map_or("change the call to".into(), |x| {
                                         Cow::Owned(format!("change `{}` to", x))
@@ -239,8 +239,8 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_
                                 PTR_ARG,
                                 arg.span,
                                 "using a reference to `Cow` is not recommended.",
-                                |db| {
-                                    db.span_suggestion(
+                                |diag| {
+                                    diag.span_suggestion(
                                         arg.span,
                                         "change this to",
                                         "&".to_owned() + &r,
@@ -277,9 +277,9 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_
                 MUT_FROM_REF,
                 ty.span,
                 "mutable borrow from immutable input(s)",
-                |db| {
+                |diag| {
                     let ms = MultiSpan::from_spans(immutables);
-                    db.span_note(ms, "immutable borrow here");
+                    diag.span_note(ms, "immutable borrow here");
                 },
             );
         }

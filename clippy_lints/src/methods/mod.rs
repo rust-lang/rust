@@ -1932,7 +1932,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
                 expr.span,
                 "using `clone` on a double-reference; \
                  this will copy the reference instead of cloning the inner type",
-                |db| {
+                |diag| {
                     if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
                         let mut ty = innermost;
                         let mut n = 0;
@@ -1943,13 +1943,13 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
                         let refs: String = iter::repeat('&').take(n + 1).collect();
                         let derefs: String = iter::repeat('*').take(n).collect();
                         let explicit = format!("{}{}::clone({})", refs, ty, snip);
-                        db.span_suggestion(
+                        diag.span_suggestion(
                             expr.span,
                             "try dereferencing it",
                             format!("{}({}{}).clone()", refs, derefs, snip.deref()),
                             Applicability::MaybeIncorrect,
                         );
-                        db.span_suggestion(
+                        diag.span_suggestion(
                             expr.span,
                             "or try being explicit about what type to clone",
                             explicit,
@@ -2008,9 +2008,9 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
         } else {
             snip = None;
         }
-        span_lint_and_then(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type", |db| {
+        span_lint_and_then(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type", |diag| {
             if let Some((text, snip)) = snip {
-                db.span_suggestion(expr.span, text, snip, Applicability::Unspecified);
+                diag.span_suggestion(expr.span, text, snip, Applicability::Unspecified);
             }
         });
     }
@@ -2097,9 +2097,9 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, source: &
                 TEMPORARY_CSTRING_AS_PTR,
                 expr.span,
                 "you are getting the inner pointer of a temporary `CString`",
-                |db| {
-                    db.note("that pointer will be invalid outside this expression");
-                    db.span_help(unwrap.span, "assign the `CString` to a variable to extend its lifetime");
+                |diag| {
+                    diag.note("that pointer will be invalid outside this expression");
+                    diag.span_help(unwrap.span, "assign the `CString` to a variable to extend its lifetime");
                 });
         }
     }

@@ -1164,9 +1164,9 @@ fn check_for_loop_range<'a, 'tcx>(
                         NEEDLESS_RANGE_LOOP,
                         expr.span,
                         &format!("the loop variable `{}` is used to index `{}`", ident.name, indexed),
-                        |db| {
+                        |diag| {
                             multispan_sugg(
-                                db,
+                                diag,
                                 "consider using an iterator".to_string(),
                                 vec![
                                     (pat.span, format!("({}, <item>)", ident.name)),
@@ -1193,9 +1193,9 @@ fn check_for_loop_range<'a, 'tcx>(
                             "the loop variable `{}` is only used to index `{}`.",
                             ident.name, indexed
                         ),
-                        |db| {
+                        |diag| {
                             multispan_sugg(
-                                db,
+                                diag,
                                 "consider using an iterator".to_string(),
                                 vec![(pat.span, "<item>".to_string()), (arg.span, repl)],
                             );
@@ -1287,8 +1287,8 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                         REVERSE_RANGE_LOOP,
                         expr.span,
                         "this range is empty so this for loop will never run",
-                        |db| {
-                            db.span_suggestion(
+                        |diag| {
+                            diag.span_suggestion(
                                 arg.span,
                                 "consider using the following if you are attempting to iterate over this \
                                  range in reverse",
@@ -1561,10 +1561,10 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
                     FOR_KV_MAP,
                     expr.span,
                     &format!("you seem to want to iterate on a map's {}s", kind),
-                    |db| {
+                    |diag| {
                         let map = sugg::Sugg::hir(cx, arg, "map");
                         multispan_sugg(
-                            db,
+                            diag,
                             "use the corresponding method".into(),
                             vec![
                                 (pat_span, snippet(cx, new_pat_span, kind).into_owned()),
@@ -2363,12 +2363,12 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr<'_
             WHILE_IMMUTABLE_CONDITION,
             cond.span,
             "variables in the condition are not mutated in the loop body",
-            |db| {
-                db.note("this may lead to an infinite or to a never running loop");
+            |diag| {
+                diag.note("this may lead to an infinite or to a never running loop");
 
                 if has_break_or_return {
-                    db.note("this loop contains `return`s or `break`s");
-                    db.help("rewrite it as `if cond { loop { } }`");
+                    diag.note("this loop contains `return`s or `break`s");
+                    diag.help("rewrite it as `if cond { loop { } }`");
                 }
             },
         );
@@ -2471,8 +2471,8 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
                 match_type(cx, ty, &paths::HASHMAP) {
                 if method.ident.name == sym!(len) {
                     let span = shorten_needless_collect_span(expr);
-                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
-                        db.span_suggestion(
+                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |diag| {
+                        diag.span_suggestion(
                             span,
                             "replace with",
                             ".count()".to_string(),
@@ -2482,8 +2482,8 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
                 }
                 if method.ident.name == sym!(is_empty) {
                     let span = shorten_needless_collect_span(expr);
-                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
-                        db.span_suggestion(
+                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |diag| {
+                        diag.span_suggestion(
                             span,
                             "replace with",
                             ".next().is_none()".to_string(),
@@ -2494,13 +2494,13 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
                 if method.ident.name == sym!(contains) {
                     let contains_arg = snippet(cx, args[1].span, "??");
                     let span = shorten_needless_collect_span(expr);
-                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |db| {
+                    span_lint_and_then(cx, NEEDLESS_COLLECT, span, NEEDLESS_COLLECT_MSG, |diag| {
                         let (arg, pred) = if contains_arg.starts_with('&') {
                             ("x", &contains_arg[1..])
                         } else {
                             ("&x", &*contains_arg)
                         };
-                        db.span_suggestion(
+                        diag.span_suggestion(
                             span,
                             "replace with",
                             format!(

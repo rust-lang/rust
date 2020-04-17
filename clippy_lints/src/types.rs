@@ -608,17 +608,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
                 if higher::is_from_for_desugar(local) {
                     return;
                 }
-                span_lint_and_then(cx, LET_UNIT_VALUE, stmt.span, "this let-binding has unit value", |db| {
-                    if let Some(expr) = &local.init {
-                        let snip = snippet_with_macro_callsite(cx, expr.span, "()");
-                        db.span_suggestion(
-                            stmt.span,
-                            "omit the `let` binding",
-                            format!("{};", snip),
-                            Applicability::MachineApplicable, // snippet
-                        );
-                    }
-                });
+                span_lint_and_then(
+                    cx,
+                    LET_UNIT_VALUE,
+                    stmt.span,
+                    "this let-binding has unit value",
+                    |diag| {
+                        if let Some(expr) = &local.init {
+                            let snip = snippet_with_macro_callsite(cx, expr.span, "()");
+                            diag.span_suggestion(
+                                stmt.span,
+                                "omit the `let` binding",
+                                format!("{};", snip),
+                                Applicability::MachineApplicable, // snippet
+                            );
+                        }
+                    },
+                );
             }
         }
     }
@@ -1712,11 +1718,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
                     CHAR_LIT_AS_U8,
                     expr.span,
                     "casting a character literal to `u8` truncates",
-                    |db| {
-                        db.note("`char` is four bytes wide, but `u8` is a single byte");
+                    |diag| {
+                        diag.note("`char` is four bytes wide, but `u8` is a single byte");
 
                         if c.is_ascii() {
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 expr.span,
                                 "use a byte literal instead",
                                 format!("b{}", snippet),
@@ -2182,7 +2188,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
 
         fn suggestion<'a, 'tcx>(
             cx: &LateContext<'a, 'tcx>,
-            db: &mut DiagnosticBuilder<'_>,
+            diag: &mut DiagnosticBuilder<'_>,
             generics_span: Span,
             generics_suggestion_span: Span,
             target: &ImplicitHasherType<'_>,
@@ -2197,7 +2203,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             };
 
             multispan_sugg(
-                db,
+                diag,
                 "consider adding a type parameter".to_string(),
                 vec![
                     (
@@ -2222,7 +2228,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             );
 
             if !vis.suggestions.is_empty() {
-                multispan_sugg(db, "...and use generic constructor".into(), vis.suggestions);
+                multispan_sugg(diag, "...and use generic constructor".into(), vis.suggestions);
             }
         }
 
@@ -2268,8 +2274,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                             "impl for `{}` should be generalized over different hashers",
                             target.type_name()
                         ),
-                        move |db| {
-                            suggestion(cx, db, generics.span, generics_suggestion_span, target, ctr_vis);
+                        move |diag| {
+                            suggestion(cx, diag, generics.span, generics_suggestion_span, target, ctr_vis);
                         },
                     );
                 }
@@ -2306,8 +2312,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                                 "parameter of type `{}` should be generalized over different hashers",
                                 target.type_name()
                             ),
-                            move |db| {
-                                suggestion(cx, db, generics.span, generics_suggestion_span, target, ctr_vis);
+                            move |diag| {
+                                suggestion(cx, diag, generics.span, generics_suggestion_span, target, ctr_vis);
                             },
                         );
                     }

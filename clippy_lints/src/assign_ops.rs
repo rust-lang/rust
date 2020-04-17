@@ -131,11 +131,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                 ASSIGN_OP_PATTERN,
                                 expr.span,
                                 "manual implementation of an assign operation",
-                                |db| {
+                                |diag| {
                                     if let (Some(snip_a), Some(snip_r)) =
                                         (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
                                     {
-                                        db.span_suggestion(
+                                        diag.span_suggestion(
                                             expr.span,
                                             "replace it with",
                                             format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
@@ -199,12 +199,12 @@ fn lint_misrefactored_assign_op(
         MISREFACTORED_ASSIGN_OP,
         expr.span,
         "variable appears on both sides of an assignment operation",
-        |db| {
+        |diag| {
             if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span)) {
                 let a = &sugg::Sugg::hir(cx, assignee, "..");
                 let r = &sugg::Sugg::hir(cx, rhs, "..");
                 let long = format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
-                db.span_suggestion(
+                diag.span_suggestion(
                     expr.span,
                     &format!(
                         "Did you mean `{} = {} {} {}` or `{}`? Consider replacing it with",
@@ -217,7 +217,7 @@ fn lint_misrefactored_assign_op(
                     format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
                     Applicability::MaybeIncorrect,
                 );
-                db.span_suggestion(
+                diag.span_suggestion(
                     expr.span,
                     "or",
                     long,

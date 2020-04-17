@@ -416,8 +416,8 @@ fn check_needless_must_use(
             MUST_USE_UNIT,
             fn_header_span,
             "this unit-returning function has a `#[must_use]` attribute",
-            |db| {
-                db.span_suggestion(
+            |diag| {
+                diag.span_suggestion(
                     attr.span,
                     "remove the attribute",
                     "".into(),
@@ -454,9 +454,9 @@ fn check_must_use_candidate<'a, 'tcx>(
     {
         return;
     }
-    span_lint_and_then(cx, MUST_USE_CANDIDATE, fn_span, msg, |db| {
+    span_lint_and_then(cx, MUST_USE_CANDIDATE, fn_span, msg, |diag| {
         if let Some(snippet) = snippet_opt(cx, fn_span) {
-            db.span_suggestion(
+            diag.span_suggestion(
                 fn_span,
                 "add the attribute",
                 format!("#[must_use] {}", snippet),

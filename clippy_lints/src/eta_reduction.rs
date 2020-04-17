@@ -101,9 +101,9 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
             if compare_inputs(&mut iter_input_pats(decl, body), &mut args.iter());
 
             then {
-                span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |db| {
+                span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |diag| {
                     if let Some(snippet) = snippet_opt(cx, caller.span) {
-                        db.span_suggestion(
+                        diag.span_suggestion(
                             expr.span,
                             "remove closure as shown",
                             snippet,
@@ -131,8 +131,8 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
             if let Some(name) = get_ufcs_type_name(cx, method_def_id, &args[0]);
 
             then {
-                span_lint_and_then(cx, REDUNDANT_CLOSURE_FOR_METHOD_CALLS, expr.span, "redundant closure found", |db| {
-                    db.span_suggestion(
+                span_lint_and_then(cx, REDUNDANT_CLOSURE_FOR_METHOD_CALLS, expr.span, "redundant closure found", |diag| {
+                    diag.span_suggestion(
                         expr.span,
                         "remove closure as shown",
                         format!("{}::{}", name, path.ident.name),

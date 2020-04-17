@@ -178,11 +178,11 @@ fn check_replace_with_default(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &E
                     MEM_REPLACE_WITH_DEFAULT,
                     expr_span,
                     "replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`",
-                    |db| {
+                    |diag| {
                         if !in_macro(expr_span) {
                             let suggestion = format!("std::mem::take({})", snippet(cx, dest.span, ""));
 
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 expr_span,
                                 "consider using",
                                 suggestion,

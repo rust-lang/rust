@@ -137,9 +137,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
                                    VERBOSE_BIT_MASK,
                                    e.span,
                                    "bit mask could be simplified with a call to `trailing_zeros`",
-                                   |db| {
+                                   |diag| {
                     let sugg = Sugg::hir(cx, left1, "...").maybe_par();
-                    db.span_suggestion(
+                    diag.span_suggestion(
                         e.span,
                         "try",
                         format!("{}.trailing_zeros() >= {}", sugg, n.count_ones()),

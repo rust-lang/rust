@@ -150,19 +150,19 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
                 RANGE_PLUS_ONE,
                 span,
                 "an inclusive range would be more readable",
-                |db| {
+                |diag| {
                     let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
                     let end = Sugg::hir(cx, y, "y");
                     if let Some(is_wrapped) = &snippet_opt(cx, span) {
                         if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 span,
                                 "use",
                                 format!("({}..={})", start, end),
                                 Applicability::MaybeIncorrect,
                             );
                         } else {
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 span,
                                 "use",
                                 format!("{}..={}", start, end),
@@ -187,10 +187,10 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
                 RANGE_MINUS_ONE,
                 expr.span,
                 "an exclusive range would be more readable",
-                |db| {
+                |diag| {
                     let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
                     let end = Sugg::hir(cx, y, "y");
-                    db.span_suggestion(
+                    diag.span_suggestion(
                         expr.span,
                         "use",
                         format!("{}..{}", start, end),

@@ -425,12 +425,12 @@ impl EarlyLintPass for MiscEarlyLints {
                                 REDUNDANT_CLOSURE_CALL,
                                 expr.span,
                                 "Try not to call a closure in the expression where it is declared.",
-                                |db| {
+                                |diag| {
                                     if decl.inputs.is_empty() {
                                         let mut app = Applicability::MachineApplicable;
                                         let hint =
                                             snippet_with_applicability(cx, block.span, "..", &mut app).into_owned();
-                                        db.span_suggestion(expr.span, "Try doing something like: ", hint, app);
+                                        diag.span_suggestion(expr.span, "Try doing something like: ", hint, app);
                                     }
                                 },
                             );
@@ -546,14 +546,14 @@ impl MiscEarlyLints {
                     ZERO_PREFIXED_LITERAL,
                     lit.span,
                     "this is a decimal constant",
-                    |db| {
-                        db.span_suggestion(
+                    |diag| {
+                        diag.span_suggestion(
                             lit.span,
                             "if you mean to use a decimal constant, remove the `0` to avoid confusion",
                             lit_snip.trim_start_matches(|c| c == '_' || c == '0').to_string(),
                             Applicability::MaybeIncorrect,
                         );
-                        db.span_suggestion(
+                        diag.span_suggestion(
                             lit.span,
                             "if you mean to use an octal constant, use `0o`",
                             format!("0o{}", lit_snip.trim_start_matches(|c| c == '_' || c == '0')),

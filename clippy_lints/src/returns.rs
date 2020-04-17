@@ -154,16 +154,16 @@ impl Return {
                     return;
                 }
 
-                span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |db| {
+                span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
                     if let Some(snippet) = snippet_opt(cx, inner_span) {
-                        db.span_suggestion(ret_span, "remove `return`", snippet, Applicability::MachineApplicable);
+                        diag.span_suggestion(ret_span, "remove `return`", snippet, Applicability::MachineApplicable);
                     }
                 })
             },
             None => match replacement {
                 RetReplacement::Empty => {
-                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |db| {
-                        db.span_suggestion(
+                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
+                        diag.span_suggestion(
                             ret_span,
                             "remove `return`",
                             String::new(),
@@ -172,8 +172,8 @@ impl Return {
                     });
                 },
                 RetReplacement::Block => {
-                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |db| {
-                        db.span_suggestion(
+                    span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
+                        diag.span_suggestion(
                             ret_span,
                             "replace `return` with an empty block",
                             "{}".to_string(),
@@ -259,8 +259,8 @@ impl EarlyLintPass for Return {
                 } else {
                     (ty.span, Applicability::MaybeIncorrect)
                 };
-                span_lint_and_then(cx, UNUSED_UNIT, rspan, "unneeded unit return type", |db| {
-                    db.span_suggestion(
+                span_lint_and_then(cx, UNUSED_UNIT, rspan, "unneeded unit return type", |diag| {
+                    diag.span_suggestion(
                         rspan,
                         "remove the `-> ()`",
                         String::new(),
@@ -279,8 +279,8 @@ impl EarlyLintPass for Return {
             if is_unit_expr(expr) && !stmt.span.from_expansion();
             then {
                 let sp = expr.span;
-                span_lint_and_then(cx, UNUSED_UNIT, sp, "unneeded unit expression", |db| {
-                    db.span_suggestion(
+                span_lint_and_then(cx, UNUSED_UNIT, sp, "unneeded unit expression", |diag| {
+                    diag.span_suggestion(
                         sp,
                         "remove the final `()`",
                         String::new(),
@@ -295,8 +295,8 @@ impl EarlyLintPass for Return {
         match e.kind {
             ast::ExprKind::Ret(Some(ref expr)) | ast::ExprKind::Break(_, Some(ref expr)) => {
                 if is_unit_expr(expr) && !expr.span.from_expansion() {
-                    span_lint_and_then(cx, UNUSED_UNIT, expr.span, "unneeded `()`", |db| {
-                        db.span_suggestion(
+                    span_lint_and_then(cx, UNUSED_UNIT, expr.span, "unneeded `()`", |diag| {
+                        diag.span_suggestion(
                             expr.span,
                             "remove the `()`",
                             String::new(),

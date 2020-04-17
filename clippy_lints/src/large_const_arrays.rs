@@ -70,8 +70,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeConstArrays {
                     LARGE_CONST_ARRAYS,
                     item.span,
                     "large array defined as const",
-                    |db| {
-                        db.span_suggestion(
+                    |diag| {
+                        diag.span_suggestion(
                             sugg_span,
                             "make this a static item",
                             "static".to_string(),

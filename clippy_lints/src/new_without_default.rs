@@ -168,8 +168,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                                 "you should consider deriving a `Default` implementation for `{}`",
                                                 self_ty
                                             ),
-                                            |db| {
-                                                db.suggest_item_with_attr(
+                                            |diag| {
+                                                diag.suggest_item_with_attr(
                                                     cx,
                                                     sp,
                                                     "try this",
@@ -187,8 +187,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                                 "you should consider adding a `Default` implementation for `{}`",
                                                 self_ty
                                             ),
-                                            |db| {
-                                                db.suggest_prepend_item(
+                                            |diag| {
+                                                diag.suggest_prepend_item(
                                                     cx,
                                                     item.span,
                                                     "try this",

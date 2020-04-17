@@ -273,9 +273,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                                                 USELESS_ATTRIBUTE,
                                                 line_span,
                                                 "useless lint attribute",
-                                                |db| {
+                                                |diag| {
                                                     sugg = sugg.replacen("#[", "#![", 1);
-                                                    db.span_suggestion(
+                                                    diag.span_suggestion(
                                                         line_span,
                                                         "if you just forgot a `!`, use",
                                                         sugg,
@@ -329,7 +329,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                     UNKNOWN_CLIPPY_LINTS,
                     lint.span(),
                     &format!("unknown clippy lint: clippy::{}", name),
-                    |db| {
+                    |diag| {
                         let name_lower = name.as_str().to_lowercase();
                         let symbols = lint_store.get_lints().iter().map(
                             |l| Symbol::intern(&l.name_lower())
@@ -341,14 +341,14 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                         );
                         if name.as_str().chars().any(char::is_uppercase)
                             && lint_store.find_lints(&format!("clippy::{}", name_lower)).is_ok() {
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 lint.span(),
                                 "lowercase the lint name",
                                 format!("clippy::{}", name_lower),
                                 Applicability::MachineApplicable,
                             );
                         } else if let Some(sugg) = sugg {
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 lint.span(),
                                 "did you mean",
                                 sugg.to_string(),

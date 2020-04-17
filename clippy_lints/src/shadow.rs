@@ -268,8 +268,8 @@ fn lint_shadow<'a, 'tcx>(
                     snippet(cx, pattern_span, "_"),
                     snippet(cx, expr.span, "..")
                 ),
-                |db| {
-                    db.span_note(prev_span, "previous binding is here");
+                |diag| {
+                    diag.span_note(prev_span, "previous binding is here");
                 },
             );
         } else if contains_name(name, expr) {
@@ -282,9 +282,9 @@ fn lint_shadow<'a, 'tcx>(
                     snippet(cx, pattern_span, "_"),
                     snippet(cx, expr.span, "..")
                 ),
-                |db| {
-                    db.span_note(expr.span, "initialization happens here");
-                    db.span_note(prev_span, "previous binding is here");
+                |diag| {
+                    diag.span_note(expr.span, "initialization happens here");
+                    diag.span_note(prev_span, "previous binding is here");
                 },
             );
         } else {
@@ -297,9 +297,9 @@ fn lint_shadow<'a, 'tcx>(
                     snippet(cx, pattern_span, "_"),
                     snippet(cx, expr.span, "..")
                 ),
-                |db| {
-                    db.span_note(expr.span, "initialization happens here");
-                    db.span_note(prev_span, "previous binding is here");
+                |diag| {
+                    diag.span_note(expr.span, "initialization happens here");
+                    diag.span_note(prev_span, "previous binding is here");
                 },
             );
         }
@@ -309,8 +309,8 @@ fn lint_shadow<'a, 'tcx>(
             SHADOW_UNRELATED,
             span,
             &format!("`{}` shadows a previous declaration", snippet(cx, pattern_span, "_")),
-            |db| {
-                db.span_note(prev_span, "previous binding is here");
+            |diag| {
+                diag.span_note(prev_span, "previous binding is here");
             },
         );
     }
