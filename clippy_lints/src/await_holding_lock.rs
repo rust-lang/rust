@@ -1,20 +1,24 @@
 use crate::utils::{match_def_path, paths, span_lint_and_note};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl, HirId, IsAsync};
+use rustc_hir::{AsyncGeneratorKind, Body, BodyId, GeneratorKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::GeneratorInteriorTypeCause;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for calls to await while holding a MutexGuard.
+    /// **What it does:** Checks for calls to await while holding a
+    /// non-async-aware MutexGuard.
     ///
-    /// **Why is this bad?** This is almost certainly an error which can result
-    /// in a deadlock because the reactor will invoke code not visible to the
-    /// currently visible scope.
+    /// **Why is this bad?** The Mutex types found in syd::sync and parking_lot
+    /// are not designed to operator in an async context across await points.
     ///
-    /// **Known problems:** Detects only specifically named guard types:
-    /// MutexGuard, RwLockReadGuard, and RwLockWriteGuard.
+    /// There are two potential solutions. One is to use an asynx-aware Mutex
+    /// type. Many asynchronous foundation crates provide such a Mutex type. The
+    /// other solution is to ensure the mutex is unlocked before calling await,
+    /// either by introducing a scope or an explicit call to Drop::drop.
+    ///
+    /// **Known problems:** None.
     ///
     /// **Example:**
     ///
@@ -27,6 +31,7 @@ declare_clippy_lint! {
     ///   bar.await;
     /// }
     /// ```
+    ///
     /// Use instead:
     /// ```rust,ignore
     /// use std::sync::Mutex;
@@ -47,41 +52,39 @@ declare_clippy_lint! {
 declare_lint_pass!(AwaitHoldingLock => [AWAIT_HOLDING_LOCK]);
 
 impl LateLintPass<'_, '_> for AwaitHoldingLock {
-    fn check_fn(
-        &mut self,
-        cx: &LateContext<'_, '_>,
-        fn_kind: FnKind<'_>,
-        _: &FnDecl<'_>,
-        _: &Body<'_>,
-        span: Span,
-        _: HirId,
-    ) {
-        if !is_async_fn(fn_kind) {
-            return;
-        }
-
-        for ty_cause in &cx.tables.generator_interior_types {
-            if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind {
-                if is_mutex_guard(cx, adt.did) {
-                    span_lint_and_note(
-                        cx,
-                        AWAIT_HOLDING_LOCK,
-                        ty_cause.span,
-                        "this MutexGuard is held across an 'await' point",
-                        ty_cause.scope_span.unwrap_or(span),
-                        "these are all the await points this lock is held through",
-                    );
-                }
-            }
+    fn check_body(&mut self, cx: &LateContext<'_, '_>, body: &'_ Body<'_>) {
+        use AsyncGeneratorKind::{Block, Closure, Fn};
+        match body.generator_kind {
+            Some(GeneratorKind::Async(Block))
+            | Some(GeneratorKind::Async(Closure))
+            | Some(GeneratorKind::Async(Fn)) => {
+                let body_id = BodyId {
+                    hir_id: body.value.hir_id,
+                };
+                let def_id = cx.tcx.hir().body_owner_def_id(body_id);
+                let tables = cx.tcx.typeck_tables_of(def_id);
+                check_interior_types(cx, &tables.generator_interior_types, body.value.span);
+            },
+            _ => {},
         }
     }
 }
 
-fn is_async_fn(fn_kind: FnKind<'_>) -> bool {
-    fn_kind.header().map_or(false, |h| match h.asyncness {
-        IsAsync::Async => true,
-        IsAsync::NotAsync => false,
-    })
+fn check_interior_types(cx: &LateContext<'_, '_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
+    for ty_cause in ty_causes {
+        if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind {
+            if is_mutex_guard(cx, adt.did) {
+                span_lint_and_note(
+                    cx,
+                    AWAIT_HOLDING_LOCK,
+                    ty_cause.span,
+                    "this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await.",
+                    ty_cause.scope_span.unwrap_or(span),
+                    "these are all the await points this lock is held through",
+                );
+            }
+        }
+    }
 }
 
 fn is_mutex_guard(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {

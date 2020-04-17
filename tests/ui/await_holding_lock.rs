@@ -34,9 +34,31 @@ async fn also_bad(x: &Mutex<u32>) -> u32 {
     first + second + third
 }
 
+async fn not_good(x: &Mutex<u32>) -> u32 {
+    let first = baz().await;
+
+    let second = {
+        let guard = x.lock().unwrap();
+        baz().await
+    };
+
+    let third = baz().await;
+
+    first + second + third
+}
+
+fn block_bad(x: &Mutex<u32>) -> impl std::future::Future<Output = u32> + '_ {
+    async move {
+        let guard = x.lock().unwrap();
+        baz().await
+    }
+}
+
 fn main() {
     let m = Mutex::new(100);
     good(&m);
     bad(&m);
     also_bad(&m);
+    not_good(&m);
+    block_bad(&m);
 }
