@@ -11,7 +11,7 @@ use ra_syntax::{
 };
 use ra_text_edit::AtomTextEdit;
 
-use crate::{call_info::call_info, completion::CompletionConfig, CallInfo, FilePosition};
+use crate::{completion::CompletionConfig, FilePosition};
 
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
@@ -34,7 +34,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
     pub(super) record_field_syntax: Option<ast::RecordField>,
     pub(super) impl_def: Option<ast::ImplDef>,
-    pub(super) call_info: Option<CallInfo>,
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
@@ -95,7 +94,6 @@ impl<'a> CompletionContext<'a> {
             krate,
             name_ref_syntax: None,
             function_syntax: None,
-            call_info: None,
             use_item_syntax: None,
             record_lit_syntax: None,
             record_pat_syntax: None,
@@ -267,8 +265,6 @@ impl<'a> CompletionContext<'a> {
 
         self.use_item_syntax =
             self.sema.ancestors_with_macros(self.token.parent()).find_map(ast::UseItem::cast);
-
-        self.call_info = call_info(self.db, self.file_position);
 
         self.function_syntax = self
             .sema
