@@ -2670,16 +2670,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
-        let is_associated_item = if let Some(hir_id) = self.hir().as_local_hir_id(def_id) {
-            match self.hir().get(hir_id) {
-                Node::TraitItem(_) | Node::ImplItem(_) => true,
-                _ => false,
-            }
-        } else {
-            match self.def_kind(def_id) {
-                Some(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy) => true,
-                _ => false,
-            }
+        let is_associated_item = match self.def_kind(def_id) {
+            DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy => true,
+            _ => false,
         };
 
         is_associated_item.then(|| self.associated_item(def_id))
