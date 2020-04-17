@@ -59,6 +59,7 @@ impl_from! {
     ProjectionCache(traits::UndoLog<'tcx>),
 }
 
+/// The Rollback trait defines how to rollback a particular action.
 impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
     fn reverse(&mut self, undo: UndoLog<'tcx>) {
         match undo {
@@ -67,10 +68,10 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
             UndoLog::IntUnificationTable(undo) => self.int_unification_storage.reverse(undo),
             UndoLog::FloatUnificationTable(undo) => self.float_unification_storage.reverse(undo),
             UndoLog::RegionConstraintCollector(undo) => {
-                self.region_constraints.as_mut().unwrap().reverse(undo)
+                self.region_constraint_storage.as_mut().unwrap().reverse(undo)
             }
             UndoLog::RegionUnificationTable(undo) => {
-                self.region_constraints.as_mut().unwrap().unification_table.reverse(undo)
+                self.region_constraint_storage.as_mut().unwrap().unification_table.reverse(undo)
             }
             UndoLog::ProjectionCache(undo) => self.projection_cache.reverse(undo),
             UndoLog::PushRegionObligation => {
@@ -80,6 +81,8 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
     }
 }
 
+/// The combined undo log for all the various unification tables. For each change to the storage
+/// for any kind of inference variable, we record an UndoLog entry in the vector here.
 pub(crate) struct InferCtxtUndoLogs<'tcx> {
     logs: Vec<UndoLog<'tcx>>,
     num_open_snapshots: usize,
@@ -91,6 +94,8 @@ impl Default for InferCtxtUndoLogs<'_> {
     }
 }
 
+/// The UndoLogs trait defines how we undo a particular kind of action (of type T). We can undo any
+/// action that is convertable into a UndoLog (per the From impls above).
 impl<'tcx, T> UndoLogs<T> for InferCtxtUndoLogs<'tcx>
 where
     UndoLog<'tcx>: From<T>,
@@ -98,15 +103,18 @@ where
     fn num_open_snapshots(&self) -> usize {
         self.num_open_snapshots
     }
+
     fn push(&mut self, undo: T) {
         if self.in_snapshot() {
             self.logs.push(undo.into())
         }
     }
+
     fn clear(&mut self) {
         self.logs.clear();
         self.num_open_snapshots = 0;
     }
+
     fn extend<J>(&mut self, undos: J)
     where
         Self: Sized,
@@ -196,6 +204,7 @@ impl<'tcx> InferCtxtUndoLogs<'tcx> {
 
 impl<'tcx> std::ops::Index<usize> for InferCtxtUndoLogs<'tcx> {
     type Output = UndoLog<'tcx>;
+
     fn index(&self, key: usize) -> &Self::Output {
         &self.logs[key]
     }

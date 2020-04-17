@@ -82,7 +82,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         debug!("fudge_inference_if_ok()");
 
-        let (mut fudger, value) = self.probe_full(|snapshot| {
+        let (mut fudger, value) = self.probe_fudge(|snapshot| {
             match f() {
                 Ok(value) => {
                     let value = self.resolve_vars_if_possible(&value);

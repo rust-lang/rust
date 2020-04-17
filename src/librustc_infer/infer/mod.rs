@@ -167,7 +167,7 @@ pub struct InferCtxtInner<'tcx> {
     /// `resolve_regions_and_report_errors` is invoked, this gets set to `None`
     /// -- further attempts to perform unification, etc., may fail if new
     /// region constraints would've been added.
-    region_constraints: Option<RegionConstraintStorage<'tcx>>,
+    region_constraint_storage: Option<RegionConstraintStorage<'tcx>>,
 
     /// A set of constraints that regionck must validate. Each
     /// constraint has the form `T:'a`, meaning "some type `T` must
@@ -214,7 +214,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             const_unification_storage: ut::UnificationTableStorage::new(),
             int_unification_storage: ut::UnificationTableStorage::new(),
             float_unification_storage: ut::UnificationTableStorage::new(),
-            region_constraints: Some(RegionConstraintStorage::new()),
+            region_constraint_storage: Some(RegionConstraintStorage::new()),
             region_obligations: vec![],
         }
     }
@@ -268,7 +268,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     pub fn unwrap_region_constraints(&mut self) -> RegionConstraintCollector<'tcx, '_> {
-        self.region_constraints
+        self.region_constraint_storage
             .as_mut()
             .expect("region constraints already solved")
             .with_log(&mut self.undo_log)
@@ -705,8 +705,9 @@ impl<'tcx> InferOk<'tcx, ()> {
     }
 }
 
+/// Extends `CombinedSnapshot` by tracking which variables were added in the snapshot
 #[must_use = "once you start a snapshot, you should always consume it"]
-pub struct FullSnapshot<'a, 'tcx> {
+pub struct FudgeSnapshot<'a, 'tcx> {
     snapshot: CombinedSnapshot<'a, 'tcx>,
     region_constraints_snapshot: RegionSnapshot,
     type_snapshot: type_variable::Snapshot<'tcx>,
@@ -830,10 +831,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         result
     }
 
-    fn start_full_snapshot(&self) -> FullSnapshot<'a, 'tcx> {
+    fn start_fudge_snapshot(&self) -> FudgeSnapshot<'a, 'tcx> {
         let snapshot = self.start_snapshot();
         let mut inner = self.inner.borrow_mut();
-        FullSnapshot {
+        FudgeSnapshot {
             snapshot,
             type_snapshot: inner.type_variables().snapshot(),
             const_var_len: inner.const_unification_table().len(),
@@ -925,12 +926,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         r
     }
 
-    pub fn probe_full<R, F>(&self, f: F) -> R
+    /// Like `probe` but provides information about which variables were created in the snapshot,
+    /// allowing for inference fudging
+    pub fn probe_fudge<R, F>(&self, f: F) -> R
     where
-        F: FnOnce(&FullSnapshot<'a, 'tcx>) -> R,
+        F: FnOnce(&FudgeSnapshot<'a, 'tcx>) -> R,
     {
         debug!("probe()");
-        let snapshot = self.start_full_snapshot();
+        let snapshot = self.start_fudge_snapshot();
         let r = f(&snapshot);
         self.rollback_to("probe", snapshot.snapshot);
         r
@@ -1294,7 +1297,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 inner.region_obligations
             );
             inner
-                .region_constraints
+                .region_constraint_storage
                 .take()
                 .expect("regions already resolved")
                 .with_log(&mut inner.undo_log)
@@ -1362,7 +1365,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn take_region_var_origins(&self) -> VarInfos {
         let mut inner = self.inner.borrow_mut();
         let (var_infos, data) = inner
-            .region_constraints
+            .region_constraint_storage
             .take()
             .expect("regions already resolved")
             .with_log(&mut inner.undo_log)

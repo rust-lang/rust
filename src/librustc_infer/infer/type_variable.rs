@@ -13,30 +13,35 @@ use std::ops::Range;
 
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 
+/// Represents a single undo-able action that affects a type inference variable.
 pub(crate) enum UndoLog<'tcx> {
     EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
     SubRelation(sv::UndoLog<ut::Delegate<ty::TyVid>>),
     Values(sv::UndoLog<Delegate>),
 }
 
+/// Convert from a specific kind of undo to the more general UndoLog
 impl<'tcx> From<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
     fn from(l: sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>) -> Self {
         UndoLog::EqRelation(l)
     }
 }
 
+/// Convert from a specific kind of undo to the more general UndoLog
 impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::TyVid>>> for UndoLog<'tcx> {
     fn from(l: sv::UndoLog<ut::Delegate<ty::TyVid>>) -> Self {
         UndoLog::SubRelation(l)
     }
 }
 
+/// Convert from a specific kind of undo to the more general UndoLog
 impl<'tcx> From<sv::UndoLog<Delegate>> for UndoLog<'tcx> {
     fn from(l: sv::UndoLog<Delegate>) -> Self {
         UndoLog::Values(l)
     }
 }
 
+/// Convert from a specific kind of undo to the more general UndoLog
 impl<'tcx> From<Instantiate> for UndoLog<'tcx> {
     fn from(l: Instantiate) -> Self {
         UndoLog::Values(sv::UndoLog::Other(l))
