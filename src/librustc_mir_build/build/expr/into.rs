@@ -3,10 +3,10 @@
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
-use rustc_middle::mir::*;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_middle::mir::*;
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
 use rustc_span::symbol::sym;
 
 use rustc_target::spec::abi::Abi;
@@ -207,7 +207,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } else {
                     let args: Vec<_> = args
                         .into_iter()
-                        .map(|arg| unpack!(block = this.as_local_operand(block, arg)))
+                        .map(|arg| unpack!(block = this.as_local_call_operand(block, arg)))
                         .collect();
 
                     let success = this.cfg.start_new_block();

@@ -45,12 +45,12 @@ LL |         println!("{}", &y);
 error[E0382]: borrow of moved value: `x`
   --> $DIR/borrow-after-move.rs:39:24
    |
+LL |         let x = "hello".to_owned().into_boxed_str();
+   |             - move occurs because `x` has type `std::boxed::Box<str>`, which does not implement the `Copy` trait
 LL |         x.foo();
    |         - value moved here
 LL |         println!("{}", &x);
-   |                        ^^ value borrowed here after partial move
-   |
-   = note: move occurs because `*x` has type `str`, which does not implement the `Copy` trait
+   |                        ^^ value borrowed here after move
 
 error: aborting due to 5 previous errors
 
