@@ -305,7 +305,7 @@ impl fmt::Debug for InvalidProgramInfo<'_> {
             Layout(ref err) => write!(f, "{}", err),
             TransmuteSizeDiff(from_ty, to_ty) => write!(
                 f,
-                "tried to transmute from {:?} to {:?}, but their sizes differed",
+                "transmuting `{}` to `{}` is not possible, because these types do not have the same size",
                 from_ty, to_ty
             ),
         }
@@ -431,7 +431,7 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 "using uninitialized data, but this operation requires initialized memory"
             ),
             DeadLocal => write!(f, "accessing a dead local variable"),
-            ReadFromReturnPlace => write!(f, "tried to read from the return place"),
+            ReadFromReturnPlace => write!(f, "reading from return place"),
         }
     }
 }
@@ -462,9 +462,9 @@ impl fmt::Debug for UnsupportedOpInfo {
         match self {
             Unsupported(ref msg) => write!(f, "{}", msg),
             ReadForeignStatic(did) => {
-                write!(f, "tried to read from foreign (extern) static {:?}", did)
+                write!(f, "cannot read from foreign (extern) static {:?}", did)
             }
-            NoMirFor(did) => write!(f, "could not load MIR for {:?}", did),
+            NoMirFor(did) => write!(f, "no MIR body is available for {:?}", did),
             ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
             ReadBytesAsPointer => write!(f, "unable to turn bytes into a pointer"),
         }
