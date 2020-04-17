@@ -8,4 +8,5 @@ test_utils::marks!(
     test_resolve_parent_module_on_module_decl
     search_filters_by_range
     dont_insert_macro_call_parens_unncessary
+    self_fulfilling_completion
 );
