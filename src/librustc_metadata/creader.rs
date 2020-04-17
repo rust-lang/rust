@@ -686,7 +686,9 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_profiler_runtime(&mut self) {
-        if self.sess.opts.debugging_opts.profile || self.sess.opts.cg.profile_generate.enabled() {
+        if (self.sess.opts.debugging_opts.profile || self.sess.opts.cg.profile_generate.enabled())
+            && !self.sess.opts.debugging_opts.no_profiler_runtime
+        {
             info!("loading profiler");
 
             let name = Symbol::intern("profiler_builtins");
