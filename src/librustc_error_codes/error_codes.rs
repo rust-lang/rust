@@ -366,6 +366,7 @@ E0644: include_str!("./error_codes/E0644.md"),
 E0646: include_str!("./error_codes/E0646.md"),
 E0647: include_str!("./error_codes/E0647.md"),
 E0648: include_str!("./error_codes/E0648.md"),
+E0657: include_str!("./error_codes/E0657.md"),
 E0658: include_str!("./error_codes/E0658.md"),
 E0659: include_str!("./error_codes/E0659.md"),
 E0660: include_str!("./error_codes/E0660.md"),
@@ -597,7 +598,6 @@ E0751: include_str!("./error_codes/E0751.md"),
            // used in argument position
     E0640, // infer outlives requirements
 //  E0645, // trait aliases not finished
-    E0657, // `impl Trait` can only capture lifetimes bound at the fn level
     E0667, // `impl Trait` in projections
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
