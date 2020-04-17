@@ -218,13 +218,13 @@ error[E0107]: wrong number of lifetime arguments: expected 2, found 1
   --> $DIR/missing-lifetime-specifier.rs:54:45
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^ expected 2 lifetime arguments
+   |                                             ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
 error[E0107]: wrong number of lifetime arguments: expected 2, found 1
   --> $DIR/missing-lifetime-specifier.rs:54:45
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^ expected 2 lifetime arguments
+   |                                             ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
 error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
   --> $DIR/missing-lifetime-specifier.rs:54:45
@@ -236,7 +236,7 @@ error[E0107]: wrong number of lifetime arguments: expected 2, found 1
   --> $DIR/missing-lifetime-specifier.rs:54:45
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^ expected 2 lifetime arguments
+   |                                             ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
 error[E0228]: the lifetime bound for this object type cannot be deduced from context; please supply an explicit bound
   --> $DIR/missing-lifetime-specifier.rs:54:45
@@ -248,7 +248,7 @@ error[E0107]: wrong number of lifetime arguments: expected 2, found 1
   --> $DIR/missing-lifetime-specifier.rs:54:45
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^ expected 2 lifetime arguments
+   |                                             ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
 
 error: aborting due to 28 previous errors
 
