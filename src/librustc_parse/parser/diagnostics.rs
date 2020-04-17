@@ -1055,10 +1055,11 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn try_macro_suggestion(&mut self) -> DiagnosticBuilder<'a> {
+        let is_try = self.token.is_keyword(kw::Try);
         let is_questionmark = self.look_ahead(1, |t| t == &token::Not); //check for !
         let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(token::Paren)); //check for (
 
-        if is_questionmark && is_open {
+        if is_try && is_questionmark && is_open {
             let lo = self.token.span;
             self.bump(); //remove try
             self.bump(); //remove !
