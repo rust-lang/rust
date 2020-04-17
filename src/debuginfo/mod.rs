@@ -257,6 +257,10 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         source_info_set: &indexmap::IndexSet<SourceInfo>,
         local_map: FxHashMap<mir::Local, CPlace<'tcx>>,
     ) {
+        if isa.get_mach_backend().is_some() {
+            return; // The AArch64 backend doesn't support line debuginfo yet.
+        }
+
         let end = self.create_debug_lines(context, isa, source_info_set);
 
         self.debug_context
