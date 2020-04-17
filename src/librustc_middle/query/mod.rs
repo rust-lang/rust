@@ -389,9 +389,9 @@ rustc_queries! {
 
     TypeChecking {
         /// The result of unsafety-checking this `DefId`.
-        query unsafety_check_result(key: DefId) -> mir::UnsafetyCheckResult {
-            desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }
-            cache_on_disk_if { key.is_local() }
+        query unsafety_check_result(key: LocalDefId) -> mir::UnsafetyCheckResult {
+            desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
         }
 
         /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error
