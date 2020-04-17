@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
    | ----------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                             |
-   |                             tried to transmute from usize to &[u8], but their sizes differed
+   |                             transmuting `usize` to `&[u8]` is not possible, because these types do not have the same size
    |
    = note: `#[deny(const_err)]` on by default
 

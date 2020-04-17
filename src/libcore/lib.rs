@@ -105,6 +105,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]
 #![feature(optin_builtin_traits)]
+#![feature(or_patterns)]
 #![feature(prelude_import)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]

@@ -54,7 +54,7 @@ pub fn parse_decimal(s: &str) -> ParseResult<'_> {
 
     match s.first() {
         None => Valid(Decimal::new(integral, b"", 0)),
-        Some(&b'e') | Some(&b'E') => {
+        Some(&b'e' | &b'E') => {
             if integral.is_empty() {
                 return Invalid; // No digits before 'e'
             }
@@ -70,7 +70,7 @@ pub fn parse_decimal(s: &str) -> ParseResult<'_> {
 
             match s.first() {
                 None => Valid(Decimal::new(integral, fractional, 0)),
-                Some(&b'e') | Some(&b'E') => parse_exp(integral, fractional, &s[1..]),
+                Some(&b'e' | &b'E') => parse_exp(integral, fractional, &s[1..]),
                 _ => Invalid, // Trailing junk after fractional part
             }
         }

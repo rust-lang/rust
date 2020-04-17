@@ -422,14 +422,14 @@ fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static
                 "+"
             }
         }
-        (_, Sign::Minus) | (_, Sign::MinusRaw) => {
+        (_, Sign::Minus | Sign::MinusRaw) => {
             if negative {
                 "-"
             } else {
                 ""
             }
         }
-        (_, Sign::MinusPlus) | (_, Sign::MinusPlusRaw) => {
+        (_, Sign::MinusPlus | Sign::MinusPlusRaw) => {
             if negative {
                 "-"
             } else {

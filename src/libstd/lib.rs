@@ -285,6 +285,7 @@
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
+#![feature(or_patterns)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
