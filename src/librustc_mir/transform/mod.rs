@@ -211,17 +211,21 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
 }
 
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
+    let def_id = def_id.expect_local();
+
     // Unsafety check uses the raw mir, so make sure it is run
-    let _ = tcx.unsafety_check_result(def_id.expect_local());
+    let _ = tcx.unsafety_check_result(def_id);
 
     let mut body = tcx.mir_built(def_id).steal();
 
-    util::dump_mir(tcx, None, "mir_map", &0, MirSource::item(def_id), &body, |_, _| Ok(()));
+    util::dump_mir(tcx, None, "mir_map", &0, MirSource::item(def_id.to_def_id()), &body, |_, _| {
+        Ok(())
+    });
 
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(def_id),
+        InstanceDef::Item(def_id.to_def_id()),
         None,
         MirPhase::Const,
         &[&[
