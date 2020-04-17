@@ -15,19 +15,7 @@ LL |     const fn const_val<T: Sized>() -> usize {
    |
    = note: cannot satisfy `_: Tt`
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-54954.rs:13:15
-   |
-LL | fn f(z: [f32; ARR_LEN]) -> [f32; ARR_LEN] {
-   |               ^^^^^^^ referenced constant has errors
+error: aborting due to 2 previous errors
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-54954.rs:13:34
-   |
-LL | fn f(z: [f32; ARR_LEN]) -> [f32; ARR_LEN] {
-   |                                  ^^^^^^^ referenced constant has errors
-
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0080, E0283, E0379.
-For more information about an error, try `rustc --explain E0080`.
+Some errors have detailed explanations: E0283, E0379.
+For more information about an error, try `rustc --explain E0283`.

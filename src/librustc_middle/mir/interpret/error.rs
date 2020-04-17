@@ -8,7 +8,7 @@ use crate::ty::{self, layout, Ty};
 
 use backtrace::Backtrace;
 use rustc_data_structures::sync::Lock;
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::definitions::DefPathData;
 use rustc_macros::HashStable;
@@ -19,23 +19,14 @@ use std::{any::Any, fmt, mem};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
-    /// Already reported a lint or an error for this evaluation.
-    Reported,
+    /// Already reported an error for this evaluation, and the compilation is
+    /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
+    Reported(ErrorReported),
+    /// Already emitted a lint for this evaluation.
+    Linted,
     /// Don't emit an error, the evaluation failed because the MIR was generic
     /// and the substs didn't fully monomorphize it.
     TooGeneric,
-}
-
-impl ErrorHandled {
-    pub fn assert_reported(self) {
-        match self {
-            ErrorHandled::Reported => {}
-            ErrorHandled::TooGeneric => bug!(
-                "MIR interpretation failed without reporting an error \
-                 even though it was fully monomorphized"
-            ),
-        }
-    }
 }
 
 CloneTypeFoldableImpls! {
@@ -84,15 +75,12 @@ impl<'tcx> ConstEvalErr<'tcx> {
         tcx: TyCtxtAt<'tcx>,
         message: &str,
         emit: impl FnOnce(DiagnosticBuilder<'_>),
-    ) -> Result<(), ErrorHandled> {
+    ) -> ErrorHandled {
         self.struct_generic(tcx, message, emit, None)
     }
 
     pub fn report_as_error(&self, tcx: TyCtxtAt<'tcx>, message: &str) -> ErrorHandled {
-        match self.struct_error(tcx, message, |mut e| e.emit()) {
-            Ok(_) => ErrorHandled::Reported,
-            Err(x) => x,
-        }
+        self.struct_error(tcx, message, |mut e| e.emit())
     }
 
     pub fn report_as_lint(
@@ -102,7 +90,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
         lint_root: hir::HirId,
         span: Option<Span>,
     ) -> ErrorHandled {
-        match self.struct_generic(
+        self.struct_generic(
             tcx,
             message,
             |mut lint: DiagnosticBuilder<'_>| {
@@ -122,10 +110,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 lint.emit();
             },
             Some(lint_root),
-        ) {
-            Ok(_) => ErrorHandled::Reported,
-            Err(err) => err,
-        }
+        )
     }
 
     /// Create a diagnostic for this const eval error.
@@ -143,12 +128,14 @@ impl<'tcx> ConstEvalErr<'tcx> {
         message: &str,
         emit: impl FnOnce(DiagnosticBuilder<'_>),
         lint_root: Option<hir::HirId>,
-    ) -> Result<(), ErrorHandled> {
+    ) -> ErrorHandled {
         let must_error = match self.error {
             err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
-                return Err(ErrorHandled::TooGeneric);
+                return ErrorHandled::TooGeneric;
             }
-            err_inval!(TypeckError) => return Err(ErrorHandled::Reported),
+            err_inval!(TypeckError(error_reported)) => {
+                return ErrorHandled::Reported(error_reported);
+            }
             // We must *always* hard error on these, even if the caller wants just a lint.
             err_inval!(Layout(LayoutError::SizeOverflow(_))) => true,
             _ => false,
@@ -183,6 +170,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
             // caller thinks anyway.
             // See <https://github.com/rust-lang/rust/pull/63152>.
             finish(struct_error(tcx, &err_msg), None);
+            ErrorHandled::Reported(ErrorReported)
         } else {
             // Regular case.
             if let Some(lint_root) = lint_root {
@@ -200,12 +188,13 @@ impl<'tcx> ConstEvalErr<'tcx> {
                     tcx.span,
                     |lint| finish(lint.build(message), Some(err_msg)),
                 );
+                ErrorHandled::Linted
             } else {
                 // Report as hard error.
                 finish(struct_error(tcx, message), Some(err_msg));
+                ErrorHandled::Reported(ErrorReported)
             }
         }
-        Ok(())
     }
 }
 
@@ -246,7 +235,9 @@ fn print_backtrace(backtrace: &mut Backtrace) {
 impl From<ErrorHandled> for InterpErrorInfo<'_> {
     fn from(err: ErrorHandled) -> Self {
         match err {
-            ErrorHandled::Reported => err_inval!(ReferencedConstant),
+            ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
+                err_inval!(ReferencedConstant)
+            }
             ErrorHandled::TooGeneric => err_inval!(TooGeneric),
         }
         .into()
@@ -288,7 +279,7 @@ pub enum InvalidProgramInfo<'tcx> {
     /// which already produced an error.
     ReferencedConstant,
     /// Abort in case type errors are reached.
-    TypeckError,
+    TypeckError(ErrorReported),
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
     /// An invalid transmute happened.
@@ -301,7 +292,9 @@ impl fmt::Debug for InvalidProgramInfo<'_> {
         match self {
             TooGeneric => write!(f, "encountered overly generic constant"),
             ReferencedConstant => write!(f, "referenced constant has errors"),
-            TypeckError => write!(f, "encountered constants with type errors, stopping evaluation"),
+            TypeckError(ErrorReported) => {
+                write!(f, "encountered constants with type errors, stopping evaluation")
+            }
             Layout(ref err) => write!(f, "{}", err),
             TransmuteSizeDiff(from_ty, to_ty) => write!(
                 f,

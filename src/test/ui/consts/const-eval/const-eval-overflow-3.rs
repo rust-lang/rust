@@ -19,7 +19,6 @@ const A_I8_I
     : [u32; (i8::MAX as usize) + 1]
     = [0; (i8::MAX + 1) as usize];
 //~^ ERROR evaluation of constant value failed
-//~| ERROR mismatched types
 
 fn main() {
     foo(&A_I8_I[..]);

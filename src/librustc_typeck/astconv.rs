@@ -826,14 +826,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                     }
                     GenericParamDefKind::Const => {
+                        let ty = tcx.at(span).type_of(param.def_id);
                         // FIXME(const_generics:defaults)
                         if infer_args {
                             // No const parameters were provided, we can infer all.
-                            let ty = tcx.at(span).type_of(param.def_id);
                             self.ct_infer(ty, Some(param), span).into()
                         } else {
                             // We've already errored above about the mismatch.
-                            tcx.consts.err.into()
+                            tcx.mk_const(ty::Const { val: ty::ConstKind::Error, ty }).into()
                         }
                     }
                 }

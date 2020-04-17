@@ -182,7 +182,7 @@ pub struct CommonLifetimes<'tcx> {
 }
 
 pub struct CommonConsts<'tcx> {
-    pub err: &'tcx Const<'tcx>,
+    pub unit: &'tcx Const<'tcx>,
 }
 
 pub struct LocalTableInContext<'a, V> {
@@ -410,8 +410,8 @@ pub struct TypeckTables<'tcx> {
     pub used_trait_imports: Lrc<DefIdSet>,
 
     /// If any errors occurred while type-checking this body,
-    /// this field will be set to `true`.
-    pub tainted_by_errors: bool,
+    /// this field will be set to `Some(ErrorReported)`.
+    pub tainted_by_errors: Option<ErrorReported>,
 
     /// All the opaque types that are restricted to concrete types
     /// by this function.
@@ -447,7 +447,7 @@ impl<'tcx> TypeckTables<'tcx> {
             fru_field_types: Default::default(),
             coercion_casts: Default::default(),
             used_trait_imports: Lrc::new(Default::default()),
-            tainted_by_errors: false,
+            tainted_by_errors: None,
             concrete_opaque_types: Default::default(),
             upvar_list: Default::default(),
             generator_interior_types: Default::default(),
@@ -858,9 +858,9 @@ impl<'tcx> CommonConsts<'tcx> {
         let mk_const = |c| interners.const_.intern(c, |c| Interned(interners.arena.alloc(c))).0;
 
         CommonConsts {
-            err: mk_const(ty::Const {
+            unit: mk_const(ty::Const {
                 val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())),
-                ty: types.err,
+                ty: types.unit,
             }),
         }
     }

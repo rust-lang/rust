@@ -510,11 +510,20 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     let tcx = relation.tcx();
 
     let eagerly_eval = |x: &'tcx ty::Const<'tcx>| {
+        // FIXME(eddyb) this doesn't account for lifetime inference variables
+        // being erased by `eval`, *nor* for the polymorphic aspect of `eval`.
+        // That is, we could always use `eval` and it will just return the
+        // old value back if it doesn't succeed.
         if !x.val.needs_infer() {
             return x.eval(tcx, relation.param_env()).val;
         }
         x.val
     };
+
+    // FIXME(eddyb) doesn't look like everything below checks that `a.ty == b.ty`.
+    // We could probably always assert it early, as `const` generic parameters
+    // are not allowed to depend on other generic parameters, i.e. are concrete.
+    // (although there could be normalization differences)
 
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
@@ -524,6 +533,9 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
             // The caller should handle these cases!
             bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
         }
+
+        (ty::ConstKind::Error, _) | (_, ty::ConstKind::Error) => Ok(ty::ConstKind::Error),
+
         (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) if a_p.index == b_p.index => {
             return Ok(a);
         }

@@ -23,8 +23,7 @@ fn h<const N: usize>() {
 fn i<const N: usize>() {
     static a: [u8; N] = [0; N];
     //~^ ERROR can't use generic parameters from outer function
-    //~^^ ERROR can't use generic parameters from outer function
-    //~| ERROR mismatched types
+    //~| ERROR can't use generic parameters from outer function
 }
 
 fn main() {}

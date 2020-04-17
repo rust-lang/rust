@@ -4,6 +4,7 @@
 use std::convert::TryFrom;
 use std::fmt::Write;
 
+use rustc_errors::ErrorReported;
 use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
 use rustc_middle::ty::layout::{IntegerExt, PrimitiveExt, TyAndLayout};
@@ -518,6 +519,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Early-return cases.
         let val_val = match val.val {
             ty::ConstKind::Param(_) => throw_inval!(TooGeneric),
+            ty::ConstKind::Error => throw_inval!(TypeckError(ErrorReported)),
             ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
                 let instance = self.resolve(def_id, substs)?;
                 // We use `const_eval` here and `const_eval_raw` elsewhere in mir interpretation.

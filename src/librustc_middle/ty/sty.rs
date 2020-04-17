@@ -18,6 +18,7 @@ use crate::ty::{List, ParamEnv, ParamEnvAnd, TyS};
 use polonius_engine::Atom;
 use rustc_ast::ast::{self, Ident};
 use rustc_data_structures::captures::Captures;
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::vec::Idx;
@@ -2340,6 +2341,8 @@ impl<'tcx> Const<'tcx> {
     /// unevaluated constant.
     pub fn eval(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> &Const<'tcx> {
         if let ConstKind::Unevaluated(did, substs, promoted) = self.val {
+            use crate::mir::interpret::ErrorHandled;
+
             let param_env_and_substs = param_env.with_reveal_all().and(substs);
 
             // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
@@ -2369,8 +2372,10 @@ impl<'tcx> Const<'tcx> {
                 // (which may be identity substs, see above),
                 // can leak through `val` into the const we return.
                 Ok(val) => Const::from_value(tcx, val, self.ty),
-
-                Err(_) => self,
+                Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
+                Err(ErrorHandled::Reported(ErrorReported)) => {
+                    tcx.mk_const(ty::Const { val: ty::ConstKind::Error, ty: self.ty })
+                }
             }
         } else {
             self
@@ -2429,6 +2434,10 @@ pub enum ConstKind<'tcx> {
 
     /// Used to hold computed value.
     Value(ConstValue<'tcx>),
+
+    /// A placeholder for a const which could not be computed; this is
+    /// propagated to avoid useless error messages.
+    Error,
 }
 
 #[cfg(target_arch = "x86_64")]

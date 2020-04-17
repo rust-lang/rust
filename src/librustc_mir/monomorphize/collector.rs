@@ -178,6 +178,7 @@ use crate::monomorphize;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -602,7 +603,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
                 match self.tcx.const_eval_resolve(param_env, def_id, substs, promoted, None) {
                     Ok(val) => collect_const_value(self.tcx, val, self.output),
-                    Err(ErrorHandled::Reported) => {}
+                    Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => {}
                     Err(ErrorHandled::TooGeneric) => span_bug!(
                         self.tcx.def_span(def_id),
                         "collection encountered polymorphic constant",

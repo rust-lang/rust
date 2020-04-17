@@ -304,8 +304,8 @@ pub fn unexpected_hidden_region_diagnostic(
         // down this path which gives a decent human readable
         // explanation.
         //
-        // (*) if not, the `tainted_by_errors` flag would be set to
-        // true in any case, so we wouldn't be here at all.
+        // (*) if not, the `tainted_by_errors` field would be set to
+        // `Some(ErrorReported)` in any case, so we wouldn't be here at all.
         note_and_explain_free_region(
             tcx,
             &mut err,

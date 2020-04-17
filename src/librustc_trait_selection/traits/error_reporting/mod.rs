@@ -12,7 +12,7 @@ use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCod
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{Node, QPath, TyKind, WhereBoundPredicate, WherePredicate};
@@ -674,8 +674,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             // Already reported in the query.
-            ConstEvalFailure(ErrorHandled::Reported) => {
-                self.tcx.sess.delay_span_bug(span, "constant in type had an ignored error");
+            ConstEvalFailure(ErrorHandled::Reported(ErrorReported)) => {
+                // FIXME(eddyb) remove this once `ErrorReported` becomes a proof token.
+                self.tcx.sess.delay_span_bug(span, "`ErrorReported` without an error");
+                return;
+            }
+
+            // Already reported in the query, but only as a lint.
+            // This shouldn't actually happen for constants used in types, modulo
+            // bugs. The `delay_span_bug` here ensures it won't be ignored.
+            ConstEvalFailure(ErrorHandled::Linted) => {
+                self.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
                 return;
             }
 

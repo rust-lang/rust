@@ -5,6 +5,7 @@
 use crate::check::FnCtxt;
 
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -75,7 +76,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.tables.upvar_list =
             mem::replace(&mut self.tables.borrow_mut().upvar_list, Default::default());
 
-        wbcx.tables.tainted_by_errors |= self.is_tainted_by_errors();
+        if self.is_tainted_by_errors() {
+            // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.
+            wbcx.tables.tainted_by_errors = Some(ErrorReported);
+        }
 
         debug!("writeback: tables for {:?} are {:#?}", item_def_id, wbcx.tables);
 
@@ -591,7 +595,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // We may have introduced e.g. `ty::Error`, if inference failed, make sure
         // to mark the `TypeckTables` as tainted in that case, so that downstream
         // users of the tables don't produce extra errors, or worse, ICEs.
-        self.tables.tainted_by_errors |= resolver.replaced_with_error;
+        if resolver.replaced_with_error {
+            // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.
+            self.tables.tainted_by_errors = Some(ErrorReported);
+        }
 
         x
     }
@@ -673,7 +680,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 // FIXME: we'd like to use `self.report_error`, but it doesn't yet
                 // accept a &'tcx ty::Const.
                 self.replaced_with_error = true;
-                self.tcx().consts.err
+                self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty: ct.ty })
             }
         }
     }

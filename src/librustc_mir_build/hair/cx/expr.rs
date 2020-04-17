@@ -12,7 +12,7 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, AdtKind, Ty, TypeFoldable};
+use rustc_middle::ty::{self, AdtKind, Ty};
 use rustc_span::Span;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr<'tcx> {
@@ -718,7 +718,8 @@ fn convert_path_expr<'a, 'tcx>(
 
         Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id) => {
             let user_provided_types = cx.tables.user_provided_types();
-            let user_ty = user_provided_types.get(expr.hir_id).copied();
+            let user_provided_type = user_provided_types.get(expr.hir_id).copied();
+            debug!("convert_path_expr: user_provided_type={:?}", user_provided_type);
             let ty = cx.tables().node_type(expr.hir_id);
             match ty.kind {
                 // A unit struct/variant which is used as a value.
@@ -727,17 +728,10 @@ fn convert_path_expr<'a, 'tcx>(
                     adt_def,
                     variant_index: adt_def.variant_index_with_ctor_id(def_id),
                     substs,
-                    user_ty,
+                    user_ty: user_provided_type,
                     fields: vec![],
                     base: None,
                 },
-                _ if ty.references_error() => {
-                    // Handle degenerate input without ICE (#67377).
-                    ExprKind::Literal {
-                        literal: ty::Const::zero_sized(cx.tcx, cx.tcx.types.err),
-                        user_ty: None,
-                    }
-                }
                 _ => bug!("unexpected ty: {:?}", ty),
             }
         }
