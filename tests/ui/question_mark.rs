@@ -121,6 +121,18 @@ impl MoveStruct {
     }
 }
 
+fn func() -> Option<i32> {
+    fn f() -> Option<String> {
+        Some(String::new())
+    }
+
+    if f().is_none() {
+        return None;
+    }
+
+    Some(0)
+}
+
 fn main() {
     some_func(Some(42));
     some_func(None);
@@ -138,4 +150,6 @@ fn main() {
 
     let so = SeemsOption::Some(45);
     returns_something_similar_to_option(so);
+
+    func();
 }

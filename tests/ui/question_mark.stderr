@@ -92,5 +92,13 @@ LL | |             return None;
 LL | |         };
    | |_________^ help: replace it with: `self.opt?`
 
-error: aborting due to 10 previous errors
+error: this block may be rewritten with the `?` operator
+  --> $DIR/question_mark.rs:129:5
+   |
+LL | /     if f().is_none() {
+LL | |         return None;
+LL | |     }
+   | |_____^ help: replace it with: `f()?;`
+
+error: aborting due to 11 previous errors
 
