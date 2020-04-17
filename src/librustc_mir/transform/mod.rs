@@ -212,7 +212,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
 
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
     // Unsafety check uses the raw mir, so make sure it is run
-    let _ = tcx.unsafety_check_result(def_id);
+    let _ = tcx.unsafety_check_result(def_id.expect_local());
 
     let mut body = tcx.mir_built(def_id).steal();
 

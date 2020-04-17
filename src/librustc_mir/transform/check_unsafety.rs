@@ -132,7 +132,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
                 &AggregateKind::Closure(def_id, _) | &AggregateKind::Generator(def_id, _, _) => {
                     let UnsafetyCheckResult { violations, unsafe_blocks } =
-                        self.tcx.unsafety_check_result(def_id);
+                        self.tcx.unsafety_check_result(def_id.expect_local());
                     self.register_violations(&violations, &unsafe_blocks);
                 }
             },
@@ -485,7 +485,7 @@ fn check_unused_unsafe(
     intravisit::Visitor::visit_body(&mut visitor, body);
 }
 
-fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult {
+fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: LocalDefId) -> UnsafetyCheckResult {
     debug!("unsafety_violations({:?})", def_id);
 
     // N.B., this borrow is valid because all the consumers of
@@ -494,21 +494,18 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
 
     let param_env = tcx.param_env(def_id);
 
-    let id = tcx.hir().as_local_hir_id(def_id.expect_local());
+    let id = tcx.hir().as_local_hir_id(def_id);
     let (const_context, min_const_fn) = match tcx.hir().body_owner_kind(id) {
         hir::BodyOwnerKind::Closure => (false, false),
-        hir::BodyOwnerKind::Fn => (is_const_fn(tcx, def_id), is_min_const_fn(tcx, def_id)),
+        hir::BodyOwnerKind::Fn => {
+            (is_const_fn(tcx, def_id.to_def_id()), is_min_const_fn(tcx, def_id.to_def_id()))
+        }
         hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => (true, false),
     };
     let mut checker = UnsafetyChecker::new(const_context, min_const_fn, body, tcx, param_env);
     checker.visit_body(&body);
 
-    check_unused_unsafe(
-        tcx,
-        def_id.expect_local(),
-        &checker.used_unsafe,
-        &mut checker.inherited_blocks,
-    );
+    check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);
     UnsafetyCheckResult {
         violations: checker.violations.into(),
         unsafe_blocks: checker.inherited_blocks.into(),
@@ -600,7 +597,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
         return;
     }
 
-    let UnsafetyCheckResult { violations, unsafe_blocks } = tcx.unsafety_check_result(def_id);
+    let UnsafetyCheckResult { violations, unsafe_blocks } =
+        tcx.unsafety_check_result(def_id.expect_local());
 
     for &UnsafetyViolation { source_info, description, details, kind } in violations.iter() {
         // Report an error.
