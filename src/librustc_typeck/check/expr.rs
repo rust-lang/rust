@@ -975,18 +975,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        let uty = expected.to_option(self).and_then(|uty| match uty.kind {
-            ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
-            _ => None,
-        });
-
         let element_ty = if !args.is_empty() {
-            let coerce_to = uty.unwrap_or_else(|| {
-                self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span: expr.span,
+            let coerce_to = expected
+                .to_option(self)
+                .and_then(|uty| match uty.kind {
+                    ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
+                    _ => None,
                 })
-            });
+                .unwrap_or_else(|| {
+                    self.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::TypeInference,
+                        span: expr.span,
+                    })
+                });
             let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
             assert_eq!(self.diverges.get(), Diverges::Maybe);
             for e in args {
