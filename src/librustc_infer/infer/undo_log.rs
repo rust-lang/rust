@@ -27,70 +27,36 @@ pub(crate) enum UndoLog<'tcx> {
     PushRegionObligation,
 }
 
-impl<'tcx> From<region_constraints::UndoLog<'tcx>> for UndoLog<'tcx> {
-    fn from(l: region_constraints::UndoLog<'tcx>) -> Self {
-        UndoLog::RegionConstraintCollector(l)
+macro_rules! impl_from {
+    ($($ctor: ident ($ty: ty),)*) => {
+        $(
+        impl<'tcx> From<$ty> for UndoLog<'tcx> {
+            fn from(x: $ty) -> Self {
+                UndoLog::$ctor(x.into())
+            }
+        }
+        )*
     }
 }
 
-impl<'tcx> From<sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>) -> Self {
-        UndoLog::TypeVariables(type_variable::UndoLog::EqRelation(l))
-    }
-}
+// Upcast from a single kind of "undoable action" to the general enum
+impl_from! {
+    RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
+    TypeVariables(type_variable::UndoLog<'tcx>),
 
-impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::TyVid>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<ty::TyVid>>) -> Self {
-        UndoLog::TypeVariables(type_variable::UndoLog::SubRelation(l))
-    }
-}
+    TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
+    TypeVariables(sv::UndoLog<ut::Delegate<ty::TyVid>>),
+    TypeVariables(sv::UndoLog<type_variable::Delegate>),
+    TypeVariables(type_variable::Instantiate),
 
-impl<'tcx> From<sv::UndoLog<type_variable::Delegate>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<type_variable::Delegate>) -> Self {
-        UndoLog::TypeVariables(type_variable::UndoLog::Values(l))
-    }
-}
+    IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
 
-impl<'tcx> From<type_variable::Instantiate> for UndoLog<'tcx> {
-    fn from(l: type_variable::Instantiate) -> Self {
-        UndoLog::TypeVariables(type_variable::UndoLog::from(l))
-    }
-}
+    FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
 
-impl From<type_variable::UndoLog<'tcx>> for UndoLog<'tcx> {
-    fn from(t: type_variable::UndoLog<'tcx>) -> Self {
-        Self::TypeVariables(t)
-    }
-}
+    ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
 
-impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>) -> Self {
-        Self::ConstUnificationTable(l)
-    }
-}
-
-impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::IntVid>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<ty::IntVid>>) -> Self {
-        Self::IntUnificationTable(l)
-    }
-}
-
-impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::FloatVid>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<ty::FloatVid>>) -> Self {
-        Self::FloatUnificationTable(l)
-    }
-}
-
-impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::RegionVid>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<ty::RegionVid>>) -> Self {
-        Self::RegionUnificationTable(l)
-    }
-}
-
-impl<'tcx> From<traits::UndoLog<'tcx>> for UndoLog<'tcx> {
-    fn from(l: traits::UndoLog<'tcx>) -> Self {
-        Self::ProjectionCache(l)
-    }
+    RegionUnificationTable(sv::UndoLog<ut::Delegate<ty::RegionVid>>),
+    ProjectionCache(traits::UndoLog<'tcx>),
 }
 
 impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
