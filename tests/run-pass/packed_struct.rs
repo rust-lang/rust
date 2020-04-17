@@ -1,5 +1,7 @@
 #![feature(unsize, coerce_unsized)]
 
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
 
 fn test_basic() {
     #[repr(packed)]
@@ -114,10 +116,31 @@ fn test_static() {
     assert_eq!({FOO.i}, 42);
 }
 
+fn test_derive() {
+    #[repr(packed)]
+    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+    struct P {
+        a: usize,
+        b: u8,
+        c: usize,
+    }
+
+    let x = P {a: 1usize, b: 2u8, c: 3usize};
+    let y = P {a: 1usize, b: 2u8, c: 4usize};
+
+    let _clone = x.clone();
+    assert!(x != y);
+    assert_eq!(x.partial_cmp(&y).unwrap(), x.cmp(&y));
+    x.hash(&mut DefaultHasher::new());
+    P::default();
+    format!("{:?}", x);
+}
+
 fn main() {
     test_basic();
     test_unsizing();
     test_drop();
     test_inner_packed();
     test_static();
+    test_derive();
 }
