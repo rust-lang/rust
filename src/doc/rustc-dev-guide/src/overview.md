@@ -36,7 +36,7 @@ we'll talk about that later.
 - The lexer has a small interface and doesn't depend directly on the
   diagnostic infrastructure in `rustc`. Instead it provides diagnostics as plain
   data which are emitted in `librustc_parse::lexer::mod` as real diagnostics.
-- The lexer preseves full fidelity information for both IDEs and proc macros.
+- The lexer preserves full fidelity information for both IDEs and proc macros.
 - The parser [translates the token stream from the lexer into an Abstract Syntax
   Tree (AST)][parser].  It uses a recursive descent (top-down) approach to syntax
   analysis. The crate entry points for the parser are the `Parser.parse_crate_mod()` and
@@ -145,7 +145,7 @@ satisfy/optimize for. For example,
   various ways (e.g. cargo, clippy, miri, RLS) that must be supported.
 - Compiler stability: the compiler should not crash or fail ungracefully on the
   stable channel.
-- Rust stability: the compiler must respect rust's stability guarantees by not
+- Rust stability: the compiler must respect Rust's stability guarantees by not
   breaking programs that previously compiled despite the many changes that are
   always going on to its implementation.
 - Limitations of other tools: rustc uses LLVM in its backend, and LLVM has some
@@ -299,7 +299,7 @@ together into one binary.
 
 However, the rest of the compiler is still not yet parallel. There have been
 lots of efforts spent on this, but it is generally a hard problem. The current
-approach is (**TODO: verify**) to turn `RefCell`s into `Mutex`s -- that is, we
+approach is to turn `RefCell`s into `Mutex`s -- that is, we
 switch to thread-safe internal mutability. However, there are ongoing
 challenges with lock contention, maintaining query-system invariants under
 concurrency, and the complexity of the code base. One can try out the current
