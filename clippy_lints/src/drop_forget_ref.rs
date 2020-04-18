@@ -135,7 +135,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DropForgetRef {
                                        lint,
                                        expr.span,
                                        &msg,
-                                       arg.span,
+                                       Some(arg.span),
                                        &format!("argument has type `{}`", arg_ty));
                 } else if is_copy(cx, arg_ty) {
                     if match_def_path(cx, def_id, &paths::DROP) {
@@ -151,7 +151,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DropForgetRef {
                                        lint,
                                        expr.span,
                                        &msg,
-                                       arg.span,
+                                       Some(arg.span),
                                        &format!("argument has type {}", arg_ty));
                 }
             }

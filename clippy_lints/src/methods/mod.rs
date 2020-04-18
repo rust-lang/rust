@@ -2577,7 +2577,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
                 },
                 expr.span,
                 msg,
-                expr.span,
+                None,
                 &format!(
                     "replace `map({0}).unwrap_or_else({1})` with `map_or_else({1}, {0})`",
                     map_snippet, unwrap_snippet,
@@ -2757,7 +2757,7 @@ fn lint_filter_next<'a, 'tcx>(
                 FILTER_NEXT,
                 expr.span,
                 msg,
-                expr.span,
+                None,
                 &format!("replace `filter({0}).next()` with `find({0})`", filter_snippet),
             );
         } else {
@@ -2816,7 +2816,7 @@ fn lint_filter_map_next<'a, 'tcx>(
                 FILTER_MAP_NEXT,
                 expr.span,
                 msg,
-                expr.span,
+                None,
                 &format!("replace `filter_map({0}).next()` with `find_map({0})`", filter_snippet),
             );
         } else {

@@ -35,7 +35,7 @@ error: this call is collspible
 LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
 LL | |             db.span_note(expr.span, note_msg);
 LL | |         });
-   | |__________^ help: collapse into: `span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, expr.span, note_msg)`
+   | |__________^ help: collapse into: `span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), note_msg)`
 
 error: this call is collspible
   --> $DIR/collapsible_span_lint_calls.rs:87:9
@@ -43,7 +43,7 @@ error: this call is collspible
 LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
 LL | |             db.note(note_msg);
 LL | |         });
-   | |__________^ help: collapse into: `span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, expr.span, note_msg)`
+   | |__________^ help: collapse into: `span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, None, note_msg)`
 
 error: aborting due to 5 previous errors
 

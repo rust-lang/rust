@@ -46,7 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyIterator {
                     COPY_ITERATOR,
                     item.span,
                     "you are implementing `Iterator` on a `Copy` type",
-                    item.span,
+                    None,
                     "consider implementing `IntoIterator` instead",
                 );
             }

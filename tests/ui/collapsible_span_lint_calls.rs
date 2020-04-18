@@ -38,7 +38,7 @@ fn span_lint_and_note<'a, T: LintContext>(
     lint: &'static Lint,
     span: Span,
     msg: &str,
-    note_span: Span,
+    note_span: Option<Span>,
     note: &str,
 ) {
 }

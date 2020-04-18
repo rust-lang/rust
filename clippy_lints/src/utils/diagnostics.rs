@@ -108,15 +108,15 @@ pub fn span_lint_and_note<'a, T: LintContext>(
     lint: &'static Lint,
     span: Span,
     msg: &str,
-    note_span: Span,
+    note_span: Option<Span>,
     note: &str,
 ) {
-    cx.struct_span_lint(lint, span, |diag| {
-        let mut diag = diag.build(msg);
-        if note_span == span {
-            diag.note(note);
+    cx.struct_span_lint(lint, span, |ldb| {
+        let mut db = ldb.build(msg);
+        if let Some(note_span) = note_span {
+            db.span_note(note_span, note);
         } else {
-            diag.span_note(note_span, note);
+            db.note(note);
         }
         docs_link(&mut diag, lint);
         diag.emit();

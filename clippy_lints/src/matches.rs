@@ -637,7 +637,7 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'
                     MATCH_OVERLAPPING_ARM,
                     start.span,
                     "some ranges overlap",
-                    end.span,
+                    Some(end.span),
                     "overlaps with this",
                 );
             }
@@ -675,7 +675,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
                                 MATCH_WILD_ERR_ARM,
                                 arm.pat.span,
                                 &format!("`Err({})` matches all errors", &ident_bind_name),
-                                arm.pat.span,
+                                None,
                                 "match each error separately or use the error output",
                             );
                         }

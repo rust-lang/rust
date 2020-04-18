@@ -198,8 +198,8 @@ declare_clippy_lint! {
     /// );
     /// span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), help_msg);
     /// span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, None, help_msg);
-    /// span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, expr.span, note_msg);
-    /// span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, expr.span, note_msg);
+    /// span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), note_msg);
+    /// span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, None, note_msg);
     /// ```
     pub COLLAPSIBLE_SPAN_LINT_CALLS,
     internal,
@@ -486,7 +486,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CollapsibleCalls {
                     },
                     "span_note" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
                         let note_snippet = snippet(cx, span_call_args[2].span, r#""...""#);
-                        suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow());
+                        suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), true);
                     },
                     "help" => {
                         let help_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
@@ -494,7 +494,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CollapsibleCalls {
                     }
                     "note" => {
                         let note_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
-                        suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow());
+                        suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), false);
                     }
                     _  => (),
                 }
@@ -606,7 +606,19 @@ fn suggest_help(
     );
 }
 
-fn suggest_note(cx: &LateContext<'_, '_>, expr: &Expr<'_>, and_then_snippets: &AndThenSnippets<'_>, note: &str) {
+fn suggest_note(
+    cx: &LateContext<'_, '_>,
+    expr: &Expr<'_>,
+    and_then_snippets: &AndThenSnippets<'_>,
+    note: &str,
+    with_span: bool,
+) {
+    let note_span = if with_span {
+        format!("Some({})", and_then_snippets.span)
+    } else {
+        "None".to_string()
+    };
+
     span_lint_and_sugg(
         cx,
         COLLAPSIBLE_SPAN_LINT_CALLS,
@@ -619,7 +631,7 @@ fn suggest_note(cx: &LateContext<'_, '_>, expr: &Expr<'_>, and_then_snippets: &A
             and_then_snippets.lint,
             and_then_snippets.span,
             and_then_snippets.msg,
-            and_then_snippets.span,
+            note_span,
             note
         ),
         Applicability::MachineApplicable,

@@ -168,7 +168,7 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item<'_>, trait
             EXPL_IMPL_CLONE_ON_COPY,
             item.span,
             "you are implementing `Clone` explicitly on a `Copy` type",
-            item.span,
+            Some(item.span),
             "consider deriving `Clone` or removing `Copy`",
         );
     }
