@@ -146,7 +146,13 @@ pub(super) fn run_aot(
 ) -> Box<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)> {
     let mut work_products = FxHashMap::default();
 
-    let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+    let cgus = if tcx.sess.opts.output_types.should_codegen() {
+        tcx.collect_and_partition_mono_items(LOCAL_CRATE).1
+    } else {
+        // If only `--emit metadata` is used, we shouldn't perform any codegen.
+        // Also `tcx.collect_and_partition_mono_items` may panic in that case.
+        &[]
+    };
 
     if tcx.dep_graph.is_fully_enabled() {
         for cgu in &*cgus {
@@ -238,6 +244,10 @@ pub(super) fn run_aot(
     } else {
         None
     };
+
+    if tcx.sess.opts.output_types.should_codegen() {
+        rustc_incremental::assert_module_sources::assert_module_sources(tcx);
+    }
 
     Box::new((CodegenResults {
         crate_name: tcx.crate_name(LOCAL_CRATE),

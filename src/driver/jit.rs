@@ -39,6 +39,10 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .declare_function("main", Linkage::Import, &sig)
         .unwrap();
 
+    if !tcx.sess.opts.output_types.should_codegen() {
+        tcx.sess.fatal("JIT mode doesn't work with `cargo check`.");
+    }
+
     let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     let mono_items = cgus
         .iter()
