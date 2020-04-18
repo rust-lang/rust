@@ -1,6 +1,6 @@
 ---
 name: Tracking Issue
-about: A tracking issue for a feature in Rust.
+about: A tracking issue for an accepted feature or RFC in Rust.
 title: Tracking Issue for XXX
 labels: C-tracking-issue
 ---
