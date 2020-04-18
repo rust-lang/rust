@@ -1,0 +1,15 @@
+warning: skipping const checks
+  --> $DIR/box.rs:10:11
+   |
+LL |     &mut *(box 0)
+   |           ^^^^^^^
+
+error[E0080]: could not evaluate static initializer
+  --> $DIR/box.rs:10:11
+   |
+LL |     &mut *(box 0)
+   |           ^^^^^^^ "heap allocations via `box` keyword" needs an rfc before being allowed inside constants
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.
