@@ -233,6 +233,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ///
     /// Note: on Windows OS this function is a no-op because we do not support
     /// concurrency on Windows yet.
+    ///
+    /// FIXME: we do not support yet deallocation of thread local statics.
     fn run_tls_dtors_for_active_thread(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if this.tcx.sess.target.target.target_os == "windows" {

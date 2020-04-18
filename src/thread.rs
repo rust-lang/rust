@@ -164,13 +164,13 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
 impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// Check if we have an allocation for the given thread local static for the
     /// active thread.
-    pub fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<AllocId> {
+    fn get_thread_local_alloc_id(&self, def_id: DefId) -> Option<AllocId> {
         self.thread_local_alloc_ids.borrow().get(&(def_id, self.active_thread)).cloned()
     }
 
     /// Set the allocation id as the allocation id of the given thread local
     /// static for the active thread.
-    pub fn set_thread_local_alloc_id(&self, def_id: DefId, new_alloc_id: AllocId) {
+    fn set_thread_local_alloc_id(&self, def_id: DefId, new_alloc_id: AllocId) {
         assert!(
             self.thread_local_alloc_ids
                 .borrow_mut()
