@@ -13,7 +13,7 @@ use std::fmt;
 
 pub use self::qualifs::Qualif;
 
-pub mod ops;
+mod ops;
 pub mod qualifs;
 mod resolver;
 pub mod validation;
