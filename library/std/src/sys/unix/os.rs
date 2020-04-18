@@ -431,10 +431,19 @@ pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }
 
-#[cfg(any(target_os = "fuchsia", target_os = "l4re", target_vendor = "libnx"))]
+#[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
     Err(io::Error::new(ErrorKind::Other, "Not yet implemented!"))
+}
+
+#[cfg(target_vendor = "libnx")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    use crate::env;
+    // guaranteed by abi to be an absolute path to the executable
+    env::args_os().next().map(From::from).ok_or_else(|| {
+        io::Error::new(io::ErrorKind::Other, "no current exe available")
+    })
 }
 
 pub struct Env {
