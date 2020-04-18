@@ -331,13 +331,12 @@ stage-1 bootstrapping compiler will support them.
 
 # Unresolved Questions
 
-
 - Does LLVM ever do optimizations in debug builds?
 - How do I explore phases of the compile process in my own sources (lexer,
   parser, HIR, etc)? - e.g., `cargo rustc -- -Zunpretty=hir-tree` allows you to
   view HIR representation
 - What is the main source entry point for `X`?
-- Where do phases diverge for cross-compilation to machine  code across
+- Where do phases diverge for cross-compilation to machine code across
   different platforms?
 
 # References
