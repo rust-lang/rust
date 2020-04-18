@@ -579,11 +579,13 @@ impl<'a> Parser<'a> {
     /// Keep in mind that given that `outer_op.is_comparison()` holds and comparison ops are left
     /// associative we can infer that we have:
     ///
+    /// ```text
     ///           outer_op
     ///           /   \
     ///     inner_op   r2
     ///        /  \
     ///      l1    r1
+    /// ```
     pub(super) fn check_no_chained_comparison(
         &mut self,
         inner_op: &Expr,

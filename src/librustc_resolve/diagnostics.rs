@@ -1031,7 +1031,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggest a missing `self::` if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `self::foo`?
@@ -1083,7 +1083,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggests a missing `super::` if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `super::foo`?
@@ -1103,7 +1103,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggests a missing external crate name if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foobar::Baz;
     ///    |     ^^^^^^ did you mean `baz::foobar`?

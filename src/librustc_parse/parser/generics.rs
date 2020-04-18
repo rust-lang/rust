@@ -8,7 +8,7 @@ use rustc_span::symbol::{kw, sym};
 impl<'a> Parser<'a> {
     /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
     ///
-    /// ```
+    /// ```text
     /// BOUND = LT_BOUND (e.g., `'a`)
     /// ```
     fn parse_lt_param_bounds(&mut self) -> GenericBounds {
