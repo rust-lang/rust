@@ -158,20 +158,17 @@ fn convert_literal(l: &tt::Literal) -> TtToken {
     let kind = lex_single_syntax_kind(&l.text)
         .map(|(kind, _error)| kind)
         .filter(|kind| kind.is_literal())
-        .unwrap_or_else(|| match l.text.as_ref() {
-            "true" => T![true],
-            "false" => T![false],
-            _ => panic!("Fail to convert given literal {:#?}", &l),
-        });
+        .unwrap_or_else(|| panic!("Fail to convert given literal {:#?}", &l));
 
     TtToken { kind, is_joint_to_next: false, text: l.text.clone() }
 }
 
 fn convert_ident(ident: &tt::Ident) -> TtToken {
-    let kind = if ident.text.starts_with('\'') {
-        LIFETIME
-    } else {
-        SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT)
+    let kind = match ident.text.as_ref() {
+        "true" => T![true],
+        "false" => T![false],
+        i if i.starts_with('\'') => LIFETIME,
+        _ => SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT),
     };
 
     TtToken { kind, is_joint_to_next: false, text: ident.text.clone() }

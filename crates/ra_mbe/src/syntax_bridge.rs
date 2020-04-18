@@ -376,7 +376,7 @@ trait TokenConvertor {
                 };
             }
             let leaf: tt::Leaf = match k {
-                T![true] | T![false] => make_leaf!(Literal),
+                T![true] | T![false] => make_leaf!(Ident),
                 IDENT => make_leaf!(Ident),
                 k if k.is_keyword() => make_leaf!(Ident),
                 k if k.is_literal() => make_leaf!(Literal),
