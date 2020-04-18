@@ -1007,7 +1007,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        for obligation in super::elaborate_predicates(self.tcx, vec![*cond]) {
+        for obligation in super::elaborate_predicates(self.tcx, std::iter::once(*cond)) {
             if let ty::Predicate::Trait(implication, _) = obligation.predicate {
                 let error = error.to_poly_trait_ref();
                 let implication = implication.to_poly_trait_ref();
