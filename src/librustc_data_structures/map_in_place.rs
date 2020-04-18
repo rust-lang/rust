@@ -1,5 +1,3 @@
-// FIXME(Centril): Move to rustc_data_structures.
-
 use smallvec::{Array, SmallVec};
 use std::ptr;
 
