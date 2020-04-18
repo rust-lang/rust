@@ -919,7 +919,7 @@ struct RootCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mode: MonoItemCollectionMode,
     output: &'a mut Vec<MonoItem<'tcx>>,
-    entry_fn: Option<(DefId, EntryFnType)>,
+    entry_fn: Option<(LocalDefId, EntryFnType)>,
 }
 
 impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
@@ -1008,7 +1008,7 @@ impl RootCollector<'_, 'v> {
             && match self.mode {
                 MonoItemCollectionMode::Eager => true,
                 MonoItemCollectionMode::Lazy => {
-                    self.entry_fn.map(|(id, _)| id) == Some(def_id.to_def_id())
+                    self.entry_fn.map(|(id, _)| id) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
                         || self
                             .tcx

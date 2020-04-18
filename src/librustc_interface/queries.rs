@@ -293,7 +293,7 @@ impl<'tcx> Queries<'tcx> {
             _ => return,
         };
 
-        let attrs = &*tcx.get_attrs(def_id);
+        let attrs = &*tcx.get_attrs(def_id.to_def_id());
         let attrs = attrs.iter().filter(|attr| attr.check_name(sym::rustc_error));
         for attr in attrs {
             match attr.meta_item_list() {

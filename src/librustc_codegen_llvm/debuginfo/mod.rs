@@ -290,7 +290,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             spflags |= DISPFlags::SPFlagOptimized;
         }
         if let Some((id, _)) = self.tcx.entry_fn(LOCAL_CRATE) {
-            if id == def_id {
+            if id.to_def_id() == def_id {
                 spflags |= DISPFlags::SPFlagMainSubprogram;
             }
         }
