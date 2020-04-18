@@ -357,11 +357,13 @@ impl<'tcx> Body<'tcx> {
     }
 
     /// Returns the return type; it always return first element from `local_decls` array.
+    #[inline]
     pub fn return_ty(&self) -> Ty<'tcx> {
         self.local_decls[RETURN_PLACE].ty
     }
 
     /// Gets the location of the terminator for the given block.
+    #[inline]
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
         Location { block: bb, statement_index: self[bb].statements.len() }
     }
@@ -394,6 +396,7 @@ pub enum ClearCrossCrate<T> {
 }
 
 impl<T> ClearCrossCrate<T> {
+    #[inline]
     pub fn as_ref(&self) -> ClearCrossCrate<&T> {
         match self {
             ClearCrossCrate::Clear => ClearCrossCrate::Clear,
@@ -401,6 +404,7 @@ impl<T> ClearCrossCrate<T> {
         }
     }
 
+    #[inline]
     pub fn assert_crate_local(self) -> T {
         match self {
             ClearCrossCrate::Clear => bug!("unwrapping cross-crate data"),
@@ -503,6 +507,7 @@ pub enum BorrowKind {
 }
 
 impl BorrowKind {
+    #[inline]
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
@@ -523,6 +528,7 @@ rustc_index::newtype_index! {
 }
 
 impl Atom for Local {
+    #[inline]
     fn index(self) -> usize {
         Idx::index(self)
     }
@@ -829,6 +835,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// Returns `true` if this is a reference to a variable bound in a `match`
     /// expression that is used to access said variable for the guard of the
     /// match arm.
+    #[inline]
     pub fn is_ref_for_guard(&self) -> bool {
         match self.local_info {
             LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)) => true,
@@ -838,6 +845,7 @@ impl<'tcx> LocalDecl<'tcx> {
 
     /// Returns `Some` if this is a reference to a static item that is used to
     /// access that static
+    #[inline]
     pub fn is_ref_to_static(&self) -> bool {
         match self.local_info {
             LocalInfo::StaticRef { .. } => true,
@@ -847,6 +855,7 @@ impl<'tcx> LocalDecl<'tcx> {
 
     /// Returns `Some` if this is a reference to a static item that is used to
     /// access that static
+    #[inline]
     pub fn is_ref_to_thread_local(&self) -> bool {
         match self.local_info {
             LocalInfo::StaticRef { is_thread_local, .. } => is_thread_local,
@@ -946,6 +955,7 @@ rustc_index::newtype_index! {
 }
 
 impl BasicBlock {
+    #[inline]
     pub fn start_location(self) -> Location {
         Location { block: self, statement_index: 0 }
     }
@@ -1173,6 +1183,7 @@ impl<'tcx> Terminator<'tcx> {
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
+    #[inline]
     pub fn if_(
         tcx: TyCtxt<'tcx>,
         cond: Operand<'tcx>,
@@ -1254,6 +1265,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
+    #[inline]
     pub fn unwind(&self) -> Option<&Option<BasicBlock>> {
         match *self {
             TerminatorKind::Goto { .. }
@@ -1273,6 +1285,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
+    #[inline]
     pub fn unwind_mut(&mut self) -> Option<&mut Option<BasicBlock>> {
         match *self {
             TerminatorKind::Goto { .. }
@@ -1294,6 +1307,7 @@ impl<'tcx> TerminatorKind<'tcx> {
 }
 
 impl<'tcx> BasicBlockData<'tcx> {
+    #[inline]
     pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
         BasicBlockData { statements: vec![], terminator, is_cleanup: false }
     }
@@ -1302,10 +1316,12 @@ impl<'tcx> BasicBlockData<'tcx> {
     ///
     /// Terminator may not be None after construction of the basic block is complete. This accessor
     /// provides a convenience way to reach the terminator.
+    #[inline]
     pub fn terminator(&self) -> &Terminator<'tcx> {
         self.terminator.as_ref().expect("invalid terminator state")
     }
 
+    #[inline]
     pub fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
         self.terminator.as_mut().expect("invalid terminator state")
     }
@@ -1373,6 +1389,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         }
     }
 
+    #[inline]
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
         if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
     }
@@ -1563,11 +1580,13 @@ static_assert_size!(Statement<'_>, 32);
 impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
+    #[inline]
     pub fn make_nop(&mut self) {
         self.kind = StatementKind::Nop
     }
 
     /// Changes a statement to a nop and returns the original statement.
+    #[inline]
     pub fn replace_nop(&mut self) -> Self {
         Statement {
             source_info: self.source_info,
@@ -1790,6 +1809,7 @@ pub enum ProjectionElem<V, T> {
 impl<V, T> ProjectionElem<V, T> {
     /// Returns `true` if the target of this projection may refer to a different region of memory
     /// than the base.
+    #[inline]
     fn is_indirect(&self) -> bool {
         match self {
             Self::Deref => true,
@@ -1832,6 +1852,7 @@ pub struct PlaceRef<'tcx> {
 
 impl<'tcx> Place<'tcx> {
     // FIXME change this to a const fn by also making List::empty a const fn.
+    #[inline]
     pub fn return_place() -> Place<'tcx> {
         Place { local: RETURN_PLACE, projection: List::empty() }
     }
@@ -1848,6 +1869,7 @@ impl<'tcx> Place<'tcx> {
     /// a single deref of a local.
     //
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
+    #[inline]
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self.as_ref() {
             PlaceRef { local, projection: [] }
@@ -1858,16 +1880,19 @@ impl<'tcx> Place<'tcx> {
 
     /// If this place represents a local variable like `_X` with no
     /// projections, return `Some(_X)`.
+    #[inline]
     pub fn as_local(&self) -> Option<Local> {
         self.as_ref().as_local()
     }
 
+    #[inline]
     pub fn as_ref(&self) -> PlaceRef<'tcx> {
         PlaceRef { local: self.local, projection: &self.projection }
     }
 }
 
 impl From<Local> for Place<'_> {
+    #[inline]
     fn from(local: Local) -> Self {
         Place { local, projection: List::empty() }
     }
@@ -1878,6 +1903,7 @@ impl<'tcx> PlaceRef<'tcx> {
     /// a single deref of a local.
     //
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
+    #[inline]
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match *self {
             PlaceRef { local, projection: [] }
@@ -1888,6 +1914,7 @@ impl<'tcx> PlaceRef<'tcx> {
 
     /// If this place represents a local variable like `_X` with no
     /// projections, return `Some(_X)`.
+    #[inline]
     pub fn as_local(&self) -> Option<Local> {
         match *self {
             PlaceRef { local, projection: [] } => Some(local),
@@ -2038,6 +2065,7 @@ impl<'tcx> Operand<'tcx> {
         })
     }
 
+    #[inline]
     pub fn to_copy(&self) -> Self {
         match *self {
             Operand::Copy(_) | Operand::Constant(_) => self.clone(),
@@ -2047,6 +2075,7 @@ impl<'tcx> Operand<'tcx> {
 
     /// Returns the `Place` that is the target of this `Operand`, or `None` if this `Operand` is a
     /// constant.
+    #[inline]
     pub fn place(&self) -> Option<Place<'tcx>> {
         match self {
             Operand::Copy(place) | Operand::Move(place) => Some(*place),
