@@ -309,7 +309,12 @@ macro_rules! create_config {
                         return heuristic_value;
                     }
                     if override_value > max_width {
-                        panic!("`{}` cannot have a value that exceeds `max_width`", config_key);
+                        eprintln!(
+                            "`{0}` cannot have a value that exceeds `max_width`. \
+                            `{0}` will be set to the same value as `max_width`",
+                            config_key,
+                        );
+                        return max_width;
                     }
                     override_value
                 };
