@@ -1655,7 +1655,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let output_types = parse_output_types(&debugging_opts, matches, error_format);
 
     let mut cg = build_codegen_options(matches, error_format);
-    let (disable_thinlto, codegen_units) = should_override_cgus_and_disable_thinlto(
+    let (disable_thinlto, mut codegen_units) = should_override_cgus_and_disable_thinlto(
         &output_types,
         matches,
         error_format,
@@ -1671,6 +1671,16 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             error_format,
             "can't instrument with gcov profiling when compiling incrementally",
         );
+    }
+    if debugging_opts.profile {
+        match codegen_units {
+            Some(1) => {}
+            None => codegen_units = Some(1),
+            Some(_) => early_error(
+                error_format,
+                "can't instrument with gcov profiling with multiple codegen units",
+            ),
+        }
     }
 
     if cg.profile_generate.enabled() && cg.profile_use.is_some() {
