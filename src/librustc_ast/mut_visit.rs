@@ -11,8 +11,8 @@ use crate::ast::*;
 use crate::ptr::P;
 use crate::token::{self, Token};
 use crate::tokenstream::*;
-use crate::util::map_in_place::MapInPlace;
 
+use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::Span;
