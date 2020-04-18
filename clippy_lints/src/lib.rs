@@ -225,6 +225,7 @@ mod identity_op;
 mod if_let_some_result;
 mod if_not_else;
 mod implicit_return;
+mod implicit_saturating_sub;
 mod indexing_slicing;
 mod infinite_iter;
 mod inherent_impl;
@@ -574,6 +575,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &if_let_some_result::IF_LET_SOME_RESULT,
         &if_not_else::IF_NOT_ELSE,
         &implicit_return::IMPLICIT_RETURN,
+        &implicit_saturating_sub::IMPLICIT_SATURATING_SUB,
         &indexing_slicing::INDEXING_SLICING,
         &indexing_slicing::OUT_OF_BOUNDS_INDEXING,
         &infinite_iter::INFINITE_ITER,
@@ -888,6 +890,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box unicode::Unicode);
     store.register_late_pass(|| box strings::StringAdd);
     store.register_late_pass(|| box implicit_return::ImplicitReturn);
+    store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
     store.register_late_pass(|| box methods::Methods);
     store.register_late_pass(|| box map_clone::MapClone);
     store.register_late_pass(|| box shadow::Shadow);
@@ -1111,6 +1114,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&functions::MUST_USE_CANDIDATE),
         LintId::of(&functions::TOO_MANY_LINES),
         LintId::of(&if_not_else::IF_NOT_ELSE),
+        LintId::of(&implicit_saturating_sub::IMPLICIT_SATURATING_SUB),
         LintId::of(&infinite_iter::MAYBE_INFINITE_ITER),
         LintId::of(&items_after_statements::ITEMS_AFTER_STATEMENTS),
         LintId::of(&large_stack_arrays::LARGE_STACK_ARRAYS),

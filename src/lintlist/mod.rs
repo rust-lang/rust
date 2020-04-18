@@ -774,6 +774,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "implicit_return",
     },
     Lint {
+        name: "implicit_saturating_sub",
+        group: "pedantic",
+        desc: "Perform saturating subtraction instead of implicitly checking lower bound of data type",
+        deprecation: None,
+        module: "implicit_saturating_sub",
+    },
+    Lint {
         name: "imprecise_flops",
         group: "nursery",
         desc: "usage of imprecise floating point operations",
