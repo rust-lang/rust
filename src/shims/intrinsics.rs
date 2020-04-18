@@ -1,9 +1,10 @@
 use std::iter;
 use std::convert::TryFrom;
 
+use rustc_ast::ast::FloatTy;
 use rustc_middle::{mir, ty};
-use rustc_apfloat::Float;
-use rustc_target::abi::{Align, LayoutOf};
+use rustc_apfloat::{Float, Round};
+use rustc_target::abi::{Align, LayoutOf, Size};
 
 use crate::*;
 
@@ -279,6 +280,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_u64(f.powi(i).to_bits()), dest)?;
             }
 
+            "float_to_int_unchecked" => {
+                let val = this.read_immediate(args[0])?;
+
+                let res = match val.layout.ty.kind {
+                    ty::Float(FloatTy::F32) => {
+                        this.float_to_int_unchecked(val.to_scalar()?.to_f32()?, dest.layout.ty)?
+                    }
+                    ty::Float(FloatTy::F64) => {
+                        this.float_to_int_unchecked(val.to_scalar()?.to_f64()?, dest.layout.ty)?
+                    }
+                    _ => bug!("`float_to_int_unchecked` called with non-float input type {:?}", val.layout.ty),
+                };
+
+                this.write_scalar(res, dest)?;
+            }
+
             // Atomic operations
             #[rustfmt::skip]
             | "atomic_load"
@@ -492,5 +509,56 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.dump_place(*dest);
         this.go_to_block(ret);
         Ok(())
+    }
+
+    fn float_to_int_unchecked<F>(
+        &self,
+        f: F,
+        dest_ty: ty::Ty<'tcx>,
+    ) -> InterpResult<'tcx, Scalar<Tag>>
+    where
+        F: Float + Into<Scalar<Tag>>
+    {
+        let this = self.eval_context_ref();
+
+        // Step 1: cut off the fractional part of `f`. The result of this is
+        // guaranteed to be precisely representable in IEEE floats.
+        let f = f.round_to_integral(Round::TowardZero).value;
+
+        // Step 2: Cast the truncated float to the target integer type and see if we lose any information in this step.
+        Ok(match dest_ty.kind {
+            // Unsigned
+            ty::Uint(t) => {
+                let width = t.bit_width().unwrap_or_else(|| this.pointer_size().bits());
+                let res = f.to_u128(usize::try_from(width).unwrap());
+                if res.status.is_empty() {
+                    // No status flags means there was no further rounding or other loss of precision.
+                    Scalar::from_uint(res.value, Size::from_bits(width))
+                } else {
+                    // `f` was not representable in this integer type.
+                    throw_ub_format!(
+                        "`float_to_int_unchecked` intrinsic called on {} which cannot be represented in target type `{:?}`",
+                        f, dest_ty,
+                    );
+                }
+            }
+            // Signed
+            ty::Int(t) => {
+                let width = t.bit_width().unwrap_or_else(|| this.pointer_size().bits());
+                let res = f.to_i128(usize::try_from(width).unwrap());
+                if res.status.is_empty() {
+                    // No status flags means there was no further rounding or other loss of precision.
+                    Scalar::from_int(res.value, Size::from_bits(width))
+                } else {
+                    // `f` was not representable in this integer type.
+                    throw_ub_format!(
+                        "`float_to_int_unchecked` intrinsic called on {} which cannot be represented in target type `{:?}`",
+                        f, dest_ty,
+                    );
+                }
+            }
+            // Nothing else
+            _ => bug!("`float_to_int_unchecked` called with non-int output type {:?}", dest_ty),
+        })
     }
 }
