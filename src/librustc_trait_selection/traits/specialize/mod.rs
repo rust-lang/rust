@@ -189,26 +189,22 @@ fn fulfill_implication<'a, 'tcx>(
 
     let selcx = &mut SelectionContext::new(&infcx);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
-    let (target_trait_ref, mut obligations) =
+    let (target_trait_ref, obligations) =
         impl_trait_ref_and_oblig(selcx, param_env, target_impl, target_substs);
-    debug!(
-        "fulfill_implication: target_trait_ref={:?}, obligations={:?}",
-        target_trait_ref, obligations
-    );
 
     // do the impls unify? If not, no specialization.
-    match infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref) {
-        Ok(InferOk { obligations: o, .. }) => {
-            obligations.extend(o);
-        }
-        Err(_) => {
-            debug!(
-                "fulfill_implication: {:?} does not unify with {:?}",
-                source_trait_ref, target_trait_ref
-            );
-            return Err(());
-        }
-    }
+    let more_obligations =
+        match infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref)
+        {
+            Ok(InferOk { obligations, .. }) => obligations,
+            Err(_) => {
+                debug!(
+                    "fulfill_implication: {:?} does not unify with {:?}",
+                    source_trait_ref, target_trait_ref
+                );
+                return Err(());
+            }
+        };
 
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
@@ -226,7 +222,7 @@ fn fulfill_implication<'a, 'tcx>(
         // we already make a mockery out of the region system, so
         // why not ignore them a bit earlier?
         let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
-        for oblig in obligations.into_iter() {
+        for oblig in obligations.chain(more_obligations) {
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
         }
         match fulfill_cx.select_all_or_error(infcx) {
@@ -261,7 +257,7 @@ pub(super) fn specialization_graph_provider(
 ) -> &specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
 
-    let mut trait_impls = tcx.all_impls(trait_id);
+    let mut trait_impls: Vec<_> = tcx.all_impls(trait_id).collect();
 
     // The coherence checking implementation seems to rely on impls being
     // iterated over (roughly) in definition order, so we are sorting by

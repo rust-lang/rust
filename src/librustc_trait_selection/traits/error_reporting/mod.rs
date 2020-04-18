@@ -1208,8 +1208,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         match simp {
             Some(simp) => all_impls
-                .iter()
-                .filter_map(|&def_id| {
+                .filter_map(|def_id| {
                     let imp = self.tcx.impl_trait_ref(def_id).unwrap();
                     let imp_simp = fast_reject::simplify_type(self.tcx, imp.self_ty(), true);
                     if let Some(imp_simp) = imp_simp {
@@ -1217,13 +1216,10 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                             return None;
                         }
                     }
-
                     Some(imp)
                 })
                 .collect(),
-            None => {
-                all_impls.iter().map(|&def_id| self.tcx.impl_trait_ref(def_id).unwrap()).collect()
-            }
+            None => all_impls.map(|def_id| self.tcx.impl_trait_ref(def_id).unwrap()).collect(),
         }
     }
 

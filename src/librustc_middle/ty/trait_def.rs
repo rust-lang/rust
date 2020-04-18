@@ -168,15 +168,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns a vector containing all impls
-    pub fn all_impls(self, def_id: DefId) -> Vec<DefId> {
-        let impls = self.trait_impls_of(def_id);
+    pub fn all_impls(self, def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
+        let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(def_id);
 
-        impls
-            .blanket_impls
-            .iter()
-            .chain(impls.non_blanket_impls.values().flatten())
+        blanket_impls
+            .into_iter()
+            .chain(non_blanket_impls.into_iter().map(|(_, v)| v).flatten())
             .cloned()
-            .collect()
     }
 }
 

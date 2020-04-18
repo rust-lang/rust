@@ -81,12 +81,10 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
 
 pub fn expand_trait_aliases<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>,
+    trait_refs: impl Iterator<Item = (ty::PolyTraitRef<'tcx>, Span)>,
 ) -> TraitAliasExpander<'tcx> {
-    let items: Vec<_> = trait_refs
-        .into_iter()
-        .map(|(trait_ref, span)| TraitAliasExpansionInfo::new(trait_ref, span))
-        .collect();
+    let items: Vec<_> =
+        trait_refs.map(|(trait_ref, span)| TraitAliasExpansionInfo::new(trait_ref, span)).collect();
     TraitAliasExpander { tcx, stack: items }
 }
 
@@ -199,7 +197,7 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     impl_def_id: DefId,
     impl_substs: SubstsRef<'tcx>,
-) -> (ty::TraitRef<'tcx>, Vec<PredicateObligation<'tcx>>) {
+) -> (ty::TraitRef<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
     let impl_trait_ref = selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
     let impl_trait_ref = impl_trait_ref.subst(selcx.tcx(), impl_substs);
     let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
@@ -210,13 +208,11 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
     let Normalized { value: predicates, obligations: normalization_obligations2 } =
         super::normalize(selcx, param_env, ObligationCause::dummy(), &predicates);
     let impl_obligations =
-        predicates_for_generics(ObligationCause::dummy(), 0, param_env, &predicates);
+        predicates_for_generics(ObligationCause::dummy(), 0, param_env, predicates);
 
-    let impl_obligations: Vec<_> = impl_obligations
-        .into_iter()
-        .chain(normalization_obligations1)
-        .chain(normalization_obligations2)
-        .collect();
+    let impl_obligations = impl_obligations
+        .chain(normalization_obligations1.into_iter())
+        .chain(normalization_obligations2.into_iter());
 
     (impl_trait_ref, impl_obligations)
 }
@@ -226,20 +222,16 @@ pub fn predicates_for_generics<'tcx>(
     cause: ObligationCause<'tcx>,
     recursion_depth: usize,
     param_env: ty::ParamEnv<'tcx>,
-    generic_bounds: &ty::InstantiatedPredicates<'tcx>,
-) -> Vec<PredicateObligation<'tcx>> {
+    generic_bounds: ty::InstantiatedPredicates<'tcx>,
+) -> impl Iterator<Item = PredicateObligation<'tcx>> {
     debug!("predicates_for_generics(generic_bounds={:?})", generic_bounds);
 
-    generic_bounds
-        .predicates
-        .iter()
-        .map(|&predicate| Obligation {
-            cause: cause.clone(),
-            recursion_depth,
-            param_env,
-            predicate,
-        })
-        .collect()
+    generic_bounds.predicates.into_iter().map(move |predicate| Obligation {
+        cause: cause.clone(),
+        recursion_depth,
+        param_env,
+        predicate,
+    })
 }
 
 pub fn predicate_for_trait_ref<'tcx>(
