@@ -42,6 +42,31 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         match ty.kind {
             ty::Param(p) => self.param_bound(p),
             ty::Projection(data) => self.projection_bound(data),
+            ty::FnDef(_, substs) => {
+                // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
+                // This is inconsistent with `ty::Adt` (including all substs),
+                // but consistent with previous (accidental) behavior.
+                // See https://github.com/rust-lang/rust/issues/70917
+                // for further background and discussion.
+                let mut bounds = substs
+                    .iter()
+                    .filter_map(|&child| match child.unpack() {
+                        GenericArgKind::Type(ty) => Some(self.type_bound(ty)),
+                        GenericArgKind::Lifetime(_) => None,
+                        GenericArgKind::Const(_) => Some(self.recursive_bound(child)),
+                    })
+                    .filter(|bound| {
+                        // Remove bounds that must hold, since they are not interesting.
+                        !bound.must_hold()
+                    });
+
+                match (bounds.next(), bounds.next()) {
+                    (Some(first), None) => first,
+                    (first, second) => VerifyBound::AllBounds(
+                        first.into_iter().chain(second).chain(bounds).collect(),
+                    ),
+                }
+            }
             _ => self.recursive_bound(ty.into()),
         }
     }
