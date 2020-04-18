@@ -6,7 +6,7 @@ use {
 #[derive(Copy, Clone)]
 struct BadRope<'a>(&'a [&'a str]);
 
-impl TextLen for BadRope<'_> {
+impl BadRope<'_> {
     fn text_len(self) -> TextSize {
         self.0.iter().map(TextSize::of).sum()
     }
@@ -29,6 +29,7 @@ fn main() {
         &String::new().into_boxed_str(),
         &Arc::new(String::new()),
         &Cow::Borrowed(""),
-        BadRope(&[""]),
     }
+
+    let _ = BadRope(&[""]).text_len();
 }
