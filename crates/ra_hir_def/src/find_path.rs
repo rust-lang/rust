@@ -7,7 +7,7 @@ use crate::{
     visibility::Visibility,
     CrateId, ModuleDefId, ModuleId,
 };
-use hir_expand::name::{known, Name};
+use hir_expand::name::{known, AsName, Name};
 use test_utils::tested_by;
 
 const MAX_PATH_LEN: usize = 15;
@@ -111,6 +111,11 @@ fn find_path_inner(
                 return Some(ModPath::from_segments(PathKind::Plain, vec![name.clone()]));
             }
         }
+    }
+
+    // - if the item is a builtin, it's in scope
+    if let ItemInNs::Types(ModuleDefId::BuiltinType(builtin)) = item {
+        return Some(ModPath::from_segments(PathKind::Plain, vec![builtin.as_name()]));
     }
 
     // Recursive case:
@@ -522,5 +527,19 @@ mod tests {
         pub struct Arc;
         "#;
         check_found_path(code, "megaalloc::Arc");
+    }
+
+    #[test]
+    fn builtins_are_in_scope() {
+        let code = r#"
+        //- /main.rs
+        <|>
+
+        pub mod primitive {
+            pub use u8;
+        }
+        "#;
+        check_found_path(code, "u8");
+        check_found_path(code, "u16");
     }
 }
