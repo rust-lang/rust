@@ -168,7 +168,7 @@ impl MemoryExtra {
             "linux" => {
                 // "__cxa_thread_atexit_impl"
                 // This should be all-zero, pointer-sized.
-                let layout = this.layout_of(this.tcx.types.usize)?;
+                let layout = this.machine.layouts.usize;
                 let place = this.allocate(layout, MiriMemoryKind::Machine.into());
                 this.write_scalar(Scalar::from_machine_usize(0, this), place.into())?;
                 Self::add_extern_static(this, "__cxa_thread_atexit_impl", place.ptr);
@@ -178,7 +178,7 @@ impl MemoryExtra {
             "windows" => {
                 // "_tls_used"
                 // This is some obscure hack that is part of the Windows TLS story. It's a `u8`.
-                let layout = this.layout_of(this.tcx.types.u8)?;
+                let layout = this.machine.layouts.u8;
                 let place = this.allocate(layout, MiriMemoryKind::Machine.into());
                 this.write_scalar(Scalar::from_u8(0), place.into())?;
                 Self::add_extern_static(this, "_tls_used", place.ptr);
@@ -190,16 +190,26 @@ impl MemoryExtra {
 }
 
 /// Precomputed layouts of primitive types
-pub(crate) struct PrimitiveLayouts<'tcx> {
-    pub(crate) i32: TyAndLayout<'tcx>,
-    pub(crate) u32: TyAndLayout<'tcx>,
+pub struct PrimitiveLayouts<'tcx> {
+    pub unit: TyAndLayout<'tcx>,
+    pub i8: TyAndLayout<'tcx>,
+    pub i32: TyAndLayout<'tcx>,
+    pub isize: TyAndLayout<'tcx>,
+    pub u8: TyAndLayout<'tcx>,
+    pub u32: TyAndLayout<'tcx>,
+    pub usize: TyAndLayout<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
     fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, LayoutError<'tcx>> {
         Ok(Self {
+            unit: layout_cx.layout_of(layout_cx.tcx.mk_unit())?,
+            i8: layout_cx.layout_of(layout_cx.tcx.types.i8)?,
             i32: layout_cx.layout_of(layout_cx.tcx.types.i32)?,
+            isize: layout_cx.layout_of(layout_cx.tcx.types.isize)?,
+            u8: layout_cx.layout_of(layout_cx.tcx.types.u8)?,
             u32: layout_cx.layout_of(layout_cx.tcx.types.u32)?,
+            usize: layout_cx.layout_of(layout_cx.tcx.types.usize)?,
         })
     }
 }
@@ -242,8 +252,6 @@ pub struct Evaluator<'tcx> {
     pub(crate) time_anchor: Instant,
 
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
-    /// FIXME: Search through the rest of the codebase for more layout_of() calls that
-    /// could be stored here.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
 }
 

@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use log::trace;
 
 use rustc_middle::ty;
-use rustc_target::abi::{LayoutOf, Size, HasDataLayout};
+use rustc_target::abi::{Size, HasDataLayout};
 
 use crate::{HelpersEvalContextExt, InterpResult, MPlaceTy, Scalar, StackPopCleanup, Tag};
 
@@ -172,7 +172,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
             let reason = this.eval_path_scalar(&["std", "sys", "windows", "c", "DLL_PROCESS_DETACH"])?;
-            let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
             this.call_function(
                 thread_callback,
                 &[Scalar::null_ptr(this).into(), reason.into(), Scalar::null_ptr(this).into()],
@@ -191,7 +191,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some((instance, data)) = this.machine.tls.global_dtor {
             trace!("Running global dtor {:?} on {:?}", instance, data);
 
-            let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
             this.call_function(
                 instance,
                 &[data.into()],
@@ -209,7 +209,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
             assert!(!this.is_null(ptr).unwrap(), "data can't be NULL when dtor is called!");
 
-            let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
             this.call_function(
                 instance,
                 &[ptr.into()],
