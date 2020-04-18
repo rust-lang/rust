@@ -7,7 +7,6 @@ use std::hash::Hash;
 
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::def_id::DefId;
 
 use super::{
     AllocId, Allocation, AllocationExtra, Frame, ImmTy, InterpCx, InterpResult, Memory, MemoryKind,
@@ -207,13 +206,11 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 
     /// Called before a global allocation is accessed.
-    /// `def_id` is `Some` if this is the "lazy" allocation of a static.
     #[inline]
     fn before_access_global(
         _memory_extra: &Self::MemoryExtra,
         _alloc_id: AllocId,
         _allocation: &Allocation,
-        _static_def_id: Option<DefId>,
         _is_write: bool,
     ) -> InterpResult<'tcx> {
         Ok(())

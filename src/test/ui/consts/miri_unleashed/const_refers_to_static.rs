@@ -1,3 +1,4 @@
+// check-pass
 // compile-flags: -Zunleash-the-miri-inside-of-you
 #![warn(const_err)]
 
@@ -6,11 +7,30 @@
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-const REF_INTERIOR_MUT: &usize = { //~ ERROR undefined behavior to use this value
+// Dynamically okay; does not touch any mutable static data:
+
+const READ_IMMUT: &usize = {
+    static FOO: usize = 0;
+    &FOO
+    //~^ WARN skipping const checks
+};
+
+const DEREF_IMMUT: usize = *READ_IMMUT;
+
+const REF_INTERIOR_MUT: &usize = {
     static FOO: AtomicUsize = AtomicUsize::new(0);
     unsafe { &*(&FOO as *const _ as *const usize) }
     //~^ WARN skipping const checks
 };
+
+extern { static EXTERN: usize; }
+const REF_EXTERN: &usize = unsafe { &EXTERN };
+//~^ WARN skipping const checks
+
+// Not okay; uses of these consts would read or write mutable static data:
+
+const DEREF_INTERIOR_MUT: usize = *REF_INTERIOR_MUT;
+//~^ WARN any use of this value will cause an error
 
 const MUTATE_INTERIOR_MUT: usize = {
     static FOO: AtomicUsize = AtomicUsize::new(0);
@@ -30,10 +50,7 @@ const READ_MUT: u32 = unsafe { MUTABLE }; //~ WARN any use of this value will ca
 //~^ WARN skipping const checks
 //~| WARN skipping const checks
 
-// ok some day perhaps
-const READ_IMMUT: &usize = { //~ ERROR it is undefined behavior to use this value
-    static FOO: usize = 0;
-    &FOO
-    //~^ WARN skipping const checks
-};
+const READ_EXTERN: usize = unsafe { EXTERN }; //~ WARN any use of this value will cause an error
+//~^ WARN skipping const checks
+
 fn main() {}

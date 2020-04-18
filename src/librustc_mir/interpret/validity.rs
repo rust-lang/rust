@@ -411,11 +411,11 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                     if !did.is_local() || self.ecx.tcx.is_foreign_item(did) {
                         return Ok(());
                     }
+                    // FIXME: Statics referenced from consts are skipped.
+                    // This avoids spurious "const accesses static" errors
+                    // unrelated to validity, but is similarly unsound.
                     if !self.may_ref_to_static && self.ecx.tcx.is_static(did) {
-                        throw_validation_failure!(
-                            format_args!("a {} pointing to a static variable", kind),
-                            self.path
-                        );
+                        return Ok(());
                     }
                 }
             }

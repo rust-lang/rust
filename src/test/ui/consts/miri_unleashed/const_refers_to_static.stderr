@@ -1,59 +1,73 @@
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:11:18
+  --> $DIR/const_refers_to_static.rs:14:6
+   |
+LL |     &FOO
+   |      ^^^
+
+warning: skipping const checks
+  --> $DIR/const_refers_to_static.rs:22:18
    |
 LL |     unsafe { &*(&FOO as *const _ as *const usize) }
    |                  ^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:17:5
+  --> $DIR/const_refers_to_static.rs:27:38
+   |
+LL | const REF_EXTERN: &usize = unsafe { &EXTERN };
+   |                                      ^^^^^^
+
+warning: skipping const checks
+  --> $DIR/const_refers_to_static.rs:37:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)
    |     ^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:17:5
+  --> $DIR/const_refers_to_static.rs:37:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:24:17
+  --> $DIR/const_refers_to_static.rs:44:17
    |
 LL |     unsafe { *(&FOO as *const _ as *const usize) }
    |                 ^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:29:32
+  --> $DIR/const_refers_to_static.rs:49:32
    |
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                ^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:29:32
+  --> $DIR/const_refers_to_static.rs:49:32
    |
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                ^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:36:6
+  --> $DIR/const_refers_to_static.rs:53:37
    |
-LL |     &FOO
-   |      ^^^
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static.rs:9:1
-   |
-LL | / const REF_INTERIOR_MUT: &usize = {
-LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
-LL | |     unsafe { &*(&FOO as *const _ as *const usize) }
-LL | |
-LL | | };
-   | |__^ type validation failed: encountered a reference pointing to a static variable
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+LL | const READ_EXTERN: usize = unsafe { EXTERN };
+   |                                     ^^^^^^
 
 warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static.rs:17:5
+  --> $DIR/const_refers_to_static.rs:32:35
+   |
+LL | const DEREF_INTERIOR_MUT: usize = *REF_INTERIOR_MUT;
+   | ----------------------------------^^^^^^^^^^^^^^^^^-
+   |                                   |
+   |                                   constant accesses static
+   |
+note: the lint level is defined here
+  --> $DIR/const_refers_to_static.rs:3:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
+
+warning: any use of this value will cause an error
+  --> $DIR/const_refers_to_static.rs:37:5
    |
 LL | / const MUTATE_INTERIOR_MUT: usize = {
 LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
@@ -63,15 +77,9 @@ LL | |
 LL | |
 LL | | };
    | |__-
-   |
-note: the lint level is defined here
-  --> $DIR/const_refers_to_static.rs:2:9
-   |
-LL | #![warn(const_err)]
-   |         ^^^^^^^^^
 
 warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static.rs:24:14
+  --> $DIR/const_refers_to_static.rs:44:14
    |
 LL | / const READ_INTERIOR_MUT: usize = {
 LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
@@ -82,25 +90,20 @@ LL | | };
    | |__-
 
 warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static.rs:29:32
+  --> $DIR/const_refers_to_static.rs:49:32
    |
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    | -------------------------------^^^^^^^---
    |                                |
    |                                constant accesses static
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static.rs:34:1
+warning: any use of this value will cause an error
+  --> $DIR/const_refers_to_static.rs:53:37
    |
-LL | / const READ_IMMUT: &usize = {
-LL | |     static FOO: usize = 0;
-LL | |     &FOO
-LL | |
-LL | | };
-   | |__^ type validation failed: encountered a reference pointing to a static variable
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+LL | const READ_EXTERN: usize = unsafe { EXTERN };
+   | ------------------------------------^^^^^^---
+   |                                     |
+   |                                     cannot read from foreign (extern) static DefId(0:11 ~ const_refers_to_static[317d]::[0]::EXTERN[0])
 
-error: aborting due to 2 previous errors; 10 warnings emitted
+warning: 14 warnings emitted
 
-For more information about this error, try `rustc --explain E0080`.

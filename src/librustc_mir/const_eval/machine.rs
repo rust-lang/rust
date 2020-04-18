@@ -8,7 +8,6 @@ use std::hash::Hash;
 use rustc_data_structures::fx::FxHashMap;
 
 use rustc_ast::ast::Mutability;
-use rustc_hir::def_id::DefId;
 use rustc_middle::mir::AssertMessage;
 use rustc_span::symbol::Symbol;
 
@@ -353,7 +352,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
         memory_extra: &MemoryExtra,
         alloc_id: AllocId,
         allocation: &Allocation,
-        static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
         if is_write {
@@ -368,16 +366,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter {
             if memory_extra.can_access_statics {
                 // Machine configuration allows us read from anything (e.g., `static` initializer).
                 Ok(())
-            } else if static_def_id.is_some() {
-                // Machine configuration does not allow us to read statics
+            } else if allocation.mutability != Mutability::Not {
+                // Machine configuration does not allow us to read mutable statics
                 // (e.g., `const` initializer).
+                // This is unsound because the content of this allocation may be different now and
+                // at run-time, so if we permit reading it now we might return the wrong value.
                 Err(ConstEvalErrKind::ConstAccessesStatic.into())
             } else {
                 // Immutable global, this read is fine.
-                // But make sure we never accept a read from something mutable, that would be
-                // unsound. The reason is that as the content of this allocation may be different
-                // now and at run-time, so if we permit reading now we might return the wrong value.
-                assert_eq!(allocation.mutability, Mutability::Not);
                 Ok(())
             }
         }

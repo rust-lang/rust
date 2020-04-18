@@ -1,0 +1,14 @@
+warning: skipping const checks
+  --> $DIR/use-static-via-const.rs:6:29
+   |
+LL | const REF: &'static [u8] = &DATA;
+   |                             ^^^^
+
+warning: skipping const checks
+  --> $DIR/use-static-via-const.rs:9:24
+   |
+LL | const PTR: *const u8 = DATA.as_ptr();
+   |                        ^^^^
+
+warning: 2 warnings emitted
+

@@ -1,9 +1,9 @@
 use super::{error_to_const_error, CompileTimeEvalContext, CompileTimeInterpreter, MemoryExtra};
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstValue, GlobalId, Immediate, InternKind,
-    InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst, RefTracking, Scalar,
-    ScalarMaybeUndef, StackPopCleanup,
+    intern_const_alloc_recursive, AllocId, Allocation, ConstValue, GlobalAlloc, GlobalId,
+    Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RawConst,
+    RefTracking, Scalar, ScalarMaybeUndef, StackPopCleanup,
 };
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
@@ -94,10 +94,13 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
     )
 }
 
-pub(super) fn op_to_const<'tcx>(
+#[derive(Debug)]
+pub(super) struct RefersToStatic;
+
+pub(super) fn try_op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: OpTy<'tcx>,
-) -> ConstValue<'tcx> {
+) -> Result<ConstValue<'tcx>, RefersToStatic> {
     // We do not have value optimizations for everything.
     // Only scalars and slices, since they are very common.
     // Note that further down we turn scalars of undefined bits back to `ByRef`. These can result
@@ -128,10 +131,16 @@ pub(super) fn op_to_const<'tcx>(
         op.try_as_mplace(ecx)
     };
 
+    let alloc_map = ecx.tcx.alloc_map.lock();
+    let try_unwrap_memory = |alloc_id: AllocId| match alloc_map.get(alloc_id) {
+        Some(GlobalAlloc::Memory(mem)) => Ok(mem),
+        Some(GlobalAlloc::Static(_)) => Err(RefersToStatic),
+        _ => bug!("expected allocation ID {} to point to memory", alloc_id),
+    };
     let to_const_value = |mplace: MPlaceTy<'_>| match mplace.ptr {
         Scalar::Ptr(ptr) => {
-            let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-            ConstValue::ByRef { alloc, offset: ptr.offset }
+            let alloc = try_unwrap_memory(ptr.alloc_id)?;
+            Ok(ConstValue::ByRef { alloc, offset: ptr.offset })
         }
         Scalar::Raw { data, .. } => {
             assert!(mplace.layout.is_zst());
@@ -141,22 +150,20 @@ pub(super) fn op_to_const<'tcx>(
                 "this MPlaceTy must come from `try_as_mplace` being used on a zst, so we know what
                  value this integer address must have",
             );
-            ConstValue::Scalar(Scalar::zst())
+            Ok(ConstValue::Scalar(Scalar::zst()))
         }
     };
     match immediate {
-        Ok(mplace) => to_const_value(mplace),
+        Ok(mplace) => Ok(to_const_value(mplace)?),
         // see comment on `let try_as_immediate` above
         Err(imm) => match *imm {
             Immediate::Scalar(x) => match x {
-                ScalarMaybeUndef::Scalar(s) => ConstValue::Scalar(s),
-                ScalarMaybeUndef::Undef => to_const_value(op.assert_mem_place(ecx)),
+                ScalarMaybeUndef::Scalar(s) => Ok(ConstValue::Scalar(s)),
+                ScalarMaybeUndef::Undef => Ok(to_const_value(op.assert_mem_place(ecx))?),
             },
             Immediate::ScalarPair(a, b) => {
                 let (data, start) = match a.not_undef().unwrap() {
-                    Scalar::Ptr(ptr) => {
-                        (ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id), ptr.offset.bytes())
-                    }
+                    Scalar::Ptr(ptr) => (try_unwrap_memory(ptr.alloc_id)?, ptr.offset.bytes()),
                     Scalar::Raw { .. } => (
                         ecx.tcx
                             .intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
@@ -166,7 +173,7 @@ pub(super) fn op_to_const<'tcx>(
                 let len = b.to_machine_usize(&ecx.tcx.tcx).unwrap();
                 let start = start.try_into().unwrap();
                 let len: usize = len.try_into().unwrap();
-                ConstValue::Slice { data, start, end: start + len }
+                Ok(ConstValue::Slice { data, start, end: start + len })
             }
         },
     }
@@ -198,17 +205,20 @@ fn validate_and_turn_into_const<'tcx>(
             }
         }
         // Now that we validated, turn this into a proper constant.
-        // Statics/promoteds are always `ByRef`, for the rest `op_to_const` decides
-        // whether they become immediates.
-        if is_static || cid.promoted.is_some() {
+        // Statics/promoteds are always `ByRef`, for the rest `try_op_to_const`
+        // decides whether they become immediates.
+        let value = if !is_static && !cid.promoted.is_some() {
+            try_op_to_const(&ecx, mplace.into())
+        } else {
+            Err(RefersToStatic)
+        };
+        Ok(value.unwrap_or_else(|RefersToStatic| {
             let ptr = mplace.ptr.assert_ptr();
-            Ok(ConstValue::ByRef {
+            ConstValue::ByRef {
                 alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
                 offset: ptr.offset,
-            })
-        } else {
-            Ok(op_to_const(&ecx, mplace.into()))
-        }
+            }
+        }))
     })();
 
     val.map_err(|error| {

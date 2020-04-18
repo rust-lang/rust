@@ -23,7 +23,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
-use rustc_span::{def_id::DefId, Span};
+use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
 use rustc_trait_selection::traits;
 
@@ -274,7 +274,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _memory_extra: &(),
         _alloc_id: AllocId,
         allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
-        _static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
         if is_write {

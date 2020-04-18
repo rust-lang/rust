@@ -430,11 +430,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         is_write: bool,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
-        let (alloc, def_id) = match alloc {
-            Some(GlobalAlloc::Memory(mem)) => {
-                // Memory of a constant or promoted or anonymous memory referenced by a static.
-                (mem, None)
-            }
+        let alloc = match alloc {
+            // Memory of a constant or promoted or anonymous memory referenced by a static.
+            Some(GlobalAlloc::Memory(mem)) => mem,
             Some(GlobalAlloc::Function(..)) => throw_ub!(DerefFunctionPointer(id)),
             None => throw_ub!(PointerUseAfterFree(id)),
             Some(GlobalAlloc::Static(def_id)) => {
@@ -466,12 +464,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     })?;
                 // Make sure we use the ID of the resolved memory, not the lazy one!
                 let id = raw_const.alloc_id;
-                let allocation = tcx.alloc_map.lock().unwrap_memory(id);
-
-                (allocation, Some(def_id))
+                tcx.alloc_map.lock().unwrap_memory(id)
             }
         };
-        M::before_access_global(memory_extra, id, alloc, def_id, is_write)?;
+        M::before_access_global(memory_extra, id, alloc, is_write)?;
         let alloc = Cow::Borrowed(alloc);
         // We got tcx memory. Let the machine initialize its "extra" stuff.
         let (alloc, tag) = M::init_allocation_extra(

@@ -3,6 +3,5 @@
 static A: &'static [u32] = &[1];
 static B: [u32; 1] = [0; A.len()];
 //~^ ERROR [E0013]
-//~| ERROR evaluation of constant value failed
 
 fn main() {}
