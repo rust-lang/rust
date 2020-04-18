@@ -1,6 +1,5 @@
 // run-pass
 // Tests saturating float->int casts. See u128-as-f32.rs for the opposite direction.
-// compile-flags: -Z saturating-float-casts
 
 #![feature(test, stmt_expr_attributes)]
 #![deny(overflowing_literals)]
