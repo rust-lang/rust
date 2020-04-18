@@ -1,8 +1,8 @@
-#![feature(core_intrinsics)]
-#![feature(is_sorted)]
+#![feature(core_intrinsics, generators, generator_trait, is_sorted)]
 
 use std::arch::x86_64::*;
 use std::io::Write;
+use std::ops::Generator;
 
 fn main() {
     let mutex = std::sync::Mutex::new(());
@@ -89,6 +89,10 @@ fn main() {
     unsafe {
         test_simd();
     }
+
+    Box::pin(move |mut _task_context| {
+        yield ();
+    }).as_mut().resume(0);
 }
 
 #[target_feature(enable = "sse2")]

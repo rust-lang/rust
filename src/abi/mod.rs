@@ -12,7 +12,7 @@ use crate::prelude::*;
 
 pub(crate) use self::returning::{can_return_to_ssa_var, codegen_return};
 
-// Copied from https://github.com/rust-lang/rust/blob/c2f4c57296f0d929618baed0b0d6eb594abf01eb/src/librustc/ty/layout.rs#L2349
+// Copied from https://github.com/rust-lang/rust/blob/b2c1a606feb1fbdb0ac0acba76f881ef172ed474/src/librustc_middle/ty/layout.rs#L2287
 pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
     let ty = instance.monomorphic_ty(tcx);
     match ty.kind {
@@ -43,7 +43,7 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
                 sig.abi
             ))
         }
-        ty::Generator(_def_id, substs, _) => {
+        ty::Generator(_, substs, _) => {
             let sig = substs.as_generator().poly_sig();
 
             let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
@@ -63,8 +63,9 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
                 ]);
                 let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
-                tcx.mk_fn_sig(std::iter::once(env_ty),
-                    ret_ty,
+                tcx.mk_fn_sig(
+                    [env_ty, sig.resume_ty].iter(),
+                    &ret_ty,
                     false,
                     rustc_hir::Unsafety::Normal,
                     rustc_target::spec::abi::Abi::Rust
