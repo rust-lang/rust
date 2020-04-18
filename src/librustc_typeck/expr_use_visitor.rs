@@ -9,7 +9,7 @@ pub use mc::{Place, PlaceBase, Projection};
 
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::PatKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::{self, adjustment, TyCtxt};
@@ -84,7 +84,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     pub fn new(
         delegate: &'a mut (dyn Delegate<'tcx> + 'a),
         infcx: &'a InferCtxt<'a, 'tcx>,
-        body_owner: DefId,
+        body_owner: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         tables: &'a ty::TypeckTables<'tcx>,
     ) -> Self {
