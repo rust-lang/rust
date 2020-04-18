@@ -4,8 +4,8 @@ use std::{fmt, sync::Arc};
 use log::debug;
 
 use chalk_ir::{
-    cast::Cast, fold::shift::Shift, Goal, GoalData, Parameter, PlaceholderIndex, TypeName,
-    UniverseIndex,
+    cast::Cast, fold::shift::Shift, interner::HasInterner, Goal, GoalData, Parameter,
+    PlaceholderIndex, TypeName, UniverseIndex,
 };
 
 use hir_def::{AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup, TypeAliasId};
@@ -33,8 +33,10 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGoals = Vec<Goal<Self>>;
     type InternedSubstitution = Vec<Parameter<Self>>;
     type InternedProgramClause = chalk_ir::ProgramClauseData<Self>;
-    type InternedProgramClauses = Vec<chalk_ir::ProgramClause<Self>>;
+    type InternedProgramClauses = Arc<[chalk_ir::ProgramClause<Self>]>;
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
+    type InternedParameterKinds = Vec<chalk_ir::ParameterKind<()>>;
+    type InternedCanonicalVarKinds = Vec<chalk_ir::ParameterKind<UniverseIndex>>;
     type Identifier = TypeAliasId;
     type DefId = InternId;
 
@@ -58,6 +60,27 @@ impl chalk_ir::interner::Interner for Interner {
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_alias(alias, fmt)))
+    }
+
+    fn debug_projection_ty(
+        proj: &chalk_ir::ProjectionTy<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_projection_ty(proj, fmt)))
+    }
+
+    fn debug_opaque_ty(
+        opaque_ty: &chalk_ir::OpaqueTy<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_opaque_ty(opaque_ty, fmt)))
+    }
+
+    fn debug_opaque_ty_id(
+        opaque_ty_id: chalk_ir::OpaqueTyId<Self>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        tls::with_current_program(|prog| Some(prog?.debug_opaque_ty_id(opaque_ty_id, fmt)))
     }
 
     fn debug_ty(ty: &chalk_ir::Ty<Interner>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
@@ -202,15 +225,15 @@ impl chalk_ir::interner::Interner for Interner {
     fn intern_program_clauses(
         &self,
         data: impl IntoIterator<Item = chalk_ir::ProgramClause<Self>>,
-    ) -> Vec<chalk_ir::ProgramClause<Self>> {
+    ) -> Arc<[chalk_ir::ProgramClause<Self>]> {
         data.into_iter().collect()
     }
 
     fn program_clauses_data<'a>(
         &self,
-        clauses: &'a Vec<chalk_ir::ProgramClause<Self>>,
+        clauses: &'a Arc<[chalk_ir::ProgramClause<Self>]>,
     ) -> &'a [chalk_ir::ProgramClause<Self>] {
-        clauses
+        &clauses
     }
 
     fn intern_quantified_where_clauses(
@@ -225,6 +248,34 @@ impl chalk_ir::interner::Interner for Interner {
         clauses: &'a Self::InternedQuantifiedWhereClauses,
     ) -> &'a [chalk_ir::QuantifiedWhereClause<Self>] {
         clauses
+    }
+
+    fn intern_parameter_kinds(
+        &self,
+        data: impl IntoIterator<Item = chalk_ir::ParameterKind<()>>,
+    ) -> Self::InternedParameterKinds {
+        data.into_iter().collect()
+    }
+
+    fn parameter_kinds_data<'a>(
+        &self,
+        parameter_kinds: &'a Self::InternedParameterKinds,
+    ) -> &'a [chalk_ir::ParameterKind<()>] {
+        &parameter_kinds
+    }
+
+    fn intern_canonical_var_kinds(
+        &self,
+        data: impl IntoIterator<Item = chalk_ir::ParameterKind<UniverseIndex>>,
+    ) -> Self::InternedCanonicalVarKinds {
+        data.into_iter().collect()
+    }
+
+    fn canonical_var_kinds_data<'a>(
+        &self,
+        canonical_var_kinds: &'a Self::InternedCanonicalVarKinds,
+    ) -> &'a [chalk_ir::ParameterKind<UniverseIndex>] {
+        &canonical_var_kinds
     }
 }
 
@@ -268,9 +319,12 @@ impl ToChalk for Ty {
             Ty::Projection(proj_ty) => {
                 let associated_ty_id = proj_ty.associated_ty.to_chalk(db);
                 let substitution = proj_ty.parameters.to_chalk(db);
-                chalk_ir::AliasTy { associated_ty_id, substitution }
-                    .cast(&Interner)
-                    .intern(&Interner)
+                chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
+                    associated_ty_id,
+                    substitution,
+                })
+                .cast(&Interner)
+                .intern(&Interner)
             }
             Ty::Placeholder(id) => {
                 let interned_id = db.intern_type_param_id(id);
@@ -314,16 +368,17 @@ impl ToChalk for Ty {
                 );
                 Ty::Placeholder(db.lookup_intern_type_param_id(interned_id))
             }
-            chalk_ir::TyData::Alias(proj) => {
+            chalk_ir::TyData::Alias(chalk_ir::AliasTy::Projection(proj)) => {
                 let associated_ty = from_chalk(db, proj.associated_ty_id);
                 let parameters = from_chalk(db, proj.substitution);
                 Ty::Projection(ProjectionTy { associated_ty, parameters })
             }
+            chalk_ir::TyData::Alias(chalk_ir::AliasTy::Opaque(_)) => unimplemented!(),
             chalk_ir::TyData::Function(_) => unimplemented!(),
             chalk_ir::TyData::BoundVar(idx) => Ty::Bound(idx),
             chalk_ir::TyData::InferenceVar(_iv) => Ty::Unknown,
             chalk_ir::TyData::Dyn(where_clauses) => {
-                assert_eq!(where_clauses.bounds.binders.len(), 1);
+                assert_eq!(where_clauses.bounds.binders.len(&Interner), 1);
                 let predicates = where_clauses
                     .bounds
                     .skip_binders()
@@ -404,6 +459,7 @@ impl ToChalk for TypeCtor {
         match type_name {
             TypeName::Struct(struct_id) => db.lookup_intern_type_ctor(struct_id.into()),
             TypeName::AssociatedType(type_id) => TypeCtor::AssociatedType(from_chalk(db, type_id)),
+            TypeName::OpaqueType(_) => unreachable!(),
             TypeName::Error => {
                 // this should not be reached, since we don't represent TypeName::Error with TypeCtor
                 unreachable!()
@@ -460,7 +516,8 @@ impl ToChalk for GenericPredicate {
             }
             GenericPredicate::Projection(projection_pred) => {
                 let ty = projection_pred.ty.to_chalk(db).shifted_in(&Interner);
-                let alias = projection_pred.projection_ty.to_chalk(db).shifted_in(&Interner);
+                let projection = projection_pred.projection_ty.to_chalk(db).shifted_in(&Interner);
+                let alias = chalk_ir::AliasTy::Projection(projection);
                 make_binders(chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq { alias, ty }), 0)
             }
             GenericPredicate::Error => panic!("tried passing GenericPredicate::Error to Chalk"),
@@ -481,7 +538,13 @@ impl ToChalk for GenericPredicate {
                 GenericPredicate::Implemented(from_chalk(db, tr))
             }
             chalk_ir::WhereClause::AliasEq(projection_eq) => {
-                let projection_ty = from_chalk(db, projection_eq.alias);
+                let projection_ty = from_chalk(
+                    db,
+                    match projection_eq.alias {
+                        chalk_ir::AliasTy::Projection(p) => p,
+                        _ => unimplemented!(),
+                    },
+                );
                 let ty = from_chalk(db, projection_eq.ty);
                 GenericPredicate::Projection(super::ProjectionPredicate { projection_ty, ty })
             }
@@ -490,10 +553,10 @@ impl ToChalk for GenericPredicate {
 }
 
 impl ToChalk for ProjectionTy {
-    type Chalk = chalk_ir::AliasTy<Interner>;
+    type Chalk = chalk_ir::ProjectionTy<Interner>;
 
-    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::AliasTy<Interner> {
-        chalk_ir::AliasTy {
+    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::ProjectionTy<Interner> {
+        chalk_ir::ProjectionTy {
             associated_ty_id: self.associated_ty.to_chalk(db),
             substitution: self.parameters.to_chalk(db),
         }
@@ -501,7 +564,7 @@ impl ToChalk for ProjectionTy {
 
     fn from_chalk(
         db: &dyn HirDatabase,
-        projection_ty: chalk_ir::AliasTy<Interner>,
+        projection_ty: chalk_ir::ProjectionTy<Interner>,
     ) -> ProjectionTy {
         ProjectionTy {
             associated_ty: from_chalk(db, projection_ty.associated_ty_id),
@@ -514,7 +577,10 @@ impl ToChalk for super::ProjectionPredicate {
     type Chalk = chalk_ir::AliasEq<Interner>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::AliasEq<Interner> {
-        chalk_ir::AliasEq { alias: self.projection_ty.to_chalk(db), ty: self.ty.to_chalk(db) }
+        chalk_ir::AliasEq {
+            alias: chalk_ir::AliasTy::Projection(self.projection_ty.to_chalk(db)),
+            ty: self.ty.to_chalk(db),
+        }
     }
 
     fn from_chalk(_db: &dyn HirDatabase, _normalize: chalk_ir::AliasEq<Interner>) -> Self {
@@ -540,17 +606,24 @@ impl ToChalk for Obligation {
 impl<T> ToChalk for Canonical<T>
 where
     T: ToChalk,
+    T::Chalk: HasInterner<Interner = Interner>,
 {
     type Chalk = chalk_ir::Canonical<T::Chalk>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Canonical<T::Chalk> {
         let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
         let value = self.value.to_chalk(db);
-        chalk_ir::Canonical { value, binders: vec![parameter; self.num_vars] }
+        chalk_ir::Canonical {
+            value,
+            binders: chalk_ir::CanonicalVarKinds::from(&Interner, vec![parameter; self.num_vars]),
+        }
     }
 
     fn from_chalk(db: &dyn HirDatabase, canonical: chalk_ir::Canonical<T::Chalk>) -> Canonical<T> {
-        Canonical { num_vars: canonical.binders.len(), value: from_chalk(db, canonical.value) }
+        Canonical {
+            num_vars: canonical.binders.len(&Interner),
+            value: from_chalk(db, canonical.value),
+        }
     }
 }
 
@@ -649,9 +722,15 @@ impl ToChalk for builtin::BuiltinImplAssocTyValueData {
     }
 }
 
-fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T> {
+fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T>
+where
+    T: HasInterner<Interner = Interner>,
+{
     chalk_ir::Binders::new(
-        std::iter::repeat(chalk_ir::ParameterKind::Ty(())).take(num_vars).collect(),
+        chalk_ir::ParameterKinds::from(
+            &Interner,
+            std::iter::repeat(chalk_ir::ParameterKind::Ty(())).take(num_vars),
+        ),
         value,
     )
 }
@@ -799,6 +878,28 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         // FIXME tell Chalk about well-known traits (here and in trait_datum)
         None
     }
+
+    fn program_clauses_for_env(
+        &self,
+        environment: &chalk_ir::Environment<Interner>,
+    ) -> chalk_ir::ProgramClauses<Interner> {
+        self.db.program_clauses_for_chalk_env(self.krate, environment.clone())
+    }
+
+    fn opaque_ty_data(
+        &self,
+        _id: chalk_ir::OpaqueTyId<Interner>,
+    ) -> Arc<chalk_rust_ir::OpaqueTyDatum<Interner>> {
+        unimplemented!()
+    }
+}
+
+pub(crate) fn program_clauses_for_chalk_env_query(
+    db: &dyn HirDatabase,
+    krate: CrateId,
+    environment: chalk_ir::Environment<Interner>,
+) -> chalk_ir::ProgramClauses<Interner> {
+    chalk_solve::program_clauses_for_env(&ChalkContext { db, krate }, &environment)
 }
 
 pub(crate) fn associated_ty_data_query(
