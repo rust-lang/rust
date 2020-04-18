@@ -156,6 +156,12 @@ impl Completions {
         name: Option<String>,
         macro_: hir::MacroDef,
     ) {
+        // FIXME: Currently proc-macro do not have ast-node,
+        // such that it does not have source
+        if macro_.is_proc_macro() {
+            return;
+        }
+
         let name = match name {
             Some(it) => it,
             None => return,
