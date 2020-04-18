@@ -6,5 +6,5 @@ extern "rust-intrinsic" {
 }
 
 fn main() {
-    unsafe { float_to_int_unchecked::<f64, u128>(340282366920938463463374607431768211455.0f64); } //~ ERROR: cannot be represented in target type `u128`
+    unsafe { float_to_int_unchecked::<f64, u128>(u128::MAX as f64); } //~ ERROR: cannot be represented in target type `u128`
 }
