@@ -2390,6 +2390,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut err = self.report_missing_lifetime_specifiers(span, lifetime_refs.len());
 
         if let Some(params) = error {
+            // If there's no lifetime available, suggest `'static`.
             if self.report_elision_failure(&mut err, params) && lifetime_names.is_empty() {
                 lifetime_names.insert(ast::Ident::from_str("'static"));
             }
@@ -2408,7 +2409,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         &mut self,
         db: &mut DiagnosticBuilder<'_>,
         params: &[ElisionFailureInfo],
-    ) -> bool {
+    ) -> bool /* add `'static` lifetime to lifetime list */ {
         let mut m = String::new();
         let len = params.len();
 
