@@ -1,8 +1,6 @@
 mod emit;
 mod line_info;
 
-use std::convert::TryFrom;
-
 use crate::prelude::*;
 
 use rustc_span::FileName;
@@ -67,7 +65,8 @@ impl<'tcx> DebugContext<'tcx> {
                 let hash = tcx.sess
                     .source_map()
                     .get_source_file(&FileName::Real(path))
-                    .and_then(|f| line_info::FileHash::try_from(f.src_hash).ok());
+                    .map(|f| f.src_hash)
+                    .and_then(line_info::FileHash::from_source_hash);
                 (name, hash)
             },
             None => (tcx.crate_name(LOCAL_CRATE).to_string(), None),

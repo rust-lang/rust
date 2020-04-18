@@ -1,5 +1,4 @@
 use std::ffi::OsStr;
-use std::convert::TryFrom;
 use std::path::{Component, Path};
 
 use crate::prelude::*;
@@ -42,24 +41,18 @@ pub(crate) const MD5_LEN: usize = 16;
 pub struct FileHash([u8; MD5_LEN]);
 
 impl FileHash {
-    pub fn inner(self) -> [u8; MD5_LEN] {
-        self.0
-    }
-}
-
-pub struct UnsupportedHashType;
-
-impl TryFrom<SourceFileHash> for FileHash {
-    type Error = UnsupportedHashType;
-
-    fn try_from(hash: SourceFileHash) -> Result<Self, Self::Error> {
+    pub fn from_source_hash(hash: SourceFileHash) -> Option<Self> {
         if hash.kind == SourceFileHashAlgorithm::Md5 {
             let mut buf = [0u8; MD5_LEN];
             buf.copy_from_slice(hash.hash_bytes());
-            Ok(Self(buf))
+            Some(Self(buf))
         } else {
-            Err(UnsupportedHashType)
+            None
         }
+    }
+
+    pub fn inner(self) -> [u8; MD5_LEN] {
+        self.0
     }
 }
 
@@ -86,9 +79,9 @@ fn line_program_add_file(
                 line_strings,
             );
 
-            let file_hash = FileHash::try_from(file.src_hash);
+            let file_hash = FileHash::from_source_hash(file.src_hash);
 
-            line_program.file_has_md5 = file_hash.is_ok();
+            line_program.file_has_md5 = file_hash.is_some();
             line_program.add_file(file_name, dir_id, Some(FileInfo {
                 timestamp: 0,
                 size: 0,
