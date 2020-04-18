@@ -94,17 +94,15 @@ impl Inliner<'tcx> {
                     continue;
                 }
 
-                let self_node_id = self.tcx.hir().as_local_node_id(self.source.def_id()).unwrap();
-                let callee_node_id = self.tcx.hir().as_local_node_id(callsite.callee);
+                let callee_hir_id = self.tcx.hir().as_local_hir_id(callsite.callee);
 
-                let callee_body = if let Some(callee_node_id) = callee_node_id {
+                let callee_body = if let Some(callee_hir_id) = callee_hir_id {
+                    let self_hir_id = self.tcx.hir().as_local_hir_id(self.source.def_id()).unwrap();
                     // Avoid a cycle here by only using `optimized_mir` only if we have
-                    // a lower node id than the callee. This ensures that the callee will
+                    // a lower `HirId` than the callee. This ensures that the callee will
                     // not inline us. This trick only works without incremental compilation.
                     // So don't do it if that is enabled.
-                    if !self.tcx.dep_graph.is_fully_enabled()
-                        && self_node_id.as_u32() < callee_node_id.as_u32()
-                    {
+                    if !self.tcx.dep_graph.is_fully_enabled() && self_hir_id < callee_hir_id {
                         self.tcx.optimized_mir(callsite.callee)
                     } else {
                         continue;
