@@ -68,7 +68,7 @@ impl FloatToInt<u128> for f64 {
 /// Test this cast both via `as` and via `approx_unchecked` (i.e., it must not saturate).
 #[track_caller]
 #[inline(never)]
-fn test_cast<F, I>(x: F, y: I)
+fn test_both_cast<F, I>(x: F, y: I)
     where F: FloatToInt<I>, I: PartialEq + Debug
 {
     assert_eq!(x.cast(), y);
@@ -116,22 +116,22 @@ fn basic() {
 
 fn casts() {
     // f32 -> i8
-    test_cast::<f32, i8>(127.99, 127);
-    test_cast::<f32, i8>(-128.99, -128);
+    test_both_cast::<f32, i8>(127.99, 127);
+    test_both_cast::<f32, i8>(-128.99, -128);
 
     // f32 -> i32
-    test_cast::<f32, i32>(0.0, 0);
-    test_cast::<f32, i32>(-0.0, 0);
-    test_cast::<f32, i32>(/*0x1p-149*/ f32::from_bits(0x00000001), 0);
-    test_cast::<f32, i32>(/*-0x1p-149*/ f32::from_bits(0x80000001), 0);
-    test_cast::<f32, i32>(/*0x1.19999ap+0*/ f32::from_bits(0x3f8ccccd), 1);
-    test_cast::<f32, i32>(/*-0x1.19999ap+0*/ f32::from_bits(0xbf8ccccd), -1);
-    test_cast::<f32, i32>(1.9, 1);
-    test_cast::<f32, i32>(-1.9, -1);
-    test_cast::<f32, i32>(5.0, 5);
-    test_cast::<f32, i32>(-5.0, -5);
-    test_cast::<f32, i32>(2147483520.0, 2147483520);
-    test_cast::<f32, i32>(-2147483648.0, -2147483648);
+    test_both_cast::<f32, i32>(0.0, 0);
+    test_both_cast::<f32, i32>(-0.0, 0);
+    test_both_cast::<f32, i32>(/*0x1p-149*/ f32::from_bits(0x00000001), 0);
+    test_both_cast::<f32, i32>(/*-0x1p-149*/ f32::from_bits(0x80000001), 0);
+    test_both_cast::<f32, i32>(/*0x1.19999ap+0*/ f32::from_bits(0x3f8ccccd), 1);
+    test_both_cast::<f32, i32>(/*-0x1.19999ap+0*/ f32::from_bits(0xbf8ccccd), -1);
+    test_both_cast::<f32, i32>(1.9, 1);
+    test_both_cast::<f32, i32>(-1.9, -1);
+    test_both_cast::<f32, i32>(5.0, 5);
+    test_both_cast::<f32, i32>(-5.0, -5);
+    test_both_cast::<f32, i32>(2147483520.0, 2147483520);
+    test_both_cast::<f32, i32>(-2147483648.0, -2147483648);
     // unrepresentable casts
     assert_eq::<i32>(2147483648.0f32 as i32, i32::MAX);
     assert_eq::<i32>(-2147483904.0f32 as i32, i32::MIN);
@@ -143,19 +143,19 @@ fn casts() {
     assert_eq::<i32>((-f32::NAN) as i32, 0);
 
     // f32 -> u32
-    test_cast::<f32, u32>(0.0, 0);
-    test_cast::<f32, u32>(-0.0, 0);
-    test_cast::<f32, u32>(-0.9999999, 0);
-    test_cast::<f32, u32>(/*0x1p-149*/ f32::from_bits(0x1), 0);
-    test_cast::<f32, u32>(/*-0x1p-149*/ f32::from_bits(0x80000001), 0);
-    test_cast::<f32, u32>(/*0x1.19999ap+0*/ f32::from_bits(0x3f8ccccd), 1);
-    test_cast::<f32, u32>(1.9, 1);
-    test_cast::<f32, u32>(5.0, 5);
-    test_cast::<f32, u32>(2147483648.0, 0x8000_0000);
-    test_cast::<f32, u32>(4294967040.0, 0u32.wrapping_sub(256));
-    test_cast::<f32, u32>(/*-0x1.ccccccp-1*/ f32::from_bits(0xbf666666), 0);
-    test_cast::<f32, u32>(/*-0x1.fffffep-1*/ f32::from_bits(0xbf7fffff), 0);
-    test_cast::<f32, u32>((u32::MAX-128) as f32, u32::MAX-255); // rounding loss
+    test_both_cast::<f32, u32>(0.0, 0);
+    test_both_cast::<f32, u32>(-0.0, 0);
+    test_both_cast::<f32, u32>(-0.9999999, 0);
+    test_both_cast::<f32, u32>(/*0x1p-149*/ f32::from_bits(0x1), 0);
+    test_both_cast::<f32, u32>(/*-0x1p-149*/ f32::from_bits(0x80000001), 0);
+    test_both_cast::<f32, u32>(/*0x1.19999ap+0*/ f32::from_bits(0x3f8ccccd), 1);
+    test_both_cast::<f32, u32>(1.9, 1);
+    test_both_cast::<f32, u32>(5.0, 5);
+    test_both_cast::<f32, u32>(2147483648.0, 0x8000_0000);
+    test_both_cast::<f32, u32>(4294967040.0, 0u32.wrapping_sub(256));
+    test_both_cast::<f32, u32>(/*-0x1.ccccccp-1*/ f32::from_bits(0xbf666666), 0);
+    test_both_cast::<f32, u32>(/*-0x1.fffffep-1*/ f32::from_bits(0xbf7fffff), 0);
+    test_both_cast::<f32, u32>((u32::MAX-128) as f32, u32::MAX-255); // rounding loss
     // unrepresentable casts
     assert_eq::<u32>((u32::MAX-127) as f32 as u32, u32::MAX); // rounds up and then becomes unrepresentable
     assert_eq::<u32>(4294967296.0f32 as u32, u32::MAX);
@@ -168,44 +168,44 @@ fn casts() {
     assert_eq::<u32>((-f32::NAN) as u32, 0);
 
     // f32 -> i64
-    test_cast::<f32, i64>(4294967296.0, 4294967296);
-    test_cast::<f32, i64>(-4294967296.0, -4294967296);
-    test_cast::<f32, i64>(9223371487098961920.0, 9223371487098961920);
-    test_cast::<f32, i64>(-9223372036854775808.0, -9223372036854775808);
+    test_both_cast::<f32, i64>(4294967296.0, 4294967296);
+    test_both_cast::<f32, i64>(-4294967296.0, -4294967296);
+    test_both_cast::<f32, i64>(9223371487098961920.0, 9223371487098961920);
+    test_both_cast::<f32, i64>(-9223372036854775808.0, -9223372036854775808);
 
     // f64 -> i8
-    test_cast::<f64, i8>(127.99, 127);
-    test_cast::<f64, i8>(-128.99, -128);
+    test_both_cast::<f64, i8>(127.99, 127);
+    test_both_cast::<f64, i8>(-128.99, -128);
 
     // f64 -> i32
-    test_cast::<f64, i32>(0.0, 0);
-    test_cast::<f64, i32>(-0.0, 0);
-    test_cast::<f64, i32>(/*0x1.199999999999ap+0*/ f64::from_bits(0x3ff199999999999a), 1);
-    test_cast::<f64, i32>(/*-0x1.199999999999ap+0*/ f64::from_bits(0xbff199999999999a), -1);
-    test_cast::<f64, i32>(1.9, 1);
-    test_cast::<f64, i32>(-1.9, -1);
-    test_cast::<f64, i32>(1e8, 100_000_000);
-    test_cast::<f64, i32>(2147483647.0, 2147483647);
-    test_cast::<f64, i32>(-2147483648.0, -2147483648);
+    test_both_cast::<f64, i32>(0.0, 0);
+    test_both_cast::<f64, i32>(-0.0, 0);
+    test_both_cast::<f64, i32>(/*0x1.199999999999ap+0*/ f64::from_bits(0x3ff199999999999a), 1);
+    test_both_cast::<f64, i32>(/*-0x1.199999999999ap+0*/ f64::from_bits(0xbff199999999999a), -1);
+    test_both_cast::<f64, i32>(1.9, 1);
+    test_both_cast::<f64, i32>(-1.9, -1);
+    test_both_cast::<f64, i32>(1e8, 100_000_000);
+    test_both_cast::<f64, i32>(2147483647.0, 2147483647);
+    test_both_cast::<f64, i32>(-2147483648.0, -2147483648);
     // unrepresentable casts
     assert_eq::<i32>(2147483648.0f64 as i32, i32::MAX);
     assert_eq::<i32>(-2147483649.0f64 as i32, i32::MIN);
 
     // f64 -> i64
-    test_cast::<f64, i64>(0.0, 0);
-    test_cast::<f64, i64>(-0.0, 0);
-    test_cast::<f64, i64>(/*0x0.0000000000001p-1022*/ f64::from_bits(0x1), 0);
-    test_cast::<f64, i64>(/*-0x0.0000000000001p-1022*/ f64::from_bits(0x8000000000000001), 0);
-    test_cast::<f64, i64>(/*0x1.199999999999ap+0*/ f64::from_bits(0x3ff199999999999a), 1);
-    test_cast::<f64, i64>(/*-0x1.199999999999ap+0*/ f64::from_bits(0xbff199999999999a), -1);
-    test_cast::<f64, i64>(5.0, 5);
-    test_cast::<f64, i64>(5.9, 5);
-    test_cast::<f64, i64>(-5.0, -5);
-    test_cast::<f64, i64>(-5.9, -5);
-    test_cast::<f64, i64>(4294967296.0, 4294967296);
-    test_cast::<f64, i64>(-4294967296.0, -4294967296);
-    test_cast::<f64, i64>(9223372036854774784.0, 9223372036854774784);
-    test_cast::<f64, i64>(-9223372036854775808.0, -9223372036854775808);
+    test_both_cast::<f64, i64>(0.0, 0);
+    test_both_cast::<f64, i64>(-0.0, 0);
+    test_both_cast::<f64, i64>(/*0x0.0000000000001p-1022*/ f64::from_bits(0x1), 0);
+    test_both_cast::<f64, i64>(/*-0x0.0000000000001p-1022*/ f64::from_bits(0x8000000000000001), 0);
+    test_both_cast::<f64, i64>(/*0x1.199999999999ap+0*/ f64::from_bits(0x3ff199999999999a), 1);
+    test_both_cast::<f64, i64>(/*-0x1.199999999999ap+0*/ f64::from_bits(0xbff199999999999a), -1);
+    test_both_cast::<f64, i64>(5.0, 5);
+    test_both_cast::<f64, i64>(5.9, 5);
+    test_both_cast::<f64, i64>(-5.0, -5);
+    test_both_cast::<f64, i64>(-5.9, -5);
+    test_both_cast::<f64, i64>(4294967296.0, 4294967296);
+    test_both_cast::<f64, i64>(-4294967296.0, -4294967296);
+    test_both_cast::<f64, i64>(9223372036854774784.0, 9223372036854774784);
+    test_both_cast::<f64, i64>(-9223372036854775808.0, -9223372036854775808);
     // unrepresentable casts
     assert_eq::<i64>(9223372036854775808.0f64 as i64, i64::MAX);
     assert_eq::<i64>(-9223372036854777856.0f64 as i64, i64::MIN);
@@ -217,13 +217,13 @@ fn casts() {
     assert_eq::<i64>((-f64::NAN) as i64, 0);
 
     // f64 -> u64
-    test_cast::<f64, u64>(0.0, 0);
-    test_cast::<f64, u64>(-0.0, 0);
-    test_cast::<f64, u64>(-0.99999999999, 0);
-    test_cast::<f64, u64>(5.0, 5);
-    test_cast::<f64, u64>(1e16, 10000000000000000);
-    test_cast::<f64, u64>((u64::MAX-1024) as f64, u64::MAX-2047); // rounding loss
-    test_cast::<f64, u64>(9223372036854775808.0, 9223372036854775808);
+    test_both_cast::<f64, u64>(0.0, 0);
+    test_both_cast::<f64, u64>(-0.0, 0);
+    test_both_cast::<f64, u64>(-0.99999999999, 0);
+    test_both_cast::<f64, u64>(5.0, 5);
+    test_both_cast::<f64, u64>(1e16, 10000000000000000);
+    test_both_cast::<f64, u64>((u64::MAX-1024) as f64, u64::MAX-2047); // rounding loss
+    test_both_cast::<f64, u64>(9223372036854775808.0, 9223372036854775808);
     // unrepresentable casts
     assert_eq::<u64>(-5.0f64 as u64, 0);
     assert_eq::<u64>((u64::MAX-1023) as f64 as u64, u64::MAX); // rounds up and then becomes unrepresentable
