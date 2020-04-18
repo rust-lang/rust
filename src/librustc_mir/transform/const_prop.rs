@@ -72,10 +72,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             .expect("Non-local call to local provider is_const_fn");
 
         let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
-        let is_assoc_const = match tcx.def_kind(source.def_id()) {
-            Some(DefKind::AssocConst) => true,
-            _ => false,
-        };
+        let is_assoc_const = tcx.def_kind(source.def_id()) == DefKind::AssocConst;
 
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {

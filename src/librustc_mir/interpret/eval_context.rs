@@ -630,7 +630,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // FIXME: The above is likely untrue. See
                 // <https://github.com/rust-lang/rust/pull/70004#issuecomment-602022110>. Is it
                 // okay to ignore `StorageDead`/`StorageLive` annotations during CTFE?
-                Some(DefKind::Static) | Some(DefKind::Const) | Some(DefKind::AssocConst) => {}
+                DefKind::Static | DefKind::Const | DefKind::AssocConst => {}
                 _ => {
                     // Mark locals that use `Storage*` annotations as dead on function entry.
                     let always_live = AlwaysLiveLocals::new(self.body());

@@ -10,7 +10,7 @@ note: the lint level is defined here
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
-error: method is never used: `foo`
+error: associated function is never used: `foo`
   --> $DIR/lint-dead-code-3.rs:15:5
    |
 LL |     fn foo(&self) {
@@ -28,7 +28,7 @@ error: enum is never used: `c_void`
 LL | enum c_void {}
    |      ^^^^^^
 
-error: foreign function is never used: `free`
+error: function is never used: `free`
   --> $DIR/lint-dead-code-3.rs:61:5
    |
 LL |     fn free(p: *const c_void);

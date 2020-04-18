@@ -4,7 +4,7 @@ struct MyFoo;
 
 impl MyFoo {
     const BAR: u32 = 1;
-    //~^ ERROR associated const is never used: `BAR`
+    //~^ ERROR associated constant is never used: `BAR`
 }
 
 fn main() {
