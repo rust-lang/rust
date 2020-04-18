@@ -7,6 +7,7 @@ use hir_def::{
     expr::{BindingAnnotation, Pat, PatId, RecordFieldPat},
     path::Path,
     type_ref::Mutability,
+    StructFieldId,
 };
 use hir_expand::name::Name;
 use test_utils::tested_by;
@@ -67,6 +68,11 @@ impl<'a> InferenceContext<'a> {
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         for subpat in subpats {
             let matching_field = var_data.as_ref().and_then(|it| it.field(&subpat.name));
+            if let Some(local_id) = matching_field {
+                let field_def = StructFieldId { parent: def.unwrap(), local_id };
+                self.result.record_field_pat_resolutions.insert(subpat.pat, field_def);
+            }
+
             let expected_ty =
                 matching_field.map_or(Ty::Unknown, |field| field_tys[field].clone().subst(&substs));
             let expected_ty = self.normalize_associated_types_in(expected_ty);
