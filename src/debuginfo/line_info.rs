@@ -37,22 +37,17 @@ fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
 
 pub(crate) const MD5_LEN: usize = 16;
 
-#[derive(Default, Clone, Copy)]
-pub struct FileHash([u8; MD5_LEN]);
-
-impl FileHash {
-    pub fn from_source_hash(hash: SourceFileHash) -> Option<Self> {
-        if hash.kind == SourceFileHashAlgorithm::Md5 {
-            let mut buf = [0u8; MD5_LEN];
-            buf.copy_from_slice(hash.hash_bytes());
-            Some(Self(buf))
-        } else {
-            None
-        }
-    }
-
-    pub fn inner(self) -> [u8; MD5_LEN] {
-        self.0
+pub fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
+    if hash.kind == SourceFileHashAlgorithm::Md5 {
+        let mut buf = [0u8; MD5_LEN];
+        buf.copy_from_slice(hash.hash_bytes());
+        Some(FileInfo {
+            timestamp: 0,
+            size: 0,
+            md5: buf,
+        })
+    } else {
+        None
     }
 }
 
@@ -79,14 +74,10 @@ fn line_program_add_file(
                 line_strings,
             );
 
-            let file_hash = FileHash::from_source_hash(file.src_hash);
+            let info = make_file_info(file.src_hash);
 
-            line_program.file_has_md5 = file_hash.is_some();
-            line_program.add_file(file_name, dir_id, Some(FileInfo {
-                timestamp: 0,
-                size: 0,
-                md5: file_hash.unwrap_or_default().inner(),
-            }))
+            line_program.file_has_md5 = info.is_some();
+            line_program.add_file(file_name, dir_id, info)
         }
         // FIXME give more appropriate file names
         filename => {

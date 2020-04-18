@@ -11,7 +11,7 @@ use cranelift_codegen::ValueLocRange;
 
 use gimli::write::{
     self, Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString, Location,
-    LocationList, Range, RangeList, UnitEntryId, Writer, FileInfo,
+    LocationList, Range, RangeList, UnitEntryId, Writer,
 };
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, X86_64};
 
@@ -59,15 +59,15 @@ impl<'tcx> DebugContext<'tcx> {
         // Normally this would use option_env!("CFG_VERSION").
         let producer = format!("cg_clif (rustc {})", "unknown version");
         let comp_dir = tcx.sess.working_dir.0.to_string_lossy().into_owned();
-        let (name, file_hash) = match tcx.sess.local_crate_source_file.clone() {
+        let (name, file_info) = match tcx.sess.local_crate_source_file.clone() {
             Some(path) => {
                 let name = path.to_string_lossy().into_owned();
-                let hash = tcx.sess
+                let info = tcx.sess
                     .source_map()
                     .get_source_file(&FileName::Real(path))
                     .map(|f| f.src_hash)
-                    .and_then(line_info::FileHash::from_source_hash);
-                (name, hash)
+                    .and_then(line_info::make_file_info);
+                (name, info)
             },
             None => (tcx.crate_name(LOCAL_CRATE).to_string(), None),
         };
@@ -77,13 +77,9 @@ impl<'tcx> DebugContext<'tcx> {
             LineEncoding::default(),
             LineString::new(comp_dir.as_bytes(), encoding, &mut dwarf.line_strings),
             LineString::new(name.as_bytes(), encoding, &mut dwarf.line_strings),
-            Some(FileInfo {
-                timestamp: 0,
-                size: 0,
-                md5: file_hash.unwrap_or_default().inner(),
-            }),
+            file_info,
         );
-        line_program.file_has_md5 = file_hash.is_some();
+        line_program.file_has_md5 = file_info.is_some();
 
         dwarf.unit.line_program = line_program;
 
