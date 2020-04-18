@@ -371,7 +371,7 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
 
     // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
-    tcx.ensure().mir_borrowck(def_id);
+    tcx.ensure().mir_borrowck(def_id.expect_local());
 
     let (body, _) = tcx.mir_validated(def_id);
     let mut body = body.steal();
@@ -387,7 +387,7 @@ fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, Body<'_>>
         return tcx.intern_promoted(IndexVec::new());
     }
 
-    tcx.ensure().mir_borrowck(def_id);
+    tcx.ensure().mir_borrowck(def_id.expect_local());
     let (_, promoted) = tcx.mir_validated(def_id);
     let mut promoted = promoted.steal();
 
