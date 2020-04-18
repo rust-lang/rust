@@ -1,14 +1,15 @@
 use std::ffi::OsStr;
+use std::time::SystemTime;
 use std::path::{Component, Path};
 
 use crate::prelude::*;
 
-use rustc_span::{FileName, SourceFileAndLine, Pos};
+use rustc_span::{FileName, SourceFile, SourceFileAndLine, Pos, SourceFileHash, SourceFileHashAlgorithm};
 
 use cranelift_codegen::binemit::CodeOffset;
 
 use gimli::write::{
-    Address, AttributeValue, FileId, LineProgram, LineString, LineStringTable, UnitEntryId,
+    Address, AttributeValue, FileId, LineProgram, LineString, FileInfo, LineStringTable, UnitEntryId,
 };
 
 // OPTIMIZATION: It is cheaper to do this in one pass than using `.parent()` and `.file_name()`.
@@ -38,9 +39,9 @@ fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
 fn line_program_add_file(
     line_program: &mut LineProgram,
     line_strings: &mut LineStringTable,
-    file: &FileName,
+    file: &SourceFile,
 ) -> FileId {
-    match file {
+    match &file.name {
         FileName::Real(path) => {
             let (dir_path, file_name) = split_path_dir_and_file(path);
             let dir_name = osstr_as_utf8_bytes(dir_path.as_os_str());
@@ -57,13 +58,32 @@ fn line_program_add_file(
                 line_program.encoding(),
                 line_strings,
             );
-            line_program.add_file(file_name, dir_id, None)
+
+            let md5 = Some(file.src_hash)
+                .filter(|h| matches!(h, SourceFileHash { kind: SourceFileHashAlgorithm::Md5, .. }))
+                .map(|h| {
+                    let mut buf = [0u8; super::MD5_LEN];
+                    buf.copy_from_slice(h.hash_bytes());
+                    buf
+                });
+
+            line_program.file_has_timestamp = true;
+            line_program.file_has_md5 = md5.is_some();
+
+            line_program.add_file(file_name, dir_id, Some(FileInfo {
+                timestamp: SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .map(|t| t.as_secs())
+                    .unwrap_or(0),
+                size: 0,
+                md5: md5.unwrap_or_default(),
+            }))
         }
         // FIXME give more appropriate file names
-        _ => {
+        filename => {
             let dir_id = line_program.default_directory();
             let dummy_file_name = LineString::new(
-                file.to_string().into_bytes(),
+                filename.to_string().into_bytes(),
                 line_program.encoding(),
                 line_strings,
             );
@@ -79,7 +99,7 @@ impl<'tcx> DebugContext<'tcx> {
         let file_id = line_program_add_file(
             &mut self.dwarf.unit.line_program,
             &mut self.dwarf.line_strings,
-            &loc.file.name,
+            &loc.file,
         );
 
         let entry = self.dwarf.unit.get_mut(entry_id);
@@ -167,7 +187,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 true
             };
             if current_file_changed {
-                let file_id = line_program_add_file(line_program, line_strings, &file.name);
+                let file_id = line_program_add_file(line_program, line_strings, &file);
                 line_program.row().file = file_id;
                 last_file = Some(file.clone());
             }

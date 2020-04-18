@@ -1,7 +1,11 @@
 mod emit;
 mod line_info;
 
+use std::time::SystemTime;
+
 use crate::prelude::*;
+
+use rustc_span::{FileName, SourceFileHash, SourceFileHashAlgorithm};
 
 use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
 use cranelift_codegen::isa::TargetIsa;
@@ -9,7 +13,7 @@ use cranelift_codegen::ValueLocRange;
 
 use gimli::write::{
     self, Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString, Location,
-    LocationList, Range, RangeList, UnitEntryId, Writer,
+    LocationList, Range, RangeList, UnitEntryId, Writer, FileInfo,
 };
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, X86_64};
 
@@ -23,6 +27,8 @@ fn target_endian(tcx: TyCtxt<'_>) -> RunTimeEndian {
         Endian::Little => RunTimeEndian::Little,
     }
 }
+
+const MD5_LEN: usize = 16;
 
 pub(crate) struct DebugContext<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -42,7 +48,8 @@ impl<'tcx> DebugContext<'tcx> {
             format: Format::Dwarf32,
             // TODO: this should be configurable
             // macOS doesn't seem to support DWARF > 3
-            version: 3,
+            // 5 version is required for md5 file hash
+            version: 5,
             address_size,
         };
 
@@ -52,18 +59,41 @@ impl<'tcx> DebugContext<'tcx> {
         // Normally this would use option_env!("CFG_VERSION").
         let producer = format!("cg_clif (rustc {})", "unknown version");
         let comp_dir = tcx.sess.working_dir.0.to_string_lossy().into_owned();
-        let name = match tcx.sess.local_crate_source_file {
-            Some(ref path) => path.to_string_lossy().into_owned(),
-            None => tcx.crate_name(LOCAL_CRATE).to_string(),
+        let (name, md5) = match tcx.sess.local_crate_source_file.clone() {
+            Some(path) => {
+                let name = path.to_string_lossy().into_owned();
+                let hash = tcx.sess
+                    .source_map()
+                    .get_source_file(&FileName::Real(path))
+                    .map(|f| f.src_hash)
+                    .filter(|h| matches!(h, SourceFileHash { kind: SourceFileHashAlgorithm::Md5, .. }))
+                    .map(|h| {
+                        let mut buf = [0u8; MD5_LEN];
+                        buf.copy_from_slice(h.hash_bytes());
+                        buf
+                    });
+                (name, hash)
+            },
+            None => (tcx.crate_name(LOCAL_CRATE).to_string(), None),
         };
 
-        let line_program = LineProgram::new(
+        let mut line_program = LineProgram::new(
             encoding,
             LineEncoding::default(),
             LineString::new(comp_dir.as_bytes(), encoding, &mut dwarf.line_strings),
             LineString::new(name.as_bytes(), encoding, &mut dwarf.line_strings),
-            None,
+            Some(FileInfo {
+                timestamp: SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .map(|t| t.as_secs())
+                    .unwrap_or(0),
+                size: 0,
+                md5: md5.unwrap_or_default(),
+            }),
         );
+        line_program.file_has_timestamp = true;
+        line_program.file_has_md5 = md5.is_some();
+
         dwarf.unit.line_program = line_program;
 
         {
