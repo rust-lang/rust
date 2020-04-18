@@ -182,12 +182,13 @@ rustc_queries! {
             no_hash
         }
 
-        query mir_validated(_: DefId) ->
+        query mir_validated(key: LocalDefId) ->
             (
                 &'tcx Steal<mir::Body<'tcx>>,
                 &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
             ) {
             no_hash
+            desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
         /// MIR after our optimization passes have run. This is MIR that is ready

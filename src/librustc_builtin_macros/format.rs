@@ -410,7 +410,9 @@ impl<'a, 'b> Context<'a, 'b> {
                                 .iter()
                                 .filter(|fmt| fmt.precision_span.is_some())
                                 .count();
-                        e.span_label(span, &format!(
+                        e.span_label(
+                            span,
+                            &format!(
                             "this precision flag adds an extra required argument at position {}, \
                              which is why there {} expected",
                             pos,
@@ -419,7 +421,8 @@ impl<'a, 'b> Context<'a, 'b> {
                             } else {
                                 format!("are {} arguments", count)
                             },
-                        ));
+                        ),
+                        );
                         if let Some(arg) = self.args.get(pos) {
                             e.span_label(
                                 arg.span,
