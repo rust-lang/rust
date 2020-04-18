@@ -206,6 +206,7 @@ fn check_variant(
         lint,
         span,
         &format!("All variants have the same {}fix: `{}`", what, value),
+        None,
         &format!(
             "remove the {}fixes and use full paths to \
              the variants instead of glob imports",

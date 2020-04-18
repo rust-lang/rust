@@ -137,6 +137,7 @@ fn show_lint(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) {
                 "type `{}` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`",
                 self_type.to_string()
             ),
+            None,
             &format!("remove the inherent method from type `{}`", self_type.to_string())
         );
     } else {
@@ -148,6 +149,7 @@ fn show_lint(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) {
                 "implementation of inherent method `to_string(&self) -> String` for type `{}`",
                 self_type.to_string()
             ),
+            None,
             &format!("implement trait `Display` for type `{}` instead", self_type.to_string()),
         );
     }

@@ -208,7 +208,7 @@ fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8:
             match parser.parse(r) {
                 Ok(r) => {
                     if let Some(repl) = is_trivial_regex(&r) {
-                        span_lint_and_help(cx, TRIVIAL_REGEX, expr.span, "trivial regex", repl);
+                        span_lint_and_help(cx, TRIVIAL_REGEX, expr.span, "trivial regex", None, repl);
                     }
                 },
                 Err(regex_syntax::Error::Parse(e)) => {
@@ -236,7 +236,7 @@ fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8:
         match parser.parse(&r) {
             Ok(r) => {
                 if let Some(repl) = is_trivial_regex(&r) {
-                    span_lint_and_help(cx, TRIVIAL_REGEX, expr.span, "trivial regex", repl);
+                    span_lint_and_help(cx, TRIVIAL_REGEX, expr.span, "trivial regex", None, repl);
                 }
             },
             Err(regex_syntax::Error::Parse(e)) => {

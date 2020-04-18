@@ -313,6 +313,7 @@ impl EarlyLintPass for MiscEarlyLints {
                     UNNEEDED_FIELD_PATTERN,
                     pat.span,
                     "All the struct fields are matched to a wildcard pattern, consider using `..`.",
+                    None,
                     &format!("Try with `{} {{ .. }}` instead", type_name),
                 );
                 return;
@@ -348,6 +349,7 @@ impl EarlyLintPass for MiscEarlyLints {
                                 field.span,
                                 "You matched a field with a wildcard pattern. Consider using `..` \
                                  instead",
+                                None,
                                 &format!("Try with `{} {{ {}, .. }}`", type_name, normal[..].join(", ")),
                             );
                         }

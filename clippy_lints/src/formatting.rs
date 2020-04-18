@@ -188,6 +188,7 @@ fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
                     binop = binop_str,
                     unop = unop_str
                 ),
+                None,
                 &format!(
                     "put a space between `{binop}` and `{unop}` and remove the space after `{unop}`",
                     binop = binop_str,

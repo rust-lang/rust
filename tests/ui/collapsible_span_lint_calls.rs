@@ -22,7 +22,15 @@ where
 }
 
 #[allow(unused_variables)]
-fn span_lint_and_help<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str) {}
+fn span_lint_and_help<'a, T: LintContext>(
+    cx: &'a T,
+    lint: &'static Lint,
+    span: Span,
+    msg: &str,
+    option_span: Option<Span>,
+    help: &str,
+) {
+}
 
 #[allow(unused_variables)]
 fn span_lint_and_note<'a, T: LintContext>(

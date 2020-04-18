@@ -148,6 +148,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, expr_span
                         MEM_REPLACE_WITH_UNINIT,
                         expr_span,
                         "replacing with `mem::uninitialized()`",
+                        None,
                         "consider using the `take_mut` crate instead",
                     );
                 } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id) &&
@@ -157,6 +158,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, expr_span
                         MEM_REPLACE_WITH_UNINIT,
                         expr_span,
                         "replacing with `mem::zeroed()`",
+                        None,
                         "consider using a default value or the `take_mut` crate instead",
                     );
                 }

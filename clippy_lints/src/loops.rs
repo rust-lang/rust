@@ -1402,6 +1402,7 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>) {
                  `if let` statement.",
                 snippet(cx, arg.span, "_")
             ),
+            None,
             &format!(
                 "consider replacing `for {0} in {1}` with `if let Some({0}) = {1}`",
                 snippet(cx, pat.span, "_"),
@@ -1418,6 +1419,7 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>) {
                  `if let` statement.",
                 snippet(cx, arg.span, "_")
             ),
+            None,
             &format!(
                 "consider replacing `for {0} in {1}` with `if let Ok({0}) = {1}`",
                 snippet(cx, pat.span, "_"),

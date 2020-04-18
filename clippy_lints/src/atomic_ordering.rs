@@ -85,6 +85,7 @@ fn check_atomic_load_store(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
                     INVALID_ATOMIC_ORDERING,
                     ordering_arg.span,
                     "atomic loads cannot have `Release` and `AcqRel` ordering",
+                    None,
                     "consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`"
                 );
             } else if method == "store" &&
@@ -94,6 +95,7 @@ fn check_atomic_load_store(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
                     INVALID_ATOMIC_ORDERING,
                     ordering_arg.span,
                     "atomic stores cannot have `Acquire` and `AcqRel` ordering",
+                    None,
                     "consider using ordering modes `Release`, `SeqCst` or `Relaxed`"
                 );
             }
@@ -118,6 +120,7 @@ fn check_memory_fence(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
                 INVALID_ATOMIC_ORDERING,
                 args[0].span,
                 "memory fences cannot have `Relaxed` ordering",
+                None,
                 "consider using ordering modes `Acquire`, `Release`, `AcqRel` or `SeqCst`"
             );
         }

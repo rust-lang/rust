@@ -40,6 +40,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VerboseFileReads {
                 VERBOSE_FILE_READS,
                 expr.span,
                 "use of `File::read_to_end`",
+                None,
                 "consider using `fs::read` instead",
             );
         } else if is_file_read_to_string(cx, expr) {
@@ -48,6 +49,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VerboseFileReads {
                 VERBOSE_FILE_READS,
                 expr.span,
                 "use of `File::read_to_string`",
+                None,
                 "consider using `fs::read_to_string` instead",
             )
         }

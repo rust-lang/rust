@@ -46,6 +46,7 @@ impl EarlyLintPass for OptionEnvUnwrap {
                     OPTION_ENV_UNWRAP,
                     expr.span,
                     "this will panic at run-time if the environment variable doesn't exist at compile-time",
+                    None,
                     "consider using the `env!` macro instead"
                 );
             }

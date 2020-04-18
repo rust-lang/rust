@@ -61,6 +61,7 @@ impl EarlyLintPass for ElseIfWithoutElse {
                     ELSE_IF_WITHOUT_ELSE,
                     els.span,
                     "`if` expression with an `else if`, but without a final `else`",
+                    None,
                     "add an `else` block here",
                 );
             }

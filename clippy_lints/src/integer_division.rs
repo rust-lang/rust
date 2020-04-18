@@ -35,6 +35,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IntegerDivision {
                 INTEGER_DIVISION,
                 expr.span,
                 "integer division",
+                None,
                 "division of integers may cause loss of precision. consider using floats.",
             );
         }

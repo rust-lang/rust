@@ -90,6 +90,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
                         LET_UNDERSCORE_LOCK,
                         local.span,
                         "non-binding let on a synchronization lock",
+                        None,
                         "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`"
                     )
@@ -99,6 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
                         LET_UNDERSCORE_MUST_USE,
                         local.span,
                         "non-binding let on an expression with `#[must_use]` type",
+                        None,
                         "consider explicitly using expression value"
                     )
                 } else if is_must_use_func_call(cx, init) {
@@ -107,6 +109,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
                         LET_UNDERSCORE_MUST_USE,
                         local.span,
                         "non-binding let on a result of a `#[must_use]` function",
+                        None,
                         "consider explicitly using function result"
                     )
                 }

@@ -265,6 +265,7 @@ impl EarlyLintPass for FooFunctions {
             FOO_FUNCTIONS,
             span,
             "function named `foo`",
+            None,
             "consider using a more meaningful name"
         );
     }
@@ -296,6 +297,7 @@ impl EarlyLintPass for FooFunctions {
                 FOO_FUNCTIONS,
                 span,
                 "function named `foo`",
+                None,
                 "consider using a more meaningful name"
             );
         }

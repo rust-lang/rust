@@ -431,6 +431,7 @@ fn check_needless_must_use(
             DOUBLE_MUST_USE,
             fn_header_span,
             "this function has an empty `#[must_use]` attribute, but returns a type already marked as `#[must_use]`",
+            None,
             "either add some descriptive text or remove the attribute",
         );
     }

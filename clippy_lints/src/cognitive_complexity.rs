@@ -105,6 +105,7 @@ impl CognitiveComplexity {
                     rust_cc,
                     self.limit.limit()
                 ),
+                None,
                 "you could split it up into multiple smaller functions",
             );
         }

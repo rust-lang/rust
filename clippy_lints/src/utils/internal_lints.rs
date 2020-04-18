@@ -196,8 +196,8 @@ declare_clippy_lint! {
     ///     sugg.to_string(),
     ///     Applicability::MachineApplicable,
     /// );
-    /// span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, help_msg);
-    /// span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, help_msg);
+    /// span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), help_msg);
+    /// span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, None, help_msg);
     /// span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, expr.span, note_msg);
     /// span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, expr.span, note_msg);
     /// ```
@@ -403,6 +403,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
                     COMPILER_LINT_FUNCTIONS,
                     path.ident.span,
                     "usage of a compiler lint function",
+                    None,
                     &format!("please use the Clippy variant of this function: `{}`", sugg),
                 );
             }
@@ -481,7 +482,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CollapsibleCalls {
                     },
                     "span_help" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
                         let help_snippet = snippet(cx, span_call_args[2].span, r#""...""#);
-                        suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow());
+                        suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), true);
                     },
                     "span_note" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
                         let note_snippet = snippet(cx, span_call_args[2].span, r#""...""#);
@@ -489,7 +490,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CollapsibleCalls {
                     },
                     "help" => {
                         let help_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
-                        suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow());
+                        suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), false);
                     }
                     "note" => {
                         let note_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
@@ -573,7 +574,19 @@ fn suggest_suggestion(
     );
 }
 
-fn suggest_help(cx: &LateContext<'_, '_>, expr: &Expr<'_>, and_then_snippets: &AndThenSnippets<'_>, help: &str) {
+fn suggest_help(
+    cx: &LateContext<'_, '_>,
+    expr: &Expr<'_>,
+    and_then_snippets: &AndThenSnippets<'_>,
+    help: &str,
+    with_span: bool,
+) {
+    let option_span = if with_span {
+        format!("Some({})", and_then_snippets.span)
+    } else {
+        "None".to_string()
+    };
+
     span_lint_and_sugg(
         cx,
         COLLAPSIBLE_SPAN_LINT_CALLS,
@@ -581,8 +594,13 @@ fn suggest_help(cx: &LateContext<'_, '_>, expr: &Expr<'_>, and_then_snippets: &A
         "this call is collapsible",
         "collapse into",
         format!(
-            "span_lint_and_help({}, {}, {}, {}, {})",
-            and_then_snippets.cx, and_then_snippets.lint, and_then_snippets.span, and_then_snippets.msg, help
+            "span_lint_and_help({}, {}, {}, {}, {}, {})",
+            and_then_snippets.cx,
+            and_then_snippets.lint,
+            and_then_snippets.span,
+            and_then_snippets.msg,
+            &option_span,
+            help
         ),
         Applicability::MachineApplicable,
     );

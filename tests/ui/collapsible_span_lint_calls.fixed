@@ -22,7 +22,15 @@ where
 }
 
 #[allow(unused_variables)]
-fn span_lint_and_help<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str) {}
+fn span_lint_and_help<'a, T: LintContext>(
+    cx: &'a T,
+    lint: &'static Lint,
+    span: Span,
+    msg: &str,
+    option_span: Option<Span>,
+    help: &str,
+) {
+}
 
 #[allow(unused_variables)]
 fn span_lint_and_note<'a, T: LintContext>(
@@ -65,8 +73,8 @@ impl EarlyLintPass for Pass {
         let predicate = true;
 
         span_lint_and_sugg(cx, TEST_LINT, expr.span, lint_msg, help_msg, sugg.to_string(), Applicability::MachineApplicable);
-        span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, help_msg);
-        span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, help_msg);
+        span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), help_msg);
+        span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, None, help_msg);
         span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, expr.span, note_msg);
         span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, expr.span, note_msg);
 

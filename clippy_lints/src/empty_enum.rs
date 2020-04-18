@@ -45,13 +45,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {
             let ty = cx.tcx.type_of(did);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
             if adt.variants.is_empty() {
-                span_lint_and_then(
+                span_lint_and_help(
                     cx,
                     EMPTY_ENUM,
                     item.span,
                     "enum with no variants",
-                    "consider using the uninhabited type `!` (never type) or a wrapper around it \
-                    to introduce a type which can't be instantiated",
+                    Some(item.span),
+                    "consider using the uninhabited type `!` (never type) or a wrapper \
+                    around it to introduce a type which can't be instantiated",
                 );
             }
         }

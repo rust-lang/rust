@@ -441,6 +441,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
                     REST_PAT_IN_FULLY_BOUND_STRUCTS,
                     pat.span,
                     "unnecessary use of `..` pattern in struct binding. All fields were already bound",
+                    None,
                     "consider removing `..` from this binding",
                 );
             }
@@ -887,6 +888,7 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
                     WILDCARD_IN_OR_PATTERNS,
                     arm.pat.span,
                     "wildcard pattern covers any other pattern as it will match anyway.",
+                    None,
                     "Consider handling `_` separately.",
                 );
             }

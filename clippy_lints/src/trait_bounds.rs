@@ -76,6 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TraitBounds {
                         TYPE_REPETITION_IN_BOUNDS,
                         p.span,
                         "this type has already been used as a bound predicate",
+                        None,
                         &hint_string,
                     );
                 }
