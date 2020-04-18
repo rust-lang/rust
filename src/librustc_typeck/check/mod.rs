@@ -754,8 +754,8 @@ fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
     });
 }
 
-fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
-    wfcheck::check_item_well_formed(tcx, def_id.expect_local());
+fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    wfcheck::check_item_well_formed(tcx, def_id);
 }
 
 fn check_trait_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
