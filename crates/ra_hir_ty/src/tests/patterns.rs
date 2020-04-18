@@ -455,3 +455,29 @@ fn test() {
     "###
     );
 }
+
+#[test]
+fn infer_guard() {
+    assert_snapshot!(
+        infer(r#"
+struct S;
+impl S { fn foo(&self) -> bool { false } }
+
+fn main() {
+    match S {
+        s if s.foo() => (),
+    }
+}
+    "#), @"
+        [28; 32) 'self': &S
+        [42; 51) '{ false }': bool
+        [44; 49) 'false': bool
+        [65; 116) '{     ...   } }': ()
+        [71; 114) 'match ...     }': ()
+        [77; 78) 'S': S
+        [89; 90) 's': S
+        [94; 95) 's': S
+        [94; 101) 's.foo()': bool
+        [105; 107) '()': ()
+    ")
+}

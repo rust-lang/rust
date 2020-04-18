@@ -157,6 +157,10 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
             for arm in arms {
                 let scope = scopes.new_scope(scope);
                 scopes.add_bindings(body, scope, arm.pat);
+                if let Some(guard) = arm.guard {
+                    scopes.set_scope(guard, scope);
+                    compute_expr_scopes(guard, body, scopes, scope);
+                }
                 scopes.set_scope(arm.expr, scope);
                 compute_expr_scopes(arm.expr, body, scopes, scope);
             }
