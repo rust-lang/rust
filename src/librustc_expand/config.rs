@@ -4,9 +4,9 @@ use rustc_ast::ast::{self, AttrItem, Attribute, MetaItem};
 use rustc_ast::attr::HasAttrs;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::util::map_in_place::MapInPlace;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_errors::{error_code, struct_span_err, Applicability, Handler};
 use rustc_feature::{Feature, Features, State as FeatureState};
 use rustc_feature::{

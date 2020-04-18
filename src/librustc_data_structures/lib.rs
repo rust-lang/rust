@@ -67,6 +67,7 @@ pub mod fx;
 pub mod graph;
 pub mod jobserver;
 pub mod macros;
+pub mod map_in_place;
 pub mod obligation_forest;
 pub mod owning_ref;
 pub mod ptr_key;
