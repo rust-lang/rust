@@ -262,10 +262,10 @@ fn test_encode_utf16() {
 
 #[test]
 fn test_len_utf16() {
-    assert!('x'.len_utf16() == 1);
-    assert!('\u{e9}'.len_utf16() == 1);
-    assert!('\u{a66e}'.len_utf16() == 1);
-    assert!('\u{1f4a9}'.len_utf16() == 2);
+    assert_eq!('x'.len_utf16(), 1);
+    assert_eq!('\u{e9}'.len_utf16(), 1);
+    assert_eq!('\u{a66e}'.len_utf16(), 1);
+    assert_eq!('\u{1f4a9}'.len_utf16(), 2);
 }
 
 #[test]

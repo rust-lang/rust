@@ -626,9 +626,9 @@ fn test_debugging_options_tracking_hash() {
 fn test_edition_parsing() {
     // test default edition
     let options = Options::default();
-    assert!(options.edition == DEFAULT_EDITION);
+    assert_eq!(options.edition, DEFAULT_EDITION);
 
     let matches = optgroups().parse(&["--edition=2018".to_string()]).unwrap();
     let (sessopts, _) = build_session_options_and_crate_config(matches);
-    assert!(sessopts.edition == Edition::Edition2018)
+    assert_eq!(sessopts.edition, Edition::Edition2018)
 }

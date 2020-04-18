@@ -440,7 +440,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             // The root snapshot. It's safe to clear the undo log because
             // there's no snapshot further out that we might need to roll back
             // to.
-            assert!(snapshot.length == 0);
+            assert_eq!(snapshot.length, 0);
             self.undo_log.clear();
         }
 

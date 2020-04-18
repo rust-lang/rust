@@ -436,7 +436,7 @@ impl Definitions {
         );
 
         // The root node must be created with `create_root_def()`.
-        assert!(data != DefPathData::CrateRoot);
+        assert_ne!(data, DefPathData::CrateRoot);
 
         // Find the next free disambiguator for this key.
         let disambiguator = {

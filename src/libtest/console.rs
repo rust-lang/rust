@@ -279,7 +279,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
 
     run_tests(opts, tests, |x| on_test_event(&x, &mut st, &mut *out))?;
 
-    assert!(st.current_test_count() == st.total);
+    assert_eq!(st.current_test_count(), st.total);
 
     out.write_run_finish(&st)
 }

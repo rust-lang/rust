@@ -19,7 +19,7 @@ fn invalid_chars() {
                 let mut input = String::new();
                 input.push_str(s);
                 input.insert(i, c);
-                assert!(parse_decimal(&input) == Invalid, "did not reject invalid {:?}", input);
+                assert_eq!(parse_decimal(&input), Invalid, "did not reject invalid {:?}", input);
             }
         }
     }

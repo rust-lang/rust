@@ -72,8 +72,9 @@ where
         npassed,
         n - nignored - npassed
     );
-    assert!(
-        nignored + npassed == n,
+    assert_eq!(
+        nignored + npassed,
+        n,
         "{}({}): {} out of {} values returns an incorrect value!",
         func,
         k,

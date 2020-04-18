@@ -310,7 +310,7 @@ pub mod guard {
 
     // Precondition: PAGE_SIZE is initialized.
     unsafe fn get_stack_start_aligned() -> Option<*mut libc::c_void> {
-        assert!(PAGE_SIZE != 0);
+        assert_ne!(PAGE_SIZE, 0);
         let stackaddr = get_stack_start()?;
 
         // Ensure stackaddr is page aligned! A parent process might

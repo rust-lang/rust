@@ -72,7 +72,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter> {
             || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
         {
             // &'static str
-            assert!(args.len() == 1);
+            assert_eq!(args.len(), 1);
 
             let msg_place = self.deref_operand(args[0])?;
             let msg = Symbol::intern(self.read_str(msg_place)?);

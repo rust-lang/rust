@@ -572,7 +572,7 @@ impl MetaItemKind {
             }
             MacArgs::Delimited(..) => None,
             MacArgs::Eq(_, tokens) => {
-                assert!(tokens.len() == 1);
+                assert_eq!(tokens.len(), 1);
                 MetaItemKind::name_value_from_tokens(&mut tokens.trees())
             }
             MacArgs::Empty => Some(MetaItemKind::Word),

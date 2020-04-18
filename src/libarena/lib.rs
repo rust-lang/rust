@@ -158,8 +158,8 @@ impl<T> TypedArena<T> {
 
     #[inline]
     unsafe fn alloc_raw_slice(&self, len: usize) -> *mut T {
-        assert!(mem::size_of::<T>() != 0);
-        assert!(len != 0);
+        assert_ne!(mem::size_of::<T>(), 0);
+        assert_ne!(len, 0);
 
         self.ensure_capacity(len);
 
@@ -190,7 +190,7 @@ impl<T> TypedArena<T> {
 
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
-        assert!(mem::size_of::<T>() != 0);
+        assert_ne!(mem::size_of::<T>(), 0);
         let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
         if vec.is_empty() {
             return &mut [];
@@ -368,7 +368,7 @@ impl DroplessArena {
     #[inline]
     pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
         unsafe {
-            assert!(bytes != 0);
+            assert_ne!(bytes, 0);
 
             self.align(align);
 
@@ -410,7 +410,7 @@ impl DroplessArena {
         T: Copy,
     {
         assert!(!mem::needs_drop::<T>());
-        assert!(mem::size_of::<T>() != 0);
+        assert_ne!(mem::size_of::<T>(), 0);
         assert!(!slice.is_empty());
 
         let mem = self.alloc_raw(slice.len() * mem::size_of::<T>(), mem::align_of::<T>()) as *mut _
@@ -448,7 +448,7 @@ impl DroplessArena {
     #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         let iter = iter.into_iter();
-        assert!(mem::size_of::<T>() != 0);
+        assert_ne!(mem::size_of::<T>(), 0);
         assert!(!mem::needs_drop::<T>());
 
         let size_hint = iter.size_hint();

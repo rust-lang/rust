@@ -28,7 +28,7 @@ fn main() {
     let l = durations.len();
     durations.sort();
 
-    assert!(BENCH_N % 2 == 0);
+    assert_eq!(BENCH_N % 2, 0);
     let median = (durations[(l / 2) - 1] + durations[l / 2]) / 2;
     println!("\ncustom-bench vec_deque_append {:?} ns/iter\n", median.as_nanos());
 }

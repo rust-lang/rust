@@ -1576,8 +1576,8 @@ fn test_align_to_mut_aliasing() {
     // `align_to_mut` used to create `mid` in a way that there was some intermediate
     // incorrect aliasing, invalidating the resulting `mid` slice.
     let (begin, mid, end) = unsafe { val.align_to_mut::<[u8; 2]>() };
-    assert!(begin.len() == 0);
-    assert!(end.len() == 1);
+    assert_eq!(begin.len(), 0);
+    assert_eq!(end.len(), 1);
     mid[0] = mid[1];
     assert_eq!(val, [3, 4, 3, 4, 5])
 }

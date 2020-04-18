@@ -7,7 +7,7 @@ fn test_typeid_sized_types() {
 
     assert_eq!(TypeId::of::<X>(), TypeId::of::<X>());
     assert_eq!(TypeId::of::<Y>(), TypeId::of::<Y>());
-    assert!(TypeId::of::<X>() != TypeId::of::<Y>());
+    assert_ne!(TypeId::of::<X>(), TypeId::of::<Y>());
 }
 
 #[test]
@@ -18,5 +18,5 @@ fn test_typeid_unsized_types() {
 
     assert_eq!(TypeId::of::<X>(), TypeId::of::<X>());
     assert_eq!(TypeId::of::<Y>(), TypeId::of::<Y>());
-    assert!(TypeId::of::<X>() != TypeId::of::<Y>());
+    assert_ne!(TypeId::of::<X>(), TypeId::of::<Y>());
 }

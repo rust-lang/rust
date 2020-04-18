@@ -184,9 +184,9 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     /// impl Error for AnError {}
     ///
     /// let an_error = AnError;
-    /// assert!(0 == mem::size_of_val(&an_error));
+    /// assert_eq!(0, mem::size_of_val(&an_error));
     /// let a_boxed_error = Box::<dyn Error>::from(an_error);
-    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// assert_eq!(mem::size_of::<Box<dyn Error>>(), mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(err: E) -> Box<dyn Error + 'a> {
         Box::new(err)
@@ -223,10 +223,9 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
     /// unsafe impl Sync for AnError {}
     ///
     /// let an_error = AnError;
-    /// assert!(0 == mem::size_of_val(&an_error));
+    /// assert_eq!(0, mem::size_of_val(&an_error));
     /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(an_error);
-    /// assert!(
-    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// assert_eq!(mem::size_of::<Box<dyn Error + Send + Sync>>(), mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(err: E) -> Box<dyn Error + Send + Sync + 'a> {
         Box::new(err)
@@ -247,8 +246,7 @@ impl From<String> for Box<dyn Error + Send + Sync> {
     ///
     /// let a_string_error = "a string error".to_string();
     /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_string_error);
-    /// assert!(
-    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// assert_eq!(mem::size_of::<Box<dyn Error + Send + Sync>>(), mem::size_of_val(&a_boxed_error))
     /// ```
     #[inline]
     fn from(err: String) -> Box<dyn Error + Send + Sync> {
@@ -292,7 +290,7 @@ impl From<String> for Box<dyn Error> {
     ///
     /// let a_string_error = "a string error".to_string();
     /// let a_boxed_error = Box::<dyn Error>::from(a_string_error);
-    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// assert_eq!(mem::size_of::<Box<dyn Error>>(), mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(str_err: String) -> Box<dyn Error> {
         let err1: Box<dyn Error + Send + Sync> = From::from(str_err);
@@ -315,8 +313,7 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     ///
     /// let a_str_error = "a str error";
     /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_str_error);
-    /// assert!(
-    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// assert_eq!(mem::size_of::<Box<dyn Error + Send + Sync>>(), mem::size_of_val(&a_boxed_error))
     /// ```
     #[inline]
     fn from(err: &str) -> Box<dyn Error + Send + Sync + 'a> {
@@ -338,7 +335,7 @@ impl From<&str> for Box<dyn Error> {
     ///
     /// let a_str_error = "a str error";
     /// let a_boxed_error = Box::<dyn Error>::from(a_str_error);
-    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// assert_eq!(mem::size_of::<Box<dyn Error>>(), mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(err: &str) -> Box<dyn Error> {
         From::from(String::from(err))
@@ -361,8 +358,7 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
     ///
     /// let a_cow_str_error = Cow::from("a str error");
     /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_cow_str_error);
-    /// assert!(
-    ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
+    /// assert_eq!(mem::size_of::<Box<dyn Error + Send + Sync>>(), mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(err: Cow<'b, str>) -> Box<dyn Error + Send + Sync + 'a> {
         From::from(String::from(err))
@@ -385,7 +381,7 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     ///
     /// let a_cow_str_error = Cow::from("a str error");
     /// let a_boxed_error = Box::<dyn Error>::from(a_cow_str_error);
-    /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
+    /// assert_eq!(mem::size_of::<Box<dyn Error>>(), mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(err: Cow<'a, str>) -> Box<dyn Error> {
         From::from(String::from(err))

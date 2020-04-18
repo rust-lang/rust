@@ -1242,7 +1242,7 @@ fn test_iter_zero_sized() {
         assert!(*f == Foo);
         cnt += 1;
     }
-    assert!(cnt == 3);
+    assert_eq!(cnt, 3);
 }
 
 #[test]

@@ -544,7 +544,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// Adds a key/value pair and an edge to go to the right of that pair to
     /// the end of the node.
     pub fn push(&mut self, key: K, val: V, edge: Root<K, V>) {
-        assert!(edge.height == self.height - 1);
+        assert_eq!(edge.height, self.height - 1);
         assert!(self.len() < CAPACITY);
 
         let idx = self.len();
@@ -577,7 +577,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// Adds a key/value pair and an edge to go to the left of that pair to
     /// the beginning of the node.
     pub fn push_front(&mut self, key: K, val: V, edge: Root<K, V>) {
-        assert!(edge.height == self.height - 1);
+        assert_eq!(edge.height, self.height - 1);
         assert!(self.len() < CAPACITY);
 
         unsafe {
@@ -924,7 +924,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         val: V,
         edge: Root<K, V>,
     ) -> InsertResult<'a, K, V, marker::Internal> {
-        assert!(edge.height == self.node.height - 1);
+        assert_eq!(edge.height, self.node.height - 1);
 
         if self.node.len() < CAPACITY {
             self.insert_fit(key, val, edge);
@@ -1407,8 +1407,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
             let right_new_len = left_node.len() - left_new_len;
             let mut right_node = right.reborrow_mut();
 
-            assert!(right_node.len() == 0);
-            assert!(left_node.height == right_node.height);
+            assert_eq!(right_node.len(), 0);
+            assert_eq!(left_node.height, right_node.height);
 
             if right_new_len > 0 {
                 let left_kv = left_node.reborrow_mut().into_kv_pointers_mut();

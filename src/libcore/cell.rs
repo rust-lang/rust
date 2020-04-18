@@ -1174,7 +1174,7 @@ impl Clone for BorrowRef<'_> {
         debug_assert!(is_reading(borrow));
         // Prevent the borrow counter from overflowing into
         // a writing borrow.
-        assert!(borrow != isize::max_value());
+        assert_ne!(borrow, isize::max_value());
         self.borrow.set(borrow + 1);
         BorrowRef { borrow: self.borrow }
     }
@@ -1465,7 +1465,7 @@ impl<'b> BorrowRefMut<'b> {
         let borrow = self.borrow.get();
         debug_assert!(is_writing(borrow));
         // Prevent the borrow counter from underflowing.
-        assert!(borrow != isize::min_value());
+        assert_ne!(borrow, isize::min_value());
         self.borrow.set(borrow - 1);
         BorrowRefMut { borrow: self.borrow }
     }

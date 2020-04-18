@@ -1725,7 +1725,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
 
         // `MacroNS`
-        assert!(primary_ns != MacroNS);
+        assert_ne!(primary_ns, MacroNS);
         if qself.is_none() {
             let path_seg = |seg: &Segment| PathSegment::from_ident(seg.ident);
             let path = Path { segments: path.iter().map(path_seg).collect(), span };

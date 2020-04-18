@@ -532,7 +532,7 @@ impl<'tcx> ScopeTree {
             // Both scopes are at the same depth, and we know they're not equal
             // because that case was tested for at the top of this function. So
             // we can trivially move them both up one level now.
-            assert!(parent_a_depth != 0);
+            assert_ne!(parent_a_depth, 0);
             a = parent_a;
             b = parent_b;
         }

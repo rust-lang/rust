@@ -99,7 +99,7 @@ where
             // The root snapshot. It's safe to clear the undo log because
             // there's no snapshot further out that we might need to roll back
             // to.
-            assert!(snapshot.len == 0);
+            assert_eq!(snapshot.len, 0);
             self.undo_log.clear();
         }
 

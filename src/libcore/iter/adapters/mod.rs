@@ -535,7 +535,7 @@ pub struct StepBy<I> {
 }
 impl<I> StepBy<I> {
     pub(super) fn new(iter: I, step: usize) -> StepBy<I> {
-        assert!(step != 0);
+        assert_ne!(step, 0);
         StepBy { iter, step: step - 1, first_take: true }
     }
 }

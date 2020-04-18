@@ -343,7 +343,7 @@ fn quick_start<T: RawFloat>(u: &mut Big, v: &mut Big, k: &mut i16) {
     let log2_v = v.bit_length() as i16;
     let mut u_shift: i16 = 0;
     let mut v_shift: i16 = 0;
-    assert!(*k == 0);
+    assert_eq!(*k, 0);
     loop {
         if *k == T::MIN_EXP_INT {
             // Underflow or subnormal. Leave it to the main function.

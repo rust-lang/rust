@@ -104,7 +104,7 @@ fn test_transmute() {
     let a = box 100isize as Box<dyn Foo>;
     unsafe {
         let x: ::core::raw::TraitObject = transmute(a);
-        assert!(*(x.data as *const isize) == 100);
+        assert_eq!(*(x.data as *const isize), 100);
         let _x: Box<dyn Foo> = transmute(x);
     }
 

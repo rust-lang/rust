@@ -1295,7 +1295,7 @@ pub(crate) mod builtin {
     /// assert!(x, "x wasn't true!");
     ///
     /// let a = 3; let b = 27;
-    /// assert!(a + b == 30, "a = {}, b = {}", a, b);
+    /// assert_eq!(a + b, 30,"a = {}, b = {}", a, b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]

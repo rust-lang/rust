@@ -382,7 +382,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     // sets on_entry bits for Arg places
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
         // set all bits to 1 (uninit) before gathering counterevidence
-        assert!(self.bits_per_block(body) == state.domain_size());
+        assert_eq!(self.bits_per_block(body), state.domain_size());
         state.insert_all();
 
         drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {

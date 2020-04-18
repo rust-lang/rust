@@ -677,7 +677,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
         let (ai, bi) = (a.index(), b.index());
-        assert!(ai != bi);
+        assert_ne!(ai, bi);
 
         if ai < bi {
             let (c1, c2) = self.raw.split_at_mut(bi);

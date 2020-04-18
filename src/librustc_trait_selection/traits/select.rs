@@ -291,7 +291,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Err(SelectionError::Overflow) => {
                 // In standard mode, overflow must have been caught and reported
                 // earlier.
-                assert!(self.query_mode == TraitQueryMode::Canonical);
+                assert_eq!(self.query_mode, TraitQueryMode::Canonical);
                 return Err(SelectionError::Overflow);
             }
             Err(e) => {
@@ -305,7 +305,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match self.confirm_candidate(obligation, candidate) {
             Err(SelectionError::Overflow) => {
-                assert!(self.query_mode == TraitQueryMode::Canonical);
+                assert_eq!(self.query_mode, TraitQueryMode::Canonical);
                 Err(SelectionError::Overflow)
             }
             Err(e) => Err(e),
@@ -329,7 +329,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // This fatal query is a stopgap that should only be used in standard mode,
         // where we do not expect overflow to be propagated.
-        assert!(self.query_mode == TraitQueryMode::Standard);
+        assert_eq!(self.query_mode, TraitQueryMode::Standard);
 
         self.evaluate_root_obligation(obligation)
             .expect("Overflow should be caught earlier in standard query mode")

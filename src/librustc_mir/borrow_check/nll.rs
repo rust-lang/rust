@@ -131,7 +131,7 @@ fn populate_polonius_move_facts(
             }
             // Arguments are initialized on function entry
             InitLocation::Argument(local) => {
-                assert!(body.local_kind(local) == LocalKind::Arg);
+                assert_eq!(body.local_kind(local), LocalKind::Arg);
                 all_facts.path_assigned_at_base.push((init.path, fn_entry_start));
             }
         }

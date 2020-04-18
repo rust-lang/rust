@@ -274,7 +274,7 @@ impl f32 {
     /// assert_eq!(a.rem_euclid(-b), 3.0);
     /// assert_eq!((-a).rem_euclid(-b), 1.0);
     /// // limitation due to round-off error
-    /// assert!((-f32::EPSILON).rem_euclid(3.0) != 0.0);
+    /// assert_ne!((-f32::EPSILON).rem_euclid(3.0), 0.0);
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
@@ -893,9 +893,9 @@ impl f32 {
     ///
     /// ```
     /// #![feature(clamp)]
-    /// assert!((-3.0f32).clamp(-2.0, 1.0) == -2.0);
-    /// assert!((0.0f32).clamp(-2.0, 1.0) == 0.0);
-    /// assert!((2.0f32).clamp(-2.0, 1.0) == 1.0);
+    /// assert_eq!((-3.0f32).clamp(-2.0, 1.0), -2.0);
+    /// assert_eq!((0.0f32).clamp(-2.0, 1.0), 0.0);
+    /// assert_eq!((2.0f32).clamp(-2.0, 1.0), 1.0);
     /// assert!((f32::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]

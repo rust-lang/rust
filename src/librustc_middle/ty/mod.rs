@@ -692,7 +692,7 @@ impl<T: Copy> List<T> {
     #[inline]
     fn from_arena<'tcx>(arena: &'tcx Arena<'tcx>, slice: &[T]) -> &'tcx List<T> {
         assert!(!mem::needs_drop::<T>());
-        assert!(mem::size_of::<T>() != 0);
+        assert_ne!(mem::size_of::<T>(), 0);
         assert!(!slice.is_empty());
 
         // Align up the size of the len (usize) field

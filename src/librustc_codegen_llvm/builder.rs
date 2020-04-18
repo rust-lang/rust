@@ -1193,8 +1193,9 @@ impl Builder<'a, 'll, 'tcx> {
             fn_ty = self.cx.element_type(fn_ty);
         }
 
-        assert!(
-            self.cx.type_kind(fn_ty) == TypeKind::Function,
+        assert_eq!(
+            self.cx.type_kind(fn_ty),
+            TypeKind::Function,
             "builder::{} not passed a function, but {:?}",
             typ,
             fn_ty

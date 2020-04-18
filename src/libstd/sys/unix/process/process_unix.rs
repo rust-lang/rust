@@ -81,8 +81,9 @@ impl Command {
             match input.read(&mut bytes) {
                 Ok(0) => return Ok((p, ours)),
                 Ok(8) => {
-                    assert!(
-                        combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4..8]),
+                    assert_eq!(
+                        combine(CLOEXEC_MSG_FOOTER),
+                        combine(&bytes[4..8]),
                         "Validation on the CLOEXEC pipe failed: {:?}",
                         bytes
                     );

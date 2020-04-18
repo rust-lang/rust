@@ -27,7 +27,7 @@
 //!     phone: 555_666_7777,
 //! };
 //!
-//! assert!(calculate_hash(&person1) != calculate_hash(&person2));
+//! assert_ne!(calculate_hash(&person1), calculate_hash(&person2));
 //!
 //! fn calculate_hash<T: Hash>(t: &T) -> u64 {
 //!     let mut s = DefaultHasher::new();

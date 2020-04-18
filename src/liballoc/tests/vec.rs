@@ -16,7 +16,7 @@ impl Drop for DropCounter<'_> {
 
 #[test]
 fn test_small_vec_struct() {
-    assert!(size_of::<Vec<u8>>() == size_of::<usize>() * 3);
+    assert_eq!(size_of::<Vec<u8>>(), size_of::<usize>() * 3);
 }
 
 #[test]
@@ -397,7 +397,7 @@ fn test_vec_truncate_fail() {
 #[test]
 fn test_index() {
     let vec = vec![1, 2, 3];
-    assert!(vec[1] == 2);
+    assert_eq!(vec[1], 2);
 }
 
 #[test]
@@ -840,11 +840,11 @@ fn overaligned_allocations() {
     let mut v = vec![Foo(273)];
     for i in 0..0x1000 {
         v.reserve_exact(i);
-        assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert_eq!(v[0].0, 273);
+        assert_eq!(v.as_ptr() as usize & 0xff, 0);
         v.shrink_to_fit();
-        assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert_eq!(v[0].0, 273);
+        assert_eq!(v.as_ptr() as usize & 0xff, 0);
     }
 }
 

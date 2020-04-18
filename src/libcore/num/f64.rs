@@ -512,7 +512,7 @@ impl f64 {
     /// # Examples
     ///
     /// ```
-    /// assert!((1f64).to_bits() != 1f64 as u64); // to_bits() is not casting!
+    /// assert_ne!((1f64).to_bits(), 1f64 as u64); // to_bits() is not casting!
     /// assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
     ///
     /// ```

@@ -74,7 +74,7 @@ impl<T: Idx> BitSet<T> {
 
     /// Efficiently overwrite `self` with `other`.
     pub fn overwrite(&mut self, other: &BitSet<T>) {
-        assert!(self.domain_size == other.domain_size);
+        assert_eq!(self.domain_size, other.domain_size);
         self.words.clone_from_slice(&other.words);
     }
 
@@ -177,7 +177,7 @@ impl<T: Idx> BitSet<T> {
     ///
     /// This is an optimization for union of a hybrid bitset.
     fn reverse_union_sparse(&mut self, sparse: &SparseBitSet<T>) -> bool {
-        assert!(sparse.domain_size == self.domain_size);
+        assert_eq!(sparse.domain_size, self.domain_size);
         self.clear_excess_bits();
 
         let mut not_already = false;
@@ -498,7 +498,7 @@ impl<T: Idx> HybridBitSet<T> {
                 self_dense.superset(other_dense)
             }
             _ => {
-                assert!(self.domain_size() == other.domain_size());
+                assert_eq!(self.domain_size(), other.domain_size());
                 other.iter().all(|elem| self.contains(elem))
             }
         }

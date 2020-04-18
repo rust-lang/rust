@@ -16,28 +16,28 @@ fn test_stack() {
     stack.push_index(0);
     stack.bump_index();
 
-    assert!(stack.len() == 1);
+    assert_eq!(stack.len(), 1);
     assert!(stack.is_equal_to(&[StackElement::Index(1)]));
     assert!(stack.starts_with(&[StackElement::Index(1)]));
     assert!(stack.ends_with(&[StackElement::Index(1)]));
     assert!(stack.last_is_index());
-    assert!(stack.get(0) == StackElement::Index(1));
+    assert_eq!(stack.get(0), StackElement::Index(1));
 
     stack.push_key("foo".to_string());
 
-    assert!(stack.len() == 2);
+    assert_eq!(stack.len(), 2);
     assert!(stack.is_equal_to(&[StackElement::Index(1), StackElement::Key("foo")]));
     assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
     assert!(stack.starts_with(&[StackElement::Index(1)]));
     assert!(stack.ends_with(&[StackElement::Index(1), StackElement::Key("foo")]));
     assert!(stack.ends_with(&[StackElement::Key("foo")]));
     assert!(!stack.last_is_index());
-    assert!(stack.get(0) == StackElement::Index(1));
-    assert!(stack.get(1) == StackElement::Key("foo"));
+    assert_eq!(stack.get(0), StackElement::Index(1));
+    assert_eq!(stack.get(1), StackElement::Key("foo"));
 
     stack.push_key("bar".to_string());
 
-    assert!(stack.len() == 3);
+    assert_eq!(stack.len(), 3);
     assert!(stack.is_equal_to(&[
         StackElement::Index(1),
         StackElement::Key("foo"),
@@ -58,21 +58,21 @@ fn test_stack() {
         StackElement::Key("bar")
     ]));
     assert!(!stack.last_is_index());
-    assert!(stack.get(0) == StackElement::Index(1));
-    assert!(stack.get(1) == StackElement::Key("foo"));
-    assert!(stack.get(2) == StackElement::Key("bar"));
+    assert_eq!(stack.get(0), StackElement::Index(1));
+    assert_eq!(stack.get(1), StackElement::Key("foo"));
+    assert_eq!(stack.get(2), StackElement::Key("bar"));
 
     stack.pop();
 
-    assert!(stack.len() == 2);
+    assert_eq!(stack.len(), 2);
     assert!(stack.is_equal_to(&[StackElement::Index(1), StackElement::Key("foo")]));
     assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
     assert!(stack.starts_with(&[StackElement::Index(1)]));
     assert!(stack.ends_with(&[StackElement::Index(1), StackElement::Key("foo")]));
     assert!(stack.ends_with(&[StackElement::Key("foo")]));
     assert!(!stack.last_is_index());
-    assert!(stack.get(0) == StackElement::Index(1));
-    assert!(stack.get(1) == StackElement::Key("foo"));
+    assert_eq!(stack.get(0), StackElement::Index(1));
+    assert_eq!(stack.get(1), StackElement::Key("foo"));
 }
 
 #[bench]

@@ -566,7 +566,7 @@ fn test_hash() {
     y.push_back(2);
     y.push_back(3);
 
-    assert!(hash(&x) == hash(&y));
+    assert_eq!(hash(&x), hash(&y));
 }
 
 #[test]

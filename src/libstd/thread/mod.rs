@@ -1040,7 +1040,7 @@ pub fn park_timeout(dur: Duration) {
 /// });
 ///
 /// let other_thread_id = other_thread.join().unwrap();
-/// assert!(thread::current().id() != other_thread_id);
+/// assert_ne!(thread::current().id(), other_thread_id);
 /// ```
 ///
 /// [`id`]: ../../std/thread/struct.Thread.html#method.id
@@ -1222,7 +1222,7 @@ impl Thread {
     /// });
     ///
     /// let other_thread_id = other_thread.join().unwrap();
-    /// assert!(thread::current().id() != other_thread_id);
+    /// assert_ne!(thread::current().id(), other_thread_id);
     /// ```
     #[stable(feature = "thread_id", since = "1.19.0")]
     pub fn id(&self) -> ThreadId {
@@ -1774,13 +1774,13 @@ mod tests {
 
     #[test]
     fn test_thread_id_equal() {
-        assert!(thread::current().id() == thread::current().id());
+        assert_eq!(thread::current().id(), thread::current().id());
     }
 
     #[test]
     fn test_thread_id_not_equal() {
         let spawned_id = thread::spawn(|| thread::current().id()).join().unwrap();
-        assert!(thread::current().id() != spawned_id);
+        assert_ne!(thread::current().id(), spawned_id);
     }
 
     // NOTE: the corresponding test for stderr is in ui/thread-stderr, due

@@ -7,13 +7,13 @@ fn dwarf_reader() {
     let mut reader = DwarfReader::new(encoded.as_ptr());
 
     unsafe {
-        assert!(reader.read::<u8>() == u8::to_be(1u8));
-        assert!(reader.read::<u16>() == u16::to_be(0x0203));
-        assert!(reader.read::<u32>() == u32::to_be(0x04050607));
+        assert_eq!(reader.read::<u8>(), u8::to_be(1u8));
+        assert_eq!(reader.read::<u16>(), u16::to_be(0x0203));
+        assert_eq!(reader.read::<u32>(), u32::to_be(0x04050607));
 
-        assert!(reader.read_uleb128() == 624485);
-        assert!(reader.read_sleb128() == -624485);
+        assert_eq!(reader.read_uleb128(), 624485);
+        assert_eq!(reader.read_sleb128(), -624485);
 
-        assert!(reader.read::<i8>() == i8::to_be(-1));
+        assert_eq!(reader.read::<i8>(), i8::to_be(-1));
     }
 }

@@ -815,7 +815,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// assert!(heap.capacity() >= 100);
     /// heap.shrink_to_fit();
-    /// assert!(heap.capacity() == 0);
+    /// assert_eq!(heap.capacity(), 0);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {

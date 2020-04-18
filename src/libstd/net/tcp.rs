@@ -1016,7 +1016,7 @@ mod tests {
         let mut stream = t!(listener.accept()).0;
         let mut buf = [0];
         t!(stream.read(&mut buf));
-        assert!(buf[0] == 144);
+        assert_eq!(buf[0], 144);
     }
 
     #[test]
@@ -1036,7 +1036,7 @@ mod tests {
             let mut stream = t!(acceptor.accept()).0;
             let mut buf = [0];
             t!(stream.read(&mut buf));
-            assert!(buf[0] == 66);
+            assert_eq!(buf[0], 66);
         })
     }
 
@@ -1055,7 +1055,7 @@ mod tests {
             let (mut stream, addr) = t!(acceptor.accept());
             let mut buf = [0];
             t!(stream.read(&mut buf));
-            assert!(buf[0] == 99);
+            assert_eq!(buf[0], 99);
             assert_eq!(addr, t!(rx.recv()));
         })
     }
@@ -1144,7 +1144,7 @@ mod tests {
                         let mut stream = t!(stream);
                         let mut buf = [0];
                         t!(stream.read(&mut buf));
-                        assert!(buf[0] == i as u8);
+                        assert_eq!(buf[0], i as u8);
                     });
                 }
             });
@@ -1180,7 +1180,7 @@ mod tests {
                         let mut stream = t!(stream);
                         let mut buf = [0];
                         t!(stream.read(&mut buf));
-                        assert!(buf[0] == 99);
+                        assert_eq!(buf[0], 99);
                     });
                 }
             });

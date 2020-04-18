@@ -99,14 +99,14 @@ const MIN_SUBNORMAL: f64 = 5e-324;
 fn next_float_zero() {
     let tiny = next_float(0.0);
     assert_eq!(tiny, MIN_SUBNORMAL);
-    assert!(tiny != 0.0);
+    assert_ne!(tiny, 0.0);
 }
 
 #[test]
 fn next_float_subnormal() {
     let second = next_float(MIN_SUBNORMAL);
     // For subnormals, MIN_SUBNORMAL is the ULP
-    assert!(second != MIN_SUBNORMAL);
+    assert_ne!(second, MIN_SUBNORMAL);
     assert!(second > 0.0);
     assert_eq!(second - MIN_SUBNORMAL, MIN_SUBNORMAL);
 }

@@ -362,7 +362,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         Ok(match normalized.to_bits_or_ptr(self.pointer_size(), self) {
             Ok(bits) => {
                 let bits = u64::try_from(bits).unwrap(); // it's ptr-sized
-                assert!(size.bytes() == 0);
+                assert_eq!(size.bytes(), 0);
                 // Must be non-NULL.
                 if bits == 0 {
                     throw_ub!(InvalidIntPointerUsage(0))

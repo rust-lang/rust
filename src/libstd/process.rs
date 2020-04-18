@@ -1731,7 +1731,7 @@ mod tests {
         };
         assert!(p.is_ok());
         let mut p = p.unwrap();
-        assert!(p.wait().unwrap().code() == Some(1));
+        assert_eq!(p.wait().unwrap().code(), Some(1));
         drop(p.wait());
     }
 
@@ -1809,7 +1809,7 @@ mod tests {
         } else {
             Command::new("false").status().unwrap()
         };
-        assert!(status.code() == Some(1));
+        assert_eq!(status.code(), Some(1));
 
         status = if cfg!(target_os = "windows") {
             Command::new("cmd").args(&["/C", "exit 0"]).status().unwrap()
@@ -1851,7 +1851,7 @@ mod tests {
             Command::new("mkdir").arg("./").output().unwrap()
         };
 
-        assert!(status.code() == Some(1));
+        assert_eq!(status.code(), Some(1));
         assert_eq!(stdout, Vec::new());
         assert!(!stderr.is_empty());
     }
@@ -1864,7 +1864,7 @@ mod tests {
         } else {
             Command::new("false").spawn().unwrap()
         };
-        assert!(prog.wait().unwrap().code() == Some(1));
+        assert_eq!(prog.wait().unwrap().code(), Some(1));
     }
 
     #[test]
@@ -1875,8 +1875,8 @@ mod tests {
         } else {
             Command::new("false").spawn().unwrap()
         };
-        assert!(prog.wait().unwrap().code() == Some(1));
-        assert!(prog.wait().unwrap().code() == Some(1));
+        assert_eq!(prog.wait().unwrap().code(), Some(1));
+        assert_eq!(prog.wait().unwrap().code(), Some(1));
     }
 
     #[test]

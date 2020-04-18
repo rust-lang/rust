@@ -1272,10 +1272,10 @@ impl PathBuf {
     /// let mut buf = PathBuf::from("/");
     /// assert!(buf.file_name() == None);
     /// buf.set_file_name("bar");
-    /// assert!(buf == PathBuf::from("/bar"));
+    /// assert_eq!(buf, PathBuf::from("/bar"));
     /// assert!(buf.file_name().is_some());
     /// buf.set_file_name("baz.txt");
-    /// assert!(buf == PathBuf::from("/baz.txt"));
+    /// assert_eq!(buf, PathBuf::from("/baz.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_file_name<S: AsRef<OsStr>>(&mut self, file_name: S) {

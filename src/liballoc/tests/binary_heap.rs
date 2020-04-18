@@ -163,22 +163,22 @@ fn test_peek_mut_pop() {
 fn test_push() {
     let mut heap = BinaryHeap::from(vec![2, 4, 9]);
     assert_eq!(heap.len(), 3);
-    assert!(*heap.peek().unwrap() == 9);
+    assert_eq!(*heap.peek().unwrap(), 9);
     heap.push(11);
     assert_eq!(heap.len(), 4);
-    assert!(*heap.peek().unwrap() == 11);
+    assert_eq!(*heap.peek().unwrap(), 11);
     heap.push(5);
     assert_eq!(heap.len(), 5);
-    assert!(*heap.peek().unwrap() == 11);
+    assert_eq!(*heap.peek().unwrap(), 11);
     heap.push(27);
     assert_eq!(heap.len(), 6);
-    assert!(*heap.peek().unwrap() == 27);
+    assert_eq!(*heap.peek().unwrap(), 27);
     heap.push(3);
     assert_eq!(heap.len(), 7);
-    assert!(*heap.peek().unwrap() == 27);
+    assert_eq!(*heap.peek().unwrap(), 27);
     heap.push(103);
     assert_eq!(heap.len(), 8);
-    assert!(*heap.peek().unwrap() == 103);
+    assert_eq!(*heap.peek().unwrap(), 103);
 }
 
 #[test]

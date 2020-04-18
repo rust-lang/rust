@@ -676,7 +676,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
-        assert!(size != 0);
+        assert_ne!(size, 0);
         Windows { v: self, size }
     }
 
@@ -710,7 +710,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         Chunks { v: self, chunk_size }
     }
 
@@ -748,7 +748,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         ChunksMut { v: self, chunk_size }
     }
 
@@ -785,7 +785,7 @@ impl<T> [T] {
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
     pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
         let (fst, snd) = self.split_at(len);
@@ -830,7 +830,7 @@ impl<T> [T] {
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
     pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
         let (fst, snd) = self.split_at_mut(len);
@@ -867,7 +867,7 @@ impl<T> [T] {
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks(&self, chunk_size: usize) -> RChunks<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         RChunks { v: self, chunk_size }
     }
 
@@ -905,7 +905,7 @@ impl<T> [T] {
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         RChunksMut { v: self, chunk_size }
     }
 
@@ -944,7 +944,7 @@ impl<T> [T] {
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         let rem = self.len() % chunk_size;
         let (fst, snd) = self.split_at(rem);
         RChunksExact { v: snd, rem: fst, chunk_size }
@@ -989,7 +989,7 @@ impl<T> [T] {
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
-        assert!(chunk_size != 0);
+        assert_ne!(chunk_size, 0);
         let rem = self.len() % chunk_size;
         let (fst, snd) = self.split_at_mut(rem);
         RChunksExactMut { v: snd, rem: fst, chunk_size }
@@ -2229,7 +2229,7 @@ impl<T> [T] {
     where
         T: Clone,
     {
-        assert!(self.len() == src.len(), "destination and source slices have different lengths");
+        assert_eq!(self.len(), src.len(), "destination and source slices have different lengths");
         // NOTE: We need to explicitly slice them to the same length
         // for bounds checking to be elided, and the optimizer will
         // generate memcpy for simple cases (for example T = u8).
@@ -2407,7 +2407,7 @@ impl<T> [T] {
     /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "swap_with_slice", since = "1.27.0")]
     pub fn swap_with_slice(&mut self, other: &mut [T]) {
-        assert!(self.len() == other.len(), "destination and source slices have different lengths");
+        assert_eq!(self.len(), other.len(), "destination and source slices have different lengths");
         unsafe {
             ptr::swap_nonoverlapping(self.as_mut_ptr(), other.as_mut_ptr(), self.len());
         }

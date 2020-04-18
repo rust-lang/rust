@@ -1924,14 +1924,14 @@ mod tests {
     fn oneshot_single_thread_send_then_recv() {
         let (tx, rx) = channel::<Box<i32>>();
         tx.send(box 10).unwrap();
-        assert!(*rx.recv().unwrap() == 10);
+        assert_eq!(*rx.recv().unwrap(), 10);
     }
 
     #[test]
     fn oneshot_single_thread_try_send_open() {
         let (tx, rx) = channel::<i32>();
         assert!(tx.send(10).is_ok());
-        assert!(rx.recv().unwrap() == 10);
+        assert_eq!(rx.recv().unwrap(), 10);
     }
 
     #[test]
@@ -2051,7 +2051,7 @@ mod tests {
             let _t = thread::spawn(move || {
                 tx.send(box 10).unwrap();
             });
-            assert!(*rx.recv().unwrap() == 10);
+            assert_eq!(*rx.recv().unwrap(), 10);
         }
     }
 
@@ -2653,14 +2653,14 @@ mod sync_tests {
     fn oneshot_single_thread_send_then_recv() {
         let (tx, rx) = sync_channel::<Box<i32>>(1);
         tx.send(box 10).unwrap();
-        assert!(*rx.recv().unwrap() == 10);
+        assert_eq!(*rx.recv().unwrap(), 10);
     }
 
     #[test]
     fn oneshot_single_thread_try_send_open() {
         let (tx, rx) = sync_channel::<i32>(1);
         assert_eq!(tx.try_send(10), Ok(()));
-        assert!(rx.recv().unwrap() == 10);
+        assert_eq!(rx.recv().unwrap(), 10);
     }
 
     #[test]
@@ -2795,7 +2795,7 @@ mod sync_tests {
             let _t = thread::spawn(move || {
                 tx.send(box 10).unwrap();
             });
-            assert!(*rx.recv().unwrap() == 10);
+            assert_eq!(*rx.recv().unwrap(), 10);
         }
     }
 

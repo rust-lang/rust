@@ -1865,7 +1865,7 @@ mod test_set {
         s2.insert(1);
         s2.insert(2);
 
-        assert!(s1 != s2);
+        assert_ne!(s1, s2);
 
         s2.insert(3);
 

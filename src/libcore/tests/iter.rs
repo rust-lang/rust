@@ -38,15 +38,15 @@ fn test_lt() {
     let b = [1.0f64];
     let c = [2.0f64];
 
-    assert!(a.iter().lt(b.iter()) == (a[0] < b[0]));
-    assert!(a.iter().le(b.iter()) == (a[0] <= b[0]));
-    assert!(a.iter().gt(b.iter()) == (a[0] > b[0]));
-    assert!(a.iter().ge(b.iter()) == (a[0] >= b[0]));
+    assert_eq!(a.iter().lt(b.iter()), (a[0] < b[0]));
+    assert_eq!(a.iter().le(b.iter()), (a[0] <= b[0]));
+    assert_eq!(a.iter().gt(b.iter()), (a[0] > b[0]));
+    assert_eq!(a.iter().ge(b.iter()), (a[0] >= b[0]));
 
-    assert!(c.iter().lt(b.iter()) == (c[0] < b[0]));
-    assert!(c.iter().le(b.iter()) == (c[0] <= b[0]));
-    assert!(c.iter().gt(b.iter()) == (c[0] > b[0]));
-    assert!(c.iter().ge(b.iter()) == (c[0] >= b[0]));
+    assert_eq!(c.iter().lt(b.iter()), (c[0] < b[0]));
+    assert_eq!(c.iter().le(b.iter()), (c[0] <= b[0]));
+    assert_eq!(c.iter().gt(b.iter()), (c[0] > b[0]));
+    assert_eq!(c.iter().ge(b.iter()), (c[0] >= b[0]));
 }
 
 #[test]

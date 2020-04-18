@@ -511,7 +511,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
                     let mut for_generics = self.extract_for_generics(tcx, orig_p);
 
-                    assert!(bounds.len() == 1);
+                    assert_eq!(bounds.len(), 1);
                     let mut b = bounds.pop().expect("bounds were empty");
 
                     if b.is_sized_bound(self.cx) {

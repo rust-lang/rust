@@ -72,7 +72,7 @@ pub unsafe fn setup(build: &mut Build) {
         &mut info as *mut _ as LPVOID,
         mem::size_of_val(&info) as DWORD,
     );
-    assert!(r != 0, "{}", io::Error::last_os_error());
+    assert_ne!(r, 0, "{}", io::Error::last_os_error());
 
     // Assign our process to this job object. Note that if this fails, one very
     // likely reason is that we are ourselves already in a job object! This can

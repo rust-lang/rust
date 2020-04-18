@@ -534,11 +534,11 @@ fn incremental_verify_ich<Q, CTX>(
     CTX: QueryContext,
     Q: QueryDescription<CTX>,
 {
-    assert!(
-        Some(tcx.dep_graph().fingerprint_of(dep_node_index))
-            == tcx.dep_graph().prev_fingerprint_of(dep_node),
+    assert_eq!(
+        Some(tcx.dep_graph().fingerprint_of(dep_node_index)),
+        tcx.dep_graph().prev_fingerprint_of(dep_node),
         "fingerprint for green query instance not loaded from cache: {:?}",
-        dep_node,
+        dep_node
     );
 
     debug!("BEGIN verify_ich({:?})", dep_node);
@@ -549,7 +549,7 @@ fn incremental_verify_ich<Q, CTX>(
 
     let old_hash = tcx.dep_graph().fingerprint_of(dep_node_index);
 
-    assert!(new_hash == old_hash, "found unstable fingerprints for {:?}", dep_node,);
+    assert_eq!(new_hash, old_hash, "found unstable fingerprints for {:?}", dep_node);
 }
 
 #[inline(always)]

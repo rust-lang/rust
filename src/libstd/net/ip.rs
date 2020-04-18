@@ -2698,8 +2698,8 @@ mod tests {
 
         assert_eq!(v41, IpAddr::V4(v41));
         assert_eq!(v61, IpAddr::V6(v61));
-        assert!(v41 != IpAddr::V4(v42));
-        assert!(v61 != IpAddr::V6(v62));
+        assert_ne!(v41, IpAddr::V4(v42));
+        assert_ne!(v61, IpAddr::V6(v62));
 
         assert!(v41 < IpAddr::V4(v42));
         assert!(v61 < IpAddr::V6(v62));
