@@ -240,13 +240,13 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
 
 fn mir_validated(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
 ) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
-    let _ = tcx.mir_const_qualif(def_id);
+    let _ = tcx.mir_const_qualif(def_id.to_def_id());
 
-    let mut body = tcx.mir_const(def_id).steal();
+    let mut body = tcx.mir_const(def_id.to_def_id()).steal();
 
     let mut required_consts = Vec::new();
     let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
@@ -259,7 +259,7 @@ fn mir_validated(
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(def_id),
+        InstanceDef::Item(def_id.to_def_id()),
         None,
         MirPhase::Validated,
         &[&[
@@ -276,7 +276,7 @@ fn mir_validated(
 fn run_optimization_passes<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
     promoted: Option<Promoted>,
 ) {
     let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
@@ -349,7 +349,7 @@ fn run_optimization_passes<'tcx>(
     run_passes(
         tcx,
         body,
-        InstanceDef::Item(def_id),
+        InstanceDef::Item(def_id.to_def_id()),
         promoted,
         MirPhase::Optimized,
         &[
@@ -369,9 +369,11 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
         return shim::build_adt_ctor(tcx, def_id);
     }
 
+    let def_id = def_id.expect_local();
+
     // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
-    tcx.ensure().mir_borrowck(def_id.expect_local());
+    tcx.ensure().mir_borrowck(def_id);
 
     let (body, _) = tcx.mir_validated(def_id);
     let mut body = body.steal();
@@ -387,7 +389,9 @@ fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, Body<'_>>
         return tcx.intern_promoted(IndexVec::new());
     }
 
-    tcx.ensure().mir_borrowck(def_id.expect_local());
+    let def_id = def_id.expect_local();
+
+    tcx.ensure().mir_borrowck(def_id);
     let (_, promoted) = tcx.mir_validated(def_id);
     let mut promoted = promoted.steal();
 
