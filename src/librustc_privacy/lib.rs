@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, Node, PatKind};
 use rustc_middle::bug;
@@ -1174,7 +1174,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
 struct TypePrivacyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
-    current_item: DefId,
+    current_item: LocalDefId,
     in_body: bool,
     span: Span,
     empty_tables: &'a ty::TypeckTables<'tcx>,
@@ -1182,7 +1182,9 @@ struct TypePrivacyVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
     fn item_is_accessible(&self, did: DefId) -> bool {
-        def_id_visibility(self.tcx, did).0.is_accessible_from(self.current_item, self.tcx)
+        def_id_visibility(self.tcx, did)
+            .0
+            .is_accessible_from(self.current_item.to_def_id(), self.tcx)
     }
 
     // Take node-id of an expression or pattern and check its type for privacy.
@@ -1387,10 +1389,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 
     // Check types in item interfaces.
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let orig_current_item = mem::replace(
-            &mut self.current_item,
-            self.tcx.hir().local_def_id(item.hir_id).to_def_id(),
-        );
+        let orig_current_item =
+            mem::replace(&mut self.current_item, self.tcx.hir().local_def_id(item.hir_id));
         let orig_in_body = mem::replace(&mut self.in_body, false);
         let orig_tables =
             mem::replace(&mut self.tables, item_tables(self.tcx, item.hir_id, self.empty_tables));
@@ -2076,7 +2076,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: DefId) {
+fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let empty_tables = ty::TypeckTables::empty(None);
 
     // Check privacy of names not checked in previous compilation stages.
@@ -2086,7 +2086,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: DefId) {
         current_item: None,
         empty_tables: &empty_tables,
     };
-    let (module, span, hir_id) = tcx.hir().get_module(module_def_id.expect_local());
+    let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
 
     intravisit::walk_mod(&mut visitor, module, hir_id);
 

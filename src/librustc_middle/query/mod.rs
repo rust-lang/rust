@@ -430,8 +430,8 @@ rustc_queries! {
             desc { |tcx| "checking item types in {}", describe_as_module(key, tcx) }
         }
 
-        query check_mod_privacy(key: DefId) -> () {
-            desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
+        query check_mod_privacy(key: LocalDefId) -> () {
+            desc { |tcx| "checking privacy in {}", describe_as_module(key.to_def_id(), tcx) }
         }
 
         query check_mod_intrinsics(key: DefId) -> () {
