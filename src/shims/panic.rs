@@ -14,7 +14,7 @@
 use log::trace;
 
 use rustc_middle::{mir, ty};
-use rustc_target::{spec::PanicStrategy, abi::LayoutOf};
+use rustc_target::spec::PanicStrategy;
 
 use crate::*;
 
@@ -93,7 +93,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Now we make a function call, and pass `data` as first and only argument.
         let f_instance = this.memory.get_fn(try_fn)?.as_instance()?;
         trace!("try_fn: {:?}", f_instance);
-        let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+        let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
         this.call_function(
             f_instance,
             &[data.into()],
@@ -144,7 +144,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Push the `catch_fn` stackframe.
             let f_instance = this.memory.get_fn(catch_unwind.catch_fn)?.as_instance()?;
             trace!("catch_fn: {:?}", f_instance);
-            let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
+            let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
             this.call_function(
                 f_instance,
                 &[catch_unwind.data.into(), payload.into()],

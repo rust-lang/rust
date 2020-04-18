@@ -384,7 +384,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             // No `environ` allocated yet, let's do that.
             // This is memory backing an extern static, hence `Machine`, not `Env`.
-            let layout = this.layout_of(this.tcx.types.usize)?;
+            let layout = this.machine.layouts.usize;
             let place = this.allocate(layout, MiriMemoryKind::Machine.into());
             this.machine.env_vars.environ = Some(place);
         }

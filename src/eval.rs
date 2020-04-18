@@ -130,7 +130,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
         {
             let argc_place =
-                ecx.allocate(ecx.layout_of(tcx.types.isize)?, MiriMemoryKind::Machine.into());
+                ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into());
             ecx.write_scalar(argc, argc_place.into())?;
             ecx.machine.argc = Some(argc_place.ptr);
 
@@ -168,7 +168,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     };
 
     // Return place (in static memory so that it does not count as leak).
-    let ret_place = ecx.allocate(ecx.layout_of(tcx.types.isize)?, MiriMemoryKind::Machine.into());
+    let ret_place = ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into());
     // Call start function.
     ecx.call_function(
         start_instance,
@@ -178,7 +178,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     )?;
 
     // Set the last_error to 0
-    let errno_layout = ecx.layout_of(tcx.types.u32)?;
+    let errno_layout = ecx.machine.layouts.u32;
     let errno_place = ecx.allocate(errno_layout, MiriMemoryKind::Machine.into());
     ecx.write_scalar(Scalar::from_u32(0), errno_place.into())?;
     ecx.machine.last_error = Some(errno_place);
