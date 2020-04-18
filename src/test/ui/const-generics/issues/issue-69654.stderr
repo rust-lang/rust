@@ -1,0 +1,14 @@
+error[E0423]: expected value, found type parameter `O`
+  --> $DIR/issue-69654.rs:5:25
+   |
+LL | impl<O> Bar<O> for [u8; O] {}
+   |                         ^ help: a tuple variant with a similar name exists: `Ok`
+   | 
+  ::: $SRC_DIR/libcore/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0423`.
