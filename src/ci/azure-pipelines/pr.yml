@@ -29,7 +29,7 @@ jobs:
     - template: steps/run.yml
   strategy:
     matrix:
-      x86_64-gnu-llvm-7: {}
+      x86_64-gnu-llvm-8: {}
       mingw-check: {}
       x86_64-gnu-tools:
         CI_ONLY_WHEN_SUBMODULES_CHANGED: 1

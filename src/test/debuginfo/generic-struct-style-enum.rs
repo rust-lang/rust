@@ -1,8 +1,7 @@
 // ignore-tidy-linelength
 // min-lldb-version: 310
 
-// Require LLVM with DW_TAG_variant_part and a gdb that can read it.
-// min-system-llvm-version: 8.0
+// Require a gdb that can read DW_TAG_variant_part.
 // min-gdb-version: 8.2
 
 // compile-flags:-g

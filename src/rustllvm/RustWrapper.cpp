@@ -586,7 +586,6 @@ inline LLVMRustDISPFlags virtuality(LLVMRustDISPFlags F) {
   return static_cast<LLVMRustDISPFlags>(static_cast<uint32_t>(F) & 0x3);
 }
 
-#if LLVM_VERSION_GE(8, 0)
 static DISubprogram::DISPFlags fromRust(LLVMRustDISPFlags SPFlags) {
   DISubprogram::DISPFlags Result = DISubprogram::DISPFlags::SPFlagZero;
 
@@ -619,7 +618,6 @@ static DISubprogram::DISPFlags fromRust(LLVMRustDISPFlags SPFlags) {
 
   return Result;
 }
-#endif
 
 enum class LLVMRustDebugEmissionKind {
   NoDebug,
@@ -734,7 +732,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
     LLVMMetadataRef Decl) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
-#if LLVM_VERSION_GE(8, 0)
   DISubprogram::DISPFlags llvmSPFlags = fromRust(SPFlags);
   DINode::DIFlags llvmFlags = fromRust(Flags);
 #if LLVM_VERSION_LT(9, 0)
@@ -748,22 +745,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
       unwrapDI<DIFile>(File), LineNo,
       unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags,
       llvmSPFlags, TParams, unwrapDIPtr<DISubprogram>(Decl));
-#else
-  bool IsLocalToUnit = isSet(SPFlags & LLVMRustDISPFlags::SPFlagLocalToUnit);
-  bool IsDefinition = isSet(SPFlags & LLVMRustDISPFlags::SPFlagDefinition);
-  bool IsOptimized = isSet(SPFlags & LLVMRustDISPFlags::SPFlagOptimized);
-  DINode::DIFlags llvmFlags = fromRust(Flags);
-  if (isSet(SPFlags & LLVMRustDISPFlags::SPFlagMainSubprogram))
-    llvmFlags |= DINode::DIFlags::FlagMainSubprogram;
-  DISubprogram *Sub = Builder->createFunction(
-      unwrapDI<DIScope>(Scope),
-      StringRef(Name, NameLen),
-      StringRef(LinkageName, LinkageNameLen),
-      unwrapDI<DIFile>(File), LineNo,
-      unwrapDI<DISubroutineType>(Ty), IsLocalToUnit, IsDefinition,
-      ScopeLine, llvmFlags, IsOptimized, TParams,
-      unwrapDIPtr<DISubprogram>(Decl));
-#endif
   unwrap<Function>(Fn)->setSubprogram(Sub);
   return wrap(Sub);
 }
@@ -884,9 +865,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
       /* isDefined */ true,
 #endif
       InitExpr, unwrapDIPtr<MDNode>(Decl),
-#if LLVM_VERSION_GE(8, 0)
       /* templateParams */ nullptr,
-#endif
       AlignInBits);
 
   InitVal->setMetadata("dbg", VarExpr);
@@ -1107,11 +1086,7 @@ extern "C" void LLVMRustUnpackOptimizationDiagnostic(
   if (loc.isValid()) {
     *Line = loc.getLine();
     *Column = loc.getColumn();
-#if LLVM_VERSION_GE(8, 0)
     FilenameOS << loc.getAbsolutePath();
-#else
-    FilenameOS << loc.getFilename();
-#endif
   }
 
   RawRustStringOstream MessageOS(MessageOut);

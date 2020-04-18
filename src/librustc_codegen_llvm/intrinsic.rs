@@ -2,7 +2,6 @@ use crate::abi::{Abi, FnAbi, LlvmType, PassMode};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm;
-use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
@@ -11,7 +10,7 @@ use crate::value::Value;
 use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
-use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -461,46 +460,14 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                             let is_add = name == "saturating_add";
                             let lhs = args[0].immediate();
                             let rhs = args[1].immediate();
-                            if llvm_util::get_major_version() >= 8 {
-                                let llvm_name = &format!(
-                                    "llvm.{}{}.sat.i{}",
-                                    if signed { 's' } else { 'u' },
-                                    if is_add { "add" } else { "sub" },
-                                    width
-                                );
-                                let llfn = self.get_intrinsic(llvm_name);
-                                self.call(llfn, &[lhs, rhs], None)
-                            } else {
-                                let llvm_name = &format!(
-                                    "llvm.{}{}.with.overflow.i{}",
-                                    if signed { 's' } else { 'u' },
-                                    if is_add { "add" } else { "sub" },
-                                    width
-                                );
-                                let llfn = self.get_intrinsic(llvm_name);
-                                let pair = self.call(llfn, &[lhs, rhs], None);
-                                let val = self.extract_value(pair, 0);
-                                let overflow = self.extract_value(pair, 1);
-                                let llty = self.type_ix(width);
-
-                                let limit = if signed {
-                                    let limit_lo = self
-                                        .const_uint_big(llty, (i128::MIN >> (128 - width)) as u128);
-                                    let limit_hi = self
-                                        .const_uint_big(llty, (i128::MAX >> (128 - width)) as u128);
-                                    let neg = self.icmp(
-                                        IntPredicate::IntSLT,
-                                        val,
-                                        self.const_uint(llty, 0),
-                                    );
-                                    self.select(neg, limit_hi, limit_lo)
-                                } else if is_add {
-                                    self.const_uint_big(llty, u128::MAX >> (128 - width))
-                                } else {
-                                    self.const_uint(llty, 0)
-                                };
-                                self.select(overflow, limit, val)
-                            }
+                            let llvm_name = &format!(
+                                "llvm.{}{}.sat.i{}",
+                                if signed { 's' } else { 'u' },
+                                if is_add { "add" } else { "sub" },
+                                width
+                            );
+                            let llfn = self.get_intrinsic(llvm_name);
+                            self.call(llfn, &[lhs, rhs], None)
                         }
                         _ => bug!(),
                     },

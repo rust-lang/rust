@@ -33,10 +33,8 @@
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Support/TimeProfiler.h"
 #endif
-#if LLVM_VERSION_GE(8, 0)
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
-#endif
 #if LLVM_VERSION_GE(9, 0)
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
 #endif
@@ -138,19 +136,13 @@ extern "C" LLVMPassRef LLVMRustCreateMemorySanitizerPass(int TrackOrigins, bool 
 
   return wrap(createMemorySanitizerLegacyPassPass(
       MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}));
-#elif LLVM_VERSION_GE(8, 0)
-  return wrap(createMemorySanitizerLegacyPassPass(TrackOrigins, Recover));
 #else
-  return wrap(createMemorySanitizerPass(TrackOrigins, Recover));
+  return wrap(createMemorySanitizerLegacyPassPass(TrackOrigins, Recover));
 #endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateThreadSanitizerPass() {
-#if LLVM_VERSION_GE(8, 0)
   return wrap(createThreadSanitizerLegacyPassPass());
-#else
-  return wrap(createThreadSanitizerPass());
-#endif
 }
 
 extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
@@ -1236,15 +1228,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   auto deadIsPrevailing = [&](GlobalValue::GUID G) {
     return PrevailingType::Unknown;
   };
-#if LLVM_VERSION_GE(8, 0)
   // We don't have a complete picture in our use of ThinLTO, just our immediate
   // crate, so we need `ImportEnabled = false` to limit internalization.
   // Otherwise, we sometimes lose `static` values -- see #60184.
   computeDeadSymbolsWithConstProp(Ret->Index, Ret->GUIDPreservedSymbols,
                                   deadIsPrevailing, /* ImportEnabled = */ false);
-#else
-  computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols, deadIsPrevailing);
-#endif
   ComputeCrossModuleImport(
     Ret->Index,
     Ret->ModuleToDefinedGVSummaries,
@@ -1277,10 +1265,8 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
 #if LLVM_VERSION_GE(9, 0)
   thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage,
                                   Ret->GUIDPreservedSymbols);
-#elif LLVM_VERSION_GE(8, 0)
-  thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage);
 #else
-  thinLTOResolveWeakForLinkerInIndex(Ret->Index, isPrevailing, recordNewLinkage);
+  thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage);
 #endif
 
   // Here we calculate an `ExportedGUIDs` set for use in the `isExported`
@@ -1346,11 +1332,7 @@ extern "C" bool
 LLVMRustPrepareThinLTOResolveWeak(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
   Module &Mod = *unwrap(M);
   const auto &DefinedGlobals = Data->ModuleToDefinedGVSummaries.lookup(Mod.getModuleIdentifier());
-#if LLVM_VERSION_GE(8, 0)
   thinLTOResolvePrevailingInModule(Mod, DefinedGlobals);
-#else
-  thinLTOResolveWeakForLinkerModule(Mod, DefinedGlobals);
-#endif
   return true;
 }
 
