@@ -187,7 +187,11 @@ impl<'a> TtIter<'a> {
                 _ => false,
             },
             Separator::Literal(lhs) => match fork.expect_literal() {
-                Ok(rhs) => rhs.text == lhs.text,
+                Ok(rhs) => match rhs {
+                    tt::Leaf::Literal(rhs) => rhs.text == lhs.text,
+                    tt::Leaf::Ident(rhs) => rhs.text == lhs.text,
+                    tt::Leaf::Punct(_) => false,
+                },
                 _ => false,
             },
             Separator::Puncts(lhss) => lhss.iter().all(|lhs| match fork.expect_punct() {
