@@ -403,8 +403,8 @@ rustc_queries! {
     }
 
     Other {
-        query lint_mod(key: DefId) -> () {
-            desc { |tcx| "linting {}", describe_as_module(key, tcx) }
+        query lint_mod(key: LocalDefId) -> () {
+            desc { |tcx| "linting {}", describe_as_module(key.to_def_id(), tcx) }
         }
 
         /// Checks the attributes in the module.
