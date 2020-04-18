@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be know
   --> $DIR/issue-65673.rs:9:16
    |
 LL | trait WithType {
-   |       --------
+   |       -------- required by a bound in this
 LL |     type Ctx;
    |     --------- required by this bound in `WithType`
 ...

@@ -2,7 +2,7 @@ error[E0277]: the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
   --> $DIR/missing-assoc-type-bound-restriction.rs:17:19
    |
 LL | trait Parent {
-   |       ------
+   |       ------ required by a bound in this
 LL |     type Ty;
 LL |     type Assoc: Child<Self::Ty>;
    |                 --------------- required by this bound in `Parent`
@@ -16,7 +16,7 @@ error[E0277]: the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
   --> $DIR/missing-assoc-type-bound-restriction.rs:20:18
    |
 LL | trait Parent {
-   |       ------
+   |       ------ required by a bound in this
 LL |     type Ty;
 LL |     type Assoc: Child<Self::Ty>;
    |                 --------------- required by this bound in `Parent`
@@ -33,7 +33,7 @@ error[E0277]: the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
   --> $DIR/missing-assoc-type-bound-restriction.rs:20:5
    |
 LL | trait Parent {
-   |       ------
+   |       ------ required by a bound in this
 LL |     type Ty;
 LL |     type Assoc: Child<Self::Ty>;
    |                 --------------- required by this bound in `Parent`

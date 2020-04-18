@@ -10,7 +10,7 @@ error[E0275]: overflow evaluating the requirement `Runtime<RootDatabase>: std::p
   --> $DIR/cycle-cache-err-60010.rs:31:20
    |
 LL | trait Database {
-   |       --------
+   |       -------- required by a bound in this
 LL |     type Storage;
    |     ------------- required by this bound in `Database`
 ...

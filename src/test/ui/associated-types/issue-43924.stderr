@@ -10,7 +10,7 @@ error[E0277]: the trait bound `(dyn std::string::ToString + 'static): std::defau
   --> $DIR/issue-43924.rs:10:6
    |
 LL | trait Foo<T: Default + ToString> {
-   |       ---
+   |       --- required by a bound in this
 LL |     type Out: Default + ToString + ?Sized = dyn ToString;
    |               ------- required by this bound in `Foo`
 ...
@@ -21,7 +21,7 @@ error[E0277]: the trait bound `(dyn std::string::ToString + 'static): std::defau
   --> $DIR/issue-43924.rs:11:6
    |
 LL | trait Foo<T: Default + ToString> {
-   |       ---
+   |       --- required by a bound in this
 LL |     type Out: Default + ToString + ?Sized = dyn ToString;
    |               ------- required by this bound in `Foo`
 ...

@@ -1532,14 +1532,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let item_name = tcx.def_path_str(item_def_id);
                 let msg = format!("required by this bound in `{}`", item_name);
                 if let Some(ident) = tcx.opt_item_name(item_def_id) {
-                    let sm = self.tcx.sess.source_map();
+                    let sm = tcx.sess.source_map();
                     let same_line =
                         match (sm.lookup_line(ident.span.hi()), sm.lookup_line(span.lo())) {
                             (Ok(l), Ok(r)) => l.line == r.line,
                             _ => true,
                         };
                     if !ident.span.overlaps(span) && !same_line {
-                        err.span_label(ident.span, "");
+                        err.span_label(ident.span, "required by a bound in this");
                     }
                 }
                 if span != DUMMY_SP {

@@ -5,7 +5,7 @@ LL |     want_foo_for_any_tcx(f);
    |                          ^ the trait `for<'tcx> Foo<'tcx>` is not implemented for `F`
 ...
 LL | fn want_foo_for_any_tcx<F>(f: &F)
-   |    --------------------
+   |    -------------------- required by a bound in this
 LL |     where F : for<'tcx> Foo<'tcx>
    |               ------------------- required by this bound in `want_foo_for_any_tcx`
    |
@@ -21,7 +21,7 @@ LL |     want_bar_for_any_ccx(b);
    |                          ^ the trait `for<'ccx> Bar<'ccx>` is not implemented for `B`
 ...
 LL | fn want_bar_for_any_ccx<B>(b: &B)
-   |    --------------------
+   |    -------------------- required by a bound in this
 LL |     where B : for<'ccx> Bar<'ccx>
    |               ------------------- required by this bound in `want_bar_for_any_ccx`
    |
