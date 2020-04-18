@@ -774,7 +774,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         f(mc::MemCategorizationContext::new(
             &self.infcx,
             self.outlives_environment.param_env,
-            self.body_owner,
+            self.body_owner.expect_local(),
             &self.tables.borrow(),
         ))
     }
