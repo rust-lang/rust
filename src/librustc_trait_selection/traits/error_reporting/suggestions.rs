@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// Adds an async-await specific note to the diagnostic when the future does not implement
     /// an auto trait because of a captured type.
     ///
-    /// ```ignore (diagnostic)
+    /// ```text
     /// note: future does not implement `Qux` as this value is used across an await
     ///   --> $DIR/issue-64130-3-other.rs:17:5
     ///    |
@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// When the diagnostic does not implement `Send` or `Sync` specifically, then the diagnostic
     /// is "replaced" with a different message and a more specific error.
     ///
-    /// ```ignore (diagnostic)
+    /// ```text
     /// error: future cannot be sent between threads safely
     ///   --> $DIR/issue-64130-2-send.rs:21:5
     ///    |
