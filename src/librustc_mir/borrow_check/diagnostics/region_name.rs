@@ -148,7 +148,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///
     /// This function would create a label like this:
     ///
-    /// ```
+    /// ```text
     ///  | fn foo(x: &u32) { .. }
     ///           ------- fully elaborated type of `x` is `&'1 u32`
     /// ```
@@ -300,7 +300,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// elaborated type, returning something like `'1`. Result looks
     /// like:
     ///
-    /// ```
+    /// ```text
     ///  | fn foo(x: &u32) { .. }
     ///           ------- fully elaborated type of `x` is `&'1 u32`
     /// ```
@@ -347,7 +347,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// that has no type annotation.
     /// For example, we might produce an annotation like this:
     ///
-    /// ```
+    /// ```text
     ///  |     foo(|a, b| b)
     ///  |          -  -
     ///  |          |  |
@@ -396,7 +396,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// that contains the anonymous reference we want to give a name
     /// to. For example, we might produce an annotation like this:
     ///
-    /// ```
+    /// ```text
     ///  | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item = &T>> {
     ///  |                - let's call the lifetime of this reference `'1`
     /// ```
@@ -600,7 +600,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// fully elaborated type, returning something like `'1`. Result
     /// looks like:
     ///
-    /// ```
+    /// ```text
     ///  | let x = Some(&22);
     ///        - fully elaborated type of `x` is `Option<&'1 u32>`
     /// ```

@@ -33,7 +33,6 @@ pub mod util {
     pub mod comments;
     pub mod lev_distance;
     pub mod literal;
-    pub mod map_in_place;
     pub mod parser;
 }
 

@@ -113,8 +113,6 @@ impl NonConstOp for FnCallUnstable {
 #[derive(Debug)]
 pub struct HeapAllocation;
 impl NonConstOp for HeapAllocation {
-    const IS_SUPPORTED_IN_MIRI: bool = false;
-
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         let mut err = struct_span_err!(
             item.tcx.sess,

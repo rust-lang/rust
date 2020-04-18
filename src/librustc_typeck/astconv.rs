@@ -1250,7 +1250,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// This helper takes a *converted* parameter type (`param_ty`)
     /// and an *unconverted* list of bounds:
     ///
-    /// ```
+    /// ```text
     /// fn foo<T: Debug>
     ///        ^  ^^^^^ `ast_bounds` parameter, in HIR form
     ///        |
@@ -2992,7 +2992,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 /// representations). These lists of bounds occur in many places in
 /// Rust's syntax:
 ///
-/// ```
+/// ```text
 /// trait Foo: Bar + Baz { }
 ///            ^^^^^^^^^ supertrait list bounding the `Self` type parameter
 ///
