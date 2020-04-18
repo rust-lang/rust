@@ -413,8 +413,8 @@ respect to incremental compilation:
    even try to mark the query's dep-node as green. This attribute has two use
    cases:
 
-    - Queries that are **inputs** to the system must be marked as `eval_always`
-      since we have no other way of checking whether their value has changed.
+    - `eval_always` queries can read inputs (from files, global state, etc).
+      They can also produce side effects like writing to files and changing global state.
 
     - Some queries are very likely to be re-evaluated because their result
       depends on the entire source code. In this case `eval_always` can be used
