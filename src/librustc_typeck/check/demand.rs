@@ -222,7 +222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut methods =
             self.probe_for_return_type(span, probe::Mode::MethodCall, expected, checked_ty, hir_id);
         methods.retain(|m| {
-            self.has_no_input_arg(m)
+            self.has_only_self_parameter(m)
                 && self
                     .tcx
                     .get_attrs(m.def_id)
@@ -243,10 +243,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         methods
     }
 
-    // This function checks if the method isn't static and takes other arguments than `self`.
-    fn has_no_input_arg(&self, method: &AssocItem) -> bool {
+    /// This function checks whether the method is not static and does not accept other parameters than `self`.
+    fn has_only_self_parameter(&self, method: &AssocItem) -> bool {
         match method.kind {
-            ty::AssocKind::Fn => self.tcx.fn_sig(method.def_id).inputs().skip_binder().len() == 1,
+            ty::AssocKind::Fn => {
+                method.fn_has_self_parameter
+                    && self.tcx.fn_sig(method.def_id).inputs().skip_binder().len() == 1
+            }
             _ => false,
         }
     }
