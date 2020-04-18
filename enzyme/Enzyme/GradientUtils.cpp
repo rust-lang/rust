@@ -26,6 +26,8 @@
 #include "llvm/IR/GlobalValue.h"
 
 #include "llvm/IR/Constants.h"
+
+#include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/Transforms/Utils/SimplifyIndVar.h"
 
@@ -109,6 +111,12 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
   //TODO consider callinst here
 
   if (auto li = dyn_cast<LoadInst>(val)) {
+
+    //TODO this is more conservative than necessary
+    //if (isa<AllocaInst>(GetUnderlyingObject(li->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100))) {
+    //  return false;
+    //}
+
     if (originalInstructions.find(li) != originalInstructions.end()) {
         auto found = can_modref_map->find(getOriginal(li));
         if(found == can_modref_map->end()) {
@@ -136,10 +144,22 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
   if (available.count(val)) return true;
   //TODO: remake such that this returns whether a load to a cache is more expensive than redoing the computation.
 
+  // If this is a load from cache already, just reload this
+  if (isa<LoadInst>(val) && cast<LoadInst>(val)->getMetadata("enzyme_fromcache")) return true;
+
+  if (isa<CastInst>(val) || isa<GetElementPtrInst>(val)) return true;
+
   // if this has operands that need to be loaded and haven't already been loaded (TODO), just cache this
   if (auto inst = dyn_cast<Instruction>(val)) {
     for(auto &op : inst->operands()) {
-      if (!legalRecompute(op, available)) return false;
+      if (!legalRecompute(op, available)) {
+
+        // If this is a load from cache already, dont force a cache of this
+        if (isa<LoadInst>(op) && cast<LoadInst>(op)->getMetadata("enzyme_fromcache")) continue;
+
+        llvm::errs() << "choosing to cache " << *val << " because of " << *op << "\n";
+        return false;
+      }
     }
   }
 
@@ -413,6 +433,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       }
 
       auto li = bb.CreateBinOp(arg->getOpcode(), val0, val1, arg->getName());
+      cast<BinaryOperator>(li)->copyIRFlags(arg);
       invertedPointers[arg] = li;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<GetElementPtrInst>(val)) {

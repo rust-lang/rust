@@ -42,23 +42,44 @@ enum class AugmentedStruct {
     DifferentialReturn
 };
 
+enum class CacheType {
+    Self,
+    Shadow,
+    Tape
+};
+
+static inline std::string str(CacheType c) {
+    switch(c) {
+        case CacheType::Self: return "self";
+        case CacheType::Shadow: return "shadow";
+        case CacheType::Tape: return "tape";
+        default: llvm_unreachable("unknown cache type");
+    }
+}
+
+static inline llvm::raw_ostream& operator<<(llvm::raw_ostream& o, CacheType c) {
+    return o << str(c);
+}
+
 //! return structtype if recursive function
 class AugmentedReturn {
 public:
     llvm::Function *fn;
     //! return structtype if recursive function
     llvm::StructType* tapeType;
-    std::map<std::pair<llvm::Instruction*, std::string>, unsigned> tapeIndices;
+
+    std::map<std::pair<llvm::Instruction*, CacheType>, unsigned> tapeIndices;
+
     //! Map from original call to sub augmentation data
     std::map<const llvm::CallInst*, const AugmentedReturn*> subaugmentations;
     //! Map from information desired from a augmented return to its index in the returned struct
     std::map<AugmentedStruct, unsigned> returns;
 
     std::map<llvm::CallInst*, const std::map<llvm::Argument*, bool> > uncacheable_args_map;
-  
+
     std::map<llvm::Instruction*, bool> can_modref_map;
-    
-    AugmentedReturn(llvm::Function* fn, llvm::StructType* tapeType, std::map<std::pair<llvm::Instruction*, std::string>, unsigned> tapeIndices, std::map<AugmentedStruct, unsigned> returns, std::map<llvm::CallInst*, const std::map<llvm::Argument*, bool>> uncacheable_args_map, std::map<llvm::Instruction*, bool> can_modref_map)
+
+    AugmentedReturn(llvm::Function* fn, llvm::StructType* tapeType, std::map<std::pair<llvm::Instruction*, CacheType>, unsigned> tapeIndices, std::map<AugmentedStruct, unsigned> returns, std::map<llvm::CallInst*, const std::map<llvm::Argument*, bool>> uncacheable_args_map, std::map<llvm::Instruction*, bool> can_modref_map)
         : fn(fn), tapeType(tapeType), tapeIndices(tapeIndices), returns(returns), uncacheable_args_map(uncacheable_args_map), can_modref_map(can_modref_map) {}
 };
 

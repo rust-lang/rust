@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -gvn -early-cse -adce -S | FileCheck %s
 
 ; ModuleID = 'seg.ll'
 source_filename = "/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigen-made.cpp"

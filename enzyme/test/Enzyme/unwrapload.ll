@@ -176,7 +176,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %"iv'ac.0" = add i64 %"iv'ac.0.in", -1
 ; CHECK-NEXT:   %[[datap:.+]] = load double, double* %"data'", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"data'", align 8
-; CHECK-NEXT:   %[[mci:.+]] = getelementptr inbounds i64, i64* %a19cache, i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[mci:.+]] = getelementptr inbounds i64, i64* %[[a19cache]], i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[iv1p]] = load i64, i64* %[[mci]], align 8
 ; CHECK-NEXT:   %[[add1p]] = fadd fast double %"add'de.1", %[[datap]]
 ; CHECK-NEXT:   br label %invertloop2

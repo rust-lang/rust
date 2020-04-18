@@ -51,6 +51,7 @@
 #include "llvm/Support/ErrorHandling.h"
 
 #include "ActiveVariable.h"
+#include "EnzymeLogic.h"
 
 using namespace llvm;
 
@@ -380,7 +381,7 @@ public:
     return anti;
   }
 
-  unsigned getIndex(std::pair<Instruction*, std::string> idx, std::map<std::pair<Instruction*, std::string>, unsigned> &mapping) {
+  unsigned getIndex(std::pair<Instruction*, CacheType> idx, std::map<std::pair<Instruction*, CacheType>, unsigned> &mapping) {
     if (tape) {
         if (mapping.find(idx) == mapping.end()) {
             llvm::errs() << "oldFunc: " <<*oldFunc << "\n";
@@ -1159,6 +1160,7 @@ public:
       auto op1 = getOp(op->getOperand(1));
       if (op1 == nullptr) goto endCheck;
       auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1, op->getName()+"_unwrap");
+      cast<BinaryOperator>(toreturn)->copyIRFlags(op);
       if (
               (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
               (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
@@ -1338,20 +1340,38 @@ endCheck:
             if (contexts[i].dynamic) {
                 limits[i] = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1);
             } else {
-                ValueToValueMapTy emptyMap;
+                ValueToValueMapTy prevMap;
+
+                for(int j=contexts.size()-1; ; j--) {
+                  if (allocationPreheaders[i] == contexts[j].preheader) break;
+                  prevMap[contexts[j].var] = prevMap[contexts[j].var];
+                }
+
                 IRBuilder <> allocationBuilder(&allocationPreheaders[i]->back());
                 Value* limitMinus1 = nullptr;
 
-                if (legalRecompute(contexts[i].limit, emptyMap)) {
-                    limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
-                }
+                //llvm::errs() << " considering limit: " << *contexts[i].limit << "\n";
+                //for(auto pm : prevMap) {
+                //  llvm::errs() << "    + " << pm.first << "\n";
+                //}
+
+                //TODO ensure unwrapM considers the legality of illegal caching / etc
+                //   legalRecompute does not fulfill this need as its whether its legal at a certain location, where as legalRecompute
+                //   specifies it being recomputable anywhere
+                //if (legalRecompute(contexts[i].limit, prevMap)) {
+                    limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, prevMap, /*lookupIfAble*/false);
+                //}
+                //if (limitMinus1)
+                //  llvm::errs() << " considering limit: " << *contexts[i].limit << " - " << *limitMinus1 << "\n";
+                //else
+                //  llvm::errs() << " considering limit: " << *contexts[i].limit << " - " << limitMinus1 << "\n";
 
                 // We have a loop with static bounds, but whose limit is not available to be computed at the current loop preheader (such as the innermost loop of triangular iteration domain)
                 // Handle this case like a dynamic loop
                 if (limitMinus1 == nullptr) {
                     allocationPreheaders[i] = contexts[i].preheader;
                     allocationBuilder.SetInsertPoint(&allocationPreheaders[i]->back());
-                    limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
+                    limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, prevMap, /*lookupIfAble*/false);
                 }
                 assert(limitMinus1 != nullptr);
                 static std::map<std::pair<Value*, BasicBlock*>, Value*> limitCache;
@@ -1645,6 +1665,7 @@ endCheck:
             MDNode* invgroup = MDNode::getDistinct(cache->getContext(), {});
             valueInvariantGroups[cache] = invgroup;
         }
+        result->setMetadata("enzyme_fromcache", MDNode::get(result->getContext(), {}));
         result->setMetadata(LLVMContext::MD_invariant_group, valueInvariantGroups[cache]);
         ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(cache->getContext()),
                         ctx->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(result->getType())/8);

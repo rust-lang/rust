@@ -81,31 +81,29 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 ; CHECK-NEXT:   %4 = load float, float* %"arrayidx2'ipg", align 4
 ; CHECK-NEXT:   %5 = fadd fast float %4, %"'de.0"
 ; CHECK-NEXT:   store float %5, float* %"arrayidx2'ipg", align 4
-; CHECK-NEXT:   %6 = xor i64 %"iv'ac.0", -1
-; CHECK-NEXT:   %indvars.iv.next_unwrap = add i64 %6, %_unwrap
+; CHECK-NEXT:   %indvars.iv.next_unwrap = add nsw i64 %_unwrap2, -1
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds float, float* %"array'", i64 %indvars.iv.next_unwrap
-; CHECK-NEXT:   %7 = load float, float* %"arrayidx'ipg", align 4
-; CHECK-NEXT:   %8 = fadd fast float %7, %[[de5]]
-; CHECK-NEXT:   store float %8, float* %"arrayidx'ipg", align 4
-; CHECK-NEXT:   %9 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %9, label %invertentry, label %incinvertland.rhs
+; CHECK-NEXT:   %[[loade5:.+]] = load float, float* %"arrayidx'ipg", align 4
+; CHECK-NEXT:   %[[adde5:.+]] = fadd fast float %[[loade5]], %[[de5]]
+; CHECK-NEXT:   store float %[[adde5]], float* %"arrayidx'ipg", align 4
+; CHECK-NEXT:   %[[cmpeq:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %[[cmpeq]], label %invertentry, label %incinvertland.rhs
 
 ; CHECK: incinvertland.rhs:                                ; preds = %invertland.rhs
-; CHECK-NEXT:   %10 = add nsw i64 %"iv'ac.0", -1
+; CHECK-NEXT:   %[[sub1h:.+]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertwhile.body
 
 ; CHECK: invertwhile.body:                                 ; preds = %invertwhile.end.loopexit, %incinvertland.rhs
-; CHECK-NEXT:   %"iv'ac.1" = phi i64 [ %10, %incinvertland.rhs ], [ %loopLimit_cache.0, %invertwhile.end.loopexit ]
-; CHECK-NEXT:   %_unwrap6 = sext i32 %i to i64
-; CHECK-NEXT:   %11 = xor i64 %"iv'ac.1", -1
-; CHECK-NEXT:   %indvars.iv.next_unwrap9 = add i64 %11, %_unwrap6
-; CHECK-NEXT:   %"arrayidx'ipg10" = getelementptr inbounds float, float* %"array'", i64 %indvars.iv.next_unwrap9
-; CHECK-NEXT:   %[[pdein]] = load float, float* %"arrayidx'ipg10", align 4
-; CHECK-NEXT:   store float 0.000000e+00, float* %"arrayidx'ipg10", align 4
-; CHECK-NEXT:   %_unwrap16 = sub i64 %_unwrap6, %"iv'ac.1"
-; CHECK-NEXT:   %"arrayidx2'ipg17" = getelementptr inbounds float, float* %"array'", i64 %_unwrap16
-; CHECK-NEXT:   %[[dein]] = load float, float* %"arrayidx2'ipg17", align 4
-; CHECK-NEXT:   store float 0.000000e+00, float* %"arrayidx2'ipg17", align 4
+; CHECK-NEXT:   %"iv'ac.1" = phi i64 [ %[[sub1h]], %incinvertland.rhs ], [ %loopLimit_cache.0, %invertwhile.end.loopexit ]
+; CHECK-NEXT:   %_unwrap4 = sext i32 %i to i64
+; CHECK-NEXT:   %_unwrap6 = sub i64 %_unwrap4, %"iv'ac.1"
+; CHECK-NEXT:   %[[indvarsivnext_unwrap7:.+]] = add nsw i64 %_unwrap6, -1
+; CHECK-NEXT:   %[[arrayidxipg10:.+]] = getelementptr inbounds float, float* %"array'", i64 %[[indvarsivnext_unwrap7]]
+; CHECK-NEXT:   %[[pdein]] = load float, float* %[[arrayidxipg10]], align 4
+; CHECK-NEXT:   store float 0.000000e+00, float* %[[arrayidxipg10]], align 4
+; CHECK-NEXT:   %[[arrayidx2ipg17:.+]] = getelementptr inbounds float, float* %"array'", i64 %_unwrap6
+; CHECK-NEXT:   %[[dein]] = load float, float* %[[arrayidx2ipg17]], align 4
+; CHECK-NEXT:   store float 0.000000e+00, float* %[[arrayidx2ipg17]], align 4
 ; CHECK-NEXT:   br label %invertland.rhs
 
 ; CHECK: invertwhile.end.loopexit:                         ; preds = %invertwhile.end

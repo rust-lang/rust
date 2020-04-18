@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -gvn -adce -S | FileCheck %s
 
 @.str = private unnamed_addr constant [46 x i8] c"final result t=%f x(t)=%f, -0.2=%f, steps=%d\0A\00", align 1
 
@@ -42,19 +42,19 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   %0 = phi i8* [ null, %entry ], [ %_realloccache, %while ]
 ; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %while ]
 ; CHECK-NEXT:   %1 = phi double [ 1.000000e+00, %entry ], [ %mul2, %while ]
+; CHECK-NEXT:   %[[ivtrunc:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
-; CHECK-NEXT:   %2 = shl nuw i64 %iv.next, 3
-; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %0, i64 %2)
+; CHECK-NEXT:   %[[bytesalloc:.+]] = shl nuw i64 %iv.next, 3
+; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %0, i64 %[[bytesalloc]])
 ; CHECK-NEXT:   %_realloccast = bitcast i8* %_realloccache to double*
-; CHECK-NEXT:   %3 = getelementptr inbounds double, double* %_realloccast, i64 %iv
-; CHECK-NEXT:   store double %1, double* %3, align 8, !invariant.group !0
+; CHECK-NEXT:   %[[storeloc:.+]] = getelementptr inbounds double, double* %_realloccast, i64 %iv
+; CHECK-NEXT:   store double %1, double* %[[storeloc]], align 8, !invariant.group !0
+; CHECK-NEXT:   %inc = add nuw nsw i32 %[[ivtrunc]], 1
 ; CHECK-NEXT:   %mul2 = fmul fast double %1, %t
 ; CHECK-NEXT:   %cmp2 = fcmp fast ugt double %mul2, 2.000000e+00
 ; CHECK-NEXT:   br i1 %cmp2, label %exit, label %while
 
 ; CHECK: exit: 
-; CHECK-NEXT:   %4 = trunc i64 %iv to i32
-; CHECK-NEXT:   %inc = add nuw nsw i32 %4, 1
 ; CHECK-NEXT:   %a3 = zext i32 %inc to i64
 ; CHECK-NEXT:   %call2 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)
 ; CHECK-NEXT:   %5 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)

@@ -553,7 +553,7 @@ std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGr
     return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
 }
 
-void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations);
+void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, CacheType)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations);
 
 enum class DerivativeMode {
     Forward,
@@ -576,12 +576,12 @@ public:
   DerivativeMode mode;
   GradientUtils *gutils;
   TypeResults &TR;
-  std::function<unsigned(Instruction*, std::string)> getIndex;
+  std::function<unsigned(Instruction*, CacheType)> getIndex;
   const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map;
   const SmallPtrSetImpl<Instruction*> *returnuses;
   AugmentedReturnType augmentedReturn;
   std::vector<Instruction*> *fakeTBAA;
-  DerivativeMaker(DerivativeMode mode, GradientUtils *gutils, TypeResults &TR, std::function<unsigned(Instruction*, std::string)> getIndex,
+  DerivativeMaker(DerivativeMode mode, GradientUtils *gutils, TypeResults &TR, std::function<unsigned(Instruction*, CacheType)> getIndex,
     const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map, const SmallPtrSetImpl<Instruction*> *returnuses, AugmentedReturnType augmentedReturn,
     std::vector<Instruction*>* fakeTBAA
     ) : mode(mode), gutils(gutils), TR(TR), getIndex(getIndex), uncacheable_args_map(uncacheable_args_map), returnuses(returnuses), augmentedReturn(augmentedReturn), fakeTBAA(fakeTBAA) {}
@@ -626,7 +626,7 @@ public:
             assert(newip->getType() == type);
 
             if (mode == DerivativeMode::Forward && gutils->can_modref_map->find(orig)->second) {
-              gutils->addMalloc(BuilderZ, newip, getIndex(orig, "shadow"));
+              gutils->addMalloc(BuilderZ, newip, getIndex(orig, CacheType::Shadow));
             }
             placeholder->replaceAllUsesWith(newip);
             gutils->erase(placeholder);
@@ -637,7 +637,7 @@ public:
           case DerivativeMode::Reverse:{
             //only make shadow where caching needed
             if (gutils->can_modref_map->find(orig)->second) {
-              newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(orig, "shadow"));
+              newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(orig, CacheType::Shadow));
               assert(newip->getType() == type);
               gutils->invertedPointers[&LI] = newip;
             } else {
@@ -666,7 +666,7 @@ public:
       IRBuilder<> BuilderZ(LI.getNextNode());
       auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
 
-      inst = gutils->addMalloc(BuilderZ, &LI, getIndex(orig, "self"));
+      inst = gutils->addMalloc(BuilderZ, &LI, getIndex(orig, CacheType::Self));
       assert(inst->getType() == type);
 
       if (mode == DerivativeMode::Reverse) {
@@ -1504,7 +1504,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
   insert_or_assign(cachedfunctions, tup, AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping, uncacheable_args_map, can_modref_map));
   cachedfinished[tup] = false;
 
-  auto getIndex = [&](Instruction* I, std::string u)-> unsigned {
+  auto getIndex = [&](Instruction* I, CacheType u)-> unsigned {
     //std::map<std::pair<Instruction*,std::string>,unsigned>& mapping = cachedfunctions[tup].tapeIndices;
     return gutils->getIndex( std::make_pair(I, u), cachedfunctions.find(tup)->second.tapeIndices);
   };
@@ -2035,7 +2035,7 @@ static bool shouldAugmentCall(CallInst* op, const GradientUtils* gutils) {
   return modifyPrimal;
 }
 
-void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, std::string)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
+void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, CacheType)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
     Function *called = op->getCalledFunction();
 
     if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -2062,11 +2062,11 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
     if (called && (called->getName()=="malloc" || called->getName()=="_Znwm")) {
         if (is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false)) {
             IRBuilder<> BuilderZ(op);
-            gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
+            gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self) );
         }
         if (!gutils->isConstantValue(op)) {
             auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-            gutils->createAntiMalloc(op, getIndex(gutils->getOriginal(op), "shadow"));
+            gutils->createAntiMalloc(op, getIndex(gutils->getOriginal(op), CacheType::Shadow));
         }
         return;
     }
@@ -2081,7 +2081,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
     if (gutils->isConstantInstruction(op)) {
         if (op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
             IRBuilder<> BuilderZ(op);
-            gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
+            gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self) );
         }
         return;
     }
@@ -2143,7 +2143,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
 
       if (!modifyPrimal) {
         if (hasNonReturnUse && !op->doesNotAccessMemory()) {
-          gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self"));
+          gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self));
         }
         return;
       }
@@ -2221,7 +2221,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
             tp = UndefValue::get(tpt);
         }
 
-        gutils->addMalloc(BuilderZ, tp, getIndex(gutils->getOriginal(op), "tape") );
+        gutils->addMalloc(BuilderZ, tp, getIndex(gutils->getOriginal(op), CacheType::Tape) );
         if (gutils->invertedPointers.count(op) != 0) {
             auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
             gutils->invertedPointers.erase(op);
@@ -2233,7 +2233,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
               placeholder->replaceAllUsesWith(antiptr);
 
               if (hasNonReturnUse) {
-                  gutils->addMalloc(BuilderZ, antiptr, getIndex(gutils->getOriginal(op), "shadow") );
+                  gutils->addMalloc(BuilderZ, antiptr, getIndex(gutils->getOriginal(op), CacheType::Shadow) );
               }
             }
             gutils->erase(placeholder);
@@ -2257,7 +2257,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
           }
 
           if (hasNonReturnUse) {
-            gutils->addMalloc(BuilderZ, rv, getIndex(gutils->getOriginal(op), "self") );
+            gutils->addMalloc(BuilderZ, rv, getIndex(gutils->getOriginal(op), CacheType::Self) );
           }
           gutils->originalToNewFn[gutils->getOriginal(op)] = rv;
           gutils->replaceAWithB(op,rv);
@@ -2271,7 +2271,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         gutils->erase(op);
 }
 
-void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
+void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, CacheType)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
   Function *called = op->getCalledFunction();
 
   if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -2326,7 +2326,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
     bool constval = gutils->isConstantValue(op);
     if (!constval) {
       PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-      auto anti = gutils->createAntiMalloc(op, getIndex(gutils->getOriginal(op), "shadow"));
+      auto anti = gutils->createAntiMalloc(op, getIndex(gutils->getOriginal(op), CacheType::Shadow));
       Value* tofree = gutils->lookupM(anti, Builder2);
       assert(tofree);
       assert(tofree->getType());
@@ -2342,7 +2342,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
       if (!topLevel) {
         if (is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/topLevel)) {
             IRBuilder<> BuilderZ(op);
-            inst = gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
+            inst = gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self) );
             inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), constval ? "const" : "active")}));
         } else {
             //Note that here we cannot simply replace with null as users who try to find the shadow pointer will use the shadow of null rather than the true shadow of this
@@ -2434,7 +2434,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   if (gutils->isConstantInstruction(op)) {
     if (!topLevel && subretused && !op->doesNotAccessMemory()) {
       IRBuilder<> BuilderZ(op);
-      auto inst = gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
+      auto inst = gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self) );
       inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), "const")}));
     }
     return;
@@ -2864,11 +2864,11 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
             tape = UndefValue::get(tt);
           }
         } else {
-          tape = gutils->addMalloc(BuilderZ, tape, getIndex(gutils->getOriginal(op), "tape") );
+          tape = gutils->addMalloc(BuilderZ, tape, getIndex(gutils->getOriginal(op), CacheType::Tape) );
 
           if (!topLevel && subretused) {
             cachereplace = BuilderZ.CreatePHI(op->getType(), 1);
-            cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(gutils->getOriginal(op), "self") );
+            cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(gutils->getOriginal(op), CacheType::Self) );
             cachereplace->setMetadata("enzyme_activity_value", MDNode::get(cachereplace->getContext(), {MDString::get(cachereplace->getContext(), constval ? "const" : "active")}));
           }
         }
@@ -2897,7 +2897,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
                     assert(newip->getType() == op->getType());
                     placeholder->replaceAllUsesWith(newip);
                 } else {
-                    newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(gutils->getOriginal(op), "shadow") );
+                    newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(gutils->getOriginal(op), CacheType::Shadow) );
                 }
 
                 gutils->invertedPointers[op] = newip;
@@ -2941,7 +2941,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
     if (!topLevel && subretused && !op->doesNotAccessMemory()) {
       assert(!replaceFunction);
       cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
-      cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(gutils->getOriginal(op), "self") );
+      cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(gutils->getOriginal(op), CacheType::Self) );
       cachereplace->setMetadata("enzyme_activity_value", MDNode::get(cachereplace->getContext(), {MDString::get(cachereplace->getContext(), constval ? "const" : "active")}));
     }
   }
@@ -3328,9 +3328,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   gutils->forceActiveDetection(AA, TR);
   gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
 
-  std::map<std::pair<Instruction*,std::string>,unsigned> mapping;
+  std::map<std::pair<Instruction*, CacheType>,unsigned> mapping;
   if (augmenteddata) mapping = augmenteddata->tapeIndices;
-  auto getIndex = [&](Instruction* I, std::string u)-> unsigned {
+
+  auto getIndex = [&](Instruction* I, CacheType u)-> unsigned {
     return gutils->getIndex( std::make_pair(I, u), mapping);
   };
 

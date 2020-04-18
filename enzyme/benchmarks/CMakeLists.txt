@@ -50,3 +50,4 @@ add_subdirectory(logsumexp)
 add_subdirectory(matdescent)
 
 add_subdirectory(gmm)
+add_subdirectory(ba)
