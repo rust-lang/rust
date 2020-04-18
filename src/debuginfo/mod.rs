@@ -47,7 +47,11 @@ impl<'tcx> DebugContext<'tcx> {
             // TODO: this should be configurable
             // macOS doesn't seem to support DWARF > 3
             // 5 version is required for md5 file hash
-            version: 5,
+            version: if tcx.sess.target.target.options.is_like_osx {
+                3
+            } else {
+                5
+            },
             address_size,
         };
 
