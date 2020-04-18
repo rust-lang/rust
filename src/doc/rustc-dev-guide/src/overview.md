@@ -15,7 +15,6 @@ So first, let's look at what the compiler does to your code. For now, we will
 avoid mentioning how the compiler implements these steps except as needed;
 we'll talk about that later.
 
-**TODO: Would be great to have a diagram of this once we nail down the details...**
 
 - The compile process begins when a user writes a Rust source program in text
   and invokes the `rustc` compiler on it. The work that the compiler needs to
@@ -74,10 +73,9 @@ we'll talk about that later.
     HAIR is used for pattern and exhaustiveness checking. It is also more
     convenient to convert into MIR than HIR is.
 - The MIR is used for [borrow checking].
-- **TODO: const eval fits in somewhere here I think**
 - We (want to) do [many optimizations on the MIR][mir-opt] because it is still
   generic and that improves the code we generate later, improving compilation
-  speed too. (**TODO: size optimizations too?**)
+  speed too.
   - MIR is a higher level (and generic) representation, so it is easier to do
     some optimizations at MIR level than at LLVM-IR level. For example LLVM
     doesn't seem to be able to optimize the pattern the [`simplify_try`] mir
@@ -96,9 +94,8 @@ we'll talk about that later.
   - The LLVM IR is passed to LLVM, which does a lot more optimizations on it.
     It then emits machine code. It is basically assembly code with additional
     low-level types and annotations added. (e.g. an ELF object or wasm).
-    **TODO: reference for this section?**
   - The different libraries/binaries are linked together to produce the final
-    binary. **TODO: reference for this section?**
+    binary.
 
 [`librustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
 [`librustc_driver`]: https://rustc-dev-guide.rust-lang.org/rustc-driver.html
@@ -138,13 +135,13 @@ satisfy/optimize for. For example,
   point.
 - Compiler compilation speed: how long does it take to compile the compiler?
   This impacts contributors and compiler maintenance.
-- Compiler implementation complexity: building a compiler is one of the hardest
+- Implementation complexity: building a compiler is one of the hardest
   things a person/group can do, and Rust is not a very simple language, so how
   do we make the compiler's code base manageable?
 - Compiler correctness: the binaries produced by the compiler should do what
   the input programs says they do, and should continue to do so despite the
   tremendous amount of change constantly going on.
-- Compiler integration: a number of other tools need to use the compiler in
+- Integration: a number of other tools need to use the compiler in
   various ways (e.g. cargo, clippy, miri, RLS) that must be supported.
 - Compiler stability: the compiler should not crash or fail ungracefully on the
   stable channel.
@@ -283,7 +280,7 @@ program) is [`rustc::ty::Ty`][ty]. This is so important that we have a whole cha
 on [`ty::Ty`][ty], but for now, we just want to mention that it exists and is the way
 `rustc` represents types!
 
-Oh, and also the `rustc::ty` module defines the `TyCtxt` struct we mentioned before.
+Also note that the `rustc::ty` module defines the `TyCtxt` struct we mentioned before.
 
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.Ty.html
 
@@ -332,7 +329,6 @@ bootstrapping compiler will support them.
 
 # Unresolved Questions
 
-**TODO: find answers to these**
 
 - Does LLVM ever do optimizations in debug builds?
 - How do I explore phases of the compile process in my own sources (lexer,
