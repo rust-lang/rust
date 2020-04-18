@@ -1,9 +1,11 @@
 mod emit;
 mod line_info;
 
+use std::convert::TryFrom;
+
 use crate::prelude::*;
 
-use rustc_span::{FileName, SourceFileHash, SourceFileHashAlgorithm};
+use rustc_span::FileName;
 
 use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
 use cranelift_codegen::isa::TargetIsa;
@@ -25,8 +27,6 @@ fn target_endian(tcx: TyCtxt<'_>) -> RunTimeEndian {
         Endian::Little => RunTimeEndian::Little,
     }
 }
-
-const MD5_LEN: usize = 16;
 
 pub(crate) struct DebugContext<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -61,19 +61,13 @@ impl<'tcx> DebugContext<'tcx> {
         // Normally this would use option_env!("CFG_VERSION").
         let producer = format!("cg_clif (rustc {})", "unknown version");
         let comp_dir = tcx.sess.working_dir.0.to_string_lossy().into_owned();
-        let (name, md5) = match tcx.sess.local_crate_source_file.clone() {
+        let (name, file_hash) = match tcx.sess.local_crate_source_file.clone() {
             Some(path) => {
                 let name = path.to_string_lossy().into_owned();
                 let hash = tcx.sess
                     .source_map()
                     .get_source_file(&FileName::Real(path))
-                    .map(|f| f.src_hash)
-                    .filter(|h| matches!(h, SourceFileHash { kind: SourceFileHashAlgorithm::Md5, .. }))
-                    .map(|h| {
-                        let mut buf = [0u8; MD5_LEN];
-                        buf.copy_from_slice(h.hash_bytes());
-                        buf
-                    });
+                    .and_then(|f| line_info::FileHash::try_from(f.src_hash).ok());
                 (name, hash)
             },
             None => (tcx.crate_name(LOCAL_CRATE).to_string(), None),
@@ -87,10 +81,10 @@ impl<'tcx> DebugContext<'tcx> {
             Some(FileInfo {
                 timestamp: 0,
                 size: 0,
-                md5: md5.unwrap_or_default(),
+                md5: file_hash.unwrap_or_default().inner(),
             }),
         );
-        line_program.file_has_md5 = md5.is_some();
+        line_program.file_has_md5 = file_hash.is_some();
 
         dwarf.unit.line_program = line_program;
 

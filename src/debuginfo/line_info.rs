@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::convert::TryFrom;
 use std::path::{Component, Path};
 
 use crate::prelude::*;
@@ -35,6 +36,33 @@ fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
     }
 }
 
+pub(crate) const MD5_LEN: usize = 16;
+
+#[derive(Default, Clone, Copy)]
+pub struct FileHash([u8; MD5_LEN]);
+
+impl FileHash {
+    pub fn inner(self) -> [u8; MD5_LEN] {
+        self.0
+    }
+}
+
+pub struct UnsupportedHashType;
+
+impl TryFrom<SourceFileHash> for FileHash {
+    type Error = UnsupportedHashType;
+
+    fn try_from(hash: SourceFileHash) -> Result<Self, Self::Error> {
+        if hash.kind == SourceFileHashAlgorithm::Md5 {
+            let mut buf = [0u8; MD5_LEN];
+            buf.copy_from_slice(hash.hash_bytes());
+            Ok(Self(buf))
+        } else {
+            Err(UnsupportedHashType)
+        }
+    }
+}
+
 fn line_program_add_file(
     line_program: &mut LineProgram,
     line_strings: &mut LineStringTable,
@@ -58,20 +86,13 @@ fn line_program_add_file(
                 line_strings,
             );
 
-            let md5 = Some(file.src_hash)
-                .filter(|h| matches!(h, SourceFileHash { kind: SourceFileHashAlgorithm::Md5, .. }))
-                .map(|h| {
-                    let mut buf = [0u8; super::MD5_LEN];
-                    buf.copy_from_slice(h.hash_bytes());
-                    buf
-                });
+            let file_hash = FileHash::try_from(file.src_hash);
 
-            line_program.file_has_md5 = md5.is_some();
-
+            line_program.file_has_md5 = file_hash.is_ok();
             line_program.add_file(file_name, dir_id, Some(FileInfo {
                 timestamp: 0,
                 size: 0,
-                md5: md5.unwrap_or_default(),
+                md5: file_hash.unwrap_or_default().inner(),
             }))
         }
         // FIXME give more appropriate file names
