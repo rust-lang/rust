@@ -38,6 +38,7 @@ pub enum HighlightTag {
     TypeParam,
     Union,
     Local,
+    UnresolvedReference,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -79,6 +80,7 @@ impl HighlightTag {
             HighlightTag::TypeParam => "type_param",
             HighlightTag::Union => "union",
             HighlightTag::Local => "variable",
+            HighlightTag::UnresolvedReference => "unresolved_reference",
         }
     }
 }
