@@ -762,8 +762,8 @@ fn check_trait_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     wfcheck::check_trait_item(tcx, def_id);
 }
 
-fn check_impl_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
-    wfcheck::check_impl_item(tcx, def_id.expect_local());
+fn check_impl_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    wfcheck::check_impl_item(tcx, def_id);
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
