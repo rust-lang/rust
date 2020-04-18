@@ -810,7 +810,9 @@ rustc_queries! {
         query check_trait_item_well_formed(key: LocalDefId) -> () {
             desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
         }
-        query check_impl_item_well_formed(_: DefId) -> () {}
+        query check_impl_item_well_formed(key: LocalDefId) -> () {
+            desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
     }
 
     Linking {
