@@ -1,5 +1,5 @@
-// should find the bug even without these
-// compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
+// should find the bug even without these, but gets masked by optimizations
+// compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows -Zmir-opt-level=0
 
 #[repr(align(256))]
 #[derive(Debug)]
