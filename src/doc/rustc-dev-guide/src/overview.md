@@ -323,9 +323,11 @@ Bootstrapping also has implications for when features are usable in the
 compiler itself. The build system uses the current beta compiler to build the
 stage-1 bootstrapping compiler. This means that the compiler source code can't
 use some features until they reach beta (because otherwise the beta compiler
-doesn't support them). On the other hand, for compiler intrinsics and internal
-features, we may be able to use them immediately because the stage-1
-bootstrapping compiler will support them.
+doesn't support them). On the other hand, for [compiler intrinsics][intrinsics]
+and internal features, we may be able to use them immediately because the
+stage-1 bootstrapping compiler will support them.
+
+[intrinsics]: ./appendix/glossary.md#intrinsic
 
 # Unresolved Questions
 
