@@ -110,8 +110,8 @@ pub enum TraitQueryMode {
 pub fn predicates_for_generics<'tcx>(
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    generic_bounds: &ty::InstantiatedPredicates<'tcx>,
-) -> PredicateObligations<'tcx> {
+    generic_bounds: ty::InstantiatedPredicates<'tcx>,
+) -> impl Iterator<Item = PredicateObligation<'tcx>> {
     util::predicates_for_generics(cause, 0, param_env, generic_bounds)
 }
 

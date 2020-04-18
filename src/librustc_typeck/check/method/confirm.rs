@@ -114,7 +114,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // a custom error in that case.
         if illegal_sized_bound.is_none() {
             let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig));
-            self.add_obligations(method_ty, all_substs, &method_predicates);
+            self.add_obligations(method_ty, all_substs, method_predicates);
         }
 
         // Create the final `MethodCallee`.
@@ -395,7 +395,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         fty: Ty<'tcx>,
         all_substs: SubstsRef<'tcx>,
-        method_predicates: &ty::InstantiatedPredicates<'tcx>,
+        method_predicates: ty::InstantiatedPredicates<'tcx>,
     ) {
         debug!(
             "add_obligations: fty={:?} all_substs={:?} method_predicates={:?}",
