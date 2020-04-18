@@ -114,7 +114,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: Some(owner), origin, .. }) => {
                     let concrete_types = match origin {
                         OpaqueTyOrigin::FnReturn | OpaqueTyOrigin::AsyncFn => {
-                            &tcx.mir_borrowck(owner).concrete_opaque_types
+                            &tcx.mir_borrowck(owner.expect_local()).concrete_opaque_types
                         }
                         OpaqueTyOrigin::Misc => {
                             // We shouldn't leak borrowck results through impl trait in bindings.

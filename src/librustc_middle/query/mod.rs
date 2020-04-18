@@ -494,12 +494,11 @@ rustc_queries! {
     BorrowChecking {
         /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
-        query mir_borrowck(key: DefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
-            desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
+        query mir_borrowck(key: LocalDefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
+            desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if(tcx, opt_result) {
-                key.is_local()
-                    && (tcx.is_closure(key)
-                        || opt_result.map_or(false, |r| !r.concrete_opaque_types.is_empty()))
+                tcx.is_closure(key.to_def_id())
+                    || opt_result.map_or(false, |r| !r.concrete_opaque_types.is_empty())
             }
         }
     }
