@@ -235,10 +235,19 @@ impl From<PatId> for PatIdOrWild {
     }
 }
 
+impl From<&PatId> for PatIdOrWild {
+    fn from(pat_id: &PatId) -> Self {
+        Self::PatId(*pat_id)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MatchCheckErr {
     NotImplemented,
     MalformedMatchArm,
+    /// Used when type inference cannot resolve the type of
+    /// a pattern or expression.
+    Unknown,
 }
 
 /// The return type of `is_useful` is either an indication of usefulness
@@ -290,10 +299,14 @@ impl PatStack {
         Self::from_slice(&self.0[1..])
     }
 
-    fn replace_head_with<T: Into<PatIdOrWild> + Copy>(&self, pat_ids: &[T]) -> PatStack {
+    fn replace_head_with<I, T>(&self, pats: I) -> PatStack
+    where
+        I: Iterator<Item = T>,
+        T: Into<PatIdOrWild>,
+    {
         let mut patterns: PatStackInner = smallvec![];
-        for pat in pat_ids {
-            patterns.push((*pat).into());
+        for pat in pats {
+            patterns.push(pat.into());
         }
         for pat in &self.0[1..] {
             patterns.push(*pat);
@@ -330,7 +343,7 @@ impl PatStack {
                     return Err(MatchCheckErr::NotImplemented);
                 }
 
-                Some(self.replace_head_with(pat_ids))
+                Some(self.replace_head_with(pat_ids.iter()))
             }
             (Pat::Lit(lit_expr), Constructor::Bool(constructor_val)) => {
                 match cx.body.exprs[lit_expr] {
@@ -382,7 +395,7 @@ impl PatStack {
                                 new_patterns.push((*pat_id).into());
                             }
 
-                            Some(self.replace_head_with(&new_patterns))
+                            Some(self.replace_head_with(new_patterns.into_iter()))
                         } else {
                             return Err(MatchCheckErr::MalformedMatchArm);
                         }
@@ -390,10 +403,38 @@ impl PatStack {
                         // If there is no ellipsis in the tuple pattern, the number
                         // of patterns must equal the constructor arity.
                         if pat_ids.len() == constructor_arity {
-                            Some(self.replace_head_with(pat_ids))
+                            Some(self.replace_head_with(pat_ids.into_iter()))
                         } else {
                             return Err(MatchCheckErr::MalformedMatchArm);
                         }
+                    }
+                }
+            }
+            (Pat::Record { args: ref arg_patterns, .. }, Constructor::Enum(e)) => {
+                let pat_id = self.head().as_id().expect("we know this isn't a wild");
+                if !enum_variant_matches(cx, pat_id, *e) {
+                    None
+                } else {
+                    match cx.db.enum_data(e.parent).variants[e.local_id].variant_data.as_ref() {
+                        VariantData::Record(struct_field_arena) => {
+                            // Here we treat any missing fields in the record as the wild pattern, as
+                            // if the record has ellipsis. We want to do this here even if the
+                            // record does not contain ellipsis, because it allows us to continue
+                            // enforcing exhaustiveness for the rest of the match statement.
+                            //
+                            // Creating the diagnostic for the missing field in the pattern
+                            // should be done in a different diagnostic.
+                            let patterns = struct_field_arena.iter().map(|(_, struct_field)| {
+                                arg_patterns
+                                    .iter()
+                                    .find(|pat| pat.name == struct_field.name)
+                                    .map(|pat| PatIdOrWild::from(pat.pat))
+                                    .unwrap_or(PatIdOrWild::Wild)
+                            });
+
+                            Some(self.replace_head_with(patterns))
+                        }
+                        _ => return Err(MatchCheckErr::Unknown),
                     }
                 }
             }
@@ -655,8 +696,8 @@ impl Constructor {
             Constructor::Enum(e) => {
                 match cx.db.enum_data(e.parent).variants[e.local_id].variant_data.as_ref() {
                     VariantData::Tuple(struct_field_data) => struct_field_data.len(),
+                    VariantData::Record(struct_field_data) => struct_field_data.len(),
                     VariantData::Unit => 0,
-                    _ => return Err(MatchCheckErr::NotImplemented),
                 }
             }
         };
@@ -695,10 +736,10 @@ fn pat_constructor(cx: &MatchCheckCtx, pat: PatIdOrWild) -> MatchCheckResult<Opt
             Expr::Literal(Literal::Bool(val)) => Some(Constructor::Bool(val)),
             _ => return Err(MatchCheckErr::NotImplemented),
         },
-        Pat::TupleStruct { .. } | Pat::Path(_) => {
+        Pat::TupleStruct { .. } | Pat::Path(_) | Pat::Record { .. } => {
             let pat_id = pat.as_id().expect("we already know this pattern is not a wild");
             let variant_id =
-                cx.infer.variant_resolution_for_pat(pat_id).ok_or(MatchCheckErr::NotImplemented)?;
+                cx.infer.variant_resolution_for_pat(pat_id).ok_or(MatchCheckErr::Unknown)?;
             match variant_id {
                 VariantId::EnumVariantId(enum_variant_id) => {
                     Some(Constructor::Enum(enum_variant_id))
@@ -759,20 +800,22 @@ mod tests {
     pub(super) use insta::assert_snapshot;
     pub(super) use ra_db::fixture::WithFixture;
 
-    pub(super) use crate::test_db::TestDB;
+    pub(super) use crate::{diagnostics::MissingMatchArms, test_db::TestDB};
 
     pub(super) fn check_diagnostic_message(content: &str) -> String {
-        TestDB::with_single_file(content).0.diagnostics().0
+        TestDB::with_single_file(content).0.diagnostic::<MissingMatchArms>().0
     }
 
     pub(super) fn check_diagnostic(content: &str) {
-        let diagnostic_count = TestDB::with_single_file(content).0.diagnostics().1;
+        let diagnostic_count =
+            TestDB::with_single_file(content).0.diagnostic::<MissingMatchArms>().1;
 
         assert_eq!(1, diagnostic_count, "no diagnostic reported");
     }
 
     pub(super) fn check_no_diagnostic(content: &str) {
-        let diagnostic_count = TestDB::with_single_file(content).0.diagnostics().1;
+        let diagnostic_count =
+            TestDB::with_single_file(content).0.diagnostic::<MissingMatchArms>().1;
 
         assert_eq!(0, diagnostic_count, "expected no diagnostic, found one");
     }
@@ -1532,6 +1575,236 @@ mod tests {
     }
 
     #[test]
+    fn enum_record_no_arms() {
+        let content = r"
+            enum Either {
+                A { foo: bool },
+                B,
+            }
+            fn test_fn() {
+                let a = Either::A { foo: true };
+                match a {
+                }
+            }
+        ";
+
+        check_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_missing_arms() {
+        let content = r"
+            enum Either {
+                A { foo: bool },
+                B,
+            }
+            fn test_fn() {
+                let a = Either::A { foo: true };
+                match a {
+                    Either::A { foo: true } => (),
+                }
+            }
+        ";
+
+        check_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A { foo: bool },
+                B,
+            }
+            fn test_fn() {
+                let a = Either::A { foo: true };
+                match a {
+                    Either::A { foo: true } => (),
+                    Either::A { foo: false } => (),
+                    Either::B => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_missing_field_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A { foo: bool },
+                B,
+            }
+            fn test_fn() {
+                let a = Either::B;
+                match a {
+                    Either::A { } => (),
+                    Either::B => (),
+                }
+            }
+        ";
+
+        // When `Either::A` is missing a struct member, we don't want
+        // to fire the missing match arm diagnostic. This should fire
+        // some other diagnostic.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_missing_field_missing_match_arm() {
+        let content = r"
+            enum Either {
+                A { foo: bool },
+                B,
+            }
+            fn test_fn() {
+                let a = Either::B;
+                match a {
+                    Either::A { } => (),
+                }
+            }
+        ";
+
+        // Even though `Either::A` is missing fields, we still want to fire
+        // the missing arm diagnostic here, since we know `Either::B` is missing.
+        check_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_no_diagnostic_wild() {
+        let content = r"
+            enum Either {
+                A { foo: bool },
+                B,
+            }
+            fn test_fn() {
+                let a = Either::A { foo: true };
+                match a {
+                    Either::A { foo: _ } => (),
+                    Either::B => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_fields_out_of_order_missing_arm() {
+        let content = r"
+            enum Either {
+                A { foo: bool, bar: () },
+                B,
+            }
+            fn test_fn() {
+                let a = Either::A { foo: true };
+                match a {
+                    Either::A { bar: (), foo: false } => (),
+                    Either::A { foo: true, bar: () } => (),
+                }
+            }
+        ";
+
+        check_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_fields_out_of_order_no_diagnostic() {
+        let content = r"
+            enum Either {
+                A { foo: bool, bar: () },
+                B,
+            }
+            fn test_fn() {
+                let a = Either::A { foo: true };
+                match a {
+                    Either::A { bar: (), foo: false } => (),
+                    Either::A { foo: true, bar: () } => (),
+                    Either::B => (),
+                }
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_ellipsis_missing_arm() {
+        let content = r"
+             enum Either {
+                 A { foo: bool, bar: bool },
+                 B,
+             }
+             fn test_fn() {
+                 match Either::B {
+                     Either::A { foo: true, .. } => (),
+                     Either::B => (),
+                 }
+             }
+         ";
+
+        check_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_ellipsis_no_diagnostic() {
+        let content = r"
+             enum Either {
+                 A { foo: bool, bar: bool },
+                 B,
+             }
+             fn test_fn() {
+                 let a = Either::A { foo: true };
+                 match a {
+                     Either::A { foo: true, .. } => (),
+                     Either::A { foo: false, .. } => (),
+                     Either::B => (),
+                 }
+             }
+         ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_ellipsis_all_fields_missing_arm() {
+        let content = r"
+             enum Either {
+                 A { foo: bool, bar: bool },
+                 B,
+             }
+             fn test_fn() {
+                 let a = Either::B;
+                 match a {
+                     Either::A { .. } => (),
+                 }
+             }
+         ";
+
+        check_diagnostic(content);
+    }
+
+    #[test]
+    fn enum_record_ellipsis_all_fields_no_diagnostic() {
+        let content = r"
+             enum Either {
+                 A { foo: bool, bar: bool },
+                 B,
+             }
+             fn test_fn() {
+                 let a = Either::B;
+                 match a {
+                     Either::A { .. } => (),
+                     Either::B => (),
+                 }
+             }
+         ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
     fn enum_tuple_partial_ellipsis_no_diagnostic() {
         let content = r"
             enum Either {
@@ -1689,25 +1962,6 @@ mod false_negatives {
     }
 
     #[test]
-    fn enum_record() {
-        let content = r"
-            enum Either {
-                A { foo: u32 },
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A { foo: 5 } => (),
-                }
-            }
-        ";
-
-        // This is a false negative.
-        // We don't currently handle enum record types.
-        check_no_diagnostic(content);
-    }
-
-    #[test]
     fn internal_or() {
         let content = r"
             fn test_fn() {
@@ -1794,6 +2048,24 @@ mod false_negatives {
 
         // This is a false negative.
         // We don't currently handle tuple patterns with ellipsis.
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn struct_missing_arm() {
+        let content = r"
+            struct Foo {
+                a: bool,
+            }
+            fn test_fn(f: Foo) {
+                match f {
+                    Foo { a: true } => {},
+                }
+            }
+        ";
+
+        // This is a false negative.
+        // We don't currently handle structs.
         check_no_diagnostic(content);
     }
 }
