@@ -25,8 +25,7 @@ SUBTREE $
       SUBTREE () 4294967295
         IDENT   feature 4294967295
         PUNCH   = [alone] 4294967295
-        SUBTREE $
-          LITERAL "cargo-clippy" 0
+        LITERAL "cargo-clippy" 0
         PUNCH   , [alone] 4294967295
         IDENT   allow 4294967295
         SUBTREE () 4294967295
