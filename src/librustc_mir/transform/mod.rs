@@ -1,8 +1,9 @@
 use crate::{shim, util};
 use required_consts::RequiredConstsVisitor;
 use rustc_ast::ast;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
@@ -54,24 +55,24 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    tcx.mir_keys(def_id.krate).contains(&def_id)
+    tcx.mir_keys(def_id.krate).contains(&def_id.expect_local())
 }
 
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
-fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
+fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &FxHashSet<LocalDefId> {
     assert_eq!(krate, LOCAL_CRATE);
 
-    let mut set = DefIdSet::default();
+    let mut set = FxHashSet::default();
 
     // All body-owners have MIR associated with them.
-    set.extend(tcx.body_owners().map(LocalDefId::to_def_id));
+    set.extend(tcx.body_owners());
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
     struct GatherCtors<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
-        set: &'a mut DefIdSet,
+        set: &'a mut FxHashSet<LocalDefId>,
     }
     impl<'a, 'tcx> Visitor<'tcx> for GatherCtors<'a, 'tcx> {
         fn visit_variant_data(
@@ -83,7 +84,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
             _: Span,
         ) {
             if let hir::VariantData::Tuple(_, hir_id) = *v {
-                self.set.insert(self.tcx.hir().local_def_id(hir_id).to_def_id());
+                self.set.insert(self.tcx.hir().local_def_id(hir_id));
             }
             intravisit::walk_struct_def(self, v)
         }

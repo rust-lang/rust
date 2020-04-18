@@ -5,12 +5,11 @@ use log::{debug, trace};
 use rustc_ast::ast::{self, Ident};
 use rustc_ast::attr;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, Lrc};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::DefIdSet;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathTable;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -644,8 +643,8 @@ impl EncodeContext<'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
-        self.encode_optimized_mir(def_id);
-        self.encode_promoted_mir(def_id);
+        self.encode_optimized_mir(def_id.expect_local());
+        self.encode_promoted_mir(def_id.expect_local());
     }
 
     fn encode_enum_variant_ctor(&mut self, def: &ty::AdtDef, index: VariantIdx) {
@@ -683,8 +682,8 @@ impl EncodeContext<'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
-        self.encode_optimized_mir(def_id);
-        self.encode_promoted_mir(def_id);
+        self.encode_optimized_mir(def_id.expect_local());
+        self.encode_promoted_mir(def_id.expect_local());
     }
 
     fn encode_info_for_mod(
@@ -786,8 +785,8 @@ impl EncodeContext<'tcx> {
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
-        self.encode_optimized_mir(def_id);
-        self.encode_promoted_mir(def_id);
+        self.encode_optimized_mir(def_id.expect_local());
+        self.encode_promoted_mir(def_id.expect_local());
     }
 
     fn encode_generics(&mut self, def_id: DefId) {
@@ -896,8 +895,8 @@ impl EncodeContext<'tcx> {
         self.encode_inferred_outlives(def_id);
 
         // This should be kept in sync with `PrefetchVisitor.visit_trait_item`.
-        self.encode_optimized_mir(def_id);
-        self.encode_promoted_mir(def_id);
+        self.encode_optimized_mir(def_id.expect_local());
+        self.encode_promoted_mir(def_id.expect_local());
     }
 
     fn metadata_output_only(&self) -> bool {
@@ -985,8 +984,8 @@ impl EncodeContext<'tcx> {
             hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(..) => false,
         };
         if mir {
-            self.encode_optimized_mir(def_id);
-            self.encode_promoted_mir(def_id);
+            self.encode_optimized_mir(def_id.expect_local());
+            self.encode_promoted_mir(def_id.expect_local());
         }
     }
 
@@ -1004,17 +1003,17 @@ impl EncodeContext<'tcx> {
         self.lazy(param_names.iter().map(|ident| ident.name))
     }
 
-    fn encode_optimized_mir(&mut self, def_id: DefId) {
+    fn encode_optimized_mir(&mut self, def_id: LocalDefId) {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
-            record!(self.tables.mir[def_id] <- self.tcx.optimized_mir(def_id));
+            record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
         }
     }
 
-    fn encode_promoted_mir(&mut self, def_id: DefId) {
+    fn encode_promoted_mir(&mut self, def_id: LocalDefId) {
         debug!("EncodeContext::encode_promoted_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
-            record!(self.tables.promoted_mir[def_id] <- self.tcx.promoted_mir(def_id));
+            record!(self.tables.promoted_mir[def_id.to_def_id()] <- self.tcx.promoted_mir(def_id));
         }
     }
 
@@ -1282,8 +1281,8 @@ impl EncodeContext<'tcx> {
             _ => false,
         };
         if mir {
-            self.encode_optimized_mir(def_id);
-            self.encode_promoted_mir(def_id);
+            self.encode_optimized_mir(def_id.expect_local());
+            self.encode_promoted_mir(def_id.expect_local());
         }
     }
 
@@ -1316,8 +1315,7 @@ impl EncodeContext<'tcx> {
         let hir_id = self.tcx.hir().as_local_hir_id(def_id);
         let ty = self.tcx.typeck_tables_of(def_id).node_type(hir_id);
 
-        let def_id = def_id.to_def_id();
-        record!(self.tables.kind[def_id] <- match ty.kind {
+        record!(self.tables.kind[def_id.to_def_id()] <- match ty.kind {
             ty::Generator(..) => {
                 let data = self.tcx.generator_kind(def_id).unwrap();
                 EntryKind::Generator(data)
@@ -1327,14 +1325,14 @@ impl EncodeContext<'tcx> {
 
             _ => bug!("closure that is neither generator nor closure"),
         });
-        record!(self.tables.visibility[def_id] <- ty::Visibility::Public);
-        record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
-        record!(self.tables.attributes[def_id] <- &self.tcx.get_attrs(def_id)[..]);
-        self.encode_item_type(def_id);
+        record!(self.tables.visibility[def_id.to_def_id()] <- ty::Visibility::Public);
+        record!(self.tables.span[def_id.to_def_id()] <- self.tcx.def_span(def_id));
+        record!(self.tables.attributes[def_id.to_def_id()] <- &self.tcx.get_attrs(def_id.to_def_id())[..]);
+        self.encode_item_type(def_id.to_def_id());
         if let ty::Closure(def_id, substs) = ty.kind {
             record!(self.tables.fn_sig[def_id] <- substs.as_closure().sig());
         }
-        self.encode_generics(def_id);
+        self.encode_generics(def_id.to_def_id());
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -1344,16 +1342,15 @@ impl EncodeContext<'tcx> {
         let id = self.tcx.hir().as_local_hir_id(def_id);
         let body_id = self.tcx.hir().body_owned_by(id);
         let const_data = self.encode_rendered_const_for_body(body_id);
-        let def_id = def_id.to_def_id();
         let qualifs = self.tcx.mir_const_qualif(def_id);
 
-        record!(self.tables.kind[def_id] <- EntryKind::Const(qualifs, const_data));
-        record!(self.tables.visibility[def_id] <- ty::Visibility::Public);
-        record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
-        self.encode_item_type(def_id);
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
+        record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::Const(qualifs, const_data));
+        record!(self.tables.visibility[def_id.to_def_id()] <- ty::Visibility::Public);
+        record!(self.tables.span[def_id.to_def_id()] <- self.tcx.def_span(def_id));
+        self.encode_item_type(def_id.to_def_id());
+        self.encode_generics(def_id.to_def_id());
+        self.encode_explicit_predicates(def_id.to_def_id());
+        self.encode_inferred_outlives(def_id.to_def_id());
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -1726,12 +1723,11 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 /// Only a subset of the queries are actually prefetched to keep this code smaller.
 struct PrefetchVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    mir_keys: &'tcx DefIdSet,
+    mir_keys: &'tcx FxHashSet<LocalDefId>,
 }
 
 impl<'tcx> PrefetchVisitor<'tcx> {
     fn prefetch_mir(&self, def_id: LocalDefId) {
-        let def_id = def_id.to_def_id();
         if self.mir_keys.contains(&def_id) {
             self.tcx.optimized_mir(def_id);
             self.tcx.promoted_mir(def_id);

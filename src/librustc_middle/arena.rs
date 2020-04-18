@@ -34,7 +34,8 @@ macro_rules! arena_types {
                 rustc_hir::def_id::DefId,
                 rustc_middle::ty::subst::SubstsRef<$tcx>
             )>,
-            [few, decode] mir_keys: rustc_hir::def_id::DefIdSet,
+            [few, decode] collect_and_partition_mono_items: rustc_hir::def_id::DefIdSet,
+            [few, decode] mir_keys: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
             [decode] specialization_graph: rustc_middle::traits::specialization_graph::Graph,
             [] region_scope_tree: rustc_middle::middle::region::ScopeTree,
             [] item_local_set: rustc_hir::ItemLocalSet,
