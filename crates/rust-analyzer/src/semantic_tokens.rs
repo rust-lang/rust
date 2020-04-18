@@ -10,6 +10,8 @@ pub(crate) const ENUM_MEMBER: SemanticTokenType = SemanticTokenType::new("enumMe
 pub(crate) const LIFETIME: SemanticTokenType = SemanticTokenType::new("lifetime");
 pub(crate) const TYPE_ALIAS: SemanticTokenType = SemanticTokenType::new("typeAlias");
 pub(crate) const UNION: SemanticTokenType = SemanticTokenType::new("union");
+pub(crate) const UNRESOLVED_REFERENCE: SemanticTokenType =
+    SemanticTokenType::new("unresolvedReference");
 
 pub(crate) const CONSTANT: SemanticTokenModifier = SemanticTokenModifier::new("constant");
 pub(crate) const CONTROL_FLOW: SemanticTokenModifier = SemanticTokenModifier::new("controlFlow");
@@ -43,6 +45,7 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     LIFETIME,
     TYPE_ALIAS,
     UNION,
+    UNRESOLVED_REFERENCE,
 ];
 
 pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
