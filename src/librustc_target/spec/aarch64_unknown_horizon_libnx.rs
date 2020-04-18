@@ -9,7 +9,7 @@ pub fn target() -> Result<Target, String> {
         disable_redzone: true,
         linker_is_gnu: true,
         max_atomic_width: Some(128),
-        panic_strategy: PanicStrategy::Abort,
+        panic_strategy: PanicStrategy::Unwind,
         abi_blacklist: super::arm_base::abi_blacklist(),
         target_family: Some("unix".to_string()),
         position_independent_executables: true,

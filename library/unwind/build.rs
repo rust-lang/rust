@@ -125,7 +125,7 @@ mod llvm_libunwind {
         if target_vendor == "libnx" {
             cfg.define("_LIBUNWIND_IS_BAREMETAL", None);
             cfg.define("_LIBUNWIND_SUPPORT_DWARF_UNWIND", None);
-            cfg.define("_LIBUNWIND_SUPPORT_DWARF_INDEX", Some("0"));
+            cfg.define("_LIBUNWIND_SUPPORT_DWARF_INDEX", None);
         }
 
         let mut unwind_sources = vec![
