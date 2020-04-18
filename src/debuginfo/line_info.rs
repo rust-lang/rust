@@ -1,5 +1,4 @@
 use std::ffi::OsStr;
-use std::time::SystemTime;
 use std::path::{Component, Path};
 
 use crate::prelude::*;
@@ -67,14 +66,10 @@ fn line_program_add_file(
                     buf
                 });
 
-            line_program.file_has_timestamp = true;
             line_program.file_has_md5 = md5.is_some();
 
             line_program.add_file(file_name, dir_id, Some(FileInfo {
-                timestamp: SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .map(|t| t.as_secs())
-                    .unwrap_or(0),
+                timestamp: 0,
                 size: 0,
                 md5: md5.unwrap_or_default(),
             }))

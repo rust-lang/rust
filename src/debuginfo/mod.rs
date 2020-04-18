@@ -1,8 +1,6 @@
 mod emit;
 mod line_info;
 
-use std::time::SystemTime;
-
 use crate::prelude::*;
 
 use rustc_span::{FileName, SourceFileHash, SourceFileHashAlgorithm};
@@ -83,15 +81,11 @@ impl<'tcx> DebugContext<'tcx> {
             LineString::new(comp_dir.as_bytes(), encoding, &mut dwarf.line_strings),
             LineString::new(name.as_bytes(), encoding, &mut dwarf.line_strings),
             Some(FileInfo {
-                timestamp: SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .map(|t| t.as_secs())
-                    .unwrap_or(0),
+                timestamp: 0,
                 size: 0,
                 md5: md5.unwrap_or_default(),
             }),
         );
-        line_program.file_has_timestamp = true;
         line_program.file_has_md5 = md5.is_some();
 
         dwarf.unit.line_program = line_program;
