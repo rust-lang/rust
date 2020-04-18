@@ -18,9 +18,6 @@ build = "build.rs"
 edition = "2018"
 publish = false
 
-# [badges]
-# FIXME(flip1995): Add GHA badge once rust-lang/crates.io#1838 is merged
-
 [[bin]]
 name = "cargo-clippy"
 test = false
