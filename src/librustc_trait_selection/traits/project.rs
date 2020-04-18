@@ -900,7 +900,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     // If so, extract what we know from the trait and try to come up with a good answer.
     let trait_predicates = tcx.predicates_of(def_id);
     let bounds = trait_predicates.instantiate(tcx, substs);
-    let bounds = elaborate_predicates(tcx, bounds.predicates).map(|o| o.predicate);
+    let bounds = elaborate_predicates(tcx, bounds.predicates.into_iter()).map(|o| o.predicate);
     assemble_candidates_from_predicates(
         selcx,
         obligation,
@@ -911,16 +911,14 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     )
 }
 
-fn assemble_candidates_from_predicates<'cx, 'tcx, I>(
+fn assemble_candidates_from_predicates<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
     ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionTyCandidate<'tcx>,
-    env_predicates: I,
-) where
-    I: IntoIterator<Item = ty::Predicate<'tcx>>,
-{
+    env_predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
+) {
     debug!("assemble_candidates_from_predicates(obligation={:?})", obligation);
     let infcx = selcx.infcx();
     for predicate in env_predicates {
@@ -1153,10 +1151,8 @@ fn confirm_object_candidate<'cx, 'tcx>(
             object_ty
         ),
     };
-    let env_predicates = data
-        .projection_bounds()
-        .map(|p| p.with_self_ty(selcx.tcx(), object_ty).to_predicate())
-        .collect();
+    let env_predicates =
+        data.projection_bounds().map(|p| p.with_self_ty(selcx.tcx(), object_ty).to_predicate());
     let env_predicate = {
         let env_predicates = elaborate_predicates(selcx.tcx(), env_predicates);
 

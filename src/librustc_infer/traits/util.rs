@@ -97,24 +97,22 @@ pub fn elaborate_trait_ref<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Elaborator<'tcx> {
-    elaborate_predicates(tcx, vec![trait_ref.without_const().to_predicate()])
+    elaborate_predicates(tcx, std::iter::once(trait_ref.without_const().to_predicate()))
 }
 
 pub fn elaborate_trait_refs<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> Elaborator<'tcx> {
-    let predicates = trait_refs.map(|trait_ref| trait_ref.without_const().to_predicate()).collect();
+    let predicates = trait_refs.map(|trait_ref| trait_ref.without_const().to_predicate());
     elaborate_predicates(tcx, predicates)
 }
 
 pub fn elaborate_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mut predicates: Vec<ty::Predicate<'tcx>>,
+    predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
 ) -> Elaborator<'tcx> {
-    let mut visited = PredicateSet::new(tcx);
-    predicates.retain(|pred| visited.insert(pred));
-    let obligations: Vec<_> =
+    let obligations =
         predicates.into_iter().map(|predicate| predicate_obligation(predicate, None)).collect();
     elaborate_obligations(tcx, obligations)
 }

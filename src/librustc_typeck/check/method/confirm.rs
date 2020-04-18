@@ -572,7 +572,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             None => return None,
         };
 
-        traits::elaborate_predicates(self.tcx, predicates.predicates.clone())
+        traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
             .filter_map(|obligation| match obligation.predicate {
                 ty::Predicate::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
                     let span = predicates
