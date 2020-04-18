@@ -35,7 +35,7 @@ fn check_todo(path: &Path, text: &str) {
     }
     if text.contains("TODO") || text.contains("TOOD") || text.contains("todo!") {
         panic!(
-            "\nTODO markers should not be committed to the master branch,\n\
+            "\nTODO markers or todo! macros should not be committed to the master branch,\n\
              use FIXME instead\n\
              {}\n",
             path.display(),
@@ -47,9 +47,9 @@ fn check_trailing_ws(path: &Path, text: &str) {
     if is_exclude_dir(path, &["test_data"]) {
         return;
     }
-    for line in text.lines() {
+    for (line_number, line) in text.lines().enumerate() {
         if line.chars().last().map(char::is_whitespace) == Some(true) {
-            panic!("Trailing whitespace in {}", path.display())
+            panic!("Trailing whitespace in {} at line {}", path.display(), line_number)
         }
     }
 }

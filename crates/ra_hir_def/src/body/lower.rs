@@ -320,7 +320,8 @@ impl ExprCollector<'_> {
 
                 let res = self.alloc_expr(record_lit, syntax_ptr);
                 for (i, ptr) in field_ptrs.into_iter().enumerate() {
-                    self.source_map.field_map.insert((res, i), ptr);
+                    let src = self.expander.to_source(ptr);
+                    self.source_map.field_map.insert((res, i), src);
                 }
                 res
             }
@@ -650,6 +651,7 @@ impl ExprCollector<'_> {
             ast::Pat::SlicePat(p) => {
                 let SlicePatComponents { prefix, slice, suffix } = p.components();
 
+                // FIXME properly handle `DotDotPat`
                 Pat::Slice {
                     prefix: prefix.into_iter().map(|p| self.collect_pat(p)).collect(),
                     slice: slice.map(|p| self.collect_pat(p)),
@@ -666,9 +668,15 @@ impl ExprCollector<'_> {
                     Pat::Missing
                 }
             }
-            ast::Pat::DotDotPat(_) => unreachable!(
-                "`DotDotPat` requires special handling and should not be mapped to a Pat."
-            ),
+            ast::Pat::DotDotPat(_) => {
+                // `DotDotPat` requires special handling and should not be mapped
+                // to a Pat. Here we are using `Pat::Missing` as a fallback for
+                // when `DotDotPat` is mapped to `Pat`, which can easily happen
+                // when the source code being analyzed has a malformed pattern
+                // which includes `..` in a place where it isn't valid.
+
+                Pat::Missing
+            }
             // FIXME: implement
             ast::Pat::BoxPat(_) | ast::Pat::RangePat(_) | ast::Pat::MacroPat(_) => Pat::Missing,
         };

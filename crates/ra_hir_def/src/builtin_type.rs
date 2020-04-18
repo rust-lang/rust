@@ -5,7 +5,7 @@
 
 use std::fmt;
 
-use hir_expand::name::{name, Name};
+use hir_expand::name::{name, AsName, Name};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum Signedness {
@@ -75,33 +75,39 @@ impl BuiltinType {
     ];
 }
 
-impl fmt::Display for BuiltinType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let type_name = match self {
-            BuiltinType::Char => "char",
-            BuiltinType::Bool => "bool",
-            BuiltinType::Str => "str",
+impl AsName for BuiltinType {
+    fn as_name(&self) -> Name {
+        match self {
+            BuiltinType::Char => name![char],
+            BuiltinType::Bool => name![bool],
+            BuiltinType::Str => name![str],
             BuiltinType::Int(BuiltinInt { signedness, bitness }) => match (signedness, bitness) {
-                (Signedness::Signed, IntBitness::Xsize) => "isize",
-                (Signedness::Signed, IntBitness::X8) => "i8",
-                (Signedness::Signed, IntBitness::X16) => "i16",
-                (Signedness::Signed, IntBitness::X32) => "i32",
-                (Signedness::Signed, IntBitness::X64) => "i64",
-                (Signedness::Signed, IntBitness::X128) => "i128",
+                (Signedness::Signed, IntBitness::Xsize) => name![isize],
+                (Signedness::Signed, IntBitness::X8) => name![i8],
+                (Signedness::Signed, IntBitness::X16) => name![i16],
+                (Signedness::Signed, IntBitness::X32) => name![i32],
+                (Signedness::Signed, IntBitness::X64) => name![i64],
+                (Signedness::Signed, IntBitness::X128) => name![i128],
 
-                (Signedness::Unsigned, IntBitness::Xsize) => "usize",
-                (Signedness::Unsigned, IntBitness::X8) => "u8",
-                (Signedness::Unsigned, IntBitness::X16) => "u16",
-                (Signedness::Unsigned, IntBitness::X32) => "u32",
-                (Signedness::Unsigned, IntBitness::X64) => "u64",
-                (Signedness::Unsigned, IntBitness::X128) => "u128",
+                (Signedness::Unsigned, IntBitness::Xsize) => name![usize],
+                (Signedness::Unsigned, IntBitness::X8) => name![u8],
+                (Signedness::Unsigned, IntBitness::X16) => name![u16],
+                (Signedness::Unsigned, IntBitness::X32) => name![u32],
+                (Signedness::Unsigned, IntBitness::X64) => name![u64],
+                (Signedness::Unsigned, IntBitness::X128) => name![u128],
             },
             BuiltinType::Float(BuiltinFloat { bitness }) => match bitness {
-                FloatBitness::X32 => "f32",
-                FloatBitness::X64 => "f64",
+                FloatBitness::X32 => name![f32],
+                FloatBitness::X64 => name![f64],
             },
-        };
-        f.write_str(type_name)
+        }
+    }
+}
+
+impl fmt::Display for BuiltinType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let type_name = self.as_name();
+        type_name.fmt(f)
     }
 }
 

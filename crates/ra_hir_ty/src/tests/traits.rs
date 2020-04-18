@@ -1211,6 +1211,42 @@ fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
 }
 
 #[test]
+fn dyn_trait_in_impl() {
+    assert_snapshot!(
+        infer(r#"
+trait Trait<T, U> {
+    fn foo(&self) -> (T, U);
+}
+struct S<T, U> {}
+impl<T, U> S<T, U> {
+    fn bar(&self) -> &dyn Trait<T, U> { loop {} }
+}
+trait Trait2<T, U> {
+    fn baz(&self) -> (T, U);
+}
+impl<T, U> Trait2<T, U> for dyn Trait<T, U> { }
+
+fn test(s: S<u32, i32>) {
+    s.bar().baz();
+}
+"#),
+        @r###"
+    [33; 37) 'self': &Self
+    [103; 107) 'self': &S<T, U>
+    [129; 140) '{ loop {} }': &dyn Trait<T, U>
+    [131; 138) 'loop {}': !
+    [136; 138) '{}': ()
+    [176; 180) 'self': &Self
+    [252; 253) 's': S<u32, i32>
+    [268; 290) '{     ...z(); }': ()
+    [274; 275) 's': S<u32, i32>
+    [274; 281) 's.bar()': &dyn Trait<u32, i32>
+    [274; 287) 's.bar().baz()': (u32, i32)
+    "###
+    );
+}
+
+#[test]
 fn dyn_trait_bare() {
     assert_snapshot!(
         infer(r#"
@@ -2203,4 +2239,202 @@ fn test(x: Box<dyn Trait>) {
 "#,
     );
     assert_eq!(t, "()");
+}
+
+#[test]
+fn string_to_owned() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct String {}
+pub trait ToOwned {
+    type Owned;
+    fn to_owned(&self) -> Self::Owned;
+}
+impl ToOwned for str {
+    type Owned = String;
+}
+fn test() {
+    "foo".to_owned()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "String");
+}
+
+#[test]
+fn iterator_chain() {
+    assert_snapshot!(
+        infer(r#"
+//- /main.rs
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
+#[lang = "fn_mut"]
+trait FnMut<Args>: FnOnce<Args> { }
+
+enum Option<T> { Some(T), None }
+use Option::*;
+
+pub trait Iterator {
+    type Item;
+
+    fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
+    where
+        F: FnMut(Self::Item) -> Option<B>,
+    { loop {} }
+
+    fn for_each<F>(self, f: F)
+    where
+        F: FnMut(Self::Item),
+    { loop {} }
+}
+
+pub trait IntoIterator {
+    type Item;
+    type IntoIter: Iterator<Item = Self::Item>;
+    fn into_iter(self) -> Self::IntoIter;
+}
+
+pub struct FilterMap<I, F> { }
+impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
+where
+    F: FnMut(I::Item) -> Option<B>,
+{
+    type Item = B;
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator> IntoIterator for I {
+    type Item = I::Item;
+    type IntoIter = I;
+
+    fn into_iter(self) -> I {
+        self
+    }
+}
+
+struct Vec<T> {}
+impl<T> Vec<T> {
+    fn new() -> Self { loop {} }
+}
+
+impl<T> IntoIterator for Vec<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+}
+
+pub struct IntoIter<T> { }
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+}
+
+fn main() {
+    Vec::<i32>::new().into_iter()
+      .filter_map(|x| if x > 0 { Some(x as u32) } else { None })
+      .for_each(|y| { y; });
+}
+"#),
+        @r###"
+    [240; 244) 'self': Self
+    [246; 247) 'f': F
+    [331; 342) '{ loop {} }': FilterMap<Self, F>
+    [333; 340) 'loop {}': !
+    [338; 340) '{}': ()
+    [363; 367) 'self': Self
+    [369; 370) 'f': F
+    [419; 430) '{ loop {} }': ()
+    [421; 428) 'loop {}': !
+    [426; 428) '{}': ()
+    [539; 543) 'self': Self
+    [868; 872) 'self': I
+    [879; 899) '{     ...     }': I
+    [889; 893) 'self': I
+    [958; 969) '{ loop {} }': Vec<T>
+    [960; 967) 'loop {}': !
+    [965; 967) '{}': ()
+    [1156; 1287) '{     ... }); }': ()
+    [1162; 1177) 'Vec::<i32>::new': fn new<i32>() -> Vec<i32>
+    [1162; 1179) 'Vec::<...:new()': Vec<i32>
+    [1162; 1191) 'Vec::<...iter()': IntoIter<i32>
+    [1162; 1256) 'Vec::<...one })': FilterMap<IntoIter<i32>, |i32| -> Option<u32>>
+    [1162; 1284) 'Vec::<... y; })': ()
+    [1210; 1255) '|x| if...None }': |i32| -> Option<u32>
+    [1211; 1212) 'x': i32
+    [1214; 1255) 'if x >...None }': Option<u32>
+    [1217; 1218) 'x': i32
+    [1217; 1222) 'x > 0': bool
+    [1221; 1222) '0': i32
+    [1223; 1241) '{ Some...u32) }': Option<u32>
+    [1225; 1229) 'Some': Some<u32>(u32) -> Option<u32>
+    [1225; 1239) 'Some(x as u32)': Option<u32>
+    [1230; 1231) 'x': i32
+    [1230; 1238) 'x as u32': u32
+    [1247; 1255) '{ None }': Option<u32>
+    [1249; 1253) 'None': Option<u32>
+    [1273; 1283) '|y| { y; }': |u32| -> ()
+    [1274; 1275) 'y': u32
+    [1277; 1283) '{ y; }': ()
+    [1279; 1280) 'y': u32
+    "###
+    );
+}
+
+#[test]
+fn nested_assoc() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct Bar;
+struct Foo;
+
+trait A {
+    type OutputA;
+}
+
+impl A for Bar {
+    type OutputA = Foo;
+}
+
+trait B {
+    type Output;
+    fn foo() -> Self::Output;
+}
+
+impl<T:A> B for T {
+    type Output = T::OutputA;
+    fn foo() -> Self::Output { loop {} }
+}
+
+fn main() {
+    Bar::foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "Foo");
+}
+
+#[test]
+fn trait_object_no_coercion() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Foo {}
+
+fn foo(x: &dyn Foo) {}
+
+fn test(x: &dyn Foo) {
+    foo(x);
+}
+"#, true),
+        @r###"
+    [22; 23) 'x': &dyn Foo
+    [35; 37) '{}': ()
+    [47; 48) 'x': &dyn Foo
+    [60; 75) '{     foo(x); }': ()
+    [66; 69) 'foo': fn foo(&dyn Foo)
+    [66; 72) 'foo(x)': ()
+    [70; 71) 'x': &dyn Foo
+    "###
+    );
 }

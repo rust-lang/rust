@@ -51,7 +51,7 @@ impl<'a> InferenceContext<'a> {
             // Trivial cases, this should go after `never` check to
             // avoid infer result type to be never
             _ => {
-                if self.table.unify_inner_trivial(&from_ty, &to_ty) {
+                if self.table.unify_inner_trivial(&from_ty, &to_ty, 0) {
                     return true;
                 }
             }
@@ -175,7 +175,7 @@ impl<'a> InferenceContext<'a> {
                     return self.table.unify_substs(st1, st2, 0);
                 }
                 _ => {
-                    if self.table.unify_inner_trivial(&derefed_ty, &to_ty) {
+                    if self.table.unify_inner_trivial(&derefed_ty, &to_ty, 0) {
                         return true;
                     }
                 }

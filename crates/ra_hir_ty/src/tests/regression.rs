@@ -484,3 +484,52 @@ fn main() {
 
     assert_eq!("()", super::type_at_pos(&db, pos));
 }
+
+#[test]
+fn issue_3999_slice() {
+    assert_snapshot!(
+        infer(r#"
+fn foo(params: &[usize]) {
+    match params {
+        [ps @ .., _] => {}
+    }
+}
+"#),
+        @r###"
+    [8; 14) 'params': &[usize]
+    [26; 81) '{     ...   } }': ()
+    [32; 79) 'match ...     }': ()
+    [38; 44) 'params': &[usize]
+    [55; 67) '[ps @ .., _]': [usize]
+    [65; 66) '_': usize
+    [71; 73) '{}': ()
+    "###
+    );
+}
+
+#[test]
+fn issue_3999_struct() {
+    // rust-analyzer should not panic on seeing this malformed
+    // record pattern.
+    assert_snapshot!(
+        infer(r#"
+struct Bar {
+    a: bool,
+}
+fn foo(b: Bar) {
+    match b {
+        Bar { a: .. } => {},
+    }
+}
+"#),
+        @r###"
+    [36; 37) 'b': Bar
+    [44; 96) '{     ...   } }': ()
+    [50; 94) 'match ...     }': ()
+    [56; 57) 'b': Bar
+    [68; 81) 'Bar { a: .. }': Bar
+    [77; 79) '..': bool
+    [85; 87) '{}': ()
+    "###
+    );
+}

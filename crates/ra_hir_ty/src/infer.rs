@@ -682,10 +682,10 @@ mod diagnostics {
         ) {
             match self {
                 InferenceDiagnostic::NoSuchField { expr, field } => {
-                    let file = owner.lookup(db.upcast()).source(db.upcast()).file_id;
+                    let source = owner.lookup(db.upcast()).source(db.upcast());
                     let (_, source_map) = db.body_with_source_map(owner.into());
                     let field = source_map.field_syntax(*expr, *field);
-                    sink.push(NoSuchField { file, field })
+                    sink.push(NoSuchField { file: source.file_id, field: field.value })
                 }
             }
         }

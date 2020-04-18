@@ -237,7 +237,8 @@ fn should_show_param_hint(
 ) -> bool {
     if param_name.is_empty()
         || is_argument_similar_to_param(argument, param_name)
-        || Some(param_name) == fn_signature.name.as_ref().map(String::as_str)
+        || Some(param_name.trim_start_matches('_'))
+            == fn_signature.name.as_ref().map(|s| s.trim_start_matches('_'))
     {
         return false;
     }
@@ -255,6 +256,8 @@ fn should_show_param_hint(
 
 fn is_argument_similar_to_param(argument: &ast::Expr, param_name: &str) -> bool {
     let argument_string = remove_ref(argument.clone()).syntax().to_string();
+    let param_name = param_name.trim_start_matches('_');
+    let argument_string = argument_string.trim_start_matches('_');
     argument_string.starts_with(&param_name) || argument_string.ends_with(&param_name)
 }
 
@@ -1094,8 +1097,10 @@ struct Param {}
 
 fn different_order(param: &Param) {}
 fn different_order_mut(param: &mut Param) {}
+fn has_underscore(_param: bool) {}
 
 fn twiddle(twiddle: bool) {}
+fn doo(_doo: bool) {}
 
 fn main() {
     let container: TestVarContainer = TestVarContainer { test_var: 42 };
@@ -1112,10 +1117,14 @@ fn main() {
     test_processed.frob(false);
 
     twiddle(true);
+    doo(true);
 
     let param_begin: Param = Param {};
     different_order(&param_begin);
     different_order(&mut param_begin);
+
+    let param: bool = true;
+    has_underscore(param);
 
     let a: f64 = 7.0;
     let b: f64 = 4.0;

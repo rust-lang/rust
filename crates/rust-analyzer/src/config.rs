@@ -134,9 +134,7 @@ impl Config {
 
         match get::<bool>(value, "/procMacro/enabled") {
             Some(true) => {
-                if let Ok(mut path) = std::env::current_exe() {
-                    path.pop();
-                    path.push("rust-analyzer");
+                if let Ok(path) = std::env::current_exe() {
                     self.proc_macro_srv = Some((path.to_string_lossy().to_string(), vec!["proc-macro".to_string()]));
                 }
             }

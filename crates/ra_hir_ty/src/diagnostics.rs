@@ -21,7 +21,7 @@ impl Diagnostic for NoSuchField {
     }
 
     fn source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.field.clone().into() }
+        InFile::new(self.file, self.field.clone().into())
     }
 
     fn as_any(&self) -> &(dyn Any + Send + 'static) {

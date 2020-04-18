@@ -1,4 +1,8 @@
-//! FIXME: write short doc here
+//! Collects diagnostics & fixits  for a single file.
+//!
+//! The tricky bit here is that diagnostics are produced by hir in terms of
+//! macro-expanded files, but we need to present them to the users in terms of
+//! original files. So we need to map the ranges.
 
 use std::cell::RefCell;
 
@@ -46,7 +50,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     let mut sink = DiagnosticSink::new(|d| {
         res.borrow_mut().push(Diagnostic {
             message: d.message(),
-            range: d.highlight_range(),
+            range: sema.diagnostics_range(d).range,
             severity: Severity::Error,
             fix: None,
         })
@@ -62,7 +66,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let create_file = FileSystemEdit::CreateFile { source_root, path };
         let fix = SourceChange::file_system_edit("create module", create_file);
         res.borrow_mut().push(Diagnostic {
-            range: d.highlight_range(),
+            range: sema.diagnostics_range(d).range,
             message: d.message(),
             severity: Severity::Error,
             fix: Some(fix),
@@ -95,7 +99,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         };
 
         res.borrow_mut().push(Diagnostic {
-            range: d.highlight_range(),
+            range: sema.diagnostics_range(d).range,
             message: d.message(),
             severity: Severity::Error,
             fix,
@@ -103,7 +107,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     })
     .on::<hir::diagnostics::MissingMatchArms, _>(|d| {
         res.borrow_mut().push(Diagnostic {
-            range: d.highlight_range(),
+            range: sema.diagnostics_range(d).range,
             message: d.message(),
             severity: Severity::Error,
             fix: None,
@@ -115,7 +119,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let edit = TextEdit::replace(node.syntax().text_range(), replacement);
         let fix = SourceChange::source_file_edit_from("wrap with ok", file_id, edit);
         res.borrow_mut().push(Diagnostic {
-            range: d.highlight_range(),
+            range: sema.diagnostics_range(d).range,
             message: d.message(),
             severity: Severity::Error,
             fix: Some(fix),
@@ -612,6 +616,62 @@ mod tests {
                                 path: "foo.rs",
                             },
                         ],
+                        cursor_position: None,
+                    },
+                ),
+                severity: Error,
+            },
+        ]
+        "###);
+    }
+
+    #[test]
+    fn range_mapping_out_of_macros() {
+        let (analysis, file_id) = single_file(
+            r"
+            fn some() {}
+            fn items() {}
+            fn here() {}
+
+            macro_rules! id {
+                ($($tt:tt)*) => { $($tt)*};
+            }
+
+            fn main() {
+                let _x = id![Foo { a: 42 }];
+            }
+
+            pub struct Foo {
+                pub a: i32,
+                pub b: i32,
+            }
+        ",
+        );
+        let diagnostics = analysis.diagnostics(file_id).unwrap();
+        assert_debug_snapshot!(diagnostics, @r###"
+        [
+            Diagnostic {
+                message: "Missing structure fields:\n- b",
+                range: [224; 233),
+                fix: Some(
+                    SourceChange {
+                        label: "fill struct fields",
+                        source_file_edits: [
+                            SourceFileEdit {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                edit: TextEdit {
+                                    atoms: [
+                                        AtomTextEdit {
+                                            delete: [3; 9),
+                                            insert: "{a:42, b: ()}",
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                        file_system_edits: [],
                         cursor_position: None,
                     },
                 ),
