@@ -50,6 +50,26 @@ impl<'a> SubtreeTokenSource<'a> {
     }
 
     fn get(&self, pos: usize) -> Ref<Option<TtToken>> {
+        fn is_lifetime(c: Cursor) -> Option<(Cursor, SmolStr)> {
+            let tkn = c.token_tree();
+
+            if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) = tkn {
+                if punct.char == '\'' {
+                    let next = c.bump();
+                    if let Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) = next.token_tree() {
+                        let res_cursor = next.bump();
+                        let text = SmolStr::new("'".to_string() + &ident.to_string());
+
+                        return Some((res_cursor, text));
+                    } else {
+                        panic!("Next token must be ident : {:#?}", next.token_tree());
+                    }
+                }
+            }
+
+            None
+        }
+
         if pos < self.cached.borrow().len() {
             return Ref::map(self.cached.borrow(), |c| &c[pos]);
         }
@@ -60,6 +80,12 @@ impl<'a> SubtreeTokenSource<'a> {
                 let cursor = self.cached_cursor.get();
                 if cursor.eof() {
                     cached.push(None);
+                    continue;
+                }
+
+                if let Some((curr, text)) = is_lifetime(cursor) {
+                    cached.push(Some(TtToken { kind: LIFETIME, is_joint_to_next: false, text }));
+                    self.cached_cursor.set(curr);
                     continue;
                 }
 
@@ -152,7 +178,11 @@ fn convert_ident(ident: &tt::Ident) -> TtToken {
 }
 
 fn convert_punct(p: tt::Punct) -> TtToken {
-    let kind = SyntaxKind::from_char(p.char).unwrap();
+    let kind = match SyntaxKind::from_char(p.char) {
+        None => panic!("{:#?} is not a valid punct", p),
+        Some(kind) => kind,
+    };
+
     let text = {
         let mut buf = [0u8; 4];
         let s: &str = p.char.encode_utf8(&mut buf);

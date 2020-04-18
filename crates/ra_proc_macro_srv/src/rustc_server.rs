@@ -76,7 +76,16 @@ impl Extend<TokenTree> for TokenStream {
 impl Extend<TokenStream> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
         for item in streams {
-            self.subtree.token_trees.extend(&mut item.into_iter())
+            for tkn in item {
+                match tkn {
+                    tt::TokenTree::Subtree(subtree) if subtree.delimiter.is_none() => {
+                        self.subtree.token_trees.extend(subtree.token_trees);
+                    }
+                    _ => {
+                        self.subtree.token_trees.push(tkn);
+                    }
+                }
+            }
         }
     }
 }

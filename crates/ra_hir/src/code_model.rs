@@ -759,6 +759,17 @@ impl MacroDef {
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         self.source(db).value.name().map(|it| it.as_name())
     }
+
+    /// Indicate it is a proc-macro
+    pub fn is_proc_macro(&self) -> bool {
+        match self.id.kind {
+            hir_expand::MacroDefKind::Declarative => false,
+            hir_expand::MacroDefKind::BuiltIn(_) => false,
+            hir_expand::MacroDefKind::BuiltInDerive(_) => false,
+            hir_expand::MacroDefKind::BuiltInEager(_) => false,
+            hir_expand::MacroDefKind::CustomDerive(_) => true,
+        }
+    }
 }
 
 /// Invariant: `inner.as_assoc_item(db).is_some()`

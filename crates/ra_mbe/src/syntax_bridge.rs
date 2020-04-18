@@ -271,7 +271,7 @@ struct RawConvertor<'a> {
     inner: std::slice::Iter<'a, RawToken>,
 }
 
-trait SrcToken {
+trait SrcToken: std::fmt::Debug {
     fn kind(&self) -> SyntaxKind;
 
     fn to_char(&self) -> Option<char>;
@@ -361,8 +361,12 @@ trait TokenConvertor {
                     Some(next) if next.kind().is_punct() => tt::Spacing::Joint,
                     _ => tt::Spacing::Alone,
                 };
-                let char = token.to_char().expect("Token from lexer must be single char");
-
+                let char = match token.to_char() {
+                    Some(c) => c,
+                    None => {
+                        panic!("Token from lexer must be single char: token = {:#?}", token);
+                    }
+                };
                 tt::Leaf::from(tt::Punct { char, spacing, id: self.id_alloc().alloc(range) }).into()
             }
         } else {
@@ -373,9 +377,28 @@ trait TokenConvertor {
             }
             let leaf: tt::Leaf = match k {
                 T![true] | T![false] => make_leaf!(Literal),
-                IDENT | LIFETIME => make_leaf!(Ident),
+                IDENT => make_leaf!(Ident),
                 k if k.is_keyword() => make_leaf!(Ident),
                 k if k.is_literal() => make_leaf!(Literal),
+                LIFETIME => {
+                    let char_unit = TextUnit::from_usize(1);
+                    let r = TextRange::offset_len(range.start(), char_unit);
+                    let apostrophe = tt::Leaf::from(tt::Punct {
+                        char: '\'',
+                        spacing: tt::Spacing::Joint,
+                        id: self.id_alloc().alloc(r),
+                    });
+                    result.push(apostrophe.into());
+
+                    let r =
+                        TextRange::offset_len(range.start() + char_unit, range.len() - char_unit);
+                    let ident = tt::Leaf::from(tt::Ident {
+                        text: SmolStr::new(&token.to_text()[1..]),
+                        id: self.id_alloc().alloc(r),
+                    });
+                    result.push(ident.into());
+                    return;
+                }
                 _ => return,
             };
 
@@ -455,6 +478,7 @@ impl Convertor {
     }
 }
 
+#[derive(Debug)]
 enum SynToken {
     Ordiniary(SyntaxToken),
     Punch(SyntaxToken, TextUnit),
@@ -592,10 +616,13 @@ fn delim_to_str(d: Option<tt::DelimiterKind>, closing: bool) -> SmolStr {
 }
 
 impl<'a> TreeSink for TtTreeSink<'a> {
-    fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
+    fn token(&mut self, kind: SyntaxKind, mut n_tokens: u8) {
         if kind == L_DOLLAR || kind == R_DOLLAR {
             self.cursor = self.cursor.bump_subtree();
             return;
+        }
+        if kind == LIFETIME {
+            n_tokens = 2;
         }
 
         let mut last = self.cursor;
