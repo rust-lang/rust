@@ -111,4 +111,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         Ok(0)
     }
+
+    fn sched_yield(&mut self) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.yield_active_thread()?;
+
+        Ok(0)
+    }
 }

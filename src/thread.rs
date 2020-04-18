@@ -143,6 +143,8 @@ pub struct ThreadManager<'mir, 'tcx> {
     /// A mapping from a thread-local static to an allocation id of a thread
     /// specific allocation.
     thread_local_alloc_ids: RefCell<FxHashMap<(DefId, ThreadId), AllocId>>,
+    /// A flag that indicates that we should change the active thread.
+    yield_active_thread: bool,
 }
 
 impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
@@ -154,6 +156,7 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
             threads: threads,
             blockset_counter: 0,
             thread_local_alloc_ids: Default::default(),
+            yield_active_thread: false,
         }
     }
 }
@@ -275,6 +278,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         None
     }
 
+    /// Change the active thread to some enabled thread.
+    fn yield_active_thread(&mut self) {
+        self.yield_active_thread = true;
+    }
+
     /// Decide which action to take next and on which thread.
     fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         if self.threads[self.active_thread].check_terminated() {
@@ -287,13 +295,21 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             }
             return Ok(SchedulingAction::ExecuteDtors);
         }
-        if self.threads[self.active_thread].state == ThreadState::Enabled {
+        if self.threads[self.active_thread].state == ThreadState::Enabled
+            && !self.yield_active_thread
+        {
             return Ok(SchedulingAction::ExecuteStep);
         }
-        if let Some(enabled_thread) =
-            self.threads.iter().position(|thread| thread.state == ThreadState::Enabled)
-        {
-            self.active_thread = ThreadId::new(enabled_thread);
+        for (id, thread) in self.threads.iter_enumerated() {
+            if thread.state == ThreadState::Enabled {
+                if !(self.yield_active_thread && id == self.active_thread) {
+                    self.active_thread = id;
+                    break;
+                }
+            }
+        }
+        self.yield_active_thread = false;
+        if self.threads[self.active_thread].state == ThreadState::Enabled {
             return Ok(SchedulingAction::ExecuteStep);
         }
         if self.threads.iter().all(|thread| thread.state == ThreadState::Terminated) {
@@ -451,6 +467,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn unblock_random_thread(&mut self, set: BlockSetId) -> InterpResult<'tcx, Option<ThreadId>> {
         let this = self.eval_context_mut();
         Ok(this.machine.threads.unblock_random_thread(set))
+    }
+
+    fn yield_active_thread(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.machine.threads.yield_active_thread();
+        Ok(())
     }
 
     /// Decide which action to take next and on which thread.
