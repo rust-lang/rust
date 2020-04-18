@@ -17,7 +17,7 @@ mod doc_tests;
 pub mod utils;
 pub mod ast_transform;
 
-use ra_db::FileRange;
+use ra_db::{FileId, FileRange};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{TextRange, TextUnit};
 use ra_text_edit::TextEdit;
@@ -54,6 +54,7 @@ pub struct AssistAction {
     pub cursor_position: Option<TextUnit>,
     // FIXME: This belongs to `AssistLabel`
     pub target: Option<TextRange>,
+    pub file: AssistFile,
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +62,18 @@ pub struct ResolvedAssist {
     pub label: AssistLabel,
     pub group_label: Option<GroupLabel>,
     pub action: AssistAction,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum AssistFile {
+    CurrentFile,
+    TargetFile(FileId),
+}
+
+impl Default for AssistFile {
+    fn default() -> Self {
+        Self::CurrentFile
+    }
 }
 
 /// Return all the assists applicable at the given position.

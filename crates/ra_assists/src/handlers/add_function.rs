@@ -3,7 +3,7 @@ use ra_syntax::{
     SyntaxKind, SyntaxNode, TextUnit,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{Assist, AssistCtx, AssistFile, AssistId};
 use ast::{edit::IndentLevel, ArgListOwner, ModuleItemOwner};
 use hir::HirDisplay;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -44,10 +44,10 @@ pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
     }
 
     let target_module = if let Some(qualifier) = path.qualifier() {
-        if let Some(hir::PathResolution::Def(hir::ModuleDef::Module(resolved))) =
+        if let Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))) =
             ctx.sema.resolve_path(&qualifier)
         {
-            Some(resolved.definition_source(ctx.sema.db).value)
+            Some(module.definition_source(ctx.sema.db))
         } else {
             return None;
         }
@@ -61,6 +61,7 @@ pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
         edit.target(call.syntax().text_range());
 
         if let Some(function_template) = function_builder.render() {
+            edit.set_file(function_template.file);
             edit.set_cursor(function_template.cursor_offset);
             edit.insert(function_template.insert_offset, function_template.fn_def.to_string());
         }
@@ -71,6 +72,7 @@ struct FunctionTemplate {
     insert_offset: TextUnit,
     cursor_offset: TextUnit,
     fn_def: ast::SourceFile,
+    file: AssistFile,
 }
 
 struct FunctionBuilder {
@@ -78,6 +80,7 @@ struct FunctionBuilder {
     fn_name: ast::Name,
     type_params: Option<ast::TypeParamList>,
     params: ast::ParamList,
+    file: AssistFile,
 }
 
 impl FunctionBuilder {
@@ -87,16 +90,19 @@ impl FunctionBuilder {
         ctx: &AssistCtx,
         call: &ast::CallExpr,
         path: &ast::Path,
-        generate_in: Option<hir::ModuleSource>,
+        generate_in: Option<hir::InFile<hir::ModuleSource>>,
     ) -> Option<Self> {
+        let mut file = AssistFile::default();
         let target = if let Some(generate_in_module) = generate_in {
-            next_space_for_fn_in_module(generate_in_module)?
+            let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, generate_in_module)?;
+            file = in_file;
+            target
         } else {
             next_space_for_fn_after_call_site(&call)?
         };
         let fn_name = fn_name(&path)?;
         let (type_params, params) = fn_args(ctx, &call)?;
-        Some(Self { target, fn_name, type_params, params })
+        Some(Self { target, fn_name, type_params, params, file })
     }
     fn render(self) -> Option<FunctionTemplate> {
         let placeholder_expr = ast::make::expr_todo();
@@ -130,7 +136,7 @@ impl FunctionBuilder {
             .text_range()
             .start();
         let cursor_offset = insert_offset + cursor_offset_from_fn_start;
-        Some(FunctionTemplate { insert_offset, cursor_offset, fn_def })
+        Some(FunctionTemplate { insert_offset, cursor_offset, fn_def, file: self.file })
     }
 }
 
@@ -250,23 +256,29 @@ fn next_space_for_fn_after_call_site(expr: &ast::CallExpr) -> Option<GeneratedFu
     last_ancestor.map(GeneratedFunctionTarget::BehindItem)
 }
 
-fn next_space_for_fn_in_module(module: hir::ModuleSource) -> Option<GeneratedFunctionTarget> {
-    match module {
+fn next_space_for_fn_in_module(
+    db: &dyn hir::db::AstDatabase,
+    module: hir::InFile<hir::ModuleSource>,
+) -> Option<(AssistFile, GeneratedFunctionTarget)> {
+    let file = module.file_id.original_file(db);
+    let assist_file = AssistFile::TargetFile(file);
+    let assist_item = match module.value {
         hir::ModuleSource::SourceFile(it) => {
             if let Some(last_item) = it.items().last() {
-                Some(GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()))
+                GeneratedFunctionTarget::BehindItem(last_item.syntax().clone())
             } else {
-                Some(GeneratedFunctionTarget::BehindItem(it.syntax().clone()))
+                GeneratedFunctionTarget::BehindItem(it.syntax().clone())
             }
         }
         hir::ModuleSource::Module(it) => {
             if let Some(last_item) = it.item_list().and_then(|it| it.items().last()) {
-                Some(GeneratedFunctionTarget::BehindItem(last_item.syntax().clone()))
+                GeneratedFunctionTarget::BehindItem(last_item.syntax().clone())
             } else {
-                it.item_list().map(GeneratedFunctionTarget::InEmptyItemList)
+                GeneratedFunctionTarget::InEmptyItemList(it.item_list()?)
             }
         }
-    }
+    };
+    Some((assist_file, assist_item))
 }
 
 #[cfg(test)]
@@ -879,6 +891,37 @@ mod bar {
 
 fn foo() {
     bar::baz::my_fn()
+}
+",
+        )
+    }
+
+    #[test]
+    fn add_function_in_another_file() {
+        check_assist(
+            add_function,
+            r"
+//- /main.rs
+mod foo;
+
+fn main() {
+    foo::bar<|>()
+}
+
+//- /foo.rs
+
+",
+            r"
+//- /main.rs
+mod foo;
+
+fn main() {
+    foo::bar()
+}
+
+//- /foo.rs
+fn bar() {
+    <|>todo!()
 }
 ",
         )
