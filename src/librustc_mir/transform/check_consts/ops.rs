@@ -148,6 +148,10 @@ impl NonConstOp for IfOrMatch {
 }
 
 #[derive(Debug)]
+pub struct InlineAsm;
+impl NonConstOp for InlineAsm {}
+
+#[derive(Debug)]
 pub struct LiveDrop;
 impl NonConstOp for LiveDrop {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {

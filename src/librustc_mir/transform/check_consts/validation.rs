@@ -481,11 +481,14 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
                 self.check_op(ops::IfOrMatch);
             }
+            StatementKind::LlvmInlineAsm { .. } => {
+                self.check_op(ops::InlineAsm);
+            }
+
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::LlvmInlineAsm { .. }
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Nop => {}
