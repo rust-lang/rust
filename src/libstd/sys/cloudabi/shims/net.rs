@@ -299,6 +299,9 @@ impl Iterator for LookupHost {
     fn next(&mut self) -> Option<SocketAddr> {
         match self.0 {}
     }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(0))
+    }
 }
 
 impl TryFrom<&str> for LookupHost {

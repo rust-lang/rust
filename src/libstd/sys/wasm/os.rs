@@ -33,6 +33,9 @@ impl<'a> Iterator for SplitPaths<'a> {
     fn next(&mut self) -> Option<PathBuf> {
         match *self.0 {}
     }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(0))
+    }
 }
 
 #[derive(Debug)]
@@ -69,6 +72,9 @@ impl Iterator for Env {
     type Item = (OsString, OsString);
     fn next(&mut self) -> Option<(OsString, OsString)> {
         match self.0 {}
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(0))
     }
 }
 
