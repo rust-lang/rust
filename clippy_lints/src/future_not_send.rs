@@ -60,10 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FutureNotSend {
         if let FnKind::Closure(_) = kind {
             return;
         }
-        let def_id = cx.tcx.hir().local_def_id(hir_id);
-        let fn_sig = cx.tcx.fn_sig(def_id);
-        let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
-        let ret_ty = fn_sig.output();
+        let ret_ty = utils::return_ty(cx, hir_id);
         if let Opaque(id, subst) = ret_ty.kind {
             let preds = cx.tcx.predicates_of(id).instantiate(cx.tcx, subst);
             let mut is_future = false;
