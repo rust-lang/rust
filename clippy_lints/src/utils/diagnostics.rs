@@ -70,15 +70,15 @@ pub fn span_lint_and_help<'a, T: LintContext>(
     help_span: Option<Span>,
     help: &str,
 ) {
-    cx.struct_span_lint(lint, span, |ldb| {
-        let mut db = ldb.build(msg);
+    cx.struct_span_lint(lint, span, |diag| {
+        let mut diag = diag.build(msg);
         if let Some(help_span) = help_span {
-            db.span_help(help_span, help);
+            diag.span_help(help_span, help);
         } else {
-            db.help(help);
+            diag.help(help);
         }
-        docs_link(&mut db, lint);
-        db.emit();
+        docs_link(&mut diag, lint);
+        diag.emit();
     });
 }
 
@@ -111,12 +111,12 @@ pub fn span_lint_and_note<'a, T: LintContext>(
     note_span: Option<Span>,
     note: &str,
 ) {
-    cx.struct_span_lint(lint, span, |ldb| {
-        let mut db = ldb.build(msg);
+    cx.struct_span_lint(lint, span, |diag| {
+        let mut diag = diag.build(msg);
         if let Some(note_span) = note_span {
-            db.span_note(note_span, note);
+            diag.span_note(note_span, note);
         } else {
-            db.note(note);
+            diag.note(note);
         }
         docs_link(&mut diag, lint);
         diag.emit();

@@ -291,7 +291,6 @@ impl EarlyLintPass for Return {
                     String::new(),
                     Applicability::MachineApplicable,
                 );
-
             }
         }
     }

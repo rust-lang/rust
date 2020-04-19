@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {
                     EMPTY_ENUM,
                     item.span,
                     "enum with no variants",
-                    Some(item.span),
+                    None,
                     "consider using the uninhabited type `!` (never type) or a wrapper \
                     around it to introduce a type which can't be instantiated",
                 );

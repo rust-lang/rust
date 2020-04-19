@@ -163,25 +163,25 @@ declare_clippy_lint! {
     /// *Example:**
     /// Bad:
     /// ```rust,ignore
-    /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
-    ///     db.span_suggestion(
+    /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |diag| {
+    ///     diag.span_suggestion(
     ///         expr.span,
     ///         help_msg,
     ///         sugg.to_string(),
     ///         Applicability::MachineApplicable,
     ///     );
     /// });
-    /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
-    ///     db.span_help(expr.span, help_msg);
+    /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |diag| {
+    ///     diag.span_help(expr.span, help_msg);
     /// });
-    /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
-    ///     db.help(help_msg);
+    /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |diag| {
+    ///     diag.help(help_msg);
     /// });
-    /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
-    ///     db.span_note(expr.span, note_msg);
+    /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |diag| {
+    ///     diag.span_note(expr.span, note_msg);
     /// });
-    /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
-    ///     db.note(note_msg);
+    /// span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |diag| {
+    ///     diag.note(note_msg);
     /// });
     /// ```
     ///
@@ -258,9 +258,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
                 if_chain! {
                     if let ExprKind::AddrOf(_, _, ref inner_exp) = expr.kind;
                     if let ExprKind::Struct(_, ref fields, _) = inner_exp.kind;
-                    let field = fields.iter()
-                    .find(|f| f.ident.as_str() == "desc")
-                    .expect("lints must have a description field");
+                    let field = fields
+                        .iter()
+                        .find(|f| f.ident.as_str() == "desc")
+                        .expect("lints must have a description field");
                     if let ExprKind::Lit(Spanned {
                         node: LitKind::Str(ref sym, _),
                         ..
@@ -396,7 +397,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
             if let Some(sugg) = self.map.get(&*fn_name.as_str());
             let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
             if match_type(cx, ty, &paths::EARLY_CONTEXT)
-            || match_type(cx, ty, &paths::LATE_CONTEXT);
+                || match_type(cx, ty, &paths::LATE_CONTEXT);
             then {
                 span_lint_and_help(
                     cx,
