@@ -29,7 +29,7 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx = FunctionBuilder::new(&mut context.func, &mut func_ctx);
 
-    // Predefine block's
+    // Predefine blocks
     let start_block = bcx.create_block();
     let block_map: IndexVec<BasicBlock, Block> = (0..mir.basic_blocks().len()).map(|_| bcx.create_block()).collect();
 
