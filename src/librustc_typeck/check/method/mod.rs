@@ -11,7 +11,6 @@ pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
 use crate::check::FnCtxt;
-use rustc_ast::ast;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -22,6 +21,7 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TypeFoldable, WithConstness};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -104,7 +104,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Determines whether the type `self_ty` supports a method name `method_name` or not.
     pub fn method_exists(
         &self,
-        method_name: ast::Ident,
+        method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr_id: hir::HirId,
         allow_private: bool,
@@ -133,7 +133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'a>,
         msg: &str,
-        method_name: ast::Ident,
+        method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &hir::Expr<'_>,
     ) {
@@ -260,7 +260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lookup_probe(
         &self,
         span: Span,
-        method_name: ast::Ident,
+        method_name: Ident,
         self_ty: Ty<'tcx>,
         call_expr: &'tcx hir::Expr<'tcx>,
         scope: ProbeScope,
@@ -290,7 +290,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lookup_method_in_trait(
         &self,
         span: Span,
-        m_name: ast::Ident,
+        m_name: Ident,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         opt_input_types: Option<&[Ty<'tcx>]>,
@@ -414,7 +414,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn resolve_ufcs(
         &self,
         span: Span,
-        method_name: ast::Ident,
+        method_name: Ident,
         self_ty: Ty<'tcx>,
         expr_id: hir::HirId,
     ) -> Result<(DefKind, DefId), MethodError<'tcx>> {
@@ -478,7 +478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn associated_item(
         &self,
         def_id: DefId,
-        item_name: ast::Ident,
+        item_name: Ident,
         ns: Namespace,
     ) -> Option<ty::AssocItem> {
         self.tcx

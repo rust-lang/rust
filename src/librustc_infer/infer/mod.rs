@@ -10,7 +10,6 @@ pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 
-use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
@@ -457,7 +456,7 @@ pub enum SubregionOrigin<'tcx> {
     /// the containing trait.
     CompareImplMethodObligation {
         span: Span,
-        item_name: ast::Name,
+        item_name: Symbol,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
     },
@@ -519,7 +518,7 @@ pub enum RegionVariableOrigin {
 
     UpvarRegion(ty::UpvarId, Span),
 
-    BoundRegionInCoherence(ast::Name),
+    BoundRegionInCoherence(Symbol),
 
     /// This origin is used for the inference variables that we create
     /// during NLL region processing.

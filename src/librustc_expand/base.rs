@@ -1,7 +1,7 @@
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirectoryOwnership;
 
-use rustc_ast::ast::{self, Attribute, Name, NodeId, PatKind};
+use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -796,7 +796,7 @@ impl SyntaxExtension {
         span: Span,
         helper_attrs: Vec<Symbol>,
         edition: Edition,
-        name: Name,
+        name: Symbol,
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
         let allow_internal_unstable = attr::allow_internal_unstable(&attrs, &sess.span_diagnostic)
@@ -885,7 +885,7 @@ pub trait Resolver {
 
     fn resolve_dollar_crates(&mut self);
     fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment);
-    fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension);
+    fn register_builtin_macro(&mut self, ident: Ident, ext: SyntaxExtension);
 
     fn expansion_for_ast_pass(
         &mut self,
@@ -913,7 +913,7 @@ pub trait Resolver {
 
 #[derive(Clone)]
 pub struct ModuleData {
-    pub mod_path: Vec<ast::Ident>,
+    pub mod_path: Vec<Ident>,
     pub directory: PathBuf,
 }
 
@@ -1052,16 +1052,16 @@ impl<'a> ExtCtxt<'a> {
     pub fn set_trace_macros(&mut self, x: bool) {
         self.ecfg.trace_mac = x
     }
-    pub fn ident_of(&self, st: &str, sp: Span) -> ast::Ident {
-        ast::Ident::from_str_and_span(st, sp)
+    pub fn ident_of(&self, st: &str, sp: Span) -> Ident {
+        Ident::from_str_and_span(st, sp)
     }
-    pub fn std_path(&self, components: &[Symbol]) -> Vec<ast::Ident> {
+    pub fn std_path(&self, components: &[Symbol]) -> Vec<Ident> {
         let def_site = self.with_def_site_ctxt(DUMMY_SP);
         iter::once(Ident::new(kw::DollarCrate, def_site))
             .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()
     }
-    pub fn name_of(&self, st: &str) -> ast::Name {
+    pub fn name_of(&self, st: &str) -> Symbol {
         Symbol::intern(st)
     }
 

@@ -8,7 +8,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
 
-use rustc_ast::ast::{self, AttrStyle, Ident};
+use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::attr;
 use rustc_ast::util::comments::strip_doc_comment_decoration;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -21,7 +21,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::middle::stability;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;

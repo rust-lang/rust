@@ -12,6 +12,7 @@ use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::ty;
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
+use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use crate::clean::{self, GetDefId, ToSource, TypeKind};
@@ -37,7 +38,7 @@ type Attrs<'hir> = rustc_middle::ty::Attributes<'hir>;
 pub fn try_inline(
     cx: &DocContext<'_>,
     res: Res,
-    name: ast::Name,
+    name: Symbol,
     attrs: Option<Attrs<'_>>,
     visited: &mut FxHashSet<DefId>,
 ) -> Option<Vec<clean::Item>> {
@@ -515,7 +516,7 @@ fn build_static(cx: &DocContext<'_>, did: DefId, mutable: bool) -> clean::Static
     }
 }
 
-fn build_macro(cx: &DocContext<'_>, did: DefId, name: ast::Name) -> clean::ItemEnum {
+fn build_macro(cx: &DocContext<'_>, did: DefId, name: Symbol) -> clean::ItemEnum {
     let imported_from = cx.tcx.original_crate_name(did.krate);
     match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
         LoadedMacro::MacroDef(def, _) => {

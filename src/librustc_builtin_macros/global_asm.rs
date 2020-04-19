@@ -15,6 +15,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::DiagnosticBuilder;
 use rustc_expand::base::{self, *};
 use rustc_span::source_map::respan;
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use smallvec::smallvec;
 
@@ -25,7 +26,7 @@ pub fn expand_global_asm<'cx>(
 ) -> Box<dyn base::MacResult + 'cx> {
     match parse_global_asm(cx, sp, tts) {
         Ok(Some(global_asm)) => MacEager::items(smallvec![P(ast::Item {
-            ident: ast::Ident::invalid(),
+            ident: Ident::invalid(),
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
             kind: ast::ItemKind::GlobalAsm(P(global_asm)),

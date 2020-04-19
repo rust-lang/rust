@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
 use rustc_session::config::{Input, PpMode, PpSourceMode};
 use rustc_session::Session;
+use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
 use std::cell::Cell;
@@ -284,7 +285,7 @@ impl<'a> PrinterSupport for HygieneAnnotation<'a> {
 impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     fn post(&self, s: &mut pprust::State<'_>, node: pprust::AnnNode<'_>) {
         match node {
-            pprust::AnnNode::Ident(&ast::Ident { name, span }) => {
+            pprust::AnnNode::Ident(&Ident { name, span }) => {
                 s.s.space();
                 s.synth_comment(format!("{}{:?}", name.as_u32(), span.ctxt()))
             }

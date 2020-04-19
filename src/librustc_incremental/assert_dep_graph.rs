@@ -44,7 +44,7 @@ use rustc_middle::dep_graph::debug::{DepNodeFilter, EdgeFilter};
 use rustc_middle::dep_graph::{DepGraphQuery, DepKind, DepNode, DepNodeExt};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
 use std::env;
@@ -89,7 +89,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
 }
 
 type Sources = Vec<(Span, DefId, DepNode)>;
-type Targets = Vec<(Span, ast::Name, hir::HirId, DepNode)>;
+type Targets = Vec<(Span, Symbol, hir::HirId, DepNode)>;
 
 struct IfThisChanged<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -98,7 +98,7 @@ struct IfThisChanged<'tcx> {
 }
 
 impl IfThisChanged<'tcx> {
-    fn argument(&self, attr: &ast::Attribute) -> Option<ast::Name> {
+    fn argument(&self, attr: &ast::Attribute) -> Option<Symbol> {
         let mut value = None;
         for list_item in attr.meta_item_list().unwrap_or_default() {
             match list_item.ident() {

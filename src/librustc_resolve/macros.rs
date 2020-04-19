@@ -6,7 +6,7 @@ use crate::Namespace::*;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
-use rustc_ast::ast::{self, Ident, NodeId};
+use rustc_ast::ast::{self, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, StabilityLevel};
 use rustc_data_structures::fx::FxHashSet;
@@ -23,7 +23,7 @@ use rustc_session::lint::builtin::UNUSED_MACROS;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, ExpnData, ExpnId, ExpnKind};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use rustc_data_structures::sync::Lrc;
@@ -165,7 +165,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
     }
 
-    fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension) {
+    fn register_builtin_macro(&mut self, ident: Ident, ext: SyntaxExtension) {
         if self.builtin_macros.insert(ident.name, ext).is_some() {
             self.session
                 .span_err(ident.span, &format!("built-in macro `{}` was already defined", ident));

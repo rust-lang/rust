@@ -16,7 +16,7 @@ use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 
 use rustc_ast::{ast, attr};
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live Node::Item that is a
@@ -229,7 +229,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_variant_data(
         &mut self,
         def: &'tcx hir::VariantData<'tcx>,
-        _: ast::Name,
+        _: Symbol,
         _: &hir::Generics<'_>,
         _: hir::HirId,
         _: rustc_span::Span,
@@ -551,7 +551,7 @@ impl DeadVisitor<'tcx> {
         &mut self,
         id: hir::HirId,
         span: rustc_span::Span,
-        name: ast::Name,
+        name: Symbol,
         participle: &str,
     ) {
         if !name.as_str().starts_with('_') {

@@ -10,7 +10,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
 
 use std::borrow::Cow;
@@ -535,7 +535,7 @@ impl<'a, 'b> Context<'a, 'b> {
         self.count_args_index_offset = sofar;
     }
 
-    fn rtpath(ecx: &ExtCtxt<'_>, s: &str) -> Vec<ast::Ident> {
+    fn rtpath(ecx: &ExtCtxt<'_>, s: &str) -> Vec<Ident> {
         ecx.std_path(&[sym::fmt, sym::rt, sym::v1, Symbol::intern(s)])
     }
 
@@ -794,7 +794,7 @@ impl<'a, 'b> Context<'a, 'b> {
         macsp: Span,
         mut sp: Span,
         ty: &ArgumentType,
-        arg: ast::Ident,
+        arg: Ident,
     ) -> P<ast::Expr> {
         sp = ecx.with_def_site_ctxt(sp);
         let arg = ecx.expr_ident(sp, arg);

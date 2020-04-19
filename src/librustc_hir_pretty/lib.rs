@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::{kw, IdentPrinter};
+use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
 
@@ -23,7 +23,7 @@ pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId
 }
 
 pub enum AnnNode<'a> {
-    Name(&'a ast::Name),
+    Name(&'a Symbol),
     Block(&'a hir::Block<'a>),
     Item(&'a hir::Item<'a>),
     SubItem(hir::HirId),
@@ -145,7 +145,7 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.comments
     }
 
-    fn print_ident(&mut self, ident: ast::Ident) {
+    fn print_ident(&mut self, ident: Ident) {
         self.s.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
         self.ann.post(self, AnnNode::Name(&ident.name))
     }
@@ -453,7 +453,7 @@ impl<'a> State<'a> {
 
     fn print_associated_const(
         &mut self,
-        ident: ast::Ident,
+        ident: Ident,
         ty: &hir::Ty<'_>,
         default: Option<hir::BodyId>,
         vis: &hir::Visibility<'_>,
@@ -473,7 +473,7 @@ impl<'a> State<'a> {
 
     fn print_associated_type(
         &mut self,
-        ident: ast::Ident,
+        ident: Ident,
         generics: &hir::Generics<'_>,
         bounds: Option<hir::GenericBounds<'_>>,
         ty: Option<&hir::Ty<'_>>,
@@ -768,7 +768,7 @@ impl<'a> State<'a> {
         &mut self,
         enum_definition: &hir::EnumDef<'_>,
         generics: &hir::Generics<'_>,
-        name: ast::Name,
+        name: Symbol,
         span: rustc_span::Span,
         visibility: &hir::Visibility<'_>,
     ) {
@@ -827,7 +827,7 @@ impl<'a> State<'a> {
         &mut self,
         struct_def: &hir::VariantData<'_>,
         generics: &hir::Generics<'_>,
-        name: ast::Name,
+        name: Symbol,
         span: rustc_span::Span,
         print_finalizer: bool,
     ) {
@@ -886,11 +886,11 @@ impl<'a> State<'a> {
     }
     pub fn print_method_sig(
         &mut self,
-        ident: ast::Ident,
+        ident: Ident,
         m: &hir::FnSig<'_>,
         generics: &hir::Generics<'_>,
         vis: &hir::Visibility<'_>,
-        arg_names: &[ast::Ident],
+        arg_names: &[Ident],
         body_id: Option<hir::BodyId>,
     ) {
         self.print_fn(&m.decl, m.header, Some(ident.name), generics, vis, arg_names, body_id)
@@ -1297,7 +1297,7 @@ impl<'a> State<'a> {
                 self.bopen();
 
                 // Print `let _t = $init;`:
-                let temp = ast::Ident::from_str("_t");
+                let temp = Ident::from_str("_t");
                 self.print_local(Some(init), |this| this.print_ident(temp));
                 self.s.word(";");
 
@@ -1496,8 +1496,8 @@ impl<'a> State<'a> {
         self.s.word(i.to_string())
     }
 
-    pub fn print_name(&mut self, name: ast::Name) {
-        self.print_ident(ast::Ident::with_dummy_span(name))
+    pub fn print_name(&mut self, name: Symbol) {
+        self.print_ident(Ident::with_dummy_span(name))
     }
 
     pub fn print_for_decl(&mut self, loc: &hir::Local<'_>, coll: &hir::Expr<'_>) {
@@ -1888,10 +1888,10 @@ impl<'a> State<'a> {
         &mut self,
         decl: &hir::FnDecl<'_>,
         header: hir::FnHeader,
-        name: Option<ast::Name>,
+        name: Option<Symbol>,
         generics: &hir::Generics<'_>,
         vis: &hir::Visibility<'_>,
-        arg_names: &[ast::Ident],
+        arg_names: &[Ident],
         body_id: Option<hir::BodyId>,
     ) {
         self.print_fn_header_info(header, vis);
@@ -2154,9 +2154,9 @@ impl<'a> State<'a> {
         abi: Abi,
         unsafety: hir::Unsafety,
         decl: &hir::FnDecl<'_>,
-        name: Option<ast::Name>,
+        name: Option<Symbol>,
         generic_params: &[hir::GenericParam<'_>],
-        arg_names: &[ast::Ident],
+        arg_names: &[Ident],
     ) {
         self.ibox(INDENT_UNIT);
         if !generic_params.is_empty() {

@@ -3,7 +3,7 @@
 use rustc_ast::ast::{self, ItemKind, MetaItem};
 use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 macro path_local($x:ident) {
@@ -154,7 +154,7 @@ fn inject_impl_of_structural_trait(
 
     let newitem = cx.item(
         span,
-        ast::Ident::invalid(),
+        Ident::invalid(),
         attrs,
         ItemKind::Impl {
             unsafety: ast::Unsafe::No,

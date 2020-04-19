@@ -17,6 +17,7 @@ use crate::ast::*;
 use crate::token::Token;
 use crate::tokenstream::{TokenStream, TokenTree};
 
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -74,7 +75,7 @@ impl<'a> FnKind<'a> {
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'ast>: Sized {
-    fn visit_name(&mut self, _span: Span, _name: Name) {
+    fn visit_name(&mut self, _span: Span, _name: Symbol) {
         // Nothing to do.
     }
     fn visit_ident(&mut self, ident: Ident) {

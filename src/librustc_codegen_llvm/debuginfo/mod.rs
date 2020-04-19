@@ -17,7 +17,6 @@ use crate::llvm::debuginfo::{
 };
 use crate::value::Value;
 
-use rustc_ast::ast;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::*;
@@ -529,7 +528,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn create_dbg_var(
         &self,
         dbg_context: &FunctionDebugContext<&'ll DIScope>,
-        variable_name: ast::Name,
+        variable_name: Symbol,
         variable_type: Ty<'tcx>,
         scope_metadata: &'ll DIScope,
         variable_kind: VariableKind,

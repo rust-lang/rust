@@ -1,6 +1,5 @@
 use crate::{shim, util};
 use required_consts::RequiredConstsVisitor;
-use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
@@ -11,7 +10,7 @@ use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{InstanceDef, TyCtxt, TypeFoldable};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 
 pub mod add_call_guards;
@@ -78,7 +77,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> FxHashSet<LocalDefId> {
         fn visit_variant_data(
             &mut self,
             v: &'tcx hir::VariantData<'tcx>,
-            _: ast::Name,
+            _: Symbol,
             _: &'tcx hir::Generics<'tcx>,
             _: hir::HirId,
             _: Span,

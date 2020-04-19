@@ -2,7 +2,7 @@ use crate::rmeta::table::FixedSizeEncoding;
 use crate::rmeta::*;
 
 use log::{debug, trace};
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -32,7 +32,7 @@ use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
 use rustc_session::config::CrateType;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span};
 use rustc_target::abi::VariantIdx;
 use std::hash::Hash;
@@ -989,7 +989,7 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[ast::Name]> {
+    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Symbol]> {
         self.tcx.dep_graph.with_ignore(|| {
             let body = self.tcx.hir().body(body_id);
             self.lazy(body.params.iter().map(|arg| match arg.pat.kind {
@@ -999,7 +999,7 @@ impl EncodeContext<'tcx> {
         })
     }
 
-    fn encode_fn_param_names(&mut self, param_names: &[ast::Ident]) -> Lazy<[ast::Name]> {
+    fn encode_fn_param_names(&mut self, param_names: &[Ident]) -> Lazy<[Symbol]> {
         self.lazy(param_names.iter().map(|ident| ident.name))
     }
 
@@ -1410,7 +1410,7 @@ impl EncodeContext<'tcx> {
         self.lazy(deps.iter().map(|&(_, ref dep)| dep))
     }
 
-    fn encode_lib_features(&mut self) -> Lazy<[(ast::Name, Option<ast::Name>)]> {
+    fn encode_lib_features(&mut self) -> Lazy<[(Symbol, Option<Symbol>)]> {
         let tcx = self.tcx;
         let lib_features = tcx.lib_features();
         self.lazy(lib_features.to_vec())

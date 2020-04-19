@@ -65,7 +65,7 @@ macro_rules! arena_types {
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<$tcx>,
             [] attribute: rustc_ast::ast::Attribute,
-            [] name_set: rustc_data_structures::fx::FxHashSet<rustc_ast::ast::Name>,
+            [] name_set: rustc_data_structures::fx::FxHashSet<rustc_span::symbol::Symbol>,
             [] hir_id_set: rustc_hir::HirIdSet,
 
             // Interned types

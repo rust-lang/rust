@@ -25,6 +25,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::LintPass;
+use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use log::debug;
@@ -192,7 +193,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
     fn visit_variant_data(
         &mut self,
         s: &'tcx hir::VariantData<'tcx>,
-        _: ast::Name,
+        _: Symbol,
         _: &'tcx hir::Generics<'tcx>,
         _: hir::HirId,
         _: Span,
@@ -227,7 +228,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         hir_visit::walk_ty(self, t);
     }
 
-    fn visit_name(&mut self, sp: Span, name: ast::Name) {
+    fn visit_name(&mut self, sp: Span, name: Symbol) {
         lint_callback!(self, check_name, sp, name);
     }
 

@@ -4132,7 +4132,6 @@ name = "rustc_privacy"
 version = "0.0.0"
 dependencies = [
  "log",
- "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",

@@ -3,8 +3,8 @@
 use crate::ast;
 use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute};
 use crate::ast::{Expr, GenericParam, Item, Lit, LitKind, Local, Stmt, StmtKind};
-use crate::ast::{Ident, Name, Path, PathSegment};
 use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
+use crate::ast::{Path, PathSegment};
 use crate::mut_visit::visit_clobber;
 use crate::ptr::P;
 use crate::token::{self, Token};
@@ -14,7 +14,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::source_map::{BytePos, Spanned};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 use log::debug;
@@ -113,7 +113,7 @@ impl NestedMetaItem {
     }
 
     /// Returns a name and single literal value tuple of the `MetaItem`.
-    pub fn name_value_literal(&self) -> Option<(Name, &Lit)> {
+    pub fn name_value_literal(&self) -> Option<(Symbol, &Lit)> {
         self.meta_item().and_then(|meta_item| {
             meta_item.meta_item_list().and_then(|meta_item_list| {
                 if meta_item_list.len() == 1 {
