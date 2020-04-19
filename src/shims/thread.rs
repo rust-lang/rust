@@ -14,7 +14,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.tcx.sess.warn(
-            "The thread support is experimental. \
+            "thread support is experimental. \
              For example, Miri does not detect data races yet.",
         );
 
