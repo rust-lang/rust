@@ -138,7 +138,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                     (None, None) => return, // [..] is ok.
                 };
 
-                span_lint_and_help(cx, INDEXING_SLICING, expr.span, "slicing may panic.", help_msg);
+                span_lint_and_help(cx, INDEXING_SLICING, expr.span, "slicing may panic.", None, help_msg);
             } else {
                 // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.kind {
@@ -154,6 +154,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                     INDEXING_SLICING,
                     expr.span,
                     "indexing may panic.",
+                    None,
                     "Consider using `.get(n)` or `.get_mut(n)` instead",
                 );
             }

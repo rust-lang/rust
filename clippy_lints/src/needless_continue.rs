@@ -304,6 +304,7 @@ fn emit_warning<'a>(cx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str,
         NEEDLESS_CONTINUE,
         expr.span,
         message,
+        None,
         &format!("{}\n{}", header, snip),
     );
 }

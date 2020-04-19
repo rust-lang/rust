@@ -1,6 +1,6 @@
 //! lint when there is an enum with no variants
 
-use crate::utils::span_lint_and_then;
+use crate::utils::span_lint_and_help;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -45,13 +45,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {
             let ty = cx.tcx.type_of(did);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
             if adt.variants.is_empty() {
-                span_lint_and_then(cx, EMPTY_ENUM, item.span, "enum with no variants", |diag| {
-                    diag.span_help(
-                        item.span,
-                        "consider using the uninhabited type `!` (never type) or a wrapper \
-                         around it to introduce a type which can't be instantiated",
-                    );
-                });
+                span_lint_and_help(
+                    cx,
+                    EMPTY_ENUM,
+                    item.span,
+                    "enum with no variants",
+                    None,
+                    "consider using the uninhabited type `!` (never type) or a wrapper \
+                    around it to introduce a type which can't be instantiated",
+                );
             }
         }
     }

@@ -53,6 +53,7 @@ impl LateLintPass<'_, '_> for MainRecursion {
                     MAIN_RECURSION,
                     func.span,
                     &format!("recursing into entrypoint `{}`", snippet(cx, func.span, "main")),
+                    None,
                     "consider using another function for this recursion"
                 )
             }

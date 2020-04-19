@@ -41,6 +41,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                 } else {
                     "`assert!(true)` will be optimized out by the compiler"
                 },
+                None,
                 "remove it",
             );
         };
@@ -50,6 +51,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                 ASSERTIONS_ON_CONSTANTS,
                 e.span,
                 "`assert!(false)` should probably be replaced",
+                None,
                 "use `panic!()` or `unreachable!()`",
             );
         };
@@ -59,6 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                 ASSERTIONS_ON_CONSTANTS,
                 e.span,
                 &format!("`assert!(false, {})` should probably be replaced", panic_message),
+                None,
                 &format!("use `panic!({})` or `unreachable!({})`", panic_message, panic_message),
             )
         };

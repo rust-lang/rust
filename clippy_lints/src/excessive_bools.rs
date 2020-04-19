@@ -114,6 +114,7 @@ impl ExcessiveBools {
                 FN_PARAMS_EXCESSIVE_BOOLS,
                 span,
                 &format!("more than {} bools in function parameters", self.max_fn_params_bools),
+                None,
                 "consider refactoring bools into two-variant enums",
             );
         }
@@ -153,6 +154,7 @@ impl EarlyLintPass for ExcessiveBools {
                         STRUCT_EXCESSIVE_BOOLS,
                         item.span,
                         &format!("more than {} bools in a struct", self.max_struct_bools),
+                        None,
                         "consider using a state machine or refactoring bools into two-variant enums",
                     );
                 }

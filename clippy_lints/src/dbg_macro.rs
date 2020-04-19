@@ -48,6 +48,7 @@ impl EarlyLintPass for DbgMacro {
                     DBG_MACRO,
                     mac.span(),
                     "`dbg!` macro is intended as a debugging tool",
+                    None,
                     "ensure to avoid having uses of it in version control",
                 );
             }

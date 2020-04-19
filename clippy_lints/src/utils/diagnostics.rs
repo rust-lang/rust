@@ -62,10 +62,21 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 ///    |
 ///    = help: Consider using `f64::NAN` if you would like a constant representing NaN
 /// ```
-pub fn span_lint_and_help<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span, msg: &str, help: &str) {
+pub fn span_lint_and_help<'a, T: LintContext>(
+    cx: &'a T,
+    lint: &'static Lint,
+    span: Span,
+    msg: &str,
+    help_span: Option<Span>,
+    help: &str,
+) {
     cx.struct_span_lint(lint, span, |diag| {
         let mut diag = diag.build(msg);
-        diag.help(help);
+        if let Some(help_span) = help_span {
+            diag.span_help(help_span, help);
+        } else {
+            diag.help(help);
+        }
         docs_link(&mut diag, lint);
         diag.emit();
     });
@@ -97,15 +108,15 @@ pub fn span_lint_and_note<'a, T: LintContext>(
     lint: &'static Lint,
     span: Span,
     msg: &str,
-    note_span: Span,
+    note_span: Option<Span>,
     note: &str,
 ) {
     cx.struct_span_lint(lint, span, |diag| {
         let mut diag = diag.build(msg);
-        if note_span == span {
-            diag.note(note);
-        } else {
+        if let Some(note_span) = note_span {
             diag.span_note(note_span, note);
+        } else {
+            diag.note(note);
         }
         docs_link(&mut diag, lint);
         diag.emit();
@@ -166,6 +177,7 @@ pub fn span_lint_hir_and_then(
 ///     |
 ///     = note: `-D fold-any` implied by `-D warnings`
 /// ```
+#[allow(clippy::collapsible_span_lint_calls)]
 pub fn span_lint_and_sugg<'a, T: LintContext>(
     cx: &'a T,
     lint: &'static Lint,

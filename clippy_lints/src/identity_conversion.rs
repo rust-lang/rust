@@ -1,5 +1,5 @@
 use crate::utils::{
-    match_def_path, match_trait_method, paths, same_tys, snippet, snippet_with_macro_callsite, span_lint_and_then,
+    match_def_path, match_trait_method, paths, same_tys, snippet, snippet_with_macro_callsite, span_lint_and_sugg,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, MatchSource};
@@ -58,14 +58,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                     if same_tys(cx, a, b) {
                         let sugg = snippet_with_macro_callsite(cx, args[0].span, "<expr>").to_string();
 
-                        span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |diag| {
-                            diag.span_suggestion(
-                                e.span,
-                                "consider removing `.into()`",
-                                sugg,
-                                Applicability::MachineApplicable, // snippet
-                            );
-                        });
+                        span_lint_and_sugg(
+                            cx,
+                            IDENTITY_CONVERSION,
+                            e.span,
+                            "identical conversion",
+                            "consider removing `.into()`",
+                            sugg,
+                            Applicability::MachineApplicable, // snippet
+                        );
                     }
                 }
                 if match_trait_method(cx, e, &paths::INTO_ITERATOR) && &*name.ident.as_str() == "into_iter" {
@@ -73,14 +74,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                     let b = cx.tables.expr_ty(&args[0]);
                     if same_tys(cx, a, b) {
                         let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
-                        span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |diag| {
-                            diag.span_suggestion(
-                                e.span,
-                                "consider removing `.into_iter()`",
-                                sugg,
-                                Applicability::MachineApplicable, // snippet
-                            );
-                        });
+                        span_lint_and_sugg(
+                            cx,
+                            IDENTITY_CONVERSION,
+                            e.span,
+                            "identical conversion",
+                            "consider removing `.into_iter()`",
+                            sugg,
+                            Applicability::MachineApplicable, // snippet
+                        );
                     }
                 }
             },
@@ -95,14 +97,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                                 let sugg = snippet(cx, args[0].span.source_callsite(), "<expr>").into_owned();
                                 let sugg_msg =
                                     format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
-                                span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |diag| {
-                                    diag.span_suggestion(
-                                        e.span,
-                                        &sugg_msg,
-                                        sugg,
-                                        Applicability::MachineApplicable, // snippet
-                                    );
-                                });
+                                span_lint_and_sugg(
+                                    cx,
+                                    IDENTITY_CONVERSION,
+                                    e.span,
+                                    "identical conversion",
+                                    &sugg_msg,
+                                    sugg,
+                                    Applicability::MachineApplicable, // snippet
+                                );
                             }
                         }
                     }

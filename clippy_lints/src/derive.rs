@@ -1,5 +1,5 @@
 use crate::utils::paths;
-use crate::utils::{is_automatically_derived, is_copy, match_path, span_lint_and_then};
+use crate::utils::{is_automatically_derived, is_copy, match_path, span_lint_and_note, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_hir::{Item, ItemKind, TraitRef};
 use rustc_lint::{LateContext, LateLintPass};
@@ -163,14 +163,13 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item<'_>, trait
             _ => (),
         }
 
-        span_lint_and_then(
+        span_lint_and_note(
             cx,
             EXPL_IMPL_CLONE_ON_COPY,
             item.span,
             "you are implementing `Clone` explicitly on a `Copy` type",
-            |diag| {
-                diag.span_note(item.span, "consider deriving `Clone` or removing `Copy`");
-            },
+            Some(item.span),
+            "consider deriving `Clone` or removing `Copy`",
         );
     }
 }

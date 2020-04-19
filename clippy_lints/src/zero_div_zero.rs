@@ -49,6 +49,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ZeroDiv {
                     ZERO_DIVIDED_BY_ZERO,
                     expr.span,
                     "constant division of `0.0` with `0.0` will always result in NaN",
+                    None,
                     &format!(
                         "Consider using `{}::NAN` if you would like a constant representing NaN",
                         float_type,

@@ -57,6 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeStackArrays {
                         "allocating a local array larger than {} bytes",
                         self.maximum_allowed_size
                     ),
+                    None,
                     &format!(
                         "consider allocating on the heap with `vec!{}.into_boxed_slice()`",
                         snippet(cx, expr.span, "[...]")

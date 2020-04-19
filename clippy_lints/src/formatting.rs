@@ -149,7 +149,7 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
                                  really are doing `.. = ({op} ..)`",
                                 op = op
                             ),
-                            eqop_span,
+                            None,
                             &format!("to remove this lint, use either `{op}=` or `= {op}`", op = op),
                         );
                     }
@@ -188,6 +188,7 @@ fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
                     binop = binop_str,
                     unop = unop_str
                 ),
+                None,
                 &format!(
                     "put a space between `{binop}` and `{unop}` and remove the space after `{unop}`",
                     binop = binop_str,
@@ -226,7 +227,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
                 SUSPICIOUS_ELSE_FORMATTING,
                 else_span,
                 &format!("this is an `else {}` but the formatting might hide it", else_desc),
-                else_span,
+                None,
                 &format!(
                     "to remove this lint, remove the `else` or remove the new line between \
                      `else` and `{}`",
@@ -265,7 +266,7 @@ fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
                         POSSIBLE_MISSING_COMMA,
                         lint_span,
                         "possibly missing a comma here",
-                        lint_span,
+                        None,
                         "to remove this lint, add a comma or write the expr in a single line",
                     );
                 }
@@ -296,7 +297,7 @@ fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
                     SUSPICIOUS_ELSE_FORMATTING,
                     else_span,
                     &format!("this looks like {} but the `else` is missing", looks_like),
-                    else_span,
+                    None,
                     &format!(
                         "to remove this lint, add the missing `else` or add a new line before {}",
                         next_thing,

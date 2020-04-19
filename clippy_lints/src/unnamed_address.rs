@@ -89,6 +89,7 @@ impl LateLintPass<'_, '_> for UnnamedAddress {
                     VTABLE_ADDRESS_COMPARISONS,
                     expr.span,
                     "comparing trait object pointers compares a non-unique vtable address",
+                    None,
                     "consider extracting and comparing data pointers only",
                 );
             }
@@ -109,6 +110,7 @@ impl LateLintPass<'_, '_> for UnnamedAddress {
                     VTABLE_ADDRESS_COMPARISONS,
                     expr.span,
                     "comparing trait object pointers compares a non-unique vtable address",
+                    None,
                     "consider extracting and comparing data pointers only",
                 );
             }

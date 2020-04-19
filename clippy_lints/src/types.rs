@@ -343,6 +343,7 @@ impl Types {
                                 BOX_VEC,
                                 hir_ty.span,
                                 "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
+                                None,
                                 "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
                             );
                             return; // don't recurse into the type
@@ -437,6 +438,7 @@ impl Types {
                             LINKEDLIST,
                             hir_ty.span,
                             "I see you're using a LinkedList! Perhaps you meant some other data structure?",
+                            None,
                             "a `VecDeque` might work",
                         );
                         return; // don't recurse into the type
@@ -1900,7 +1902,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
                         conclusion
                     );
 
-                    span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, &help);
+                    span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, None, &help);
                 }
             }
         }

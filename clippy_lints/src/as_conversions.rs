@@ -50,6 +50,7 @@ impl EarlyLintPass for AsConversions {
                 AS_CONVERSIONS,
                 expr.span,
                 "using a potentially dangerous silent `as` conversion",
+                None,
                 "consider using a safe wrapper for this conversion",
             );
         }

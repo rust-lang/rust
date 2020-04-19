@@ -441,6 +441,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
                     REST_PAT_IN_FULLY_BOUND_STRUCTS,
                     pat.span,
                     "unnecessary use of `..` pattern in struct binding. All fields were already bound",
+                    None,
                     "consider removing `..` from this binding",
                 );
             }
@@ -636,7 +637,7 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'
                     MATCH_OVERLAPPING_ARM,
                     start.span,
                     "some ranges overlap",
-                    end.span,
+                    Some(end.span),
                     "overlaps with this",
                 );
             }
@@ -674,7 +675,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
                                 MATCH_WILD_ERR_ARM,
                                 arm.pat.span,
                                 &format!("`Err({})` matches all errors", &ident_bind_name),
-                                arm.pat.span,
+                                None,
                                 "match each error separately or use the error output",
                             );
                         }
@@ -887,6 +888,7 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
                     WILDCARD_IN_OR_PATTERNS,
                     arm.pat.span,
                     "wildcard pattern covers any other pattern as it will match anyway.",
+                    None,
                     "Consider handling `_` separately.",
                 );
             }

@@ -7,7 +7,8 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::{
-    implements_trait, is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then, type_is_unsafe_function,
+    implements_trait, is_adjusted, iter_input_pats, snippet_opt, span_lint_and_sugg, span_lint_and_then,
+    type_is_unsafe_function,
 };
 
 declare_clippy_lint! {
@@ -131,14 +132,15 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
             if let Some(name) = get_ufcs_type_name(cx, method_def_id, &args[0]);
 
             then {
-                span_lint_and_then(cx, REDUNDANT_CLOSURE_FOR_METHOD_CALLS, expr.span, "redundant closure found", |diag| {
-                    diag.span_suggestion(
-                        expr.span,
-                        "remove closure as shown",
-                        format!("{}::{}", name, path.ident.name),
-                        Applicability::MachineApplicable,
-                    );
-                });
+                span_lint_and_sugg(
+                    cx,
+                    REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
+                    expr.span,
+                    "redundant closure found",
+                    "remove closure as shown",
+                    format!("{}::{}", name, path.ident.name),
+                    Applicability::MachineApplicable,
+                );
             }
         );
     }

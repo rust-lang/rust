@@ -310,7 +310,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
                             EVAL_ORDER_DEPENDENCE,
                             expr.span,
                             "unsequenced read of a variable",
-                            self.write_expr.span,
+                            Some(self.write_expr.span),
                             "whether read occurs before this write depends on evaluation order"
                         );
                     }

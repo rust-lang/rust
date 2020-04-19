@@ -69,6 +69,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedSelf {
                         UNUSED_SELF,
                         self_param.span,
                         "unused `self` argument",
+                        None,
                         "consider refactoring to a associated function",
                     );
                     return;

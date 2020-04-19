@@ -2,8 +2,8 @@
 
 use crate::utils::ptr::get_spans;
 use crate::utils::{
-    is_type_diagnostic_item, match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then,
-    walk_ptrs_hir_ty,
+    is_type_diagnostic_item, match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_sugg,
+    span_lint_and_then, walk_ptrs_hir_ty,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -234,19 +234,14 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_
                     then {
                         let replacement = snippet_opt(cx, inner.span);
                         if let Some(r) = replacement {
-                            span_lint_and_then(
+                            span_lint_and_sugg(
                                 cx,
                                 PTR_ARG,
                                 arg.span,
                                 "using a reference to `Cow` is not recommended.",
-                                |diag| {
-                                    diag.span_suggestion(
-                                        arg.span,
-                                        "change this to",
-                                        "&".to_owned() + &r,
-                                        Applicability::Unspecified,
-                                    );
-                                },
+                                "change this to",
+                                "&".to_owned() + &r,
+                                Applicability::Unspecified,
                             );
                         }
                     }

@@ -183,7 +183,7 @@ fn lint_same_then_else(cx: &LateContext<'_, '_>, blocks: &[&Block<'_>]) {
             IF_SAME_THEN_ELSE,
             j.span,
             "this `if` has identical blocks",
-            i.span,
+            Some(i.span),
             "same as this",
         );
     }
@@ -206,7 +206,7 @@ fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
             IFS_SAME_COND,
             j.span,
             "this `if` has the same condition as a previous `if`",
-            i.span,
+            Some(i.span),
             "same as this",
         );
     }
@@ -234,7 +234,7 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_, '_>, conds: &[&Expr<'_>]) {
             SAME_FUNCTIONS_IN_IF_CONDITION,
             j.span,
             "this `if` has the same function call as a previous `if`",
-            i.span,
+            Some(i.span),
             "same as this",
         );
     }
