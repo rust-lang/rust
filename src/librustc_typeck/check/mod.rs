@@ -2251,26 +2251,39 @@ fn fn_sig_suggestion(
     sig: &ty::FnSig<'_>,
     ident: Ident,
     predicates: ty::GenericPredicates<'_>,
+    assoc: &ty::AssocItem,
 ) -> String {
     let args = sig
         .inputs()
         .iter()
-        .map(|ty| {
+        .enumerate()
+        .map(|(i, ty)| {
             Some(match ty.kind {
-                ty::Param(param) if param.name == kw::SelfUpper => "self".to_string(),
-                ty::Ref(reg, ref_ty, mutability) => {
+                ty::Param(_) if assoc.fn_has_self_parameter && i == 0 => "self".to_string(),
+                ty::Ref(reg, ref_ty, mutability) if i == 0 => {
                     let reg = match &format!("{}", reg)[..] {
                         "'_" | "" => String::new(),
                         reg => format!("{} ", reg),
                     };
-                    match ref_ty.kind {
-                        ty::Param(param) if param.name == kw::SelfUpper => {
-                            format!("&{}{}self", reg, mutability.prefix_str())
+                    if assoc.fn_has_self_parameter {
+                        match ref_ty.kind {
+                            ty::Param(param) if param.name == kw::SelfUpper => {
+                                format!("&{}{}self", reg, mutability.prefix_str())
+                            }
+
+                            _ => format!("self: {}", ty),
                         }
-                        _ => format!("_: {:?}", ty),
+                    } else {
+                        format!("_: {:?}", ty)
                     }
                 }
-                _ => format!("_: {:?}", ty),
+                _ => {
+                    if assoc.fn_has_self_parameter && i == 0 {
+                        format!("self: {:?}", ty)
+                    } else {
+                        format!("_: {:?}", ty)
+                    }
+                }
             })
         })
         .chain(std::iter::once(if sig.c_variadic { Some("...".to_string()) } else { None }))
@@ -2309,6 +2322,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
                 tcx.fn_sig(assoc.def_id).skip_binder(),
                 assoc.ident,
                 tcx.predicates_of(assoc.def_id),
+                assoc,
             )
         }
         ty::AssocKind::Type => format!("type {} = Type;", assoc.ident),
