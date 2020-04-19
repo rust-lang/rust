@@ -114,6 +114,8 @@ fn basic() {
     assert_eq(y, 42.0_f32);
 }
 
+/// Many of these test values are taken from
+/// https://github.com/WebAssembly/testsuite/blob/master/conversions.wast.
 fn casts() {
     // f32 -> i8
     test_both_cast::<f32, i8>(127.99, 127);
