@@ -531,11 +531,12 @@ impl Types {
                         } else {
                             format!("{} ", lt.name.ident().as_str())
                         };
-                        let mutopt = if mut_ty.mutbl == Mutability::Mut {
-                            "mut "
-                        } else {
-                            ""
-                        };
+
+                        if mut_ty.mutbl == Mutability::Mut {
+                            // Ignore `&mut Box<T>` types; see issue #2907 for
+                            // details.
+                            return;
+                        }
                         let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
@@ -544,9 +545,8 @@ impl Types {
                             "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
                             "try",
                             format!(
-                                "&{}{}{}",
+                                "&{}{}",
                                 ltopt,
-                                mutopt,
                                 &snippet_with_applicability(cx, inner.span, "..", &mut applicability)
                             ),
                             Applicability::Unspecified,
