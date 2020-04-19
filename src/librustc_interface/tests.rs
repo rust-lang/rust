@@ -505,6 +505,10 @@ fn test_codegen_options_tracking_hash() {
     opts = reference.clone();
     opts.cg.linker_plugin_lto = LinkerPluginLto::LinkerPluginAuto;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.bitcode_in_rlib = false;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 }
 
 #[test]

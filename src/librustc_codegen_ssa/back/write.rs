@@ -378,7 +378,8 @@ pub struct CompiledModules {
 }
 
 fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
-    sess.crate_types.borrow().contains(&config::CrateType::Rlib)
+    sess.opts.cg.bitcode_in_rlib
+        && sess.crate_types.borrow().contains(&config::CrateType::Rlib)
         && sess.opts.output_types.contains_key(&OutputType::Exe)
 }
 

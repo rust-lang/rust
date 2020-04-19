@@ -703,6 +703,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "compile the program with profiling instrumentation"),
     profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "use the given `.profdata` file for profile-guided optimization"),
+    bitcode_in_rlib: bool = (true, parse_bool, [TRACKED],
+        "emit bitcode in rlibs (default: yes)"),
 }
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
