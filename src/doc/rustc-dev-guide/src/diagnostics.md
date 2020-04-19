@@ -54,7 +54,7 @@ LL | more code
 The text should be matter of fact and avoid capitalization and periods, unless
 multiple sentences are _needed_:
 
-```
+```txt
 error: the fobrulator needs to be krontrificated
 ```
 
