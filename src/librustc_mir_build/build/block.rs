@@ -145,7 +145,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }));
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);
-                        this.visit_bindings(
+                        this.visit_primary_bindings(
                             &pattern,
                             UserTypeProjections::none(),
                             &mut |this, _, _, _, node, span, _, _| {
