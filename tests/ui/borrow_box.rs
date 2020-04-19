@@ -4,6 +4,14 @@
 #![allow(dead_code)]
 
 pub fn test1(foo: &mut Box<bool>) {
+    // Although this function could be changed to "&mut bool",
+    // avoiding the Box, mutable references to boxes are not
+    // flagged by this lint.
+    //
+    // This omission is intentional: By passing a mutable Box,
+    // the memory location of the pointed-to object could be
+    // modified. By passing a mutable reference, the contents
+    // could change, but not the location.
     println!("{:?}", foo)
 }
 
@@ -69,6 +77,16 @@ impl<'a> Test12 for Test11<'a> {
     fn test4(a: &Box<dyn Any + 'static>) {
         unimplemented!();
     }
+}
+
+pub fn test13(boxed_slice: &mut Box<[i32]>) {
+    // Unconditionally replaces the box pointer.
+    //
+    // This cannot be accomplished if "&mut [i32]" is passed,
+    // and provides a test case where passing a reference to
+    // a Box is valid.
+    let mut data = vec![12];
+    *boxed_slice = data.into_boxed_slice();
 }
 
 fn main() {
