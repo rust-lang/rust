@@ -2218,8 +2218,8 @@ impl rustc_serialize::Encodable for AttrId {
 }
 
 impl rustc_serialize::Decodable for AttrId {
-    fn decode<D: Decoder>(_: &mut D) -> Result<AttrId, D::Error> {
-        Ok(crate::attr::mk_attr_id())
+    fn decode<D: Decoder>(d: &mut D) -> Result<AttrId, D::Error> {
+        d.read_nil().map(|_| crate::attr::mk_attr_id())
     }
 }
 
