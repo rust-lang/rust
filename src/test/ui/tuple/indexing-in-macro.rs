@@ -1,9 +1,9 @@
-// Broken by https://github.com/rust-lang/rust/pull/70420.
+// check-pass
 
 macro_rules! m {
     (.$l:literal) => {};
 }
 
-m!(.0.0); //~ ERROR no rules expected the token `.`
+m!(.0.0); // OK, `0.0` after a dot is still a float token.
 
 fn main() {}
