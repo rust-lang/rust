@@ -1,106 +1,51 @@
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:11:18
-   |
-LL |     unsafe { &*(&FOO as *const _ as *const usize) }
-   |                  ^^^
-
-warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:17:5
+  --> $DIR/const_refers_to_static.rs:14:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)
    |     ^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:17:5
+  --> $DIR/const_refers_to_static.rs:14:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:24:17
+  --> $DIR/const_refers_to_static.rs:21:17
    |
 LL |     unsafe { *(&FOO as *const _ as *const usize) }
    |                 ^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:29:32
+  --> $DIR/const_refers_to_static.rs:26:32
    |
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                ^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:29:32
+  --> $DIR/const_refers_to_static.rs:26:32
    |
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                ^^^^^^^
 
-warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:36:6
+error[E0080]: erroneous constant used
+  --> $DIR/const_refers_to_static.rs:31:5
    |
-LL |     &FOO
-   |      ^^^
+LL |     MUTATE_INTERIOR_MUT;
+   |     ^^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static.rs:9:1
+error[E0080]: erroneous constant used
+  --> $DIR/const_refers_to_static.rs:33:5
    |
-LL | / const REF_INTERIOR_MUT: &usize = {
-LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
-LL | |     unsafe { &*(&FOO as *const _ as *const usize) }
-LL | |
-LL | | };
-   | |__^ type validation failed: encountered a reference pointing to a static variable
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+LL |     READ_INTERIOR_MUT;
+   |     ^^^^^^^^^^^^^^^^^ referenced constant has errors
 
-warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static.rs:17:5
+error[E0080]: erroneous constant used
+  --> $DIR/const_refers_to_static.rs:35:5
    |
-LL | / const MUTATE_INTERIOR_MUT: usize = {
-LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
-LL | |     FOO.fetch_add(1, Ordering::Relaxed)
-   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling non-const function `std::sync::atomic::AtomicUsize::fetch_add`
-LL | |
-LL | |
-LL | | };
-   | |__-
-   |
-note: the lint level is defined here
-  --> $DIR/const_refers_to_static.rs:2:9
-   |
-LL | #![warn(const_err)]
-   |         ^^^^^^^^^
+LL |     READ_MUT;
+   |     ^^^^^^^^ referenced constant has errors
 
-warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static.rs:24:14
-   |
-LL | / const READ_INTERIOR_MUT: usize = {
-LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
-LL | |     unsafe { *(&FOO as *const _ as *const usize) }
-   | |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
-LL | |
-LL | | };
-   | |__-
-
-warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static.rs:29:32
-   |
-LL | const READ_MUT: u32 = unsafe { MUTABLE };
-   | -------------------------------^^^^^^^---
-   |                                |
-   |                                constant accesses static
-
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static.rs:34:1
-   |
-LL | / const READ_IMMUT: &usize = {
-LL | |     static FOO: usize = 0;
-LL | |     &FOO
-LL | |
-LL | | };
-   | |__^ type validation failed: encountered a reference pointing to a static variable
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-
-error: aborting due to 2 previous errors; 10 warnings emitted
+error: aborting due to 3 previous errors; 5 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

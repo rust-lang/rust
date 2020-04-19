@@ -2,7 +2,7 @@
 
 #![feature(const_raw_ptr_deref)]
 #![feature(const_mut_refs)]
-#![deny(const_err)]
+#![deny(const_err)] // FIXME: ICEs with allow! See #71316.
 
 use std::cell::UnsafeCell;
 

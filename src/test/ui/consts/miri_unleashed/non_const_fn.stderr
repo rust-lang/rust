@@ -1,35 +1,15 @@
 warning: skipping const checks
-  --> $DIR/non_const_fn.rs:10:15
+  --> $DIR/non_const_fn.rs:9:16
    |
-LL | const C: () = foo();
-   |               ^^^^^
+LL | static C: () = foo();
+   |                ^^^^^
 
-warning: any use of this value will cause an error
-  --> $DIR/non_const_fn.rs:10:15
+error[E0080]: could not evaluate static initializer
+  --> $DIR/non_const_fn.rs:9:16
    |
-LL | const C: () = foo();
-   | --------------^^^^^-
-   |               |
-   |               calling non-const function `foo`
-   |
-note: the lint level is defined here
-  --> $DIR/non_const_fn.rs:4:9
-   |
-LL | #![warn(const_err)]
-   |         ^^^^^^^^^
+LL | static C: () = foo();
+   |                ^^^^^ calling non-const function `foo`
 
-error[E0080]: evaluation of constant expression failed
-  --> $DIR/non_const_fn.rs:14:22
-   |
-LL |     println!("{:?}", C);
-   |                      ^ referenced constant has errors
-
-warning: erroneous constant used
-  --> $DIR/non_const_fn.rs:14:22
-   |
-LL |     println!("{:?}", C);
-   |                      ^ referenced constant has errors
-
-error: aborting due to previous error; 3 warnings emitted
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

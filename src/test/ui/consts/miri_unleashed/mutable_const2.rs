@@ -7,7 +7,7 @@
 
 #![feature(const_raw_ptr_deref)]
 #![feature(const_mut_refs)]
-#![deny(const_err)]
+#![allow(const_err)]
 
 use std::cell::UnsafeCell;
 
