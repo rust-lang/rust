@@ -13,6 +13,7 @@
 /// [`Iterator::fuse`]: ../../std/iter/trait.Iterator.html#method.fuse
 /// [`Fuse`]: ../../std/iter/struct.Fuse.html
 #[stable(feature = "fused", since = "1.26.0")]
+#[rustc_unsafe_specialization_marker]
 pub trait FusedIterator: Iterator {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -38,6 +39,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 /// [`usize::MAX`]: ../../std/usize/constant.MAX.html
 /// [`.size_hint`]: ../../std/iter/trait.Iterator.html#method.size_hint
 #[unstable(feature = "trusted_len", issue = "37572")]
+#[rustc_unsafe_specialization_marker]
 pub unsafe trait TrustedLen: Iterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
