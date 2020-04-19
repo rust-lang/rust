@@ -29,7 +29,7 @@ matrix:
     - name: "clippy"
       script: |
         if rustup component add clippy-preview rustc-dev; then
-            cargo clippy --all -- -D clippy::pedantic
+            cargo clippy --all
         fi
     - name: "Shellcheck"
       script:
