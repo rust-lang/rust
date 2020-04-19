@@ -123,7 +123,7 @@ impl<'tcx> TlsData<'tcx> {
     /// implementation](https://github.com/opensource-apple/dyld/blob/195030646877261f0c8c7ad8b001f52d6a26f514/src/threadLocalVariables.c#L389):
     ///
     ///     // NOTE: this does not need locks because it only operates on current thread data
-    pub fn set_global_dtor(
+    pub fn set_thread_global_dtor(
         &mut self,
         thread: ThreadId,
         dtor: ty::Instance<'tcx>,
