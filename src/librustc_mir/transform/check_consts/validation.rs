@@ -580,6 +580,8 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
+            // FIXME: Some of these are only caught by `min_const_fn`, but should error here
+            // instead.
             TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
             | TerminatorKind::FalseEdges { .. }
