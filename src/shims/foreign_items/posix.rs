@@ -312,6 +312,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // We do not support forking, so there is nothing to do here.
                 this.write_null(dest)?;
             }
+            "sched_yield" => {
+                this.write_null(dest)?;
+            }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.

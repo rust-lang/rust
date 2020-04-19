@@ -201,6 +201,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // FIXME: we should set last_error, but to what?
                 this.write_null(dest)?;
             }
+            "SwitchToThread" => {
+                // Note that once Miri supports concurrency, this will need to return a nonzero
+                // value if this call does result in switching to another thread.
+                this.write_null(dest)?;
+            }
 
             // Better error for attempts to create a thread
             "CreateThread" => {

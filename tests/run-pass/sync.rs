@@ -10,6 +10,7 @@ fn main() {
         test_rwlock_stdlib();
     }
     test_spin_loop_hint();
+    test_thread_yield_now();
 }
 
 fn test_mutex_stdlib() {
@@ -55,4 +56,8 @@ impl<T> TryLockErrorExt<T> for TryLockError<T> {
 
 fn test_spin_loop_hint() {
     atomic::spin_loop_hint();
+}
+
+fn test_thread_yield_now() {
+    std::thread::yield_now();
 }
