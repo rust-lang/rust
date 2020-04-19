@@ -241,7 +241,7 @@ Percentage : 0%
 
 Here we used the `..` operator to ask "how often do we have
 `do_mir_borrowck` on the stack and then, later, some function whose
-name begins with `rusc::traits`?" (basically, code in that module). It
+name begins with `rustc::traits`?" (basically, code in that module). It
 turns out the answer is "almost never" — only 12 samples fit that
 description (if you ever see *no* samples, that often indicates your
 query is messed up).
