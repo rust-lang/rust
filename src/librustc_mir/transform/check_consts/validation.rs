@@ -28,7 +28,7 @@ use crate::dataflow::{self, Analysis};
 // We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
 // through a pointer prior to the given point. This is okay even though `MaybeMutBorrowedLocals`
 // kills locals upon `StorageDead` because a local will never be used after a `StorageDead`.
-pub type IndirectlyMutableResults<'mir, 'tcx> =
+type IndirectlyMutableResults<'mir, 'tcx> =
     dataflow::ResultsCursor<'mir, 'tcx, MaybeMutBorrowedLocals<'mir, 'tcx>>;
 
 struct QualifCursor<'a, 'mir, 'tcx, Q: Qualif> {
