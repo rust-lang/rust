@@ -1,8 +1,13 @@
 use crate::utils::paths;
-use crate::utils::{is_automatically_derived, is_copy, match_path, span_lint_and_note, span_lint_and_then};
+use crate::utils::{
+    is_automatically_derived, is_copy, match_path, span_lint_and_help, span_lint_and_note, span_lint_and_then,
+};
 use if_chain::if_chain;
-use rustc_hir::{Item, ItemKind, TraitRef};
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, NestedVisitorMap, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -62,11 +67,45 @@ declare_clippy_lint! {
     "implementing `Clone` explicitly on `Copy` types"
 }
 
-declare_lint_pass!(Derive => [EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ]);
+declare_clippy_lint! {
+    /// **What it does:** Checks for deriving `serde::Deserialize` on a type that
+    /// has methods using `unsafe`.
+    ///
+    /// **Why is this bad?** Deriving `serde::Deserialize` will create a constructor
+    /// that may violate invariants hold by another constructor.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust,ignore
+    /// use serde::Deserialize;
+    ///
+    /// #[derive(Deserialize)]
+    /// pub struct Foo {
+    ///     // ..
+    /// }
+    ///
+    /// impl Foo {
+    ///     pub fn new() -> Self {
+    ///         // setup here ..
+    ///     }
+    ///
+    ///     pub unsafe fn parts() -> (&str, &str) {
+    ///         // assumes invariants hold
+    ///     }
+    /// }
+    /// ```
+    pub UNSAFE_DERIVE_DESERIALIZE,
+    correctness,
+    "deriving `serde::Deserialize` on a type that has methods using `unsafe`"
+}
+
+declare_lint_pass!(Derive => [EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ, UNSAFE_DERIVE_DESERIALIZE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
+        if let hir::ItemKind::Impl {
             of_trait: Some(ref trait_ref),
             ..
         } = item.kind
@@ -76,7 +115,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
 
-            if !is_automatically_derived {
+            if is_automatically_derived {
+                check_unsafe_derive_deserialize(cx, item, trait_ref, ty);
+            } else {
                 check_copy_clone(cx, item, trait_ref, ty);
             }
         }
@@ -87,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
 fn check_hash_peq<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     span: Span,
-    trait_ref: &TraitRef<'_>,
+    trait_ref: &hir::TraitRef<'_>,
     ty: Ty<'tcx>,
     hash_is_automatically_derived: bool,
 ) {
@@ -134,7 +175,12 @@ fn check_hash_peq<'a, 'tcx>(
 }
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
-fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item<'_>, trait_ref: &TraitRef<'_>, ty: Ty<'tcx>) {
+fn check_copy_clone<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    item: &hir::Item<'_>,
+    trait_ref: &hir::TraitRef<'_>,
+    ty: Ty<'tcx>,
+) {
     if match_path(&trait_ref.path, &paths::CLONE_TRAIT) {
         if !is_copy(cx, ty) {
             return;
@@ -171,5 +217,101 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item<'_>, trait
             Some(item.span),
             "consider deriving `Clone` or removing `Copy`",
         );
+    }
+}
+
+/// Implementation of the `UNSAFE_DERIVE_DESERIALIZE` lint.
+fn check_unsafe_derive_deserialize<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    item: &hir::Item<'_>,
+    trait_ref: &hir::TraitRef<'_>,
+    ty: Ty<'tcx>,
+) {
+    fn item_from_def_id<'tcx>(cx: &LateContext<'_, 'tcx>, def_id: DefId) -> &'tcx hir::Item<'tcx> {
+        let hir_id = cx.tcx.hir().as_local_hir_id(def_id).unwrap();
+        cx.tcx.hir().expect_item(hir_id)
+    }
+
+    fn has_unsafe<'tcx>(cx: &LateContext<'_, 'tcx>, item: &'tcx hir::Item<'_>) -> bool {
+        let mut visitor = UnsafeVisitor { cx, has_unsafe: false };
+        walk_item(&mut visitor, item);
+        visitor.has_unsafe
+    }
+
+    if_chain! {
+        if match_path(&trait_ref.path, &paths::SERDE_DESERIALIZE);
+        if let ty::Adt(def, _) = ty.kind;
+        if def.did.is_local();
+        if cx.tcx.inherent_impls(def.did)
+            .iter()
+            .map(|imp_did| item_from_def_id(cx, *imp_did))
+            .any(|imp| has_unsafe(cx, imp));
+        then {
+            span_lint_and_help(
+                cx,
+                UNSAFE_DERIVE_DESERIALIZE,
+                item.span,
+                "you are deriving `serde::Deserialize` on a type that has methods using `unsafe`",
+                None,
+                "consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html"
+            );
+        }
+    }
+}
+
+struct UnsafeVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'a, 'tcx>,
+    has_unsafe: bool,
+}
+
+impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn visit_fn(
+        &mut self,
+        kind: FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl<'_>,
+        body_id: hir::BodyId,
+        span: Span,
+        id: hir::HirId,
+    ) {
+        if self.has_unsafe {
+            return;
+        }
+
+        if_chain! {
+            if let Some(header) = kind.header();
+            if let hir::Unsafety::Unsafe = header.unsafety;
+            then {
+                self.has_unsafe = true;
+            }
+        }
+
+        walk_fn(self, kind, decl, body_id, span, id);
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
+        if self.has_unsafe {
+            return;
+        }
+
+        if let hir::ExprKind::Block(block, _) = expr.kind {
+            use hir::{BlockCheckMode, UnsafeSource};
+
+            match block.rules {
+                BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+                | BlockCheckMode::PushUnsafeBlock(UnsafeSource::UserProvided)
+                | BlockCheckMode::PopUnsafeBlock(UnsafeSource::UserProvided) => {
+                    self.has_unsafe = true;
+                },
+                _ => {},
+            }
+        }
+
+        walk_expr(self, expr);
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::All(self.cx.tcx.hir())
     }
 }
