@@ -1,4 +1,4 @@
-// build-pass
+// check-pass
 
 /// ```
 /// \__________pkt->size___________/          \_result->size_/ \__pkt->size__/

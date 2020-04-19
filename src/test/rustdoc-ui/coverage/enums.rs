@@ -1,5 +1,5 @@
 // compile-flags:-Z unstable-options --show-coverage
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 //! (remember the crate root is still a module)
 

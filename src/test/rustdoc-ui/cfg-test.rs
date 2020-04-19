@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // compile-flags:--test --test-args --test-threads=1
 // normalize-stdout-test: "src/test/rustdoc-ui" -> "$$DIR"
 
