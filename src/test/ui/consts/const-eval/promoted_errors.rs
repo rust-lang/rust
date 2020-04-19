@@ -4,7 +4,7 @@
 //[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
 
 // build-pass
-// ignore-pass (emit codegen-time warnings and verify that they are indeed warnings and not errors)
+// ignore-pass (test emits codegen-time warnings and verifies that they are not errors)
 
 #![warn(const_err, arithmetic_overflow, unconditional_panic)]
 

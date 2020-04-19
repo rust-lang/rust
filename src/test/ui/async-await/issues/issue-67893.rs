@@ -1,7 +1,5 @@
 // aux-build: issue_67893.rs
 // edition:2018
-// dont-check-compiler-stderr
-// FIXME(#71222): Add above flag because of the difference of stderrs on some env.
 
 extern crate issue_67893;
 
