@@ -92,6 +92,18 @@ pub enum ThreadState {
     Terminated,
 }
 
+/// The join status of a thread.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum ThreadJoinStatus {
+    /// The thread can be joined.
+    Joinable,
+    /// A thread is detached if its join handle was destroyed and no other
+    /// thread can join it.
+    Detached,
+    /// The thread was already joined by some thread and cannot be joined again.
+    Joined,
+}
+
 /// A thread.
 pub struct Thread<'mir, 'tcx> {
     state: ThreadState,
@@ -99,11 +111,8 @@ pub struct Thread<'mir, 'tcx> {
     thread_name: Option<Vec<u8>>,
     /// The virtual call stack.
     stack: Vec<Frame<'mir, 'tcx, Tag, FrameData<'tcx>>>,
-    /// Is the thread detached?
-    ///
-    /// A thread is detached if its join handle was destroyed and no other
-    /// thread can join it.
-    detached: bool,
+    /// The join status.
+    join_status: ThreadJoinStatus,
 }
 
 impl<'mir, 'tcx> Thread<'mir, 'tcx> {
@@ -128,7 +137,12 @@ impl<'mir, 'tcx> std::fmt::Debug for Thread<'mir, 'tcx> {
 
 impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
     fn default() -> Self {
-        Self { state: ThreadState::Enabled, thread_name: None, stack: Vec::new(), detached: false }
+        Self {
+            state: ThreadState::Enabled,
+            thread_name: None,
+            stack: Vec::new(),
+            join_status: ThreadJoinStatus::Joinable,
+        }
     }
 }
 
@@ -225,25 +239,31 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
     /// Mark the thread as detached, which means that no other thread will try
     /// to join it and the thread is responsible for cleaning up.
-    fn detach_thread(&mut self, id: ThreadId) {
-        self.threads[id].detached = true;
+    fn detach_thread(&mut self, id: ThreadId) -> InterpResult<'tcx> {
+        if self.threads[id].join_status != ThreadJoinStatus::Joinable {
+            throw_ub_format!("trying to detach thread that was already detached or joined");
+        }
+        self.threads[id].join_status = ThreadJoinStatus::Detached;
+        Ok(())
     }
 
     /// Mark that the active thread tries to join the thread with `joined_thread_id`.
     fn join_thread(&mut self, joined_thread_id: ThreadId) -> InterpResult<'tcx> {
-        if self.threads[joined_thread_id].detached {
-            throw_ub_format!("trying to join a detached thread");
+        if self.threads[joined_thread_id].join_status != ThreadJoinStatus::Joinable {
+            throw_ub_format!("trying to join a detached or already joined thread");
         }
         if joined_thread_id == self.active_thread {
             throw_ub_format!("trying to join itself");
         }
-        if self
-            .threads
-            .iter()
-            .any(|thread| thread.state == ThreadState::BlockedOnJoin(joined_thread_id))
-        {
-            throw_ub_format!("multiple threads try to join the same thread");
-        }
+        assert!(
+            self.threads
+                .iter()
+                .all(|thread| thread.state != ThreadState::BlockedOnJoin(joined_thread_id)),
+            "a joinable thread has threads waiting for its termination"
+        );
+        // Mark the joined thread as being joined so that we detect if other
+        // threads try to join it.
+        self.threads[joined_thread_id].join_status = ThreadJoinStatus::Joined;
         if self.threads[joined_thread_id].state != ThreadState::Terminated {
             // The joined thread is still running, we need to wait for it.
             self.active_thread_mut().state = ThreadState::BlockedOnJoin(joined_thread_id);
@@ -451,8 +471,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn detach_thread(&mut self, thread_id: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        this.machine.threads.detach_thread(thread_id);
-        Ok(())
+        this.machine.threads.detach_thread(thread_id)
     }
 
     #[inline]
