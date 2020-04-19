@@ -321,10 +321,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else if let ty::Param(p) = lhs_ty.kind {
                                     suggest_constraining_param(
                                         self.tcx,
+                                        self.body_id,
                                         &mut err,
                                         lhs_ty,
                                         rhs_ty,
-                                        &expr,
                                         missing_trait,
                                         p,
                                         false,
@@ -481,10 +481,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else if let ty::Param(p) = lhs_ty.kind {
                                     suggest_constraining_param(
                                         self.tcx,
+                                        self.body_id,
                                         &mut err,
                                         lhs_ty,
                                         rhs_ty,
-                                        &expr,
                                         missing_trait,
                                         p,
                                         use_output,
@@ -938,10 +938,10 @@ fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_tra
 
 fn suggest_constraining_param(
     tcx: TyCtxt<'_>,
+    body_id: hir::HirId,
     mut err: &mut DiagnosticBuilder<'_>,
     lhs_ty: Ty<'_>,
     rhs_ty: Ty<'_>,
-    expr: &hir::Expr<'_>,
     missing_trait: &str,
     p: ty::ParamTy,
     set_output: bool,
@@ -951,33 +951,26 @@ fn suggest_constraining_param(
     // Try to find the def-id and details for the parameter p. We have only the index,
     // so we have to find the enclosing function's def-id, then look through its declared
     // generic parameters to get the declaration.
-    if let Some(def_id) = hir
-        .find(hir.get_parent_item(expr.hir_id))
-        .and_then(|node| node.hir_id())
-        .and_then(|hir_id| hir.opt_local_def_id(hir_id))
+    let def_id = hir.body_owner_def_id(hir::BodyId { hir_id: body_id });
+    let generics = tcx.generics_of(def_id);
+    let param_def_id = generics.type_param(&p, tcx).def_id;
+    if let Some(generics) = hir
+        .as_local_hir_id(param_def_id)
+        .and_then(|id| hir.find(hir.get_parent_item(id)))
+        .as_ref()
+        .and_then(|node| node.generics())
     {
-        let generics = tcx.generics_of(def_id);
-        let param_def_id = generics.type_param(&p, tcx).def_id;
-        if let Some(generics) = hir
-            .as_local_hir_id(param_def_id)
-            .and_then(|id| hir.find(hir.get_parent_item(id)))
-            .as_ref()
-            .and_then(|node| node.generics())
-        {
-            let output = if set_output { format!("<Output = {}>", rhs_ty) } else { String::new() };
-            suggest_constraining_type_param(
-                tcx,
-                generics,
-                &mut err,
-                &format!("{}", lhs_ty),
-                &format!("{}{}", missing_trait, output),
-                None,
-            );
-        } else {
-            let span = tcx.def_span(param_def_id);
-            err.span_label(span, msg);
-        }
+        let output = if set_output { format!("<Output = {}>", rhs_ty) } else { String::new() };
+        suggest_constraining_type_param(
+            tcx,
+            generics,
+            &mut err,
+            &format!("{}", lhs_ty),
+            &format!("{}{}", missing_trait, output),
+            None,
+        );
     } else {
-        err.note(&msg);
+        let span = tcx.def_span(param_def_id);
+        err.span_label(span, msg);
     }
 }
