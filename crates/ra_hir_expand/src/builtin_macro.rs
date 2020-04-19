@@ -301,7 +301,7 @@ fn relative_file(db: &dyn AstDatabase, call_id: MacroCallId, path: &str) -> Opti
     }
 
     // Extern paths ?
-    let krate = db.relevant_crates(call_site).get(0)?.clone();
+    let krate = *db.relevant_crates(call_site).get(0)?;
     let (extern_source_id, relative_file) =
         db.crate_graph()[krate].extern_source.extern_path(path)?;
 
@@ -329,7 +329,7 @@ fn include_expand(
 
     // FIXME:
     // Handle include as expression
-    let res = parse_to_token_tree(&db.file_text(file_id.into()))
+    let res = parse_to_token_tree(&db.file_text(file_id))
         .ok_or_else(|| mbe::ExpandError::ConversionError)?
         .0;
 
@@ -340,7 +340,7 @@ fn get_env_inner(db: &dyn AstDatabase, arg_id: EagerMacroId, key: &str) -> Optio
     let call_id: MacroCallId = arg_id.into();
     let original_file = call_id.as_file().original_file(db);
 
-    let krate = db.relevant_crates(original_file).get(0)?.clone();
+    let krate = *db.relevant_crates(original_file).get(0)?;
     db.crate_graph()[krate].env.get(key)
 }
 
@@ -447,7 +447,7 @@ mod tests {
                     file_id: file_id.into(),
                 };
 
-                let id: MacroCallId = db.intern_eager_expansion(eager.into()).into();
+                let id: MacroCallId = db.intern_eager_expansion(eager).into();
                 id.as_file()
             }
         };

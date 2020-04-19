@@ -96,7 +96,7 @@ fn try_extend_selection(
         return Some(node.text_range());
     }
 
-    let node = shallowest_node(&node.into());
+    let node = shallowest_node(&node);
 
     if node.parent().map(|n| list_kinds.contains(&n.kind())) == Some(true) {
         if let Some(range) = extend_list_item(&node) {
