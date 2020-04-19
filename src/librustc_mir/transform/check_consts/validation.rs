@@ -3,7 +3,6 @@
 use rustc_errors::struct_span_err;
 use rustc_hir::lang_items;
 use rustc_hir::{def_id::DefId, HirId};
-use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -31,37 +30,22 @@ use crate::dataflow::{self, Analysis};
 type IndirectlyMutableResults<'mir, 'tcx> =
     dataflow::ResultsCursor<'mir, 'tcx, MaybeMutBorrowedLocals<'mir, 'tcx>>;
 
-struct QualifCursor<'a, 'mir, 'tcx, Q: Qualif> {
-    cursor: dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q>>,
-    in_any_value_of_ty: BitSet<Local>,
-}
+type QualifResults<'mir, 'tcx, Q> =
+    dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
 
-impl<Q: Qualif> QualifCursor<'a, 'mir, 'tcx, Q> {
-    pub fn new(q: Q, ccx: &'a ConstCx<'mir, 'tcx>) -> Self {
-        let cursor = FlowSensitiveAnalysis::new(q, ccx)
-            .into_engine(ccx.tcx, ccx.body, ccx.def_id)
-            .iterate_to_fixpoint()
-            .into_results_cursor(ccx.body);
-
-        let mut in_any_value_of_ty = BitSet::new_empty(ccx.body.local_decls.len());
-        for (local, decl) in ccx.body.local_decls.iter_enumerated() {
-            if Q::in_any_value_of_ty(ccx, decl.ty) {
-                in_any_value_of_ty.insert(local);
-            }
-        }
-
-        QualifCursor { cursor, in_any_value_of_ty }
-    }
-}
-
-pub struct Qualifs<'a, 'mir, 'tcx> {
-    has_mut_interior: QualifCursor<'a, 'mir, 'tcx, HasMutInterior>,
-    needs_drop: QualifCursor<'a, 'mir, 'tcx, NeedsDrop>,
+pub struct Qualifs<'mir, 'tcx> {
+    has_mut_interior: QualifResults<'mir, 'tcx, HasMutInterior>,
+    needs_drop: QualifResults<'mir, 'tcx, NeedsDrop>,
     indirectly_mutable: IndirectlyMutableResults<'mir, 'tcx>,
 }
 
-impl Qualifs<'a, 'mir, 'tcx> {
-    fn indirectly_mutable(&mut self, local: Local, location: Location) -> bool {
+impl Qualifs<'mir, 'tcx> {
+    fn indirectly_mutable(
+        &mut self,
+        _: &Item<'mir, 'tcx>,
+        local: Local,
+        location: Location,
+    ) -> bool {
         self.indirectly_mutable.seek_before(location);
         self.indirectly_mutable.get().contains(local)
     }
@@ -69,29 +53,36 @@ impl Qualifs<'a, 'mir, 'tcx> {
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    fn needs_drop(&mut self, local: Local, location: Location) -> bool {
-        if !self.needs_drop.in_any_value_of_ty.contains(local) {
+    fn needs_drop(&mut self, item: &Item<'mir, 'tcx>, local: Local, location: Location) -> bool {
+        let ty = item.body.local_decls[local].ty;
+        if !NeedsDrop::in_any_value_of_ty(item, ty) {
             return false;
         }
 
-        self.needs_drop.cursor.seek_before(location);
-        self.needs_drop.cursor.get().contains(local) || self.indirectly_mutable(local, location)
+        self.needs_drop.seek_before(location);
+        self.needs_drop.get().contains(local) || self.indirectly_mutable(item, local, location)
     }
 
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary.
-    fn has_mut_interior(&mut self, local: Local, location: Location) -> bool {
-        if !self.has_mut_interior.in_any_value_of_ty.contains(local) {
+    fn has_mut_interior(
+        &mut self,
+        item: &Item<'mir, 'tcx>,
+        local: Local,
+        location: Location,
+    ) -> bool {
+        let ty = ccx.body.local_decls[local].ty;
+        if !HasMutInterior::in_any_value_of_ty(ccx, ty) {
             return false;
         }
 
-        self.has_mut_interior.cursor.seek_before(location);
-        self.has_mut_interior.cursor.get().contains(local)
-            || self.indirectly_mutable(local, location)
+        self.has_mut_interior.seek_before(location);
+        self.has_mut_interior.get().contains(local)
+            || self.indirectly_mutable(item, local, location)
     }
 
-    fn in_return_place(&mut self, ccx: &ConstCx<'_, 'tcx>) -> ConstQualifs {
+    fn in_return_place(&mut self, item: &Item<'mir, 'tcx>) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
         // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
@@ -114,21 +105,21 @@ impl Qualifs<'a, 'mir, 'tcx> {
         let return_loc = ccx.body.terminator_loc(return_block);
 
         ConstQualifs {
-            needs_drop: self.needs_drop(RETURN_PLACE, return_loc),
-            has_mut_interior: self.has_mut_interior(RETURN_PLACE, return_loc),
+            needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
+            has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
         }
     }
 }
 
-pub struct Validator<'a, 'mir, 'tcx> {
-    ccx: &'a ConstCx<'mir, 'tcx>,
-    qualifs: Qualifs<'a, 'mir, 'tcx>,
+pub struct Validator<'mir, 'tcx> {
+    ccx: &'mir ConstCx<'mir, 'tcx>,
+    qualifs: Qualifs<'mir, 'tcx>,
 
     /// The span of the current statement.
     span: Span,
 }
 
-impl Deref for Validator<'_, 'mir, 'tcx> {
+impl Deref for Validator<'mir, 'tcx> {
     type Target = ConstCx<'mir, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
@@ -136,12 +127,9 @@ impl Deref for Validator<'_, 'mir, 'tcx> {
     }
 }
 
-impl Validator<'a, 'mir, 'tcx> {
-    pub fn new(ccx: &'a ConstCx<'mir, 'tcx>) -> Self {
-        let ConstCx { tcx, body, def_id, param_env, .. } = *ccx;
-
-        let needs_drop = QualifCursor::new(NeedsDrop, ccx);
-        let has_mut_interior = QualifCursor::new(HasMutInterior, ccx);
+impl Validator<'mir, 'tcx> {
+    pub fn new(item: &'mir Item<'mir, 'tcx>) -> Self {
+        let Item { tcx, body, def_id, param_env, .. } = *item;
 
         // We can use `unsound_ignore_borrow_on_drop` here because custom drop impls are not
         // allowed in a const.
@@ -153,6 +141,16 @@ impl Validator<'a, 'mir, 'tcx> {
             .into_engine(tcx, body, def_id)
             .iterate_to_fixpoint()
             .into_results_cursor(body);
+
+        let needs_drop = FlowSensitiveAnalysis::new(NeedsDrop, item)
+            .into_engine(item.tcx, &item.body, item.def_id)
+            .iterate_to_fixpoint()
+            .into_results_cursor(*item.body);
+
+        let has_mut_interior = FlowSensitiveAnalysis::new(HasMutInterior, item)
+            .into_engine(item.tcx, &item.body, item.def_id)
+            .iterate_to_fixpoint()
+            .into_results_cursor(*item.body);
 
         let qualifs = Qualifs { needs_drop, has_mut_interior, indirectly_mutable };
 
@@ -239,7 +237,7 @@ impl Validator<'a, 'mir, 'tcx> {
     }
 }
 
-impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
+impl Visitor<'tcx> for Validator<'mir, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, block: &BasicBlockData<'tcx>) {
         trace!("visit_basic_block_data: bb={:?} is_cleanup={:?}", bb, block.is_cleanup);
 
@@ -345,7 +343,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             | Rvalue::AddressOf(Mutability::Not, ref place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     &self.ccx,
-                    &mut |local| self.qualifs.has_mut_interior(local, location),
+                    &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
                     place.as_ref(),
                 );
 
@@ -571,7 +569,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 let needs_drop = if let Some(local) = dropped_place.as_local() {
                     // Use the span where the local was declared as the span of the drop error.
                     err_span = self.body.local_decls[local].source_info.span;
-                    self.qualifs.needs_drop(local, location)
+                    self.qualifs.needs_drop(self.ccx, local, location)
                 } else {
                     true
                 };
