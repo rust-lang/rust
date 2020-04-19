@@ -847,7 +847,9 @@ impl<'a> Iterator for Iter<'a> {
         self.inner.next().map(Component::as_os_str)
     }
 
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
