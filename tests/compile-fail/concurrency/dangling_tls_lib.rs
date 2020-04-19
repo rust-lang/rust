@@ -1,4 +1,4 @@
-// ignore-windows
+// ignore-windows: Concurrency on Windows is not supported yet.
 
 #![feature(thread_local_internals)]
 

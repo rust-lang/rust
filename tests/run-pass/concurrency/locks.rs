@@ -1,4 +1,4 @@
-// ignore-windows
+// ignore-windows: Concurrency on Windows is not supported yet.
 
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
@@ -11,6 +11,7 @@ fn check_mutex() {
         let data = Arc::clone(&data);
         let thread = thread::spawn(move || {
             let mut data = data.lock().unwrap();
+            thread::yield_now();
             *data += 1;
         });
         threads.push(thread);
@@ -34,6 +35,7 @@ fn check_rwlock_write() {
         let data = Arc::clone(&data);
         let thread = thread::spawn(move || {
             let mut data = data.write().unwrap();
+            thread::yield_now();
             *data += 1;
         });
         threads.push(thread);

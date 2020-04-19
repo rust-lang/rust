@@ -1,4 +1,9 @@
-// ignore-windows
+// ignore-windows: Concurrency on Windows is not supported yet.
+
+//! The main purpose of this test is to check that if we take a pointer to
+//! thread's `t1` thread-local `A` and send it to another thread `t2`,
+//! dereferencing the pointer on `t2` resolves to `t1`'s thread-local. In this
+//! test, we also check that thread-locals act as per-thread statics.
 
 #![feature(thread_local)]
 
