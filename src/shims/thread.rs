@@ -102,12 +102,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let option = this.read_scalar(option)?.not_undef()?.to_i32()?;
-        if option != this.eval_libc_i32("PR_SET_NAME")? {
-            throw_unsup_format!("Miri supports only PR_SET_NAME");
+        if option == this.eval_libc_i32("PR_SET_NAME")? {
+            let address = this.read_scalar(arg2)?.not_undef()?;
+            let name = this.memory.read_c_str(address)?.to_owned();
+            this.set_active_thread_name(name)?;
+        } else if option == this.eval_libc_i32("PR_GET_NAME")? {
+            let address = this.read_scalar(arg2)?.not_undef()?;
+            let name = this.get_active_thread_name()?;
+            this.memory.write_bytes(address, name)?;
+        } else {
+            throw_unsup_format!("Unsupported prctl option.");
         }
-        let address = this.read_scalar(arg2)?.not_undef()?;
-        let name = this.memory.read_c_str(address)?.to_owned();
-        this.set_active_thread_name(name)?;
 
         Ok(0)
     }
