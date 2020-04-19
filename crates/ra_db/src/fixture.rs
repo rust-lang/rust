@@ -235,7 +235,7 @@ fn parse_meta(meta: &str) -> ParsedMeta {
             "env" => {
                 for key in value.split(',') {
                     if let Some((k, v)) = split1(key, '=') {
-                        env.set(k.into(), v.into());
+                        env.set(k, v.into());
                     }
                 }
             }

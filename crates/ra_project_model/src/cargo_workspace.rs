@@ -303,8 +303,7 @@ pub fn load_extern_resources(
                     if message.target.kind.contains(&"proc-macro".to_string()) {
                         let package_id = message.package_id;
                         // Skip rmeta file
-                        if let Some(filename) =
-                            message.filenames.iter().filter(|name| is_dylib(name)).next()
+                        if let Some(filename) = message.filenames.iter().find(|name| is_dylib(name))
                         {
                             res.proc_dylib_paths.insert(package_id, filename.clone());
                         }

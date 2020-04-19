@@ -184,7 +184,7 @@ impl WorldState {
         let mut analysis_host = AnalysisHost::new(lru_capacity);
         analysis_host.apply_change(change);
         WorldState {
-            config: config,
+            config,
             roots: folder_roots,
             workspaces: Arc::new(workspaces),
             analysis_host,

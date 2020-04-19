@@ -473,16 +473,14 @@ impl ExprCollector<'_> {
         self.collect_block_items(&block);
         let statements = block
             .statements()
-            .filter_map(|s| match s {
+            .map(|s| match s {
                 ast::Stmt::LetStmt(stmt) => {
                     let pat = self.collect_pat_opt(stmt.pat());
                     let type_ref = stmt.ascribed_type().map(TypeRef::from_ast);
                     let initializer = stmt.initializer().map(|e| self.collect_expr(e));
-                    Some(Statement::Let { pat, type_ref, initializer })
+                    Statement::Let { pat, type_ref, initializer }
                 }
-                ast::Stmt::ExprStmt(stmt) => {
-                    Some(Statement::Expr(self.collect_expr_opt(stmt.expr())))
-                }
+                ast::Stmt::ExprStmt(stmt) => Statement::Expr(self.collect_expr_opt(stmt.expr())),
             })
             .collect();
         let tail = block.expr().map(|e| self.collect_expr(e));
