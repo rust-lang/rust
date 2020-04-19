@@ -33,34 +33,64 @@ type IndirectlyMutableResults<'mir, 'tcx> =
 type QualifResults<'mir, 'tcx, Q> =
     dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
 
+#[derive(Default)]
 pub struct Qualifs<'mir, 'tcx> {
-    has_mut_interior: QualifResults<'mir, 'tcx, HasMutInterior>,
-    needs_drop: QualifResults<'mir, 'tcx, NeedsDrop>,
-    indirectly_mutable: IndirectlyMutableResults<'mir, 'tcx>,
+    has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
+    needs_drop: Option<QualifResults<'mir, 'tcx, NeedsDrop>>,
+    indirectly_mutable: Option<IndirectlyMutableResults<'mir, 'tcx>>,
 }
 
 impl Qualifs<'mir, 'tcx> {
     fn indirectly_mutable(
         &mut self,
-        _: &Item<'mir, 'tcx>,
+        ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
         location: Location,
     ) -> bool {
-        self.indirectly_mutable.seek_before(location);
-        self.indirectly_mutable.get().contains(local)
+        let indirectly_mutable = self.indirectly_mutable.get_or_insert_with(|| {
+            let ConstCx { tcx, body, def_id, param_env, .. } = *ccx;
+
+            // We can use `unsound_ignore_borrow_on_drop` here because custom drop impls are not
+            // allowed in a const.
+            //
+            // FIXME(ecstaticmorse): Someday we want to allow custom drop impls. How do we do this
+            // without breaking stable code?
+            MaybeMutBorrowedLocals::mut_borrows_only(tcx, &body, param_env)
+                .unsound_ignore_borrow_on_drop()
+                .into_engine(tcx, &body, def_id)
+                .iterate_to_fixpoint()
+                .into_results_cursor(&body)
+        });
+
+        indirectly_mutable.seek_before(location);
+        indirectly_mutable.get().contains(local)
     }
 
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    fn needs_drop(&mut self, item: &Item<'mir, 'tcx>, local: Local, location: Location) -> bool {
-        let ty = item.body.local_decls[local].ty;
-        if !NeedsDrop::in_any_value_of_ty(item, ty) {
+    fn needs_drop(
+        &mut self,
+        ccx: &'mir ConstCx<'mir, 'tcx>,
+        local: Local,
+        location: Location,
+    ) -> bool {
+        let ty = ccx.body.local_decls[local].ty;
+        if !NeedsDrop::in_any_value_of_ty(ccx, ty) {
             return false;
         }
 
-        self.needs_drop.seek_before(location);
-        self.needs_drop.get().contains(local) || self.indirectly_mutable(item, local, location)
+        let needs_drop = self.needs_drop.get_or_insert_with(|| {
+            let ConstCx { tcx, body, def_id, .. } = *ccx;
+
+            FlowSensitiveAnalysis::new(NeedsDrop, ccx)
+                .into_engine(tcx, &body, def_id)
+                .iterate_to_fixpoint()
+                .into_results_cursor(&body)
+        });
+
+        needs_drop.seek_before(location);
+        needs_drop.get().contains(local) || self.indirectly_mutable(ccx, local, location)
     }
 
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
@@ -68,7 +98,7 @@ impl Qualifs<'mir, 'tcx> {
     /// Only updates the cursor if absolutely necessary.
     fn has_mut_interior(
         &mut self,
-        item: &Item<'mir, 'tcx>,
+        ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
         location: Location,
     ) -> bool {
@@ -77,12 +107,20 @@ impl Qualifs<'mir, 'tcx> {
             return false;
         }
 
-        self.has_mut_interior.seek_before(location);
-        self.has_mut_interior.get().contains(local)
-            || self.indirectly_mutable(item, local, location)
+        let has_mut_interior = self.has_mut_interior.get_or_insert_with(|| {
+            let ConstCx { tcx, body, def_id, .. } = *ccx;
+
+            FlowSensitiveAnalysis::new(HasMutInterior, ccx)
+                .into_engine(tcx, &body, def_id)
+                .iterate_to_fixpoint()
+                .into_results_cursor(&body)
+        });
+
+        has_mut_interior.seek_before(location);
+        has_mut_interior.get().contains(local) || self.indirectly_mutable(ccx, local, location)
     }
 
-    fn in_return_place(&mut self, item: &Item<'mir, 'tcx>) -> ConstQualifs {
+    fn in_return_place(&mut self, ccx: &'mir ConstCx<'mir, 'tcx>) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
         // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
@@ -128,33 +166,8 @@ impl Deref for Validator<'mir, 'tcx> {
 }
 
 impl Validator<'mir, 'tcx> {
-    pub fn new(item: &'mir Item<'mir, 'tcx>) -> Self {
-        let Item { tcx, body, def_id, param_env, .. } = *item;
-
-        // We can use `unsound_ignore_borrow_on_drop` here because custom drop impls are not
-        // allowed in a const.
-        //
-        // FIXME(ecstaticmorse): Someday we want to allow custom drop impls. How do we do this
-        // without breaking stable code?
-        let indirectly_mutable = MaybeMutBorrowedLocals::mut_borrows_only(tcx, body, param_env)
-            .unsound_ignore_borrow_on_drop()
-            .into_engine(tcx, body, def_id)
-            .iterate_to_fixpoint()
-            .into_results_cursor(body);
-
-        let needs_drop = FlowSensitiveAnalysis::new(NeedsDrop, item)
-            .into_engine(item.tcx, &item.body, item.def_id)
-            .iterate_to_fixpoint()
-            .into_results_cursor(*item.body);
-
-        let has_mut_interior = FlowSensitiveAnalysis::new(HasMutInterior, item)
-            .into_engine(item.tcx, &item.body, item.def_id)
-            .iterate_to_fixpoint()
-            .into_results_cursor(*item.body);
-
-        let qualifs = Qualifs { needs_drop, has_mut_interior, indirectly_mutable };
-
-        Validator { span: ccx.body.span, ccx, qualifs }
+    pub fn new(ccx: &'mir ConstCx<'mir, 'tcx>) -> Self {
+        Validator { span: ccx.body.span, ccx, qualifs: Default::default() }
     }
 
     pub fn check_body(&mut self) {
