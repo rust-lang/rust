@@ -3593,6 +3593,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "serialize",
+ "version_check",
 ]
 
 [[package]]
