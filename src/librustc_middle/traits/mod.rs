@@ -191,6 +191,8 @@ pub enum ObligationCauseCode<'tcx> {
 
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
 
+    DerivedObligation(DerivedObligationCause<'tcx>),
+
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplMethodObligation {
         item_name: ast::Name,
@@ -257,26 +259,20 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
-
-    AssocTypeBound(Box<AssocTypeBoundData>),
 }
 
 impl ObligationCauseCode<'_> {
     // Return the base obligation, ignoring derived obligations.
     pub fn peel_derives(&self) -> &Self {
         let mut base_cause = self;
-        while let BuiltinDerivedObligation(cause) | ImplDerivedObligation(cause) = base_cause {
+        while let BuiltinDerivedObligation(cause)
+        | ImplDerivedObligation(cause)
+        | DerivedObligation(cause) = base_cause
+        {
             base_cause = &cause.parent_code;
         }
         base_cause
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AssocTypeBoundData {
-    pub impl_span: Option<Span>,
-    pub original: Span,
-    pub bounds: Vec<Span>,
 }
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.

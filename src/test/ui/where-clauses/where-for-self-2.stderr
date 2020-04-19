@@ -2,7 +2,7 @@ error[E0277]: the trait bound `for<'a> &'a _: Bar` is not satisfied
   --> $DIR/where-for-self-2.rs:21:5
    |
 LL | fn foo<T>(x: &T)
-   |    ---
+   |    --- required by a bound in this
 LL |     where for<'a> &'a T: Bar
    |                          --- required by this bound in `foo`
 ...

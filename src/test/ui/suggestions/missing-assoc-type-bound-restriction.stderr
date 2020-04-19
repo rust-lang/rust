@@ -2,7 +2,7 @@ error[E0277]: the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
   --> $DIR/missing-assoc-type-bound-restriction.rs:17:19
    |
 LL | trait Parent {
-   |       ------
+   |       ------ required by a bound in this
 LL |     type Ty;
 LL |     type Assoc: Child<Self::Ty>;
    |                 --------------- required by this bound in `Parent`
@@ -13,18 +13,19 @@ LL | impl<A, T: Parent<Ty = A>> Parent for ParentWrapper<T> {
    |                   the trait `Child<A>` is not implemented for `<T as Parent>::Assoc`
 
 error[E0277]: the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
-  --> $DIR/missing-assoc-type-bound-restriction.rs:20:5
+  --> $DIR/missing-assoc-type-bound-restriction.rs:20:18
    |
+LL | trait Parent {
+   |       ------ required by a bound in this
+LL |     type Ty;
 LL |     type Assoc: Child<Self::Ty>;
-   |          ----- associated type defined here
+   |                 --------------- required by this bound in `Parent`
 ...
 LL | impl<A, T: Parent<Ty = A>> Parent for ParentWrapper<T> {
-   | ------------------------------------------------------- help: consider further restricting the associated type: `where <T as Parent>::Assoc: Child<A>`
-   | |
-   | in this `impl` item
+   |                                                       - help: consider further restricting the associated type: `where <T as Parent>::Assoc: Child<A>`
 ...
 LL |     type Assoc = ChildWrapper<T::Assoc>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Child<A>` is not implemented for `<T as Parent>::Assoc`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ the trait `Child<A>` is not implemented for `<T as Parent>::Assoc`
    |
    = note: required because of the requirements on the impl of `Child<A>` for `ChildWrapper<<T as Parent>::Assoc>`
 
@@ -32,7 +33,7 @@ error[E0277]: the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
   --> $DIR/missing-assoc-type-bound-restriction.rs:20:5
    |
 LL | trait Parent {
-   |       ------
+   |       ------ required by a bound in this
 LL |     type Ty;
 LL |     type Assoc: Child<Self::Ty>;
    |                 --------------- required by this bound in `Parent`

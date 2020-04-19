@@ -2,7 +2,7 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/expect-fn-supply-fn.rs:30:5
    |
 LL | fn with_closure_expecting_fn_with_free_region<F>(_: F)
-   |    ------------------------------------------
+   |    ------------------------------------------ required by a bound in this
 LL |     where F: for<'a> FnOnce(fn(&'a u32), &i32)
    |                      ------------------------- required by this bound in `with_closure_expecting_fn_with_free_region`
 ...
@@ -15,7 +15,7 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/expect-fn-supply-fn.rs:37:5
    |
 LL | fn with_closure_expecting_fn_with_bound_region<F>(_: F)
-   |    -------------------------------------------
+   |    ------------------------------------------- required by a bound in this
 LL |     where F: FnOnce(fn(&u32), &i32)
    |              ---------------------- required by this bound in `with_closure_expecting_fn_with_bound_region`
 ...
@@ -28,7 +28,7 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/expect-fn-supply-fn.rs:46:5
    |
 LL | fn with_closure_expecting_fn_with_bound_region<F>(_: F)
-   |    -------------------------------------------
+   |    ------------------------------------------- required by a bound in this
 LL |     where F: FnOnce(fn(&u32), &i32)
    |              ---------------------- required by this bound in `with_closure_expecting_fn_with_bound_region`
 ...

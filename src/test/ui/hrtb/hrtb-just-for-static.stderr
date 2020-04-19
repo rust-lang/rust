@@ -2,7 +2,7 @@ error[E0277]: the trait bound `for<'a> StaticInt: Foo<&'a isize>` is not satisfi
   --> $DIR/hrtb-just-for-static.rs:24:17
    |
 LL | fn want_hrtb<T>()
-   |    ---------
+   |    --------- required by a bound in this
 LL |     where T : for<'a> Foo<&'a isize>
    |               ---------------------- required by this bound in `want_hrtb`
 ...
@@ -16,7 +16,7 @@ error[E0277]: the trait bound `for<'a> &'a u32: Foo<&'a isize>` is not satisfied
   --> $DIR/hrtb-just-for-static.rs:30:17
    |
 LL | fn want_hrtb<T>()
-   |    ---------
+   |    --------- required by a bound in this
 LL |     where T : for<'a> Foo<&'a isize>
    |               ---------------------- required by this bound in `want_hrtb`
 ...

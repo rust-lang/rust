@@ -1,6 +1,12 @@
 error[E0277]: `<L1 as Lam<&'a u8>>::App` doesn't implement `std::fmt::Debug`
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:31:6
    |
+LL | trait Case1 {
+   |       ----- required by a bound in this
+...
+LL |                 Debug
+   |                 ----- required by this bound in `Case1`
+...
 LL | impl Case1 for S1 {
    |      ^^^^^ `<L1 as Lam<&'a u8>>::App` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
@@ -20,7 +26,7 @@ error[E0277]: `<<T as Case1>::C as std::iter::Iterator>::Item` cannot be sent be
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:36:20
    |
 LL | trait Case1 {
-   |       -----
+   |       ----- required by a bound in this
 LL |     type C: Clone + Iterator<Item:
 LL |         Send + Iterator<Item:
    |         ---- required by this bound in `Case1`
@@ -36,7 +42,7 @@ error[E0277]: `<<T as Case1>::C as std::iter::Iterator>::Item` cannot be shared 
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:36:20
    |
 LL | trait Case1 {
-   |       -----
+   |       ----- required by a bound in this
 ...
 LL |         > + Sync>;
    |             ---- required by this bound in `Case1`
@@ -52,7 +58,7 @@ error[E0277]: `<_ as Lam<&'a u8>>::App` doesn't implement `std::fmt::Debug`
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:36:20
    |
 LL | trait Case1 {
-   |       -----
+   |       ----- required by a bound in this
 ...
 LL |                 Debug
    |                 ----- required by this bound in `Case1`

@@ -14,7 +14,7 @@ LL |     Bar(i32),
    |     -------- takes 1 argument
 ...
 LL | fn foo<F>(f: F)
-   |    ---
+   |    --- required by a bound in this
 LL | where
 LL |     F: Fn(),
    |        ---- required by this bound in `foo`

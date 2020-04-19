@@ -2,7 +2,7 @@ error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-re
   --> $DIR/generator-yielding-or-returning-itself.rs:15:5
    |
 LL | pub fn want_cyclic_generator_return<T>(_: T)
-   |        ----------------------------
+   |        ---------------------------- required by a bound in this
 LL |     where T: Generator<Yield = (), Return = T>
    |                                    ---------- required by this bound in `want_cyclic_generator_return`
 ...
@@ -18,7 +18,7 @@ error[E0271]: type mismatch resolving `<[generator@$DIR/generator-yielding-or-re
   --> $DIR/generator-yielding-or-returning-itself.rs:28:5
    |
 LL | pub fn want_cyclic_generator_yield<T>(_: T)
-   |        ---------------------------
+   |        --------------------------- required by a bound in this
 LL |     where T: Generator<Yield = T, Return = ()>
    |                        --------- required by this bound in `want_cyclic_generator_yield`
 ...

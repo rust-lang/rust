@@ -1,6 +1,9 @@
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized7.rs:12:21
    |
+LL | trait T1<Z: T> {
+   |          - required by this bound in `T1`
+...
 LL | impl<X: ?Sized + T> T1<X> for S3<X> {
    |      -              ^^^^^ doesn't have a size known at compile-time
    |      |

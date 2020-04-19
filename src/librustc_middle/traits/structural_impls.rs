@@ -456,6 +456,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::ImplDerivedObligation(ref cause) => {
                 tcx.lift(cause).map(super::ImplDerivedObligation)
             }
+            super::DerivedObligation(ref cause) => tcx.lift(cause).map(super::DerivedObligation),
             super::CompareImplMethodObligation {
                 item_name,
                 impl_item_def_id,
@@ -501,7 +502,6 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::MethodReceiver => Some(super::MethodReceiver),
             super::BlockTailExpression(id) => Some(super::BlockTailExpression(id)),
             super::TrivialBound => Some(super::TrivialBound),
-            super::AssocTypeBound(ref data) => Some(super::AssocTypeBound(data.clone())),
         }
     }
 }

@@ -8,8 +8,8 @@ pub trait Foo: Iterator<Item=<Self as Foo>::Key> {
     type Key;
 }
 
-impl Foo for IntoIter<i32> { //~ ERROR type mismatch
-    type Key = u32;
+impl Foo for IntoIter<i32> {
+    type Key = u32; //~ ERROR type mismatch
 }
 
 fn main() {

@@ -2,7 +2,7 @@ error[E0277]: the trait bound `(): Trait<for<'b> fn(fn(&'b u32))>` is not satisf
   --> $DIR/hrtb-exists-forall-trait-covariant.rs:36:11
    |
 LL | fn foo<T>()
-   |    ---
+   |    --- required by a bound in this
 LL | where
 LL |     T: Trait<for<'b> fn(fn(&'b u32))>,
    |        ------------------------------ required by this bound in `foo`

@@ -1135,7 +1135,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         while let Some(code) = next_code {
             debug!("maybe_note_obligation_cause_for_async_await: code={:?}", code);
             match code {
-                ObligationCauseCode::BuiltinDerivedObligation(derived_obligation)
+                ObligationCauseCode::DerivedObligation(derived_obligation)
+                | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation)
                 | ObligationCauseCode::ImplDerivedObligation(derived_obligation) => {
                     let ty = derived_obligation.parent_trait_ref.self_ty();
                     debug!(
@@ -1531,14 +1532,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let item_name = tcx.def_path_str(item_def_id);
                 let msg = format!("required by this bound in `{}`", item_name);
                 if let Some(ident) = tcx.opt_item_name(item_def_id) {
-                    let sm = self.tcx.sess.source_map();
+                    let sm = tcx.sess.source_map();
                     let same_line =
                         match (sm.lookup_line(ident.span.hi()), sm.lookup_line(span.lo())) {
                             (Ok(l), Ok(r)) => l.line == r.line,
                             _ => true,
                         };
                     if !ident.span.overlaps(span) && !same_line {
-                        err.span_label(ident.span, "");
+                        err.span_label(ident.span, "required by a bound in this");
                     }
                 }
                 if span != DUMMY_SP {
@@ -1661,6 +1662,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     obligated_types,
                 );
             }
+            ObligationCauseCode::DerivedObligation(ref data) => {
+                let parent_trait_ref = self.resolve_vars_if_possible(&data.parent_trait_ref);
+                let parent_predicate = parent_trait_ref.without_const().to_predicate();
+                self.note_obligation_cause_code(
+                    err,
+                    &parent_predicate,
+                    &data.parent_code,
+                    obligated_types,
+                );
+            }
             ObligationCauseCode::CompareImplMethodObligation { .. } => {
                 err.note(&format!(
                     "the requirement `{}` appears on the impl method \
@@ -1682,15 +1693,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 err.help("see issue #48214");
                 if tcx.sess.opts.unstable_features.is_nightly_build() {
                     err.help("add `#![feature(trivial_bounds)]` to the crate attributes to enable");
-                }
-            }
-            ObligationCauseCode::AssocTypeBound(ref data) => {
-                err.span_label(data.original, "associated type defined here");
-                if let Some(sp) = data.impl_span {
-                    err.span_label(sp, "in this `impl` item");
-                }
-                for sp in &data.bounds {
-                    err.span_label(*sp, "restricted in this bound");
                 }
             }
         }

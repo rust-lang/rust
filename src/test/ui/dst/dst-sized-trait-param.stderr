@@ -1,6 +1,9 @@
 error[E0277]: the size for values of type `[isize]` cannot be known at compilation time
   --> $DIR/dst-sized-trait-param.rs:7:6
    |
+LL | trait Foo<T> : Sized { fn take(self, x: &T) { } } // Note: T is sized
+   |           - required by this bound in `Foo`
+LL | 
 LL | impl Foo<[isize]> for usize { }
    |      ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
@@ -10,6 +13,9 @@ LL | impl Foo<[isize]> for usize { }
 error[E0277]: the size for values of type `[usize]` cannot be known at compilation time
   --> $DIR/dst-sized-trait-param.rs:10:6
    |
+LL | trait Foo<T> : Sized { fn take(self, x: &T) { } } // Note: T is sized
+   |                ----- required by this bound in `Foo`
+...
 LL | impl Foo<isize> for [usize] { }
    |      ^^^^^^^^^^ doesn't have a size known at compile-time
    |
