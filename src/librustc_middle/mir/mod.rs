@@ -2716,14 +2716,16 @@ impl Location {
             return true;
         }
 
+        let predecessors = body.predecessors();
+
         // If we're in another block, then we want to check that block is a predecessor of `other`.
-        let mut queue: Vec<BasicBlock> = body.predecessors_for(other.block).to_vec();
+        let mut queue: Vec<BasicBlock> = predecessors[other.block].to_vec();
         let mut visited = FxHashSet::default();
 
         while let Some(block) = queue.pop() {
             // If we haven't visited this block before, then make sure we visit it's predecessors.
             if visited.insert(block) {
-                queue.extend(body.predecessors_for(block).iter().cloned());
+                queue.extend(predecessors[block].iter().cloned());
             } else {
                 continue;
             }
