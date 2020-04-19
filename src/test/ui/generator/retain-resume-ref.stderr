@@ -4,10 +4,9 @@ error[E0499]: cannot borrow `thing` as mutable more than once at a time
 LL |     gen.as_mut().resume(&mut thing);
    |                         ---------- first mutable borrow occurs here
 LL |     gen.as_mut().resume(&mut thing);
-   |                         ^^^^^^^^^^ second mutable borrow occurs here
-LL |
-LL | }
-   | - first borrow might be used here, when `gen` is dropped and runs the destructor for generator
+   |                  ------ ^^^^^^^^^^ second mutable borrow occurs here
+   |                  |
+   |                  first borrow later used by call
 
 error: aborting due to previous error
 
