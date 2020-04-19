@@ -14,7 +14,7 @@ use rustc_span::source_map::{ExpnKind, Span};
 use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    get_item_name, get_parent_expr, implements_trait, in_constant, is_integer_const, iter_input_pats,
+    get_item_name, get_parent_expr, higher, implements_trait, in_constant, is_integer_const, iter_input_pats,
     last_path_segment, match_qpath, match_trait_method, paths, snippet, snippet_opt, span_lint, span_lint_and_sugg,
     span_lint_and_then, span_lint_hir_and_then, walk_ptrs_ty, SpanlessEq,
 };
@@ -267,6 +267,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             if let StmtKind::Local(ref local) = stmt.kind;
             if let PatKind::Binding(an, .., name, None) = local.pat.kind;
             if let Some(ref init) = local.init;
+            if !higher::is_from_for_desugar(local);
             then {
                 if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
                     let sugg_init = if init.span.from_expansion() {

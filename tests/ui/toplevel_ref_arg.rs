@@ -23,4 +23,7 @@ fn main() {
     // Make sure that allowing the lint works
     #[allow(clippy::toplevel_ref_arg)]
     let ref mut _x = 1_234_543;
+
+    // ok
+    for ref _x in 0..10 {}
 }
