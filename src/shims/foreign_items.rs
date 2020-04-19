@@ -433,15 +433,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
+            // Architecture-specific shims
             "llvm.x86.sse2.pause" if this.tcx.sess.target.target.arch == "x86" || this.tcx.sess.target.target.arch == "x86_64" => {}
 
-            // Target-specific shims
-            _ => {
-                match this.tcx.sess.target.target.target_os.as_str() {
-                    "linux" | "macos" => return posix::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
-                    "windows" => return windows::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
-                    target => throw_unsup_format!("the target `{}` is not supported", target),
-                }
+            // Platform-specific shims
+            _ => match this.tcx.sess.target.target.target_os.as_str() {
+                "linux" | "macos" => return posix::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
+                "windows" => return windows::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
+                target => throw_unsup_format!("the target `{}` is not supported", target),
             }
         };
 
