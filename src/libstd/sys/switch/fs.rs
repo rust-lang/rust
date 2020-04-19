@@ -638,7 +638,7 @@ pub fn stat(path: &Path) -> io::Result<FileAttr> {
     match get_entry_type(&(cstr(path)?))? {
         file_type @ FileType::Dir => Ok(FileAttr { size: AtomicU64::new(0), file_type }),
         file_type @ FileType::File => Ok(FileAttr { size: AtomicU64::new(0), file_type }),
-        _ => panic!("Bad entry type")
+        //_ => panic!("Bad entry type")
     }
     //File::open(path, &OpenOptions::new())?.file_attr()
 }

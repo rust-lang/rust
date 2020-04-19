@@ -1,58 +1,141 @@
+use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
-use crate::sys::{unsupported, Void};
+use crate::mem;
+use crate::ptr;
+use crate::sys::os;
 use crate::time::Duration;
 
-pub struct Thread(Void);
+use nnsdk::{os::SleepThread, TimeSpan};
 
-pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
+#[cfg(not(target_os = "l4re"))]
+pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
+#[cfg(target_os = "l4re")]
+pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 1024;
+
+pub struct Thread {
+    id: libc::pthread_t,
+}
+
+// Some platforms may have pthread_t as a pointer in which case we still want
+// a thread to be Send/Sync
+unsafe impl Send for Thread {}
+unsafe impl Sync for Thread {}
+
+unsafe fn pthread_attr_setstacksize(
+    attr: *mut libc::pthread_attr_t,
+    stack_size: libc::size_t,
+) -> libc::c_int {
+    libc::pthread_attr_setstacksize(attr, stack_size)
+}
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        unsupported()
+    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+        let p = Box::into_raw(box p);
+        let mut native: libc::pthread_t = mem::zeroed();
+        let mut attr: libc::pthread_attr_t = mem::zeroed();
+        assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+
+        let stack_size = cmp::max(stack, min_stack_size(&attr));
+
+        match pthread_attr_setstacksize(&mut attr, stack_size) {
+            0 => {}
+            n => {
+                assert_eq!(n, libc::EINVAL);
+                // EINVAL means |stack_size| is either too small or not a
+                // multiple of the system page size.  Because it's definitely
+                // >= PTHREAD_STACK_MIN, it must be an alignment issue.
+                // Round up to the nearest page and try again.
+                let page_size = os::page_size();
+                let stack_size =
+                    (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
+                assert_eq!(libc::pthread_attr_setstacksize(&mut attr, stack_size), 0);
+            }
+        };
+
+        let ret = libc::pthread_create(&mut native, &attr, thread_start, p as *mut _);
+        // Note: if the thread creation fails and this assert fails, then p will
+        // be leaked. However, an alternative design could cause double-free
+        // which is clearly worse.
+        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+
+        return if ret != 0 {
+            // The thread failed to start and as a result p was not consumed. Therefore, it is
+            // safe to reconstruct the box so that it gets deallocated.
+            drop(Box::from_raw(p));
+            Err(io::Error::from_raw_os_error(ret))
+        } else {
+            Ok(Thread { id: native })
+        };
+
+        extern "C" fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
+            unsafe {
+                // Next, set up our stack overflow handler which may get triggered if we run
+                // out of stack.
+                //let _handler = stack_overflow::Handler::new();
+                // Finally, let's run some code.
+                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
+            }
+            ptr::null_mut()
+        }
     }
 
     pub fn yield_now() {
-        // do nothing
+        let ret = unsafe { libc::sched_yield() };
+        debug_assert_eq!(ret, 0);
     }
 
-    pub fn set_name(_name: &CStr) {
-        // nope
+    pub fn set_name(name: &CStr) {
+        use crate::ffi::CString;
+        let cname = CString::new(&b"%s"[..]).unwrap();
+        unsafe {
+            libc::pthread_setname_np(
+                libc::pthread_self(),
+                cname.as_ptr(),
+                name.as_ptr() as *mut libc::c_void,
+            );
+        }
     }
 
-    #[cfg(not(target_feature = "atomics"))]
-    pub fn sleep(_dur: Duration) {
-        panic!("can't sleep");
-    }
-
-    #[cfg(target_feature = "atomics")]
     pub fn sleep(dur: Duration) {
-        use crate::arch::wasm32;
-        use crate::cmp;
+        let time_span = TimeSpan::nano(dur.as_nanos() as u64);
 
-        // Use an atomic wait to block the current thread artificially with a
-        // timeout listed. Note that we should never be notified (return value
-        // of 0) or our comparison should never fail (return value of 1) so we
-        // should always only resume execution through a timeout (return value
-        // 2).
-        let mut nanos = dur.as_nanos();
-        while nanos > 0 {
-            let amt = cmp::min(i64::max_value() as u128, nanos);
-            let mut x = 0;
-            let val = unsafe { wasm32::i32_atomic_wait(&mut x, 0, amt as i64) };
-            debug_assert_eq!(val, 2);
-            nanos -= amt;
+        unsafe {
+            SleepThread(time_span);
         }
     }
 
     pub fn join(self) {
-        match self.0 {}
+        unsafe {
+            let ret = libc::pthread_join(self.id, ptr::null_mut());
+            mem::forget(self);
+            assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
+        }
+    }
+
+    // pub fn id(&self) -> libc::pthread_t {
+    //     self.id
+    // }
+
+    // pub fn into_id(self) -> libc::pthread_t {
+    //     let id = self.id;
+    //     mem::forget(self);
+    //     id
+    // }
+}
+
+impl Drop for Thread {
+    fn drop(&mut self) {
+        let ret = unsafe { libc::pthread_detach(self.id) };
+        debug_assert_eq!(ret, 0);
     }
 }
 
+#[cfg_attr(test, allow(dead_code))]
 pub mod guard {
-    pub type Guard = !;
+    use crate::ops::Range;
+    pub type Guard = Range<usize>;
     pub unsafe fn current() -> Option<Guard> {
         None
     }
@@ -61,38 +144,6 @@ pub mod guard {
     }
 }
 
-// This is only used by atomics primitives when the `atomics` feature is
-// enabled. In that mode we currently just use our own thread-local to store our
-// current thread's ID, and then we lazily initialize it to something allocated
-// from a global counter.
-#[cfg(target_feature = "atomics")]
-pub fn my_id() -> u32 {
-    use crate::sync::atomic::{AtomicU32, Ordering::SeqCst};
-
-    static NEXT_ID: AtomicU32 = AtomicU32::new(0);
-
-    #[thread_local]
-    static mut MY_ID: u32 = 0;
-
-    unsafe {
-        // If our thread ID isn't set yet then we need to allocate one. Do so
-        // with with a simple "atomically add to a global counter" strategy.
-        // This strategy doesn't handled what happens when the counter
-        // overflows, however, so just abort everything once the counter
-        // overflows and eventually we could have some sort of recycling scheme
-        // (or maybe this is all totally irrelevant by that point!). In any case
-        // though we're using a CAS loop instead of a `fetch_add` to ensure that
-        // the global counter never overflows.
-        if MY_ID == 0 {
-            let mut cur = NEXT_ID.load(SeqCst);
-            MY_ID = loop {
-                let next = cur.checked_add(1).unwrap_or_else(|| crate::arch::wasm32::unreachable());
-                match NEXT_ID.compare_exchange(cur, next, SeqCst, SeqCst) {
-                    Ok(_) => break next,
-                    Err(i) => cur = i,
-                }
-            };
-        }
-        MY_ID
-    }
+fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
+    0x1000 // just a guess
 }

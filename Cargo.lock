@@ -1805,6 +1805,14 @@ dependencies = [
 
 [[package]]
 name = "libc"
+version = "0.0.1"
+source = "git+https://github.com/ultimate-research/libc-nnsdk.git?rev=b18c1c7#b18c1c79a4230663b32693f66a301e877eb70c78"
+dependencies = [
+ "rustc-std-workspace-core",
+]
+
+[[package]]
+name = "libc"
 version = "0.2.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d515b1f41455adea1313a4a2ac8a8a477634fbae63cc6100e3aebb207ce61558"
@@ -2241,8 +2249,9 @@ checksum = "f40f005c60db6e03bae699e414c58bf9aa7ea02a2d0b9bfbcf19286cc4c82b30"
 [[package]]
 name = "nnsdk"
 version = "0.1.0"
+source = "git+https://github.com/ultimate-research/nnsdk-rs.git#5a6c074e5ee1c2bf2c3e393d353d349edf1b497c"
 dependencies = [
- "libc 0.0.1",
+ "libc 0.0.1 (git+https://github.com/ultimate-research/libc-nnsdk.git)",
 ]
 
 [[package]]
@@ -2375,7 +2384,7 @@ version = "0.0.0"
 dependencies = [
  "compiler_builtins",
  "core",
- "libc 0.0.1",
+ "libc 0.0.1 (git+https://github.com/ultimate-research/libc-nnsdk.git)",
 ]
 
 [[package]]
@@ -4711,7 +4720,7 @@ dependencies = [
  "fortanix-sgx-abi",
  "hashbrown 0.6.2",
  "hermit-abi",
- "libc 0.0.1",
+ "libc 0.0.1 (git+https://github.com/ultimate-research/libc-nnsdk.git?rev=b18c1c7)",
  "nnsdk",
  "panic_abort",
  "panic_unwind",

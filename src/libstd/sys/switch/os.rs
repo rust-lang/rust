@@ -105,3 +105,7 @@ pub fn exit(code: i32) -> ! {
 pub fn getpid() -> u32 {
     panic!("no pids on switch")
 }
+
+pub fn page_size() -> usize {
+    0x1000
+}
