@@ -1,5 +1,5 @@
 // build-pass
-// ignore-pass (emit codegen-time warnings and verify that they are indeed warnings and not errors)
+// ignore-pass (test emits codegen-time warnings and verifies that they are not errors)
 
 #![warn(const_err, unconditional_panic)]
 
