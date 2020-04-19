@@ -409,16 +409,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn get_const(&self, local: Local) -> Option<OpTy<'tcx>> {
         let op = self.ecx.access_local(self.ecx.frame(), local, None).ok();
 
-        if local == RETURN_PLACE {
-            // Try to read the return place as an immediate so that if it is representable as a
-            // scalar, we can handle it as such, but otherwise, just return the value as is.
-            return match op.map(|ret| self.ecx.try_read_immediate(ret)) {
-                Some(Ok(Ok(imm))) => Some(imm.into()),
-                _ => op,
-            };
+        // Try to read the local as an immediate so that if it is representable as a scalar, we can
+        // handle it as such, but otherwise, just return the value as is.
+        match op.map(|ret| self.ecx.try_read_immediate(ret)) {
+            Some(Ok(Ok(imm))) => Some(imm.into()),
+            _ => op,
         }
-
-        op
     }
 
     fn remove_const(&mut self, local: Local) {
