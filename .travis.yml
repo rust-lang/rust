@@ -15,7 +15,7 @@ matrix:
       env: RUST_BACKTRACE=full
     - name: "osx"
       os: osx
-      osx_image: xcode10
+      osx_image: xcode11.3
       env: RUST_BACKTRACE=full
     - name: "windows"
       os: windows
