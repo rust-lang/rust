@@ -60,7 +60,6 @@ impl Cache {
     }
 
     /// This will recompute the predecessors cache if it is not available
-    // njn: typedef?
     fn predecessors(
         &mut self,
         body: &Body<'_>,
