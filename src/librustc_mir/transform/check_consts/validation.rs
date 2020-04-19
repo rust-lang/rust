@@ -580,7 +580,17 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
-            _ => {}
+            TerminatorKind::Abort
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::Goto { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Return
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Yield { .. } => {}
         }
     }
 }
