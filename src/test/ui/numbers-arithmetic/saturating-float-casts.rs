@@ -1,9 +1,12 @@
 // run-pass
+// compile-flags:-Zmir-opt-level=0
 // Tests saturating float->int casts. See u128-as-f32.rs for the opposite direction.
 //
 // Some of these tests come from a similar file in miri,
-// tests/run-pass/float.rs. They're just duplicated currently but we may want
-// to merge this in the future.
+// tests/run-pass/float.rs. Individual test cases are potentially duplicated
+// with the previously existing tests, but since this runs so quickly anyway,
+// we're not spending the time to figure out exactly which ones should be
+// merged.
 
 #![feature(test, stmt_expr_attributes)]
 #![feature(track_caller)]
@@ -21,31 +24,18 @@ macro_rules! test {
         // black_box disables constant evaluation to test run-time conversions:
         assert_eq!(black_box::<$src_ty>($val) as $dest_ty, $expected,
                     "run-time {} -> {}", stringify!($src_ty), stringify!($dest_ty));
-    );
 
-    ($fval:expr, f* -> $ity:ident, $ival:expr) => (
-        test!($fval, f32 -> $ity, $ival);
-        test!($fval, f64 -> $ity, $ival);
-    )
-}
-
-// This macro tests const eval in addition to run-time evaluation.
-// If and when saturating casts are adopted, this macro should be merged with test!() to ensure
-// that run-time and const eval agree on inputs that currently trigger a const eval error.
-macro_rules! test_c {
-    ($val:expr, $src_ty:ident -> $dest_ty:ident, $expected:expr) => ({
-        test!($val, $src_ty -> $dest_ty, $expected);
         {
             const X: $src_ty = $val;
             const Y: $dest_ty = X as $dest_ty;
             assert_eq!(Y, $expected,
                         "const eval {} -> {}", stringify!($src_ty), stringify!($dest_ty));
         }
-    });
+    );
 
     ($fval:expr, f* -> $ity:ident, $ival:expr) => (
-        test_c!($fval, f32 -> $ity, $ival);
-        test_c!($fval, f64 -> $ity, $ival);
+        test!($fval, f32 -> $ity, $ival);
+        test!($fval, f64 -> $ity, $ival);
     )
 }
 
@@ -59,11 +49,11 @@ macro_rules! common_fptoi_tests {
         // as well, the test is just slightly misplaced.
         test!($ity::MIN as $fty, $fty -> $ity, $ity::MIN);
         test!($ity::MAX as $fty, $fty -> $ity, $ity::MAX);
-        test_c!(0., $fty -> $ity, 0);
-        test_c!($fty::MIN_POSITIVE, $fty -> $ity, 0);
+        test!(0., $fty -> $ity, 0);
+        test!($fty::MIN_POSITIVE, $fty -> $ity, 0);
         test!(-0.9, $fty -> $ity, 0);
-        test_c!(1., $fty -> $ity, 1);
-        test_c!(42., $fty -> $ity, 42);
+        test!(1., $fty -> $ity, 1);
+        test!(42., $fty -> $ity, 42);
     )+ });
 
     (f* -> $($ity:ident)+) => ({
@@ -215,39 +205,6 @@ where
 {
     assert_eq!(x.cast(), y);
     assert_eq!(unsafe { x.cast_unchecked() }, y);
-}
-
-fn basic() {
-    // basic arithmetic
-    assert_eq(6.0_f32 * 6.0_f32, 36.0_f32);
-    assert_eq(6.0_f64 * 6.0_f64, 36.0_f64);
-    assert_eq(-{ 5.0_f32 }, -5.0_f32);
-    assert_eq(-{ 5.0_f64 }, -5.0_f64);
-    // infinities, NaN
-    assert!((5.0_f32 / 0.0).is_infinite());
-    assert_ne!({ 5.0_f32 / 0.0 }, { -5.0_f32 / 0.0 });
-    assert!((5.0_f64 / 0.0).is_infinite());
-    assert_ne!({ 5.0_f64 / 0.0 }, { 5.0_f64 / -0.0 });
-    assert!((-5.0_f32).sqrt().is_nan());
-    assert!((-5.0_f64).sqrt().is_nan());
-    assert_ne!(f32::NAN, f32::NAN);
-    assert_ne!(f64::NAN, f64::NAN);
-    // negative zero
-    let posz = 0.0f32;
-    let negz = -0.0f32;
-    assert_eq(posz, negz);
-    assert_ne!(posz.to_bits(), negz.to_bits());
-    let posz = 0.0f64;
-    let negz = -0.0f64;
-    assert_eq(posz, negz);
-    assert_ne!(posz.to_bits(), negz.to_bits());
-    // byte-level transmute
-    let x: u64 = unsafe { std::mem::transmute(42.0_f64) };
-    let y: f64 = unsafe { std::mem::transmute(x) };
-    assert_eq(y, 42.0_f64);
-    let x: u32 = unsafe { std::mem::transmute(42.0_f32) };
-    let y: f32 = unsafe { std::mem::transmute(x) };
-    assert_eq(y, 42.0_f32);
 }
 
 fn casts() {
@@ -500,42 +457,8 @@ fn casts() {
     assert_eq::<f32>(f64::NEG_INFINITY as f32, f32::NEG_INFINITY);
 }
 
-fn ops() {
-    // f32 min/max
-    assert_eq((1.0 as f32).max(-1.0), 1.0);
-    assert_eq((1.0 as f32).min(-1.0), -1.0);
-    assert_eq(f32::NAN.min(9.0), 9.0);
-    assert_eq(f32::NAN.max(-9.0), -9.0);
-    assert_eq((9.0 as f32).min(f32::NAN), 9.0);
-    assert_eq((-9.0 as f32).max(f32::NAN), -9.0);
-
-    // f64 min/max
-    assert_eq((1.0 as f64).max(-1.0), 1.0);
-    assert_eq((1.0 as f64).min(-1.0), -1.0);
-    assert_eq(f64::NAN.min(9.0), 9.0);
-    assert_eq(f64::NAN.max(-9.0), -9.0);
-    assert_eq((9.0 as f64).min(f64::NAN), 9.0);
-    assert_eq((-9.0 as f64).max(f64::NAN), -9.0);
-
-    // f32 copysign
-    assert_eq(3.5_f32.copysign(0.42), 3.5_f32);
-    assert_eq(3.5_f32.copysign(-0.42), -3.5_f32);
-    assert_eq((-3.5_f32).copysign(0.42), 3.5_f32);
-    assert_eq((-3.5_f32).copysign(-0.42), -3.5_f32);
-    assert!(f32::NAN.copysign(1.0).is_nan());
-
-    // f64 copysign
-    assert_eq(3.5_f64.copysign(0.42), 3.5_f64);
-    assert_eq(3.5_f64.copysign(-0.42), -3.5_f64);
-    assert_eq((-3.5_f64).copysign(0.42), 3.5_f64);
-    assert_eq((-3.5_f64).copysign(-0.42), -3.5_f64);
-    assert!(f64::NAN.copysign(1.0).is_nan());
-}
-
 pub fn main() {
-    basic();
-    casts();
-    ops();
+    casts(); // from miri's tests
 
     common_fptoi_tests!(f* -> i8 i16 i32 i64 u8 u16 u32 u64);
     fptoui_tests!(f* -> u8 u16 u32 u64);
@@ -549,39 +472,39 @@ pub fn main() {
     // The following tests cover edge cases for some integer types.
 
     // # u8
-    test_c!(254., f* -> u8, 254);
+    test!(254., f* -> u8, 254);
     test!(256., f* -> u8, 255);
 
     // # i8
-    test_c!(-127., f* -> i8, -127);
+    test!(-127., f* -> i8, -127);
     test!(-129., f* -> i8, -128);
-    test_c!(126., f* -> i8, 126);
+    test!(126., f* -> i8, 126);
     test!(128., f* -> i8, 127);
 
     // # i32
     // -2147483648. is i32::MIN (exactly)
-    test_c!(-2147483648., f* -> i32, i32::MIN);
+    test!(-2147483648., f* -> i32, i32::MIN);
     // 2147483648. is i32::MAX rounded up
     test!(2147483648., f32 -> i32, 2147483647);
     // With 24 significand bits, floats with magnitude in [2^30 + 1, 2^31] are rounded to
     // multiples of 2^7. Therefore, nextDown(round(i32::MAX)) is 2^31 - 128:
-    test_c!(2147483520., f32 -> i32, 2147483520);
+    test!(2147483520., f32 -> i32, 2147483520);
     // Similarly, nextUp(i32::MIN) is i32::MIN + 2^8 and nextDown(i32::MIN) is i32::MIN - 2^7
     test!(-2147483904., f* -> i32, i32::MIN);
-    test_c!(-2147483520., f* -> i32, -2147483520);
+    test!(-2147483520., f* -> i32, -2147483520);
 
     // # u32
     // round(MAX) and nextUp(round(MAX))
-    test_c!(4294967040., f* -> u32, 4294967040);
+    test!(4294967040., f* -> u32, 4294967040);
     test!(4294967296., f* -> u32, 4294967295);
 
     // # u128
     #[cfg(not(target_os = "emscripten"))]
     {
         // float->int:
-        test_c!(f32::MAX, f32 -> u128, 0xffffff00000000000000000000000000);
+        test!(f32::MAX, f32 -> u128, 0xffffff00000000000000000000000000);
         // nextDown(f32::MAX) = 2^128 - 2 * 2^104
         const SECOND_LARGEST_F32: f32 = 340282326356119256160033759537265639424.;
-        test_c!(SECOND_LARGEST_F32, f32 -> u128, 0xfffffe00000000000000000000000000);
+        test!(SECOND_LARGEST_F32, f32 -> u128, 0xfffffe00000000000000000000000000);
     }
 }
