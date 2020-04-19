@@ -86,7 +86,7 @@ impl Step for Std {
         target_deps.extend(copy_third_party_objects(builder, &compiler, target).into_iter());
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
-        std_cargo(builder, target, &mut cargo);
+        std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!(
             "Building stage{} std artifacts ({} -> {})",
@@ -164,7 +164,7 @@ fn copy_third_party_objects(
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, cargo: &mut Cargo) {
+pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, stage: u32, cargo: &mut Cargo) {
     if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
@@ -230,6 +230,18 @@ pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, cargo: &mut Ca
                 cargo.rustflag("-L").rustflag(&root);
             }
         }
+    }
+
+    // By default, rustc uses `-Cbitcode-in-rlib=yes`, and Cargo overrides that
+    // with `-Cbitcode-in-rlib=no` for non-LTO builds. However, libstd must be
+    // built with bitcode so that the produced rlibs can be used for both LTO
+    // builds (which use bitcode) and non-LTO builds (which use object code).
+    // So we override the override here!
+    //
+    // But we don't bother for the stage 0 compiler because it's never used
+    // with LTO.
+    if stage >= 1 {
+        cargo.rustflag("-Cbitcode-in-rlib=yes");
     }
 }
 
