@@ -14,10 +14,12 @@ impl<'tcx> TyS<'tcx> {
             | Int(_)
             | Uint(_)
             | Float(_)
-            | Infer(InferTy::IntVar(_))
-            | Infer(InferTy::FloatVar(_))
-            | Infer(InferTy::FreshIntTy(_))
-            | Infer(InferTy::FreshFloatTy(_)) => true,
+            | Infer(
+                InferTy::IntVar(_)
+                | InferTy::FloatVar(_)
+                | InferTy::FreshIntTy(_)
+                | InferTy::FreshFloatTy(_),
+            ) => true,
             _ => false,
         }
     }
@@ -32,10 +34,12 @@ impl<'tcx> TyS<'tcx> {
             | Int(_)
             | Uint(_)
             | Float(_)
-            | Infer(InferTy::IntVar(_))
-            | Infer(InferTy::FloatVar(_))
-            | Infer(InferTy::FreshIntTy(_))
-            | Infer(InferTy::FreshFloatTy(_)) => true,
+            | Infer(
+                InferTy::IntVar(_)
+                | InferTy::FloatVar(_)
+                | InferTy::FreshIntTy(_)
+                | InferTy::FreshFloatTy(_),
+            ) => true,
             Ref(_, x, _) | Array(x, _) | Slice(x) => x.peel_refs().is_simple_ty(),
             Tuple(tys) if tys.is_empty() => true,
             _ => false,

@@ -1835,10 +1835,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     }
 
                     Region::Static
-                    | Region::EarlyBound(_, _, LifetimeDefOrigin::ExplicitOrElided)
-                    | Region::LateBound(_, _, LifetimeDefOrigin::ExplicitOrElided)
-                    | Region::EarlyBound(_, _, LifetimeDefOrigin::Error)
-                    | Region::LateBound(_, _, LifetimeDefOrigin::Error)
+                    | Region::EarlyBound(
+                        _,
+                        _,
+                        LifetimeDefOrigin::ExplicitOrElided | LifetimeDefOrigin::Error,
+                    )
+                    | Region::LateBound(
+                        _,
+                        _,
+                        LifetimeDefOrigin::ExplicitOrElided | LifetimeDefOrigin::Error,
+                    )
                     | Region::LateBoundAnon(..)
                     | Region::Free(..) => {}
                 }
@@ -1898,15 +1904,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let type_def_id = match res {
             Res::Def(DefKind::AssocTy, def_id) if depth == 1 => Some(parent_def_id(self, def_id)),
             Res::Def(DefKind::Variant, def_id) if depth == 0 => Some(parent_def_id(self, def_id)),
-            Res::Def(DefKind::Struct, def_id)
-            | Res::Def(DefKind::Union, def_id)
-            | Res::Def(DefKind::Enum, def_id)
-            | Res::Def(DefKind::TyAlias, def_id)
-            | Res::Def(DefKind::Trait, def_id)
-                if depth == 0 =>
-            {
-                Some(def_id)
-            }
+            Res::Def(
+                DefKind::Struct
+                | DefKind::Union
+                | DefKind::Enum
+                | DefKind::TyAlias
+                | DefKind::Trait,
+                def_id,
+            ) if depth == 0 => Some(def_id),
             _ => None,
         };
 
@@ -2149,9 +2154,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             // Whitelist the types that unambiguously always
                             // result in the same type constructor being used
                             // (it can't differ between `Self` and `self`).
-                            Res::Def(DefKind::Struct, _)
-                            | Res::Def(DefKind::Union, _)
-                            | Res::Def(DefKind::Enum, _)
+                            Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum, _)
                             | Res::PrimTy(_) => return res == path.res,
                             _ => {}
                         }
@@ -2844,8 +2847,9 @@ fn insert_late_bound_lifetimes(
 
         fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
             match ty.kind {
-                hir::TyKind::Path(hir::QPath::Resolved(Some(_), _))
-                | hir::TyKind::Path(hir::QPath::TypeRelative(..)) => {
+                hir::TyKind::Path(
+                    hir::QPath::Resolved(Some(_), _) | hir::QPath::TypeRelative(..),
+                ) => {
                     // ignore lifetimes appearing in associated type
                     // projections, as they are not *constrained*
                     // (defined above)

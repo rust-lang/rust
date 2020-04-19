@@ -2,6 +2,7 @@
 #![feature(cow_is_borrowed)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
+#![feature(or_patterns)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]

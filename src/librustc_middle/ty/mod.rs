@@ -2776,9 +2776,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 let enum_did = self.parent(did).unwrap();
                 self.adt_def(enum_did).variant_with_id(did)
             }
-            Res::Def(DefKind::Struct, did) | Res::Def(DefKind::Union, did) => {
-                self.adt_def(did).non_enum_variant()
-            }
+            Res::Def(DefKind::Struct | DefKind::Union, did) => self.adt_def(did).non_enum_variant(),
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_did) => {
                 let variant_did = self.parent(variant_ctor_did).unwrap();
                 let enum_did = self.parent(variant_did).unwrap();

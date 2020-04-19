@@ -194,7 +194,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::PatKind<'hir> {
         match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
             // `None` can occur in body-less function signatures
-            res @ None | res @ Some(Res::Local(_)) => {
+            res @ (None | Some(Res::Local(_))) => {
                 let canonical_id = match res {
                     Some(Res::Local(id)) => id,
                     _ => p.id,

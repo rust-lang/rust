@@ -52,8 +52,9 @@ impl NonConstExpr {
 
             Self::Loop(While)
             | Self::Loop(WhileLet)
-            | Self::Match(WhileDesugar)
-            | Self::Match(WhileLetDesugar) => &[sym::const_loop, sym::const_if_match],
+            | Self::Match(WhileDesugar | WhileLetDesugar) => {
+                &[sym::const_loop, sym::const_if_match]
+            }
 
             // A `for` loop's desugaring contains a call to `IntoIterator::into_iter`,
             // so they are not yet allowed with `#![feature(const_loop)]`.

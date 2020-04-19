@@ -1,4 +1,5 @@
 #![feature(crate_visibility_modifier)]
+#![feature(or_patterns)]
 
 pub mod cgu_reuse_tracker;
 pub mod utils;

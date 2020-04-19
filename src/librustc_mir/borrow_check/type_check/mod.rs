@@ -2269,22 +2269,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (None, _)
-                            | (_, None)
-                            | (_, Some(CastTy::FnPtr))
+                            | (_, None | Some(CastTy::FnPtr))
                             | (Some(CastTy::Float), Some(CastTy::Ptr(_)))
-                            | (Some(CastTy::Ptr(_)), Some(CastTy::Float))
-                            | (Some(CastTy::FnPtr), Some(CastTy::Float)) => {
+                            | (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Float)) => {
                                 span_mirbug!(self, rvalue, "Invalid cast {:?} -> {:?}", ty_from, ty,)
                             }
-                            (Some(CastTy::Int(_)), Some(CastTy::Int(_)))
-                            | (Some(CastTy::Float), Some(CastTy::Int(_)))
-                            | (Some(CastTy::Int(_)), Some(CastTy::Float))
-                            | (Some(CastTy::Float), Some(CastTy::Float))
-                            | (Some(CastTy::Ptr(_)), Some(CastTy::Int(_)))
-                            | (Some(CastTy::FnPtr), Some(CastTy::Int(_)))
-                            | (Some(CastTy::Int(_)), Some(CastTy::Ptr(_)))
-                            | (Some(CastTy::Ptr(_)), Some(CastTy::Ptr(_)))
-                            | (Some(CastTy::FnPtr), Some(CastTy::Ptr(_))) => (),
+                            (
+                                Some(CastTy::Int(_)),
+                                Some(CastTy::Int(_) | CastTy::Float | CastTy::Ptr(_)),
+                            )
+                            | (Some(CastTy::Float), Some(CastTy::Int(_) | CastTy::Float))
+                            | (Some(CastTy::Ptr(_)), Some(CastTy::Int(_) | CastTy::Ptr(_)))
+                            | (Some(CastTy::FnPtr), Some(CastTy::Int(_) | CastTy::Ptr(_))) => (),
                         }
                     }
                 }
@@ -2294,12 +2290,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.add_reborrow_constraint(&body, location, region, borrowed_place);
             }
 
-            Rvalue::BinaryOp(BinOp::Eq, left, right)
-            | Rvalue::BinaryOp(BinOp::Ne, left, right)
-            | Rvalue::BinaryOp(BinOp::Lt, left, right)
-            | Rvalue::BinaryOp(BinOp::Le, left, right)
-            | Rvalue::BinaryOp(BinOp::Gt, left, right)
-            | Rvalue::BinaryOp(BinOp::Ge, left, right) => {
+            Rvalue::BinaryOp(
+                BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge,
+                left,
+                right,
+            ) => {
                 let ty_left = left.ty(*body, tcx);
                 if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.kind {
                     let ty_right = right.ty(*body, tcx);

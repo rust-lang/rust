@@ -940,13 +940,16 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                         );
                     }
                 }
-                Res::Def(HirDefKind::Ctor(..), _)
-                | Res::Def(HirDefKind::Const, _)
-                | Res::Def(HirDefKind::AssocConst, _)
-                | Res::Def(HirDefKind::Struct, _)
-                | Res::Def(HirDefKind::Variant, _)
-                | Res::Def(HirDefKind::TyAlias, _)
-                | Res::Def(HirDefKind::AssocTy, _)
+                Res::Def(
+                    HirDefKind::Ctor(..)
+                    | HirDefKind::Const
+                    | HirDefKind::AssocConst
+                    | HirDefKind::Struct
+                    | HirDefKind::Variant
+                    | HirDefKind::TyAlias
+                    | HirDefKind::AssocTy,
+                    _,
+                )
                 | Res::SelfTy(..) => {
                     self.dump_path_ref(id, &ast::Path::from_ident(ident));
                 }

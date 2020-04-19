@@ -168,8 +168,10 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
         for outlives_bound in outlives_bounds {
             debug!("add_outlives_bounds: outlives_bound={:?}", outlives_bound);
             match outlives_bound {
-                OutlivesBound::RegionSubRegion(r_a @ &ty::ReEarlyBound(_), &ty::ReVar(vid_b))
-                | OutlivesBound::RegionSubRegion(r_a @ &ty::ReFree(_), &ty::ReVar(vid_b)) => {
+                OutlivesBound::RegionSubRegion(
+                    r_a @ (&ty::ReEarlyBound(_) | &ty::ReFree(_)),
+                    &ty::ReVar(vid_b),
+                ) => {
                     infcx.expect("no infcx provided but region vars found").add_given(r_a, vid_b);
                 }
                 OutlivesBound::RegionSubParam(r_a, param_b) => {

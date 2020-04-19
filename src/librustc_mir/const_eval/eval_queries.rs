@@ -341,7 +341,7 @@ pub fn const_eval_raw_provider<'tcx>(
                     // because any code that existed before validation could not have failed
                     // validation thus preventing such a hard error from being a backwards
                     // compatibility hazard
-                    Some(DefKind::Const) | Some(DefKind::AssocConst) => {
+                    Some(DefKind::Const | DefKind::AssocConst) => {
                         let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
                         err.report_as_lint(
                             tcx.at(tcx.def_span(def_id)),

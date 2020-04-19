@@ -86,8 +86,7 @@ fn parse_inline_asm<'a>(
     let first_colon = tts
         .trees()
         .position(|tt| match tt {
-            tokenstream::TokenTree::Token(Token { kind: token::Colon, .. })
-            | tokenstream::TokenTree::Token(Token { kind: token::ModSep, .. }) => true,
+            tokenstream::TokenTree::Token(Token { kind: token::Colon | token::ModSep, .. }) => true,
             _ => false,
         })
         .unwrap_or(tts.len());

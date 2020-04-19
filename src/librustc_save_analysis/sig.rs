@@ -561,9 +561,7 @@ impl Sig for ast::Path {
                     refs: vec![],
                 });
             }
-            Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::Variant, _)
-            | Res::Def(DefKind::Ctor(..), _) => {
+            Res::Def(DefKind::AssocConst | DefKind::Variant | DefKind::Ctor(..), _) => {
                 let len = self.segments.len();
                 if len < 2 {
                     return Err("Bad path");

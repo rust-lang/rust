@@ -113,8 +113,9 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
 
             // Allow uses of projections that are ZSTs or from scalar fields.
             let is_consume = match context {
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
-                | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => true,
+                PlaceContext::NonMutatingUse(
+                    NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
+                ) => true,
                 _ => false,
             };
             if is_consume {
@@ -274,8 +275,9 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             PlaceContext::NonUse(_) | PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
 
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
+            PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
+            ) => {
                 // Reads from uninitialized variables (e.g., in dead code, after
                 // optimizations) require locals to be in (uninitialized) memory.
                 // N.B., there can be uninitialized reads of a local visited after
@@ -291,17 +293,21 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 }
             }
 
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect)
-            | PlaceContext::MutatingUse(MutatingUseContext::Store)
-            | PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
-            | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
-            | PlaceContext::MutatingUse(MutatingUseContext::AddressOf)
-            | PlaceContext::MutatingUse(MutatingUseContext::Projection)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
-            | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => {
+            PlaceContext::MutatingUse(
+                MutatingUseContext::Store
+                | MutatingUseContext::AsmOutput
+                | MutatingUseContext::Borrow
+                | MutatingUseContext::AddressOf
+                | MutatingUseContext::Projection,
+            )
+            | PlaceContext::NonMutatingUse(
+                NonMutatingUseContext::Inspect
+                | NonMutatingUseContext::SharedBorrow
+                | NonMutatingUseContext::UniqueBorrow
+                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::AddressOf
+                | NonMutatingUseContext::Projection,
+            ) => {
                 self.not_ssa(local);
             }
 

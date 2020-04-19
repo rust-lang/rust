@@ -5,6 +5,7 @@
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(proc_macro_internals)]
 #![feature(specialization)]
 #![feature(stmt_expr_attributes)]

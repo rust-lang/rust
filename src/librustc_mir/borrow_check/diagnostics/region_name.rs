@@ -577,9 +577,12 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     // to search anything here.
                 }
 
-                (GenericArgKind::Lifetime(_), _)
-                | (GenericArgKind::Type(_), _)
-                | (GenericArgKind::Const(_), _) => {
+                (
+                    GenericArgKind::Lifetime(_)
+                    | GenericArgKind::Type(_)
+                    | GenericArgKind::Const(_),
+                    _,
+                ) => {
                     // I *think* that HIR lowering should ensure this
                     // doesn't happen, even in erroneous
                     // programs. Else we should use delay-span-bug.

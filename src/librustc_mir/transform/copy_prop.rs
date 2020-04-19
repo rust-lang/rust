@@ -156,8 +156,10 @@ fn eliminate_self_assignments(body: &mut Body<'_>, def_use_analysis: &DefUseAnal
             let location = def.location;
             if let Some(stmt) = body[location.block].statements.get(location.statement_index) {
                 match &stmt.kind {
-                    StatementKind::Assign(box (place, Rvalue::Use(Operand::Copy(src_place))))
-                    | StatementKind::Assign(box (place, Rvalue::Use(Operand::Move(src_place)))) => {
+                    StatementKind::Assign(box (
+                        place,
+                        Rvalue::Use(Operand::Copy(src_place) | Operand::Move(src_place)),
+                    )) => {
                         if let (Some(local), Some(src_local)) =
                             (place.as_local(), src_place.as_local())
                         {

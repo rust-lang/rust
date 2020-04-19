@@ -123,10 +123,10 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                             .map(|snippet| snippet.ends_with(')'))
                             .unwrap_or(false)
                     }
-                    Res::Def(DefKind::Ctor(..), _)
-                    | Res::Def(DefKind::AssocFn, _)
-                    | Res::Def(DefKind::Const, _)
-                    | Res::Def(DefKind::AssocConst, _)
+                    Res::Def(
+                        DefKind::Ctor(..) | DefKind::AssocFn | DefKind::Const | DefKind::AssocConst,
+                        _,
+                    )
                     | Res::SelfCtor(_)
                     | Res::PrimTy(_)
                     | Res::Local(_) => true,
@@ -527,8 +527,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     return false;
                 }
             }
-            (Res::Def(DefKind::Enum, def_id), PathSource::TupleStruct)
-            | (Res::Def(DefKind::Enum, def_id), PathSource::Expr(..)) => {
+            (Res::Def(DefKind::Enum, def_id), PathSource::TupleStruct | PathSource::Expr(..)) => {
                 if let Some(variants) = self.collect_enum_variants(def_id) {
                     if !variants.is_empty() {
                         let msg = if variants.len() == 1 {
@@ -563,11 +562,13 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     bad_struct_syntax_suggestion(def_id);
                 }
             }
-            (Res::Def(DefKind::Union, def_id), _)
-            | (Res::Def(DefKind::Variant, def_id), _)
-            | (Res::Def(DefKind::Ctor(_, CtorKind::Fictive), def_id), _)
-                if ns == ValueNS =>
-            {
+            (
+                Res::Def(
+                    DefKind::Union | DefKind::Variant | DefKind::Ctor(_, CtorKind::Fictive),
+                    def_id,
+                ),
+                _,
+            ) if ns == ValueNS => {
                 bad_struct_syntax_suggestion(def_id);
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), def_id), _) if ns == ValueNS => {
@@ -580,9 +581,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 err.span_label(span, fallback_label);
                 err.note("can't use `Self` as a constructor, you must use the implemented struct");
             }
-            (Res::Def(DefKind::TyAlias, _), _) | (Res::Def(DefKind::AssocTy, _), _)
-                if ns == ValueNS =>
-            {
+            (Res::Def(DefKind::TyAlias | DefKind::AssocTy, _), _) if ns == ValueNS => {
                 err.note("can't use a type alias as a constructor");
             }
             _ => return false,
@@ -618,7 +617,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 // Look for a field with the same name in the current self_type.
                 if let Some(resolution) = self.r.partial_res_map.get(&node_id) {
                     match resolution.base_res() {
-                        Res::Def(DefKind::Struct, did) | Res::Def(DefKind::Union, did)
+                        Res::Def(DefKind::Struct | DefKind::Union, did)
                             if resolution.unresolved_segments() == 0 =>
                         {
                             if let Some(field_names) = self.r.field_names.get(&did) {

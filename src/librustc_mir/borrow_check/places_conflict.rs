@@ -377,11 +377,16 @@ fn place_projection_conflict<'tcx>(
                 Overlap::Disjoint
             }
         }
-        (ProjectionElem::Index(..), ProjectionElem::Index(..))
-        | (ProjectionElem::Index(..), ProjectionElem::ConstantIndex { .. })
-        | (ProjectionElem::Index(..), ProjectionElem::Subslice { .. })
-        | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Index(..))
-        | (ProjectionElem::Subslice { .. }, ProjectionElem::Index(..)) => {
+        (
+            ProjectionElem::Index(..),
+            ProjectionElem::Index(..)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. },
+        )
+        | (
+            ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. },
+            ProjectionElem::Index(..),
+        ) => {
             // Array indexes (`a[0]` vs. `a[i]`). These can either be disjoint
             // (if the indexes differ) or equal (if they are the same).
             match bias {
@@ -519,12 +524,15 @@ fn place_projection_conflict<'tcx>(
             debug!("place_element_conflict: DISJOINT-OR-EQ-SLICE-SUBSLICES");
             Overlap::EqualOrDisjoint
         }
-        (ProjectionElem::Deref, _)
-        | (ProjectionElem::Field(..), _)
-        | (ProjectionElem::Index(..), _)
-        | (ProjectionElem::ConstantIndex { .. }, _)
-        | (ProjectionElem::Subslice { .. }, _)
-        | (ProjectionElem::Downcast(..), _) => bug!(
+        (
+            ProjectionElem::Deref
+            | ProjectionElem::Field(..)
+            | ProjectionElem::Index(..)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(..),
+            _,
+        ) => bug!(
             "mismatched projections in place_element_conflict: {:?} and {:?}",
             pi1_elem,
             pi2_elem

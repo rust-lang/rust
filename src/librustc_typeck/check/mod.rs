@@ -1639,8 +1639,10 @@ fn check_opaque_for_inheriting_lifetimes(tcx: TyCtxt<'tcx>, def_id: DefId, span:
     }
 
     let prohibit_opaque = match item.kind {
-        ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::AsyncFn, .. })
-        | ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn, .. }) => {
+        ItemKind::OpaqueTy(hir::OpaqueTy {
+            origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
+            ..
+        }) => {
             let mut visitor = ProhibitOpaqueVisitor {
                 opaque_identity_ty: tcx
                     .mk_opaque(def_id, InternalSubsts::identity_for_item(tcx, def_id)),
@@ -4127,10 +4129,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Float(ast::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
                     }
-                    ty::Int(ast::IntTy::I8) | ty::Int(ast::IntTy::I16) | ty::Bool => {
+                    ty::Int(ast::IntTy::I8 | ast::IntTy::I16) | ty::Bool => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_int");
                     }
-                    ty::Uint(ast::UintTy::U8) | ty::Uint(ast::UintTy::U16) => {
+                    ty::Uint(ast::UintTy::U8 | ast::UintTy::U16) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
                     ty::FnDef(..) => {
@@ -4365,10 +4367,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Adt(adt, substs) => Some((adt.variant_of_res(def), adt.did, substs)),
                 _ => bug!("unexpected type: {:?}", ty),
             },
-            Res::Def(DefKind::Struct, _)
-            | Res::Def(DefKind::Union, _)
-            | Res::Def(DefKind::TyAlias, _)
-            | Res::Def(DefKind::AssocTy, _)
+            Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
             | Res::SelfTy(..) => match ty.kind {
                 ty::Adt(adt, substs) if !adt.is_enum() => {
                     Some((adt.non_enum_variant(), adt.did, substs))
@@ -4898,15 +4897,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             let mut msg = "call this function";
             match hir.get_if_local(def_id) {
-                Some(Node::Item(hir::Item { kind: ItemKind::Fn(.., body_id), .. }))
-                | Some(Node::ImplItem(hir::ImplItem {
-                    kind: hir::ImplItemKind::Fn(_, body_id),
-                    ..
-                }))
-                | Some(Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Fn(.., hir::TraitFn::Provided(body_id)),
-                    ..
-                })) => {
+                Some(
+                    Node::Item(hir::Item { kind: ItemKind::Fn(.., body_id), .. })
+                    | Node::ImplItem(hir::ImplItem {
+                        kind: hir::ImplItemKind::Fn(_, body_id), ..
+                    })
+                    | Node::TraitItem(hir::TraitItem {
+                        kind: hir::TraitItemKind::Fn(.., hir::TraitFn::Provided(body_id)),
+                        ..
+                    }),
+                ) => {
                     let body = hir.body(*body_id);
                     sugg_call = body
                         .params
@@ -5403,7 +5403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     is_alias_variant_ctor = true;
                 }
             }
-            Res::Def(DefKind::AssocFn, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
+            Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
                 let container = tcx.associated_item(def_id).container;
                 debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
                 match container {

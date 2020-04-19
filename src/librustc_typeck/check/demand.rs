@@ -390,9 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match (&expr.kind, &expected.kind, &checked_ty.kind) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.kind, &check.kind) {
-                (&ty::Str, &ty::Array(arr, _)) | (&ty::Str, &ty::Slice(arr))
-                    if arr == self.tcx.types.u8 =>
-                {
+                (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
                             if src.starts_with("b\"") {
@@ -405,9 +403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                (&ty::Array(arr, _), &ty::Str) | (&ty::Slice(arr), &ty::Str)
-                    if arr == self.tcx.types.u8 =>
-                {
+                (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
                             if src.starts_with('"') {
@@ -702,7 +698,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let suffix_suggestion = format!(
                 "{}{}{}{}",
                 if needs_paren { "(" } else { "" },
-                if let (ty::Int(_), ty::Float(_)) | (ty::Uint(_), ty::Float(_)) =
+                if let (ty::Int(_) | ty::Uint(_), ty::Float(_)) =
                     (&expected_ty.kind, &checked_ty.kind,)
                 {
                     // Remove fractional part from literal, for example `42.0f32` into `42`
@@ -791,7 +787,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     true
                 }
-                (&ty::Uint(_), &ty::Float(_)) | (&ty::Int(_), &ty::Float(_)) => {
+                (&ty::Uint(_) | &ty::Int(_), &ty::Float(_)) => {
                     if literal_is_ty_suffixed(expr) {
                         err.span_suggestion(
                             expr.span,

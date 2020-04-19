@@ -1,3 +1,4 @@
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 use rustc_ast::ast;
@@ -1197,8 +1198,9 @@ impl<'a> State<'a> {
             // These cases need parens: `x as i32 < y` has the parser thinking that `i32 < y` is
             // the beginning of a path type. It starts trying to parse `x as (i32 < y ...` instead
             // of `(x as i32) < ...`. We need to convince it _not_ to do that.
-            (&hir::ExprKind::Cast { .. }, hir::BinOpKind::Lt)
-            | (&hir::ExprKind::Cast { .. }, hir::BinOpKind::Shl) => parser::PREC_FORCE_PAREN,
+            (&hir::ExprKind::Cast { .. }, hir::BinOpKind::Lt | hir::BinOpKind::Shl) => {
+                parser::PREC_FORCE_PAREN
+            }
             _ => left_prec,
         };
 

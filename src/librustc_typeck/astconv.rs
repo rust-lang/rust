@@ -592,8 +592,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 args.next();
                                 params.next();
                             }
-                            (GenericArg::Type(_), GenericParamDefKind::Lifetime)
-                            | (GenericArg::Const(_), GenericParamDefKind::Lifetime) => {
+                            (
+                                GenericArg::Type(_) | GenericArg::Const(_),
+                                GenericParamDefKind::Lifetime,
+                            ) => {
                                 // We expected a lifetime argument, but got a type or const
                                 // argument. That means we're inferring the lifetimes.
                                 substs.push(inferred_kind(None, param, infer_args));
@@ -2231,10 +2233,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     || None,
                 )?
             }
-            (&ty::Param(_), Res::SelfTy(Some(param_did), None))
-            | (&ty::Param(_), Res::Def(DefKind::TyParam, param_did)) => {
-                self.find_bound_for_assoc_item(param_did, assoc_ident, span)?
-            }
+            (
+                &ty::Param(_),
+                Res::SelfTy(Some(param_did), None) | Res::Def(DefKind::TyParam, param_did),
+            ) => self.find_bound_for_assoc_item(param_did, assoc_ident, span)?,
             _ => {
                 if variant_resolution.is_some() {
                     // Variant in type position
@@ -2630,11 +2632,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let substs = self.ast_path_substs_for_ty(span, did, item_segment.0);
                 self.normalize_ty(span, tcx.mk_opaque(did, substs))
             }
-            Res::Def(DefKind::Enum, did)
-            | Res::Def(DefKind::TyAlias, did)
-            | Res::Def(DefKind::Struct, did)
-            | Res::Def(DefKind::Union, did)
-            | Res::Def(DefKind::ForeignTy, did) => {
+            Res::Def(
+                DefKind::Enum
+                | DefKind::TyAlias
+                | DefKind::Struct
+                | DefKind::Union
+                | DefKind::ForeignTy,
+                did,
+            ) => {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(span, did, path.segments.last().unwrap())

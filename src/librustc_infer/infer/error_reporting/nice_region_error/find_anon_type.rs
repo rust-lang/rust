@@ -164,12 +164,17 @@ impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                         }
                     }
 
-                    (Some(rl::Region::Static), _)
-                    | (Some(rl::Region::Free(_, _)), _)
-                    | (Some(rl::Region::EarlyBound(_, _, _)), _)
-                    | (Some(rl::Region::LateBound(_, _, _)), _)
-                    | (Some(rl::Region::LateBoundAnon(_, _)), _)
-                    | (None, _) => {
+                    (
+                        Some(
+                            rl::Region::Static
+                            | rl::Region::Free(_, _)
+                            | rl::Region::EarlyBound(_, _, _)
+                            | rl::Region::LateBound(_, _, _)
+                            | rl::Region::LateBoundAnon(_, _),
+                        )
+                        | None,
+                        _,
+                    ) => {
                         debug!("no arg found");
                     }
                 }
@@ -244,12 +249,17 @@ impl Visitor<'tcx> for TyPathVisitor<'tcx> {
                 }
             }
 
-            (Some(rl::Region::Static), _)
-            | (Some(rl::Region::EarlyBound(_, _, _)), _)
-            | (Some(rl::Region::LateBound(_, _, _)), _)
-            | (Some(rl::Region::LateBoundAnon(_, _)), _)
-            | (Some(rl::Region::Free(_, _)), _)
-            | (None, _) => {
+            (
+                Some(
+                    rl::Region::Static
+                    | rl::Region::EarlyBound(_, _, _)
+                    | rl::Region::LateBound(_, _, _)
+                    | rl::Region::LateBoundAnon(_, _)
+                    | rl::Region::Free(_, _),
+                )
+                | None,
+                _,
+            ) => {
                 debug!("no arg found");
             }
         }

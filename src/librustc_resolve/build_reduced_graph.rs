@@ -870,9 +870,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let expansion = ExpnId::root(); // FIXME(jseyfried) intercrate hygiene
         // Record primary definitions.
         match res {
-            Res::Def(kind @ DefKind::Mod, def_id)
-            | Res::Def(kind @ DefKind::Enum, def_id)
-            | Res::Def(kind @ DefKind::Trait, def_id) => {
+            Res::Def(kind @ (DefKind::Mod | DefKind::Enum | DefKind::Trait), def_id) => {
                 let module = self.r.new_module(
                     parent,
                     ModuleKind::Def(kind, def_id, ident.name),
@@ -882,30 +880,33 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, span, expansion));
             }
-            Res::Def(DefKind::Struct, _)
-            | Res::Def(DefKind::Union, _)
-            | Res::Def(DefKind::Variant, _)
-            | Res::Def(DefKind::TyAlias, _)
-            | Res::Def(DefKind::ForeignTy, _)
-            | Res::Def(DefKind::OpaqueTy, _)
-            | Res::Def(DefKind::TraitAlias, _)
-            | Res::Def(DefKind::AssocTy, _)
-            | Res::Def(DefKind::AssocOpaqueTy, _)
+            Res::Def(
+                DefKind::Struct
+                | DefKind::Union
+                | DefKind::Variant
+                | DefKind::TyAlias
+                | DefKind::ForeignTy
+                | DefKind::OpaqueTy
+                | DefKind::TraitAlias
+                | DefKind::AssocTy
+                | DefKind::AssocOpaqueTy,
+                _,
+            )
             | Res::PrimTy(..)
             | Res::ToolMod => self.r.define(parent, ident, TypeNS, (res, vis, span, expansion)),
-            Res::Def(DefKind::Fn, _)
-            | Res::Def(DefKind::AssocFn, _)
-            | Res::Def(DefKind::Static, _)
-            | Res::Def(DefKind::Const, _)
-            | Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::Ctor(..), _) => {
-                self.r.define(parent, ident, ValueNS, (res, vis, span, expansion))
-            }
+            Res::Def(
+                DefKind::Fn
+                | DefKind::AssocFn
+                | DefKind::Static
+                | DefKind::Const
+                | DefKind::AssocConst
+                | DefKind::Ctor(..),
+                _,
+            ) => self.r.define(parent, ident, ValueNS, (res, vis, span, expansion)),
             Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
                 self.r.define(parent, ident, MacroNS, (res, vis, span, expansion))
             }
-            Res::Def(DefKind::TyParam, _)
-            | Res::Def(DefKind::ConstParam, _)
+            Res::Def(DefKind::TyParam | DefKind::ConstParam, _)
             | Res::Local(..)
             | Res::SelfTy(..)
             | Res::SelfCtor(..)
@@ -914,7 +915,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         // Record some extra data for better diagnostics.
         let cstore = self.r.cstore();
         match res {
-            Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
+            Res::Def(DefKind::Struct | DefKind::Union, def_id) => {
                 let field_names = cstore.struct_field_names_untracked(def_id, self.r.session);
                 self.insert_field_names(def_id, field_names);
             }

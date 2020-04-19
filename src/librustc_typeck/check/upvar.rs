@@ -395,8 +395,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             ty::UpvarCapture::ByRef(mut upvar_borrow) => {
                 match (upvar_borrow.kind, kind) {
                     // Take RHS:
-                    (ty::ImmBorrow, ty::UniqueImmBorrow)
-                    | (ty::ImmBorrow, ty::MutBorrow)
+                    (ty::ImmBorrow, ty::UniqueImmBorrow | ty::MutBorrow)
                     | (ty::UniqueImmBorrow, ty::MutBorrow) => {
                         upvar_borrow.kind = kind;
                         self.adjust_upvar_captures
@@ -404,8 +403,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
                     }
                     // Take LHS:
                     (ty::ImmBorrow, ty::ImmBorrow)
-                    | (ty::UniqueImmBorrow, ty::ImmBorrow)
-                    | (ty::UniqueImmBorrow, ty::UniqueImmBorrow)
+                    | (ty::UniqueImmBorrow, ty::ImmBorrow | ty::UniqueImmBorrow)
                     | (ty::MutBorrow, _) => {}
                 }
             }
@@ -440,14 +438,12 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
         match (existing_kind, new_kind) {
             (ty::ClosureKind::Fn, ty::ClosureKind::Fn)
-            | (ty::ClosureKind::FnMut, ty::ClosureKind::Fn)
-            | (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut)
+            | (ty::ClosureKind::FnMut, ty::ClosureKind::Fn | ty::ClosureKind::FnMut)
             | (ty::ClosureKind::FnOnce, _) => {
                 // no change needed
             }
 
-            (ty::ClosureKind::Fn, ty::ClosureKind::FnMut)
-            | (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce)
+            (ty::ClosureKind::Fn, ty::ClosureKind::FnMut | ty::ClosureKind::FnOnce)
             | (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
                 // new kind is stronger than the old kind
                 self.current_closure_kind = new_kind;

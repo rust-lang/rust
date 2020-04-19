@@ -117,7 +117,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
                             // If this path leads to a constant, then we need to
                             // recurse into the constant to continue finding
                             // items that are reachable.
-                            Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
+                            Res::Def(DefKind::Const | DefKind::AssocConst, _) => {
                                 self.worklist.push(hir_id);
                             }
 

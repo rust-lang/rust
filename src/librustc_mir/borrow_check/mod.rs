@@ -991,19 +991,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Control::Continue
                 }
 
-                (Read(_), BorrowKind::Shared)
-                | (Read(_), BorrowKind::Shallow)
-                | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Unique)
-                | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Mut { .. }) => {
-                    Control::Continue
-                }
+                (Read(_), BorrowKind::Shared | BorrowKind::Shallow)
+                | (
+                    Read(ReadKind::Borrow(BorrowKind::Shallow)),
+                    BorrowKind::Unique | BorrowKind::Mut { .. },
+                ) => Control::Continue,
 
                 (Write(WriteKind::Move), BorrowKind::Shallow) => {
                     // Handled by initialization checks.
                     Control::Continue
                 }
 
-                (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut { .. }) => {
+                (Read(kind), BorrowKind::Unique | BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
                     if !is_active(&this.dominators, borrow, location) {
                         assert!(allow_two_phase_borrow(borrow.kind));
@@ -1024,12 +1023,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Control::Break
                 }
 
-                (Reservation(WriteKind::MutableBorrow(bk)), BorrowKind::Shallow)
-                | (Reservation(WriteKind::MutableBorrow(bk)), BorrowKind::Shared)
-                    if {
-                        tcx.migrate_borrowck()
-                            && this.borrow_set.location_map.contains_key(&location)
-                    } =>
+                (
+                    Reservation(WriteKind::MutableBorrow(bk)),
+                    BorrowKind::Shallow | BorrowKind::Shared,
+                ) if {
+                    tcx.migrate_borrowck() && this.borrow_set.location_map.contains_key(&location)
+                } =>
                 {
                     let bi = this.borrow_set.location_map[&location];
                     debug!(
@@ -1048,7 +1047,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Control::Continue
                 }
 
-                (Reservation(kind), _) | (Activation(kind, _), _) | (Write(kind), _) => {
+                (Reservation(kind) | Activation(kind, _) | Write(kind), _) => {
                     match rw {
                         Reservation(..) => {
                             debug!(
@@ -1916,10 +1915,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let the_place_err;
 
         match kind {
-            Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Unique))
-            | Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. }))
-            | Write(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Unique))
-            | Write(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. })) => {
+            Reservation(WriteKind::MutableBorrow(
+                borrow_kind @ (BorrowKind::Unique | BorrowKind::Mut { .. }),
+            ))
+            | Write(WriteKind::MutableBorrow(
+                borrow_kind @ (BorrowKind::Unique | BorrowKind::Mut { .. }),
+            )) => {
                 let is_local_mutation_allowed = match borrow_kind {
                     BorrowKind::Unique => LocalMutationIsAllowed::Yes,
                     BorrowKind::Mut { .. } => is_local_mutation_allowed,
@@ -1949,14 +1950,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            Reservation(WriteKind::Move)
-            | Write(WriteKind::Move)
-            | Reservation(WriteKind::StorageDeadOrDrop)
-            | Reservation(WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Reservation(WriteKind::MutableBorrow(BorrowKind::Shallow))
-            | Write(WriteKind::StorageDeadOrDrop)
-            | Write(WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Write(WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
+            Reservation(
+                WriteKind::Move
+                | WriteKind::StorageDeadOrDrop
+                | WriteKind::MutableBorrow(BorrowKind::Shared)
+                | WriteKind::MutableBorrow(BorrowKind::Shallow),
+            )
+            | Write(
+                WriteKind::Move
+                | WriteKind::StorageDeadOrDrop
+                | WriteKind::MutableBorrow(BorrowKind::Shared)
+                | WriteKind::MutableBorrow(BorrowKind::Shallow),
+            ) => {
                 if let (Err(_), true) = (
                     self.is_mutable(place.as_ref(), is_local_mutation_allowed),
                     self.errors_buffer.is_empty(),
@@ -1980,11 +1985,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // permission checks are done at Reservation point.
                 return false;
             }
-            Read(ReadKind::Borrow(BorrowKind::Unique))
-            | Read(ReadKind::Borrow(BorrowKind::Mut { .. }))
-            | Read(ReadKind::Borrow(BorrowKind::Shared))
-            | Read(ReadKind::Borrow(BorrowKind::Shallow))
-            | Read(ReadKind::Copy) => {
+            Read(
+                ReadKind::Borrow(
+                    BorrowKind::Unique
+                    | BorrowKind::Mut { .. }
+                    | BorrowKind::Shared
+                    | BorrowKind::Shallow,
+                )
+                | ReadKind::Copy,
+            ) => {
                 // Access authorized
                 return false;
             }
@@ -2152,10 +2161,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 upvar, is_local_mutation_allowed, place
                             );
                             match (upvar.mutability, is_local_mutation_allowed) {
-                                (Mutability::Not, LocalMutationIsAllowed::No)
-                                | (Mutability::Not, LocalMutationIsAllowed::ExceptUpvars) => {
-                                    Err(place)
-                                }
+                                (
+                                    Mutability::Not,
+                                    LocalMutationIsAllowed::No
+                                    | LocalMutationIsAllowed::ExceptUpvars,
+                                ) => Err(place),
                                 (Mutability::Not, LocalMutationIsAllowed::Yes)
                                 | (Mutability::Mut, _) => {
                                     // Subtle: this is an upvar

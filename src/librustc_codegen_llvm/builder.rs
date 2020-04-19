@@ -310,7 +310,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let new_kind = match ty.kind {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.ptr_width)),
             Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.ptr_width)),
-            ref t @ Uint(_) | ref t @ Int(_) => t.clone(),
+            ref t @ (Uint(_) | Int(_)) => t.clone(),
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type"),
         };
 
@@ -1247,7 +1247,7 @@ impl Builder<'a, 'll, 'tcx> {
         let emit = match opts.debugging_opts.sanitizer {
             // Some sanitizer use lifetime intrinsics. When they are in use,
             // emit lifetime intrinsics regardless of optimization level.
-            Some(Sanitizer::Address) | Some(Sanitizer::Memory) => true,
+            Some(Sanitizer::Address | Sanitizer::Memory) => true,
             _ => opts.optimize != config::OptLevel::No,
         };
         if !emit {

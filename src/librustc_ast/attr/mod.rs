@@ -442,8 +442,10 @@ impl MetaItem {
     {
         // FIXME: Share code with `parse_path`.
         let path = match tokens.next().map(TokenTree::uninterpolate) {
-            Some(TokenTree::Token(Token { kind: kind @ token::Ident(..), span }))
-            | Some(TokenTree::Token(Token { kind: kind @ token::ModSep, span })) => 'arm: {
+            Some(TokenTree::Token(Token {
+                kind: kind @ (token::Ident(..) | token::ModSep),
+                span,
+            })) => 'arm: {
                 let mut segments = if let token::Ident(name, _) = kind {
                     if let Some(TokenTree::Token(Token { kind: token::ModSep, .. })) = tokens.peek()
                     {

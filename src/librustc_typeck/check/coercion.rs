@@ -101,9 +101,8 @@ fn coerce_mutbls<'tcx>(
     to_mutbl: hir::Mutability,
 ) -> RelateResult<'tcx, ()> {
     match (from_mutbl, to_mutbl) {
-        (hir::Mutability::Mut, hir::Mutability::Mut)
-        | (hir::Mutability::Not, hir::Mutability::Not)
-        | (hir::Mutability::Mut, hir::Mutability::Not) => Ok(()),
+        (hir::Mutability::Mut, hir::Mutability::Mut | hir::Mutability::Not)
+        | (hir::Mutability::Not, hir::Mutability::Not) => Ok(()),
         (hir::Mutability::Not, hir::Mutability::Mut) => Err(TypeError::Mutability),
     }
 }

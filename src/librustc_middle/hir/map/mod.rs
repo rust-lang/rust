@@ -420,8 +420,7 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_owner(&self, id: HirId) -> HirId {
         match self.get(id) {
-            Node::Item(&Item { kind: ItemKind::Trait(..), .. })
-            | Node::Item(&Item { kind: ItemKind::TraitAlias(..), .. }) => id,
+            Node::Item(&Item { kind: ItemKind::Trait(..) | ItemKind::TraitAlias(..), .. }) => id,
             Node::GenericParam(_) => self.get_parent_node(id),
             _ => bug!("ty_param_owner: {} not a type parameter", self.node_to_string(id)),
         }
@@ -429,8 +428,9 @@ impl<'hir> Map<'hir> {
 
     pub fn ty_param_name(&self, id: HirId) -> Name {
         match self.get(id) {
-            Node::Item(&Item { kind: ItemKind::Trait(..), .. })
-            | Node::Item(&Item { kind: ItemKind::TraitAlias(..), .. }) => kw::SelfUpper,
+            Node::Item(&Item { kind: ItemKind::Trait(..) | ItemKind::TraitAlias(..), .. }) => {
+                kw::SelfUpper
+            }
             Node::GenericParam(param) => param.name.ident().name,
             _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
         }
@@ -557,11 +557,10 @@ impl<'hir> Map<'hir> {
     pub fn is_const_context(&self, hir_id: HirId) -> bool {
         let parent_id = self.get_parent_item(hir_id);
         match self.get(parent_id) {
-            Node::Item(&Item { kind: ItemKind::Const(..), .. })
+            Node::Item(&Item { kind: ItemKind::Const(..) | ItemKind::Static(..), .. })
             | Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. })
             | Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. })
-            | Node::AnonConst(_)
-            | Node::Item(&Item { kind: ItemKind::Static(..), .. }) => true,
+            | Node::AnonConst(_) => true,
             Node::Item(&Item { kind: ItemKind::Fn(ref sig, ..), .. }) => {
                 sig.header.constness == Constness::Const
             }
@@ -571,9 +570,8 @@ impl<'hir> Map<'hir> {
 
     /// Whether `hir_id` corresponds to a `mod` or a crate.
     pub fn is_hir_id_module(&self, hir_id: HirId) -> bool {
-        match self.get_entry(hir_id) {
-            Entry { node: Node::Item(Item { kind: ItemKind::Mod(_), .. }), .. }
-            | Entry { node: Node::Crate(..), .. } => true,
+        match self.get_entry(hir_id).node {
+            Node::Item(Item { kind: ItemKind::Mod(_), .. }) | Node::Crate(..) => true,
             _ => false,
         }
     }

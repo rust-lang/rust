@@ -407,8 +407,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.cannot_uniquely_borrow_by_two_closures(span, &desc_place, issued_span, None)
             }
 
-            (BorrowKind::Mut { .. }, BorrowKind::Shallow)
-            | (BorrowKind::Unique, BorrowKind::Shallow) => {
+            (BorrowKind::Mut { .. } | BorrowKind::Unique, BorrowKind::Shallow) => {
                 if let Some(immutable_section_description) =
                     self.classify_immutable_section(issued_borrow.assigned_place)
                 {
@@ -489,12 +488,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Shared, BorrowKind::Shared)
-            | (BorrowKind::Shared, BorrowKind::Shallow)
-            | (BorrowKind::Shallow, BorrowKind::Mut { .. })
-            | (BorrowKind::Shallow, BorrowKind::Unique)
-            | (BorrowKind::Shallow, BorrowKind::Shared)
-            | (BorrowKind::Shallow, BorrowKind::Shallow) => unreachable!(),
+            (BorrowKind::Shared, BorrowKind::Shared | BorrowKind::Shallow)
+            | (
+                BorrowKind::Shallow,
+                BorrowKind::Mut { .. }
+                | BorrowKind::Unique
+                | BorrowKind::Shared
+                | BorrowKind::Shallow,
+            ) => unreachable!(),
         };
 
         if issued_spans == borrow_spans {
@@ -1426,17 +1427,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // PATTERN;) then make the error refer to that local, rather than the
         // place being assigned later.
         let (place_description, assigned_span) = match local_decl {
-            Some(LocalDecl { local_info: LocalInfo::User(ClearCrossCrate::Clear), .. })
-            | Some(LocalDecl {
+            Some(LocalDecl {
                 local_info:
-                    LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                        opt_match_place: None,
-                        ..
-                    }))),
+                    LocalInfo::User(
+                        ClearCrossCrate::Clear
+                        | ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                            opt_match_place: None,
+                            ..
+                        })),
+                    )
+                    | LocalInfo::StaticRef { .. }
+                    | LocalInfo::Other,
                 ..
             })
-            | Some(LocalDecl { local_info: LocalInfo::StaticRef { .. }, .. })
-            | Some(LocalDecl { local_info: LocalInfo::Other, .. })
             | None => (self.describe_any_place(place.as_ref()), assigned_span),
             Some(decl) => (self.describe_any_place(err_place.as_ref()), decl.source_info.span),
         };

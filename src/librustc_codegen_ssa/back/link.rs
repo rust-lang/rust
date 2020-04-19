@@ -262,7 +262,7 @@ pub fn each_linked_rlib(
     };
     for &(cnum, ref path) in crates {
         match fmts.get(cnum.as_usize() - 1) {
-            Some(&Linkage::NotLinked) | Some(&Linkage::IncludedFromDylib) => continue,
+            Some(&Linkage::NotLinked | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
             None => return Err("could not find formats for rlibs".to_string()),
         }

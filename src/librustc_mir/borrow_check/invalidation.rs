@@ -359,14 +359,15 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                         // have already taken the reservation
                     }
 
-                    (Read(_), BorrowKind::Shallow)
-                    | (Read(_), BorrowKind::Shared)
-                    | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Unique)
-                    | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Mut { .. }) => {
+                    (Read(_), BorrowKind::Shallow | BorrowKind::Shared)
+                    | (
+                        Read(ReadKind::Borrow(BorrowKind::Shallow)),
+                        BorrowKind::Unique | BorrowKind::Mut { .. },
+                    ) => {
                         // Reads don't invalidate shared or shallow borrows
                     }
 
-                    (Read(_), BorrowKind::Unique) | (Read(_), BorrowKind::Mut { .. }) => {
+                    (Read(_), BorrowKind::Unique | BorrowKind::Mut { .. }) => {
                         // Reading from mere reservations of mutable-borrows is OK.
                         if !is_active(&this.dominators, borrow, location) {
                             // If the borrow isn't active yet, reads don't invalidate it
@@ -379,7 +380,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                         this.generate_invalidates(borrow_index, location);
                     }
 
-                    (Reservation(_), _) | (Activation(_, _), _) | (Write(_), _) => {
+                    (Reservation(_) | Activation(_, _) | Write(_), _) => {
                         // unique or mutable borrows are invalidated by writes.
                         // Reservations count as writes since we need to check
                         // that activating the borrow will be OK

@@ -146,7 +146,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
-                    (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FnPtr, CastTy::Int(_)) => {
+                    (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
                         self.require_unsafe(
                             "cast of pointer to int",
                             "casting pointers to integers in constants",

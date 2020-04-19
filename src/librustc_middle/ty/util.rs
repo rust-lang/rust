@@ -316,10 +316,8 @@ impl<'tcx> TyCtxt<'tcx> {
                         break;
                     }
                 }
-                (ty::Projection(_), _)
-                | (ty::Opaque(..), _)
-                | (_, ty::Projection(_))
-                | (_, ty::Opaque(..)) => {
+                (ty::Projection(_) | ty::Opaque(..), _)
+                | (_, ty::Projection(_) | ty::Opaque(..)) => {
                     // If either side is a projection, attempt to
                     // progress via normalization. (Should be safe to
                     // apply to both sides as normalization is

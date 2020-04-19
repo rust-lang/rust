@@ -89,8 +89,7 @@ impl CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn
             | Target::Closure
-            | Target::Method(MethodKind::Trait { body: true })
-            | Target::Method(MethodKind::Inherent) => true,
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
                     lint.build("`#[inline]` is ignored on function prototypes").emit()
@@ -202,8 +201,7 @@ impl CheckAttrVisitor<'tcx> {
     fn check_target_feature(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
             Target::Fn
-            | Target::Method(MethodKind::Trait { body: true })
-            | Target::Method(MethodKind::Inherent) => true,
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             _ => {
                 self.tcx
                     .sess

@@ -341,8 +341,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
             Rvalue::AddressOf(Mutability::Mut, _) => self.check_op(ops::MutAddressOf),
 
-            Rvalue::Ref(_, BorrowKind::Shared, ref place)
-            | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
+            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, ref place)
             | Rvalue::AddressOf(Mutability::Not, ref place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     &self.item,
@@ -360,9 +359,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
 
-                if let (CastTy::Ptr(_), CastTy::Int(_)) | (CastTy::FnPtr, CastTy::Int(_)) =
-                    (cast_in, cast_out)
-                {
+                if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
                     self.check_op(ops::RawPtrToIntCast);
                 }
             }

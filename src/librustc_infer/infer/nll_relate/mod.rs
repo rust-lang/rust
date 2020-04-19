@@ -904,7 +904,7 @@ where
                 }
             }
 
-            ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) => {
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
                 // No matter what mode we are in,
                 // integer/floating-point types must be equal to be
                 // relatable.

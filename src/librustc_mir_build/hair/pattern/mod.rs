@@ -721,14 +721,16 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 }
             }
 
-            Res::Def(DefKind::Struct, _)
-            | Res::Def(DefKind::Ctor(CtorOf::Struct, ..), _)
-            | Res::Def(DefKind::Union, _)
-            | Res::Def(DefKind::TyAlias, _)
-            | Res::Def(DefKind::AssocTy, _)
+            Res::Def(
+                DefKind::Struct
+                | DefKind::Ctor(CtorOf::Struct, ..)
+                | DefKind::Union
+                | DefKind::TyAlias
+                | DefKind::AssocTy,
+                _,
+            )
             | Res::SelfTy(..)
             | Res::SelfCtor(..) => PatKind::Leaf { subpatterns },
-
             _ => {
                 let pattern_error = match res {
                     Res::Def(DefKind::ConstParam, _) => PatternError::ConstParamInPattern(span),
@@ -765,7 +767,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => false,
         };
         let kind = match res {
-            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
+            Res::Def(DefKind::Const | DefKind::AssocConst, def_id) => {
                 let substs = self.tables.node_substs(id);
                 // Use `Reveal::All` here because patterns are always monomorphic even if their function isn't.
                 match self.tcx.const_eval_resolve(

@@ -1887,8 +1887,15 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_scalar(&self) -> bool {
         match self.kind {
-            Bool | Char | Int(_) | Float(_) | Uint(_) | Infer(IntVar(_)) | Infer(FloatVar(_))
-            | FnDef(..) | FnPtr(_) | RawPtr(_) => true,
+            Bool
+            | Char
+            | Int(_)
+            | Float(_)
+            | Uint(_)
+            | Infer(IntVar(_) | FloatVar(_))
+            | FnDef(..)
+            | FnPtr(_)
+            | RawPtr(_) => true,
             _ => false,
         }
     }
@@ -2154,8 +2161,7 @@ impl<'tcx> TyS<'tcx> {
     /// `false` means nothing -- could be sized, might not be.
     pub fn is_trivially_sized(&self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind {
-            ty::Infer(ty::IntVar(_))
-            | ty::Infer(ty::FloatVar(_))
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -2186,9 +2192,7 @@ impl<'tcx> TyS<'tcx> {
 
             ty::Bound(..)
             | ty::Placeholder(..)
-            | ty::Infer(ty::FreshTy(_))
-            | ty::Infer(ty::FreshIntTy(_))
-            | ty::Infer(ty::FreshFloatTy(_)) => {
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
             }
         }

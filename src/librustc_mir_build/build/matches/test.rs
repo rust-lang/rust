@@ -582,7 +582,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // enough elements.
                         Some(1)
                     }
-                    (Ordering::Equal, &Some(_)) | (Ordering::Greater, &Some(_)) => {
+                    (Ordering::Equal | Ordering::Greater, &Some(_)) => {
                         // This can match both if $actual_len = test_len >= pat_len,
                         // and if $actual_len > test_len. We can't advance.
                         None
@@ -681,7 +681,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             (&TestKind::Range { .. }, _) => None,
 
-            (&TestKind::Eq { .. }, _) | (&TestKind::Len { .. }, _) => {
+            (&TestKind::Eq { .. } | &TestKind::Len { .. }, _) => {
                 // These are all binary tests.
                 //
                 // FIXME(#29623) we can be more clever here

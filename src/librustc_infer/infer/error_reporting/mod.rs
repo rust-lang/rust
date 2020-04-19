@@ -193,7 +193,7 @@ fn msg_span_from_early_bound_and_free_regions(
     let scope = region.free_region_binding_scope(tcx);
     let node = tcx.hir().as_local_hir_id(scope).unwrap();
     let tag = match tcx.hir().find(node) {
-        Some(Node::Block(_)) | Some(Node::Expr(_)) => "body",
+        Some(Node::Block(_) | Node::Expr(_)) => "body",
         Some(Node::Item(it)) => item_scope_tag(&it),
         Some(Node::TraitItem(it)) => trait_item_scope_tag(&it),
         Some(Node::ImplItem(it)) => impl_item_scope_tag(&it),
@@ -1058,13 +1058,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             match (&a.kind, &b.kind) {
                 (a, b) if *a == *b => true,
                 (&ty::Int(_), &ty::Infer(ty::InferTy::IntVar(_)))
-                | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Int(_))
-                | (&ty::Infer(ty::InferTy::IntVar(_)), &ty::Infer(ty::InferTy::IntVar(_)))
+                | (
+                    &ty::Infer(ty::InferTy::IntVar(_)),
+                    &ty::Int(_) | &ty::Infer(ty::InferTy::IntVar(_)),
+                )
                 | (&ty::Float(_), &ty::Infer(ty::InferTy::FloatVar(_)))
-                | (&ty::Infer(ty::InferTy::FloatVar(_)), &ty::Float(_))
-                | (&ty::Infer(ty::InferTy::FloatVar(_)), &ty::Infer(ty::InferTy::FloatVar(_))) => {
-                    true
-                }
+                | (
+                    &ty::Infer(ty::InferTy::FloatVar(_)),
+                    &ty::Float(_) | &ty::Infer(ty::InferTy::FloatVar(_)),
+                ) => true,
                 _ => false,
             }
         }

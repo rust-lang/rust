@@ -25,9 +25,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.unsize_into(src, dest)?;
             }
 
-            Misc
-            | Pointer(PointerCast::MutToConstPointer)
-            | Pointer(PointerCast::ArrayToPointer) => {
+            Misc | Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer) => {
                 let src = self.read_immediate(src)?;
                 let res = self.cast_immediate(src, dest.layout)?;
                 self.write_immediate(res, dest)?;
@@ -299,8 +297,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} into {:?}", src, dest);
         match (&src.layout.ty.kind, &dest.layout.ty.kind) {
-            (&ty::Ref(_, s, _), &ty::Ref(_, d, _))
-            | (&ty::Ref(_, s, _), &ty::RawPtr(TypeAndMut { ty: d, .. }))
+            (&ty::Ref(_, s, _), &ty::Ref(_, d, _) | &ty::RawPtr(TypeAndMut { ty: d, .. }))
             | (&ty::RawPtr(TypeAndMut { ty: s, .. }), &ty::RawPtr(TypeAndMut { ty: d, .. })) => {
                 self.unsize_into_ptr(src, dest, s, d)
             }

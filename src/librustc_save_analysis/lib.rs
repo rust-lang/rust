@@ -1,5 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 mod dump_visitor;
@@ -641,9 +642,13 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             }
 
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Path(ref qpath), .. })
-            | Node::Pat(&hir::Pat { kind: hir::PatKind::Path(ref qpath), .. })
-            | Node::Pat(&hir::Pat { kind: hir::PatKind::Struct(ref qpath, ..), .. })
-            | Node::Pat(&hir::Pat { kind: hir::PatKind::TupleStruct(ref qpath, ..), .. })
+            | Node::Pat(&hir::Pat {
+                kind:
+                    hir::PatKind::Path(ref qpath)
+                    | hir::PatKind::Struct(ref qpath, ..)
+                    | hir::PatKind::TupleStruct(ref qpath, ..),
+                ..
+            })
             | Node::Ty(&hir::Ty { kind: hir::TyKind::Path(ref qpath), .. }) => {
                 self.tables.qpath_res(qpath, hir_id)
             }
@@ -699,20 +704,21 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Res::Def(HirDefKind::Trait, def_id) if fn_type(path_seg) => {
                 Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(def_id) })
             }
-            Res::Def(HirDefKind::Struct, def_id)
-            | Res::Def(HirDefKind::Variant, def_id)
-            | Res::Def(HirDefKind::Union, def_id)
-            | Res::Def(HirDefKind::Enum, def_id)
-            | Res::Def(HirDefKind::TyAlias, def_id)
-            | Res::Def(HirDefKind::ForeignTy, def_id)
-            | Res::Def(HirDefKind::TraitAlias, def_id)
-            | Res::Def(HirDefKind::AssocOpaqueTy, def_id)
-            | Res::Def(HirDefKind::AssocTy, def_id)
-            | Res::Def(HirDefKind::Trait, def_id)
-            | Res::Def(HirDefKind::OpaqueTy, def_id)
-            | Res::Def(HirDefKind::TyParam, def_id) => {
-                Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(def_id) })
-            }
+            Res::Def(
+                HirDefKind::Struct
+                | HirDefKind::Variant
+                | HirDefKind::Union
+                | HirDefKind::Enum
+                | HirDefKind::TyAlias
+                | HirDefKind::ForeignTy
+                | HirDefKind::TraitAlias
+                | HirDefKind::AssocOpaqueTy
+                | HirDefKind::AssocTy
+                | HirDefKind::Trait
+                | HirDefKind::OpaqueTy
+                | HirDefKind::TyParam,
+                def_id,
+            ) => Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(def_id) }),
             Res::Def(HirDefKind::ConstParam, def_id) => {
                 Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(def_id) })
             }
@@ -723,12 +729,13 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 let parent_def_id = self.tcx.parent(def_id).unwrap();
                 Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(parent_def_id) })
             }
-            Res::Def(HirDefKind::Static, _)
-            | Res::Def(HirDefKind::Const, _)
-            | Res::Def(HirDefKind::AssocConst, _)
-            | Res::Def(HirDefKind::Ctor(..), _) => {
-                Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) })
-            }
+            Res::Def(
+                HirDefKind::Static
+                | HirDefKind::Const
+                | HirDefKind::AssocConst
+                | HirDefKind::Ctor(..),
+                _,
+            ) => Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) }),
             Res::Def(HirDefKind::AssocFn, decl_id) => {
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);

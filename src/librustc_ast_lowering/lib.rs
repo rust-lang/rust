@@ -1239,16 +1239,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let bounds =
                         this.arena.alloc_from_iter(bounds.iter().filter_map(
                             |bound| match *bound {
-                                GenericBound::Trait(ref ty, TraitBoundModifier::None)
-                                | GenericBound::Trait(ref ty, TraitBoundModifier::MaybeConst) => {
-                                    Some(this.lower_poly_trait_ref(ty, itctx.reborrow()))
-                                }
+                                GenericBound::Trait(
+                                    ref ty,
+                                    TraitBoundModifier::None | TraitBoundModifier::MaybeConst,
+                                ) => Some(this.lower_poly_trait_ref(ty, itctx.reborrow())),
                                 // `?const ?Bound` will cause an error during AST validation
                                 // anyways, so treat it like `?Bound` as compilation proceeds.
-                                GenericBound::Trait(_, TraitBoundModifier::Maybe)
-                                | GenericBound::Trait(_, TraitBoundModifier::MaybeConstMaybe) => {
-                                    None
-                                }
+                                GenericBound::Trait(
+                                    _,
+                                    TraitBoundModifier::Maybe | TraitBoundModifier::MaybeConstMaybe,
+                                ) => None,
                                 GenericBound::Outlives(ref lifetime) => {
                                     if lifetime_bound.is_none() {
                                         lifetime_bound = Some(this.lower_lifetime(lifetime));
@@ -1740,8 +1740,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             c_variadic,
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
                 let is_mutable_pat = match arg.pat.kind {
-                    PatKind::Ident(BindingMode::ByValue(mt), _, _)
-                    | PatKind::Ident(BindingMode::ByRef(mt), _, _) => mt == Mutability::Mut,
+                    PatKind::Ident(BindingMode::ByValue(mt) | BindingMode::ByRef(mt), _, _) => {
+                        mt == Mutability::Mut
+                    }
                     _ => false,
                 };
 
@@ -2468,7 +2469,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
                 match path.res {
-                    Res::Def(DefKind::Trait, _) | Res::Def(DefKind::TraitAlias, _) => {
+                    Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: &[],
                             trait_ref: hir::TraitRef { path, hir_ref_id: hir_id },

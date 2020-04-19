@@ -1281,7 +1281,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
         res: Res,
     ) {
         match res {
-            Res::Def(DefKind::Trait, def_id) | Res::Def(DefKind::TraitAlias, def_id) => {
+            Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) => {
                 traits.push(def_id);
             }
             Res::Def(DefKind::Mod, def_id) => {

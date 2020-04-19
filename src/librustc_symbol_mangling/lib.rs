@@ -90,6 +90,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![feature(in_band_lifetimes)]
 #![recursion_limit = "256"]
 

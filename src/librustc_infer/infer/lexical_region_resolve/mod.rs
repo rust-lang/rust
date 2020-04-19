@@ -512,12 +512,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 self.tcx().lifetimes.re_static
             }
 
-            (&ReEmpty(_), r @ ReEarlyBound(_))
-            | (r @ ReEarlyBound(_), &ReEmpty(_))
-            | (&ReEmpty(_), r @ ReFree(_))
-            | (r @ ReFree(_), &ReEmpty(_))
-            | (&ReEmpty(_), r @ ReScope(_))
-            | (r @ ReScope(_), &ReEmpty(_)) => {
+            (&ReEmpty(_), r @ (ReEarlyBound(_) | ReFree(_) | ReScope(_)))
+            | (r @ (ReEarlyBound(_) | ReFree(_) | ReScope(_)), &ReEmpty(_)) => {
                 // All empty regions are less than early-bound, free,
                 // and scope regions.
                 r
@@ -542,10 +538,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 }
             }
 
-            (&ReEarlyBound(_), &ReScope(s_id))
-            | (&ReScope(s_id), &ReEarlyBound(_))
-            | (&ReFree(_), &ReScope(s_id))
-            | (&ReScope(s_id), &ReFree(_)) => {
+            (&ReEarlyBound(_) | &ReFree(_), &ReScope(s_id))
+            | (&ReScope(s_id), &ReEarlyBound(_) | &ReFree(_)) => {
                 // A "free" region can be interpreted as "some region
                 // at least as big as fr.scope".  So, we can
                 // reasonably compare free regions and scopes:
@@ -584,10 +578,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 self.tcx().mk_region(ReScope(lub))
             }
 
-            (&ReEarlyBound(_), &ReEarlyBound(_))
-            | (&ReFree(_), &ReEarlyBound(_))
-            | (&ReEarlyBound(_), &ReFree(_))
-            | (&ReFree(_), &ReFree(_)) => self.region_rels.lub_free_regions(a, b),
+            (&ReEarlyBound(_), &ReEarlyBound(_) | &ReFree(_))
+            | (&ReFree(_), &ReEarlyBound(_) | &ReFree(_)) => {
+                self.region_rels.lub_free_regions(a, b)
+            }
 
             // For these types, we cannot define any additional
             // relationship:

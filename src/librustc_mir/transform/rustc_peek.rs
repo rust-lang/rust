@@ -122,8 +122,10 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
 
         match (call.kind, peek_rval) {
             (PeekCallKind::ByRef, mir::Rvalue::Ref(_, _, place))
-            | (PeekCallKind::ByVal, mir::Rvalue::Use(mir::Operand::Move(place)))
-            | (PeekCallKind::ByVal, mir::Rvalue::Use(mir::Operand::Copy(place))) => {
+            | (
+                PeekCallKind::ByVal,
+                mir::Rvalue::Use(mir::Operand::Move(place) | mir::Operand::Copy(place)),
+            ) => {
                 let loc = Location { block: bb, statement_index };
                 cursor.seek_before(loc);
                 let state = cursor.get();

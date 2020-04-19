@@ -1569,8 +1569,7 @@ impl LitKind {
     pub fn is_suffixed(&self) -> bool {
         match *self {
             // suffixed variants
-            LitKind::Int(_, LitIntType::Signed(..))
-            | LitKind::Int(_, LitIntType::Unsigned(..))
+            LitKind::Int(_, LitIntType::Signed(..) | LitIntType::Unsigned(..))
             | LitKind::Float(_, LitFloatType::Suffixed(..)) => true,
             // unsuffixed variants
             LitKind::Str(..)

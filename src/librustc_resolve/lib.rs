@@ -534,7 +534,7 @@ impl<'a> ModuleData<'a> {
 
     fn nearest_item_scope(&'a self) -> Module<'a> {
         match self.kind {
-            ModuleKind::Def(DefKind::Enum, ..) | ModuleKind::Def(DefKind::Trait, ..) => {
+            ModuleKind::Def(DefKind::Enum | DefKind::Trait, ..) => {
                 self.parent.expect("enum or trait module without a parent")
             }
             _ => self,
@@ -705,8 +705,10 @@ impl<'a> NameBinding<'a> {
 
     fn is_variant(&self) -> bool {
         match self.kind {
-            NameBindingKind::Res(Res::Def(DefKind::Variant, _), _)
-            | NameBindingKind::Res(Res::Def(DefKind::Ctor(CtorOf::Variant, ..), _), _) => true,
+            NameBindingKind::Res(
+                Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _),
+                _,
+            ) => true,
             _ => false,
         }
     }
@@ -741,9 +743,7 @@ impl<'a> NameBinding<'a> {
 
     fn is_importable(&self) -> bool {
         match self.res() {
-            Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::AssocFn, _)
-            | Res::Def(DefKind::AssocTy, _) => false,
+            Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _) => false,
             _ => true,
         }
     }
@@ -1539,8 +1539,9 @@ impl<'a> Resolver<'a> {
                     let expn_data = expn_id.expn_data();
                     match expn_data.kind {
                         ExpnKind::Root
-                        | ExpnKind::Macro(MacroKind::Bang, _)
-                        | ExpnKind::Macro(MacroKind::Derive, _) => Scope::DeriveHelpersCompat,
+                        | ExpnKind::Macro(MacroKind::Bang | MacroKind::Derive, _) => {
+                            Scope::DeriveHelpersCompat
+                        }
                         _ => Scope::DeriveHelpers(expn_data.parent),
                     }
                 }
