@@ -2503,13 +2503,13 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
                         NEEDLESS_COLLECT,
                         span,
                         NEEDLESS_COLLECT_MSG,
-                        |db| {
+                        |diag| {
                             let (arg, pred) = if contains_arg.starts_with('&') {
                                 ("x", &contains_arg[1..])
                             } else {
                                 ("&x", &*contains_arg)
                             };
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 span,
                                 "replace with",
                                 format!(

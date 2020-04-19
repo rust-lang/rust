@@ -229,7 +229,7 @@ impl EarlyLintPass for ClippyLintsInternal {
                                         CLIPPY_LINTS_INTERNAL,
                                         item.span,
                                         "this constant should be before the previous constant due to lexical \
-                                        ordering",
+                                         ordering",
                                     );
                                 }
                             }
