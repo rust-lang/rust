@@ -639,9 +639,7 @@ pub trait PrettyPrinter<'tcx>:
                         }
                     }
                 } else {
-                    // Cross-crate closure types should only be
-                    // visible in codegen bug reports, I imagine.
-                    p!(write("@{:?}", did));
+                    p!(write("@{}", self.tcx().def_path_str(did)));
 
                     if substs.as_generator().is_valid() {
                         let upvar_tys = substs.as_generator().upvar_tys();
@@ -689,9 +687,7 @@ pub trait PrettyPrinter<'tcx>:
                         }
                     }
                 } else {
-                    // Cross-crate closure types should only be
-                    // visible in codegen bug reports, I imagine.
-                    p!(write("@{:?}", did));
+                    p!(write("@{}", self.tcx().def_path_str(did)));
 
                     if substs.as_closure().is_valid() {
                         let upvar_tys = substs.as_closure().upvar_tys();
