@@ -6,7 +6,7 @@ some non-obvious things.
 **Note:** This chapter (and its subchapters) describe how the trait
 solver **currently** works. However, we are in the process of
 designing a new trait solver. If you'd prefer to read about *that*,
-see [*this* traits chapter](./index.html).
+see [*this* subchapter](./chalk.html).
 
 ## Major concepts
 
