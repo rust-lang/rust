@@ -129,6 +129,8 @@ impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
         Relate::relate(self, a, b)
     }
 
+    // Allow this since that lint is too pedantic here.
+    #[allow(clippy::similar_names)]
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         use rustc_middle::ty::TyKind;
 
