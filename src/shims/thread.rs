@@ -37,11 +37,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fn_ptr = this.read_scalar(start_routine)?.not_undef()?;
         let instance = this.memory.get_fn(fn_ptr)?.as_instance()?;
 
-        let func_arg = match *arg {
-            rustc_mir::interpret::Operand::Immediate(immediate) => immediate,
-            _ => unreachable!(),
-        };
-        let func_args = [func_arg];
+        let func_arg = this.read_immediate(arg)?;
+        let func_args = [*func_arg];
 
         let ret_place =
             this.allocate(this.layout_of(this.tcx.types.usize)?, MiriMemoryKind::Machine.into());
