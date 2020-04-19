@@ -283,7 +283,7 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
 }
 
 // separating the pointer tag for `impl Trait`, see https://github.com/rust-lang/rust/issues/54385
-impl<'mir, 'tcx, Tag, M> InterpCx<'mir, 'tcx, M>
+impl<'mir, 'tcx: 'mir, Tag, M> InterpCx<'mir, 'tcx, M>
 where
     // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
     Tag: ::std::fmt::Debug + Copy + Eq + Hash + 'static,
@@ -662,7 +662,7 @@ where
             }
             local => PlaceTy {
                 // This works even for dead/uninitialized locals; we check further when writing
-                place: Place::Local { frame: self.cur_frame(), local },
+                place: Place::Local { frame: self.frame_idx(), local },
                 layout: self.layout_of_local(self.frame(), local, None)?,
             },
         };
@@ -755,7 +755,7 @@ where
         // but not factored as a separate function.
         let mplace = match dest.place {
             Place::Local { frame, local } => {
-                match self.stack[frame].locals[local].access_mut()? {
+                match self.stack_mut()[frame].locals[local].access_mut()? {
                     Ok(local) => {
                         // Local can be updated in-place.
                         *local = LocalValue::Live(Operand::Immediate(src));
@@ -985,14 +985,15 @@ where
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, Option<Size>)> {
         let (mplace, size) = match place.place {
             Place::Local { frame, local } => {
-                match self.stack[frame].locals[local].access_mut()? {
+                match self.stack_mut()[frame].locals[local].access_mut()? {
                     Ok(&mut local_val) => {
                         // We need to make an allocation.
 
                         // We need the layout of the local.  We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
-                        let local_layout = self.layout_of_local(&self.stack[frame], local, None)?;
+                        let local_layout =
+                            self.layout_of_local(&self.stack()[frame], local, None)?;
                         // We also need to support unsized types, and hence cannot use `allocate`.
                         let (size, align) = self
                             .size_and_align_of(meta, local_layout)?
@@ -1008,7 +1009,7 @@ where
                         }
                         // Now we can call `access_mut` again, asserting it goes well,
                         // and actually overwrite things.
-                        *self.stack[frame].locals[local].access_mut().unwrap().unwrap() =
+                        *self.stack_mut()[frame].locals[local].access_mut().unwrap().unwrap() =
                             LocalValue::Live(Operand::Indirect(mplace));
                         (mplace, Some(size))
                     }

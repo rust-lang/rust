@@ -209,7 +209,7 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Normalice `place.ptr` to a `Pointer` if this is a place and not a ZST.
     /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
     #[inline]
@@ -440,7 +440,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let op = match *place {
             Place::Ptr(mplace) => Operand::Indirect(mplace),
-            Place::Local { frame, local } => *self.access_local(&self.stack[frame], local, None)?,
+            Place::Local { frame, local } => {
+                *self.access_local(&self.stack()[frame], local, None)?
+            }
         };
         Ok(OpTy { op, layout: place.layout })
     }
@@ -528,6 +530,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // potentially requiring the current static to be evaluated again. This is not a
                 // problem here, because we are building an operand which means an actual read is
                 // happening.
+                //
+                // The machine callback `adjust_global_const` below is guaranteed to
+                // be called for all constants because `const_eval` calls
+                // `eval_const_to_op` recursively.
                 return Ok(self.const_eval(GlobalId { instance, promoted }, val.ty)?);
             }
             ty::ConstKind::Infer(..)
@@ -537,6 +543,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             ty::ConstKind::Value(val_val) => val_val,
         };
+        // This call allows the machine to create fresh allocation ids for
+        // thread-local statics (see the `adjust_global_const` function
+        // documentation).
+        let val_val = M::adjust_global_const(self, val_val)?;
         // Other cases need layout.
         let layout = from_known_layout(self.tcx, layout, || self.layout_of(val.ty))?;
         let op = match val_val {

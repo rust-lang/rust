@@ -28,6 +28,8 @@ use crate::util::storage::AlwaysLiveLocals;
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
+    ///
+    /// Note: the stack is provided by the machine.
     pub machine: M,
 
     /// The results of the type checker, from rustc.
@@ -38,9 +40,6 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 
     /// The virtual memory system.
     pub memory: Memory<'mir, 'tcx, M>,
-
-    /// The virtual call stack.
-    pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>>,
 
     /// A cache for deduplicating vtables
     pub(super) vtables:
@@ -297,7 +296,7 @@ pub(super) fn from_known_layout<'tcx>(
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn new(
         tcx: TyCtxtAt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -309,7 +308,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             tcx,
             param_env,
             memory: Memory::new(tcx, memory_extra),
-            stack: Vec::new(),
             vtables: FxHashMap::default(),
         }
     }
@@ -349,24 +347,32 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>] {
-        &self.stack
+    pub(crate) fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>] {
+        M::stack(self)
     }
 
     #[inline(always)]
-    pub fn cur_frame(&self) -> usize {
-        assert!(!self.stack.is_empty());
-        self.stack.len() - 1
+    pub(crate) fn stack_mut(
+        &mut self,
+    ) -> &mut Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>> {
+        M::stack_mut(self)
+    }
+
+    #[inline(always)]
+    pub fn frame_idx(&self) -> usize {
+        let stack = self.stack();
+        assert!(!stack.is_empty());
+        stack.len() - 1
     }
 
     #[inline(always)]
     pub fn frame(&self) -> &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra> {
-        self.stack.last().expect("no call frames exist")
+        self.stack().last().expect("no call frames exist")
     }
 
     #[inline(always)]
     pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra> {
-        self.stack.last_mut().expect("no call frames exist")
+        self.stack_mut().last_mut().expect("no call frames exist")
     }
 
     #[inline(always)]
@@ -596,8 +602,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
-        if !self.stack.is_empty() {
-            info!("PAUSING({}) {}", self.cur_frame(), self.frame().instance);
+        if !self.stack().is_empty() {
+            info!("PAUSING({}) {}", self.frame_idx(), self.frame().instance);
         }
         ::log_settings::settings().indentation += 1;
 
@@ -615,7 +621,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             extra: (),
         };
         let frame = M::init_frame_extra(self, pre_frame)?;
-        self.stack.push(frame);
+        self.stack_mut().push(frame);
 
         // don't allocate at all for trivial constants
         if body.local_decls.len() > 1 {
@@ -648,9 +654,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         M::after_stack_push(self)?;
-        info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
+        info!("ENTERING({}) {}", self.frame_idx(), self.frame().instance);
 
-        if self.stack.len() > *self.tcx.sess.recursion_limit.get() {
+        if self.stack().len() > *self.tcx.sess.recursion_limit.get() {
             throw_exhaust!(StackFrameLimitReached)
         } else {
             Ok(())
@@ -705,7 +711,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
         info!(
             "LEAVING({}) {} (unwinding = {})",
-            self.cur_frame(),
+            self.frame_idx(),
             self.frame().instance,
             unwinding
         );
@@ -720,7 +726,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         );
 
         ::log_settings::settings().indentation -= 1;
-        let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
+        let frame =
+            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
 
         // Now where do we jump next?
 
@@ -735,7 +742,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         if !cleanup {
-            assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
+            assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
             assert!(next_block.is_none(), "tried to skip cleanup when we have a next block!");
             assert!(!unwinding, "tried to skip cleanup during unwinding");
             // Leak the locals, skip validation, skip machine hook.
@@ -784,10 +791,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        if !self.stack.is_empty() {
+        if !self.stack().is_empty() {
             info!(
                 "CONTINUING({}) {} (unwinding = {})",
-                self.cur_frame(),
+                self.frame_idx(),
                 self.frame().instance,
                 unwinding
             );
@@ -895,12 +902,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Place::Local { frame, local } => {
                 let mut allocs = Vec::new();
                 let mut msg = format!("{:?}", local);
-                if frame != self.cur_frame() {
-                    write!(msg, " ({} frames up)", self.cur_frame() - frame).unwrap();
+                if frame != self.frame_idx() {
+                    write!(msg, " ({} frames up)", self.frame_idx() - frame).unwrap();
                 }
                 write!(msg, ":").unwrap();
 
-                match self.stack[frame].locals[local].value {
+                match self.stack()[frame].locals[local].value {
                     LocalValue::Dead => write!(msg, " is dead").unwrap(),
                     LocalValue::Uninitialized => write!(msg, " is uninitialized").unwrap(),
                     LocalValue::Live(Operand::Indirect(mplace)) => match mplace.ptr {

@@ -149,7 +149,7 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir
     }
 }
 
-impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
+impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     for InternVisitor<'rt, 'mir, 'tcx, M>
 {
     type V = MPlaceTy<'tcx>;
@@ -286,7 +286,10 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     intern_kind: InternKind,
     ret: MPlaceTy<'tcx>,
     ignore_interior_mut_in_const_validation: bool,
-) -> InterpResult<'tcx> {
+) -> InterpResult<'tcx>
+where
+    'tcx: 'mir,
+{
     let tcx = ecx.tcx;
     let (base_mutability, base_intern_mode) = match intern_kind {
         // `static mut` doesn't care about interior mutability, it's mutable anyway

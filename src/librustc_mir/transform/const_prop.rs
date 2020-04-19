@@ -158,9 +158,18 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
     }
 }
 
-struct ConstPropMachine;
+struct ConstPropMachine<'mir, 'tcx> {
+    /// The virtual call stack.
+    stack: Vec<Frame<'mir, 'tcx, (), ()>>,
+}
 
-impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
+impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
+    fn new() -> Self {
+        Self { stack: Vec::new() }
+    }
+}
+
+impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx> {
     type MemoryKind = !;
     type PointerTag = ();
     type ExtraFnVal = !;
@@ -296,11 +305,25 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     ) -> InterpResult<'tcx, Frame<'mir, 'tcx>> {
         Ok(frame)
     }
+
+    #[inline(always)]
+    fn stack(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
+        &ecx.machine.stack
+    }
+
+    #[inline(always)]
+    fn stack_mut(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
+        &mut ecx.machine.stack
+    }
 }
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'mir, 'tcx> {
-    ecx: InterpCx<'mir, 'tcx, ConstPropMachine>,
+    ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
     can_const_prop: IndexVec<Local, ConstPropMode>,
     param_env: ParamEnv<'tcx>,
@@ -349,7 +372,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let param_env = tcx.param_env(def_id).with_reveal_all();
 
         let span = tcx.def_span(def_id);
-        let mut ecx = InterpCx::new(tcx.at(span), param_env, ConstPropMachine, ());
+        let mut ecx = InterpCx::new(tcx.at(span), param_env, ConstPropMachine::new(), ());
         let can_const_prop = CanConstProp::check(body);
 
         let ret = ecx

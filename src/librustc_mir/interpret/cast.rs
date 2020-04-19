@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc_span::symbol::sym;
 use rustc_target::abi::{LayoutOf, Size, Variants};
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
         &mut self,
         src: OpTy<'tcx, M::PointerTag>,

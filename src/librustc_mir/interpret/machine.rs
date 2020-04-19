@@ -230,6 +230,34 @@ pub trait Machine<'mir, 'tcx>: Sized {
         id
     }
 
+    /// Called when converting a `ty::Const` to an operand (in
+    /// `eval_const_to_op`).
+    ///
+    /// Miri uses this callback for creating per thread allocations for thread
+    /// locals. In Rust, one way of creating a thread local is by marking a
+    /// static with `#[thread_local]`. On supported platforms this gets
+    /// translated to a LLVM thread local for which LLVM automatically ensures
+    /// that each thread gets its own copy. Since LLVM automatically handles
+    /// thread locals, the Rust compiler just treats thread local statics as
+    /// regular statics even though accessing a thread local static should be an
+    /// effectful computation that depends on the current thread. The long term
+    /// plan is to change MIR to make accesses to thread locals explicit
+    /// (https://github.com/rust-lang/rust/issues/70685). While the issue 70685
+    /// is not fixed, our current workaround in Miri is to use this function to
+    /// make per-thread copies of thread locals. Please note that we cannot make
+    /// these copies in `canonical_alloc_id` because that is too late: for
+    /// example, if one created a pointer in thread `t1` to a thread local and
+    /// sent it to another thread `t2`, resolving the access in
+    /// `canonical_alloc_id` would result in pointer pointing to `t2`'s thread
+    /// local and not `t1` as it should.
+    #[inline]
+    fn adjust_global_const(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        val: mir::interpret::ConstValue<'tcx>,
+    ) -> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
+        Ok(val)
+    }
+
     /// Called to initialize the "extra" state of an allocation and make the pointers
     /// it contains (in relocations) tagged.  The way we construct allocations is
     /// to always first construct it without extra and then add the extra.
@@ -284,6 +312,16 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         frame: Frame<'mir, 'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx, Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>>;
+
+    /// Borrow the current thread's stack.
+    fn stack(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>];
+
+    /// Mutably borrow the current thread's stack.
+    fn stack_mut(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>>;
 
     /// Called immediately after a stack frame got pushed and its locals got initialized.
     fn after_stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {

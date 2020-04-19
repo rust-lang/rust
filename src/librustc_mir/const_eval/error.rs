@@ -50,7 +50,7 @@ impl Error for ConstEvalErrKind {}
 /// Turn an interpreter error into something to report to the user.
 /// As a side-effect, if RUSTC_CTFE_BACKTRACE is set, this prints the backtrace.
 /// Should be called only if the error is actually going to to be reported!
-pub fn error_to_const_error<'mir, 'tcx, M: Machine<'mir, 'tcx>>(
+pub fn error_to_const_error<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>(
     ecx: &InterpCx<'mir, 'tcx, M>,
     mut error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {

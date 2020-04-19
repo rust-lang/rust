@@ -37,7 +37,7 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
 
 // Operands and memory-places are both values.
 // Places in general are not due to `place_field` having to do `force_allocation`.
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::PointerTag> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::PointerTag> {
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout
@@ -75,7 +75,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for OpTy<'tcx, M::
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M> for MPlaceTy<'tcx, M::PointerTag> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
+    for MPlaceTy<'tcx, M::PointerTag>
+{
     #[inline(always)]
     fn layout(&self) -> TyAndLayout<'tcx> {
         self.layout

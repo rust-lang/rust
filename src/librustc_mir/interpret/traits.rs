@@ -6,7 +6,7 @@ use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size};
 
 use super::{FnVal, InterpCx, Machine, MemoryKind};
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
     /// objects.
     ///
