@@ -1,5 +1,5 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/inline_asm.rs:11:14
+  --> $DIR/inline_asm.rs:10:14
    |
 LL |     unsafe { llvm_asm!("xor %eax, %eax" ::: "eax"); }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inline assembly is not supported

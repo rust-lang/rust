@@ -5,8 +5,7 @@
 
 fn main() {}
 
-// Make sure we catch executing bad drop functions.
-// The actual error is tested by the error-pattern above.
+// Make sure we catch executing inline assembly.
 static TEST_BAD: () = {
     unsafe { llvm_asm!("xor %eax, %eax" ::: "eax"); }
     //~^ ERROR could not evaluate static initializer
