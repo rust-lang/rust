@@ -419,7 +419,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_ub_format!("called pthread_mutex_unlock on a mutex owned by another thread");
         } else if locked_count == 1 {
             let blockset = mutex_get_or_create_blockset(this, mutex_op)?;
-            if let Some(new_owner) = this.unblock_random_thread(blockset)? {
+            if let Some(new_owner) = this.unblock_some_thread(blockset)? {
                 // We have at least one thread waiting on this mutex. Transfer
                 // ownership to it.
                 mutex_set_owner(this, mutex_op, new_owner.to_u32_scalar())?;
@@ -543,7 +543,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             assert_eq!(writers, 0);
             rwlock_set_readers(this, rwlock_op, Scalar::from_u32(new_readers))?;
             if new_readers == 0 {
-                if let Some(_writer) = this.unblock_random_thread(writer_blockset)? {
+                if let Some(_writer) = this.unblock_some_thread(writer_blockset)? {
                     rwlock_set_writers(this, rwlock_op, Scalar::from_u32(1))?;
                 }
             }
@@ -551,11 +551,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else if writers != 0 {
             let reader_blockset = rwlock_get_or_create_reader_blockset(this, rwlock_op)?;
             rwlock_set_writers(this, rwlock_op, Scalar::from_u32(0))?;
-            if let Some(_writer) = this.unblock_random_thread(writer_blockset)? {
+            if let Some(_writer) = this.unblock_some_thread(writer_blockset)? {
                 rwlock_set_writers(this, rwlock_op, Scalar::from_u32(1))?;
             } else {
                 let mut readers = 0;
-                while let Some(_reader) = this.unblock_random_thread(reader_blockset)? {
+                while let Some(_reader) = this.unblock_some_thread(reader_blockset)? {
                     readers += 1;
                 }
                 rwlock_set_readers(this, rwlock_op, Scalar::from_u32(readers))?
