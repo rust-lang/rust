@@ -1652,14 +1652,14 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr<'_>) -> Option<Hi
         if let QPath::Resolved(None, _) = *qpath;
         then {
             let res = qpath_res(cx, qpath, bound.hir_id);
-            if let Res::Local(node_id) = res {
-                let node_str = cx.tcx.hir().get(node_id);
+            if let Res::Local(hir_id) = res {
+                let node_str = cx.tcx.hir().get(hir_id);
                 if_chain! {
                     if let Node::Binding(pat) = node_str;
                     if let PatKind::Binding(bind_ann, ..) = pat.kind;
                     if let BindingAnnotation::Mutable = bind_ann;
                     then {
-                        return Some(node_id);
+                        return Some(hir_id);
                     }
                 }
             }
@@ -2184,8 +2184,8 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 fn var_def_id(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<HirId> {
     if let ExprKind::Path(ref qpath) = expr.kind {
         let path_res = qpath_res(cx, qpath, expr.hir_id);
-        if let Res::Local(node_id) = path_res {
-            return Some(node_id);
+        if let Res::Local(hir_id) = path_res {
+            return Some(hir_id);
         }
     }
     None
@@ -2422,8 +2422,8 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
             let res = qpath_res(self.cx, qpath, ex.hir_id);
             then {
                 match res {
-                    Res::Local(node_id) => {
-                        self.ids.insert(node_id);
+                    Res::Local(hir_id) => {
+                        self.ids.insert(hir_id);
                     },
                     Res::Def(DefKind::Static, def_id) => {
                         let mutable = self.cx.tcx.is_mutable_static(def_id);
