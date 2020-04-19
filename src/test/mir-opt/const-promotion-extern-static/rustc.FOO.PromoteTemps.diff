@@ -1,6 +1,9 @@
 - // MIR for `FOO` before PromoteTemps
 + // MIR for `FOO` after PromoteTemps
   
+  | User Type Annotations
+  | 0: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }], value: Ty(&i32) } at $DIR/const-promotion-extern-static.rs:13:42: 13:43
+  |
   static mut FOO: *const &i32 = {
       let mut _0: *const &i32;             // return place in scope 0 at $DIR/const-promotion-extern-static.rs:13:17: 13:28
       let mut _1: &[&i32];                 // in scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
@@ -27,6 +30,7 @@
 +                                          // + val: Unevaluated(DefId(0:7 ~ const_promotion_extern_static[317d]::FOO[0]), [], Some(promoted[0]))
                                            // mir::Constant
 -                                          // + span: $DIR/const-promotion-extern-static.rs:13:42: 13:43
+-                                          // + user_ty: UserType(0)
 -                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc2+0)) }
 -         _4 = &(*_5);                     // bb0[6]: scope 1 at $DIR/const-promotion-extern-static.rs:13:41: 13:43
 -         _3 = [move _4];                  // bb0[7]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46

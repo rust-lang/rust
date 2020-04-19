@@ -22,6 +22,7 @@
                                            // + val: Value(Scalar(alloc0+0))
                                            // mir::Constant
                                            // + span: $DIR/read_immutable_static.rs:7:13: 7:16
+                                           // + user_ty: UserType(0)
                                            // + literal: Const { ty: &u8, val: Value(Scalar(alloc0+0)) }
 -         _2 = (*_3);                      // bb0[4]: scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
 +         _2 = const 2u8;                  // bb0[4]: scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
@@ -39,6 +40,7 @@
                                            // + val: Value(Scalar(alloc0+0))
                                            // mir::Constant
                                            // + span: $DIR/read_immutable_static.rs:7:19: 7:22
+                                           // + user_ty: UserType(1)
                                            // + literal: Const { ty: &u8, val: Value(Scalar(alloc0+0)) }
 -         _4 = (*_5);                      // bb0[8]: scope 0 at $DIR/read_immutable_static.rs:7:19: 7:22
 -         _1 = Add(move _2, move _4);      // bb0[9]: scope 0 at $DIR/read_immutable_static.rs:7:13: 7:22

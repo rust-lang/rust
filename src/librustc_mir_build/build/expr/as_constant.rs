@@ -21,7 +21,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let Expr { ty, temp_lifetime: _, span, kind } = expr;
         match kind {
             ExprKind::Scope { region_scope: _, lint_level: _, value } => this.as_constant(value),
-            ExprKind::Literal { literal, user_ty } => {
+            ExprKind::Literal { literal, user_ty } |
+            ExprKind::StaticRef { literal, user_ty, .. } => {
                 let user_ty = user_ty.map(|user_ty| {
                     this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                         span,
@@ -32,7 +33,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 assert_eq!(literal.ty, ty);
                 Constant { span, user_ty, literal }
             }
-            ExprKind::StaticRef { literal, .. } => Constant { span, user_ty: None, literal },
             _ => span_bug!(span, "expression is not a valid constant {:?}", kind),
         }
     }

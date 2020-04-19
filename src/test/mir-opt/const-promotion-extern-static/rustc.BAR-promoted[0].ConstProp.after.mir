@@ -13,6 +13,7 @@ promoted[0] in BAR: &[&i32; 1] = {
                                          // + val: Value(Scalar(alloc0+0))
                                          // mir::Constant
                                          // + span: $DIR/const-promotion-extern-static.rs:9:33: 9:34
+                                         // + user_ty: UserType(0)
                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc0+0)) }
         _2 = _3;                         // bb0[1]: scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
         _1 = [move _2];                  // bb0[2]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35

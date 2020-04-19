@@ -14,6 +14,7 @@ fn main() -> () {
                                          // + val: Value(Scalar(alloc0+0))
                                          // mir::Constant
                                          // + span: $DIR/const_allocation3.rs:5:5: 5:8
+                                         // + user_ty: UserType(0)
                                          // + literal: Const { ty: &&Packed, val: Value(Scalar(alloc0+0)) }
         _1 = (*_2);                      // bb0[3]: scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
         StorageDead(_2);                 // bb0[4]: scope 0 at $DIR/const_allocation3.rs:5:8: 5:9

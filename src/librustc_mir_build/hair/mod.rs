@@ -275,6 +275,7 @@ crate enum ExprKind<'tcx> {
     /// info for diagnostics.
     StaticRef {
         literal: &'tcx Const<'tcx>,
+        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
         def_id: DefId,
     },
     LlvmInlineAsm {

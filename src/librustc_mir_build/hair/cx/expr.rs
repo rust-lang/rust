@@ -6,6 +6,7 @@ use crate::hair::*;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::vec::Idx;
+use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::ty::adjustment::{
@@ -742,6 +743,18 @@ fn convert_path_expr<'a, 'tcx>(
             let ty = cx.tcx.static_ptr_ty(id);
             let ptr = cx.tcx.alloc_map.lock().create_static_alloc(id);
             let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+
+            // Keep regions around in a user type annotation for MIR typeck:
+            let static_ty = cx.tcx.type_of(id);
+            let static_ptr_ty = if cx.tcx.is_mutable_static(id) {
+                cx.tcx.mk_mut_ptr(static_ty)
+            } else {
+                let origin = RegionVariableOrigin::AddrOfRegion(expr.span);
+                let region = cx.infcx.next_region_var(origin);
+                cx.tcx.mk_imm_ref(region, static_ty)
+            };
+            let user_ty = cx.infcx.canonicalize_user_type_annotation(&UserType::Ty(static_ptr_ty));
+
             ExprKind::Deref {
                 arg: Expr {
                     ty,
@@ -749,6 +762,7 @@ fn convert_path_expr<'a, 'tcx>(
                     span: expr.span,
                     kind: ExprKind::StaticRef {
                         literal: ty::Const::from_scalar(cx.tcx, Scalar::Ptr(ptr.into()), ty),
+                        user_ty: Some(user_ty),
                         def_id: id,
                     },
                 }

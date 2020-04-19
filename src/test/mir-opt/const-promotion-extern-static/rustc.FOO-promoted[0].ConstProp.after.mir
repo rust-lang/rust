@@ -15,6 +15,7 @@ promoted[0] in FOO: &[&i32; 1] = {
                                          // + val: Value(Scalar(alloc2+0))
                                          // mir::Constant
                                          // + span: $DIR/const-promotion-extern-static.rs:13:42: 13:43
+                                         // + user_ty: UserType(0)
                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc2+0)) }
         _2 = _3;                         // bb0[1]: scope 0 at $DIR/const-promotion-extern-static.rs:13:41: 13:43
         _1 = [move _2];                  // bb0[2]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
