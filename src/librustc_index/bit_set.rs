@@ -756,8 +756,6 @@ impl<'a, T: Idx> Iterator for HybridIter<'a, T> {
 ///
 /// All operations that involve an element will panic if the element is equal
 /// to or greater than the domain size.
-//
-// FIXME: `GrowableBitSet` should probably not use the small vector optimization like `BitSet`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GrowableBitSet<T: Idx> {
     bit_set: BitSet<T>,
@@ -773,18 +771,23 @@ impl<T: Idx> GrowableBitSet<T> {
 
         // If we already have enough words to store the new domain size, there's no need to
         // reallocate, just update the domain size and continue.
-        if self.bit_set.num_words() == num_words(min_domain_size) {
+        let old_num_words = self.bit_set.num_words();
+        if old_num_words == num_words(min_domain_size) {
             self.bit_set.domain_size = min_domain_size;
             return;
         }
 
-        let mut new = BitSet::new_empty(min_domain_size);
-        new.words_mut()[..self.bit_set.num_words()].copy_from_slice(self.bit_set.words());
+        // Every time we need to reallocate, ensure we double the capacity at minimum.
+        let new_domain_size = std::cmp::max(min_domain_size, 2 * self.bit_set.domain_size);
+
+        let mut new = BitSet::new_empty(new_domain_size);
+        new.words_mut()[..old_num_words].copy_from_slice(self.bit_set.words());
         self.bit_set = new;
     }
 
     pub fn new_empty() -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: BitSet::new_empty(0) }
+        // Begin with the maximum capacity that can still be stored inline.
+        GrowableBitSet { bit_set: BitSet::new_empty(INLINE_BITS) }
     }
 
     pub fn with_capacity(capacity: usize) -> GrowableBitSet<T> {
