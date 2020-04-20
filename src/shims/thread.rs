@@ -92,11 +92,25 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         option: OpTy<'tcx, Tag>,
         arg2: OpTy<'tcx, Tag>,
-        _arg3: OpTy<'tcx, Tag>,
-        _arg4: OpTy<'tcx, Tag>,
-        _arg5: OpTy<'tcx, Tag>,
+        arg3: OpTy<'tcx, Tag>,
+        arg4: OpTy<'tcx, Tag>,
+        arg5: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+
+        // prctl last 5 arguments are declared as variadic. Therefore, we need
+        // to check their types manually.
+        let c_long_size = this.libc_ty_layout("c_long")?.size.bytes();
+        let check_arg = |arg: OpTy<'tcx, Tag>| -> InterpResult<'tcx> {
+            match this.read_scalar(arg)?.not_undef()? {
+                Scalar::Raw { size, .. } if u64::from(size) == c_long_size => Ok(()),
+                _ => throw_ub_format!("an argument of unsupported type was passed to prctl"),
+            }
+        };
+        check_arg(arg2)?;
+        check_arg(arg3)?;
+        check_arg(arg4)?;
+        check_arg(arg5)?;
 
         let option = this.read_scalar(option)?.not_undef()?.to_i32()?;
         if option == this.eval_libc_i32("PR_SET_NAME")? {
