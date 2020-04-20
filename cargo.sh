@@ -20,4 +20,4 @@ fi
 cmd=$1
 shift
 
-cargo +${TOOLCHAIN} $cmd --target $TARGET_TRIPLE $@
+cargo +${TOOLCHAIN} $cmd $@

@@ -9,7 +9,7 @@ pub(crate) fn can_return_to_ssa_var<'tcx>(tcx: TyCtxt<'tcx>, dest_layout: TyAndL
     match get_pass_mode(tcx, dest_layout) {
         PassMode::NoPass | PassMode::ByVal(_) => true,
         // FIXME Make it possible to return ByValPair and ByRef to an ssa var.
-        PassMode::ByValPair(_, _) | PassMode::ByRef { sized: _ } => false
+        PassMode::ByValPair(_, _) | PassMode::ByRef { size: _ } => false
     }
 }
 
@@ -33,14 +33,14 @@ pub(super) fn codegen_return_param(
 
             Empty
         }
-        PassMode::ByRef { sized: true } => {
+        PassMode::ByRef { size: Some(_) } => {
             let ret_param = fx.bcx.append_block_param(start_block, fx.pointer_type);
             fx.local_map
                 .insert(RETURN_PLACE, CPlace::for_ptr(Pointer::new(ret_param), ret_layout));
 
             Single(ret_param)
         }
-        PassMode::ByRef { sized: false } => todo!(),
+        PassMode::ByRef { size: None } => todo!(),
     };
 
     #[cfg(not(debug_assertions))]
@@ -69,11 +69,11 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
     let output_pass_mode = get_pass_mode(fx.tcx, ret_layout);
     let return_ptr = match output_pass_mode {
         PassMode::NoPass => None,
-        PassMode::ByRef { sized: true } => match ret_place {
+        PassMode::ByRef { size: Some(_)} => match ret_place {
             Some(ret_place) => Some(ret_place.to_ptr().get_addr(fx)),
-            None => Some(fx.bcx.ins().iconst(fx.pointer_type, 43)),
+            None => Some(fx.bcx.ins().iconst(fx.pointer_type, 43)), // FIXME allocate temp stack slot
         },
-        PassMode::ByRef { sized: false } => todo!(),
+        PassMode::ByRef { size: None } => todo!(),
         PassMode::ByVal(_) | PassMode::ByValPair(_, _) => None,
     };
 
@@ -94,8 +94,8 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
                 ret_place.write_cvalue(fx, CValue::by_val_pair(ret_val_a, ret_val_b, ret_layout));
             }
         }
-        PassMode::ByRef { sized: true } => {}
-        PassMode::ByRef { sized: false } => todo!(),
+        PassMode::ByRef { size: Some(_) } => {}
+        PassMode::ByRef { size: None } => todo!(),
     }
 
     (call_inst, meta)
@@ -103,10 +103,10 @@ pub(super) fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
 
 pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, impl Backend>) {
     match get_pass_mode(fx.tcx, return_layout(fx)) {
-        PassMode::NoPass | PassMode::ByRef { sized: true } => {
+        PassMode::NoPass | PassMode::ByRef { size: Some(_) } => {
             fx.bcx.ins().return_(&[]);
         }
-        PassMode::ByRef { sized: false } => todo!(),
+        PassMode::ByRef { size: None } => todo!(),
         PassMode::ByVal(_) => {
             let place = fx.get_local_place(RETURN_PLACE);
             let ret_val = place.to_cvalue(fx).load_scalar(fx);

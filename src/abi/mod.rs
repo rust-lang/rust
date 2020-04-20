@@ -6,7 +6,7 @@ mod returning;
 use rustc_target::spec::abi::Abi;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 
-use cranelift_codegen::ir::AbiParam;
+use cranelift_codegen::ir::{AbiParam, ArgumentPurpose};
 
 use self::pass_mode::*;
 use crate::prelude::*;
@@ -123,7 +123,11 @@ fn clif_sig_from_fn_sig<'tcx>(
             if abi != Abi::Rust && abi != Abi::RustCall && abi != Abi::RustIntrinsic {
                 match pass_mode {
                     PassMode::NoPass | PassMode::ByVal(_) => {}
-                    PassMode::ByValPair(_, _) | PassMode::ByRef { sized: _ } => {
+                    PassMode::ByRef { size: Some(size) } => {
+                        let purpose = ArgumentPurpose::StructArgument(u32::try_from(size.bytes()).expect("struct too big to pass on stack"));
+                        return EmptySinglePair::Single(AbiParam::special(pointer_ty(tcx), purpose)).into_iter();
+                    }
+                    PassMode::ByValPair(_, _) | PassMode::ByRef { size: None } => {
                         tcx.sess.span_warn(
                             span,
                             &format!(
@@ -137,7 +141,7 @@ fn clif_sig_from_fn_sig<'tcx>(
                     }
                 }
             }
-            pass_mode.get_param_ty(tcx).into_iter()
+            pass_mode.get_param_ty(tcx).map(AbiParam::new).into_iter()
         })
         .flatten();
 
@@ -145,26 +149,26 @@ fn clif_sig_from_fn_sig<'tcx>(
         tcx,
         tcx.layout_of(ParamEnv::reveal_all().and(output)).unwrap(),
     ) {
-        PassMode::NoPass => (inputs.map(AbiParam::new).collect(), vec![]),
+        PassMode::NoPass => (inputs.collect(), vec![]),
         PassMode::ByVal(ret_ty) => (
-            inputs.map(AbiParam::new).collect(),
+            inputs.collect(),
             vec![AbiParam::new(ret_ty)],
         ),
         PassMode::ByValPair(ret_ty_a, ret_ty_b) => (
-            inputs.map(AbiParam::new).collect(),
+            inputs.collect(),
             vec![AbiParam::new(ret_ty_a), AbiParam::new(ret_ty_b)],
         ),
-        PassMode::ByRef { sized: true } => {
+        PassMode::ByRef { size: Some(_) } => {
             (
                 Some(pointer_ty(tcx)) // First param is place to put return val
                     .into_iter()
+                    .map(|ty| AbiParam::special(ty, ArgumentPurpose::StructReturn))
                     .chain(inputs)
-                    .map(AbiParam::new)
                     .collect(),
                 vec![],
             )
         }
-        PassMode::ByRef { sized: false } => todo!(),
+        PassMode::ByRef { size: None } => todo!(),
     };
 
     if requires_caller_location {
