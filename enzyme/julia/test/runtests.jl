@@ -4,7 +4,7 @@ using Test
 
 @testset "Internal tests" begin
     f(x) = 1.0 + x
-    llvmf, mod = Enzyme.emit(typeof(f), (Float64,))
+    thunk = Enzyme.Thunk(f, Float64, (Float64,))
 end
 
 @testset "Simple tests" begin
