@@ -30,7 +30,7 @@ rustc_codegen  rustc_borrowck   ...  rustc_metadata
             \          |          /
               \        |        /
                 \      v      /
-                    rustc
+                  rustc_middle
                        |
                        v
                    rustc_ast
@@ -46,20 +46,20 @@ crates and defines the overall flow of execution. (As we transition
 more and more to the [query model], however, the
 "flow" of compilation is becoming less centrally defined.)
 
-At the other extreme, the `rustc` crate defines the common and
+At the other extreme, the `rustc_middle` crate defines the common and
 pervasive data structures that all the rest of the compiler uses
 (e.g. how to represent types, traits, and the program itself). It
 also contains some amount of the compiler itself, although that is
 relatively limited.
 
 Finally, all the crates in the bulge in the middle define the bulk of
-the compiler – they all depend on `rustc`, so that they can make use
+the compiler – they all depend on `rustc_middle`, so that they can make use
 of the various types defined there, and they export public routines
 that `rustc_driver` will invoke as needed (more and more, what these
 crates export are "query definitions", but those are covered later
 on).
 
-Below `rustc` lie various crates that make up the parser and error
+Below `rustc_middle` lie various crates that make up the parser and error
 reporting mechanism. They are also an internal part
 of the compiler and not intended to be stable (though they do wind up
 getting used by some crates in the wild; a practice we hope to
