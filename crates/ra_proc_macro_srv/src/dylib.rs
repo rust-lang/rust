@@ -17,7 +17,7 @@ fn invalid_data_err(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> i
     io::Error::new(io::ErrorKind::InvalidData, e)
 }
 
-fn is_derive_registrar_symbol(symbol: &&str) -> bool {
+fn is_derive_registrar_symbol(symbol: &str) -> bool {
     symbol.contains(NEW_REGISTRAR_SYMBOL)
 }
 
@@ -29,13 +29,13 @@ fn find_registrar_symbol(file: &Path) -> io::Result<Option<String>> {
     let name = match object {
         Object::Elf(elf) => {
             let symbols = elf.dynstrtab.to_vec().map_err(invalid_data_err)?;
-            symbols.into_iter().find(is_derive_registrar_symbol).map(&str::to_owned)
+            symbols.into_iter().find(|s| is_derive_registrar_symbol(s)).map(&str::to_owned)
         }
         Object::PE(pe) => pe
             .exports
             .iter()
             .flat_map(|s| s.name)
-            .find(is_derive_registrar_symbol)
+            .find(|s| is_derive_registrar_symbol(s))
             .map(&str::to_owned),
         Object::Mach(Mach::Binary(binary)) => {
             let exports = binary.exports().map_err(invalid_data_err)?;
@@ -52,12 +52,12 @@ fn find_registrar_symbol(file: &Path) -> io::Result<Option<String>> {
                         &s.name
                     }
                 })
-                .find(is_derive_registrar_symbol)
+                .find(|s| is_derive_registrar_symbol(s))
                 .map(&str::to_owned)
         }
         _ => return Ok(None),
     };
-    Ok(name)
+    return Ok(name);
 }
 
 /// Loads dynamic library in platform dependent manner.
@@ -95,7 +95,7 @@ struct ProcMacroLibraryLibloading {
 impl ProcMacroLibraryLibloading {
     fn open(file: &Path) -> io::Result<Self> {
         let symbol_name = find_registrar_symbol(file)?.ok_or_else(|| {
-            invalid_data_err(format!("Cannot find registrar symbol in file {:?}", file))
+            invalid_data_err(format!("Cannot find registrar symbol in file {}", file.display()))
         })?;
 
         let lib = load_library(file).map_err(invalid_data_err)?;
@@ -121,7 +121,7 @@ impl Expander {
         // already absolute
         let lib = lib
             .canonicalize()
-            .unwrap_or_else(|err| panic!("Cannot canonicalize {:?}: {:?}", lib, err));
+            .unwrap_or_else(|err| panic!("Cannot canonicalize {}: {:?}", lib.display(), err));
 
         let library = ProcMacroLibraryImpl::open(&lib).map_err(|e| e.to_string())?;
 
