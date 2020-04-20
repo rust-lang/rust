@@ -41,14 +41,20 @@ where
     A: Analysis<'tcx>,
     R: Borrow<Results<'tcx, A>>,
 {
-    /// Returns a new cursor for `results` that points to the entry of the `START_BLOCK`.
+    /// Returns a new cursor that can inspect `results`.
     pub fn new(body: &'mir mir::Body<'tcx>, results: R) -> Self {
+        let bits_per_block = results.borrow().entry_set_for_block(mir::START_BLOCK).domain_size();
+
         ResultsCursor {
             body,
-            pos: CursorPosition::block_entry(mir::START_BLOCK),
-            state: results.borrow().entry_set_for_block(mir::START_BLOCK).clone(),
-            state_needs_reset: false,
             results,
+
+            // Initialize to an empty `BitSet` and set `state_needs_reset` to tell the cursor that
+            // it needs to reset to block entry before the first seek. The cursor position is
+            // immaterial.
+            state_needs_reset: true,
+            state: BitSet::new_empty(bits_per_block),
+            pos: CursorPosition::block_entry(mir::START_BLOCK),
         }
     }
 
