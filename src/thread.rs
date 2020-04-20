@@ -177,7 +177,9 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
     fn default() -> Self {
         let mut threads = IndexVec::new();
         // Create the main thread and add it to the list of threads.
-        threads.push(Default::default());
+        let mut main_thread = Thread::default();
+        main_thread.join_status = ThreadJoinStatus::Detached;
+        threads.push(main_thread);
         Self {
             active_thread: ThreadId::new(0),
             threads: threads,
