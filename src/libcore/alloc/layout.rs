@@ -264,8 +264,8 @@ impl Layout {
     /// (There is no way to match the default Rust representation
     /// layout `repr(Rust)`, as it is unspecified.)
     ///
-    /// Note that the resulting layout will satisfy the alignment properties
-    /// of both `self` and `next`, in order to ensure alignment of both parts.
+    /// Note that the alignment of the resulting layout will be the maximum of
+    /// those of `self` and `next`, in order to ensure alignment of both parts.
     ///
     /// Returns `Ok((k, offset))`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
