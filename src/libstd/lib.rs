@@ -284,6 +284,7 @@
 #![cfg_attr(not(bootstrap), feature(negative_impls))]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(non_portable_conversion)]
 #![feature(optin_builtin_traits)]
 #![feature(or_patterns)]
 #![feature(panic_info_message)]
@@ -431,6 +432,8 @@ pub use core::ptr;
 pub use core::raw;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
+#[unstable(feature = "non_portable_conversion", issue = /* FIXME */ "none")]
+pub use core::target;
 #[stable(feature = "i128", since = "1.26.0")]
 pub use core::u128;
 #[stable(feature = "rust1", since = "1.0.0")]

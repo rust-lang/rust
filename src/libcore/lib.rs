@@ -238,6 +238,7 @@ pub mod pin;
 pub mod raw;
 pub mod result;
 pub mod sync;
+pub mod target;
 
 #[cfg(not(test))] // See #65860
 pub mod fmt;
