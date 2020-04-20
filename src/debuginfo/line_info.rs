@@ -76,7 +76,7 @@ fn line_program_add_file(
 
             let info = make_file_info(file.src_hash);
 
-            line_program.file_has_md5 = info.is_some();
+            line_program.file_has_md5 &= info.is_some();
             line_program.add_file(file_name, dir_id, info)
         }
         // FIXME give more appropriate file names
