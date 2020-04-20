@@ -39,10 +39,10 @@ pub struct ExpansionTask {
     #[serde(with = "SubtreeDef")]
     pub macro_body: Subtree,
 
-    /// Names of macros to expand. // TODO: are they comma-separated?
+    /// Name of macro to expand.
     ///
-    /// In custom derive those are names of derived traits (`Serialize`, `Getters`, etc.). In
-    /// attribute-like and function-like macros - single name of macro itself (`show_streams`).
+    /// In custom derive this is the name of the derived trait (`Serialize`, `Getters`, etc.).
+    /// In attribute-like and function-like macros - single name of macro itself (`show_streams`).
     pub macro_name: String,
 
     /// Possible attributes for the attribute-like macros.
