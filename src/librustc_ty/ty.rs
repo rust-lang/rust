@@ -2,6 +2,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::hir::map as hir_map;
+use rustc_middle::mir::StatementKind;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_session::CrateDisambiguator;
@@ -299,7 +300,23 @@ fn instance_def_size_estimate<'tcx>(
     match instance_def {
         InstanceDef::Item(..) | InstanceDef::DropGlue(..) => {
             let mir = tcx.instance_mir(instance_def);
-            mir.basic_blocks().iter().map(|bb| bb.statements.len()).sum()
+            mir.basic_blocks()
+                .iter()
+                .map(|bb| {
+                    bb.statements
+                        .iter()
+                        .filter(|stmt| match stmt.kind {
+                            StatementKind::StorageLive(_)
+                            | StatementKind::StorageDead(_)
+                            | StatementKind::AscribeUserType(..)
+                            | StatementKind::FakeRead(..)
+                            | StatementKind::Retag(..)
+                            | StatementKind::Nop => false,
+                            _ => true,
+                        })
+                        .count()
+                })
+                .sum()
         }
         // Estimate the size of other compiler-generated shims to be 1.
         _ => 1,
