@@ -2,55 +2,43 @@
 
 use crate::{expand_task, list_macros};
 use ra_proc_macro::msg::{self, Message};
-
 use std::io;
-
-fn read_request() -> Result<Option<msg::Request>, io::Error> {
-    let stdin = io::stdin();
-    let mut stdin = stdin.lock();
-    msg::Request::read(&mut stdin)
-}
-
-fn write_response(res: Result<msg::Response, String>) -> Result<(), io::Error> {
-    let msg: msg::Response = match res {
-        Ok(res) => res,
-        Err(err) => msg::Response::Error(msg::ResponseError {
-            code: msg::ErrorCode::ExpansionError,
-            message: err,
-        }),
-    };
-
-    let stdout = io::stdout();
-    let mut stdout = stdout.lock();
-    msg.write(&mut stdout)
-}
 
 pub fn run() {
     loop {
         let req = match read_request() {
             Err(err) => {
-                eprintln!("Read message error on ra_proc_macro_srv: {}", err.to_string());
+                eprintln!("Read message error on ra_proc_macro_srv: {}", err);
                 continue;
             }
             Ok(None) => continue,
             Ok(Some(req)) => req,
         };
 
-        match req {
-            msg::Request::ListMacro(task) => {
-                if let Err(err) =
-                    write_response(list_macros(&task).map(|it| msg::Response::ListMacro(it)))
-                {
-                    eprintln!("Write message error on list macro: {}", err);
-                }
-            }
+        let res = match req {
+            msg::Request::ListMacro(task) => Ok(msg::Response::ListMacro(list_macros(&task))),
             msg::Request::ExpansionMacro(task) => {
-                if let Err(err) =
-                    write_response(expand_task(&task).map(|it| msg::Response::ExpansionMacro(it)))
-                {
-                    eprintln!("Write message error on expansion macro: {}", err);
-                }
+                expand_task(&task).map(msg::Response::ExpansionMacro)
             }
+        };
+
+        let msg = res.unwrap_or_else(|err| {
+            msg::Response::Error(msg::ResponseError {
+                code: msg::ErrorCode::ExpansionError,
+                message: err,
+            })
+        });
+
+        if let Err(err) = write_response(msg) {
+            eprintln!("Write message error: {}", err);
         }
     }
+}
+
+fn read_request() -> io::Result<Option<msg::Request>> {
+    msg::Request::read(&mut io::stdin().lock())
+}
+
+fn write_response(msg: msg::Response) -> io::Result<()> {
+    msg.write(&mut io::stdout().lock())
 }

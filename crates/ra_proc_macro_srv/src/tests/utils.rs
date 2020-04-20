@@ -60,6 +60,6 @@ pub fn list(crate_name: &str, version: &str) -> Vec<String> {
     let path = fixtures::dylib_path(crate_name, version);
     let task = ListMacrosTask { lib: path };
 
-    let res = list_macros(&task).unwrap();
+    let res = list_macros(&task);
     res.macros.into_iter().map(|(name, kind)| format!("{} [{:?}]", name, kind)).collect()
 }

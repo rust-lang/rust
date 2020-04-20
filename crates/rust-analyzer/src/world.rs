@@ -148,20 +148,17 @@ impl WorldState {
 
         let proc_macro_client = match &config.proc_macro_srv {
             None => ProcMacroClient::dummy(),
-            Some((path, args)) => {
-                let path = std::path::Path::new(path);
-                match ProcMacroClient::extern_process(path, args) {
-                    Ok(it) => it,
-                    Err(err) => {
-                        log::error!(
-                            "Fail to run ra_proc_macro_srv from path {}, error : {}",
-                            path.to_string_lossy(),
-                            err
-                        );
-                        ProcMacroClient::dummy()
-                    }
+            Some((path, args)) => match ProcMacroClient::extern_process(path.into(), args) {
+                Ok(it) => it,
+                Err(err) => {
+                    log::error!(
+                        "Fail to run ra_proc_macro_srv from path {}, error: {:?}",
+                        path,
+                        err
+                    );
+                    ProcMacroClient::dummy()
                 }
-            }
+            },
         };
 
         workspaces
