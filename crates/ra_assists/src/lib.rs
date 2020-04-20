@@ -197,7 +197,7 @@ mod helpers {
     use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
     use test_utils::{add_cursor, assert_eq_text, extract_range_or_offset, RangeOrOffset};
 
-    use crate::{AssistCtx, AssistHandler};
+    use crate::{AssistCtx, AssistFile, AssistHandler};
     use hir::Semantics;
 
     pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
@@ -259,7 +259,13 @@ mod helpers {
             (Some(assist), ExpectedResult::After(after)) => {
                 let action = assist.0[0].action.clone().unwrap();
 
-                let mut actual = action.edit.apply(&text_without_caret);
+                let assisted_file_text = if let AssistFile::TargetFile(file_id) = action.file {
+                    db.file_text(file_id).as_ref().to_owned()
+                } else {
+                    text_without_caret
+                };
+
+                let mut actual = action.edit.apply(&assisted_file_text);
                 match action.cursor_position {
                     None => {
                         if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {

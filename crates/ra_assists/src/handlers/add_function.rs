@@ -907,23 +907,14 @@ mod foo;
 fn main() {
     foo::bar<|>()
 }
-
 //- /foo.rs
-
 ",
             r"
-//- /main.rs
-mod foo;
 
-fn main() {
-    foo::bar()
-}
 
-//- /foo.rs
-fn bar() {
+pub(crate) fn bar() {
     <|>todo!()
-}
-",
+}",
         )
     }
 

@@ -37,11 +37,13 @@ export async function applySourceChange(ctx: Ctx, change: ra.SourceChange) {
             toReveal.position,
         );
         const editor = vscode.window.activeTextEditor;
-        if (!editor || editor.document.uri.toString() !== uri.toString()) {
+        if (!editor || !editor.selection.isEmpty) {
             return;
         }
-        if (!editor.selection.isEmpty) {
-            return;
+
+        if (editor.document.uri !== uri) {
+            const doc = await vscode.workspace.openTextDocument(uri);
+            await vscode.window.showTextDocument(doc);
         }
         editor.selection = new vscode.Selection(position, position);
         editor.revealRange(
