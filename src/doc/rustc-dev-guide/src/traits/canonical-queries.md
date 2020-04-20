@@ -7,7 +7,7 @@ would like to know the answer to – and in the
 checker or other parts of the system, may in the course of doing their
 thing want to know whether some trait is implemented for some type
 (e.g., is `u32: Debug` true?). Or they may want to
-[normalize some associated type](./associated-types.html).
+normalize some associated type.
 
 This section covers queries at a fairly high level of abstraction. The
 subsections look a bit more closely at how these ideas are implemented
@@ -104,9 +104,7 @@ trying to enumerate **all possible** answers for you, they are looking
 for an **unambiguous** answer. In particular, when they tell you the
 value for a type variable, that means that this is the **only possible
 instantiation** that you could use, given the current set of impls and
-where-clauses, that would be provable. (Internally within the solver,
-though, they can potentially enumerate all possible answers. See
-[the description of the SLG solver](./slg.html) for details.)
+where-clauses, that would be provable.
 
 The response to a trait query in rustc is typically a
 `Result<QueryResult<T>, NoSolution>` (where the `T` will vary a bit
@@ -130,10 +128,7 @@ we did find. It consists of four parts:
   - As we'll see in the example below, we can get back var values even
     for `Ambiguous` cases.
 - **Region constraints:** these are relations that must hold between
-  the lifetimes that you supplied as inputs. We'll ignore these here,
-  but see the
-  [section on handling regions in traits](./regions.html) for
-  more details.
+  the lifetimes that you supplied as inputs. We'll ignore these here.
 - **Value:** The query result also comes with a value of type `T`. For
   some specialized queries – like normalizing associated types –
   this is used to carry back an extra result, but it's often just
