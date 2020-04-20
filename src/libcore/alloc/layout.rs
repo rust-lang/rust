@@ -162,7 +162,7 @@ impl Layout {
     /// Returns an error if the combination of `self.size()` and the given
     /// `align` violates the conditions listed in
     /// [`Layout::from_size_align`](#method.from_size_align).
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn align_to(&self, align: usize) -> Result<Self, LayoutErr> {
         Layout::from_size_align(self.size(), cmp::max(self.align(), align))
@@ -218,7 +218,7 @@ impl Layout {
     ///
     /// This is equivalent to adding the result of `padding_needed_for`
     /// to the layout's current size.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn pad_to_align(&self) -> Layout {
         let pad = self.padding_needed_for(self.align());
@@ -258,19 +258,50 @@ impl Layout {
 
     /// Creates a layout describing the record for `self` followed by
     /// `next`, including any necessary padding to ensure that `next`
-    /// will be properly aligned. Note that the resulting layout will
-    /// satisfy the alignment properties of both `self` and `next`.
+    /// will be properly aligned, but *no trailing padding*.
     ///
-    /// The resulting layout will be the same as that of a C struct containing
-    /// two fields with the layouts of `self` and `next`, in that order.
+    /// In order to match C representation layout `repr(C)`, you should
+    /// call `pad_to_align` after extending the layout with all fields.
+    /// (There is no way to match the default Rust representation
+    /// layout `repr(Rust)`, as it is unspecified.)
     ///
-    /// Returns `Some((k, offset))`, where `k` is layout of the concatenated
+    /// Note that the alignment of the resulting layout will be the maximum of
+    /// those of `self` and `next`, in order to ensure alignment of both parts.
+    ///
+    /// Returns `Ok((k, offset))`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
     /// start of the `next` embedded within the concatenated record
     /// (assuming that the record itself starts at offset 0).
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    ///
+    /// # Examples
+    ///
+    /// To calculate the layout of a `#[repr(C)]` structure and the offsets of
+    /// the fields from its fields' layouts:
+    ///
+    /// ```rust
+    /// # use std::alloc::{Layout, LayoutErr};
+    /// pub fn repr_c(fields: &[Layout]) -> Result<(Layout, Vec<usize>), LayoutErr> {
+    ///     let mut offsets = Vec::new();
+    ///     let mut layout = Layout::from_size_align(0, 1)?;
+    ///     for &field in fields {
+    ///         let (new_layout, offset) = layout.extend(field)?;
+    ///         layout = new_layout;
+    ///         offsets.push(offset);
+    ///     }
+    ///     // Remember to finalize with `pad_to_align`!
+    ///     Ok((layout.pad_to_align(), offsets))
+    /// }
+    /// # // test that it works
+    /// # #[repr(C)] struct S { a: u64, b: u32, c: u16, d: u32 }
+    /// # let s = Layout::new::<S>();
+    /// # let u16 = Layout::new::<u16>();
+    /// # let u32 = Layout::new::<u32>();
+    /// # let u64 = Layout::new::<u64>();
+    /// # assert_eq!(repr_c(&[u64, u32, u16, u32]), Ok((s, vec![0, 8, 12, 16])));
+    /// ```
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_align = cmp::max(self.align(), next.align());
@@ -318,13 +349,12 @@ impl Layout {
     /// Creates a layout describing the record for a `[T; n]`.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutErr> {
-        Layout::new::<T>().repeat(n).map(|(k, offs)| {
-            debug_assert!(offs == mem::size_of::<T>());
-            k
-        })
+        let (layout, offset) = Layout::new::<T>().repeat(n)?;
+        debug_assert_eq!(offset, mem::size_of::<T>());
+        Ok(layout.pad_to_align())
     }
 }
 
