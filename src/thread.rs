@@ -131,7 +131,16 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
 
 impl<'mir, 'tcx> std::fmt::Debug for Thread<'mir, 'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.state)
+        if let Some(ref name) = self.thread_name {
+            if let Ok(name_str) = std::str::from_utf8(name) {
+                write!(f, "{}", name_str)?;
+            } else {
+                write!(f, "<invalid thread name>")?;
+            }
+        } else {
+            write!(f, "unnamed")?;
+        }
+        write!(f, "({:?}, {:?})", self.state, self.join_status)
     }
 }
 
