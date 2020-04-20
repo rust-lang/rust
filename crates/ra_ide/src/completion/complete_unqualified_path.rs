@@ -1130,4 +1130,182 @@ mod tests {
         "###
         );
     }
+    #[test]
+    fn completes_enum_variant_matcharm() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum Foo {
+                    Bar,
+                    Baz,
+                    Quux
+                }
+
+                fn main() {
+                    let foo = Foo::Quux;
+
+                    match foo {
+                        Qu<|>
+                    }
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Foo",
+                source_range: [248; 250),
+                delete: [248; 250),
+                insert: "Foo",
+                kind: Enum,
+            },
+            CompletionItem {
+                label: "Foo::Bar",
+                source_range: [248; 250),
+                delete: [248; 250),
+                insert: "Foo::Bar",
+                kind: EnumVariant,
+                detail: "()",
+            },
+            CompletionItem {
+                label: "Foo::Baz",
+                source_range: [248; 250),
+                delete: [248; 250),
+                insert: "Foo::Baz",
+                kind: EnumVariant,
+                detail: "()",
+            },
+            CompletionItem {
+                label: "Foo::Quux",
+                source_range: [248; 250),
+                delete: [248; 250),
+                insert: "Foo::Quux",
+                kind: EnumVariant,
+                detail: "()",
+            },
+        ]
+        "###
+        )
+    }
+
+    #[test]
+    fn completes_enum_variant_iflet() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum Foo {
+                    Bar,
+                    Baz,
+                    Quux
+                }
+
+                fn main() {
+                    let foo = Foo::Quux;
+
+                    if let Qu<|> = foo {
+
+                    }
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Foo",
+                source_range: [219; 221),
+                delete: [219; 221),
+                insert: "Foo",
+                kind: Enum,
+            },
+            CompletionItem {
+                label: "Foo::Bar",
+                source_range: [219; 221),
+                delete: [219; 221),
+                insert: "Foo::Bar",
+                kind: EnumVariant,
+                detail: "()",
+            },
+            CompletionItem {
+                label: "Foo::Baz",
+                source_range: [219; 221),
+                delete: [219; 221),
+                insert: "Foo::Baz",
+                kind: EnumVariant,
+                detail: "()",
+            },
+            CompletionItem {
+                label: "Foo::Quux",
+                source_range: [219; 221),
+                delete: [219; 221),
+                insert: "Foo::Quux",
+                kind: EnumVariant,
+                detail: "()",
+            },
+        ]
+        "###
+        )
+    }
+
+    #[test]
+    fn completes_enum_variant_basic_expr() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                enum Foo {
+                    Bar,
+                    Baz,
+                    Quux
+                }
+
+                fn main() {
+                    let foo: Foo = Q<|>
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Foo",
+                source_range: [185; 186),
+                delete: [185; 186),
+                insert: "Foo",
+                kind: Enum,
+            },
+            CompletionItem {
+                label: "Foo::Bar",
+                source_range: [185; 186),
+                delete: [185; 186),
+                insert: "Foo::Bar",
+                kind: EnumVariant,
+                detail: "()",
+            },
+            CompletionItem {
+                label: "Foo::Baz",
+                source_range: [185; 186),
+                delete: [185; 186),
+                insert: "Foo::Baz",
+                kind: EnumVariant,
+                detail: "()",
+            },
+            CompletionItem {
+                label: "Foo::Quux",
+                source_range: [185; 186),
+                delete: [185; 186),
+                insert: "Foo::Quux",
+                kind: EnumVariant,
+                detail: "()",
+            },
+            CompletionItem {
+                label: "main()",
+                source_range: [185; 186),
+                delete: [185; 186),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
+        "###
+        )
+    }
 }
