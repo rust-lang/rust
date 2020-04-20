@@ -1,10 +1,10 @@
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 fn not_in_miri() -> i32 {
     // Inline assembly definitely does not work in Miri.
     let dummy = 42;
     unsafe {
-        asm!("" : : "r"(&dummy));
+        llvm_asm!("" : : "r"(&dummy));
     }
     return dummy;
 }
