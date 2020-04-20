@@ -215,7 +215,7 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
 }
 
 /// The machine itself.
-pub struct Evaluator<'tcx> {
+pub struct Evaluator<'mir, 'tcx> {
     /// Environment variables set by `setenv`.
     /// Miri does not expose env vars from the host to the emulated program.
     pub(crate) env_vars: EnvVars<'tcx>,
@@ -251,11 +251,14 @@ pub struct Evaluator<'tcx> {
     /// The "time anchor" for this machine's monotone clock (for `Instant` simulation).
     pub(crate) time_anchor: Instant,
 
+    /// The call stack.
+    pub(crate) stack: Vec<Frame<'mir, 'tcx, Tag, FrameData<'tcx>>>,
+
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
 }
 
-impl<'tcx> Evaluator<'tcx> {
+impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
     pub(crate) fn new(
         communicate: bool,
         validate: bool,
@@ -279,12 +282,13 @@ impl<'tcx> Evaluator<'tcx> {
             panic_payload: None,
             time_anchor: Instant::now(),
             layouts,
+            stack: Vec::default(),
         }
     }
 }
 
 /// A rustc InterpCx for Miri.
-pub type MiriEvalContext<'mir, 'tcx> = InterpCx<'mir, 'tcx, Evaluator<'tcx>>;
+pub type MiriEvalContext<'mir, 'tcx> = InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>;
 
 /// A little trait that's useful to be inherited by extension traits.
 pub trait MiriEvalContextExt<'mir, 'tcx> {
@@ -303,7 +307,7 @@ impl<'mir, 'tcx> MiriEvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> 
 }
 
 /// Machine hook implementations.
-impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
+impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     type MemoryKind = MiriMemoryKind;
 
     type FrameExtra = FrameData<'tcx>;
@@ -519,6 +523,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         });
         let extra = FrameData { call_id, catch_unwind: None };
         Ok(frame.with_extra(extra))
+    }
+
+    #[inline(always)]
+    fn stack<'a>(
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
+        &ecx.machine.stack
+    }
+
+    #[inline(always)]
+    fn stack_mut<'a>(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
+        &mut ecx.machine.stack
     }
 
     #[inline(always)]

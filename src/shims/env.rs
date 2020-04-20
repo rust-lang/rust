@@ -35,7 +35,7 @@ pub struct EnvVars<'tcx> {
 
 impl<'tcx> EnvVars<'tcx> {
     pub(crate) fn init<'mir>(
-        ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
+        ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
         mut excluded_env_vars: Vec<String>,
     ) -> InterpResult<'tcx> {
         let target_os = ecx.tcx.sess.target.target.target_os.as_str();
@@ -61,7 +61,7 @@ impl<'tcx> EnvVars<'tcx> {
     }
 
     pub(crate) fn cleanup<'mir>(
-        ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
+        ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
     ) -> InterpResult<'tcx> {
         // Deallocate individual env vars.
         for (_name, ptr) in ecx.machine.env_vars.map.drain() {
@@ -78,7 +78,7 @@ impl<'tcx> EnvVars<'tcx> {
 fn alloc_env_var_as_c_str<'mir, 'tcx>(
     name: &OsStr,
     value: &OsStr,
-    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
+    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
 ) -> InterpResult<'tcx, Pointer<Tag>> {
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
@@ -89,7 +89,7 @@ fn alloc_env_var_as_c_str<'mir, 'tcx>(
 fn alloc_env_var_as_wide_str<'mir, 'tcx>(
     name: &OsStr,
     value: &OsStr,
-    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
+    ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
 ) -> InterpResult<'tcx, Pointer<Tag>> {
     let mut name_osstring = name.to_os_string();
     name_osstring.push("=");
@@ -97,7 +97,7 @@ fn alloc_env_var_as_wide_str<'mir, 'tcx>(
     Ok(ecx.alloc_os_str_as_wide_str(name_osstring.as_os_str(), MiriMemoryKind::Env.into()))
 }
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn getenv(&mut self, name_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();

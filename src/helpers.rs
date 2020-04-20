@@ -13,7 +13,7 @@ use rand::RngCore;
 
 use crate::*;
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 
 /// Gets an instance for a path.
 fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
@@ -265,7 +265,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             unsafe_cell_action: F,
         }
 
-        impl<'ecx, 'mir, 'tcx, F> ValueVisitor<'mir, 'tcx, Evaluator<'tcx>>
+        impl<'ecx, 'mir, 'tcx: 'mir, F> ValueVisitor<'mir, 'tcx, Evaluator<'mir, 'tcx>>
             for UnsafeCellVisitor<'ecx, 'mir, 'tcx, F>
         where
             F: FnMut(MPlaceTy<'tcx, Tag>) -> InterpResult<'tcx>,

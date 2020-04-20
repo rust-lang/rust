@@ -62,7 +62,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     tcx: TyCtxt<'tcx>,
     main_id: DefId,
     config: MiriConfig,
-) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'tcx>>, MPlaceTy<'tcx, Tag>)> {
+) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>, MPlaceTy<'tcx, Tag>)> {
     let tcx_at = tcx.at(rustc_span::source_map::DUMMY_SP);
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };

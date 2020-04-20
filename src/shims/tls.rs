@@ -154,7 +154,7 @@ impl<'tcx> TlsData<'tcx> {
     }
 }
 
-impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn run_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
