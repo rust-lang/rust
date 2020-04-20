@@ -1,6 +1,6 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 
-// Joining the same thread multiple times is undefined behavior.
+// Joining the same thread from multiple threads is undefined behavior.
 
 #![feature(rustc_private)]
 

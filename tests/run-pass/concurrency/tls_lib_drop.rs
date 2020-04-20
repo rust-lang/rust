@@ -2,6 +2,9 @@
 
 //! Check that destructors of the library thread locals are executed immediately
 //! after a thread terminates.
+//!
+//! FIXME: We should have a similar test for thread-local statics (statics
+//! annotated with `#[thread_local]`) once they support destructors.
 
 #![feature(thread_local_internals)]
 
