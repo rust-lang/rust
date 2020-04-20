@@ -9,10 +9,10 @@ This option is deprecated and does nothing.
 
 ## linker
 
-This flag lets you control which linker `rustc` invokes to link your code. It
-takes a path to the linker executable. If this flag is not specified, the
-linker will be inferred based on the target. See also the
-[linker-flavor](#linker-flavor) flag for another way to specify the linker.
+This flag controls which linker `rustc` invokes to link your code. It takes a
+path to the linker executable. If this flag is not specified, the linker will
+be inferred based on the target. See also the [linker-flavor](#linker-flavor)
+flag for another way to specify the linker.
 
 ## link-arg
 
@@ -27,49 +27,52 @@ options should be separated by spaces.
 
 ## linker-flavor
 
-This flag lets you control the linker flavor used by `rustc`. If a linker is given with the
-[`-C linker` flag](#linker), then the linker flavor is inferred from the value provided. If no
-linker is given then the linker flavor is used to determine the linker to use. Every `rustc` target
-defaults to some linker flavor. Valid options are:
+This flag controls the linker flavor used by `rustc`. If a linker is given with
+the [`-C linker` flag](#linker), then the linker flavor is inferred from the
+value provided. If no linker is given then the linker flavor is used to
+determine the linker to use. Every `rustc` target defaults to some linker
+flavor. Valid options are:
 
-* `em`: Uses [Emscripten `emcc`](https://emscripten.org/docs/tools_reference/emcc.html).
-* `gcc`: Uses the `cc` executable, which is typically gcc or clang on many systems.
-* `ld`: Uses the `ld` executable.
-* `msvc`: Uses the `link.exe` executable from Microsoft Visual Studio MSVC.
-* `ptx-linker`: Uses
+* `em`: use [Emscripten `emcc`](https://emscripten.org/docs/tools_reference/emcc.html).
+* `gcc`: use the `cc` executable, which is typically gcc or clang on many systems.
+* `ld`: use the `ld` executable.
+* `msvc`: use the `link.exe` executable from Microsoft Visual Studio MSVC.
+* `ptx-linker`: use
   [`rust-ptx-linker`](https://github.com/denzp/rust-ptx-linker) for Nvidia
   NVPTX GPGPU support.
-* `wasm-ld`: Uses the [`wasm-ld`](https://lld.llvm.org/WebAssembly.html)
+* `wasm-ld`: use the [`wasm-ld`](https://lld.llvm.org/WebAssembly.html)
   executable, a port of LLVM `lld` for WebAssembly.
-* `ld64.lld`: Uses the LLVM `lld` executable with the [`-flavor darwin`
+* `ld64.lld`: use the LLVM `lld` executable with the [`-flavor darwin`
   flag][lld-flavor] for Apple's `ld`.
-* `ld.lld`: Uses the LLVM `lld` executable with the [`-flavor gnu`
+* `ld.lld`: use the LLVM `lld` executable with the [`-flavor gnu`
   flag][lld-flavor] for GNU binutils' `ld`.
-* `lld-link`: Uses the LLVM `lld` executable with the [`-flavor link`
+* `lld-link`: use the LLVM `lld` executable with the [`-flavor link`
   flag][lld-flavor] for Microsoft's `link.exe`.
 
 [lld-flavor]: https://lld.llvm.org/Driver.html
 
 ## link-dead-code
 
-Normally, the linker will remove dead code. This flag disables this behavior.
+This flag controls whether the linker will keep dead code. It takes one of
+the following values:
+
+* `y`, `yes`, `on`, or no value: keep dead code.
+* `n`, `no`, or `off`: remove dead code (the default).
 
 An example of when this flag might be useful is when trying to construct code coverage
 metrics.
 
 ## lto
 
-This flag instructs LLVM to use [link time
+This flag controls whether LLVM uses [link time
 optimizations](https://llvm.org/docs/LinkTimeOptimization.html) to produce
 better optimized code, using whole-program analysis, at the cost of longer
-linking time.
+linking time. It takes one of the following values:
 
-This flag may take one of the following values:
-
-* `y`, `yes`, `on`, `fat`, or no value: Performs "fat" LTO which attempts to
+* `y`, `yes`, `on`, `fat`, or no value: perform "fat" LTO which attempts to
   perform optimizations across all crates within the dependency graph.
-* `n`, `no`, `off`: Disables LTO.
-* `thin`: Performs ["thin"
+* `n`, `no`, `off`: disables LTO.
+* `thin`: perform ["thin"
   LTO](http://blog.llvm.org/2016/06/thinlto-scalable-and-incremental-lto.html).
   This is similar to "fat", but takes substantially less time to run while
   still achieving performance gains similar to "fat".
@@ -81,22 +84,22 @@ disabled if codegen units is 1 or optimizations are disabled ([`-C
 opt-level=0`](#opt-level)). That is:
 
 * When `-C lto` is not specified:
-  * `codegen-units=1`: Disables LTO.
-  * `opt-level=0`: Disables LTO.
+  * `codegen-units=1`: disable LTO.
+  * `opt-level=0`: disable LTO.
 * When `-C lto=true`:
-  * `lto=true`: 16 codegen units, performs fat LTO across crates.
+  * `lto=true`: 16 codegen units, perform fat LTO across crates.
   * `codegen-units=1` + `lto=true`: 1 codegen unit, fat LTO across crates.
 
 See also [linker-plugin-lto](#linker-plugin-lto) for cross-language LTO.
 
 ## linker-plugin-lto
 
-Defers LTO optimizations to the linker. See
-[linkger-plugin-LTO](../linker-plugin-lto.md) for more details. Takes one of
+This flag defers LTO optimizations to the linker. See
+[linker-plugin-LTO](../linker-plugin-lto.md) for more details. It takes one of
 the following values:
 
-* `y`, `yes`, `on`, or no value: Enabled.
-* `n`, `no`, or `off`: Disabled (default).
+* `y`, `yes`, `on`, or no value: enable linker plugin LTO.
+* `n`, `no`, or `off`: disable linker plugin LTO (the default).
 * A path to the linker plugin.
 
 ## target-cpu
@@ -148,14 +151,19 @@ Pass `--help` to see a list of options.
 
 ## save-temps
 
-`rustc` will generate temporary files during compilation; normally it will
-delete them after it's done with its work. This option will cause them to be
-preserved instead of removed.
+This flag controls whether temporary files generated during compilation are
+deleted once compilation finishes. It takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: save temporary files.
+* `n`, `no`, or `off`: delete temporary files (the default).
 
 ## rpath
 
-This option allows you to enable
-[`rpath`](https://en.wikipedia.org/wiki/Rpath).
+This flag controls whether [`rpath`](https://en.wikipedia.org/wiki/Rpath) is
+enabled. It takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: enable rpath.
+* `n`, `no`, or `off`: disable rpath (the default).
 
 ## overflow-checks
 
@@ -164,35 +172,35 @@ overflow](../../reference/expressions/operator-expr.md#overflow). When
 overflow-checks are enabled, a panic will occur on overflow. This flag takes
 one of the following values:
 
-* `y`, `yes`, `on`, or no value: Enable overflow checks.
-* `n`, `no`, or `off`: Disable overflow checks.
+* `y`, `yes`, `on`, or no value: enable overflow checks.
+* `n`, `no`, or `off`: disable overflow checks.
 
 If not specified, overflow checks are enabled if
 [debug-assertions](#debug-assertions) are enabled, disabled otherwise.
 
 ## no-prepopulate-passes
 
-The pass manager comes pre-populated with a list of passes; this flag
-ensures that list is empty.
+This flag tells the pass manager to use an empty list of passes, instead of the
+usual pre-populated list of passes.
 
 ## no-vectorize-loops
 
-By default, `rustc` will attempt to [vectorize
-loops](https://llvm.org/docs/Vectorizers.html#the-loop-vectorizer). This
-flag will turn that behavior off.
+This flag disables [loop
+vectorization](https://llvm.org/docs/Vectorizers.html#the-loop-vectorizer).
 
 ## no-vectorize-slp
 
-By default, `rustc` will attempt to vectorize code using [superword-level
-parallelism](https://llvm.org/docs/Vectorizers.html#the-slp-vectorizer). This
-flag will turn that behavior off.
+This flag disables vectorization using
+[superword-level
+parallelism](https://llvm.org/docs/Vectorizers.html#the-slp-vectorizer).
 
 ## soft-float
 
-This option will make `rustc` generate code using "soft floats." By default,
-a lot of hardware supports floating point instructions, and so the code generated
-will take advantage of this. "soft floats" emulate floating point instructions
-in software.
+This option controls whether `rustc` generates code that emulates floating
+point instructions in software. It takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: use soft floats.
+* `n`, `no`, or `off`: use hardware floats (the default).
 
 ## prefer-dynamic
 
@@ -201,24 +209,21 @@ indicate that dynamic linking should be used if possible if both a static and
 dynamic versions of a library are available. There is an internal algorithm
 for determining whether or not it is possible to statically or dynamically
 link with a dependency. For example, `cdylib` crate types may only use static
-linkage.
+linkage. This flag takes one of the following values:
 
-## no-integrated-as
-
-`rustc` normally uses the LLVM internal assembler to create object code. This
-flag will disable the internal assembler and emit assembly code to be
-translated using an external assembler, currently the linker such as `cc`.
+* `y`, `yes`, `on`, or no value: use dynamic linking.
+* `n`, `no`, or `off`: use static linking (the default).
 
 ## no-redzone
 
 This flag allows you to disable [the
-red zone](https://en.wikipedia.org/wiki/Red_zone_\(computing\)). This flag can
-be passed one of the following options:
+red zone](https://en.wikipedia.org/wiki/Red_zone_\(computing\)). It takes one
+of the following values:
 
-* `y`, `yes`, `on`, or no value: Disables the red zone.
-* `n`, `no`, or `off`: Enables the red zone.
+* `y`, `yes`, `on`, or no value: disable the red zone.
+* `n`, `no`, or `off`: enable the red zone.
 
-The default if not specified depends on the target.
+The default behaviour, if the flag is not specified, depends on the target.
 
 ## relocation-model
 
@@ -257,7 +262,7 @@ them in parallel. Increasing parallelism may speed up compile times, but may
 also produce slower code. Setting this to 1 may improve the performance of
 generated code, but may be slower to compile.
 
-The default, if not specified, is 16 for non-incremental builds. For
+The default value, if not specified, is 16 for non-incremental builds. For
 incremental builds the default is 256 which allows caching to be more granular.
 
 ## remark
@@ -274,23 +279,25 @@ This option is deprecated and does nothing.
 
 ## debuginfo
 
-This flag lets you control debug information:
+This flag controls the generation of debug information. It takes one of the
+following values:
 
-* `0`: no debug info at all (default)
-* `1`: line tables only
-* `2`: full debug info
+* `0`: no debug info at all (the default).
+* `1`: line tables only.
+* `2`: full debug info.
 
 Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
 
 ## opt-level
 
-This flag lets you control the optimization level.
+This flag controls the optimization level.
 
-* `0`: no optimizations, also turns on [`cfg(debug_assertions)`](#debug-assertions).
-* `1`: basic optimizations
-* `2`: some optimizations
-* `3`: all optimizations
-* `s`: optimize for binary size
+* `0`: no optimizations, also turns on
+  [`cfg(debug_assertions)`](#debug-assertions) (the default).
+* `1`: basic optimizations.
+* `2`: some optimizations.
+* `3`: all optimizations.
+* `s`: optimize for binary size.
 * `z`: optimize for binary size, but also turn off loop vectorization.
 
 Note: The [`-O` flag][option-o-optimize] is an alias for `-C opt-level=2`.
@@ -303,8 +310,8 @@ This flag lets you turn `cfg(debug_assertions)` [conditional
 compilation](../../reference/conditional-compilation.md#debug_assertions) on
 or off. It takes one of the following values:
 
-* `y`, `yes`, `on`, or no value: Enable debug-assertions.
-* `n`, `no`, or `off`: Disable debug-assertions.
+* `y`, `yes`, `on`, or no value: enable debug-assertions.
+* `n`, `no`, or `off`: disable debug-assertions.
 
 If not specified, debug assertions are automatically enabled only if the
 [opt-level](#opt-level) is 0.
@@ -362,24 +369,23 @@ to a valid `.profdata` file. See the chapter on
 This flag forces the use of frame pointers. It takes one of the following
 values:
 
-* `y`, `yes`, `on`, or no value: Frame pointers are forced to be enabled.
-* `n`, `no`, or `off`: Frame pointers are not forced to be enabled. This does
+* `y`, `yes`, `on`, or no value: force-enable frame pointers.
+* `n`, `no`, or `off`: do not force-enable frame pointers. This does
   not necessarily mean frame pointers will be removed.
 
-The default if not specified depends on the target.
+The default behaviour, if frame pointers are not force-enabled, depends on the
+target.
 
 ## default-linker-libraries
 
 This flag controls whether or not the linker includes its default libraries.
 It takes one of the following values:
 
-* `y`, `yes`, `on`, or no value: Default libraries are included.
-* `n`, `no`, or `off`: Default libraries are **not** included.
+* `y`, `yes`, `on`, or no value: include default libraries (the default).
+* `n`, `no`, or `off`: exclude default libraries.
 
 For example, for gcc flavor linkers, this issues the `-nodefaultlibs` flag to
 the linker.
-
-The default is `yes` if not specified.
 
 [option-emit]: ../command-line-arguments.md#option-emit
 [option-o-optimize]: ../command-line-arguments.md#option-o-optimize

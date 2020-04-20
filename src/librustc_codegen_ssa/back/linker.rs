@@ -384,7 +384,7 @@ impl<'a> Linker for GccLinker<'a> {
             // If we are building without debuginfo enabled and we were called with
             // `-Zstrip-debuginfo-if-disabled=yes`, tell the linker to strip any debuginfo
             // found when linking to get rid of symbols from libstd.
-            if let Some(true) = self.sess.opts.debugging_opts.strip_debuginfo_if_disabled {
+            if self.sess.opts.debugging_opts.strip_debuginfo_if_disabled {
                 self.linker_arg("-S");
             }
         };

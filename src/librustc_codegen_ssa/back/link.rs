@@ -858,18 +858,7 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
     // *not* running dsymutil then the object files are the only source of truth
     // for debug information, so we must preserve them.
     if sess.target.target.options.is_like_osx {
-        match sess.opts.debugging_opts.run_dsymutil {
-            // dsymutil is not being run, preserve objects
-            Some(false) => return true,
-
-            // dsymutil is being run, no need to preserve the objects
-            Some(true) => return false,
-
-            // The default historical behavior was to always run dsymutil, so
-            // we're preserving that temporarily, but we're likely to switch the
-            // default soon.
-            None => return false,
-        }
+        return !sess.opts.debugging_opts.run_dsymutil;
     }
 
     false
@@ -1324,11 +1313,11 @@ fn link_local_crate_native_libs_and_dependent_crate_libs<'a, B: ArchiveBuilder<'
     // If -Zlink-native-libraries=false is set, then the assumption is that an
     // external build system already has the native dependencies defined, and it
     // will provide them to the linker itself.
-    if sess.opts.debugging_opts.link_native_libraries.unwrap_or(true) {
+    if sess.opts.debugging_opts.link_native_libraries {
         add_local_native_libraries(cmd, sess, codegen_results);
     }
     add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
-    if sess.opts.debugging_opts.link_native_libraries.unwrap_or(true) {
+    if sess.opts.debugging_opts.link_native_libraries {
         add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
     }
 }
@@ -1534,9 +1523,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // OBJECT-FILES-NO, AUDIT-ORDER
     // We want to prevent the compiler from accidentally leaking in any system libraries,
     // so by default we tell linkers not to link to any default libraries.
-    if !sess.opts.cg.default_linker_libraries.unwrap_or(false)
-        && sess.target.target.options.no_default_libraries
-    {
+    if !sess.opts.cg.default_linker_libraries && sess.target.target.options.no_default_libraries {
         cmd.no_default_libraries();
     }
 

@@ -617,10 +617,6 @@ impl Options {
 }
 
 impl DebuggingOptions {
-    pub fn ui_testing(&self) -> bool {
-        self.ui_testing.unwrap_or(false)
-    }
-
     pub fn diagnostic_handler_flags(&self, can_emit_warnings: bool) -> HandlerFlags {
         HandlerFlags {
             can_emit_warnings,
@@ -628,7 +624,7 @@ impl DebuggingOptions {
             dont_buffer_diagnostics: self.dont_buffer_diagnostics,
             report_delayed_bugs: self.report_delayed_bugs,
             macro_backtrace: self.macro_backtrace,
-            deduplicate_diagnostics: self.deduplicate_diagnostics.unwrap_or(true),
+            deduplicate_diagnostics: self.deduplicate_diagnostics,
         }
     }
 }
@@ -1395,15 +1391,14 @@ fn parse_opt_level(
     if max_o > max_c {
         OptLevel::Default
     } else {
-        match cg.opt_level.as_ref().map(String::as_ref) {
-            None => OptLevel::No,
-            Some("0") => OptLevel::No,
-            Some("1") => OptLevel::Less,
-            Some("2") => OptLevel::Default,
-            Some("3") => OptLevel::Aggressive,
-            Some("s") => OptLevel::Size,
-            Some("z") => OptLevel::SizeMin,
-            Some(arg) => {
+        match cg.opt_level.as_ref() {
+            "0" => OptLevel::No,
+            "1" => OptLevel::Less,
+            "2" => OptLevel::Default,
+            "3" => OptLevel::Aggressive,
+            "s" => OptLevel::Size,
+            "z" => OptLevel::SizeMin,
+            arg => {
                 early_error(
                     error_format,
                     &format!(
@@ -1436,10 +1431,10 @@ fn select_debuginfo(
         DebugInfo::Full
     } else {
         match cg.debuginfo {
-            None | Some(0) => DebugInfo::None,
-            Some(1) => DebugInfo::Limited,
-            Some(2) => DebugInfo::Full,
-            Some(arg) => {
+            0 => DebugInfo::None,
+            1 => DebugInfo::Limited,
+            2 => DebugInfo::Full,
+            arg => {
                 early_error(
                     error_format,
                     &format!(
@@ -1502,10 +1497,10 @@ fn parse_libs(
 }
 
 fn parse_borrowck_mode(dopts: &DebuggingOptions, error_format: ErrorOutputType) -> BorrowckMode {
-    match dopts.borrowck.as_ref().map(|s| &s[..]) {
-        None | Some("migrate") => BorrowckMode::Migrate,
-        Some("mir") => BorrowckMode::Mir,
-        Some(m) => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
+    match dopts.borrowck.as_ref() {
+        "migrate" => BorrowckMode::Migrate,
+        "mir" => BorrowckMode::Mir,
+        m => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
     }
 }
 

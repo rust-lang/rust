@@ -2182,9 +2182,7 @@ where
                         //
                         // For now, do not enable mutable_noalias by default at all, while the
                         // issue is being figured out.
-                        let mutable_noalias =
-                            tcx.sess.opts.debugging_opts.mutable_noalias.unwrap_or(false);
-                        if mutable_noalias {
+                        if tcx.sess.opts.debugging_opts.mutable_noalias {
                             PointerKind::UniqueBorrowed
                         } else {
                             PointerKind::Shared
