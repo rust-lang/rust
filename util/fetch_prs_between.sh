@@ -20,6 +20,7 @@ for pr in $(git log --oneline --grep "Merge #" --grep "Merge pull request" --gre
   fi
 
   echo "URL: https://github.com/rust-lang/rust-clippy/pull/$id"
+  echo "Markdown URL: [#$id](https://github.com/rust-lang/rust-clippy/pull/$id)"
   echo "$message"
   echo "---------------------------------------------------------"
   echo
