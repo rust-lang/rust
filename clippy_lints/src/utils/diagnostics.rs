@@ -49,7 +49,7 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 /// Use this if you want to provide some general help but
 /// can't provide a specific machine applicable suggestion.
 ///
-/// The `help` message is not attached to any `Span`.
+/// The `help` message can be optionally attached to a `Span`.
 ///
 /// # Example
 ///

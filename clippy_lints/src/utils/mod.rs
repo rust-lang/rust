@@ -241,7 +241,7 @@ pub fn match_path(path: &Path<'_>, segments: &[&str]) -> bool {
 ///
 /// # Examples
 /// ```rust,ignore
-/// match_qpath(path, &["std", "rt", "begin_unwind"])
+/// match_path_ast(path, &["std", "rt", "begin_unwind"])
 /// ```
 pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
     path.segments

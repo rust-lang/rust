@@ -108,6 +108,7 @@ pub const RESULT_ERR: [&str; 4] = ["core", "result", "Result", "Err"];
 pub const RESULT_OK: [&str; 4] = ["core", "result", "Result", "Ok"];
 pub const RWLOCK_READ_GUARD: [&str; 4] = ["std", "sync", "rwlock", "RwLockReadGuard"];
 pub const RWLOCK_WRITE_GUARD: [&str; 4] = ["std", "sync", "rwlock", "RwLockWriteGuard"];
+pub const SERDE_DESERIALIZE: [&str; 2] = ["_serde", "Deserialize"];
 pub const SERDE_DE_VISITOR: [&str; 3] = ["serde", "de", "Visitor"];
 pub const SLICE_INTO_VEC: [&str; 4] = ["alloc", "slice", "<impl [T]>", "into_vec"];
 pub const SLICE_ITER: [&str; 3] = ["core", "slice", "Iter"];
