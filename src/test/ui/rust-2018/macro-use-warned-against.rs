@@ -1,6 +1,6 @@
 // aux-build:macro-use-warned-against.rs
 // aux-build:macro-use-warned-against2.rs
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![warn(macro_use_extern_crate, unused)]
 
