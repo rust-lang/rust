@@ -26,7 +26,7 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::mem::{replace, take};
+use std::mem::take;
 
 use log::debug;
 
@@ -371,7 +371,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         self.with(Scope::Body { id: body.id(), s: self.scope }, |_, this| {
             this.visit_body(body);
         });
-        replace(&mut self.labels_in_fn, saved);
+        self.labels_in_fn = saved;
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
