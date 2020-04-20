@@ -357,7 +357,12 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         if self.threads[MAIN_THREAD].state == ThreadState::Terminated {
             // The main thread terminated; stop the program.
             if self.threads.iter().any(|thread| thread.state != ThreadState::Terminated) {
-                // FIXME: This check should be either configurable or just emit a warning.
+                // FIXME: This check should be either configurable or just emit
+                // a warning. For example, it seems normal for a program to
+                // terminate without waiting for its detached threads to
+                // terminate. However, this case is not trivial to support
+                // because we also probably do not want to consider the memory
+                // owned by these threads as leaked.
                 throw_unsup_format!("the main thread terminated without waiting for other threads");
             }
             return Ok(SchedulingAction::Stop);
