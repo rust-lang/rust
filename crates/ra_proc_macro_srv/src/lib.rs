@@ -42,7 +42,7 @@ pub(crate) fn list_macros(task: &ListMacrosTask) -> ListMacrosResult {
 
 fn create_expander(lib: &Path) -> dylib::Expander {
     dylib::Expander::new(lib)
-        .unwrap_or_else(|err| panic!("Cannot create expander for {:?}: {:?}", lib, err))
+        .unwrap_or_else(|err| panic!("Cannot create expander for {}: {}", lib.display(), err))
 }
 
 pub mod cli;
