@@ -93,12 +93,9 @@ impl<'tcx, 'l> Visitor<'tcx> for OppVisitor<'tcx, 'l> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(path, _span, args) = &expr.kind;
-            if path.ident.to_string() == "lock";
-            let ty = self.cx.tables.expr_ty(&args[0]);
-            if match_type(self.cx, ty, &paths::MUTEX);
+            if let Some(mutex) = is_mutex_lock_call(self.cx, expr);
             then {
-                self.found_mutex = Some(&args[0]);
+                self.found_mutex = Some(mutex);
                 self.mutex_lock_called = true;
                 return;
             }
@@ -123,12 +120,9 @@ impl<'tcx, 'l> Visitor<'tcx> for ArmVisitor<'tcx, 'l> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if_chain! {
-            if let ExprKind::MethodCall(path, _span, args) = &expr.kind;
-            if path.ident.to_string() == "lock";
-            let ty = self.cx.tables.expr_ty(&args[0]);
-            if match_type(self.cx, ty, &paths::MUTEX);
+            if let Some(mutex) = is_mutex_lock_call(self.cx, expr);
             then {
-                self.found_mutex = Some(&args[0]);
+                self.found_mutex = Some(mutex);
                 self.mutex_lock_called = true;
                 return;
             }
@@ -147,6 +141,20 @@ impl<'tcx, 'l> ArmVisitor<'tcx, 'l> {
             SpanlessEq::new(cx).eq_expr(op_mutex, arm_mutex)
         } else {
             false
+        }
+    }
+}
+
+fn is_mutex_lock_call<'a>(cx: &LateContext<'a, '_>, expr: &'a Expr<'_>) -> Option<&'a Expr<'a>> {
+    if_chain! {
+        if let ExprKind::MethodCall(path, _span, args) = &expr.kind;
+        if path.ident.to_string() == "lock";
+        let ty = cx.tables.expr_ty(&args[0]);
+        if match_type(cx, ty, &paths::MUTEX);
+        then {
+            Some(&args[0])
+        } else {
+            None
         }
     }
 }
