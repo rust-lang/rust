@@ -307,7 +307,11 @@ impl ast::UseTree {
 
         fn split_path_prefix(prefix: &ast::Path) -> Option<ast::Path> {
             let parent = prefix.parent_path()?;
-            let mut res = make::path_unqualified(parent.segment()?);
+            let segment = parent.segment()?;
+            if algo::has_errors(segment.syntax()) {
+                return None;
+            }
+            let mut res = make::path_unqualified(segment);
             for p in iter::successors(parent.parent_path(), |it| it.parent_path()) {
                 res = make::path_qualified(res, p.segment()?);
             }
