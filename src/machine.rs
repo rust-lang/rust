@@ -282,7 +282,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             panic_payload: None,
             time_anchor: Instant::now(),
             layouts,
-            threads: Default::default(),
+            threads: ThreadManager::default(),
         }
     }
 }
