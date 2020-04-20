@@ -1,7 +1,41 @@
 //! The string Pattern API.
 //!
+//! The Pattern API provides a generic mechanism for using different pattern
+//! types when searching through a string.
+//!
 //! For more details, see the traits [`Pattern`], [`Searcher`],
 //! [`ReverseSearcher`], and [`DoubleEndedSearcher`].
+//!
+//! Although this API is unstable, it is exposed via stable APIs on the
+//! [`str`] type.
+//!
+//! # Examples
+//!
+//! [`Pattern`] is [implemented][pattern-impls] in the stable API for
+//! [`&str`], [`char`], slices of [`char`], and functions and closures
+//! implementing `FnMut(char) -> bool`.
+//!
+//! ```
+//! let s = "Can you find a needle in a haystack?";
+//!
+//! // &str pattern
+//! assert_eq!(s.find("you"), Some(4));
+//! // char pattern
+//! assert_eq!(s.find('n'), Some(2));
+//! // slice of chars pattern
+//! assert_eq!(s.find(&['a', 'e', 'i', 'o', 'u'][..]), Some(1));
+//! // closure pattern
+//! assert_eq!(s.find(|c: char| c.is_ascii_punctuation()), Some(35));
+//! ```
+//!
+//! [`&str`]: ../../../std/primitive.str.html
+//! [`char`]: ../../../std/primitive.char.html
+//! [`str`]: ../../../std/primitive.str.html
+//! [`DoubleEndedSearcher`]: trait.DoubleEndedSearcher.html
+//! [`Pattern`]: trait.Pattern.html
+//! [`ReverseSearcher`]: trait.ReverseSearcher.html
+//! [`Searcher`]: trait.Searcher.html
+//! [pattern-impls]: trait.Pattern.html#implementors
 
 #![unstable(
     feature = "pattern",
@@ -702,7 +736,7 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for CharSliceSearcher<'a, 'b> {
 
 impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 
-/// Searches for chars that are equal to any of the chars in the array.
+/// Searches for chars that are equal to any of the chars in the slice.
 ///
 /// # Examples
 ///

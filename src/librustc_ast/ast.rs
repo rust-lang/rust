@@ -2211,14 +2211,14 @@ rustc_index::newtype_index! {
 }
 
 impl rustc_serialize::Encodable for AttrId {
-    fn encode<S: Encoder>(&self, _: &mut S) -> Result<(), S::Error> {
-        Ok(())
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_unit()
     }
 }
 
 impl rustc_serialize::Decodable for AttrId {
-    fn decode<D: Decoder>(_: &mut D) -> Result<AttrId, D::Error> {
-        Ok(crate::attr::mk_attr_id())
+    fn decode<D: Decoder>(d: &mut D) -> Result<AttrId, D::Error> {
+        d.read_nil().map(|_| crate::attr::mk_attr_id())
     }
 }
 

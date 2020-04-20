@@ -3010,6 +3010,12 @@ impl str {
     ///
     /// Returns `false` if it does not.
     ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -3031,6 +3037,12 @@ impl str {
     ///
     /// Returns `false` if it does not.
     ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -3050,6 +3062,12 @@ impl str {
     /// string slice.
     ///
     /// Returns `false` if it does not.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3074,10 +3092,12 @@ impl str {
     ///
     /// Returns [`None`] if the pattern doesn't match.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
     ///
     /// [`None`]: option/enum.Option.html#variant.None
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3121,10 +3141,12 @@ impl str {
     ///
     /// Returns [`None`] if the pattern doesn't match.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
     ///
     /// [`None`]: option/enum.Option.html#variant.None
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3166,8 +3188,11 @@ impl str {
     /// An iterator over substrings of this string slice, separated by
     /// characters matched by a pattern.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3285,6 +3310,12 @@ impl str {
     /// `split` in that `split_inclusive` leaves the matched part as the
     /// terminator of the substring.
     ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -3319,8 +3350,11 @@ impl str {
     /// An iterator over substrings of the given string slice, separated by
     /// characters matched by a pattern and yielded in reverse order.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3370,8 +3404,11 @@ impl str {
     /// An iterator over substrings of the given string slice, separated by
     /// characters matched by a pattern.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// Equivalent to [`split`], except that the trailing substring
     /// is skipped if empty.
@@ -3414,10 +3451,11 @@ impl str {
     /// An iterator over substrings of `self`, separated by characters
     /// matched by a pattern and yielded in reverse order.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
-    /// Additional libraries might provide more complex patterns like
-    /// regular expressions.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// Equivalent to [`split`], except that the trailing substring is
     /// skipped if empty.
@@ -3462,8 +3500,11 @@ impl str {
     /// If `n` substrings are returned, the last substring (the `n`th substring)
     /// will contain the remainder of the string.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3512,8 +3553,11 @@ impl str {
     /// If `n` substrings are returned, the last substring (the `n`th substring)
     /// will contain the remainder of the string.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3557,8 +3601,11 @@ impl str {
     /// An iterator over the disjoint matches of a pattern within the given string
     /// slice.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3593,8 +3640,11 @@ impl str {
     /// An iterator over the disjoint matches of a pattern within this string slice,
     /// yielded in reverse order.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3634,8 +3684,11 @@ impl str {
     /// For matches of `pat` within `self` that overlap, only the indices
     /// corresponding to the first match are returned.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines
-    /// if a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3676,8 +3729,11 @@ impl str {
     /// For matches of `pat` within `self` that overlap, only the indices
     /// corresponding to the last match are returned.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if a
-    /// character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3894,8 +3950,11 @@ impl str {
     /// Returns a string slice with all prefixes and suffixes that match a
     /// pattern repeatedly removed.
     ///
-    /// The pattern can be a [`char`] or a closure that determines if a
-    /// character matches.
+    /// The [pattern] can be a [`char`], a slice of [`char`]s, or a function
+    /// or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3939,8 +3998,11 @@ impl str {
     /// Returns a string slice with all prefixes that match a pattern
     /// repeatedly removed.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -3981,6 +4043,12 @@ impl str {
     ///
     /// If the string does not start with `prefix`, `None` is returned.
     ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -4005,6 +4073,12 @@ impl str {
     ///
     /// If the string does not end with `suffix`, `None` is returned.
     ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -4027,8 +4101,11 @@ impl str {
     /// Returns a string slice with all suffixes that match a pattern
     /// repeatedly removed.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that
-    /// determines if a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4073,10 +4150,11 @@ impl str {
     /// Returns a string slice with all prefixes that match a pattern
     /// repeatedly removed.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that determines if
-    /// a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4109,10 +4187,11 @@ impl str {
     /// Returns a string slice with all suffixes that match a pattern
     /// repeatedly removed.
     ///
-    /// The pattern can be a `&str`, [`char`], or a closure that
-    /// determines if a character matches.
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
