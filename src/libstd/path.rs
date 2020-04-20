@@ -1116,7 +1116,6 @@ impl PathBuf {
     /// # Examples
     ///
     /// ```
-    /// #![feature(path_buf_capacity)]
     /// use std::path::PathBuf;
     ///
     /// let mut path = PathBuf::with_capacity(10);
@@ -1130,7 +1129,7 @@ impl PathBuf {
     ///
     /// [`with_capacity`]: ../ffi/struct.OsString.html#method.with_capacity
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[unstable(feature = "path_buf_capacity", issue = "58234")]
+    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
     pub fn with_capacity(capacity: usize) -> PathBuf {
         PathBuf { inner: OsString::with_capacity(capacity) }
     }
@@ -1374,7 +1373,7 @@ impl PathBuf {
     ///
     /// [`capacity`]: ../ffi/struct.OsString.html#method.capacity
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[unstable(feature = "path_buf_capacity", issue = "58234")]
+    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
@@ -1383,7 +1382,7 @@ impl PathBuf {
     ///
     /// [`clear`]: ../ffi/struct.OsString.html#method.clear
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[unstable(feature = "path_buf_capacity", issue = "58234")]
+    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
     pub fn clear(&mut self) {
         self.inner.clear()
     }
@@ -1392,7 +1391,7 @@ impl PathBuf {
     ///
     /// [`reserve`]: ../ffi/struct.OsString.html#method.reserve
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[unstable(feature = "path_buf_capacity", issue = "58234")]
+    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
     pub fn reserve(&mut self, additional: usize) {
         self.inner.reserve(additional)
     }
@@ -1401,7 +1400,7 @@ impl PathBuf {
     ///
     /// [`reserve_exact`]: ../ffi/struct.OsString.html#method.reserve_exact
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[unstable(feature = "path_buf_capacity", issue = "58234")]
+    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
     }
@@ -1410,7 +1409,7 @@ impl PathBuf {
     ///
     /// [`shrink_to_fit`]: ../ffi/struct.OsString.html#method.shrink_to_fit
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[unstable(feature = "path_buf_capacity", issue = "58234")]
+    #[stable(feature = "path_buf_capacity", since = "1.44.0")]
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit()
     }
@@ -1419,7 +1418,7 @@ impl PathBuf {
     ///
     /// [`shrink_to`]: ../ffi/struct.OsString.html#method.shrink_to
     /// [`OsString`]: ../ffi/struct.OsString.html
-    #[unstable(feature = "path_buf_capacity", issue = "58234")]
+    #[unstable(feature = "shrink_to", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.inner.shrink_to(min_capacity)
     }
