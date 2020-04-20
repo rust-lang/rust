@@ -1,5 +1,8 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 
+//! Check that we catch if a thread local is accessed after the thread has
+//! terminated.
+
 #![feature(thread_local_internals)]
 
 use std::cell::RefCell;

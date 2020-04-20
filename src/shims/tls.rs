@@ -6,7 +6,6 @@ use std::collections::HashSet;
 
 use log::trace;
 
-use rustc_index::vec::Idx;
 use rustc_middle::ty;
 use rustc_target::abi::{Size, HasDataLayout};
 
@@ -201,7 +200,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(());
         }
         let active_thread = this.get_active_thread()?;
-        assert_eq!(active_thread.index(), 0, "concurrency on Windows not supported");
+        assert_eq!(this.get_total_thread_count()?, 1, "concurrency on Windows not supported");
         assert!(!this.machine.tls.dtors_running.contains(&active_thread), "running TLS dtors twice");
         this.machine.tls.dtors_running.insert(active_thread);
         // Windows has a special magic linker section that is run on certain events.

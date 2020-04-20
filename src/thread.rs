@@ -227,6 +227,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         self.active_thread
     }
 
+    /// Get the total number of threads that were ever spawn by this program.
+    fn get_total_thread_count(&self) -> usize {
+        self.threads.len()
+    }
+
     /// Has the given thread terminated?
     fn has_terminated(&self, thread_id: ThreadId) -> bool {
         self.threads[thread_id].state == ThreadState::Terminated
@@ -490,6 +495,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn get_active_thread(&self) -> InterpResult<'tcx, ThreadId> {
         let this = self.eval_context_ref();
         Ok(this.machine.threads.get_active_thread_id())
+    }
+
+    #[inline]
+    fn get_total_thread_count(&self) -> InterpResult<'tcx, usize> {
+        let this = self.eval_context_ref();
+        Ok(this.machine.threads.get_total_thread_count())
     }
 
     #[inline]
