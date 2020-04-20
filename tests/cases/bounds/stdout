@@ -35,5 +35,5 @@ warning: technically breaking changes in `def`
    |
    = note: removed bound: `A: std::clone::Clone` (technically breaking)
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 2 warnings emitted
 

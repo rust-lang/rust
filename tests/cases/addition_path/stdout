@@ -30,3 +30,6 @@ warning: path changes to `d`
    | |_^
    |
    = note: added definition (technically breaking)
+
+warning: 2 warnings emitted
+

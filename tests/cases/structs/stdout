@@ -79,5 +79,5 @@ warning: tuple struct with no public fields changed to a regular struct (breakin
 28 | | }
    | |_^
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 2 warnings emitted
 

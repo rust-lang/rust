@@ -31,5 +31,5 @@ warning: non-breaking changes in `E`
   |
   = note: static item made mutable (non-breaking)
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 

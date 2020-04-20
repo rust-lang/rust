@@ -44,4 +44,4 @@ note: added path (technically breaking)
 10 | pub use self::a::Def;
    |         ^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted

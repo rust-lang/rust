@@ -27,5 +27,5 @@ warning: path changes to `Bcd`
   |
   = note: added definition (technically breaking)
 
-error: aborting due to previous error
+error: aborting due to previous error; 2 warnings emitted
 

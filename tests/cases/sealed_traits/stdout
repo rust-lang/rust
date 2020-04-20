@@ -13,3 +13,5 @@ note: added item to sealed trait (technically breaking)
 2 |     fn abc(&self) -> bool;
   |     ^^^^^^^^^^^^^^^^^^^^^^
 
+warning: 1 warning emitted
+

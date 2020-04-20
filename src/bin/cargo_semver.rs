@@ -3,9 +3,9 @@
 #![allow(clippy::too_many_lines)]
 
 extern crate curl;
-extern crate getopts;
 #[macro_use]
 extern crate serde;
+extern crate rustc_session;
 extern crate serde_json;
 
 use cargo::core::{Package, PackageId, Source, SourceId, Workspace};
@@ -13,6 +13,7 @@ use cargo::sources::RegistrySource;
 use curl::easy::Easy;
 use log::debug;
 use rand::Rng;
+use rustc_session::getopts;
 use std::collections::HashSet;
 use std::{
     env,
@@ -268,8 +269,8 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
 
 /// CLI utils
 mod cli {
-    extern crate getopts;
     use cargo::util::CliError;
+    use rustc_session::getopts;
 
     /// CLI options
     pub fn options() -> getopts::Options {

@@ -15,7 +15,7 @@ matrix:
       env: RUST_BACKTRACE=full
     - name: "osx"
       os: osx
-      osx_image: xcode10
+      osx_image: xcode11.3
       env: RUST_BACKTRACE=full
     - name: "windows"
       os: windows
@@ -29,7 +29,7 @@ matrix:
     - name: "clippy"
       script: |
         if rustup component add clippy-preview rustc-dev; then
-            cargo clippy --all -- -D clippy::pedantic
+            cargo clippy --all
         fi
     - name: "Shellcheck"
       script:

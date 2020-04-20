@@ -865,6 +865,6 @@ note: added path (technically breaking)
 284  |         pub use unix::*;
      |                 ^^^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 11 previous errors; 63 warnings emitted
 
 error: rustc-semverver errored
