@@ -222,6 +222,7 @@ mod future_not_send;
 mod get_last_with_len;
 mod identity_conversion;
 mod identity_op;
+mod if_let_mutex;
 mod if_let_some_result;
 mod if_not_else;
 mod implicit_return;
@@ -573,6 +574,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &get_last_with_len::GET_LAST_WITH_LEN,
         &identity_conversion::IDENTITY_CONVERSION,
         &identity_op::IDENTITY_OP,
+        &if_let_mutex::IF_LET_MUTEX,
         &if_let_some_result::IF_LET_SOME_RESULT,
         &if_not_else::IF_NOT_ELSE,
         &implicit_return::IMPLICIT_RETURN,
@@ -1054,6 +1056,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box dereference::Dereferencing);
     store.register_late_pass(|| box future_not_send::FutureNotSend);
     store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
+    store.register_late_pass(|| box if_let_mutex::IfLetMutex);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1233,6 +1236,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&get_last_with_len::GET_LAST_WITH_LEN),
         LintId::of(&identity_conversion::IDENTITY_CONVERSION),
         LintId::of(&identity_op::IDENTITY_OP),
+        LintId::of(&if_let_mutex::IF_LET_MUTEX),
         LintId::of(&if_let_some_result::IF_LET_SOME_RESULT),
         LintId::of(&indexing_slicing::OUT_OF_BOUNDS_INDEXING),
         LintId::of(&infinite_iter::INFINITE_ITER),
@@ -1620,6 +1624,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&erasing_op::ERASING_OP),
         LintId::of(&formatting::POSSIBLE_MISSING_COMMA),
         LintId::of(&functions::NOT_UNSAFE_PTR_ARG_DEREF),
+        LintId::of(&if_let_mutex::IF_LET_MUTEX),
         LintId::of(&indexing_slicing::OUT_OF_BOUNDS_INDEXING),
         LintId::of(&infinite_iter::INFINITE_ITER),
         LintId::of(&inherent_to_string::INHERENT_TO_STRING_SHADOW_DISPLAY),
