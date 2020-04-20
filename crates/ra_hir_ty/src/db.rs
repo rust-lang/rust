@@ -107,6 +107,13 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         krate: CrateId,
         goal: crate::Canonical<crate::InEnvironment<crate::Obligation>>,
     ) -> Option<crate::traits::Solution>;
+
+    #[salsa::invoke(crate::traits::chalk::program_clauses_for_chalk_env_query)]
+    fn program_clauses_for_chalk_env(
+        &self,
+        krate: CrateId,
+        env: chalk_ir::Environment<chalk::Interner>,
+    ) -> chalk_ir::ProgramClauses<chalk::Interner>;
 }
 
 fn infer_wait(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
