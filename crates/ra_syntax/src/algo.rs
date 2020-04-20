@@ -10,8 +10,8 @@ use ra_text_edit::TextEditBuilder;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken,
-    TextRange, TextUnit,
+    AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxNodePtr,
+    SyntaxToken, TextRange, TextUnit,
 };
 
 /// Returns ancestors of the node at the offset, sorted by length. This should
@@ -88,6 +88,10 @@ pub fn least_common_ancestor(u: &SyntaxNode, v: &SyntaxNode) -> Option<SyntaxNod
 
 pub fn neighbor<T: AstNode>(me: &T, direction: Direction) -> Option<T> {
     me.syntax().siblings(direction).skip(1).find_map(T::cast)
+}
+
+pub fn has_errors(node: &SyntaxNode) -> bool {
+    node.children().any(|it| it.kind() == SyntaxKind::ERROR)
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
