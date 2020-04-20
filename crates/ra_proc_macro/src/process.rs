@@ -9,7 +9,7 @@ use crate::rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTas
 use io::{BufRead, BufReader};
 use std::{
     convert::{TryFrom, TryInto},
-    ffi::OsStr,
+    ffi::{OsStr, OsString},
     io::{self, Write},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
@@ -35,6 +35,7 @@ struct Task {
 
 struct Process {
     path: PathBuf,
+    args: Vec<OsString>,
     child: Child,
 }
 
@@ -46,22 +47,25 @@ impl Drop for Process {
 
 impl Process {
     fn run(
-        process_path: PathBuf,
+        path: PathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<Process> {
-        let child = Command::new(&process_path)
-            .args(args)
+        let args = args.into_iter().map(|s| s.as_ref().into()).collect();
+
+        let child = Command::new(&path)
+            .args(&args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()?;
 
-        Ok(Process { path: process_path, child })
+        Ok(Process { path, args, child })
     }
 
     fn restart(&mut self) -> io::Result<()> {
         let _ = self.child.kill();
         self.child = Command::new(&self.path)
+            .args(&self.args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
