@@ -13,7 +13,7 @@ LL | |     };
    = help: move the lock call outside of the `if let ...` expression
 
 error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
-  --> $DIR/if_let_mutex.rs:20:5
+  --> $DIR/if_let_mutex.rs:22:5
    |
 LL | /     if let Some(locked) = m.lock().unwrap().deref() {
 LL | |         do_stuff(locked);
