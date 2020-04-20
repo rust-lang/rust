@@ -81,6 +81,7 @@ struct FunctionBuilder {
     type_params: Option<ast::TypeParamList>,
     params: ast::ParamList,
     file: AssistFile,
+    needs_pub: bool,
 }
 
 impl FunctionBuilder {
@@ -90,11 +91,12 @@ impl FunctionBuilder {
         ctx: &AssistCtx,
         call: &ast::CallExpr,
         path: &ast::Path,
-        generate_in: Option<hir::InFile<hir::ModuleSource>>,
+        target_module: Option<hir::InFile<hir::ModuleSource>>,
     ) -> Option<Self> {
+        let needs_pub = target_module.is_some();
         let mut file = AssistFile::default();
-        let target = if let Some(generate_in_module) = generate_in {
-            let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, generate_in_module)?;
+        let target = if let Some(target_module) = target_module {
+            let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, target_module)?;
             file = in_file;
             target
         } else {
@@ -102,12 +104,16 @@ impl FunctionBuilder {
         };
         let fn_name = fn_name(&path)?;
         let (type_params, params) = fn_args(ctx, &call)?;
-        Some(Self { target, fn_name, type_params, params, file })
+        Some(Self { target, fn_name, type_params, params, file, needs_pub })
     }
+
     fn render(self) -> Option<FunctionTemplate> {
         let placeholder_expr = ast::make::expr_todo();
         let fn_body = ast::make::block_expr(vec![], Some(placeholder_expr));
-        let fn_def = ast::make::fn_def(self.fn_name, self.type_params, self.params, fn_body);
+        let mut fn_def = ast::make::fn_def(self.fn_name, self.type_params, self.params, fn_body);
+        if self.needs_pub {
+            fn_def = ast::make::add_pub_crate_modifier(fn_def);
+        }
 
         let (fn_def, insert_offset) = match self.target {
             GeneratedFunctionTarget::BehindItem(it) => {
@@ -116,15 +122,14 @@ impl FunctionBuilder {
                 (indented, it.text_range().end())
             }
             GeneratedFunctionTarget::InEmptyItemList(it) => {
-                let with_leading_newline = ast::make::add_leading_newlines(1, fn_def);
-                let indent = IndentLevel::from_node(it.syntax()).indented();
-                let mut indented = indent.increase_indent(with_leading_newline);
-                if !item_list_has_whitespace(&it) {
-                    // In this case we want to make sure there's a newline between the closing
-                    // function brace and the closing module brace (so it doesn't end in `}}`).
-                    indented = ast::make::add_trailing_newlines(1, indented);
-                }
-                (indented, it.syntax().text_range().start() + TextUnit::from_usize(1))
+                let indent_once = IndentLevel(1);
+                let indent = IndentLevel::from_node(it.syntax());
+
+                let fn_def = ast::make::add_leading_newlines(1, fn_def);
+                let fn_def = indent_once.increase_indent(fn_def);
+                let fn_def = ast::make::add_trailing_newlines(1, fn_def);
+                let fn_def = indent.increase_indent(fn_def);
+                (fn_def, it.syntax().text_range().start() + TextUnit::from_usize(1))
             }
         };
 
@@ -138,11 +143,6 @@ impl FunctionBuilder {
         let cursor_offset = insert_offset + cursor_offset_from_fn_start;
         Some(FunctionTemplate { insert_offset, cursor_offset, fn_def, file: self.file })
     }
-}
-
-/// Returns true if the given ItemList contains whitespace.
-fn item_list_has_whitespace(it: &ast::ItemList) -> bool {
-    it.syntax().descendants_with_tokens().find(|it| it.kind() == SyntaxKind::WHITESPACE).is_some()
 }
 
 enum GeneratedFunctionTarget {
@@ -803,29 +803,7 @@ fn foo() {
 ",
             r"
 mod bar {
-    fn my_fn() {
-        <|>todo!()
-    }
-}
-
-fn foo() {
-    bar::my_fn()
-}
-",
-        );
-        check_assist(
-            add_function,
-            r"
-mod bar {
-}
-
-fn foo() {
-    bar::my_fn<|>()
-}
-",
-            r"
-mod bar {
-    fn my_fn() {
+    pub(crate) fn my_fn() {
         <|>todo!()
     }
 }
@@ -854,7 +832,7 @@ fn foo() {
 mod bar {
     fn something_else() {}
 
-    fn my_fn() {
+    pub(crate) fn my_fn() {
         <|>todo!()
     }
 }
@@ -872,8 +850,7 @@ fn foo() {
             add_function,
             r"
 mod bar {
-    mod baz {
-    }
+    mod baz {}
 }
 
 fn foo() {
@@ -883,7 +860,7 @@ fn foo() {
             r"
 mod bar {
     mod baz {
-        fn my_fn() {
+        pub(crate) fn my_fn() {
             <|>todo!()
         }
     }

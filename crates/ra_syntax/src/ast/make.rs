@@ -303,6 +303,10 @@ pub fn add_trailing_newlines(amount_of_newlines: usize, t: impl AstNode) -> ast:
     ast_from_text(&format!("{}{}", t.syntax(), newlines))
 }
 
+pub fn add_pub_crate_modifier(fn_def: ast::FnDef) -> ast::FnDef {
+    ast_from_text(&format!("pub(crate) {}", fn_def))
+}
+
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
     let node = parse.tree().syntax().descendants().find_map(N::cast).unwrap();
