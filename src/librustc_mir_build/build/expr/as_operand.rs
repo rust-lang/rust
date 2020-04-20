@@ -10,9 +10,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Returns an operand suitable for use until the end of the current
     /// scope expression.
     ///
-    /// The operand returned from this function will *not be valid* after
-    /// an ExprKind::Scope is passed, so please do *not* return it from
-    /// functions to avoid bad miscompiles.
+    /// The operand returned from this function will *not be valid*
+    /// after the current enclosing `ExprKind::Scope` has ended, so
+    /// please do *not* return it from functions to avoid bad
+    /// miscompiles.
     crate fn as_local_operand<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Operand<'tcx>>
     where
         M: Mirror<'tcx, Output = Expr<'tcx>>,
@@ -30,8 +31,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// `as_operand`, except for the particular case of passing values of (potentially) unsized
     /// types "by value" (see details below).
     ///
-    /// As with `as_operand`, the operand returned from this function will *not be valid* after an
-    /// `ExprKind::Scope` is passed, so do not return it from functions.
+    /// The operand returned from this function will *not be valid*
+    /// after the current enclosing `ExprKind::Scope` has ended, so
+    /// please do *not* return it from functions to avoid bad
+    /// miscompiles.
     ///
     /// # Parameters of unsized types
     ///
@@ -98,6 +101,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.expr_as_operand(block, scope, expr)
     }
 
+    /// Like `as_local_call_operand`, except that the argument will
+    /// not be valid once `scope` ends.
     fn as_call_operand<M>(
         &mut self,
         block: BasicBlock,
