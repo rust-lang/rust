@@ -1,14 +1,12 @@
-# Chalk-based trait solving (new-style)
+# Chalk-based trait solving
 
-> 🚧 This chapter describes "new-style" trait solving. This is still in the
-> [process of being implemented][wg]; this chapter serves as a kind of
-> in-progress design document. If you would prefer to read about how the
-> current trait solver works, check out
-> [this other subchapter](./resolution.html). 🚧
->
-> By the way, if you would like to help in hacking on the new solver, you will
-> find instructions for getting involved in the
-> [Traits Working Group tracking issue][wg]!
+[Chalk][chalk] is an experimental trait solver for rust that is currently
+under development by the [Traits Working Group][wg]. Its goal is
+to enable a lot of trait system features and bug fixes that are
+currently hard to implement (e.g. GATs or specialization).  if you 
+would like to help in hacking on the new solver, you will find
+instructions for getting involved in the
+[Traits Working Group tracking issue][wg].
 
 [wg]: https://github.com/rust-lang/rust/issues/48416
 
@@ -36,8 +34,7 @@ The design of the new-style trait solving currently happens in two places:
 and designs for the trait system.
 
 **rustc**. Once we are happy with the logical rules, we proceed to
-implementing them in rustc. This mainly happens in
-[`librustc_traits`][librustc_traits]. We map our struct, trait, and impl declarations
+implementing them in rustc. We map our struct, trait, and impl declarations
 into logical inference rules in the [lowering module in rustc](./lowering-module.md).
 
 [chalk]: https://github.com/rust-lang/chalk

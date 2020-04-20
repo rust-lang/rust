@@ -27,7 +27,7 @@ Item            |  Kind    | Short description           | Chapter            | 
 `StringReader` | struct | This is the lexer used during parsing. It consumes characters from the raw source code being compiled and produces a series of tokens for use by the rest of the parser | [The parser] |  [src/librustc_parse/lexer/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html)
 `rustc_ast::token_stream::TokenStream` | struct | An abstract sequence of tokens, organized into `TokenTree`s | [The parser], [Macro expansion] | [src/librustc_ast/tokenstream.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/struct.TokenStream.html)
 `TraitDef` | struct | This struct contains a trait's definition with type information | [The `ty` modules] |  [src/librustc_middle/ty/trait_def.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait_def/struct.TraitDef.html)
-`TraitRef` | struct | The combination of a trait and its input types (e.g. `P0: Trait<P1...Pn>`) | [Chalk Book: Goals and Clauses], [Chalk Book: Lowering impls]  |  [src/librustc_middle/ty/sty.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TraitRef.html)
+`TraitRef` | struct | The combination of a trait and its input types (e.g. `P0: Trait<P1...Pn>`) | [Trait Solving: Goals and Clauses]  |  [src/librustc_middle/ty/sty.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TraitRef.html)
 `Ty<'tcx>` | struct | This is the internal representation of a type used for type checking | [Type checking] | [src/librustc_middle/ty/mod.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.Ty.html)
 `TyCtxt<'tcx>` | struct | The "typing context". This is the central data structure in the compiler. It is the context that you use to perform all manner of queries | [The `ty` modules] | [src/librustc_middle/ty/context.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html)
 
@@ -42,5 +42,4 @@ Item            |  Kind    | Short description           | Chapter            | 
 [Macro expansion]: ../macro-expansion.html
 [Name resolution]: ../name-resolution.html
 [Parameter Environment]: ../param_env.html
-[Chalk Book: Goals and Clauses]: https://rust-lang.github.io/chalk/book/clauses/goals_and_clauses.html#domain-goals
-[Chalk Book: Lowering impls]: https://rust-lang.github.io/chalk/book/clauses/lowering_rules.html#lowering-impls
+[Trait Solving: Goals and Clauses]: ../traits/goals-and-clauses.html#domain-goals
