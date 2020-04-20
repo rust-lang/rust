@@ -7,6 +7,6 @@
 // details.
 
 pub struct Dependent<T, const X: T>([(); X]);
-//~^ ERROR `T` must be annotated with `#[derive(PartialEq, Eq)]`
+//~^ ERROR `T` is not guaranteed to `#[derive(PartialEq, Eq)]`
 
 fn main() {}
