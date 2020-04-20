@@ -72,6 +72,7 @@ impl LateLintPass<'_, '_> for IfLetMutex {
                         IF_LET_MUTEX,
                         ex.span,
                         "calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock",
+                        None,
                         "move the lock call outside of the `if let ...` expression",
                     );
                 }
