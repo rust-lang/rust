@@ -14,28 +14,34 @@ Forge][forge].
 Most of the time we only need to update the changelog for minor Rust releases. It's
 been very rare that Clippy changes were included in a patch release.
 
-## How to update
+## Changelog update walkthrough
 
 ### 1. Finding the relevant Clippy commits
 
 Each Rust release ships with its own version of Clippy. The Clippy submodule can
-be found in the [tools][tools] directory of the Rust repository.
+be found in the `tools` directory of the Rust repository.
 
-To find the Clippy commit hash for a specific Rust release you select the Rust
-release tag from the dropdown and then check the commit of the Clippy directory:
+Depending on the current time and what exactly you want to update, the following
+bullet points might be helpful:
 
-![Explanation of how to find the commit hash](https://user-images.githubusercontent.com/2042399/62846160-1f8b0480-bcce-11e9-9da8-7964ca034e7a.png)
+* When writing the release notes for the **upcoming stable release** you need to check
+  out the Clippy commit of the current Rust `beta` branch. [Link][rust_beta_tools]
+* When writing the release notes for the **upcoming beta release**, you need to check
+  out the Clippy commit of the current Rust `master`. [Link][rust_master_tools]
+* When writing the (forgotten) release notes for a **past stable release**, you
+  need to select the Rust release tag from the dropdown and then check the
+  commit of the Clippy directory:
 
-When writing the release notes for the upcoming stable release you want to check
-out the commit of the current Rust `beta` tag.
+  ![Explanation of how to find the commit hash](https://user-images.githubusercontent.com/2042399/62846160-1f8b0480-bcce-11e9-9da8-7964ca034e7a.png)
+
 
 ### 2. Fetching the PRs between those commits
 
-You'll want to run `util/fetch_prs_between.sh commit1 commit2 > changes.txt`
-and open that file in your editor of choice.
+Once you've got the correct commit range, run
 
-* `commit1` is the Clippy commit hash of the previous stable release
-* `commit2` is the Clippy commit hash of the release you want to write the changelog for.
+    util/fetch_prs_between.sh commit1 commit2 > changes.txt
+
+and open that file in your editor of choice.
 
 When updating the changelog it's also a good idea to make sure that `commit1` is
 already correct in the current changelog.
@@ -68,4 +74,5 @@ relevant commit ranges.
 
 [changelog]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md
 [forge]: https://forge.rust-lang.org/
-[tools]: https://github.com/rust-lang/rust/tree/master/src/tools
+[rust_master_tools]: https://github.com/rust-lang/rust/tree/master/src/tools
+[rust_beta_tools]: https://github.com/rust-lang/rust/tree/beta/src/tools
