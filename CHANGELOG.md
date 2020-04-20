@@ -18,11 +18,11 @@ Current beta, release 2020-06-04
 
 * [`explicit_deref_methods`] [#5226](https://github.com/rust-lang/rust-clippy/pull/5226)
 * [`implicit_saturating_sub`] [#5427](https://github.com/rust-lang/rust-clippy/pull/5427)
-* [`macro_use`] [#5230](https://github.com/rust-lang/rust-clippy/pull/5230)
+* [`macro_use_imports`] [#5230](https://github.com/rust-lang/rust-clippy/pull/5230)
 * [`verbose_file_reads`] [#5272](https://github.com/rust-lang/rust-clippy/pull/5272)
 * [`future_not_send`] [#5423](https://github.com/rust-lang/rust-clippy/pull/5423)
 * [`redundant_pub_crate`] [#5319](https://github.com/rust-lang/rust-clippy/pull/5319)
-* [`non_scalar_const`] [#5248](https://github.com/rust-lang/rust-clippy/pull/5248)
+* [`large_const_arrays`] [#5248](https://github.com/rust-lang/rust-clippy/pull/5248)
 * [`result_map_or_into_option`] [#5415](https://github.com/rust-lang/rust-clippy/pull/5415)
 * [`redundant_allocation`] [#5349](https://github.com/rust-lang/rust-clippy/pull/5349)
 * [`fn_address_comparisons`] [#5294](https://github.com/rust-lang/rust-clippy/pull/5294)
@@ -46,7 +46,7 @@ Current beta, release 2020-06-04
 * Make [`redundant_clone`] also trigger on cases where the cloned value is not
   consumed. [#5304](https://github.com/rust-lang/rust-clippy/pull/5304)
 * Expand [`integer_arithmetic`] to also disallow bit-shifting [#5430](https://github.com/rust-lang/rust-clippy/pull/5430)
-* [`opt_as_ref_deref`] now detects more deref cases [#5425](https://github.com/rust-lang/rust-clippy/pull/5425)
+* [`option_as_ref_deref`] now detects more deref cases [#5425](https://github.com/rust-lang/rust-clippy/pull/5425)
 * [`large_enum_variant`] now report the sizes of the largest and second-largest variants [#5466](https://github.com/rust-lang/rust-clippy/pull/5466)
 * [`bool_comparison`] now also checks for inequality comparisons that can be
   written more concisely [#5365](https://github.com/rust-lang/rust-clippy/pull/5365)
@@ -62,7 +62,7 @@ Current beta, release 2020-06-04
 * [`should_implement_trait`] [#5437](https://github.com/rust-lang/rust-clippy/pull/5437)
 * [`unused_self`] [#5387](https://github.com/rust-lang/rust-clippy/pull/5387)
 * [`redundant_clone`] [#5453](https://github.com/rust-lang/rust-clippy/pull/5453)
-* [`clippy::precedence`] [#5445](https://github.com/rust-lang/rust-clippy/pull/5445)
+* [`precedence`] [#5445](https://github.com/rust-lang/rust-clippy/pull/5445)
 * [`suspicious_op_assign_impl`] [#5424](https://github.com/rust-lang/rust-clippy/pull/5424)
 * [`needless_lifetimes`] [#5293](https://github.com/rust-lang/rust-clippy/pull/5293)
 * [`redundant_pattern`] [#5287](https://github.com/rust-lang/rust-clippy/pull/5287)
@@ -72,12 +72,12 @@ Current beta, release 2020-06-04
 ### Suggestion Improvements
 
 * Improved [`question_mark`] lint suggestion so that it doesn't add redundant `as_ref()` [#5481](https://github.com/rust-lang/rust-clippy/pull/5481)
-* Improve the suggested placeholder in [`map_unit_fn`] [#5292](https://github.com/rust-lang/rust-clippy/pull/5292)
+* Improve the suggested placeholder in [`option_map_unit_fn`] [#5292](https://github.com/rust-lang/rust-clippy/pull/5292)
 * Improve suggestion for [`match_single_binding`] when triggered inside a closure [#5350](https://github.com/rust-lang/rust-clippy/pull/5350)
 
 ### ICE Fixes
 
-* [`trivial_bounds`] [#5296](https://github.com/rust-lang/rust-clippy/pull/5296)
+* Handle the unstable `trivial_bounds` feature [#5296](https://github.com/rust-lang/rust-clippy/pull/5296)
 * `shadow_*` lints [#5297](https://github.com/rust-lang/rust-clippy/pull/5297)
 
 ### Documentation
