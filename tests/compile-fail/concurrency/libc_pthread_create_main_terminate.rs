@@ -1,8 +1,7 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
+// error-pattern: unsupported operation: the main thread terminated without waiting for other threads
 
 // Check that we terminate the program when the main thread terminates.
-
-//~^^^^ ERROR: unsupported operation: the main thread terminated without waiting for other threads
 
 #![feature(rustc_private)]
 
