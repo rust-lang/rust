@@ -48,7 +48,7 @@ impl Process {
     fn run(
         process_path: PathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
-    ) -> Result<Process, io::Error> {
+    ) -> io::Result<Process> {
         let child = Command::new(&process_path)
             .args(args)
             .stdin(Stdio::piped())
@@ -59,7 +59,7 @@ impl Process {
         Ok(Process { path: process_path, child })
     }
 
-    fn restart(&mut self) -> Result<(), io::Error> {
+    fn restart(&mut self) -> io::Result<()> {
         let _ = self.child.kill();
         self.child = Command::new(&self.path)
             .stdin(Stdio::piped())
@@ -196,7 +196,7 @@ fn send_request(
     mut writer: &mut impl Write,
     mut reader: &mut impl BufRead,
     req: Request,
-) -> Result<Option<Response>, io::Error> {
+) -> io::Result<Option<Response>> {
     req.write(&mut writer)?;
     Ok(Response::read(&mut reader)?)
 }
