@@ -149,21 +149,20 @@ impl Elaborator<'tcx> {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations = predicates.predicates.iter().map(|(pred, span)| {
+                let obligations = predicates.predicates.into_iter().map(|(pred, span)| {
                     predicate_obligation(
                         pred.subst_supertrait(tcx, &data.to_poly_trait_ref()),
                         Some(*span),
                     )
                 });
-                debug!("super_predicates: data={:?} predicates={:?}", data, &obligations);
+                debug!("super_predicates: data={:?}", data);
 
                 // Only keep those bounds that we haven't already seen.
                 // This is necessary to prevent infinite recursion in some
                 // cases. One common case is when people define
                 // `trait Sized: Sized { }` rather than `trait Sized { }`.
                 let visited = &mut self.visited;
-                let obligations =
-                    obligations.filter(|obligation| visited.insert(&obligation.predicate));
+                let obligations = obligations.filter(|o| visited.insert(&o.predicate));
 
                 self.stack.extend(obligations);
             }
