@@ -51,7 +51,7 @@ fn main() -> Result<()> {
             cli::diagnostics(path.as_ref(), load_output_dirs, with_proc_macro, all)?
         }
 
-        args::Command::ProcMacro => run_proc_macro_sv()?,
+        args::Command::ProcMacro => run_proc_macro_srv()?,
         args::Command::RunServer => run_server()?,
         args::Command::Version => println!("rust-analyzer {}", env!("REV")),
     }
@@ -65,7 +65,7 @@ fn setup_logging() -> Result<()> {
     Ok(())
 }
 
-fn run_proc_macro_sv() -> Result<()> {
+fn run_proc_macro_srv() -> Result<()> {
     ra_proc_macro_srv::cli::run();
     Ok(())
 }

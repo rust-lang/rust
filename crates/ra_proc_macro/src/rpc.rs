@@ -1,9 +1,9 @@
-//! Data struture serialization related stuffs for RPC
+//! Data struture serialization related stuff for RPC
 //!
-//! Define all necessary rpc serialization data structure,
-//! which include ra_tt related data and some task messages.
-//! Although adding Serialize and Deserialize trait to ra_tt directly seem to be much easier,
-//! we deliberately duplicate the ra_tt struct with #[serde(with = "XXDef")]
+//! Defines all necessary rpc serialization data structures,
+//! which includes `ra_tt` related data and some task messages.
+//! Although adding `Serialize` and `Deserialize` traits to `ra_tt` directly seems
+//! to be much easier, we deliberately duplicate `ra_tt` structs with `#[serde(with = "XXDef")]`
 //! for separation of code responsibility.
 
 use ra_tt::{
@@ -34,15 +34,15 @@ pub struct ListMacrosResult {
 pub struct ExpansionTask {
     /// Argument of macro call.
     ///
-    /// In custom derive that would be a struct or enum; in attribute-like macro - underlying
+    /// In custom derive this will be a struct or enum; in attribute-like macro - underlying
     /// item; in function-like macro - the macro body.
     #[serde(with = "SubtreeDef")]
     pub macro_body: Subtree,
 
-    /// Names of macros to expand.
+    /// Names of macros to expand. // TODO: are they comma-separated?
     ///
     /// In custom derive those are names of derived traits (`Serialize`, `Getters`, etc.). In
-    /// attribute-like and functiona-like macros - single name of macro itself (`show_streams`).
+    /// attribute-like and function-like macros - single name of macro itself (`show_streams`).
     pub macro_name: String,
 
     /// Possible attributes for the attribute-like macros.

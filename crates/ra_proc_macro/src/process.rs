@@ -45,24 +45,23 @@ impl Drop for Process {
 }
 
 impl Process {
-    fn run<I, S>(process_path: &Path, args: I) -> Result<Process, io::Error>
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        let child = Command::new(process_path.clone())
+    fn run(
+        process_path: PathBuf,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    ) -> Result<Process, io::Error> {
+        let child = Command::new(&process_path)
             .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()?;
 
-        Ok(Process { path: process_path.into(), child })
+        Ok(Process { path: process_path, child })
     }
 
     fn restart(&mut self) -> Result<(), io::Error> {
         let _ = self.child.kill();
-        self.child = Command::new(self.path.clone())
+        self.child = Command::new(&self.path)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -80,14 +79,10 @@ impl Process {
 }
 
 impl ProcMacroProcessSrv {
-    pub fn run<I, S>(
-        process_path: &Path,
-        args: I,
-    ) -> Result<(ProcMacroProcessThread, ProcMacroProcessSrv), io::Error>
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
+    pub fn run(
+        process_path: PathBuf,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    ) -> io::Result<(ProcMacroProcessThread, ProcMacroProcessSrv)> {
         let process = Process::run(process_path, args)?;
 
         let (task_tx, task_rx) = bounded(0);

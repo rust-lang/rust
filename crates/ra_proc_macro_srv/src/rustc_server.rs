@@ -6,7 +6,7 @@
 //! The original idea from fedochet is using proc-macro2 as backend,
 //! we use ra_tt instead for better intergation with RA.
 //!
-//! FIXME: No span and source file informatin is implemented yet
+//! FIXME: No span and source file information is implemented yet
 
 use crate::proc_macro::bridge::{self, server};
 use ra_tt as tt;

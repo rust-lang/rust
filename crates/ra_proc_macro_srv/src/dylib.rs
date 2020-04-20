@@ -9,43 +9,37 @@ use libloading::Library;
 use memmap::Mmap;
 use ra_proc_macro::ProcMacroKind;
 
-use std::io::Error as IoError;
-use std::io::ErrorKind as IoErrorKind;
+use std::io;
 
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
 
-fn invalid_data_err(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> IoError {
-    IoError::new(IoErrorKind::InvalidData, e)
+fn invalid_data_err(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, e)
 }
 
-fn is_derive_registrar_symbol(symbol: &str) -> bool {
+fn is_derive_registrar_symbol(symbol: &&str) -> bool {
     symbol.contains(NEW_REGISTRAR_SYMBOL)
 }
 
-fn find_registrar_symbol(file: &Path) -> Result<Option<String>, IoError> {
+fn find_registrar_symbol(file: &Path) -> io::Result<Option<String>> {
     let file = File::open(file)?;
     let buffer = unsafe { Mmap::map(&file)? };
     let object = Object::parse(&buffer).map_err(invalid_data_err)?;
 
-    match object {
+    let name = match object {
         Object::Elf(elf) => {
             let symbols = elf.dynstrtab.to_vec().map_err(invalid_data_err)?;
-            let name =
-                symbols.iter().find(|s| is_derive_registrar_symbol(s)).map(|s| s.to_string());
-            Ok(name)
+            symbols.into_iter().find(is_derive_registrar_symbol).map(&str::to_owned)
         }
-        Object::PE(pe) => {
-            let name = pe
-                .exports
-                .iter()
-                .flat_map(|s| s.name)
-                .find(|s| is_derive_registrar_symbol(s))
-                .map(|s| s.to_string());
-            Ok(name)
-        }
+        Object::PE(pe) => pe
+            .exports
+            .iter()
+            .flat_map(|s| s.name)
+            .find(is_derive_registrar_symbol)
+            .map(&str::to_owned),
         Object::Mach(Mach::Binary(binary)) => {
             let exports = binary.exports().map_err(invalid_data_err)?;
-            let name = exports
+            exports
                 .iter()
                 .map(|s| {
                     // In macos doc:
@@ -58,12 +52,12 @@ fn find_registrar_symbol(file: &Path) -> Result<Option<String>, IoError> {
                         &s.name
                     }
                 })
-                .find(|s| is_derive_registrar_symbol(s))
-                .map(|s| s.to_string());
-            Ok(name)
+                .find(is_derive_registrar_symbol)
+                .map(&str::to_owned)
         }
-        _ => Ok(None),
-    }
+        _ => return Ok(None),
+    };
+    Ok(name)
 }
 
 /// Loads dynamic library in platform dependent manner.
@@ -93,15 +87,16 @@ fn load_library(file: &Path) -> Result<Library, libloading::Error> {
 }
 
 struct ProcMacroLibraryLibloading {
-    // Hold the dylib to prevent it for unloadeding
+    // Hold the dylib to prevent it from unloading
     _lib: Library,
     exported_macros: Vec<bridge::client::ProcMacro>,
 }
 
 impl ProcMacroLibraryLibloading {
-    fn open(file: &Path) -> Result<Self, IoError> {
-        let symbol_name = find_registrar_symbol(file)?
-            .ok_or(invalid_data_err(format!("Cannot find registrar symbol in file {:?}", file)))?;
+    fn open(file: &Path) -> io::Result<Self> {
+        let symbol_name = find_registrar_symbol(file)?.ok_or_else(|| {
+            invalid_data_err(format!("Cannot find registrar symbol in file {:?}", file))
+        })?;
 
         let lib = load_library(file).map_err(invalid_data_err)?;
         let exported_macros = {
@@ -121,18 +116,16 @@ pub struct Expander {
 }
 
 impl Expander {
-    pub fn new<P: AsRef<Path>>(lib: &P) -> Result<Expander, String> {
-        let mut libs = vec![];
-        /* Some libraries for dynamic loading require canonicalized path (even when it is
-        already absolute
-        */
-        let lib =
-            lib.as_ref().canonicalize().expect(&format!("Cannot canonicalize {:?}", lib.as_ref()));
+    pub fn new(lib: &Path) -> Result<Expander, String> {
+        // Some libraries for dynamic loading require canonicalized path even when it is
+        // already absolute
+        let lib = lib
+            .canonicalize()
+            .unwrap_or_else(|err| panic!("Cannot canonicalize {:?}: {:?}", lib, err));
 
         let library = ProcMacroLibraryImpl::open(&lib).map_err(|e| e.to_string())?;
-        libs.push(library);
 
-        Ok(Expander { libs })
+        Ok(Expander { libs: vec![library] })
     }
 
     pub fn expand(
@@ -176,7 +169,6 @@ impl Expander {
                             parsed_attributes,
                             parsed_body,
                         );
-
                         return res.map(|it| it.subtree);
                     }
                     _ => continue,
@@ -187,26 +179,21 @@ impl Expander {
         Err(bridge::PanicMessage::String("Nothing to expand".to_string()))
     }
 
-    pub fn list_macros(&self) -> Result<Vec<(String, ProcMacroKind)>, bridge::PanicMessage> {
-        let mut result = vec![];
-
-        for lib in &self.libs {
-            for proc_macro in &lib.exported_macros {
-                let res = match proc_macro {
-                    bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
-                        (trait_name.to_string(), ProcMacroKind::CustomDerive)
-                    }
-                    bridge::client::ProcMacro::Bang { name, .. } => {
-                        (name.to_string(), ProcMacroKind::FuncLike)
-                    }
-                    bridge::client::ProcMacro::Attr { name, .. } => {
-                        (name.to_string(), ProcMacroKind::Attr)
-                    }
-                };
-                result.push(res);
-            }
-        }
-
-        Ok(result)
+    pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
+        self.libs
+            .iter()
+            .flat_map(|it| &it.exported_macros)
+            .map(|proc_macro| match proc_macro {
+                bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
+                    (trait_name.to_string(), ProcMacroKind::CustomDerive)
+                }
+                bridge::client::ProcMacro::Bang { name, .. } => {
+                    (name.to_string(), ProcMacroKind::FuncLike)
+                }
+                bridge::client::ProcMacro::Attr { name, .. } => {
+                    (name.to_string(), ProcMacroKind::Attr)
+                }
+            })
+            .collect()
     }
 }

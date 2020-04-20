@@ -1,4 +1,4 @@
-//! Defines messages for cross-process message based on `ndjson` wire protocol
+//! Defines messages for cross-process message passing based on `ndjson` wire protocol
 
 use std::{
     convert::TryFrom,
@@ -31,7 +31,7 @@ macro_rules! impl_try_from_response {
             fn try_from(value: Response) -> Result<Self, Self::Error> {
                 match value {
                     Response::$tag(res) => Ok(res),
-                    _ => Err("Fail to convert from response"),
+                    _ => Err(concat!("Failed to convert response to ", stringify!($tag))),
                 }
             }
         }
@@ -53,18 +53,16 @@ pub enum ErrorCode {
     ExpansionError,
 }
 
-pub trait Message: Sized + Serialize + DeserializeOwned {
-    fn read(r: &mut impl BufRead) -> io::Result<Option<Self>> {
-        let text = match read_json(r)? {
-            None => return Ok(None),
-            Some(text) => text,
-        };
-        let msg = serde_json::from_str(&text)?;
-        Ok(Some(msg))
+pub trait Message: Serialize + DeserializeOwned {
+    fn read(inp: &mut impl BufRead) -> io::Result<Option<Self>> {
+        Ok(match read_json(inp)? {
+            None => None,
+            Some(text) => Some(serde_json::from_str(&text)?),
+        })
     }
-    fn write(self, w: &mut impl Write) -> io::Result<()> {
+    fn write(self, out: &mut impl Write) -> io::Result<()> {
         let text = serde_json::to_string(&self)?;
-        write_json(w, &text)
+        write_json(out, &text)
     }
 }
 
@@ -73,15 +71,12 @@ impl Message for Response {}
 
 fn read_json(inp: &mut impl BufRead) -> io::Result<Option<String>> {
     let mut buf = String::new();
-    if inp.read_line(&mut buf)? == 0 {
-        return Ok(None);
-    }
-    // Remove ending '\n'
-    let buf = &buf[..buf.len() - 1];
-    if buf.is_empty() {
-        return Ok(None);
-    }
-    Ok(Some(buf.to_string()))
+    inp.read_line(&mut buf)?;
+    buf.pop(); // Remove traling '\n'
+    Ok(match buf.len() {
+        0 => None,
+        _ => Some(buf),
+    })
 }
 
 fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
