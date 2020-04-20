@@ -4,17 +4,20 @@ use hir::ScopeDef;
 use test_utils::tested_by;
 
 use crate::completion::{CompletionContext, Completions};
+use hir::{Adt, ModuleDef};
 use ra_syntax::AstNode;
 
 pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_trivial_path {
-        return;
-    }
-
-    if ctx.is_pat_binding_or_const
+    if (!ctx.is_trivial_path && !ctx.is_pat_binding_or_const)
         || ctx.record_lit_syntax.is_some()
         || ctx.record_pat_syntax.is_some()
     {
+        return;
+    }
+
+    complete_enum_variants(acc, ctx);
+
+    if ctx.is_pat_binding_or_const {
         return;
     }
 
@@ -29,6 +32,24 @@ pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         }
         acc.add_resolution(ctx, name.to_string(), &res)
     });
+}
+
+fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext) {
+    if let Some(ty) = ctx.expected_type_of(&ctx.token.parent()) {
+        if let Some(Adt::Enum(enum_data)) = ty.as_adt() {
+            let variants = enum_data.variants(ctx.db);
+            let module = enum_data.module(ctx.db);
+            for variant in variants {
+                if let Some(path) = module.find_use_path(ctx.db, ModuleDef::from(variant)) {
+                    // Variants with trivial paths are already added by the existing completion logic,
+                    // so we should avoid adding these twice
+                    if path.segments.len() > 1 {
+                        acc.add_enum_variant(ctx, variant, Some(path.to_string()));
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
