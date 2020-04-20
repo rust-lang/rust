@@ -509,6 +509,23 @@ fn thin_lto(
             // (Note that globally, the export set is just the inverse of the
             // import set.)
             //
+            // For further justification of why the above is necessary and sufficient,
+            // see the LLVM blog post on ThinLTO:
+            //
+            // http://blog.llvm.org/2016/06/thinlto-scalable-and-incremental-lto.html
+            //
+            // which states the following:
+            //
+            // ```quote
+            // any particular ThinLTO backend must be redone iff:
+            //
+            // 1. The corresponding (primary) module’s bitcode changed
+            // 2. The list of imports into or exports from the module changed
+            // 3. The bitcode for any module being imported from has changed
+            // 4. Any global analysis result affecting either the primary module
+            //    or anything it imports has changed.
+            // ```
+            //
             // This strategy means we can always save the computed imports as
             // canon: when we reuse the post-ThinLTO version, condition (3.)
             // ensures that the current import set is the same as the previous
