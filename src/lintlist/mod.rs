@@ -2336,7 +2336,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "unsafe_derive_deserialize",
-        group: "correctness",
+        group: "pedantic",
         desc: "deriving `serde::Deserialize` on a type that has methods using `unsafe`",
         deprecation: None,
         module: "derive",

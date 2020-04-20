@@ -3,9 +3,11 @@ use crate::utils::{
     is_automatically_derived, is_copy, match_path, span_lint_and_help, span_lint_and_note, span_lint_and_then,
 };
 use if_chain::if_chain;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::{
+    BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Item, ItemKind, TraitRef, UnsafeSource, Unsafety,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, Ty};
@@ -97,15 +99,15 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub UNSAFE_DERIVE_DESERIALIZE,
-    correctness,
+    pedantic,
     "deriving `serde::Deserialize` on a type that has methods using `unsafe`"
 }
 
 declare_lint_pass!(Derive => [EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ, UNSAFE_DERIVE_DESERIALIZE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
-        if let hir::ItemKind::Impl {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+        if let ItemKind::Impl {
             of_trait: Some(ref trait_ref),
             ..
         } = item.kind
@@ -128,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
 fn check_hash_peq<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     span: Span,
-    trait_ref: &hir::TraitRef<'_>,
+    trait_ref: &TraitRef<'_>,
     ty: Ty<'tcx>,
     hash_is_automatically_derived: bool,
 ) {
@@ -175,12 +177,7 @@ fn check_hash_peq<'a, 'tcx>(
 }
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
-fn check_copy_clone<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    item: &hir::Item<'_>,
-    trait_ref: &hir::TraitRef<'_>,
-    ty: Ty<'tcx>,
-) {
+fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item<'_>, trait_ref: &TraitRef<'_>, ty: Ty<'tcx>) {
     if match_path(&trait_ref.path, &paths::CLONE_TRAIT) {
         if !is_copy(cx, ty) {
             return;
@@ -223,16 +220,16 @@ fn check_copy_clone<'a, 'tcx>(
 /// Implementation of the `UNSAFE_DERIVE_DESERIALIZE` lint.
 fn check_unsafe_derive_deserialize<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    item: &hir::Item<'_>,
-    trait_ref: &hir::TraitRef<'_>,
+    item: &Item<'_>,
+    trait_ref: &TraitRef<'_>,
     ty: Ty<'tcx>,
 ) {
-    fn item_from_def_id<'tcx>(cx: &LateContext<'_, 'tcx>, def_id: DefId) -> &'tcx hir::Item<'tcx> {
+    fn item_from_def_id<'tcx>(cx: &LateContext<'_, 'tcx>, def_id: DefId) -> &'tcx Item<'tcx> {
         let hir_id = cx.tcx.hir().as_local_hir_id(def_id).unwrap();
         cx.tcx.hir().expect_item(hir_id)
     }
 
-    fn has_unsafe<'tcx>(cx: &LateContext<'_, 'tcx>, item: &'tcx hir::Item<'_>) -> bool {
+    fn has_unsafe<'tcx>(cx: &LateContext<'_, 'tcx>, item: &'tcx Item<'_>) -> bool {
         let mut visitor = UnsafeVisitor { cx, has_unsafe: false };
         walk_item(&mut visitor, item);
         visitor.has_unsafe
@@ -267,21 +264,14 @@ struct UnsafeVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn visit_fn(
-        &mut self,
-        kind: FnKind<'tcx>,
-        decl: &'tcx hir::FnDecl<'_>,
-        body_id: hir::BodyId,
-        span: Span,
-        id: hir::HirId,
-    ) {
+    fn visit_fn(&mut self, kind: FnKind<'tcx>, decl: &'tcx FnDecl<'_>, body_id: BodyId, span: Span, id: HirId) {
         if self.has_unsafe {
             return;
         }
 
         if_chain! {
             if let Some(header) = kind.header();
-            if let hir::Unsafety::Unsafe = header.unsafety;
+            if let Unsafety::Unsafe = header.unsafety;
             then {
                 self.has_unsafe = true;
             }
@@ -290,14 +280,12 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
         walk_fn(self, kind, decl, body_id, span, id);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.has_unsafe {
             return;
         }
 
-        if let hir::ExprKind::Block(block, _) = expr.kind {
-            use hir::{BlockCheckMode, UnsafeSource};
-
+        if let ExprKind::Block(block, _) = expr.kind {
             match block.rules {
                 BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
                 | BlockCheckMode::PushUnsafeBlock(UnsafeSource::UserProvided)
