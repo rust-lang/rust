@@ -524,6 +524,7 @@ pub use core::{
 
 // Re-export built-in macros defined through libcore.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow(deprecated)]
 pub use core::{
     asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
     format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
