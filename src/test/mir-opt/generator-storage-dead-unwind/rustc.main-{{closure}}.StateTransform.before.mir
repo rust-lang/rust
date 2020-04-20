@@ -21,7 +21,7 @@ yields ()
 
     bb0: {
         StorageLive(_3);                 // bb0[0]: scope 0 at $DIR/generator-storage-dead-unwind.rs:23:13: 23:14
-        _3 = Foo(const 5i32,);           // bb0[1]: scope 0 at $DIR/generator-storage-dead-unwind.rs:23:17: 23:23
+        _3 = Foo(const 5i32);            // bb0[1]: scope 0 at $DIR/generator-storage-dead-unwind.rs:23:17: 23:23
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000005))
@@ -29,7 +29,7 @@ yields ()
                                          // + span: $DIR/generator-storage-dead-unwind.rs:23:21: 23:22
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000005)) }
         StorageLive(_4);                 // bb0[2]: scope 1 at $DIR/generator-storage-dead-unwind.rs:24:13: 24:14
-        _4 = Bar(const 6i32,);           // bb0[3]: scope 1 at $DIR/generator-storage-dead-unwind.rs:24:17: 24:23
+        _4 = Bar(const 6i32);            // bb0[3]: scope 1 at $DIR/generator-storage-dead-unwind.rs:24:17: 24:23
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000006))

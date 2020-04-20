@@ -9,7 +9,7 @@ use rustc_apfloat::Float;
 use rustc_ast::ast;
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_span::symbol::{kw, Symbol};
@@ -498,16 +498,9 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Never => p!(write("!")),
             ty::Tuple(ref tys) => {
-                p!(write("("));
-                let mut tys = tys.iter();
-                if let Some(&ty) = tys.next() {
-                    p!(print(ty), write(","));
-                    if let Some(&ty) = tys.next() {
-                        p!(write(" "), print(ty));
-                        for &ty in tys {
-                            p!(write(", "), print(ty));
-                        }
-                    }
+                p!(write("("), comma_sep(tys.iter().copied()));
+                if tys.len() == 1 {
+                    p!(write(","));
                 }
                 p!(write(")"))
             }
@@ -570,15 +563,10 @@ pub trait PrettyPrinter<'tcx>:
                     let def_key = self.tcx().def_key(def_id);
                     if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
                         p!(write("{}", name));
-                        let mut substs = substs.iter();
                         // FIXME(eddyb) print this with `print_def_path`.
-                        if let Some(first) = substs.next() {
-                            p!(write("::<"));
-                            p!(print(first));
-                            for subst in substs {
-                                p!(write(", "), print(subst));
-                            }
-                            p!(write(">"));
+                        if !substs.is_empty() {
+                            p!(write("::"));
+                            p!(generic_delimiters(|cx| cx.comma_sep(substs.iter().copied())));
                         }
                         return Ok(self);
                     }
@@ -850,16 +838,12 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self, Self::Error> {
         define_scoped_cx!(self);
 
-        p!(write("("));
-        let mut inputs = inputs.iter();
-        if let Some(&ty) = inputs.next() {
-            p!(print(ty));
-            for &ty in inputs {
-                p!(write(", "), print(ty));
+        p!(write("("), comma_sep(inputs.iter().copied()));
+        if c_variadic {
+            if !inputs.is_empty() {
+                p!(write(", "));
             }
-            if c_variadic {
-                p!(write(", ..."));
-            }
+            p!(write("..."));
         }
         p!(write(")"));
         if !output.is_unit() {
@@ -1050,19 +1034,6 @@ pub trait PrettyPrinter<'tcx>:
             }
             // For function type zsts just printing the path is enough
             (Scalar::Raw { size: 0, .. }, ty::FnDef(d, s)) => p!(print_value_path(*d, s)),
-            // Empty tuples are frequently occurring, so don't print the fallback.
-            (Scalar::Raw { size: 0, .. }, ty::Tuple(ts)) if ts.is_empty() => p!(write("()")),
-            // Zero element arrays have a trivial representation.
-            (
-                Scalar::Raw { size: 0, .. },
-                ty::Array(
-                    _,
-                    ty::Const {
-                        val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: 0, .. })),
-                        ..
-                    },
-                ),
-            ) => p!(write("[]")),
             // Nontrivial types with scalar bit representation
             (Scalar::Raw { data, size }, _) => {
                 let print = |mut this: Self| {
@@ -1131,14 +1102,14 @@ pub trait PrettyPrinter<'tcx>:
         define_scoped_cx!(self);
 
         if self.tcx().sess.verbose() {
-            p!(write("ConstValue({:?}: {:?})", ct, ty));
+            p!(write("ConstValue({:?}: ", ct), print(ty), write(")"));
             return Ok(self);
         }
 
         let u8_type = self.tcx().types.u8;
 
         match (ct, &ty.kind) {
-            (ConstValue::Scalar(scalar), _) => self.pretty_print_const_scalar(scalar, ty, print_ty),
+            // Byte/string slices, printed as (byte) string literals.
             (
                 ConstValue::Slice { data, start, end },
                 ty::Ref(_, ty::TyS { kind: ty::Slice(t), .. }, _),
@@ -1172,6 +1143,66 @@ pub trait PrettyPrinter<'tcx>:
                 p!(pretty_print_byte_str(byte_str));
                 Ok(self)
             }
+
+            // Aggregates, printed as array/tuple/struct/variant construction syntax.
+            //
+            // NB: the `has_param_types_or_consts` check ensures that we can use
+            // the `destructure_const` query with an empty `ty::ParamEnv` without
+            // introducing ICEs (e.g. via `layout_of`) from missing bounds.
+            // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
+            // to be able to destructure the tuple into `(0u8, *mut T)
+            //
+            // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
+            // correct `ty::ParamEnv` to allow printing *all* constant values.
+            (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_param_types_or_consts() => {
+                let contents = self.tcx().destructure_const(
+                    ty::ParamEnv::reveal_all()
+                        .and(self.tcx().mk_const(ty::Const { val: ty::ConstKind::Value(ct), ty })),
+                );
+                let fields = contents.fields.iter().copied();
+
+                match ty.kind {
+                    ty::Array(..) => {
+                        p!(write("["), comma_sep(fields), write("]"));
+                    }
+                    ty::Tuple(..) => {
+                        p!(write("("), comma_sep(fields));
+                        if contents.fields.len() == 1 {
+                            p!(write(","));
+                        }
+                        p!(write(")"));
+                    }
+                    ty::Adt(def, substs) => {
+                        let variant_def = &def.variants[contents.variant];
+                        p!(print_value_path(variant_def.def_id, substs));
+
+                        match variant_def.ctor_kind {
+                            CtorKind::Const => {}
+                            CtorKind::Fn => {
+                                p!(write("("), comma_sep(fields), write(")"));
+                            }
+                            CtorKind::Fictive => {
+                                p!(write(" {{ "));
+                                let mut first = true;
+                                for (field_def, field) in variant_def.fields.iter().zip(fields) {
+                                    if !first {
+                                        p!(write(", "));
+                                    }
+                                    p!(write("{}: ", field_def.ident), print(field));
+                                    first = false;
+                                }
+                                p!(write(" }}"));
+                            }
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+
+                Ok(self)
+            }
+
+            (ConstValue::Scalar(scalar), _) => self.pretty_print_const_scalar(scalar, ty, print_ty),
+
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
             // their fields instead of just dumping the memory.
             _ => {
@@ -1910,15 +1941,7 @@ define_print_and_forward_display! {
     (self, cx):
 
     &'tcx ty::List<Ty<'tcx>> {
-        p!(write("{{"));
-        let mut tys = self.iter();
-        if let Some(&ty) = tys.next() {
-            p!(print(ty));
-            for &ty in tys {
-                p!(write(", "), print(ty));
-            }
-        }
-        p!(write("}}"))
+        p!(write("{{"), comma_sep(self.iter().copied()), write("}}"))
     }
 
     ty::TypeAndMut<'tcx> {

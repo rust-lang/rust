@@ -80,7 +80,7 @@ fn main() -> () {
         StorageLive(_3);                 // bb5[0]: scope 1 at $DIR/issue-41888.rs:9:13: 9:20
         StorageLive(_4);                 // bb5[1]: scope 1 at $DIR/issue-41888.rs:9:18: 9:19
         _4 = K;                          // bb5[2]: scope 1 at $DIR/issue-41888.rs:9:18: 9:19
-        _3 = E::F(move _4,);             // bb5[3]: scope 1 at $DIR/issue-41888.rs:9:13: 9:20
+        _3 = E::F(move _4);              // bb5[3]: scope 1 at $DIR/issue-41888.rs:9:13: 9:20
         StorageDead(_4);                 // bb5[4]: scope 1 at $DIR/issue-41888.rs:9:19: 9:20
         goto -> bb14;                    // bb5[5]: scope 1 at $DIR/issue-41888.rs:9:9: 9:10
     }

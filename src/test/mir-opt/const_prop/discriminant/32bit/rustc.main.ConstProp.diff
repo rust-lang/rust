@@ -15,8 +15,8 @@
           StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/discriminant.rs:6:9: 6:10
           StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/discriminant.rs:6:13: 6:64
           StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/discriminant.rs:6:34: 6:44
--         _3 = std::option::Option::<bool>::Some(const true,); // bb0[3]: scope 0 at $DIR/discriminant.rs:6:34: 6:44
-+         _3 = const {transmute(0x01): std::option::Option<bool>}; // bb0[3]: scope 0 at $DIR/discriminant.rs:6:34: 6:44
+-         _3 = std::option::Option::<bool>::Some(const true); // bb0[3]: scope 0 at $DIR/discriminant.rs:6:34: 6:44
++         _3 = const std::option::Option::<bool>::Some(true); // bb0[3]: scope 0 at $DIR/discriminant.rs:6:34: 6:44
                                            // ty::Const
 -                                          // + ty: bool
 +                                          // + ty: std::option::Option<bool>

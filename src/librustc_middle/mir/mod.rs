@@ -2242,39 +2242,41 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             }
 
             Aggregate(ref kind, ref places) => {
-                fn fmt_tuple(fmt: &mut Formatter<'_>, places: &[Operand<'_>]) -> fmt::Result {
-                    let mut tuple_fmt = fmt.debug_tuple("");
+                let fmt_tuple = |fmt: &mut Formatter<'_>, name: &str| {
+                    let mut tuple_fmt = fmt.debug_tuple(name);
                     for place in places {
                         tuple_fmt.field(place);
                     }
                     tuple_fmt.finish()
-                }
+                };
 
                 match **kind {
                     AggregateKind::Array(_) => write!(fmt, "{:?}", places),
 
-                    AggregateKind::Tuple => match places.len() {
-                        0 => write!(fmt, "()"),
-                        1 => write!(fmt, "({:?},)", places[0]),
-                        _ => fmt_tuple(fmt, places),
-                    },
+                    AggregateKind::Tuple => {
+                        if places.is_empty() {
+                            write!(fmt, "()")
+                        } else {
+                            fmt_tuple(fmt, "")
+                        }
+                    }
 
                     AggregateKind::Adt(adt_def, variant, substs, _user_ty, _) => {
                         let variant_def = &adt_def.variants[variant];
 
-                        let f = &mut *fmt;
-                        ty::tls::with(|tcx| {
+                        let name = ty::tls::with(|tcx| {
+                            let mut name = String::new();
                             let substs = tcx.lift(&substs).expect("could not lift for printing");
-                            FmtPrinter::new(tcx, f, Namespace::ValueNS)
+                            FmtPrinter::new(tcx, &mut name, Namespace::ValueNS)
                                 .print_def_path(variant_def.def_id, substs)?;
-                            Ok(())
+                            Ok(name)
                         })?;
 
                         match variant_def.ctor_kind {
-                            CtorKind::Const => Ok(()),
-                            CtorKind::Fn => fmt_tuple(fmt, places),
+                            CtorKind::Const => fmt.write_str(&name),
+                            CtorKind::Fn => fmt_tuple(fmt, &name),
                             CtorKind::Fictive => {
-                                let mut struct_fmt = fmt.debug_struct("");
+                                let mut struct_fmt = fmt.debug_struct(&name);
                                 for (field, place) in variant_def.fields.iter().zip(places) {
                                     struct_fmt.field(&field.ident.as_str(), place);
                                 }

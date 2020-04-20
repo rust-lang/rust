@@ -16,27 +16,27 @@ fn main() -> () {
         StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:9: 6:14
         StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:24: 6:42
         StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:32: 6:41
-        _3 = Droppy(const 0usize,);      // bb0[3]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:32: 6:41
+        _3 = Droppy(const 0usize);       // bb0[3]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:32: 6:41
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000000))
                                          // mir::Constant
                                          // + span: $DIR/packed-struct-drop-aligned.rs:6:39: 6:40
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000000)) }
-        _2 = Aligned(move _3,);          // bb0[4]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:24: 6:42
+        _2 = Aligned(move _3);           // bb0[4]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:24: 6:42
         StorageDead(_3);                 // bb0[5]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:41: 6:42
-        _1 = Packed(move _2,);           // bb0[6]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:17: 6:43
+        _1 = Packed(move _2);            // bb0[6]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:17: 6:43
         StorageDead(_2);                 // bb0[7]: scope 0 at $DIR/packed-struct-drop-aligned.rs:6:42: 6:43
         StorageLive(_4);                 // bb0[8]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:11: 7:29
         StorageLive(_5);                 // bb0[9]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:19: 7:28
-        _5 = Droppy(const 0usize,);      // bb0[10]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:19: 7:28
+        _5 = Droppy(const 0usize);       // bb0[10]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:19: 7:28
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000000))
                                          // mir::Constant
                                          // + span: $DIR/packed-struct-drop-aligned.rs:7:26: 7:27
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000000)) }
-        _4 = Aligned(move _5,);          // bb0[11]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:11: 7:29
+        _4 = Aligned(move _5);           // bb0[11]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:11: 7:29
         StorageDead(_5);                 // bb0[12]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:28: 7:29
         StorageLive(_6);                 // bb0[13]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:5: 7:8
         _6 = move (_1.0: Aligned);       // bb0[14]: scope 1 at $DIR/packed-struct-drop-aligned.rs:7:5: 7:8

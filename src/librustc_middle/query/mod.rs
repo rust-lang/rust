@@ -574,7 +574,7 @@ rustc_queries! {
             desc { "extract field of const" }
         }
 
-        /// Destructure a constant ADT or array into its variant indent and its
+        /// Destructure a constant ADT or array into its variant index and its
         /// field values.
         query destructure_const(
             key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>

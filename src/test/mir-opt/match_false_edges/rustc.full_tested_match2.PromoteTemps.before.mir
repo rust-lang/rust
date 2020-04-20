@@ -25,7 +25,7 @@ fn full_tested_match2() -> () {
     bb0: {
         StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/match_false_edges.rs:26:13: 30:6
         StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/match_false_edges.rs:26:19: 26:27
-        _2 = std::option::Option::<i32>::Some(const 42i32,); // bb0[2]: scope 0 at $DIR/match_false_edges.rs:26:19: 26:27
+        _2 = std::option::Option::<i32>::Some(const 42i32); // bb0[2]: scope 0 at $DIR/match_false_edges.rs:26:19: 26:27
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x0000002a))
