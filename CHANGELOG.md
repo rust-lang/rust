@@ -89,11 +89,9 @@ Current beta, release 2020-06-04
 * [`wildcard_imports`] documentation now mentions that `use ...::prelude::*` is
   not linted [#5312](https://github.com/rust-lang/rust-clippy/pull/5312)
 
-### Others
-
 ## Rust 1.43
 
-Current stable, release 2020-04-23
+Current stable, released 2020-04-23
 
 [4ee1206...204bb9b](https://github.com/rust-lang/rust-clippy/compare/4ee1206...204bb9b)
 
