@@ -4,15 +4,98 @@ All notable changes to this project will be documented in this file.
 See [Changelog Update](doc/changelog_update.md) if you want to update this
 document.
 
-## Unreleased / In Rust Beta or Nightly
+## Unreleased / In Rust Nightly
 
-[329923e...master](https://github.com/rust-lang/rust-clippy/compare/329923e...master)
+[891e1a8...master](https://github.com/rust-lang/rust-clippy/compare/891e1a8...master)
+
+## Rust 1.44
+
+Current beta, release 2020-06-04
+
+[204bb9b...891e1a8](https://github.com/rust-lang/rust-clippy/compare/204bb9b...891e1a8)
+
+### New lints
+
+* [`explicit_deref_methods`] [#5226](https://github.com/rust-lang/rust-clippy/pull/5226)
+* [`implicit_saturating_sub`] [#5427](https://github.com/rust-lang/rust-clippy/pull/5427)
+* [`macro_use`] [#5230](https://github.com/rust-lang/rust-clippy/pull/5230)
+* [`verbose_file_reads`] [#5272](https://github.com/rust-lang/rust-clippy/pull/5272)
+* [`future_not_send`] [#5423](https://github.com/rust-lang/rust-clippy/pull/5423)
+* [`redundant_pub_crate`] [#5319](https://github.com/rust-lang/rust-clippy/pull/5319)
+* [`non_scalar_const`] [#5248](https://github.com/rust-lang/rust-clippy/pull/5248)
+* [`result_map_or_into_option`] [#5415](https://github.com/rust-lang/rust-clippy/pull/5415)
+* [`redundant_allocation`] [#5349](https://github.com/rust-lang/rust-clippy/pull/5349)
+* [`fn_address_comparisons`] [#5294](https://github.com/rust-lang/rust-clippy/pull/5294)
+* [`vtable_address_comparisons`] [#5294](https://github.com/rust-lang/rust-clippy/pull/5294)
+
+
+### Moves and Deprecations
+
+* Deprecate [`replace_consts`] lint [#5380](https://github.com/rust-lang/rust-clippy/pull/5380)
+* Move [`cognitive_complexity`] to nursery [#5428](https://github.com/rust-lang/rust-clippy/pull/5428)
+* Move [`useless_transmute`] to nursery [#5364](https://github.com/rust-lang/rust-clippy/pull/5364)
+* Downgrade [`inefficient_to_string`] to pedantic [#5412](https://github.com/rust-lang/rust-clippy/pull/5412)
+* Downgrade [`option_option`] to pedantic [#5401](https://github.com/rust-lang/rust-clippy/pull/5401)
+* Downgrade [`unreadable_literal`] to pedantic [#5419](https://github.com/rust-lang/rust-clippy/pull/5419)
+* Downgrade [`let_unit_value`] to pedantic [#5409](https://github.com/rust-lang/rust-clippy/pull/5409)
+* Downgrade [`trivially_copy_pass_by_ref`] to pedantic [#5410](https://github.com/rust-lang/rust-clippy/pull/5410)
+* Downgrade [`implicit_hasher`] to pedantic [#5411](https://github.com/rust-lang/rust-clippy/pull/5411)
+
+### Enhancements
+
+* Make [`redundant_clone`] also trigger on cases where the cloned value is not
+  consumed. [#5304](https://github.com/rust-lang/rust-clippy/pull/5304)
+* Expand [`integer_arithmetic`] to also disallow bit-shifting [#5430](https://github.com/rust-lang/rust-clippy/pull/5430)
+* [`opt_as_ref_deref`] now detects more deref cases [#5425](https://github.com/rust-lang/rust-clippy/pull/5425)
+* [`large_enum_variant`] now report the sizes of the largest and second-largest variants [#5466](https://github.com/rust-lang/rust-clippy/pull/5466)
+* [`bool_comparison`] now also checks for inequality comparisons that can be
+  written more concisely [#5365](https://github.com/rust-lang/rust-clippy/pull/5365)
+* Expand [`clone_on_copy`] to work in method call arguments as well [#5441](https://github.com/rust-lang/rust-clippy/pull/5441)
+* [`redundant_pattern_matching`] now also handles `while let` [#5483](https://github.com/rust-lang/rust-clippy/pull/5483)
+* [`integer_arithmetic`] now also lints references of integers [#5329](https://github.com/rust-lang/rust-clippy/pull/5329)
+* Expand [`float_cmp_const`] to also work on arrays [#5345](https://github.com/rust-lang/rust-clippy/pull/5345)
+* Trigger [`map_flatten`] when map is called on an `Option` [#5473](https://github.com/rust-lang/rust-clippy/pull/5473)
+
+### False Positive Fixes
+
+* [`many_single_char_names`] [#5468](https://github.com/rust-lang/rust-clippy/pull/5468)
+* [`should_implement_trait`] [#5437](https://github.com/rust-lang/rust-clippy/pull/5437)
+* [`unused_self`] [#5387](https://github.com/rust-lang/rust-clippy/pull/5387)
+* [`redundant_clone`] [#5453](https://github.com/rust-lang/rust-clippy/pull/5453)
+* [`clippy::precedence`] [#5445](https://github.com/rust-lang/rust-clippy/pull/5445)
+* [`suspicious_op_assign_impl`] [#5424](https://github.com/rust-lang/rust-clippy/pull/5424)
+* [`needless_lifetimes`] [#5293](https://github.com/rust-lang/rust-clippy/pull/5293)
+* [`redundant_pattern`] [#5287](https://github.com/rust-lang/rust-clippy/pull/5287)
+* [`inconsistent_digit_grouping`] [#5451](https://github.com/rust-lang/rust-clippy/pull/5451)
+
+
+### Suggestion Improvements
+
+* Improved [`question_mark`] lint suggestion so that it doesn't add redundant `as_ref()` [#5481](https://github.com/rust-lang/rust-clippy/pull/5481)
+* Improve the suggested placeholder in [`map_unit_fn`] [#5292](https://github.com/rust-lang/rust-clippy/pull/5292)
+* Improve suggestion for [`match_single_binding`] when triggered inside a closure [#5350](https://github.com/rust-lang/rust-clippy/pull/5350)
+
+### ICE Fixes
+
+* [`trivial_bounds`] [#5296](https://github.com/rust-lang/rust-clippy/pull/5296)
+* `shadow_*` lints [#5297](https://github.com/rust-lang/rust-clippy/pull/5297)
+
+### Documentation
+
+* Fix documentation generation for configurable lints [#5353](https://github.com/rust-lang/rust-clippy/pull/5353)
+* Update documentation for [`new_ret_no_self`] [#5448](https://github.com/rust-lang/rust-clippy/pull/5448)
+* The documentation for [`option_option`] now suggest using a tri-state enum [#5403](https://github.com/rust-lang/rust-clippy/pull/5403)
+* Fix bit mask example in [`verbose_bit_mask`] documentation [#5454](https://github.com/rust-lang/rust-clippy/pull/5454)
+* [`wildcard_imports`] documentation now mentions that `use ...::prelude::*` is
+  not linted [#5312](https://github.com/rust-lang/rust-clippy/pull/5312)
+
+### Others
 
 ## Rust 1.43
 
-Current beta, release 2020-04-23
+Current stable, release 2020-04-23
 
-[4ee1206...329923e](https://github.com/rust-lang/rust-clippy/compare/4ee1206...329923e)
+[4ee1206...204bb9b](https://github.com/rust-lang/rust-clippy/compare/4ee1206...204bb9b)
 
 ### New lints
 
@@ -68,7 +151,7 @@ Current beta, release 2020-04-23
 
 ## Rust 1.42
 
-Current stable, released 2020-03-12
+Released 2020-03-12
 
 [69f99e7...4ee1206](https://github.com/rust-lang/rust-clippy/compare/69f99e7...4ee1206)
 
