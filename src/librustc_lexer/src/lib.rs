@@ -237,7 +237,7 @@ pub enum Base {
 pub fn strip_shebang(input: &str) -> Option<usize> {
     debug_assert!(!input.is_empty());
     let s: &str = &remove_whitespace(input);
-    if !s.starts_with("#!") || s.starts_with("#![") || s.starts_with("#! [") {
+    if !s.starts_with("#!") || s.starts_with("#![") {
         return None;
     }
     Some(input.find('\n').unwrap_or(input.len()))
