@@ -10,7 +10,7 @@
 # If you're looking at this file on the master branch, you'll likely see that
 # rustc and cargo are configured to `beta`, whereas if you're looking at a
 # source tarball for a stable release you'll likely see `1.x.0` for rustc and
-# `0.x.0` for Cargo where they were released on `date`.
+# `0.(x+1).0` for Cargo where they were released on `date`.
 
 date: 2020-03-12
 rustc: beta
