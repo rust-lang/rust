@@ -99,11 +99,11 @@ use parking_lot::RwLock;
 
 /// MmapSerializatioSink is faster on macOS and Linux
 /// but FileSerializationSink is faster on Windows
-#[cfg(all(not(windows),not(target_arch="wasm32")))]
+#[cfg(all(not(windows), not(target_arch = "wasm32")))]
 type SerializationSink = measureme::MmapSerializationSink;
-#[cfg(all(windows,not(target_arch="wasm32")))]
+#[cfg(all(windows, not(target_arch = "wasm32")))]
 type SerializationSink = measureme::FileSerializationSink;
-#[cfg(target_arch="wasm32")]
+#[cfg(target_arch = "wasm32")]
 type SerializationSink = measureme::ByteVecSink;
 
 type Profiler = measureme::Profiler<SerializationSink>;
@@ -604,7 +604,7 @@ pub fn duration_to_secs_str(dur: std::time::Duration) -> String {
 }
 
 // Memory reporting
-#[cfg(all(unix,not(target_arch="wasm32")))]
+#[cfg(all(unix, not(target_arch = "wasm32")))]
 fn get_resident() -> Option<usize> {
     let field = 1;
     let contents = fs::read("/proc/self/statm").ok()?;
@@ -614,7 +614,7 @@ fn get_resident() -> Option<usize> {
     Some(npages * 4096)
 }
 
-#[cfg(all(windows,not(target_arch="wasm32")))]
+#[cfg(all(windows, not(target_arch = "wasm32")))]
 fn get_resident() -> Option<usize> {
     use std::mem::{self, MaybeUninit};
     use winapi::shared::minwindef::DWORD;
@@ -633,7 +633,7 @@ fn get_resident() -> Option<usize> {
     }
 }
 
-#[cfg(target_arch="wasm32")]
+#[cfg(target_arch = "wasm32")]
 fn get_resident() -> Option<usize> {
     None
 }
