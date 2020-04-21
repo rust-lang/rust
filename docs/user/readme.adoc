@@ -158,8 +158,8 @@ The are several LSP client implementations for vim:
 2. Run `:CocInstall coc-rust-analyzer` to install
    https://github.com/fannheyward/coc-rust-analyzer[coc-rust-analyzer],
    this extension implements _most_ of the features supported in the VSCode extension:
-   * same configurations as VSCode extension, `rust-analyzer.serverPath`, `rust-analyzer.enableCargoWatchOnStartup` etc.
-   * same commands too, `rust-analyzer.analyzerStatus`, `rust-analyzer.startCargoWatch` etc.
+   * same configurations as VSCode extension, `rust-analyzer.serverPath`, `rust-analyzer.cargo.features` etc.
+   * same commands too, `rust-analyzer.analyzerStatus`, `rust-analyzer.ssr` etc.
    * highlighting and inlay_hints are not implemented yet
 
 ==== LanguageClient-neovim
