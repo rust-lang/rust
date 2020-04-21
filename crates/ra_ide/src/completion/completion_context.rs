@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{Semantics, SemanticsScope};
+use hir::{Semantics, SemanticsScope, Type};
 use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
@@ -166,6 +166,17 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn scope(&self) -> SemanticsScope<'_, RootDatabase> {
         self.sema.scope_at_offset(&self.token.parent(), self.offset)
+    }
+
+    pub(crate) fn expected_type_of(&self, node: &SyntaxNode) -> Option<Type> {
+        for ancestor in node.ancestors() {
+            if let Some(pat) = ast::Pat::cast(ancestor.clone()) {
+                return self.sema.type_of_pat(&pat);
+            } else if let Some(expr) = ast::Expr::cast(ancestor) {
+                return self.sema.type_of_expr(&expr);
+            }
+        }
+        None
     }
 
     fn fill(
