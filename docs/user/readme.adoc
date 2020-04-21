@@ -14,9 +14,9 @@
 // Master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository
 
 At its core, rust-analyzer is a *library* for semantic analysis of Rust code as it changes over time.
-This manual focuses on a specific usage of the library -- the implementation of
-https://microsoft.github.io/language-server-protocol/[Language Server Protocol].
-LSP allows various code editors, like VS Code, Emacs or Vim, to implement semantic features like completion or goto definition by talking to an external language server process.
+This manual focuses on a specific usage of the library -- running it as part of a server that implements the
+https://microsoft.github.io/language-server-protocol/[Language Server Protocol] (LSP).
+The LSP allows various code editors, like VS Code, Emacs or Vim, to implement semantic features like completion or goto definition by talking to an external language server process.
 
 To improve this document, send a pull request against
 https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/readme.adoc[this file].
@@ -26,7 +26,7 @@ https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/readme.adoc
 In theory, one should be able to just install the server binary and have it automatically work with any editor.
 We are not there yet, so some editor specific setup is required.
 
-Additionally, rust-analyzer needs sources of the standard library.
+Additionally, rust-analyzer needs the sources of the standard library.
 If the source code is not present, rust-analyzer will attempt to install it automatically.
 
 To add the sources manually, run the following command:
@@ -38,7 +38,7 @@ $ rustup component add rust-src
 === VS Code
 
 This is the best supported editor at the moment.
-rust-analyzer plugin for VS Code is maintained
+The rust-analyzer plugin for VS Code is maintained
 https://github.com/rust-analyzer/rust-analyzer/tree/master/editors/code[in tree].
 
 You can install the latest release of the plugin from
@@ -74,7 +74,7 @@ We ship nightly releases for VS Code. To help us out with testing the newest cod
 { "rust-analyzer.updates.channel": "nightly" }
 ----
 
-You will be prompted to install the `nightly` extension version. Just click `Download now` and from that moment you will get automatic updates each 24 hours.
+You will be prompted to install the `nightly` extension version. Just click `Download now` and from that moment you will get automatic updates every 24 hours.
 
 If you don't want to be asked for `Download now` every day when the new nightly version is released add the following to your `settings.json`:
 [source,json]
@@ -110,19 +110,21 @@ Here are some useful self-diagnostic commands:
 
 === Language Server Binary
 
-Other editors generally require `rust-analyzer` binary to be in `$PATH`.
-You can download the pre-built binary from
-https://github.com/rust-analyzer/rust-analyzer/releases[releases]
-page, or you can install it from source using the following command:
+Other editors generally require the `rust-analyzer` binary to be in `$PATH`.
+You can download the pre-built binary from the https://github.com/rust-analyzer/rust-analyzer/releases[releases] page. Typically, you then need to rename the binary for your platform, e.g. `rust-analyzer-mac` if you're on Mac OS, to `rust-analzyer` and make it executable in addition to moving it into a directory in your `$PATH`.
+
+Alternatively, you can install it from source using the following command:
 
 [source,bash]
 ----
 $ cargo xtask install --server
 ----
 
+If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue]. On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
+
 ==== Arch Linux
 
-`rust-analyzer` binary can be installed from AUR (Arch User Repository):
+The `rust-analyzer` binary can be installed from AUR (Arch User Repository):
 
 - https://aur.archlinux.org/packages/rust-analyzer-bin[`rust-analyzer-bin`] (binary from GitHub releases)
 - https://aur.archlinux.org/packages/rust-analyzer[`rust-analyzer`] (built from latest tagged source)
@@ -183,11 +185,20 @@ Once `neovim/nvim-lsp` is installed, use `+lua require'nvim_lsp'.rust_analyzer.s
 
 === Sublime Text 3
 
-Prerequisites:
+Prerequisites: You have installed the <<language-server-binary,`rust-analyzer` binary>>.
 
-`LSP` package.
+You also need the `LSP` package. To install it:
 
-Invoke the command palette (`ctrl+shift+p`) and type LSP enable to locally/globally enable the rust-analyzer LSP (type LSP enable, then choose either locally or globally, then select rust-analyzer)
+1. If you've never installed a Sublime Text package, install Package Control:
+   * Open the command palette (Win/Linux: `ctrl+shift+p`, Mac: `cmd+shift+p`)
+   * Type `Install Package Control`, press enter
+2. In the command palette, run `Package control: Install package`, and in the list that pops up, type `LSP` and press enter.
+
+Finally, with your Rust project open, in the command palette, run `LSP: Enable Language Server In Project` or `LSP: Enable Language Server Globally`, then select `rust-analyzer` in the list that pops up to enable the rust-analyzer LSP. The latter means that rust-analzyer is enabled by default in Rust projects.
+
+If it worked, you should see "rust-analzyer, Line X, Column Y" on the left side of the bottom bar, and after waiting a bit, functionality like tooltips on hovering over variables should become available.
+
+If you get an error saying `No such file or directory: 'rust-analyzer'`, see the <<language-server-binary,section on installing the language server binary>>.
 
 == Usage
 
