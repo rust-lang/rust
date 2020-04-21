@@ -305,46 +305,6 @@ impl Builder {
         self
     }
     #[allow(unused)]
-    pub(crate) fn compute_score(mut self, ctx: &CompletionContext) -> Builder {
-        let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
-            if let Some((struct_field, _)) = ctx.sema.resolve_record_field(record_field) {
-                (
-                    struct_field.name(ctx.db).to_string(),
-                    struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
-                )
-            } else {
-                return self;
-            }
-        } else if let Some(call_info) = call_info(ctx.db, ctx.file_position) {
-            if call_info.active_parameter_type().is_some()
-                && call_info.active_parameter_name().is_some()
-            {
-                (
-                    call_info.active_parameter_name().unwrap(),
-                    call_info.active_parameter_type().unwrap(),
-                )
-            } else {
-                return self;
-            }
-        } else {
-            return self;
-        };
-
-        // Compute score
-        // For the same type
-        if let Some(a_parameter_type) = &self.detail {
-            if &active_type == a_parameter_type {
-                // If same type + same name then go top position
-                if active_name == self.label {
-                    return self.set_score(CompletionScore::TypeAndNameMatch);
-                } else {
-                    return self.set_score(CompletionScore::TypeMatch);
-                }
-            }
-        }
-
-        self
-    }
     pub(crate) fn set_score(mut self, score: CompletionScore) -> Builder {
         self.score = Some(score);
         self
@@ -363,7 +323,9 @@ impl<'a> Into<CompletionItem> for Builder {
 
 #[derive(Debug, Clone)]
 pub enum CompletionScore {
+    /// If only type match
     TypeMatch,
+    /// If type and name match
     TypeAndNameMatch,
 }
 

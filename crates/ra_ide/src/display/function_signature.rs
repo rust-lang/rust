@@ -73,7 +73,7 @@ impl FunctionSignature {
             if let Some(param_type) = raw_param.split(':').nth(1) {
                 parameter_types.push(param_type[1..].to_string());
             } else {
-                // The unwrap_or_else is useful when you have tuple struct
+                // useful when you have tuple struct
                 parameter_types.push(raw_param.clone());
             }
             params.push(raw_param);
@@ -177,7 +177,6 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                     has_self_param = true;
                     let raw_param = self_param.syntax().text().to_string();
 
-                    // FIXME: better solution ?
                     res_types.push(
                         raw_param.split(':').nth(1).unwrap_or_else(|| " Self")[1..].to_string(),
                     );

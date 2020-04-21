@@ -7,11 +7,9 @@ use crate::{
         completion_context::CompletionContext,
         completion_item::{CompletionKind, Completions},
     },
-    // CallInfo,
     CompletionItem,
 };
 use rustc_hash::FxHashSet;
-// use std::cmp::Ordering;
 
 /// Complete dot accesses, i.e. fields or methods (and .await syntax).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
