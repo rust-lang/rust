@@ -1,4 +1,5 @@
 // ignore-windows: No libc on Windows
+// ignore-macos: No prctl on MacOS
 
 #![feature(rustc_private)]
 
