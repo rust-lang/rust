@@ -198,7 +198,7 @@ class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, D
         return new vscode.Hover(["```rust\n" + rustSourceCode + "\n```"], astFileRange);
     }
 
-    private findAstNodeRange(astLine: vscode.TextLine) {
+    private findAstNodeRange(astLine: vscode.TextLine): vscode.Range {
         const lineOffset = astLine.range.start;
         const begin = lineOffset.translate(undefined, astLine.firstNonWhitespaceCharacterIndex);
         const end = lineOffset.translate(undefined, astLine.text.trimEnd().length);
@@ -209,9 +209,45 @@ class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, D
         const parsedRange = /\[(\d+); (\d+)\)/.exec(astLine);
         if (!parsedRange) return;
 
-        const [begin, end] = parsedRange.slice(1).map(off => doc.positionAt(+off));
+        const [begin, end] = parsedRange
+            .slice(1)
+            .map(off => this.positionAt(doc, +off));
 
         return new vscode.Range(begin, end);
+    }
+
+    // Shitty memoize the last value, otherwise the CPU is at 100% single core
+    // with quadratic lookups when we build rust2Ast cache
+    memo?: [vscode.TextDocument, number, number];
+
+    positionAt(doc: vscode.TextDocument, offset: number): vscode.Position {
+        if (doc.eol === vscode.EndOfLine.LF) {
+            return doc.positionAt(offset);
+        }
+
+        // God damn shitty workaround for crlf line endings
+        // We are still in this prehistoric era of carriage returns here...
+
+        let i = 0;
+        let curOffset = 0;
+
+        if (this.memo) {
+            const [memDoc, memOffset, memI] = this.memo;
+            if (memDoc === doc && memOffset <= offset) {
+                curOffset = memOffset;
+                i = memI;
+            }
+        }
+
+        while (true) {
+            const lineLenWithLf = doc.lineAt(i).text.length + 1;
+            curOffset += lineLenWithLf;
+            if (curOffset > offset) {
+                this.memo = [doc, curOffset - lineLenWithLf, i];
+                return doc.positionAt(offset + i);
+            }
+            i += 1;
+        }
     }
 }
 
