@@ -196,7 +196,7 @@ Finally, with your Rust project open, in the command palette, run `LSP: Enable L
 
 If it worked, you should see "rust-analzyer, Line X, Column Y" on the left side of the bottom bar, and after waiting a bit, functionality like tooltips on hovering over variables should become available.
 
-If you get an error saying `No such file or directory: 'rust-analyzer'` even though the binary is on your `$PATH`, there is likely a problem where Sublime doesn't see the same `$PATH` as your shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue]. On Unix, if you installed Rust with `rustup`, moving the binary to `$HOME/.cargo/bin` should help.
+If you get an error saying `No such file or directory: 'rust-analyzer'` even though the binary is on your `$PATH`, the likely explanation is that Sublime doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue]. On Unix, running the editor from a shell or changing the `.desktop` file to set the environment, should help.
 
 == Usage
 
