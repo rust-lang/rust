@@ -576,18 +576,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 }
             }
 
-            // The remaining operators are handled through `overflowing_binary_op`.
-            if self.use_ecx(|this| {
-                let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
-                let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
-                Ok(overflow)
-            })? {
-                self.report_assert_as_lint(
-                    lint::builtin::ARITHMETIC_OVERFLOW,
-                    source_info,
-                    "this arithmetic operation will overflow",
-                    AssertKind::Overflow(op),
-                )?;
+            if !left.needs_subst() {
+                // The remaining operators are handled through `overflowing_binary_op`.
+                if self.use_ecx(|this| {
+                    let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
+                    let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
+                    Ok(overflow)
+                })? {
+                    self.report_assert_as_lint(
+                        lint::builtin::ARITHMETIC_OVERFLOW,
+                        source_info,
+                        "this arithmetic operation will overflow",
+                        AssertKind::Overflow(op),
+                    )?;
+                }
             }
         }
 
