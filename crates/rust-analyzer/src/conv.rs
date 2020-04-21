@@ -114,10 +114,10 @@ impl Conv for Severity {
     }
 }
 
-impl ConvWith<(&LineIndex, LineEndings, usize)> for CompletionItem {
+impl ConvWith<(&LineIndex, LineEndings, &mut usize)> for CompletionItem {
     type Output = ::lsp_types::CompletionItem;
 
-    fn conv_with(self, ctx: (&LineIndex, LineEndings, usize)) -> ::lsp_types::CompletionItem {
+    fn conv_with(self, ctx: (&LineIndex, LineEndings, &mut usize)) -> ::lsp_types::CompletionItem {
         let mut additional_text_edits = Vec::new();
         let mut text_edit = None;
         // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -170,7 +170,8 @@ impl ConvWith<(&LineIndex, LineEndings, usize)> for CompletionItem {
                 CompletionScore::TypeAndNameMatch => res.preselect = Some(true),
                 CompletionScore::TypeMatch => {}
             }
-            res.sort_text = Some(format!("{:02}", ctx.2));
+            res.sort_text = Some(format!("{:02}", *ctx.2));
+            *ctx.2 += 1;
         }
 
         if self.deprecated() {
