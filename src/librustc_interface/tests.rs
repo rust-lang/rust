@@ -5,15 +5,16 @@ use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_middle::middle::cstore;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
-use rustc_session::config::{ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
-use rustc_session::config::{Externs, OutputType, OutputTypes, SymbolManglingVersion};
+use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
+use rustc_session::config::{Externs, OutputType, OutputTypes, Sanitizer, SymbolManglingVersion};
 use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::{build_session, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
-use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
+use rustc_span::SourceFileHashAlgorithm;
+use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::PathBuf;
@@ -383,11 +384,16 @@ fn test_codegen_options_tracking_hash() {
     opts.cg.codegen_units = Some(42);
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
+    opts.cg.default_linker_libraries = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.cg.extra_filename = String::from("extra-filename");
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.cg.incremental = Some(String::from("abc"));
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    // `link_arg` is omitted because it just forwards to `link_args`.
 
     opts.cg.link_args = vec![String::from("abc"), String::from("def")];
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
@@ -396,6 +402,12 @@ fn test_codegen_options_tracking_hash() {
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.cg.linker = Some(PathBuf::from("linker"));
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.cg.linker_flavor = Some(LinkerFlavor::Gcc);
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.cg.no_stack_check = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.cg.remark = Passes::Some(vec![String::from("pass1"), String::from("pass2")]);
@@ -411,6 +423,10 @@ fn test_codegen_options_tracking_hash() {
     // This list is in alphabetical order.
 
     opts = reference.clone();
+    opts.cg.bitcode_in_rlib = false;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
     opts.cg.code_model = Some(String::from("code model"));
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
@@ -420,10 +436,6 @@ fn test_codegen_options_tracking_hash() {
 
     opts = reference.clone();
     opts.cg.debuginfo = 0xdeadbeef;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.debuginfo = 0xba5eba11;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
@@ -467,6 +479,10 @@ fn test_codegen_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
+    opts.cg.opt_level = "3".to_string();
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
     opts.cg.overflow_checks = Some(true);
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
@@ -505,14 +521,6 @@ fn test_codegen_options_tracking_hash() {
     opts = reference.clone();
     opts.cg.target_feature = String::from("all the features, all of them");
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.tls_model = Some(String::from("tls model"));
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.bitcode_in_rlib = false;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 }
 
 #[test]
@@ -529,7 +537,22 @@ fn test_debugging_options_tracking_hash() {
     opts.debugging_opts.ast_json_noexpand = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
+    opts.debugging_opts.borrowck = String::from("other");
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.borrowck_stats = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.control_flow_guard = CFGuard::Checks;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.deduplicate_diagnostics = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.dep_tasks = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.dont_buffer_diagnostics = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.debugging_opts.dump_dep_graph = true;
@@ -544,7 +567,28 @@ fn test_debugging_options_tracking_hash() {
     opts.debugging_opts.dump_mir_dir = String::from("abc");
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
+    opts.debugging_opts.dump_mir_exclude_pass_number = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.dump_mir_graphviz = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.emit_stack_sizes = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.hir_stats = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.identify_regions = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.incremental_ignore_spans = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.incremental_info = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.incremental_verify_ich = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.debugging_opts.input_stats = true;
@@ -553,16 +597,48 @@ fn test_debugging_options_tracking_hash() {
     opts.debugging_opts.keep_hygiene_data = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
+    opts.debugging_opts.link_native_libraries = false;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.llvm_time_trace = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.ls = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.macro_backtrace = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.debugging_opts.meta_stats = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
+    opts.debugging_opts.nll_facts = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.no_analysis = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
+    opts.debugging_opts.no_interleave_lints = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.no_leak_check = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.no_parallel_llvm = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.parse_only = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.perf_stats = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.polonius = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
+
+    opts.debugging_opts.pre_link_args = vec![String::from("abc"), String::from("def")];
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.debugging_opts.print_link_args = true;
@@ -577,10 +653,34 @@ fn test_debugging_options_tracking_hash() {
     opts.debugging_opts.print_region_graph = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
+    opts.debugging_opts.print_type_sizes = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.query_dep_graph = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
+    opts.debugging_opts.query_stats = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.save_analysis = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.self_profile = SwitchWithOptPath::Enabled(None);
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.self_profile_events = Some(vec![String::new()]);
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.span_free_formats = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.terminal_width = Some(80);
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.threads = 99;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.time = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.debugging_opts.time_llvm_passes = true;
@@ -590,6 +690,12 @@ fn test_debugging_options_tracking_hash() {
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.debugging_opts.trace_macros = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.ui_testing = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.unpretty = Some("expanded".to_string());
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.debugging_opts.unstable_options = true;
@@ -606,7 +712,39 @@ fn test_debugging_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
+    opts.debugging_opts.always_encode_mir = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
     opts.debugging_opts.asm_comments = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.binary_dep_depinfo = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.codegen_backend = Some("abc".to_string());
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.crate_attr = vec!["abc".to_string()];
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.debug_macros = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.dep_info_omit_d_target = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.dual_proc_macros = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.embed_bitcode = true;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
@@ -618,7 +756,39 @@ fn test_debugging_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
+    opts.debugging_opts.force_unstable_if_unmarked = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.fuel = Some(("abc".to_string(), 99));
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.human_readable_cgu_names = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.inline_in_all_cgus = Some(true);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.insert_sideeffect = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.instrument_mcount = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.link_only = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
     opts.debugging_opts.merge_functions = Some(MergeFunctions::Disabled);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.mir_emit_retag = true;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
@@ -626,11 +796,51 @@ fn test_debugging_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
+    opts.debugging_opts.mutable_noalias = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.new_llvm_pass_manager = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
     opts.debugging_opts.no_codegen = true;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
+    opts.debugging_opts.no_generate_arange_section = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
     opts.debugging_opts.no_landing_pads = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.no_link = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.no_profiler_runtime = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.osx_rpath_install_name = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.panic_abort_tests = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.plt = Some(true);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.print_fuel = Some("abc".to_string());
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.profile = true;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
@@ -642,7 +852,39 @@ fn test_debugging_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
+    opts.debugging_opts.run_dsymutil = false;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.sanitizer = Some(Sanitizer::Address);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.sanitizer_memory_track_origins = 2;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.sanitizer_recover = vec![Sanitizer::Address];
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.saturating_float_casts = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.share_generics = Some(true);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
     opts.debugging_opts.show_span = Some(String::from("abc"));
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.src_hash_algorithm = Some(SourceFileHashAlgorithm::Sha1);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.strip_debuginfo_if_disabled = true;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
@@ -650,7 +892,23 @@ fn test_debugging_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
+    opts.debugging_opts.teach = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.thinlto = Some(true);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.tls_model = Some(String::from("tls model"));
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
     opts.debugging_opts.treat_err_as_bug = Some(1);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.unleash_the_miri_inside_of_you = true;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
