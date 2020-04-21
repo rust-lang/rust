@@ -6,7 +6,6 @@ use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::canonical::QueryOutlivesConstraint;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
@@ -66,12 +65,6 @@ pub struct RegionInferenceContext<'tcx> {
     /// graph. We have an edge from SCC A to SCC B if `A: B`. Used to
     /// compute the values of each region.
     constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
-
-    /// SCCs in "dependency order" (or "post order"), meaning that if S1 -> S2,
-    /// then S2 appears first. If you process the SCCs in this order, then you
-    /// are always ensured that when you proces a given SCC, all of its
-    /// successors have been processed.
-    scc_dependency_order: Vec<ConstraintSccIndex>,
 
     /// Reverse of the SCC constraint graph --  i.e., an edge `A -> B` exists if
     /// `B: A`. This is used to compute the universal regions that are required
@@ -283,10 +276,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             scc_values.merge_liveness(scc, region, &liveness_constraints);
         }
 
-        let scc_dependency_order = Self::compute_scc_dependency_order(&constraint_sccs);
-
-        let scc_universes =
-            Self::compute_scc_universes(&constraint_sccs, &scc_dependency_order, &definitions);
+        let scc_universes = Self::compute_scc_universes(&constraint_sccs, &definitions);
 
         let scc_representatives = Self::compute_scc_representatives(&constraint_sccs, &definitions);
 
@@ -299,7 +289,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraints,
             constraint_graph,
             constraint_sccs,
-            scc_dependency_order,
             rev_scc_graph: None,
             member_constraints,
             member_constraints_applied: Vec::new(),
@@ -317,43 +306,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         result
     }
 
-    /// Returns a vector of all scc-ids in "dependency" or "post order". See the
-    /// `scc_dependency_order` field for more details.
-    fn compute_scc_dependency_order(
-        constraints_scc: &Sccs<RegionVid, ConstraintSccIndex>,
-    ) -> Vec<ConstraintSccIndex> {
-        let mut visited = &mut BitSet::new_empty(constraints_scc.num_sccs());
-        let mut output = vec![];
-
-        for scc in constraints_scc.all_sccs() {
-            Self::compute_scc_dependency_order_if_new(
-                constraints_scc,
-                scc,
-                &mut visited,
-                &mut output,
-            );
-        }
-
-        output
-    }
-
-    fn compute_scc_dependency_order_if_new(
-        constraints_scc: &Sccs<RegionVid, ConstraintSccIndex>,
-        index: ConstraintSccIndex,
-        visited: &mut BitSet<ConstraintSccIndex>,
-        output: &mut Vec<ConstraintSccIndex>,
-    ) {
-        if !visited.insert(index) {
-            return;
-        }
-
-        for &succ in constraints_scc.successors(index) {
-            Self::compute_scc_dependency_order_if_new(constraints_scc, succ, visited, output);
-        }
-
-        output.push(index);
-    }
-
     /// Each SCC is the combination of many region variables which
     /// have been equated. Therefore, we can associate a universe with
     /// each SCC which is minimum of all the universes of its
@@ -363,7 +315,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// the minimum, or narrowest, universe.
     fn compute_scc_universes(
         constraint_sccs: &Sccs<RegionVid, ConstraintSccIndex>,
-        scc_dependency_order: &[ConstraintSccIndex],
         definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
     ) -> IndexVec<ConstraintSccIndex, ty::UniverseIndex> {
         let num_sccs = constraint_sccs.num_sccs();
@@ -420,7 +371,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // constraint lowers the universe of `R1` to `U0`, which in turn
         // means that the `R1: !1` constraint will (later) cause
         // `R1` to become `'static`.
-        for &scc_a in scc_dependency_order {
+        for scc_a in constraint_sccs.all_sccs() {
             for &scc_b in constraint_sccs.successors(scc_a) {
                 let scc_universe_a = scc_universes[scc_a];
                 let scc_universe_b = scc_universes[scc_b];
@@ -664,8 +615,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // SCC. For each SCC, we visit its successors and compute
         // their values, then we union all those values to get our
         // own.
-        for i in 0..self.scc_dependency_order.len() {
-            self.compute_value_for_scc(self.scc_dependency_order[i]);
+        let constraint_sccs = self.constraint_sccs.clone();
+        for scc in constraint_sccs.all_sccs() {
+            self.compute_value_for_scc(scc);
         }
 
         // Sort the applied member constraints so we can binary search
