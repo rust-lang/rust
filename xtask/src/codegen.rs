@@ -9,9 +9,9 @@ mod gen_syntax;
 mod gen_parser_tests;
 mod gen_assists_docs;
 
-use std::{fs, mem, path::Path};
+use std::{mem, path::Path};
 
-use crate::Result;
+use crate::{not_bash::fs2, Result};
 
 pub use self::{
     gen_assists_docs::generate_assists_docs, gen_parser_tests::generate_parser_tests,
@@ -39,7 +39,7 @@ pub enum Mode {
 /// A helper to update file on disk if it has changed.
 /// With verify = false,
 fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
-    match fs::read_to_string(path) {
+    match fs2::read_to_string(path) {
         Ok(ref old_contents) if normalize(old_contents) == normalize(contents) => {
             return Ok(());
         }
@@ -49,7 +49,7 @@ fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
         anyhow::bail!("`{}` is not up-to-date", path.display());
     }
     eprintln!("updating {}", path.display());
-    fs::write(path, contents)?;
+    fs2::write(path, contents)?;
     return Ok(());
 
     fn normalize(s: &str) -> String {
@@ -65,7 +65,7 @@ fn extract_comment_blocks_with_empty_lines(text: &str) -> Vec<Vec<String>> {
     do_extract_comment_blocks(text, true)
 }
 
-fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lins: bool) -> Vec<Vec<String>> {
+fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lines: bool) -> Vec<Vec<String>> {
     let mut res = Vec::new();
 
     let prefix = "// ";
@@ -73,7 +73,7 @@ fn do_extract_comment_blocks(text: &str, allow_blocks_with_empty_lins: bool) -> 
 
     let mut block = vec![];
     for line in lines {
-        if line == "//" && allow_blocks_with_empty_lins {
+        if line == "//" && allow_blocks_with_empty_lines {
             block.push(String::new());
             continue;
         }

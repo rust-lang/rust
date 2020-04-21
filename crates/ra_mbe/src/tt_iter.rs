@@ -40,9 +40,11 @@ impl<'a> TtIter<'a> {
         }
     }
 
-    pub(crate) fn expect_literal(&mut self) -> Result<&'a tt::Literal, ()> {
-        match self.expect_leaf()? {
-            tt::Leaf::Literal(it) => Ok(it),
+    pub(crate) fn expect_literal(&mut self) -> Result<&'a tt::Leaf, ()> {
+        let it = self.expect_leaf()?;
+        match it {
+            tt::Leaf::Literal(_) => Ok(it),
+            tt::Leaf::Ident(ident) if ident.text == "true" || ident.text == "false" => Ok(it),
             _ => Err(()),
         }
     }

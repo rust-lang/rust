@@ -62,10 +62,9 @@ pub(crate) enum ReferenceResult {
 
 impl ReferenceResult {
     fn to_vec(self) -> Vec<NavigationTarget> {
-        use self::ReferenceResult::*;
         match self {
-            Exact(target) => vec![target],
-            Approximate(vec) => vec,
+            ReferenceResult::Exact(target) => vec![target],
+            ReferenceResult::Approximate(vec) => vec,
         }
     }
 }
@@ -74,8 +73,6 @@ pub(crate) fn reference_definition(
     sema: &Semantics<RootDatabase>,
     name_ref: &ast::NameRef,
 ) -> ReferenceResult {
-    use self::ReferenceResult::*;
-
     let name_kind = classify_name_ref(sema, name_ref);
     if let Some(def) = name_kind {
         let def = def.definition();
@@ -91,7 +88,7 @@ pub(crate) fn reference_definition(
         .into_iter()
         .map(|s| s.to_nav(sema.db))
         .collect();
-    Approximate(navs)
+    ReferenceResult::Approximate(navs)
 }
 
 #[cfg(test)]
@@ -391,6 +388,25 @@ mod tests {
                 Foo {
                     spam<|>: 0,
                 }
+            }
+            ",
+            "spam RECORD_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+            "spam: u32|spam",
+        );
+    }
+
+    #[test]
+    fn goto_def_for_record_pat_fields() {
+        covers!(ra_ide_db::goto_def_for_record_field_pats);
+        check_goto(
+            r"
+            //- /lib.rs
+            struct Foo {
+                spam: u32,
+            }
+
+            fn bar(foo: Foo) -> Foo {
+                let Foo { spam<|>: _, } = foo
             }
             ",
             "spam RECORD_FIELD_DEF FileId(1) [17; 26) [17; 21)",

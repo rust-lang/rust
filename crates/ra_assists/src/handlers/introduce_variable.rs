@@ -124,7 +124,7 @@ fn anchor_stmt(expr: ast::Expr) -> Option<(SyntaxNode, bool)> {
             }
         }
 
-        if ast::Stmt::cast(node.clone().into()).is_some() {
+        if ast::Stmt::cast(node.clone()).is_some() {
             return Some((node, false));
         }
 

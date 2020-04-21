@@ -9,7 +9,7 @@ use crate::rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTas
 use io::{BufRead, BufReader};
 use std::{
     convert::{TryFrom, TryInto},
-    ffi::OsStr,
+    ffi::{OsStr, OsString},
     io::{self, Write},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
@@ -28,66 +28,11 @@ pub(crate) struct ProcMacroProcessThread {
     handle: jod_thread::JoinHandle<()>,
 }
 
-struct Task {
-    req: Request,
-    result_tx: Sender<Option<Response>>,
-}
-
-struct Process {
-    path: PathBuf,
-    child: Child,
-}
-
-impl Drop for Process {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
-    }
-}
-
-impl Process {
-    fn run<I, S>(process_path: &Path, args: I) -> Result<Process, io::Error>
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        let child = Command::new(process_path.clone())
-            .args(args)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()?;
-
-        Ok(Process { path: process_path.into(), child })
-    }
-
-    fn restart(&mut self) -> Result<(), io::Error> {
-        let _ = self.child.kill();
-        self.child = Command::new(self.path.clone())
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()?;
-        Ok(())
-    }
-
-    fn stdio(&mut self) -> Option<(impl Write, impl BufRead)> {
-        let stdin = self.child.stdin.take()?;
-        let stdout = self.child.stdout.take()?;
-        let read = BufReader::new(stdout);
-
-        Some((stdin, read))
-    }
-}
-
 impl ProcMacroProcessSrv {
-    pub fn run<I, S>(
-        process_path: &Path,
-        args: I,
-    ) -> Result<(ProcMacroProcessThread, ProcMacroProcessSrv), io::Error>
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
+    pub fn run(
+        process_path: PathBuf,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    ) -> io::Result<(ProcMacroProcessThread, ProcMacroProcessSrv)> {
         let process = Process::run(process_path, args)?;
 
         let (task_tx, task_rx) = bounded(0);
@@ -197,11 +142,62 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
     }
 }
 
+struct Task {
+    req: Request,
+    result_tx: Sender<Option<Response>>,
+}
+
+struct Process {
+    path: PathBuf,
+    args: Vec<OsString>,
+    child: Child,
+}
+
+impl Drop for Process {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+    }
+}
+
+impl Process {
+    fn run(
+        path: PathBuf,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    ) -> io::Result<Process> {
+        let args = args.into_iter().map(|s| s.as_ref().into()).collect();
+        let child = mk_child(&path, &args)?;
+        Ok(Process { path, args, child })
+    }
+
+    fn restart(&mut self) -> io::Result<()> {
+        let _ = self.child.kill();
+        self.child = mk_child(&self.path, &self.args)?;
+        Ok(())
+    }
+
+    fn stdio(&mut self) -> Option<(impl Write, impl BufRead)> {
+        let stdin = self.child.stdin.take()?;
+        let stdout = self.child.stdout.take()?;
+        let read = BufReader::new(stdout);
+
+        Some((stdin, read))
+    }
+}
+
+fn mk_child(path: &Path, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> io::Result<Child> {
+    Command::new(&path)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+}
+
 fn send_request(
     mut writer: &mut impl Write,
     mut reader: &mut impl BufRead,
     req: Request,
-) -> Result<Option<Response>, io::Error> {
+) -> io::Result<Option<Response>> {
     req.write(&mut writer)?;
     Ok(Response::read(&mut reader)?)
 }

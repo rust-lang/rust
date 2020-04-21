@@ -215,6 +215,33 @@ SUBTREE $
 }
 
 #[test]
+fn test_lifetime_split() {
+    parse_macro(
+        r#"
+macro_rules! foo {
+    ($($t:tt)*) => { $($t)*}
+}
+"#,
+    )
+    .assert_expand(
+        r#"foo!(static bar: &'static str = "hello";);"#,
+        r#"
+SUBTREE $
+  IDENT   static 17
+  IDENT   bar 18
+  PUNCH   : [alone] 19
+  PUNCH   & [alone] 20
+  PUNCH   ' [joint] 21
+  IDENT   static 22
+  IDENT   str 23
+  PUNCH   = [alone] 24
+  LITERAL "hello" 25
+  PUNCH   ; [joint] 26
+"#,
+    );
+}
+
+#[test]
 fn test_expr_order() {
     let expanded = parse_macro(
         r#"
@@ -986,6 +1013,36 @@ fn test_literal() {
 "#,
     )
     .assert_expand_items(r#"foo!(u8 0);"#, r#"const VALUE : u8 = 0 ;"#);
+}
+
+#[test]
+fn test_boolean_is_ident() {
+    parse_macro(
+        r#"
+        macro_rules! foo {
+              ($lit0:literal, $lit1:literal) => { const VALUE: (bool,bool) = ($lit0,$lit1); };
+        }
+"#,
+    )
+    .assert_expand(
+        r#"foo!(true,false);"#,
+        r#"
+SUBTREE $
+  IDENT   const 14
+  IDENT   VALUE 15
+  PUNCH   : [alone] 16
+  SUBTREE () 17
+    IDENT   bool 18
+    PUNCH   , [alone] 19
+    IDENT   bool 20
+  PUNCH   = [alone] 21
+  SUBTREE () 22
+    IDENT   true 29
+    PUNCH   , [joint] 25
+    IDENT   false 31
+  PUNCH   ; [alone] 28
+"#,
+    );
 }
 
 #[test]

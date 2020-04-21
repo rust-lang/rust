@@ -30,7 +30,7 @@ pub(crate) fn merge_imports(ctx: AssistCtx) -> Option<Assist> {
             .filter_map(|dir| neighbor(&use_item, dir))
             .filter_map(|it| Some((it.clone(), it.use_tree()?)))
             .find_map(|(use_item, use_tree)| {
-                Some((try_merge_trees(&tree, &use_tree)?, use_item.clone()))
+                Some((try_merge_trees(&tree, &use_tree)?, use_item))
             })?;
 
         rewriter.replace_ast(&tree, &merged);

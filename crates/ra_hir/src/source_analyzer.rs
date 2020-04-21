@@ -95,6 +95,7 @@ impl SourceAnalyzer {
     }
 
     fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
+        // FIXME: macros, see `expr_id`
         let src = InFile { file_id: self.file_id, value: pat };
         self.body_source_map.as_ref()?.node_pat(src)
     }
@@ -165,6 +166,16 @@ impl SourceAnalyzer {
         };
         let struct_field = self.infer.as_ref()?.record_field_resolution(expr_id)?;
         Some((struct_field.into(), local))
+    }
+
+    pub(crate) fn resolve_record_field_pat(
+        &self,
+        _db: &dyn HirDatabase,
+        field: &ast::RecordFieldPat,
+    ) -> Option<StructField> {
+        let pat_id = self.pat_id(&field.pat()?)?;
+        let struct_field = self.infer.as_ref()?.record_field_pat_resolution(pat_id)?;
+        Some(struct_field.into())
     }
 
     pub(crate) fn resolve_macro_call(

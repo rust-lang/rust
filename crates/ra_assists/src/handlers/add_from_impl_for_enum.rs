@@ -98,7 +98,7 @@ fn already_has_from_impl(
     };
     let var_ty = hir_enum_var.fields(sema.db)[0].signature_ty(sema.db);
 
-    e_ty.impls_trait(sema.db, from_trait, &[var_ty.clone()])
+    e_ty.impls_trait(sema.db, from_trait, &[var_ty])
 }
 
 #[cfg(test)]

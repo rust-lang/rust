@@ -180,6 +180,7 @@ fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Opti
     }
 }
 
+#[derive(Debug)]
 pub enum NameRefClass {
     Definition(Definition),
     FieldShorthand { local: Local, field: Definition },
@@ -226,6 +227,14 @@ pub fn classify_name_ref(
                 Some(local) => NameRefClass::FieldShorthand { field, local },
             };
             return Some(res);
+        }
+    }
+
+    if let Some(record_field_pat) = ast::RecordFieldPat::cast(parent.clone()) {
+        tested_by!(goto_def_for_record_field_pats; force);
+        if let Some(field) = sema.resolve_record_field_pat(&record_field_pat) {
+            let field = Definition::StructField(field);
+            return Some(NameRefClass::Definition(field));
         }
     }
 

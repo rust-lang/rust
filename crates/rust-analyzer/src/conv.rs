@@ -24,7 +24,9 @@ use crate::{
     world::WorldSnapshot,
     Result,
 };
-use semantic_tokens::{ATTRIBUTE, BUILTIN_TYPE, ENUM_MEMBER, LIFETIME, TYPE_ALIAS, UNION};
+use semantic_tokens::{
+    ATTRIBUTE, BUILTIN_TYPE, ENUM_MEMBER, LIFETIME, TYPE_ALIAS, UNION, UNRESOLVED_REFERENCE,
+};
 
 pub trait Conv {
     type Output;
@@ -381,6 +383,7 @@ impl Conv for Highlight {
             HighlightTag::Comment => SemanticTokenType::COMMENT,
             HighlightTag::Attribute => ATTRIBUTE,
             HighlightTag::Keyword => SemanticTokenType::KEYWORD,
+            HighlightTag::UnresolvedReference => UNRESOLVED_REFERENCE,
         };
 
         for modifier in self.modifiers.iter() {

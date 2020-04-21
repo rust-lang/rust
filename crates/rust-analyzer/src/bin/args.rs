@@ -84,7 +84,7 @@ impl Args {
                 if matches.contains(["-h", "--help"]) {
                     eprintln!(
                         "\
-ra-cli-parse
+rust-analyzer parse
 
 USAGE:
     rust-analyzer parse [FLAGS]
@@ -104,7 +104,7 @@ FLAGS:
                 if matches.contains(["-h", "--help"]) {
                     eprintln!(
                         "\
-ra-cli-symbols
+rust-analyzer symbols
 
 USAGE:
     rust-analyzer highlight [FLAGS]
@@ -123,7 +123,7 @@ FLAGS:
                 if matches.contains(["-h", "--help"]) {
                     eprintln!(
                         "\
-ra-cli-highlight
+rust-analyzer highlight
 
 USAGE:
     rust-analyzer highlight [FLAGS]
@@ -143,7 +143,7 @@ FLAGS:
                 if matches.contains(["-h", "--help"]) {
                     eprintln!(
                         "\
-ra-cli-analysis-stats
+rust-analyzer analysis-stats
 
 USAGE:
     rust-analyzer analysis-stats [FLAGS] [OPTIONS] [PATH]
@@ -193,7 +193,7 @@ ARGS:
                 if matches.contains(["-h", "--help"]) {
                     eprintln!(
                         "\
-rust-analyzer-analysis-bench
+rust-analyzer analysis-bench
 
 USAGE:
     rust-analyzer analysis-bench [FLAGS] [OPTIONS]
@@ -236,7 +236,7 @@ ARGS:
                 if matches.contains(["-h", "--help"]) {
                     eprintln!(
                         "\
-ra-cli-diagnostics
+rust-analyzer diagnostics
 
 USAGE:
     rust-analyzer diagnostics [FLAGS] [PATH]
@@ -269,7 +269,7 @@ ARGS:
             _ => {
                 eprintln!(
                     "\
-ra-cli
+rust-analyzer
 
 USAGE:
     rust-analyzer <SUBCOMMAND>
@@ -281,6 +281,8 @@ SUBCOMMANDS:
     analysis-bench
     analysis-stats
     highlight
+    diagnostics
+    proc-macro
     parse
     symbols"
                 );

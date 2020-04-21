@@ -195,6 +195,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 
+    pub fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<StructField> {
+        self.analyze(field.syntax()).resolve_record_field_pat(self.db, field)
+    }
+
     pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {
         let sa = self.analyze(macro_call.syntax());
         let macro_call = self.find_file(macro_call.syntax().clone()).with_value(macro_call);

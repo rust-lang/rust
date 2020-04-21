@@ -517,6 +517,10 @@
                 "id": "union",
                 "description": "Style for C-style untagged unions",
                 "superType": "type"
+            },
+            {
+                "id": "unresolvedReference",
+                "description": "Style for names which can not be resolved due to compilation errors"
             }
         ],
         "semanticTokenModifiers": [

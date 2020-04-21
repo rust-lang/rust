@@ -121,19 +121,38 @@ impl DebugContext<'_> {
         write!(fmt, "{}::{}", trait_data.name, type_alias_data.name)
     }
 
-    pub fn debug_alias(
+    pub fn debug_opaque_ty_id(
         &self,
-        alias: &AliasTy<Interner>,
+        opaque_ty_id: chalk_ir::OpaqueTyId<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
-        let type_alias: TypeAliasId = from_chalk(self.0, alias.associated_ty_id);
+        fmt.debug_struct("OpaqueTyId").field("index", &opaque_ty_id.0).finish()
+    }
+
+    pub fn debug_alias(
+        &self,
+        alias_ty: &AliasTy<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Result<(), fmt::Error> {
+        match alias_ty {
+            AliasTy::Projection(projection_ty) => self.debug_projection_ty(projection_ty, fmt),
+            AliasTy::Opaque(opaque_ty) => self.debug_opaque_ty(opaque_ty, fmt),
+        }
+    }
+
+    pub fn debug_projection_ty(
+        &self,
+        projection_ty: &chalk_ir::ProjectionTy<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Result<(), fmt::Error> {
+        let type_alias: TypeAliasId = from_chalk(self.0, projection_ty.associated_ty_id);
         let type_alias_data = self.0.type_alias_data(type_alias);
         let trait_ = match type_alias.lookup(self.0.upcast()).container {
             AssocContainerId::TraitId(t) => t,
             _ => panic!("associated type not in trait"),
         };
         let trait_data = self.0.trait_data(trait_);
-        let params = alias.substitution.parameters(&Interner);
+        let params = projection_ty.substitution.parameters(&Interner);
         write!(fmt, "<{:?} as {}", &params[0], trait_data.name,)?;
         if params.len() > 1 {
             write!(
@@ -143,6 +162,14 @@ impl DebugContext<'_> {
             )?;
         }
         write!(fmt, ">::{}", type_alias_data.name)
+    }
+
+    pub fn debug_opaque_ty(
+        &self,
+        opaque_ty: &chalk_ir::OpaqueTy<Interner>,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Result<(), fmt::Error> {
+        write!(fmt, "{:?}", opaque_ty.opaque_ty_id)
     }
 
     pub fn debug_ty(

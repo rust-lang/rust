@@ -187,7 +187,11 @@ impl<'a> TtIter<'a> {
                 _ => false,
             },
             Separator::Literal(lhs) => match fork.expect_literal() {
-                Ok(rhs) => rhs.text == lhs.text,
+                Ok(rhs) => match rhs {
+                    tt::Leaf::Literal(rhs) => rhs.text == lhs.text,
+                    tt::Leaf::Ident(rhs) => rhs.text == lhs.text,
+                    tt::Leaf::Punct(_) => false,
+                },
                 _ => false,
             },
             Separator::Puncts(lhss) => lhss.iter().all(|lhs| match fork.expect_punct() {
@@ -202,6 +206,13 @@ impl<'a> TtIter<'a> {
     }
 
     pub(crate) fn expect_tt(&mut self) -> Result<tt::TokenTree, ()> {
+        match self.peek_n(0) {
+            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) if punct.char == '\'' => {
+                return self.expect_lifetime();
+            }
+            _ => (),
+        }
+
         let tt = self.next().ok_or_else(|| ())?.clone();
         let punct = match tt {
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if punct.spacing == tt::Spacing::Joint => {
@@ -255,13 +266,21 @@ impl<'a> TtIter<'a> {
         }
     }
 
-    pub(crate) fn expect_lifetime(&mut self) -> Result<&tt::Ident, ()> {
-        let ident = self.expect_ident()?;
-        // check if it start from "`"
-        if !ident.text.starts_with('\'') {
+    pub(crate) fn expect_lifetime(&mut self) -> Result<tt::TokenTree, ()> {
+        let punct = self.expect_punct()?;
+        if punct.char != '\'' {
             return Err(());
         }
-        Ok(ident)
+        let ident = self.expect_ident()?;
+
+        Ok(tt::Subtree {
+            delimiter: None,
+            token_trees: vec![
+                tt::Leaf::Punct(punct.clone()).into(),
+                tt::Leaf::Ident(ident.clone()).into(),
+            ],
+        }
+        .into())
     }
 
     pub(crate) fn expect_fragment(
@@ -274,7 +293,10 @@ impl<'a> TtIter<'a> {
         }
 
         impl<'a> TreeSink for OffsetTokenSink<'a> {
-            fn token(&mut self, _kind: SyntaxKind, n_tokens: u8) {
+            fn token(&mut self, kind: SyntaxKind, mut n_tokens: u8) {
+                if kind == SyntaxKind::LIFETIME {
+                    n_tokens = 2;
+                }
                 for _ in 0..n_tokens {
                     self.cursor = self.cursor.bump_subtree();
                 }
@@ -286,7 +308,7 @@ impl<'a> TtIter<'a> {
             }
         }
 
-        let buffer = TokenBuffer::new(self.inner.as_slice());
+        let buffer = TokenBuffer::new(&self.inner.as_slice());
         let mut src = SubtreeTokenSource::new(&buffer);
         let mut sink = OffsetTokenSink { cursor: buffer.begin(), error: false };
 
@@ -422,7 +444,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                 "tt" => input.expect_tt().map(Some).map_err(|()| err!()),
                 "lifetime" => input
                     .expect_lifetime()
-                    .map(|ident| Some(tt::Leaf::Ident(ident.clone()).into()))
+                    .map(|tt| Some(tt))
                     .map_err(|()| err!("expected lifetime")),
                 "literal" => input
                     .expect_literal()

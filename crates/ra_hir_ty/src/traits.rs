@@ -225,7 +225,7 @@ fn solution_from_chalk(
                 None => unimplemented!(),
             })
             .collect();
-        let result = Canonical { value, num_vars: subst.binders.len() };
+        let result = Canonical { value, num_vars: subst.binders.len(&Interner) };
         SolutionVariables(result)
     };
     match solution {

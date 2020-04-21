@@ -37,7 +37,7 @@ pub(crate) fn split_import(ctx: AssistCtx) -> Option<Assist> {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_target};
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
 
@@ -62,5 +62,10 @@ mod tests {
     #[test]
     fn split_import_target() {
         check_assist_target(split_import, "use crate::<|>db::{RootDatabase, FileSymbol}", "::");
+    }
+
+    #[test]
+    fn issue4044() {
+        check_assist_not_applicable(split_import, "use crate::<|>:::self;")
     }
 }

@@ -239,20 +239,21 @@ fn highlight_element(
         NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => return None,
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
-            let name_kind = classify_name_ref(sema, &name_ref)?;
-
-            match name_kind {
-                NameRefClass::Definition(def) => {
-                    if let Definition::Local(local) = &def {
-                        if let Some(name) = local.name(db) {
-                            let shadow_count =
-                                bindings_shadow_count.entry(name.clone()).or_default();
-                            binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-                        }
-                    };
-                    highlight_name(db, def)
-                }
-                NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
+            match classify_name_ref(sema, &name_ref) {
+                Some(name_kind) => match name_kind {
+                    NameRefClass::Definition(def) => {
+                        if let Definition::Local(local) = &def {
+                            if let Some(name) = local.name(db) {
+                                let shadow_count =
+                                    bindings_shadow_count.entry(name.clone()).or_default();
+                                binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+                            }
+                        };
+                        highlight_name(db, def)
+                    }
+                    NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
+                },
+                None => HighlightTag::UnresolvedReference.into(),
             }
         }
 

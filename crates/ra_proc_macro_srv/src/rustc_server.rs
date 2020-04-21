@@ -6,7 +6,7 @@
 //! The original idea from fedochet is using proc-macro2 as backend,
 //! we use ra_tt instead for better intergation with RA.
 //!
-//! FIXME: No span and source file informatin is implemented yet
+//! FIXME: No span and source file information is implemented yet
 
 use crate::proc_macro::bridge::{self, server};
 use ra_tt as tt;
@@ -76,7 +76,16 @@ impl Extend<TokenTree> for TokenStream {
 impl Extend<TokenStream> for TokenStream {
     fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
         for item in streams {
-            self.subtree.token_trees.extend(&mut item.into_iter())
+            for tkn in item {
+                match tkn {
+                    tt::TokenTree::Subtree(subtree) if subtree.delimiter.is_none() => {
+                        self.subtree.token_trees.extend(subtree.token_trees);
+                    }
+                    _ => {
+                        self.subtree.token_trees.push(tkn);
+                    }
+                }
+            }
         }
     }
 }

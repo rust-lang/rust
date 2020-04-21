@@ -2,7 +2,7 @@
 //!
 //! We separate proc-macro expanding logic to an extern program to allow
 //! different implementations (e.g. wasm or dylib loading). And this crate
-//! is used to provide basic infrastructure  for communication between two
+//! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
 
 mod rpc;
@@ -13,6 +13,7 @@ use process::{ProcMacroProcessSrv, ProcMacroProcessThread};
 use ra_tt::{SmolStr, Subtree};
 use std::{
     ffi::OsStr,
+    io,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -57,14 +58,10 @@ pub struct ProcMacroClient {
 }
 
 impl ProcMacroClient {
-    pub fn extern_process<I, S>(
-        process_path: &Path,
-        args: I,
-    ) -> Result<ProcMacroClient, std::io::Error>
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
+    pub fn extern_process(
+        process_path: PathBuf,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    ) -> io::Result<ProcMacroClient> {
         let (thread, process) = ProcMacroProcessSrv::run(process_path, args)?;
         Ok(ProcMacroClient {
             kind: ProcMacroClientKind::Process { process: Arc::new(process), thread },
@@ -84,7 +81,7 @@ impl ProcMacroClient {
             ProcMacroClientKind::Process { process, .. } => {
                 let macros = match process.find_proc_macros(dylib_path) {
                     Err(err) => {
-                        eprintln!("Fail to find proc macro. Error: {:#?}", err);
+                        eprintln!("Failed to find proc macros. Error: {:#?}", err);
                         return vec![];
                     }
                     Ok(macros) => macros,

@@ -327,7 +327,7 @@ impl ExternSource {
         self.extern_paths.iter().find_map(|(root_path, id)| {
             if let Ok(rel_path) = path.strip_prefix(root_path) {
                 let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
-                Some((id.clone(), rel_path))
+                Some((*id, rel_path))
             } else {
                 None
             }
