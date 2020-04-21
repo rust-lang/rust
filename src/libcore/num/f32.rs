@@ -265,7 +265,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_infinite(self) -> bool {
-        self.abs_private() == INFINITY
+        self.abs_private() == Self::INFINITY
     }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
@@ -287,7 +287,7 @@ impl f32 {
     pub fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
-        self.abs_private() < INFINITY
+        self.abs_private() < Self::INFINITY
     }
 
     /// Returns `true` if the number is neither zero, infinite,
