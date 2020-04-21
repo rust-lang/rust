@@ -63,126 +63,138 @@ fn generate_tokens(grammar: AstSrc<'_>) -> Result<String> {
 }
 
 fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
-    let nodes = grammar.nodes.iter().map(|node| {
-        let name = format_ident!("{}", node.name);
-        let kind = format_ident!("{}", to_upper_snake_case(&name.to_string()));
-        let traits = node.traits.iter().map(|trait_name| {
-            let trait_name = format_ident!("{}", trait_name);
-            quote!(impl ast::#trait_name for #name {})
-        });
+    let (node_defs, node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
+        .nodes
+        .iter()
+        .map(|node| {
+            let name = format_ident!("{}", node.name);
+            let kind = format_ident!("{}", to_upper_snake_case(&name.to_string()));
+            let traits = node.traits.iter().map(|trait_name| {
+                let trait_name = format_ident!("{}", trait_name);
+                quote!(impl ast::#trait_name for #name {})
+            });
 
-        let methods = node.fields.iter().map(|field| {
-            let method_name = field.method_name();
-            let ty = field.ty();
+            let methods = node.fields.iter().map(|field| {
+                let method_name = field.method_name();
+                let ty = field.ty();
 
-            if field.is_many() {
-                quote! {
-                    pub fn #method_name(&self) -> AstChildren<#ty> {
-                        support::children(&self.syntax)
-                    }
-                }
-            } else {
-                if let Some(token_kind) = field.token_kind() {
+                if field.is_many() {
                     quote! {
-                        pub fn #method_name(&self) -> Option<#ty> {
-                            support::token(&self.syntax, #token_kind)
+                        pub fn #method_name(&self) -> AstChildren<#ty> {
+                            support::children(&self.syntax)
                         }
                     }
                 } else {
-                    quote! {
-                        pub fn #method_name(&self) -> Option<#ty> {
-                            support::child(&self.syntax)
+                    if let Some(token_kind) = field.token_kind() {
+                        quote! {
+                            pub fn #method_name(&self) -> Option<#ty> {
+                                support::token(&self.syntax, #token_kind)
+                            }
+                        }
+                    } else {
+                        quote! {
+                            pub fn #method_name(&self) -> Option<#ty> {
+                                support::child(&self.syntax)
+                            }
                         }
                     }
                 }
-            }
-        });
-
-        quote! {
-            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-            pub struct #name {
-                pub(crate) syntax: SyntaxNode,
-            }
-
-            impl AstNode for #name {
-                fn can_cast(kind: SyntaxKind) -> bool {
-                    kind == #kind
-                }
-                fn cast(syntax: SyntaxNode) -> Option<Self> {
-                    if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-                }
-                fn syntax(&self) -> &SyntaxNode { &self.syntax }
-            }
-
-            #(#traits)*
-
-            impl #name {
-                #(#methods)*
-            }
-        }
-    });
-
-    let enums = grammar.enums.iter().map(|en| {
-        let variants = en.variants.iter().map(|var| format_ident!("{}", var)).collect::<Vec<_>>();
-        let name = format_ident!("{}", en.name);
-        let kinds = variants
-            .iter()
-            .map(|name| format_ident!("{}", to_upper_snake_case(&name.to_string())))
-            .collect::<Vec<_>>();
-        let traits = en.traits.iter().map(|trait_name| {
-            let trait_name = format_ident!("{}", trait_name);
-            quote!(impl ast::#trait_name for #name {})
-        });
-
-        quote! {
-            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-            pub enum #name {
-                #(#variants(#variants),)*
-            }
-
-            #(
-            impl From<#variants> for #name {
-                fn from(node: #variants) -> #name {
-                    #name::#variants(node)
-                }
-            }
-            )*
-
-            impl AstNode for #name {
-                fn can_cast(kind: SyntaxKind) -> bool {
-                    match kind {
-                        #(#kinds)|* => true,
-                        _ => false,
+            });
+            (
+                quote! {
+                    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                    pub struct #name {
+                        pub(crate) syntax: SyntaxNode,
                     }
-                }
-                fn cast(syntax: SyntaxNode) -> Option<Self> {
-                    let res = match syntax.kind() {
-                        #(
-                        #kinds => #name::#variants(#variants { syntax }),
-                        )*
-                        _ => return None,
-                    };
-                    Some(res)
-                }
-                fn syntax(&self) -> &SyntaxNode {
-                    match self {
-                        #(
-                        #name::#variants(it) => &it.syntax,
-                        )*
+
+                    #(#traits)*
+
+                    impl #name {
+                        #(#methods)*
                     }
-                }
-            }
+                },
+                quote! {
+                    impl AstNode for #name {
+                        fn can_cast(kind: SyntaxKind) -> bool {
+                            kind == #kind
+                        }
+                        fn cast(syntax: SyntaxNode) -> Option<Self> {
+                            if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+                        }
+                        fn syntax(&self) -> &SyntaxNode { &self.syntax }
+                    }
+                },
+            )
+        })
+        .unzip();
 
-            #(#traits)*
-        }
-    });
-
-    let displays = grammar
+    let (enum_defs, enum_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .enums
         .iter()
-        .map(|it| format_ident!("{}", it.name))
-        .chain(grammar.nodes.iter().map(|it| format_ident!("{}", it.name)))
-        .map(|name| {
+        .map(|en| {
+            let variants: Vec<_> = en.variants.iter().map(|var| format_ident!("{}", var)).collect();
+            let name = format_ident!("{}", en.name);
+            let kinds: Vec<_> = variants
+                .iter()
+                .map(|name| format_ident!("{}", to_upper_snake_case(&name.to_string())))
+                .collect();
+            let traits = en.traits.iter().map(|trait_name| {
+                let trait_name = format_ident!("{}", trait_name);
+                quote!(impl ast::#trait_name for #name {})
+            });
+
+            (
+                quote! {
+                    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                    pub enum #name {
+                        #(#variants(#variants),)*
+                    }
+
+                    #(#traits)*
+                },
+                quote! {
+                    #(
+                    impl From<#variants> for #name {
+                        fn from(node: #variants) -> #name {
+                            #name::#variants(node)
+                        }
+                    }
+                    )*
+
+                    impl AstNode for #name {
+                        fn can_cast(kind: SyntaxKind) -> bool {
+                            match kind {
+                                #(#kinds)|* => true,
+                                _ => false,
+                            }
+                        }
+                        fn cast(syntax: SyntaxNode) -> Option<Self> {
+                            let res = match syntax.kind() {
+                                #(
+                                #kinds => #name::#variants(#variants { syntax }),
+                                )*
+                                _ => return None,
+                            };
+                            Some(res)
+                        }
+                        fn syntax(&self) -> &SyntaxNode {
+                            match self {
+                                #(
+                                #name::#variants(it) => &it.syntax,
+                                )*
+                            }
+                        }
+                    }
+                },
+            )
+        })
+        .unzip();
+
+    let enum_names = grammar.enums.iter().map(|it| it.name);
+    let node_names = grammar.nodes.iter().map(|it| it.name);
+
+    let display_impls =
+        enum_names.chain(node_names.clone()).map(|it| format_ident!("{}", it)).map(|name| {
             quote! {
                 impl std::fmt::Display for #name {
                     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -192,13 +204,13 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
             }
         });
 
-    let defined_nodes: HashSet<_> = grammar.nodes.iter().map(|node| node.name).collect();
+    let defined_nodes: HashSet<_> = node_names.collect();
 
     for node in kinds
         .nodes
         .iter()
-        .map(|kind| to_pascal_case(*kind))
-        .filter(|name| !defined_nodes.contains(&**name))
+        .map(|kind| to_pascal_case(kind))
+        .filter(|name| !defined_nodes.contains(name.as_str()))
     {
         eprintln!("Warning: node {} not defined in ast source", node);
     }
@@ -210,9 +222,11 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
             T,
         };
 
-        #(#nodes)*
-        #(#enums)*
-        #(#displays)*
+        #(#node_defs)*
+        #(#enum_defs)*
+        #(#node_boilerplate_impls)*
+        #(#enum_boilerplate_impls)*
+        #(#display_impls)*
     };
 
     let ast = ast.to_string().replace("T ! [ ", "T![").replace(" ] )", "])");
@@ -380,20 +394,16 @@ fn to_pascal_case(s: &str) -> String {
 
 impl Field<'_> {
     fn is_many(&self) -> bool {
-        match self {
-            Field::Node { src: FieldSrc::Many(_), .. } => true,
-            _ => false,
-        }
+        matches!(self, Field::Node { src: FieldSrc::Many(_), .. })
     }
     fn token_kind(&self) -> Option<proc_macro2::TokenStream> {
-        let res = match self {
+        match self {
             Field::Token(token) => {
                 let token: proc_macro2::TokenStream = token.parse().unwrap();
-                quote! { T![#token] }
+                Some(quote! { T![#token] })
             }
-            _ => return None,
-        };
-        Some(res)
+            _ => None,
+        }
     }
     fn method_name(&self) -> proc_macro2::Ident {
         match self {
