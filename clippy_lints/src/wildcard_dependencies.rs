@@ -1,6 +1,6 @@
-use crate::utils::span_lint;
-use rustc_ast::ast::Crate;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use crate::utils::{run_lints, span_lint};
+use rustc_hir::{hir_id::CRATE_HIR_ID, Crate};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::DUMMY_SP;
 
@@ -28,8 +28,12 @@ declare_clippy_lint! {
 
 declare_lint_pass!(WildcardDependencies => [WILDCARD_DEPENDENCIES]);
 
-impl EarlyLintPass for WildcardDependencies {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &Crate) {
+impl LateLintPass<'_, '_> for WildcardDependencies {
+    fn check_crate(&mut self, cx: &LateContext<'_, '_>, _: &Crate<'_>) {
+        if !run_lints(cx, &[WILDCARD_DEPENDENCIES], CRATE_HIR_ID) {
+            return;
+        }
+
         let metadata = if let Ok(metadata) = cargo_metadata::MetadataCommand::new().no_deps().exec() {
             metadata
         } else {

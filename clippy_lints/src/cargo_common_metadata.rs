@@ -2,9 +2,9 @@
 
 use std::path::PathBuf;
 
-use crate::utils::span_lint;
-use rustc_ast::ast::Crate;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use crate::utils::{run_lints, span_lint};
+use rustc_hir::{hir_id::CRATE_HIR_ID, Crate};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::DUMMY_SP;
 
@@ -35,11 +35,11 @@ declare_clippy_lint! {
     "common metadata is defined in `Cargo.toml`"
 }
 
-fn warning(cx: &EarlyContext<'_>, message: &str) {
+fn warning(cx: &LateContext<'_, '_>, message: &str) {
     span_lint(cx, CARGO_COMMON_METADATA, DUMMY_SP, message);
 }
 
-fn missing_warning(cx: &EarlyContext<'_>, package: &cargo_metadata::Package, field: &str) {
+fn missing_warning(cx: &LateContext<'_, '_>, package: &cargo_metadata::Package, field: &str) {
     let message = format!("package `{}` is missing `{}` metadata", package.name, field);
     warning(cx, &message);
 }
@@ -59,8 +59,12 @@ fn is_empty_vec(value: &[String]) -> bool {
 
 declare_lint_pass!(CargoCommonMetadata => [CARGO_COMMON_METADATA]);
 
-impl EarlyLintPass for CargoCommonMetadata {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &Crate) {
+impl LateLintPass<'_, '_> for CargoCommonMetadata {
+    fn check_crate(&mut self, cx: &LateContext<'_, '_>, _: &Crate<'_>) {
+        if !run_lints(cx, &[CARGO_COMMON_METADATA], CRATE_HIR_ID) {
+            return;
+        }
+
         let metadata = if let Ok(metadata) = cargo_metadata::MetadataCommand::new().no_deps().exec() {
             metadata
         } else {
