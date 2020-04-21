@@ -1,8 +1,10 @@
 //! Implements threads.
 
 use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 use std::convert::TryFrom;
 use std::num::{NonZeroU32, TryFromIntError};
+use std::time::Instant;
 
 use log::trace;
 
@@ -15,17 +17,23 @@ use rustc_middle::{
     ty::{self, Instance},
 };
 
+use crate::sync::SynchronizationState;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SchedulingAction {
     /// Execute step on the active thread.
     ExecuteStep,
+    /// Execute a scheduler's callback.
+    ExecuteCallback,
     /// Execute destructors of the active thread.
     ExecuteDtors,
     /// Stop the program.
     Stop,
 }
+
+type EventCallback<'mir, 'tcx> =
+    Box<dyn FnOnce(&mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>) -> InterpResult<'tcx> + 'tcx>;
 
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -94,6 +102,7 @@ pub enum ThreadState {
     BlockedOnJoin(ThreadId),
     /// The thread is blocked and belongs to the given blockset.
     Blocked(BlockSetId),
+    BlockedThread,
     /// The thread has terminated its execution (we do not delete terminated
     /// threads).
     Terminated,
@@ -162,6 +171,23 @@ impl<'mir, 'tcx> Default for Thread<'mir, 'tcx> {
     }
 }
 
+/// Callbacks are used to implement timeouts. For example, waiting on a
+/// conditional variable with a timeout creates a callback that is called after
+/// the specified time and unblocks the thread. If another thread signals on the
+/// conditional variable, the signal handler deletes the callback.
+struct CallBackInfo<'mir, 'tcx> {
+    /// The callback should be called no earlier than this time.
+    call_time: Instant,
+    /// The called function.
+    callback: EventCallback<'mir, 'tcx>,
+}
+
+impl<'mir, 'tcx> std::fmt::Debug for CallBackInfo<'mir, 'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CallBack({:?})", self.call_time)
+    }
+}
+
 /// A set of threads.
 #[derive(Debug)]
 pub struct ThreadManager<'mir, 'tcx> {
@@ -171,6 +197,8 @@ pub struct ThreadManager<'mir, 'tcx> {
     ///
     /// Note that this vector also contains terminated threads.
     threads: IndexVec<ThreadId, Thread<'mir, 'tcx>>,
+    /// FIXME: make private.
+    pub(crate) sync: SynchronizationState,
     /// A counter used to generate unique identifiers for blocksets.
     blockset_counter: u32,
     /// A mapping from a thread-local static to an allocation id of a thread
@@ -178,6 +206,8 @@ pub struct ThreadManager<'mir, 'tcx> {
     thread_local_alloc_ids: RefCell<FxHashMap<(DefId, ThreadId), AllocId>>,
     /// A flag that indicates that we should change the active thread.
     yield_active_thread: bool,
+    /// Callbacks that are called once the specified time passes.
+    callbacks: FxHashMap<ThreadId, CallBackInfo<'mir, 'tcx>>,
 }
 
 impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
@@ -191,9 +221,11 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
         Self {
             active_thread: ThreadId::new(0),
             threads: threads,
+            sync: SynchronizationState::default(),
             blockset_counter: 0,
             thread_local_alloc_ids: Default::default(),
             yield_active_thread: false,
+            callbacks: FxHashMap::default(),
         }
     }
 }
@@ -321,35 +353,56 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         self.active_thread_ref().thread_name()
     }
 
-    /// Allocate a new blockset id.
-    fn create_blockset(&mut self) -> BlockSetId {
-        self.blockset_counter = self.blockset_counter.checked_add(1).unwrap();
-        BlockSetId::new(self.blockset_counter)
-    }
-
-    /// Block the currently active thread and put it into the given blockset.
-    fn block_active_thread(&mut self, set: BlockSetId) {
-        let state = &mut self.active_thread_mut().state;
+    /// Put the thread into the blocked state.
+    fn block_thread(&mut self, thread: ThreadId) {
+        let state = &mut self.threads[thread].state;
         assert_eq!(*state, ThreadState::Enabled);
-        *state = ThreadState::Blocked(set);
+        *state = ThreadState::BlockedThread;
     }
 
-    /// Unblock any one thread from the given blockset if it contains at least
-    /// one. Return the id of the unblocked thread.
-    fn unblock_some_thread(&mut self, set: BlockSetId) -> Option<ThreadId> {
-        for (id, thread) in self.threads.iter_enumerated_mut() {
-            if thread.state == ThreadState::Blocked(set) {
-                trace!("unblocking {:?} in blockset {:?}", id, set);
-                thread.state = ThreadState::Enabled;
-                return Some(id);
-            }
-        }
-        None
+    /// Put the blocked thread into the enabled state.
+    fn unblock_thread(&mut self, thread: ThreadId) {
+        let state = &mut self.threads[thread].state;
+        assert_eq!(*state, ThreadState::BlockedThread);
+        *state = ThreadState::Enabled;
     }
 
     /// Change the active thread to some enabled thread.
     fn yield_active_thread(&mut self) {
         self.yield_active_thread = true;
+    }
+
+    /// Register the given `callback` to be called once the `call_time` passes.
+    fn register_callback(
+        &mut self,
+        thread: ThreadId,
+        call_time: Instant,
+        callback: EventCallback<'mir, 'tcx>,
+    ) {
+        self.callbacks
+            .insert(thread, CallBackInfo { call_time: call_time, callback: callback })
+            .unwrap_none();
+    }
+
+    /// Unregister the callback for the `thread`.
+    fn unregister_callback_if_exists(&mut self, thread: ThreadId) {
+        self.callbacks.remove(&thread);
+    }
+
+    /// Get a callback that is ready to be called.
+    fn get_callback(&mut self) -> Option<(ThreadId, EventCallback<'mir, 'tcx>)> {
+        let current_time = Instant::now();
+        // We use a for loop here to make the scheduler more deterministic.
+        for thread in self.threads.indices() {
+            match self.callbacks.entry(thread) {
+                Entry::Occupied(entry) =>
+                    if current_time >= entry.get().call_time {
+                        return Some((thread, entry.remove().callback));
+                    },
+                Entry::Vacant(_) => {}
+            }
+        }
+        None
     }
 
     /// Decide which action to take next and on which thread.
@@ -407,6 +460,18 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         // We have not found a thread to execute.
         if self.threads.iter().all(|thread| thread.state == ThreadState::Terminated) {
             unreachable!();
+        } else if let Some(next_call_time) =
+            self.callbacks.values().min_by_key(|info| info.call_time)
+        {
+            // All threads are currently blocked, but we have unexecuted
+            // callbacks, which may unblock some of the threads. Hence,
+            // sleep until the first callback.
+            if let Some(sleep_time) =
+                next_call_time.call_time.checked_duration_since(Instant::now())
+            {
+                std::thread::sleep(sleep_time);
+            }
+            Ok(SchedulingAction::ExecuteCallback)
         } else {
             throw_machine_stop!(TerminationInfo::Deadlock);
         }
@@ -577,27 +642,51 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    fn create_blockset(&mut self) -> InterpResult<'tcx, BlockSetId> {
+    fn block_thread(&mut self, thread: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        Ok(this.machine.threads.create_blockset())
+        Ok(this.machine.threads.block_thread(thread))
     }
 
     #[inline]
-    fn block_active_thread(&mut self, set: BlockSetId) -> InterpResult<'tcx> {
+    fn unblock_thread(&mut self, thread: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        Ok(this.machine.threads.block_active_thread(set))
-    }
-
-    #[inline]
-    fn unblock_some_thread(&mut self, set: BlockSetId) -> InterpResult<'tcx, Option<ThreadId>> {
-        let this = self.eval_context_mut();
-        Ok(this.machine.threads.unblock_some_thread(set))
+        Ok(this.machine.threads.unblock_thread(thread))
     }
 
     #[inline]
     fn yield_active_thread(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.machine.threads.yield_active_thread();
+        Ok(())
+    }
+
+    #[inline]
+    fn register_callback(
+        &mut self,
+        thread: ThreadId,
+        call_time: Instant,
+        callback: EventCallback<'mir, 'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.machine.threads.register_callback(thread, call_time, callback);
+        Ok(())
+    }
+
+    #[inline]
+    fn unregister_callback_if_exists(&mut self, thread: ThreadId) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.machine.threads.unregister_callback_if_exists(thread);
+        Ok(())
+    }
+
+    /// Execute the callback on the callback's thread.
+    #[inline]
+    fn run_scheduler_callback(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let (thread, callback) = this.machine.threads.get_callback().expect("no callback found");
+        let old_thread = this.set_active_thread(thread)?;
+        callback(this)?;
+        this.set_active_thread(old_thread)?;
         Ok(())
     }
 

@@ -5,7 +5,7 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::num::NonZeroU64;
 use std::rc::Rc;
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 use std::fmt;
 
 use log::trace;
@@ -251,6 +251,11 @@ pub struct Evaluator<'mir, 'tcx> {
     /// The "time anchor" for this machine's monotone clock (for `Instant` simulation).
     pub(crate) time_anchor: Instant,
 
+    /// The approximate system time when "time anchor" was created. This is used
+    /// for converting system time to monotone time so that we can simplify the
+    /// thread scheduler to deal only with a single representation of time.
+    pub(crate) time_anchor_timestamp: SystemTime,
+
     /// The set of threads.
     pub(crate) threads: ThreadManager<'mir, 'tcx>,
 
@@ -281,6 +286,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             dir_handler: Default::default(),
             panic_payload: None,
             time_anchor: Instant::now(),
+            time_anchor_timestamp: SystemTime::now(),
             layouts,
             threads: ThreadManager::default(),
         }
