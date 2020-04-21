@@ -192,7 +192,7 @@ You also need the `LSP` package. To install it:
    * Type `Install Package Control`, press enter
 2. In the command palette, run `Package control: Install package`, and in the list that pops up, type `LSP` and press enter.
 
-Finally, with your Rust project open, in the command palette, run `LSP: Enable Language Server In Project` or `LSP: Enable Language Server Globally`, then select `rust-analyzer` in the list that pops up enable to enable the rust-analyzer LSP. The latter means that rust-analzyer is enabled by default in Rust projects.
+Finally, with your Rust project open, in the command palette, run `LSP: Enable Language Server In Project` or `LSP: Enable Language Server Globally`, then select `rust-analyzer` in the list that pops up to enable the rust-analyzer LSP. The latter means that rust-analzyer is enabled by default in Rust projects.
 
 If it worked, you should see "rust-analzyer, Line X, Column Y" on the left side of the bottom bar, and after waiting a bit, functionality like tooltips on hovering over variables should become available.
 
