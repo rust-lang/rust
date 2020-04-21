@@ -527,20 +527,22 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         arg: &Operand<'tcx>,
         source_info: SourceInfo,
     ) -> Option<()> {
-        if self.use_ecx(|this| {
-            let val = this.ecx.read_immediate(this.ecx.eval_operand(arg, None)?)?;
-            let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, val)?;
-            Ok(overflow)
-        })? {
-            // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
-            // appropriate to use.
-            assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
-            self.report_assert_as_lint(
-                lint::builtin::ARITHMETIC_OVERFLOW,
-                source_info,
-                "this arithmetic operation will overflow",
-                AssertKind::OverflowNeg,
-            )?;
+        if !arg.needs_subst() {
+            if self.use_ecx(|this| {
+                let val = this.ecx.read_immediate(this.ecx.eval_operand(arg, None)?)?;
+                let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, val)?;
+                Ok(overflow)
+            })? {
+                // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
+                // appropriate to use.
+                assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
+                self.report_assert_as_lint(
+                    lint::builtin::ARITHMETIC_OVERFLOW,
+                    source_info,
+                    "this arithmetic operation will overflow",
+                    AssertKind::OverflowNeg,
+                )?;
+            }
         }
 
         Some(())
