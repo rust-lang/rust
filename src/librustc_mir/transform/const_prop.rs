@@ -521,6 +521,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         None
     }
 
+    /// Check for overflow for a unary op. Like check_binary_op, safe to call even if the operand
+    /// needs substs. In that case, no work is done.
     fn check_unary_op(
         &mut self,
         op: UnOp,
@@ -548,6 +550,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Some(())
     }
 
+    /// Check a binary operand for overflow. Safe to call with values that need substs -- those
+    /// values just won't be checked.
     fn check_binary_op(
         &mut self,
         op: BinOp,
