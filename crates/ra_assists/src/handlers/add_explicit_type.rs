@@ -52,21 +52,22 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
     }
     // Infer type
     let ty = ctx.sema.type_of_expr(&expr)?;
-    // Assist not applicable if the type is unknown
-    if ty.contains_unknown() {
+
+    if ty.contains_unknown() || ty.is_closure() {
         return None;
     }
 
     let db = ctx.db;
+    let new_type_string = ty.display_truncated(db, None).to_string();
     ctx.add_assist(
         AssistId("add_explicit_type"),
-        format!("Insert explicit type '{}'", ty.display(db)),
+        format!("Insert explicit type '{}'", new_type_string),
         |edit| {
             edit.target(pat_range);
             if let Some(ascribed_ty) = ascribed_ty {
-                edit.replace(ascribed_ty.syntax().text_range(), format!("{}", ty.display(db)));
+                edit.replace(ascribed_ty.syntax().text_range(), new_type_string);
             } else {
-                edit.insert(name_range.end(), format!(": {}", ty.display(db)));
+                edit.insert(name_range.end(), format!(": {}", new_type_string));
             }
         },
     )
@@ -173,5 +174,42 @@ mod tests {
             add_explicit_type,
             "fn f() <|>{let a = match 1 {2 => 3, 3 => 5};}",
         )
+    }
+
+    #[test]
+    fn closure_parameters_are_not_added() {
+        check_assist_not_applicable(
+            add_explicit_type,
+            r#"
+fn main() {
+    let multiply_by_two<|> = |i| i * 3;
+    let six = multiply_by_two(2);
+}"#,
+        )
+    }
+
+    #[test]
+    fn default_generics_should_not_be_added() {
+        check_assist(
+            add_explicit_type,
+            r#"
+struct Test<K, T = u8> {
+    k: K,
+    t: T,
+}
+
+fn main() {
+    let test<|> = Test { t: 23, k: 33 };
+}"#,
+            r#"
+struct Test<K, T = u8> {
+    k: K,
+    t: T,
+}
+
+fn main() {
+    let test<|>: Test<i32> = Test { t: 23, k: 33 };
+}"#,
+        );
     }
 }

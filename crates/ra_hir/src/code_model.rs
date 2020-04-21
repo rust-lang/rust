@@ -1132,6 +1132,10 @@ impl Type {
         Some(self.ty.value.as_callable()?.0)
     }
 
+    pub fn is_closure(&self) -> bool {
+        matches!(&self.ty.value, Ty::Apply(ApplicationTy { ctor: TypeCtor::Closure { .. }, .. }))
+    }
+
     pub fn contains_unknown(&self) -> bool {
         return go(&self.ty.value);
 
