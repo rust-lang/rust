@@ -163,13 +163,6 @@ macro_rules! make_mir_visitor {
                 self.super_place(place, context, location);
             }
 
-            fn visit_place_base(&mut self,
-                                local: & $($mutability)? Local,
-                                context: PlaceContext,
-                                location: Location) {
-                self.super_place_base(local, context, location);
-            }
-
             visit_place_fns!($($mutability)?);
 
             fn visit_constant(&mut self,
@@ -710,13 +703,6 @@ macro_rules! make_mir_visitor {
                 );
             }
 
-            fn super_place_base(&mut self,
-                                local: & $($mutability)? Local,
-                                context: PlaceContext,
-                                location: Location) {
-                self.visit_local(local, context, location);
-            }
-
             fn super_local_decl(&mut self,
                                 local: Local,
                                 local_decl: & $($mutability)? LocalDecl<'tcx>) {
@@ -847,7 +833,7 @@ macro_rules! visit_place_fns {
             context: PlaceContext,
             location: Location,
         ) {
-            self.visit_place_base(&mut place.local, context, location);
+            self.visit_local(&mut place.local, context, location);
 
             if let Some(new_projection) = self.process_projection(&place.projection, location) {
                 place.projection = self.tcx().intern_place_elems(&new_projection);
@@ -936,7 +922,7 @@ macro_rules! visit_place_fns {
                 };
             }
 
-            self.visit_place_base(&place.local, context, location);
+            self.visit_local(&place.local, context, location);
 
             self.visit_projection(place.local, &place.projection, context, location);
         }

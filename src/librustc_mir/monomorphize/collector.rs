@@ -648,7 +648,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_terminator_kind(kind, location);
     }
 
-    fn visit_place_base(
+    fn visit_local(
         &mut self,
         _place_local: &Local,
         _context: mir::visit::PlaceContext,
