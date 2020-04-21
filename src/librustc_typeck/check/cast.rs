@@ -613,6 +613,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Int(CEnum), Int(_)) => Ok(CastKind::EnumCast),
             (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
 
+            (Float, Int(_)) if std::env::var_os("RUSTC_BOOTSTRAP").is_none() => Err(CastError::IllegalCast),
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
         }
     }
