@@ -43,6 +43,8 @@ Current beta, release 2020-06-04
 
 ### Enhancements
 
+* On _nightly_ you can now use `cargo clippy --fix -Z unstable-options` to
+  auto-fix lints that support this [#5363](https://github.com/rust-lang/rust-clippy/pull/5363)
 * Make [`redundant_clone`] also trigger on cases where the cloned value is not
   consumed. [#5304](https://github.com/rust-lang/rust-clippy/pull/5304)
 * Expand [`integer_arithmetic`] to also disallow bit-shifting [#5430](https://github.com/rust-lang/rust-clippy/pull/5430)
