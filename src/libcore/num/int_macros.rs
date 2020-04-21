@@ -14,14 +14,14 @@ macro_rules! int_module {
             concat!("The smallest value that can be represented by this integer type.
 Use [`", stringify!($T), "::MIN", "`](../../std/primitive.", stringify!($T), ".html#associatedconstant.MIN) instead."),
             #[$attr]
-            pub const MIN: $T = $T::min_value();
+            pub const MIN: $T = $T::MIN;
         }
 
         doc_comment! {
             concat!("The largest value that can be represented by this integer type.
 Use [`", stringify!($T), "::MAX", "`](../../std/primitive.", stringify!($T), ".html#associatedconstant.MAX) instead."),
             #[$attr]
-            pub const MAX: $T = $T::max_value();
+            pub const MAX: $T = $T::MAX;
         }
     )
 }

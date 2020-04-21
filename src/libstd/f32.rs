@@ -171,7 +171,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn signum(self) -> f32 {
-        if self.is_nan() { NAN } else { 1.0_f32.copysign(self) }
+        if self.is_nan() { Self::NAN } else { 1.0_f32.copysign(self) }
     }
 
     /// Returns a number composed of the magnitude of `self` and the sign of
@@ -832,8 +832,8 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f32 {
-        if self == NEG_INFINITY {
-            NEG_INFINITY
+        if self == Self::NEG_INFINITY {
+            Self::NEG_INFINITY
         } else {
             (self + ((self * self) + 1.0).sqrt()).ln().copysign(self)
         }
@@ -855,7 +855,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f32 {
-        if self < 1.0 { crate::f32::NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
+        if self < 1.0 { Self::NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
     }
 
     /// Inverse hyperbolic tangent function.
