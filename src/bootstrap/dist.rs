@@ -1461,18 +1461,18 @@ impl Step for Miri {
         builder.create_dir(&image);
 
         // Prepare the image directory
-        // We expect miri to build, because we've exited this step above if tool
-        // state for miri isn't testing.
+        // We're always fine with miri not building, we don't ship it on
+        // beta/stable anyway.
         let miri = builder
             .ensure(tool::Miri { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
-                missing_tool("miri", builder.build.config.missing_tools);
+                missing_tool("miri", true);
                 None
             })?;
         let cargomiri = builder
             .ensure(tool::CargoMiri { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
-                missing_tool("cargo miri", builder.build.config.missing_tools);
+                missing_tool("cargo miri", true);
                 None
             })?;
 
