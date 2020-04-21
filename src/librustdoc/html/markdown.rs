@@ -20,7 +20,12 @@
 #![allow(non_camel_case_types)]
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::DefId;
+use rustc_hir::HirId;
+use rustc_middle::ty::TyCtxt;
+use rustc_session::lint;
 use rustc_span::edition::Edition;
+use rustc_span::Span;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -192,7 +197,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         if let Some(Event::Start(Tag::CodeBlock(kind))) = event {
             let parse_result = match kind {
                 CodeBlockKind::Fenced(ref lang) => {
-                    LangString::parse(&lang, self.check_error_codes, false)
+                    LangString::parse_without_check(&lang, self.check_error_codes, false)
                 }
                 CodeBlockKind::Indented => LangString::all_false(),
             };
@@ -560,6 +565,7 @@ pub fn find_testable_code<T: test::Tester>(
     tests: &mut T,
     error_codes: ErrorCodes,
     enable_per_target_ignores: bool,
+    extra_info: Option<&ExtraInfo<'_, '_>>,
 ) {
     let mut parser = Parser::new(doc).into_offset_iter();
     let mut prev_offset = 0;
@@ -573,7 +579,12 @@ pub fn find_testable_code<T: test::Tester>(
                         if lang.is_empty() {
                             LangString::all_false()
                         } else {
-                            LangString::parse(lang, error_codes, enable_per_target_ignores)
+                            LangString::parse(
+                                lang,
+                                error_codes,
+                                enable_per_target_ignores,
+                                extra_info,
+                            )
                         }
                     }
                     CodeBlockKind::Indented => LangString::all_false(),
@@ -615,6 +626,49 @@ pub fn find_testable_code<T: test::Tester>(
     }
 }
 
+pub struct ExtraInfo<'a, 'b> {
+    hir_id: Option<HirId>,
+    item_did: Option<DefId>,
+    sp: Span,
+    tcx: &'a TyCtxt<'b>,
+}
+
+impl<'a, 'b> ExtraInfo<'a, 'b> {
+    pub fn new(tcx: &'a TyCtxt<'b>, hir_id: HirId, sp: Span) -> ExtraInfo<'a, 'b> {
+        ExtraInfo { hir_id: Some(hir_id), item_did: None, sp, tcx }
+    }
+
+    pub fn new_did(tcx: &'a TyCtxt<'b>, did: DefId, sp: Span) -> ExtraInfo<'a, 'b> {
+        ExtraInfo { hir_id: None, item_did: Some(did), sp, tcx }
+    }
+
+    fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
+        let hir_id = match (self.hir_id, self.item_did) {
+            (Some(h), _) => h,
+            (None, Some(item_did)) => {
+                match self.tcx.hir().as_local_hir_id(item_did) {
+                    Some(hir_id) => hir_id,
+                    None => {
+                        // If non-local, no need to check anything.
+                        return;
+                    }
+                }
+            }
+            (None, None) => return,
+        };
+        self.tcx.struct_span_lint_hir(
+            lint::builtin::INVALID_CODEBLOCK_ATTRIBUTE,
+            hir_id,
+            self.sp,
+            |lint| {
+                let mut diag = lint.build(msg);
+                diag.help(help);
+                diag.emit();
+            },
+        );
+    }
+}
+
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct LangString {
     original: String,
@@ -652,10 +706,19 @@ impl LangString {
         }
     }
 
+    fn parse_without_check(
+        string: &str,
+        allow_error_code_check: ErrorCodes,
+        enable_per_target_ignores: bool,
+    ) -> LangString {
+        Self::parse(string, allow_error_code_check, enable_per_target_ignores, None)
+    }
+
     fn parse(
         string: &str,
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
+        extra: Option<&ExtraInfo<'_, '_>>,
     ) -> LangString {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
@@ -714,6 +777,53 @@ impl LangString {
                     } else {
                         seen_other_tags = true;
                     }
+                }
+                x if extra.is_some() => {
+                    let s = x.to_lowercase();
+                    match if s == "compile-fail" || s == "compile_fail" || s == "compilefail" {
+                        Some((
+                            "compile_fail",
+                            "the code block will either not be tested if not marked as a rust one \
+                             or won't fail if it compiles successfully",
+                        ))
+                    } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
+                        Some((
+                            "should_panic",
+                            "the code block will either not be tested if not marked as a rust one \
+                             or won't fail if it doesn't panic when running",
+                        ))
+                    } else if s == "no-run" || s == "no_run" || s == "norun" {
+                        Some((
+                            "no_run",
+                            "the code block will either not be tested if not marked as a rust one \
+                             or will be run (which you might not want)",
+                        ))
+                    } else if s == "allow-fail" || s == "allow_fail" || s == "allowfail" {
+                        Some((
+                            "allow_fail",
+                            "the code block will either not be tested if not marked as a rust one \
+                             or will be run (which you might not want)",
+                        ))
+                    } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
+                        Some((
+                            "test_harness",
+                            "the code block will either not be tested if not marked as a rust one \
+                             or the code will be wrapped inside a main function",
+                        ))
+                    } else {
+                        None
+                    } {
+                        Some((flag, help)) => {
+                            if let Some(ref extra) = extra {
+                                extra.error_invalid_codeblock_attr(
+                                    &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
+                                    help,
+                                );
+                            }
+                        }
+                        None => {}
+                    }
+                    seen_other_tags = true;
                 }
                 _ => seen_other_tags = true,
             }
@@ -934,7 +1044,7 @@ crate struct RustCodeBlock {
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
 /// untagged (and assumed to be rust).
-crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
+crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustCodeBlock> {
     let mut code_blocks = vec![];
 
     if md.is_empty() {
@@ -951,7 +1061,7 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
                     let lang_string = if syntax.is_empty() {
                         LangString::all_false()
                     } else {
-                        LangString::parse(&*syntax, ErrorCodes::Yes, false)
+                        LangString::parse(&*syntax, ErrorCodes::Yes, false, Some(extra_info))
                     };
                     if !lang_string.rust {
                         continue;
