@@ -98,24 +98,14 @@ use measureme::{EventId, EventIdBuilder, SerializableString, StringId};
 use parking_lot::RwLock;
 
 cfg_if! {
-    if #[cfg(target_arch = "wasm32")] {
-        cfg_if! {
-            if #[cfg(target_os = "wasi")] {
-                type SerializationSink = measureme::FileSerializationSink;
-            } else {
-                type SerializationSink = measureme::ByteVecSink;
-            }
-        }
+    if #[cfg(any(windows, target_os = "wasi"))] {
+        /// FileSerializationSink is faster on Windows
+        type SerializationSink = measureme::FileSerializationSink;
+    } else if #[cfg(target_arch = "wasm32")] {
+        type SerializationSink = measureme::ByteVecSink;
     } else {
-        cfg_if! {
-            if #[cfg(windows)] {
-                /// FileSerializationSink is faster on Windows
-                type SerializationSink = measureme::FileSerializationSink;
-            } else {
-                /// MmapSerializatioSink is faster on macOS and Linux
-                type SerializationSink = measureme::MmapSerializationSink;
-            }
-        }
+        /// MmapSerializatioSink is faster on macOS and Linux
+        type SerializationSink = measureme::MmapSerializationSink;
     }
 }
 
