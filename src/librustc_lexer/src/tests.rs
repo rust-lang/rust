@@ -163,5 +163,4 @@ mod tests {
         let expected: Option<usize> = None;
         assert_eq!(expected, actual);
     }
-
 }
