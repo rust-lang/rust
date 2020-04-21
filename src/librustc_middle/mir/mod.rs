@@ -23,14 +23,12 @@ use rustc_ast::ast::Name;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
-use rustc_data_structures::sync::MappedLockGuard;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{Index, IndexMut};
@@ -390,15 +388,6 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
         Location { block: bb, statement_index: self[bb].statements.len() }
-    }
-
-    #[inline]
-    pub fn predecessors_for(
-        &self,
-        bb: BasicBlock,
-    ) -> impl std::ops::Deref<Target = SmallVec<[BasicBlock; 4]>> + '_ {
-        let predecessors = self.predecessor_cache.compute(&self.basic_blocks);
-        MappedLockGuard::map(predecessors, |preds| &mut preds[bb])
     }
 
     #[inline]
@@ -2676,7 +2665,7 @@ impl graph::GraphPredecessors<'graph> for Body<'tcx> {
 impl graph::WithPredecessors for Body<'tcx> {
     #[inline]
     fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
-        self.predecessors_for(node).clone().into_iter()
+        self.predecessors()[node].clone().into_iter()
     }
 }
 
