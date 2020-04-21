@@ -216,37 +216,34 @@ class AstInspector implements vscode.HoverProvider, vscode.DefinitionProvider, D
         return new vscode.Range(begin, end);
     }
 
-    // Shitty memoize the last value, otherwise the CPU is at 100% single core
+    // Memoize the last value, otherwise the CPU is at 100% single core
     // with quadratic lookups when we build rust2Ast cache
-    memo?: [vscode.TextDocument, number, number];
+    cache?: { doc: vscode.TextDocument; offset: number; line: number };
 
-    positionAt(doc: vscode.TextDocument, offset: number): vscode.Position {
+    positionAt(doc: vscode.TextDocument, targetOffset: number): vscode.Position {
         if (doc.eol === vscode.EndOfLine.LF) {
-            return doc.positionAt(offset);
+            return doc.positionAt(targetOffset);
         }
 
-        // God damn shitty workaround for crlf line endings
+        // Shitty workaround for crlf line endings
         // We are still in this prehistoric era of carriage returns here...
 
-        let i = 0;
-        let curOffset = 0;
+        let line = 0;
+        let offset = 0;
 
-        if (this.memo) {
-            const [memDoc, memOffset, memI] = this.memo;
-            if (memDoc === doc && memOffset <= offset) {
-                curOffset = memOffset;
-                i = memI;
-            }
+        const cache = this.cache;
+        if (cache?.doc === doc && cache.offset <= targetOffset) {
+            ({ line, offset } = cache);
         }
 
         while (true) {
-            const lineLenWithLf = doc.lineAt(i).text.length + 1;
-            curOffset += lineLenWithLf;
-            if (curOffset > offset) {
-                this.memo = [doc, curOffset - lineLenWithLf, i];
-                return doc.positionAt(offset + i);
+            const lineLenWithLf = doc.lineAt(line).text.length + 1;
+            if (offset + lineLenWithLf > targetOffset) {
+                this.cache = { doc, offset, line };
+                return doc.positionAt(targetOffset + line);
             }
-            i += 1;
+            offset += lineLenWithLf;
+            line += 1;
         }
     }
 }
