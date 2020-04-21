@@ -48,7 +48,9 @@ impl<'tcx> DebugContext<'tcx> {
             version: if tcx.sess.target.target.options.is_like_osx {
                 3
             } else {
-                5
+                // FIXME change to version 5 once the gdb and lldb shipping with the latest debian
+                // support it.
+                4
             },
             address_size,
         };
