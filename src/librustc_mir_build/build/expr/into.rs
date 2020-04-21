@@ -202,7 +202,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } else {
                     let args: Vec<_> = args
                         .into_iter()
-                        .map(|arg| unpack!(block = this.as_local_operand(block, arg)))
+                        .map(|arg| unpack!(block = this.as_local_call_operand(block, arg)))
                         .collect();
 
                     let success = this.cfg.start_new_block();
