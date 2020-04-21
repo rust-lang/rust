@@ -1001,6 +1001,7 @@ public:
 
 
   void forceAugmentedReturns(TypeResults &TR, const SmallPtrSetImpl<BasicBlock*>& guaranteedUnreachable) {
+    assert(TR.info.function == oldFunc);
       for(BasicBlock* BB: this->originalBlocks) {
         LoopContext loopContext;
         this->getContext(BB, loopContext);
@@ -1831,8 +1832,9 @@ public:
   }
 
   //Returns created select instructions, if any
-  std::vector<SelectInst*> addToDiffe(Value* val, Value* dif, IRBuilder<> &BuilderM) {
+  std::vector<SelectInst*> addToDiffe(Value* val, Value* dif, IRBuilder<> &BuilderM, Type* addingType) {
       std::vector<SelectInst*> addedSelects;
+
 
       auto faddForSelect = [&](Value* old, Value* dif) -> Value* {
 
@@ -1893,9 +1895,22 @@ public:
       assert(val->getType() == old->getType());
       Value* res = nullptr;
       if (val->getType()->isIntOrIntVectorTy()) {
+        assert(addingType);
+        assert(addingType->isFPOrFPVectorTy());
 
-        Value* bcold = BuilderM.CreateBitCast(old, IntToFloatTy(old->getType()));
-        Value* bcdif = BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType()));
+        auto oldBitSize = oldFunc->getParent()->getDataLayout().getTypeSizeInBits(old->getType());
+        auto newBitSize = oldFunc->getParent()->getDataLayout().getTypeSizeInBits(addingType);
+
+        if ( oldBitSize > newBitSize && oldBitSize % newBitSize == 0 && !addingType->isVectorTy()) {
+          addingType = VectorType::get(addingType, oldBitSize / newBitSize);
+        }
+
+        llvm::errs() << "old: " << *old << "\n";
+        llvm::errs() << "dif: " << *dif << "\n";
+        llvm::errs() << "addingType: " << *addingType << "\n";
+        Value* bcold = BuilderM.CreateBitCast(old, addingType);
+        Value* bcdif = BuilderM.CreateBitCast(dif, addingType);
+
         res = faddForSelect(bcold, bcdif);
         if (Instruction* oldinst = dyn_cast<Instruction>(bcold)) {
             if (oldinst->getNumUses() == 0) {
@@ -1923,7 +1938,9 @@ public:
         //store->setAlignment(align);
         return addedSelects;
       } else if (val->getType()->isFPOrFPVectorTy()) {
+        //TODO consider adding type
         res = faddForSelect(old, dif);
+
         BuilderM.CreateStore(res, getDifferential(val));
         //store->setAlignment(align);
         return addedSelects;

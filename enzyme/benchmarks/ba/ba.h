@@ -11,7 +11,7 @@ extern "C" {
 #include <math.h>
 #include <float.h>
     
-#include "../../../shared/defs.h"
+#include "../mshared/defs.h"
 
 // n number of cameras
 // m number of points

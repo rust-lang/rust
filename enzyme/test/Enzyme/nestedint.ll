@@ -698,7 +698,7 @@ entry:
   br i1 %mvcond, label %one, label %two
 
 one:                                              ; preds = %entry
-  store double 1.000000e+00, double* %a9, align 8
+  store double 1.000000e+00, double* %a9, align 8, !tbaa !15
   ret void
 
 two:                                              ; preds = %entry

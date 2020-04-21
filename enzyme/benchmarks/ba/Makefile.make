@@ -1,4 +1,4 @@
-# RUN: cd %desired_wd/gmm && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B ba-unopt.ll results.txt VERBOSE=1 -f %s
+# RUN: cd %desired_wd/ba && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B ba-raw.ll ba-unopt.ll results.txt VERBOSE=1 -f %s
 
 .PHONY: clean
 
@@ -16,7 +16,7 @@ clean:
 %-opt.ll: %-raw.ll
 	opt $^ -O2 -o $@ -S
 	
-%.o: %-c-opt.ll
+%.o: %-opt.ll
 	clang $^ -o $@
 
 ba.o: ba-opt.ll

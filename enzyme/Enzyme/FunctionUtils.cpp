@@ -423,6 +423,10 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
         }
 
         end:;
+
+        if (!needToConvert) {
+
+        }
 		//llvm::errs() << "ai: " << *ai << " needToConvert: " << needToConvert << "\n";
         if (needToConvert) {
             toconvert.push_back(ai);

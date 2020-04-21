@@ -319,7 +319,22 @@ public:
             return changed;
         }
 
-        llvm::errs() << "self: " << str() << " other: " << dt.str() << "\n";
+        if (dt.typeEnum == IntType::Integer) {
+            switch(op) {
+                case BinaryOperator::Shl:
+                case BinaryOperator::AShr:
+                case BinaryOperator::LShr:
+                    if (typeEnum != IntType::Unknown) {
+                        typeEnum = IntType::Unknown;
+                        changed = true;
+                        return changed;
+                    }
+                    break;
+                default: break;
+            }
+        }
+
+        llvm::errs() << "self: " << str() << " other: " << dt.str() << " op: " << op << "\n";
         llvm_unreachable("unknown case");
     }
 
@@ -845,6 +860,8 @@ typedef std::map<llvm::Argument*, DataType> FnTypeInfo;
 //First is ; then ; then
 struct NewFnTypeInfo {
 public:
+    llvm::Function* function;
+
     // arguments:type
     std::map<llvm::Argument*, ValueData> first;
     // return type
@@ -871,9 +888,8 @@ class TypeResults {
 public:
 	TypeAnalysis &analysis;
 	const NewFnTypeInfo info;
-    llvm::Function* function;
 public:
-	TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, llvm::Function* function);
+	TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn);
 	DataType intType(llvm::Value* val, bool errIfNotFound=true);
 
     //! Returns whether in the first num bytes there is pointer, int, float, or none
@@ -893,8 +909,6 @@ private:
     std::deque<llvm::Value*> workList;
     void addToWorkList(llvm::Value* val);
 public:
-    llvm::Function* function;
-
     //Calling context
     const NewFnTypeInfo fntypeinfo;
 
@@ -905,12 +919,12 @@ public:
 
     llvm::DominatorTree DT;
 
-    TypeAnalyzer(llvm::Function* function, const NewFnTypeInfo& fn, TypeAnalysis& TA);
+    TypeAnalyzer(const NewFnTypeInfo& fn, TypeAnalysis& TA);
 
     ValueData getAnalysis(llvm::Value* val);
 
     void updateAnalysis(llvm::Value* val, IntType data, llvm::Value* origin);
-
+    void updateAnalysis(llvm::Value* val, DataType data, llvm::Value* origin);
     void updateAnalysis(llvm::Value* val, ValueData data, llvm::Value* origin);
 
     void prepareArgs();
@@ -940,6 +954,8 @@ public:
 	void visitSExtInst(llvm::SExtInst &I);
 
 	void visitAddrSpaceCastInst(llvm::AddrSpaceCastInst &I);
+
+    void visitFPTruncInst(llvm::FPTruncInst &I);
 
 	void visitFPToUIInst(llvm::FPToUIInst &I);
 
@@ -983,15 +999,15 @@ class TypeAnalysis {
 public:
     std::map<NewFnTypeInfo, TypeAnalyzer > analyzedFunctions;
 
-    TypeResults analyzeFunction(const NewFnTypeInfo& fn, llvm::Function* function);
+    TypeResults analyzeFunction(const NewFnTypeInfo& fn);
 
 	ValueData query(llvm::Value* val, const NewFnTypeInfo& fn);
 
     DataType intType(llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true);
     DataType firstPointer(size_t num, llvm::Value* val, const NewFnTypeInfo& fn, bool errIfNotFound=true, bool pointerIntSame=false);
 
-    inline ValueData getReturnAnalysis(const NewFnTypeInfo &fn, llvm::Function* function) {
-        analyzeFunction(fn, function);
+    inline ValueData getReturnAnalysis(const NewFnTypeInfo &fn) {
+        analyzeFunction(fn);
         return analyzedFunctions.find(fn)->second.getReturnAnalysis();
     }
 };

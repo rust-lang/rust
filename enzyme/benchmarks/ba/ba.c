@@ -228,3 +228,27 @@ void ba_objective(
 extern int diffe_const;
 extern int diffe_dup;
 void __enzyme_autodiff(void*, ...);
+
+void dcompute_reproj_error(
+    double const* cam,
+    double * dcam,
+    double const* X,
+    double const* w,
+    double const* feat,
+    double *err,
+    double *derr
+)
+{
+    __enzyme_autodiff(compute_reproj_error,
+            cam, dcam,
+            diffe_const, X,
+            diffe_const, w,
+            diffe_const, feat,
+            err, derr);
+}
+
+void dcompute_zach_weight_error(double const* w, double* dw, double* err, double* derr) {
+    __enzyme_autodiff(compute_zach_weight_error,
+            w, dw,
+            err, derr);
+}

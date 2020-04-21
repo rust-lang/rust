@@ -183,7 +183,8 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
 
   std::map<Argument*, bool> volatile_args;
   NewFnTypeInfo type_args;
-  for(auto &a : cast<Function>(fn)->args()) {
+  type_args.function = cast<Function>(fn);
+  for(auto &a : type_args.function->args()) {
     volatile_args[&a] = false;
     ValueData dt;
     if (a.getType()->isFPOrFPVectorTy()) {
@@ -202,7 +203,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
   }
 
   TypeAnalysis TA;
-  type_args = TA.analyzeFunction(type_args, cast<Function>(fn)).getAnalyzedTypeInfo();
+  type_args = TA.analyzeFunction(type_args).getAnalyzedTypeInfo();
 
   auto newFunc = CreatePrimalAndGradient(cast<Function>(fn), constants, TLI, TA, AA, /*should return*/false, differentialReturn, /*dretPtr*/false, /*topLevel*/true, /*addedType*/nullptr, type_args, volatile_args, /*index mapping*/nullptr); //llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>({}));
 

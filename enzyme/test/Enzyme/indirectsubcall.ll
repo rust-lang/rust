@@ -23,7 +23,7 @@ define void @indirect(double* %x, double* %dxdt, double %t) {
 entry:
   %a1 = load double, double* %x, align 8
   %call1 = call double* @bad(double* %dxdt)
-  store double %a1, double* %call1, align 8
+  store double %a1, double* %call1, align 8, !tbaa !15
   ret void
 }
 
@@ -31,6 +31,12 @@ define double* @bad(double* %this) {
 entry:
   ret double* %this
 }
+
+!5 = !{!"omnipotent char", !6, i64 0}
+!6 = !{!"Simple C++ TBAA"}
+
+!15 = !{!16, !16, i64 0}
+!16 = !{!"double", !5, i64 0}
 
 ; CHECK: @"_enzyme_indirect'" = internal constant { { i8* } (double*, double*, double*, double*, double)*, { double } (double*, double*, double*, double*, double, i8*)* } { { i8* } (double*, double*, double*, double*, double)* @augmented_indirect, { double } (double*, double*, double*, double*, double, i8*)* @diffeindirect }
 

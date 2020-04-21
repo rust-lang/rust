@@ -303,13 +303,14 @@ bool isFunctionArgumentConstant(TypeResults &TR, CallInst* CI, Value* val, Small
 
 
     NewFnTypeInfo nextTypeInfo;
+    nextTypeInfo.function = F;
     int argnum = 0;
     for(auto &arg : F->args()) {
         nextTypeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, TR.query(CI->getArgOperand(argnum))));
         argnum++;
     }
     nextTypeInfo.second = TR.query(CI);
-    TypeResults TR2 = TR.analysis.analyzeFunction(nextTypeInfo, F);
+    TypeResults TR2 = TR.analysis.analyzeFunction(nextTypeInfo);
 
     for(unsigned i=0; i<CI->getNumArgOperands(); i++) {
         if (CI->getArgOperand(i) == val) {
@@ -450,7 +451,7 @@ void propagateArgumentInformation(CallInst& CI, std::function<bool(Value*)> prop
 //    from if the value is constant (the value is something that could be differentiated)
 bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, SmallPtrSetImpl<Value*> &retvals, AAResults &AA, uint8_t directions) {
     assert(inst);
-    assert(TR.function == inst->getParent()->getParent());
+    assert(TR.info.function == inst->getParent()->getParent());
 	constexpr uint8_t UP = 1;
 	constexpr uint8_t DOWN = 2;
 	//assert(directions >= 0);
@@ -914,10 +915,10 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
 bool isconstantValueM(TypeResults &TR, Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &constantvals, SmallPtrSetImpl<Value*> &retvals, AAResults &AA, uint8_t directions) {
     assert(val);
     if (auto inst = dyn_cast<Instruction>(val)) {
-        assert(TR.function == inst->getParent()->getParent());
+        assert(TR.info.function == inst->getParent()->getParent());
     }
     if (auto arg = dyn_cast<Argument>(val)) {
-        assert(TR.function == arg->getParent());
+        assert(TR.info.function == arg->getParent());
     }
 	//constexpr uint8_t UP = 1;
 	constexpr uint8_t DOWN = 2;

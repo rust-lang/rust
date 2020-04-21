@@ -143,13 +143,13 @@ DataType parseTBAA(Instruction* inst) {
     }
 }
 
-TypeAnalyzer::TypeAnalyzer(Function* function, const NewFnTypeInfo& fn, TypeAnalysis& TA) : function(function), fntypeinfo(fn), interprocedural(TA), DT(*function) {
-    for(auto &BB: *function) {
+TypeAnalyzer::TypeAnalyzer(const NewFnTypeInfo& fn, TypeAnalysis& TA) : fntypeinfo(fn), interprocedural(TA), DT(*fn.function) {
+    for(BasicBlock &BB: *fntypeinfo.function) {
         for(auto &inst : BB) {
 	        workList.push_back(&inst);
         }
     }
-    for(auto &BB: *function) {
+    for(BasicBlock &BB: *fntypeinfo.function) {
         for(auto &inst : BB) {
             for(auto& op : inst.operands()) {
                 addToWorkList(op);
@@ -195,9 +195,30 @@ ValueData TypeAnalyzer::getAnalysis(Value* val) {
 	}
     */
 
+    if (auto inst = dyn_cast<Instruction>(val)) {
+        if (inst->getParent()->getParent() != fntypeinfo.function) {
+            llvm::errs() << " function: " << *fntypeinfo.function << "\n";
+            llvm::errs() << " instParent: " << *inst->getParent()->getParent() << "\n";
+            llvm::errs() << " inst: " << *inst << "\n";
+        }
+        assert(inst->getParent()->getParent() == fntypeinfo.function);
+    }
+    if (auto arg = dyn_cast<Argument>(val)) {
+        if (arg->getParent() != fntypeinfo.function) {
+            llvm::errs() << " function: " << *fntypeinfo.function << "\n";
+            llvm::errs() << " argParent: " << *arg->getParent() << "\n";
+            llvm::errs() << " arg: " << *arg << "\n";
+        }
+        assert(arg->getParent() == fntypeinfo.function);
+    }
+
     if (isa<Argument>(val) || isa<Instruction>(val) || isa<ConstantExpr>(val)) return analysis[val];
     //TODO consider other things like globals perhaps?
     return ValueData();
+}
+
+void TypeAnalyzer::updateAnalysis(Value* val, DataType data, Value* origin) {
+    updateAnalysis(val, ValueData(data), origin);
 }
 
 void TypeAnalyzer::updateAnalysis(Value* val, IntType data, Value* origin) {
@@ -210,15 +231,15 @@ void TypeAnalyzer::addToWorkList(Value* val) {
     if (std::find(workList.begin(), workList.end(), val) != workList.end()) return;
 
     if (auto inst = dyn_cast<Instruction>(val)) {
-        if (function != inst->getParent()->getParent()) {
-                llvm::errs() << "function: " << *function << "\n";
+        if (fntypeinfo.function != inst->getParent()->getParent()) {
+                llvm::errs() << "function: " << *fntypeinfo.function << "\n";
                 llvm::errs() << "instf: " << *inst->getParent()->getParent() << "\n";
                 llvm::errs() << "inst: " << *inst << "\n";
         }
-        assert(function == inst->getParent()->getParent());
+        assert(fntypeinfo.function == inst->getParent()->getParent());
     }
     if (auto arg = dyn_cast<Argument>(val))
-        assert(function == arg->getParent());
+        assert(fntypeinfo.function == arg->getParent());
 
     //llvm::errs() << " - - true add : " << *val << "\n";
 	workList.push_back(val);
@@ -236,15 +257,15 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
 	}
 
     if (auto inst = dyn_cast<Instruction>(val)) {
-        if (function != inst->getParent()->getParent()) {
-                llvm::errs() << "function: " << *function << "\n";
-                llvm::errs() << "instf: " << *inst->getParent()->getParent() << "\n";
-                llvm::errs() << "inst: " << *inst << "\n";
+        if (fntypeinfo.function != inst->getParent()->getParent()) {
+            llvm::errs() << "function: " << *fntypeinfo.function << "\n";
+            llvm::errs() << "instf: " << *inst->getParent()->getParent() << "\n";
+            llvm::errs() << "inst: " << *inst << "\n";
         }
-        assert(function == inst->getParent()->getParent());
+        assert(fntypeinfo.function == inst->getParent()->getParent());
     }
     if (auto arg = dyn_cast<Argument>(val))
-        assert(function == arg->getParent());
+        assert(fntypeinfo.function == arg->getParent());
 
     if (isa<GetElementPtrInst>(val) && data[{}] == IntType::Integer) {
         llvm::errs () << "illegal gep update\n";
@@ -274,7 +295,7 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
             if (use != origin) {
 
                 if (auto inst = dyn_cast<Instruction>(use)) {
-                    if (function != inst->getParent()->getParent()) {
+                    if (fntypeinfo.function != inst->getParent()->getParent()) {
                         continue;
                     }
                 }
@@ -295,17 +316,17 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
 
 void TypeAnalyzer::prepareArgs() {
     for(auto &pair: fntypeinfo.first) {
-        assert(pair.first->getParent() == function);
+        assert(pair.first->getParent() == fntypeinfo.function);
         updateAnalysis(pair.first, pair.second, nullptr);
     }
 
-    for(auto &arg : function->args()) {
+    for(auto &arg : fntypeinfo.function->args()) {
     	//Get type and other information about argument
         updateAnalysis(&arg, getAnalysis(&arg), &arg);
     }
 
     //Propagate return value type information
-    for(auto &BB: *function) {
+    for(auto &BB: *fntypeinfo.function) {
         for(auto &inst : BB) {
             if (auto ri = dyn_cast<ReturnInst>(&inst)) {
                 if (auto rv = ri->getReturnValue()) {
@@ -317,7 +338,7 @@ void TypeAnalyzer::prepareArgs() {
 }
 
 void TypeAnalyzer::considerTBAA() {
-    for(auto &BB: *function) {
+    for(auto &BB: *fntypeinfo.function) {
         for(auto &inst : BB) {
             auto dt = parseTBAA(&inst);
             if (!dt.isKnown()) continue;
@@ -677,7 +698,7 @@ bool TypeAnalyzer::runUnusedChecks() {
     std::map<Value*, bool> anyseen;
     std::map<Value*, bool> intseen;
 
-    for(auto &BB: *function) {
+    for(BasicBlock &BB: *fntypeinfo.function) {
         for(auto &inst : BB) {
             auto analysis = getAnalysis(&inst);
             if (analysis[{}] != IntType::Unknown) continue;
@@ -760,7 +781,7 @@ void TypeAnalyzer::visitValue(Value& val) {
 
     if (auto ce = dyn_cast<ConstantExpr>(&val)) {
         auto ae = ce->getAsInstruction();
-        ae->insertBefore(function->getEntryBlock().getTerminator());
+        ae->insertBefore(fntypeinfo.function->getEntryBlock().getTerminator());
         analysis[ae] = getAnalysis(ce);
         visit(*ae);
         for(auto& a : workList) {
@@ -878,11 +899,11 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
     for (auto vec : getSet(idnext, idnext.size()-1)) {
         auto g2 = GetElementPtrInst::Create(nullptr, gep.getOperand(0), vec);
         #if LLVM_VERSION_MAJOR > 6
-        APInt ai(function->getParent()->getDataLayout().getIndexSizeInBits(gep.getPointerAddressSpace()), 0);
+        APInt ai(fntypeinfo.function->getParent()->getDataLayout().getIndexSizeInBits(gep.getPointerAddressSpace()), 0);
         #else
-        APInt ai(function->getParent()->getDataLayout().getPointerSize(gep.getPointerAddressSpace()) * 8, 0);
+        APInt ai(fntypeinfo.function->getParent()->getDataLayout().getPointerSize(gep.getPointerAddressSpace()) * 8, 0);
         #endif
-        g2->accumulateConstantOffset(function->getParent()->getDataLayout(), ai);
+        g2->accumulateConstantOffset(fntypeinfo.function->getParent()->getDataLayout(), ai);
         delete g2;//->eraseFromParent();
 
         int off = (int)ai.getLimitedValue();
@@ -892,7 +913,7 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 
         int maxSize = -1;
         if (cast<ConstantInt>(vec[0])->getLimitedValue() == 0) {
-            maxSize = function->getParent()->getDataLayout().getTypeAllocSizeInBits(cast<PointerType>(gep.getType())->getElementType())/8;
+            maxSize = fntypeinfo.function->getParent()->getDataLayout().getTypeAllocSizeInBits(cast<PointerType>(gep.getType())->getElementType())/8;
         }
 
         /*
@@ -991,20 +1012,29 @@ void TypeAnalyzer::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
 	updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
 }
 
+void TypeAnalyzer::visitFPTruncInst(FPTruncInst &I) {
+    updateAnalysis(&I, DataType(I.getType()), &I);
+    updateAnalysis(I.getOperand(0), DataType(I.getOperand(0)->getType()), &I);
+}
+
 void TypeAnalyzer::visitFPToUIInst(FPToUIInst &I) {
 	updateAnalysis(&I, IntType::Integer, &I);
+    updateAnalysis(I.getOperand(0), DataType(I.getOperand(0)->getType()), &I);
 }
 
 void TypeAnalyzer::visitFPToSIInst(FPToSIInst &I) {
 	updateAnalysis(&I, IntType::Integer, &I);
+    updateAnalysis(I.getOperand(0), DataType(I.getOperand(0)->getType()), &I);
 }
 
 void TypeAnalyzer::visitUIToFPInst(UIToFPInst &I) {
 	updateAnalysis(I.getOperand(0), IntType::Integer, &I);
+    updateAnalysis(&I, DataType(I.getType()), &I);
 }
 
 void TypeAnalyzer::visitSIToFPInst(SIToFPInst &I) {
 	updateAnalysis(I.getOperand(0), IntType::Integer, &I);
+    updateAnalysis(&I, DataType(I.getType()), &I);
 }
 
 void TypeAnalyzer::visitPtrToIntInst(PtrToIntInst &I) {
@@ -1030,8 +1060,8 @@ void TypeAnalyzer::visitBitCastInst(BitCastInst &I) {
     //dump();
     //llvm::errs() << "I: " << I << "\n";
     //llvm::errs() << " + keep for cast: " << getAnalysis(I.getOperand(0)).KeepForCast(function->getParent()->getDataLayout(), et2, et1).str() << "\n";
-	updateAnalysis(&I, getAnalysis(I.getOperand(0)).KeepForCast(function->getParent()->getDataLayout(), et2, et1), &I);
-	updateAnalysis(I.getOperand(0), getAnalysis(&I).KeepForCast(function->getParent()->getDataLayout(), et1, et2), &I);
+	updateAnalysis(&I, getAnalysis(I.getOperand(0)).KeepForCast(fntypeinfo.function->getParent()->getDataLayout(), et2, et1), &I);
+	updateAnalysis(I.getOperand(0), getAnalysis(&I).KeepForCast(fntypeinfo.function->getParent()->getDataLayout(), et1, et2), &I);
   }
 }
 
@@ -1165,7 +1195,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
 		updateAnalysis(I.getOperand(1), analysis, &I);
 
 		ValueData vd = getAnalysis(I.getOperand(0));
-		vd.pointerIntMerge(getAnalysis(I.getOperand(1)), I.getOpcode());
+        vd.pointerIntMerge(getAnalysis(I.getOperand(1)), I.getOpcode());
 
         //llvm::errs() << "vd: " << vd.str() << "\n";
         //llvm::errs() << "op(0): " << getAnalysis(I.getOperand(0)).str() << "\n";
@@ -1247,7 +1277,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 ValueData TypeAnalyzer::getReturnAnalysis() {
     bool set = false;
     ValueData vd;
-    for(auto &BB: *function) {
+    for(BasicBlock &BB: *fntypeinfo.function) {
         for(auto &inst : BB) {
 		    if (auto ri = dyn_cast<ReturnInst>(&inst)) {
 			    if (auto rv = ri->getReturnValue()) {
@@ -1292,6 +1322,7 @@ llvm::ConstantInt* NewFnTypeInfo::isConstantInt(llvm::Value* val) const {
 
 void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
 	NewFnTypeInfo typeInfo;
+    typeInfo.function = &fn;
 
     int argnum = 0;
 	for(auto &arg : fn.args()) {
@@ -1312,18 +1343,28 @@ void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
 		a++;
 	}
 
-	ValueData vd = interprocedural.getReturnAnalysis(typeInfo, &fn);
+	ValueData vd = interprocedural.getReturnAnalysis(typeInfo);
 	updateAnalysis(&call, vd, &call);
 }
 
-TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn, Function* function) {
-    if (analyzedFunctions.find(fn) != analyzedFunctions.end()) return TypeResults(*this, fn, function);
+TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn) {
+    if (analyzedFunctions.find(fn) != analyzedFunctions.end()) {
 
-	auto res = analyzedFunctions.emplace(fn, TypeAnalyzer(function, fn, *this));
+        auto& analysis = analyzedFunctions.find(fn)->second;
+        if (analysis.fntypeinfo.function != fn.function) {
+            llvm::errs() << " queryFunc: " << *fn.function << "\n";
+            llvm::errs() << " analysisFunc: " << *analysis.fntypeinfo.function << "\n";
+        }
+        assert(analysis.fntypeinfo.function == fn.function);
+
+        return TypeResults(*this, fn);
+    }
+
+	auto res = analyzedFunctions.emplace(fn, TypeAnalyzer(fn, *this));
 	auto& analysis = res.first->second;
 
 	if (printtype) {
-	    llvm::errs() << "analyzing function " << function->getName() << "\n";
+	    llvm::errs() << "analyzing function " << fn.function->getName() << "\n";
 	    for(auto &pair : fn.first) {
 	        llvm::errs() << " + knowndata: " << *pair.first << " : " << pair.second.str();
             auto found = fn.third.find(pair.first);
@@ -1338,7 +1379,23 @@ TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn, Function* fun
     analysis.prepareArgs();
 	analysis.considerTBAA();
 	analysis.run();
-	return TypeResults(*this, fn, function);
+
+    if (analysis.fntypeinfo.function != fn.function) {
+        llvm::errs() << " queryFunc: " << *fn.function << "\n";
+        llvm::errs() << " analysisFunc: " << *analysis.fntypeinfo.function << "\n";
+    }
+    assert(analysis.fntypeinfo.function == fn.function);
+
+    {
+        auto& analysis = analyzedFunctions.find(fn)->second;
+        if (analysis.fntypeinfo.function != fn.function) {
+            llvm::errs() << " queryFunc: " << *fn.function << "\n";
+            llvm::errs() << " analysisFunc: " << *analysis.fntypeinfo.function << "\n";
+        }
+        assert(analysis.fntypeinfo.function == fn.function);
+    }
+
+	return TypeResults(*this, fn);
 }
 
 ValueData TypeAnalysis::query(Value* val, const NewFnTypeInfo& fn) {
@@ -1362,14 +1419,20 @@ ValueData TypeAnalysis::query(Value* val, const NewFnTypeInfo& fn) {
 
 	if (func == nullptr) return ValueData();
 
-    analyzeFunction(fn, func);
-	return analyzedFunctions.find(fn)->second.getAnalysis(val);
+    analyzeFunction(fn);
+    auto &found = analyzedFunctions.find(fn)->second;
+    if (found.fntypeinfo.function != func) {
+        llvm::errs() << " queryFunc: " << *func << "\n";
+        llvm::errs() << " foundFunc: " << *found.fntypeinfo.function << "\n";
+    }
+    assert(found.fntypeinfo.function == func);
+	return found.getAnalysis(val);
 }
 
 DataType TypeAnalysis::intType(Value* val, const NewFnTypeInfo& fn, bool errIfNotFound) {
     assert(val);
     assert(val->getType());
-    assert(val->getType()->isIntOrIntVectorTy());
+    //assert(val->getType()->isIntOrIntVectorTy());
     auto q = query(val, fn);
     auto dt = q[{}];
     //llvm::errs() << " intType for val: " << *val << " q: " << q.str() << " dt: " << dt.str() << "\n";
@@ -1446,12 +1509,12 @@ DataType TypeAnalysis::firstPointer(size_t num, Value* val, const NewFnTypeInfo&
 	return dt;
 }
 
-TypeResults::TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn, Function* function) : analysis(analysis), info(fn), function(function) {}
+TypeResults::TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn) : analysis(analysis), info(fn) {}
 
 
 NewFnTypeInfo TypeResults::getAnalyzedTypeInfo() {
 	NewFnTypeInfo res;
-	for(auto &arg : function->args()) {
+	for(auto &arg : info.function->args()) {
 		res.first.insert(std::pair<Argument*, ValueData>(&arg, analysis.query(&arg, info)));
 	}
     res.second = getReturnAnalysis();
@@ -1461,10 +1524,13 @@ NewFnTypeInfo TypeResults::getAnalyzedTypeInfo() {
 
 ValueData TypeResults::query(Value* val) {
     if (auto inst = dyn_cast<Instruction>(val)) {
-        assert(inst->getParent()->getParent() == function);
+        assert(inst->getParent()->getParent() == info.function);
     }
     if (auto arg = dyn_cast<Argument>(val)) {
-        assert(arg->getParent() == function);
+        assert(arg->getParent() == info.function);
+    }
+    for(auto& pair : info.first) {
+        assert(pair.first->getParent() == info.function);
     }
     return analysis.query(val, info);
 }
@@ -1484,5 +1550,5 @@ DataType TypeResults::firstPointer(size_t num, Value* val, bool errIfNotFound, b
 }
 
 ValueData TypeResults::getReturnAnalysis() {
-    return analysis.getReturnAnalysis(info, function);
+    return analysis.getReturnAnalysis(info);
 }
