@@ -2,9 +2,7 @@
 
 use std::fmt;
 
-use super::completion_context::CompletionContext;
-use crate::call_info::call_info;
-use hir::{Documentation, HirDisplay};
+use hir::Documentation;
 use ra_syntax::TextRange;
 use ra_text_edit::TextEdit;
 
