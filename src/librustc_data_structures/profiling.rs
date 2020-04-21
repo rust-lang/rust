@@ -97,14 +97,27 @@ use std::time::{Duration, Instant};
 use measureme::{EventId, EventIdBuilder, SerializableString, StringId};
 use parking_lot::RwLock;
 
-/// MmapSerializatioSink is faster on macOS and Linux
-/// but FileSerializationSink is faster on Windows
-#[cfg(all(not(windows), not(target_arch = "wasm32")))]
-type SerializationSink = measureme::MmapSerializationSink;
-#[cfg(all(windows, not(target_arch = "wasm32")))]
-type SerializationSink = measureme::FileSerializationSink;
-#[cfg(target_arch = "wasm32")]
-type SerializationSink = measureme::ByteVecSink;
+cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        cfg_if! {
+            if #[cfg(target_os = "wasi")] {
+                type SerializationSink = measureme::FileSerializationSink;
+            } else {
+                type SerializationSink = measureme::ByteVecSink;
+            }
+        }
+    } else {
+        cfg_if! {
+            if #[cfg(windows)] {
+                /// FileSerializationSink is faster on Windows
+                type SerializationSink = measureme::FileSerializationSink;
+            } else {
+                /// MmapSerializatioSink is faster on macOS and Linux
+                type SerializationSink = measureme::MmapSerializationSink;
+            }
+        }
+    }
+}
 
 type Profiler = measureme::Profiler<SerializationSink>;
 
@@ -604,36 +617,41 @@ pub fn duration_to_secs_str(dur: std::time::Duration) -> String {
 }
 
 // Memory reporting
-#[cfg(all(unix, not(target_arch = "wasm32")))]
-fn get_resident() -> Option<usize> {
-    let field = 1;
-    let contents = fs::read("/proc/self/statm").ok()?;
-    let contents = String::from_utf8(contents).ok()?;
-    let s = contents.split_whitespace().nth(field)?;
-    let npages = s.parse::<usize>().ok()?;
-    Some(npages * 4096)
-}
+cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        fn get_resident() -> Option<usize> {
+            None
+        }
+    } else {
+        cfg_if! {
+            if #[cfg(windows)] {
+                fn get_resident() -> Option<usize> {
+                    use std::mem::{self, MaybeUninit};
+                    use winapi::shared::minwindef::DWORD;
+                    use winapi::um::processthreadsapi::GetCurrentProcess;
+                    use winapi::um::psapi::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
 
-#[cfg(all(windows, not(target_arch = "wasm32")))]
-fn get_resident() -> Option<usize> {
-    use std::mem::{self, MaybeUninit};
-    use winapi::shared::minwindef::DWORD;
-    use winapi::um::processthreadsapi::GetCurrentProcess;
-    use winapi::um::psapi::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
-
-    let mut pmc = MaybeUninit::<PROCESS_MEMORY_COUNTERS>::uninit();
-    match unsafe {
-        GetProcessMemoryInfo(GetCurrentProcess(), pmc.as_mut_ptr(), mem::size_of_val(&pmc) as DWORD)
-    } {
-        0 => None,
-        _ => {
-            let pmc = unsafe { pmc.assume_init() };
-            Some(pmc.WorkingSetSize as usize)
+                    let mut pmc = MaybeUninit::<PROCESS_MEMORY_COUNTERS>::uninit();
+                    match unsafe {
+                        GetProcessMemoryInfo(GetCurrentProcess(), pmc.as_mut_ptr(), mem::size_of_val(&pmc) as DWORD)
+                    } {
+                        0 => None,
+                        _ => {
+                            let pmc = unsafe { pmc.assume_init() };
+                            Some(pmc.WorkingSetSize as usize)
+                        }
+                    }
+                }
+            } else {
+                fn get_resident() -> Option<usize> {
+                    let field = 1;
+                    let contents = fs::read("/proc/self/statm").ok()?;
+                    let contents = String::from_utf8(contents).ok()?;
+                    let s = contents.split_whitespace().nth(field)?;
+                    let npages = s.parse::<usize>().ok()?;
+                    Some(npages * 4096)
+                }
+            }
         }
     }
-}
-
-#[cfg(target_arch = "wasm32")]
-fn get_resident() -> Option<usize> {
-    None
 }
