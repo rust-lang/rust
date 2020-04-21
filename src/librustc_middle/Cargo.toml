@@ -12,7 +12,6 @@ doctest = false
 [dependencies]
 arena = { path = "../libarena" }
 bitflags = "1.2.1"
-jobserver = "0.1"
 scoped-tls = "1.0"
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc-rayon = "0.3.0"
@@ -32,7 +31,6 @@ rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 backtrace = "0.3.40"
-parking_lot = "0.10"
 byteorder = { version = "1.3" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 measureme = "0.7.1"

@@ -29,8 +29,6 @@ extern crate log;
 #[macro_use]
 extern crate cfg_if;
 
-pub use rustc_serialize::hex::ToHex;
-
 #[inline(never)]
 #[cold]
 pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
