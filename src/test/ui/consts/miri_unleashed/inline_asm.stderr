@@ -1,13 +1,10 @@
 warning: skipping const checks
-  --> $DIR/inline_asm.rs:9:1
+  --> $DIR/inline_asm.rs:10:14
    |
-LL | / static TEST_BAD: () = {
-LL | |     unsafe { llvm_asm!("xor %eax, %eax" ::: "eax"); }
-LL | |
-LL | |
-LL | |
-LL | | };
-   | |__^
+LL |     unsafe { llvm_asm!("xor %eax, %eax" ::: "eax"); }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/inline_asm.rs:10:14

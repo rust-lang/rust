@@ -485,9 +485,11 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 | FakeReadCause::ForGuardBinding,
                 _,
             ) => {
+                self.super_statement(statement, location);
                 self.check_op(ops::IfOrMatch);
             }
             StatementKind::LlvmInlineAsm { .. } => {
+                self.super_statement(statement, location);
                 self.check_op(ops::InlineAsm);
             }
 
