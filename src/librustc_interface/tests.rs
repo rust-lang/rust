@@ -374,11 +374,19 @@ fn test_codegen_options_tracking_hash() {
     let reference = Options::default();
     let mut opts = Options::default();
 
-    // Make sure the changing an [UNTRACKED] option leaves the hash unchanged
+    // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
+    // This list is in alphabetical order.
+
     opts.cg.ar = String::from("abc");
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
-    opts.cg.linker = Some(PathBuf::from("linker"));
+    opts.cg.codegen_units = Some(42);
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.cg.extra_filename = String::from("extra-filename");
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.cg.incremental = Some(String::from("abc"));
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.cg.link_args = vec![String::from("abc"), String::from("def")];
@@ -387,95 +395,27 @@ fn test_codegen_options_tracking_hash() {
     opts.cg.link_dead_code = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
-    opts.cg.rpath = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts.cg.extra_filename = String::from("extra-filename");
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts.cg.codegen_units = Some(42);
+    opts.cg.linker = Some(PathBuf::from("linker"));
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
     opts.cg.remark = Passes::Some(vec![String::from("pass1"), String::from("pass2")]);
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
+    opts.cg.rpath = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.cg.save_temps = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
-    opts.cg.incremental = Some(String::from("abc"));
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    // Make sure changing a [TRACKED] option changes the hash
-    opts = reference.clone();
-    opts.cg.lto = LtoCli::Fat;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.target_cpu = Some(String::from("abc"));
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.target_feature = String::from("all the features, all of them");
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.passes = vec![String::from("1"), String::from("2")];
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.llvm_args = vec![String::from("1"), String::from("2")];
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.overflow_checks = Some(true);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.no_prepopulate_passes = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.no_vectorize_loops = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.no_vectorize_slp = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.soft_float = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.prefer_dynamic = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.no_redzone = Some(true);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.relocation_model = Some(String::from("relocation model"));
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+    // Make sure that changing a [TRACKED] option changes the hash.
+    // This list is in alphabetical order.
 
     opts = reference.clone();
     opts.cg.code_model = Some(String::from("code model"));
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.debugging_opts.tls_model = Some(String::from("tls model"));
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.profile_generate = SwitchWithOptPath::Enabled(None);
-    assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.profile_use = Some(PathBuf::from("abc"));
-    assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.metadata = vec![String::from("A"), String::from("B")];
+    opts.cg.debug_assertions = Some(true);
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
@@ -491,11 +431,43 @@ fn test_codegen_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.cg.debug_assertions = Some(true);
+    opts.cg.inline_threshold = Some(0xf007ba11);
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.cg.inline_threshold = Some(0xf007ba11);
+    opts.cg.linker_plugin_lto = LinkerPluginLto::LinkerPluginAuto;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.llvm_args = vec![String::from("1"), String::from("2")];
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.lto = LtoCli::Fat;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.metadata = vec![String::from("A"), String::from("B")];
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.no_prepopulate_passes = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.no_redzone = Some(true);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.no_vectorize_loops = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.no_vectorize_slp = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.overflow_checks = Some(true);
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
@@ -503,7 +475,39 @@ fn test_codegen_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.cg.linker_plugin_lto = LinkerPluginLto::LinkerPluginAuto;
+    opts.cg.passes = vec![String::from("1"), String::from("2")];
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.prefer_dynamic = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.profile_generate = SwitchWithOptPath::Enabled(None);
+    assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.profile_use = Some(PathBuf::from("abc"));
+    assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.relocation_model = Some(String::from("relocation model"));
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.soft_float = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.target_cpu = Some(String::from("abc"));
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.cg.target_feature = String::from("all the features, all of them");
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.tls_model = Some(String::from("tls model"));
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
@@ -516,69 +520,93 @@ fn test_debugging_options_tracking_hash() {
     let reference = Options::default();
     let mut opts = Options::default();
 
-    // Make sure the changing an [UNTRACKED] option leaves the hash unchanged
-    opts.debugging_opts.verbose = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.time_passes = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.time_llvm_passes = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.input_stats = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.borrowck_stats = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.meta_stats = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.print_link_args = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.print_llvm_passes = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+    // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
+    // This list is in alphabetical order.
+
     opts.debugging_opts.ast_json = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.ast_json_noexpand = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.ls = true;
+
+    opts.debugging_opts.borrowck_stats = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.save_analysis = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.print_region_graph = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.parse_only = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.dump_dep_graph = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.query_dep_graph = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.no_analysis = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.unstable_options = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.trace_macros = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.keep_hygiene_data = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.print_mono_items = Some(String::from("abc"));
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.dump_mir = Some(String::from("abc"));
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.dump_mir_dir = String::from("abc");
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.dump_mir_graphviz = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
     opts.debugging_opts.dump_mir_dataflow = true;
     assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
-    // Make sure changing a [TRACKED] option changes the hash
+    opts.debugging_opts.dump_mir_dir = String::from("abc");
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.dump_mir_graphviz = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.input_stats = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.keep_hygiene_data = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.ls = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.meta_stats = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.no_analysis = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.parse_only = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.print_link_args = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.print_llvm_passes = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.print_mono_items = Some(String::from("abc"));
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.print_region_graph = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.query_dep_graph = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.save_analysis = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.time_llvm_passes = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.time_passes = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.trace_macros = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.unstable_options = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    opts.debugging_opts.verbose = true;
+    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+    // Make sure that changing a [TRACKED] option changes the hash.
+    // This list is in alphabetical order.
+
+    opts = reference.clone();
+    opts.debugging_opts.allow_features = Some(vec![String::from("lang_items")]);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
     opts = reference.clone();
     opts.debugging_opts.asm_comments = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.verify_llvm_ir = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.no_landing_pads = true;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
@@ -586,31 +614,7 @@ fn test_debugging_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.debugging_opts.no_codegen = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.treat_err_as_bug = Some(1);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.report_delayed_bugs = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
     opts.debugging_opts.force_overflow_checks = Some(true);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.show_span = Some(String::from("abc"));
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.mir_opt_level = 3;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.relro_level = Some(RelroLevel::Full);
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
@@ -618,11 +622,39 @@ fn test_debugging_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.debugging_opts.allow_features = Some(vec![String::from("lang_items")]);
+    opts.debugging_opts.mir_opt_level = 3;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.no_codegen = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.no_landing_pads = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.relro_level = Some(RelroLevel::Full);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.report_delayed_bugs = true;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.show_span = Some(String::from("abc"));
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
     opts.debugging_opts.symbol_mangling_version = SymbolManglingVersion::V0;
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.treat_err_as_bug = Some(1);
+    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+    opts = reference.clone();
+    opts.debugging_opts.verify_llvm_ir = true;
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 }
 
