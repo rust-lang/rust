@@ -553,19 +553,35 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         right: &Operand<'tcx>,
         source_info: SourceInfo,
     ) -> Option<()> {
-        let r =
-            self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?))?;
-        // Check for exceeding shifts *even if* we cannot evaluate the LHS.
-        if op == BinOp::Shr || op == BinOp::Shl {
-            // We need the type of the LHS. We cannot use `place_layout` as that is the type
-            // of the result, which for checked binops is not the same!
-            let left_ty = left.ty(&self.local_decls, self.tcx);
-            let left_size_bits = self.ecx.layout_of(left_ty).ok()?.size.bits();
-            let right_size = r.layout.size;
-            let r_bits = r.to_scalar().ok();
-            // This is basically `force_bits`.
-            let r_bits = r_bits.and_then(|r| r.to_bits_or_ptr(right_size, &self.tcx).ok());
-            if r_bits.map_or(false, |b| b >= left_size_bits as u128) {
+        if !right.needs_subst() {
+            let r =
+                self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?))?;
+            // Check for exceeding shifts *even if* we cannot evaluate the LHS.
+            if op == BinOp::Shr || op == BinOp::Shl {
+                // We need the type of the LHS. We cannot use `place_layout` as that is the type
+                // of the result, which for checked binops is not the same!
+                let left_ty = left.ty(&self.local_decls, self.tcx);
+                let left_size_bits = self.ecx.layout_of(left_ty).ok()?.size.bits();
+                let right_size = r.layout.size;
+                let r_bits = r.to_scalar().ok();
+                // This is basically `force_bits`.
+                let r_bits = r_bits.and_then(|r| r.to_bits_or_ptr(right_size, &self.tcx).ok());
+                if r_bits.map_or(false, |b| b >= left_size_bits as u128) {
+                    self.report_assert_as_lint(
+                        lint::builtin::ARITHMETIC_OVERFLOW,
+                        source_info,
+                        "this arithmetic operation will overflow",
+                        AssertKind::Overflow(op),
+                    )?;
+                }
+            }
+
+            // The remaining operators are handled through `overflowing_binary_op`.
+            if self.use_ecx(|this| {
+                let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
+                let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
+                Ok(overflow)
+            })? {
                 self.report_assert_as_lint(
                     lint::builtin::ARITHMETIC_OVERFLOW,
                     source_info,
@@ -573,20 +589,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     AssertKind::Overflow(op),
                 )?;
             }
-        }
-
-        // The remaining operators are handled through `overflowing_binary_op`.
-        if self.use_ecx(|this| {
-            let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
-            let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
-            Ok(overflow)
-        })? {
-            self.report_assert_as_lint(
-                lint::builtin::ARITHMETIC_OVERFLOW,
-                source_info,
-                "this arithmetic operation will overflow",
-                AssertKind::Overflow(op),
-            )?;
         }
 
         Some(())
