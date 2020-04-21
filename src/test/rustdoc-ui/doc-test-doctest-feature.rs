@@ -1,4 +1,4 @@
-// build-pass
+// check-pass
 // compile-flags:--test
 // normalize-stdout-test: "src/test/rustdoc-ui" -> "$$DIR"
 

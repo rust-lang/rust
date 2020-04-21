@@ -1,6 +1,6 @@
 // compile-flags:--test
 // normalize-stdout-test: "src/test/rustdoc-ui" -> "$$DIR"
-// build-pass
+// check-pass
 
 #![no_std]
 
