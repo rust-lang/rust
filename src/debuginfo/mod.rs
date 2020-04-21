@@ -3,6 +3,8 @@ mod line_info;
 
 use crate::prelude::*;
 
+use rustc_span::FileName;
+
 use cranelift_codegen::ir::{StackSlots, ValueLabel, ValueLoc};
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::ValueLocRange;
@@ -42,7 +44,14 @@ impl<'tcx> DebugContext<'tcx> {
             format: Format::Dwarf32,
             // TODO: this should be configurable
             // macOS doesn't seem to support DWARF > 3
-            version: 3,
+            // 5 version is required for md5 file hash
+            version: if tcx.sess.target.target.options.is_like_osx {
+                3
+            } else {
+                // FIXME change to version 5 once the gdb and lldb shipping with the latest debian
+                // support it.
+                4
+            },
             address_size,
         };
 
@@ -52,18 +61,28 @@ impl<'tcx> DebugContext<'tcx> {
         // Normally this would use option_env!("CFG_VERSION").
         let producer = format!("cg_clif (rustc {})", "unknown version");
         let comp_dir = tcx.sess.working_dir.0.to_string_lossy().into_owned();
-        let name = match tcx.sess.local_crate_source_file {
-            Some(ref path) => path.to_string_lossy().into_owned(),
-            None => tcx.crate_name(LOCAL_CRATE).to_string(),
+        let (name, file_info) = match tcx.sess.local_crate_source_file.clone() {
+            Some(path) => {
+                let name = path.to_string_lossy().into_owned();
+                let info = tcx.sess
+                    .source_map()
+                    .get_source_file(&FileName::Real(path))
+                    .map(|f| f.src_hash)
+                    .and_then(line_info::make_file_info);
+                (name, info)
+            },
+            None => (tcx.crate_name(LOCAL_CRATE).to_string(), None),
         };
 
-        let line_program = LineProgram::new(
+        let mut line_program = LineProgram::new(
             encoding,
             LineEncoding::default(),
             LineString::new(comp_dir.as_bytes(), encoding, &mut dwarf.line_strings),
             LineString::new(name.as_bytes(), encoding, &mut dwarf.line_strings),
-            None,
+            file_info,
         );
+        line_program.file_has_md5 = file_info.is_some();
+
         dwarf.unit.line_program = line_program;
 
         {
