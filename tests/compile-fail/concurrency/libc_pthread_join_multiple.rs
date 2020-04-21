@@ -10,6 +10,8 @@ use std::thread;
 use std::{mem, ptr};
 
 extern "C" fn thread_start(_null: *mut libc::c_void) -> *mut libc::c_void {
+    thread::yield_now();
+    thread::yield_now();
     ptr::null_mut()
 }
 
