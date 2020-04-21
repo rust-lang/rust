@@ -2,11 +2,6 @@
 
 //! Check that destructors of the library thread locals are executed immediately
 //! after a thread terminates.
-//!
-//! FIXME: We should have a similar test for thread-local statics (statics
-//! annotated with `#[thread_local]`) once they support destructors.
-
-#![feature(thread_local_internals)]
 
 use std::cell::RefCell;
 use std::thread;
@@ -21,20 +16,9 @@ impl Drop for TestCell {
     }
 }
 
-static A: std::thread::LocalKey<TestCell> = {
-    #[inline]
-    fn __init() -> TestCell {
-        TestCell { value: RefCell::new(0) }
-    }
-
-    unsafe fn __getit() -> Option<&'static TestCell> {
-        static __KEY: std::thread::__OsLocalKeyInner<TestCell> =
-            std::thread::__OsLocalKeyInner::new();
-        __KEY.get(__init)
-    }
-
-    unsafe { std::thread::LocalKey::new(__getit) }
-};
+thread_local! {
+    static A: TestCell = TestCell { value: RefCell::new(0) };
+}
 
 fn main() {
     thread::spawn(|| {
