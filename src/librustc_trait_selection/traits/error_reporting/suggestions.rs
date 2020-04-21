@@ -1318,10 +1318,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let is_async = inner_generator_body
             .and_then(|body| body.generator_kind())
-            .map(|generator_kind| match generator_kind {
-                hir::GeneratorKind::Async(..) => true,
-                _ => false,
-            })
+            .map(|generator_kind| matches!(generator_kind, hir::GeneratorKind::Async(..)))
             .unwrap_or(false);
         let (await_or_yield, an_await_or_yield) =
             if is_async { ("await", "an await") } else { ("yield", "a yield") };

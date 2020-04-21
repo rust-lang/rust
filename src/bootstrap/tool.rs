@@ -607,7 +607,15 @@ macro_rules! tool_extended {
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let builder = run.builder;
-                run.path($path).default_condition(builder.config.extended)
+                run.path($path).default_condition(
+                    builder.config.extended
+                        && builder.config.tools.as_ref().map_or(true, |tools| {
+                            tools.iter().any(|tool| match tool.as_ref() {
+                                "clippy" => $tool_name == "clippy-driver",
+                                x => $tool_name == x,
+                            })
+                        }),
+                )
             }
 
             fn make_run(run: RunConfig<'_>) {
