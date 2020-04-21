@@ -81,12 +81,13 @@ fn main() {
     let config_res = config.configure(
         0, // verbose
         quiet,
-        &None, // color
+        None,  // color
         false, // frozen
         false, // locked
         matches.opt_present("offline"),
         &None, // target_dir
         &[],   // unstable_flags
+        &[],   // cli_config
     );
 
     if let Err(e) = config_res {
@@ -143,7 +144,7 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
             .arg("-")
             .stdin(Stdio::piped())
             .spawn()
-            .map_err(|e| failure::err_msg(format!("could not spawn rustc: {}", e)))?;
+            .map_err(|e| anyhow::Error::msg(format!("could not spawn rustc: {}", e)))?;
 
         if let Some(ref mut stdin) = child.stdin {
             stdin.write_fmt(format_args!(
@@ -151,19 +152,19 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
                  extern crate new;"
             ))?;
         } else {
-            return Err(failure::err_msg(
+            return Err(anyhow::Error::msg(
                 "could not pipe to rustc (wtf?)".to_owned(),
             ));
         }
 
         let exit_status = child
             .wait()
-            .map_err(|e| failure::err_msg(format!("failed to wait for rustc: {}", e)))?;
+            .map_err(|e| anyhow::Error::msg(format!("failed to wait for rustc: {}", e)))?;
 
         return if exit_status.success() {
             Ok(())
         } else {
-            Err(failure::err_msg("rustc-semver-public errored".to_owned()))
+            Err(anyhow::Error::msg("rustc-semver-public errored".to_owned()))
         };
     }
 
@@ -239,7 +240,7 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
 
     let mut child = child
         .spawn()
-        .map_err(|e| failure::err_msg(format!("could not spawn rustc: {}", e)))?;
+        .map_err(|e| anyhow::Error::msg(format!("could not spawn rustc: {}", e)))?;
 
     if let Some(ref mut stdin) = child.stdin {
         // The order of the `extern crate` declaration is important here: it will later
@@ -251,19 +252,19 @@ fn run(config: &cargo::Config, matches: &getopts::Matches) -> Result<()> {
              extern crate new;"
         ))?;
     } else {
-        return Err(failure::err_msg(
+        return Err(anyhow::Error::msg(
             "could not pipe to rustc (wtf?)".to_owned(),
         ));
     }
 
     let exit_status = child
         .wait()
-        .map_err(|e| failure::err_msg(format!("failed to wait for rustc: {}", e)))?;
+        .map_err(|e| anyhow::Error::msg(format!("failed to wait for rustc: {}", e)))?;
 
     if exit_status.success() {
         Ok(())
     } else {
-        Err(failure::err_msg("rustc-semverver errored".to_owned()))
+        Err(anyhow::Error::msg("rustc-semverver errored".to_owned()))
     }
 }
 
@@ -353,13 +354,13 @@ mod cli {
     }
 
     /// Validate CLI arguments
-    pub fn validate_args(matches: &getopts::Matches) -> Result<(), failure::Error> {
+    pub fn validate_args(matches: &getopts::Matches) -> Result<(), anyhow::Error> {
         if (matches.opt_present("s") && matches.opt_present("S"))
             || matches.opt_count("s") > 1
             || matches.opt_count("S") > 1
         {
             let msg = "at most one of `-s,--stable-path` and `-S,--stable-pkg` allowed";
-            return Err(failure::err_msg(msg.to_owned()));
+            return Err(anyhow::Error::msg(msg.to_owned()));
         }
 
         if (matches.opt_present("c") && matches.opt_present("C"))
@@ -367,7 +368,7 @@ mod cli {
             || matches.opt_count("C") > 1
         {
             let msg = "at most one of `-c,--current-path` and `-C,--current-pkg` allowed";
-            return Err(failure::err_msg(msg.to_owned()));
+            return Err(anyhow::Error::msg(msg.to_owned()));
         }
 
         Ok(())
@@ -386,7 +387,7 @@ mod cli {
     }
 
     /// Exit with error `e`.
-    pub fn exit_with_error(config: &cargo::Config, e: failure::Error) -> ! {
+    pub fn exit_with_error(config: &cargo::Config, e: anyhow::Error) -> ! {
         config
             .shell()
             .set_verbosity(cargo::core::shell::Verbosity::Normal);
@@ -406,7 +407,7 @@ impl<'a> PackageNameAndVersion<'a> {
     /// Parses the string "name:version" into `Self`
     pub fn parse(s: &'a str) -> Result<Self> {
         let err = || {
-            failure::err_msg(format!(
+            anyhow::Error::msg(format!(
                 "spec has to be of form `name:version` but is `{}`",
                 s
             ))
@@ -536,7 +537,7 @@ impl<'a> WorkInfo<'a> {
             }
         }
 
-        Err(failure::err_msg("lost build artifact".to_owned()))
+        Err(anyhow::Error::msg("lost build artifact".to_owned()))
     }
 }
 
@@ -552,7 +553,7 @@ pub fn find_on_crates_io(crate_name: &str) -> Result<crates_io::Crate> {
     registry
         .search(crate_name, 1)
         .map_err(|e| {
-            failure::err_msg(format!(
+            anyhow::Error::msg(format!(
                 "failed to retrieve search results from the registry: {}",
                 e
             ))
@@ -562,7 +563,7 @@ pub fn find_on_crates_io(crate_name: &str) -> Result<crates_io::Crate> {
                 .drain(..)
                 .find(|krate| krate.name == crate_name)
                 .ok_or_else(|| {
-                    failure::err_msg(format!("failed to find a matching crate `{}`", crate_name))
+                    anyhow::Error::msg(format!("failed to find a matching crate `{}`", crate_name))
                 })
         })
 }
