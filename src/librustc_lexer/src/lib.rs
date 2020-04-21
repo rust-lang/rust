@@ -236,7 +236,7 @@ pub enum Base {
 /// (e.g. "#![deny(missing_docs)]").
 pub fn strip_shebang(input: &str) -> Option<usize> {
     debug_assert!(!input.is_empty());
-    if !input.starts_with("#!") || input.starts_with("#![") {
+    if !input.starts_with("#!") || input.starts_with("#![") || input.starts_with("#! [") {
         return None;
     }
     Some(input.find('\n').unwrap_or(input.len()))
