@@ -120,6 +120,8 @@ Alternatively, you can install it from source using the following command:
 $ cargo xtask install --server
 ----
 
+If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue]. On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
+
 ==== Arch Linux
 
 The `rust-analyzer` binary can be installed from AUR (Arch User Repository):
@@ -196,7 +198,7 @@ Finally, with your Rust project open, in the command palette, run `LSP: Enable L
 
 If it worked, you should see "rust-analzyer, Line X, Column Y" on the left side of the bottom bar, and after waiting a bit, functionality like tooltips on hovering over variables should become available.
 
-If you get an error saying `No such file or directory: 'rust-analyzer'` even though the binary is on your `$PATH`, the likely explanation is that Sublime doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue]. On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
+If you get an error saying `No such file or directory: 'rust-analyzer'`, see the <<language-server-binary,section on installing the language server binary>>.
 
 == Usage
 
