@@ -13,8 +13,6 @@ use super::{
     read_target_uint, write_target_uint, AllocId, InterpResult, Pointer, Scalar, ScalarMaybeUndef,
 };
 
-// NOTE: When adding new fields, make sure to adjust the `Snapshot` impl in
-// `src/librustc_mir/interpret/snapshot.rs`.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 #[derive(HashStable)]
 pub struct Allocation<Tag = (), Extra = ()> {
