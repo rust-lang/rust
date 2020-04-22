@@ -1,4 +1,5 @@
 use crate::{shim, util};
+use required_consts::RequiredConstsVisitor;
 use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LocalDefId, LOCAL_CRATE};
@@ -241,8 +242,7 @@ fn mir_validated(
     let mut body = tcx.mir_const(def_id).steal();
 
     let mut required_consts = Vec::new();
-    let mut required_consts_visitor =
-        self::required_consts::RequiredConstsVisitor::new(&mut required_consts);
+    let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
     for (bb, bb_data) in traversal::reverse_postorder(&body) {
         required_consts_visitor.visit_basic_block_data(bb, bb_data);
     }
