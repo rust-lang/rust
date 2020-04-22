@@ -20,6 +20,7 @@ use std::hash::{Hash, Hasher};
 
 mod arc;
 mod binary_heap;
+mod borrow;
 mod boxed;
 mod btree;
 mod cow_str;
