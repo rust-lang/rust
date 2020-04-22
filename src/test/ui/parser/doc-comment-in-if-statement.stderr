@@ -1,4 +1,4 @@
-error: expected outer doc comment
+error[E0753]: expected outer doc comment
   --> $DIR/doc-comment-in-if-statement.rs:2:13
    |
 LL |     if true /*!*/ {}
@@ -17,3 +17,4 @@ LL |     if true /*!*/ {}
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0753`.
