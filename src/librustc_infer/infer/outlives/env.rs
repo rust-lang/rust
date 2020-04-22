@@ -1,9 +1,9 @@
+use crate::infer::free_regions::FreeRegionMap;
 use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::OutlivesBound;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty;
-use rustc_middle::ty::free_region_map::FreeRegionMap;
 
 use super::explicit_outlives_bounds;
 
