@@ -28,7 +28,6 @@ use crate::cmp;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::fmt;
 use crate::intrinsics::{assume, exact_div, is_aligned_and_not_null, unchecked_sub};
-use crate::isize;
 use crate::iter::*;
 use crate::marker::{self, Copy, Send, Sized, Sync};
 use crate::mem;
