@@ -98,6 +98,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         start_id,
         tcx.mk_substs(::std::iter::once(ty::subst::GenericArg::from(main_ret_ty))),
     )
+    .unwrap()
     .unwrap();
 
     // First argument: pointer to `main()`.
