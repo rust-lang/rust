@@ -191,7 +191,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info();
 
-    for const_ in &mir.uneval_consts {
+    for const_ in &mir.required_consts {
         if let Err(err) = fx.eval_mir_constant(const_) {
             match err {
                 // errored or at least linted

@@ -30,11 +30,11 @@ pub mod no_landing_pads;
 pub mod promote_consts;
 pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
+pub mod required_consts;
 pub mod rustc_peek;
 pub mod simplify;
 pub mod simplify_branches;
 pub mod simplify_try;
-pub mod uneval_const_set;
 pub mod uninhabited_enum_branching;
 pub mod unreachable_prop;
 
@@ -240,13 +240,13 @@ fn mir_validated(
 
     let mut body = tcx.mir_const(def_id).steal();
 
-    let mut uneval_consts = Vec::new();
-    let mut uneval_const_visitor =
-        self::uneval_const_set::UnevalConstSetVisitor::new(&mut uneval_consts);
+    let mut required_consts = Vec::new();
+    let mut required_consts_visitor =
+        self::required_consts::RequiredConstsVisitor::new(&mut required_consts);
     for (bb, bb_data) in traversal::reverse_postorder(&body) {
-        uneval_const_visitor.visit_basic_block_data(bb, bb_data);
+        required_consts_visitor.visit_basic_block_data(bb, bb_data);
     }
-    body.uneval_consts = uneval_consts;
+    body.required_consts = required_consts;
 
     let promote_pass = promote_consts::PromoteTemps::default();
     run_passes(

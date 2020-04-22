@@ -289,7 +289,7 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span(&$($mutability)? body.span);
 
-                for const_ in &$($mutability)? body.uneval_consts {
+                for const_ in &$($mutability)? body.required_consts {
                     let location = START_BLOCK.start_location();
                     self.visit_constant(const_, location);
                 }
