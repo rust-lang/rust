@@ -1,4 +1,4 @@
-error[E0748]: found both positive and negative implementation of trait `std::marker::Send` for type `TestType<_>`:
+error[E0751]: found both positive and negative implementation of trait `std::marker::Send` for type `TestType<_>`:
   --> $DIR/specialization-overlap-negative.rs:9:1
    |
 LL | unsafe impl<T: Clone> Send for TestType<T> {}
@@ -8,4 +8,4 @@ LL | impl<T: MyTrait> !Send for TestType<T> {}
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0748`.
+For more information about this error, try `rustc --explain E0751`.
