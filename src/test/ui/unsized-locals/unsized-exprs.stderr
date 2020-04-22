@@ -1,5 +1,13 @@
+warning: the feature `unsized_locals` is incomplete and may cause the compiler to crash
+  --> $DIR/unsized-exprs.rs:1:36
+   |
+LL | #![feature(unsized_tuple_coercion, unsized_locals)]
+   |                                    ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-exprs.rs:22:26
+  --> $DIR/unsized-exprs.rs:23:26
    |
 LL |     udrop::<(i32, [u8])>((42, *foo()));
    |                          ^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -10,7 +18,7 @@ LL |     udrop::<(i32, [u8])>((42, *foo()));
    = note: tuples must have a statically known size to be initialized
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-exprs.rs:24:22
+  --> $DIR/unsized-exprs.rs:25:22
    |
 LL |     udrop::<A<[u8]>>(A { 0: *foo() });
    |                      ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -21,7 +29,7 @@ LL |     udrop::<A<[u8]>>(A { 0: *foo() });
    = note: structs must have a statically known size to be initialized
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-exprs.rs:26:22
+  --> $DIR/unsized-exprs.rs:27:22
    |
 LL |     udrop::<A<[u8]>>(A(*foo()));
    |                      ^ doesn't have a size known at compile-time
@@ -31,6 +39,6 @@ LL |     udrop::<A<[u8]>>(A(*foo()));
    = note: required because it appears within the type `A<[u8]>`
    = note: the return type of a function must have a statically known size
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

@@ -1,5 +1,6 @@
 // run-pass
 
+#![allow(incomplete_features)]
 #![feature(unsized_locals)]
 #![allow(dead_code)]
 #[repr(align(256))]

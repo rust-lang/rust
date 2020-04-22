@@ -1,5 +1,6 @@
 // run-pass
 
+#![allow(incomplete_features)]
 #![feature(unsized_locals)]
 
 pub trait Foo {
@@ -23,7 +24,6 @@ impl Foo for dyn FnMut() -> String {
         self()
     }
 }
-
 
 fn main() {
     let x = *(Box::new(['h', 'e', 'l', 'l', 'o']) as Box<[char]>);

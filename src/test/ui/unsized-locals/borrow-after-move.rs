@@ -1,4 +1,5 @@
 #![feature(unsized_locals)]
+//~^ WARN the feature `unsized_locals` is incomplete and may cause the compiler to crash
 
 pub trait Foo {
     fn foo(self) -> String;
