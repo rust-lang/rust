@@ -2,7 +2,9 @@ error[E0277]: the trait bound `Self: std::marker::Copy` is not satisfied
   --> $DIR/defaults-unsound-62211-2.rs:21:18
    |
 LL | trait UncheckedCopy: Sized {
-   | -------------------------- required by `UncheckedCopy`
+   | --------------------------- help: consider further restricting `Self`: `+ std::marker::Copy`
+   | |
+   | required by `UncheckedCopy`
 ...
 LL |     type Output: Copy
    |                  ^^^^ the trait `std::marker::Copy` is not implemented for `Self`
@@ -11,7 +13,9 @@ error[E0277]: cannot add-assign `&'static str` to `Self`
   --> $DIR/defaults-unsound-62211-2.rs:25:7
    |
 LL | trait UncheckedCopy: Sized {
-   | -------------------------- required by `UncheckedCopy`
+   | --------------------------- help: consider further restricting `Self`: `+ std::ops::AddAssign<&'static str>`
+   | |
+   | required by `UncheckedCopy`
 ...
 LL |     + AddAssign<&'static str>
    |       ^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `Self += &'static str`
@@ -22,7 +26,9 @@ error[E0277]: the trait bound `Self: std::ops::Deref` is not satisfied
   --> $DIR/defaults-unsound-62211-2.rs:23:7
    |
 LL | trait UncheckedCopy: Sized {
-   | -------------------------- required by `UncheckedCopy`
+   | --------------------------- help: consider further restricting `Self`: `+ std::ops::Deref`
+   | |
+   | required by `UncheckedCopy`
 ...
 LL |     + Deref<Target = str>
    |       ^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Deref` is not implemented for `Self`
@@ -31,7 +37,9 @@ error[E0277]: `Self` doesn't implement `std::fmt::Display`
   --> $DIR/defaults-unsound-62211-2.rs:28:7
    |
 LL | trait UncheckedCopy: Sized {
-   | -------------------------- required by `UncheckedCopy`
+   | --------------------------- help: consider further restricting `Self`: `+ std::fmt::Display`
+   | |
+   | required by `UncheckedCopy`
 ...
 LL |     + Display = Self;
    |       ^^^^^^^ `Self` cannot be formatted with the default formatter
