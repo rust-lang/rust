@@ -273,14 +273,14 @@ impl !Send for Span {}
 impl !Sync for Span {}
 
 macro_rules! diagnostic_method {
-    ($name:ident, $level:expr) => (
+    ($name:ident, $level:expr) => {
         /// Creates a new `Diagnostic` with the given `message` at the span
         /// `self`.
         #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
         pub fn $name<T: Into<String>>(self, message: T) -> Diagnostic {
             Diagnostic::spanned(self, $level, message)
         }
-    )
+    };
 }
 
 impl Span {

@@ -42,10 +42,7 @@ macro_rules! fixed_size_encoding_byte_len_and_defaults {
             // but slicing `[u8]` with `i * N..` is optimized worse, due to the
             // possibility of `i * N` overflowing, than indexing `[[u8; N]]`.
             let b = unsafe {
-                std::slice::from_raw_parts(
-                    b.as_ptr() as *const [u8; BYTE_LEN],
-                    b.len() / BYTE_LEN,
-                )
+                std::slice::from_raw_parts(b.as_ptr() as *const [u8; BYTE_LEN], b.len() / BYTE_LEN)
             };
             b.get(i).map(|b| FixedSizeEncoding::from_bytes(b))
         }
@@ -61,7 +58,7 @@ macro_rules! fixed_size_encoding_byte_len_and_defaults {
             };
             self.write_to_bytes(&mut b[i]);
         }
-    }
+    };
 }
 
 impl FixedSizeEncoding for u32 {

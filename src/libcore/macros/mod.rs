@@ -336,7 +336,7 @@ macro_rules! r#try {
         }
     };
     ($expr:expr,) => {
-        $crate::try!($expr)
+        $crate::r#try!($expr)
     };
 }
 
