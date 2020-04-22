@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: `channel` in `mpsc` is a concrete value, not a module or Struct you specified
+  --> $DIR/issue-71406.rs:4:26
+   |
+LL |     let (tx, rx) = mpsc::channel::new(1);
+   |                          ^^^^^^^ `channel` in `mpsc` is a concrete value, not a module or Struct you specified
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.
