@@ -387,6 +387,26 @@ It takes one of the following values:
 For example, for gcc flavor linkers, this issues the `-nodefaultlibs` flag to
 the linker.
 
+## bitcode-in-rlib
+
+This flag controls whether or not the compiler puts compressed LLVM bitcode
+into generated rlibs. It takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: put bitcode in rlibs (the default).
+* `n`, `no`, or `off`: omit bitcode from rlibs.
+
+LLVM bitcode is only needed when link-time optimization (LTO) is being
+performed, but it is enabled by default for backwards compatibility reasons.
+
+The use of `-C bitcode-in-rlib=no` can significantly improve compile times and
+reduce generated file sizes. For these reasons, Cargo uses `-C
+bitcode-in-rlib=no` whenever possible. Likewise, if you are building directly
+with `rustc` we recommend using `-C bitcode-in-rlib=no` whenever you are not
+using LTO.
+
+If combined with `-C lto`, `-C bitcode-in-rlib=no` will cause `rustc` to abort
+at start-up, because the combination is invalid.
+
 [option-emit]: ../command-line-arguments.md#option-emit
 [option-o-optimize]: ../command-line-arguments.md#option-o-optimize
 [profile-guided optimization]: ../profile-guided-optimization.md

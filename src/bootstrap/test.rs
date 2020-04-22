@@ -1725,7 +1725,7 @@ impl Step for Crate {
         let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
         match mode {
             Mode::Std => {
-                compile::std_cargo(builder, target, &mut cargo);
+                compile::std_cargo(builder, target, compiler.stage, &mut cargo);
             }
             Mode::Rustc => {
                 builder.ensure(compile::Rustc { compiler, target });

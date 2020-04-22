@@ -45,7 +45,7 @@ impl Step for Std {
         let compiler = builder.compiler(0, builder.config.build);
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, cargo_subcommand(builder.kind));
-        std_cargo(builder, target, &mut cargo);
+        std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!("Checking std artifacts ({} -> {})", &compiler.host, target));
         run_cargo(

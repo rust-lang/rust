@@ -394,7 +394,7 @@ impl Step for Std {
 
         let run_cargo_rustdoc_for = |package: &str| {
             let mut cargo = builder.cargo(compiler, Mode::Std, target, "rustdoc");
-            compile::std_cargo(builder, target, &mut cargo);
+            compile::std_cargo(builder, target, compiler.stage, &mut cargo);
 
             // Keep a whitelist so we do not build internal stdlib crates, these will be
             // build by the rustc step later if enabled.

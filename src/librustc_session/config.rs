@@ -1685,6 +1685,16 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
+    if !cg.bitcode_in_rlib {
+        match cg.lto {
+            LtoCli::No | LtoCli::Unspecified => {}
+            LtoCli::Yes | LtoCli::NoParam | LtoCli::Thin | LtoCli::Fat => early_error(
+                error_format,
+                "options `-C bitcode-in-rlib=no` and `-C lto` are incompatible",
+            ),
+        }
+    }
+
     let prints = collect_print_requests(&mut cg, &mut debugging_opts, matches, error_format);
 
     let cg = cg;
