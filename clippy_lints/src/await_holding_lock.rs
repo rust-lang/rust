@@ -79,7 +79,7 @@ fn check_interior_types(cx: &LateContext<'_, '_>, ty_causes: &[GeneratorInterior
                     AWAIT_HOLDING_LOCK,
                     ty_cause.span,
                     "this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await.",
-                    ty_cause.scope_span.unwrap_or(span),
+                    ty_cause.scope_span.or(Some(span)),
                     "these are all the await points this lock is held through",
                 );
             }
