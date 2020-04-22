@@ -1176,7 +1176,12 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
         if (ci->getName() == "__lgamma_r_finite") {
             updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
             updateAnalysis(call.getArgOperand(1), ValueData(IntType::Integer).Only({0}), &call);
+            updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
+        }
 
+        if (ci->getName() == "tanh") {
+            updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
+            updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
         }
 
 		//TODO we should handle calls interprocedurally, allowing better propagation of type information

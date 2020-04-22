@@ -2111,7 +2111,8 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
     if (called) {
       auto n = called->getName();
       if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
-        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite" ) {
+        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite"
+        || n == "tanh") {
         return;
       }
     }
@@ -2480,7 +2481,8 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
     //TODO use doing a different location for the r variants
       auto n = called->getName();
       if (n == "lgamma" || n == "lgammaf" || n == "lgammal" || n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r"
-        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite" ) {
+        || n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" || n == "__lgammal_r_finite"
+        || n == "tanh") {
         return;
       }
   }
