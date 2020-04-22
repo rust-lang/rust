@@ -1,13 +1,22 @@
-error[E0277]: the size for values of type `(dyn AbstractRenderer + 'static)` cannot be known at compilation time
+error[E0746]: return type cannot have an unboxed trait object
   --> $DIR/issue-18107.rs:4:5
    |
 LL |     dyn AbstractRenderer
    |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn AbstractRenderer + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: the return type of a function must have a statically known size
+help: use some type `T` that is `T: Sized` as the return type if all return paths have the same type
+   |
+LL |     T
+   |
+help: use `impl AbstractRenderer` as the return type if all return paths have the same type but you want to expose only the trait in the signature
+   |
+LL |     impl AbstractRenderer
+   |
+help: use a boxed trait object if all return paths implement trait `AbstractRenderer`
+   |
+LL |     Box<dyn AbstractRenderer>
+   |
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0746`.
