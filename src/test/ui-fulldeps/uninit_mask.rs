@@ -7,11 +7,11 @@
 extern crate rustc_middle;
 extern crate rustc_target;
 
-use rustc_middle::mir::interpret::UndefMask;
+use rustc_middle::mir::interpret::InitMask;
 use rustc_target::abi::Size;
 
 fn main() {
-    let mut mask = UndefMask::new(Size::from_bytes(500), false);
+    let mut mask = InitMask::new(Size::from_bytes(500), false);
     assert!(!mask.get(Size::from_bytes(499)));
     mask.set(Size::from_bytes(499), true);
     assert!(mask.get(Size::from_bytes(499)));

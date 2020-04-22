@@ -22,7 +22,7 @@ use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
-    ScalarMaybeUndef, StackPopJump,
+    ScalarMaybeUninit, StackPopJump,
 };
 use crate::util::storage::AlwaysLiveLocals;
 
@@ -910,16 +910,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     },
                     LocalValue::Live(Operand::Immediate(Immediate::Scalar(val))) => {
                         write!(msg, " {:?}", val).unwrap();
-                        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val {
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val {
                             allocs.push(ptr.alloc_id);
                         }
                     }
                     LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
                         write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
-                        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val1 {
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val1 {
                             allocs.push(ptr.alloc_id);
                         }
-                        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val2 {
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val2 {
                             allocs.push(ptr.alloc_id);
                         }
                     }

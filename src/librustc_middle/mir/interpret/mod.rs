@@ -122,9 +122,9 @@ pub use self::error::{
     ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 
-pub use self::value::{get_slice_bytes, ConstValue, RawConst, Scalar, ScalarMaybeUndef};
+pub use self::value::{get_slice_bytes, ConstValue, RawConst, Scalar, ScalarMaybeUninit};
 
-pub use self::allocation::{Allocation, AllocationExtra, Relocations, UndefMask};
+pub use self::allocation::{Allocation, AllocationExtra, InitMask, Relocations};
 
 pub use self::pointer::{Pointer, PointerArithmetic};
 

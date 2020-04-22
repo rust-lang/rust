@@ -24,7 +24,7 @@
 -                                          // + ty: fn() -> std::vec::Vec<u32> {std::vec::Vec::<u32>::new}
 -                                          // + val: Value(Scalar(<ZST>))
 +                                          // + ty: alloc::raw_vec::RawVec<u32>
-+                                          // + val: Value(ByRef { alloc: Allocation { bytes: [4, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [255], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } })
++                                          // + val: Value(ByRef { alloc: Allocation { bytes: [4, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [255], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } })
                                            // mir::Constant
 -                                          // + span: $DIR/inline-into-box-place.rs:8:33: 8:41
 -                                          // + user_ty: UserType(1)
@@ -38,7 +38,7 @@
 -     bb2: {
 +                                          // + span: $SRC_DIR/liballoc/vec.rs:LL:COL
 +                                          // + user_ty: UserType(0)
-+                                          // + literal: Const { ty: alloc::raw_vec::RawVec<u32>, val: Value(ByRef { alloc: Allocation { bytes: [4, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), undef_mask: UndefMask { blocks: [255], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
++                                          // + literal: Const { ty: alloc::raw_vec::RawVec<u32>, val: Value(ByRef { alloc: Allocation { bytes: [4, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [255], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
 +         ((*_4).1: usize) = const 0usize; // scope 2 at $SRC_DIR/liballoc/vec.rs:LL:COL
 +                                          // ty::Const
 +                                          // + ty: usize

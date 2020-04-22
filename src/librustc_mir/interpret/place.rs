@@ -15,7 +15,7 @@ use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
 use super::{
     mir_assign_valid_types, truncate, AllocId, AllocMap, Allocation, AllocationExtra, ImmTy,
     Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer,
-    PointerArithmetic, RawConst, Scalar, ScalarMaybeUndef,
+    PointerArithmetic, RawConst, Scalar, ScalarMaybeUninit,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -645,7 +645,7 @@ where
     #[inline(always)]
     pub fn write_scalar(
         &mut self,
-        val: impl Into<ScalarMaybeUndef<M::PointerTag>>,
+        val: impl Into<ScalarMaybeUninit<M::PointerTag>>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         self.write_immediate(Immediate::Scalar(val.into()), dest)
@@ -697,19 +697,19 @@ where
             // This is a very common path, avoid some checks in release mode
             assert!(!dest.layout.is_unsized(), "Cannot write unsized data");
             match src {
-                Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Ptr(_))) => assert_eq!(
+                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::Ptr(_))) => assert_eq!(
                     self.pointer_size(),
                     dest.layout.size,
                     "Size mismatch when writing pointer"
                 ),
-                Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Raw { size, .. })) => {
+                Immediate::Scalar(ScalarMaybeUninit::Scalar(Scalar::Raw { size, .. })) => {
                     assert_eq!(
                         Size::from_bytes(size),
                         dest.layout.size,
                         "Size mismatch when writing bits"
                     )
                 }
-                Immediate::Scalar(ScalarMaybeUndef::Undef) => {} // undef can have any size
+                Immediate::Scalar(ScalarMaybeUninit::Uninit) => {} // undef can have any size
                 Immediate::ScalarPair(_, _) => {
                     // FIXME: Can we check anything here?
                 }

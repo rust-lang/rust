@@ -28,7 +28,7 @@ pub struct RawConst<'tcx> {
 pub enum ConstValue<'tcx> {
     /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
     ///
-    /// Not using the enum `Value` to encode that this must not be `Undef`.
+    /// Not using the enum `Value` to encode that this must not be `Uninit`.
     Scalar(Scalar),
 
     /// Used only for `&[u8]` and `&str`
@@ -542,62 +542,62 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, RustcEncodable, RustcDecodable, HashStable, Hash)]
-pub enum ScalarMaybeUndef<Tag = ()> {
+pub enum ScalarMaybeUninit<Tag = ()> {
     Scalar(Scalar<Tag>),
-    Undef,
+    Uninit,
 }
 
-impl<Tag> From<Scalar<Tag>> for ScalarMaybeUndef<Tag> {
+impl<Tag> From<Scalar<Tag>> for ScalarMaybeUninit<Tag> {
     #[inline(always)]
     fn from(s: Scalar<Tag>) -> Self {
-        ScalarMaybeUndef::Scalar(s)
+        ScalarMaybeUninit::Scalar(s)
     }
 }
 
-impl<Tag> From<Pointer<Tag>> for ScalarMaybeUndef<Tag> {
+impl<Tag> From<Pointer<Tag>> for ScalarMaybeUninit<Tag> {
     #[inline(always)]
     fn from(s: Pointer<Tag>) -> Self {
-        ScalarMaybeUndef::Scalar(s.into())
+        ScalarMaybeUninit::Scalar(s.into())
     }
 }
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
-impl<Tag: fmt::Debug> fmt::Debug for ScalarMaybeUndef<Tag> {
+impl<Tag: fmt::Debug> fmt::Debug for ScalarMaybeUninit<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ScalarMaybeUndef::Undef => write!(f, "<uninitialized>"),
-            ScalarMaybeUndef::Scalar(s) => write!(f, "{:?}", s),
+            ScalarMaybeUninit::Uninit => write!(f, "<uninitialized>"),
+            ScalarMaybeUninit::Scalar(s) => write!(f, "{:?}", s),
         }
     }
 }
 
-impl<Tag: fmt::Debug> fmt::Display for ScalarMaybeUndef<Tag> {
+impl<Tag: fmt::Debug> fmt::Display for ScalarMaybeUninit<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ScalarMaybeUndef::Undef => write!(f, "uninitialized bytes"),
-            ScalarMaybeUndef::Scalar(s) => write!(f, "{}", s),
+            ScalarMaybeUninit::Uninit => write!(f, "uninitialized bytes"),
+            ScalarMaybeUninit::Scalar(s) => write!(f, "{}", s),
         }
     }
 }
 
-impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
+impl<'tcx, Tag> ScalarMaybeUninit<Tag> {
     /// Erase the tag from the scalar, if any.
     ///
     /// Used by error reporting code to avoid having the error type depend on `Tag`.
     #[inline]
-    pub fn erase_tag(self) -> ScalarMaybeUndef {
+    pub fn erase_tag(self) -> ScalarMaybeUninit {
         match self {
-            ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.erase_tag()),
-            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
+            ScalarMaybeUninit::Scalar(s) => ScalarMaybeUninit::Scalar(s.erase_tag()),
+            ScalarMaybeUninit::Uninit => ScalarMaybeUninit::Uninit,
         }
     }
 
     #[inline]
     pub fn not_undef(self) -> InterpResult<'static, Scalar<Tag>> {
         match self {
-            ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
-            ScalarMaybeUndef::Undef => throw_ub!(InvalidUndefBytes(None)),
+            ScalarMaybeUninit::Scalar(scalar) => Ok(scalar),
+            ScalarMaybeUninit::Uninit => throw_ub!(InvalidUninitBytes(None)),
         }
     }
 
