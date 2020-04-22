@@ -105,6 +105,7 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
 /// [`RefCell`]: ../../std/cell/struct.RefCell.html
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "hashset_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashSet<T, S = RandomState> {
     map: HashMap<T, (), S>,
