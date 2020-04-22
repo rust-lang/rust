@@ -34,4 +34,3 @@ rustc_incremental = { path = "../librustc_incremental" }
 rustc_index = { path = "../librustc_index" }
 rustc_target = { path = "../librustc_target" }
 rustc_session = { path = "../librustc_session" }
-rustc_metadata = { path = "../librustc_metadata" }

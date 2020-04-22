@@ -1305,7 +1305,6 @@ fn check_fn<'a, 'tcx>(
     let hir = tcx.hir();
 
     let declared_ret_ty = fn_sig.output();
-    fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
     let revealed_ret_ty =
         fcx.instantiate_opaque_types_from_value(fn_id, &declared_ret_ty, decl.output.span());
     debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
@@ -1374,7 +1373,25 @@ fn check_fn<'a, 'tcx>(
 
     inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
-    fcx.check_return_expr(&body.value);
+    if let ty::Dynamic(..) = declared_ret_ty.kind {
+        // FIXME: We need to verify that the return type is `Sized` after the return expression has
+        // been evaluated so that we have types available for all the nodes being returned, but that
+        // requires the coerced evaluated type to be stored. Moving `check_return_expr` before this
+        // causes unsized errors caused by the `declared_ret_ty` to point at the return expression,
+        // while keeping the current ordering we will ignore the tail expression's type because we
+        // don't know it yet. We can't do `check_expr_kind` while keeping `check_return_expr`
+        // because we will trigger "unreachable expression" lints unconditionally.
+        // Because of all of this, we perform a crude check to know whether the simplest `!Sized`
+        // case that a newcomer might make, returning a bare trait, and in that case we populate
+        // the tail expression's type so that the suggestion will be correct, but ignore all other
+        // possible cases.
+        fcx.check_expr(&body.value);
+        fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
+        tcx.sess.delay_span_bug(decl.output.span(), "`!Sized` return type");
+    } else {
+        fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
+        fcx.check_return_expr(&body.value);
+    }
 
     // We insert the deferred_generator_interiors entry after visiting the body.
     // This ensures that all nested generators appear before the entry of this generator.

@@ -3577,7 +3577,6 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc_ast",
- "rustc_data_structures",
  "rustc_span",
 ]
 
@@ -3594,7 +3593,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "serialize",
- "smallvec 1.0.0",
 ]
 
 [[package]]
@@ -3666,7 +3664,6 @@ dependencies = [
  "rustc_hir",
  "rustc_incremental",
  "rustc_index",
- "rustc_metadata",
  "rustc_middle",
  "rustc_session",
  "rustc_span",
@@ -3809,7 +3806,6 @@ version = "0.0.0"
 dependencies = [
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_data_structures",
  "rustc_hir",
  "rustc_span",
  "rustc_target",
@@ -3879,7 +3875,6 @@ dependencies = [
  "rustc_expand",
  "rustc_hir",
  "rustc_incremental",
- "rustc_infer",
  "rustc_lint",
  "rustc_metadata",
  "rustc_middle",
@@ -3924,7 +3919,6 @@ dependencies = [
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
- "rustc_infer",
  "rustc_middle",
  "rustc_session",
  "rustc_span",
@@ -3986,10 +3980,8 @@ dependencies = [
  "backtrace",
  "bitflags",
  "byteorder",
- "jobserver",
  "log",
  "measureme",
- "parking_lot 0.10.2",
  "polonius-engine",
  "rustc-rayon",
  "rustc-rayon-core",
@@ -4023,7 +4015,6 @@ dependencies = [
  "polonius-engine",
  "rustc_apfloat",
  "rustc_ast",
- "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
@@ -4079,7 +4070,6 @@ dependencies = [
  "rustc_lexer",
  "rustc_session",
  "rustc_span",
- "smallvec 1.0.0",
  "unicode-normalization",
 ]
 
@@ -4092,10 +4082,8 @@ dependencies = [
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_feature",
  "rustc_hir",
  "rustc_index",
- "rustc_infer",
  "rustc_middle",
  "rustc_session",
  "rustc_span",
@@ -4143,7 +4131,6 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_index",
- "rustc_macros",
  "rustc_span",
  "serialize",
  "smallvec 1.0.0",
@@ -4296,10 +4283,8 @@ dependencies = [
  "rustc_data_structures",
  "rustc_hir",
  "rustc_infer",
- "rustc_macros",
  "rustc_middle",
  "rustc_span",
- "rustc_target",
  "rustc_trait_selection",
  "smallvec 1.0.0",
 ]

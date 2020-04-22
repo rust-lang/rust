@@ -145,4 +145,22 @@ mod tests {
             }),
         );
     }
+
+    #[test]
+    fn test_valid_shebang() {
+        // https://github.com/rust-lang/rust/issues/70528
+        let input = "#!/usr/bin/rustrun";
+        let actual = strip_shebang(input);
+        let expected: Option<usize> = Some(18);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_invalid_shebang_valid_rust_syntax() {
+        // https://github.com/rust-lang/rust/issues/70528
+        let input = "#!    [bad_attribute]";
+        let actual = strip_shebang(input);
+        let expected: Option<usize> = None;
+        assert_eq!(expected, actual);
+    }
 }
