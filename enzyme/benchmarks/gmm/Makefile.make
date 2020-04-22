@@ -1,5 +1,5 @@
-# RUN: cd %desired_wd/gmm && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B gmm-unopt.ll results.txt VERBOSE=1 -f %s
-# XFAIL: *
+# RUN: cd %desired_wd/gmm && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B gmm-raw.ll -f %s
+# TODO run
 #  - note haven't set up actual result gathering code yet
 
 .PHONY: clean

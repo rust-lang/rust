@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -gvn -early-cse -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
 
 ; ModuleID = 'seg.ll'
 source_filename = "/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigen-made.cpp"
@@ -824,12 +824,16 @@ attributes #11 = { cold }
 
 ; CHECK: one:                                              ; preds = %entry
 ; CHECK-NEXT:   store double 1.000000e+00, double* %a9, align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %"a9'ipl", align 8
+; CHECK-NEXT:   %[[a9ipl_uw:.+]] = load double*, double** %"m_data.i17'ipge", align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[a9ipl_uw]], align 8
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertentry:                                      ; preds = %entry, %one
+; CHECK-NEXT:   %a9_unwrap = load double*, double** %m_data.i17, align 8, !tbaa !9
+; CHECK-NEXT:   %a8_unwrap = load i64, i64* %m_rows.i19, align 8, !tbaa !2
+; TODO there should be an a9'ipl unwrap here too
 ; CHECK-NEXT:   %[[ev:.+]] = extractvalue { { { {} }, i64 }, i64 } %subcall_augmented, 0
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffesub(double* %a9, double* %"a9'ipl", i64 %a8, { { {} }, i64 } %[[ev]]) #9
+; CHECK-NEXT:   %[[unused:.+]] = call {} @diffesub(double* %a9_unwrap, double* %"a9'ipl", i64 %a8_unwrap, { { {} }, i64 } %[[ev]]) #9
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

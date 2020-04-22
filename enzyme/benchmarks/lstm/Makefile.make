@@ -1,4 +1,5 @@
-# RUN: cd %desired_wd/lstm && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B lstm-raw.ll lstm-unopt.ll results.txt VERBOSE=1 -f %s
+# RUN: cd %desired_wd/lstm && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B lstm-raw.ll -f %s
+# TODO run
 
 .PHONY: clean
 

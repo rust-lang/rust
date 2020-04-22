@@ -118,6 +118,10 @@ public:
         return !isKnown() || typeEnum == IntType::Pointer;
     }
 
+    bool isPossibleFloat() const {
+        return !isKnown() || typeEnum == IntType::Float;
+    }
+
     llvm::Type* isFloat() const {
         return type;
     }

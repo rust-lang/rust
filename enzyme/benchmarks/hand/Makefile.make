@@ -1,4 +1,5 @@
-# RUN: cd %desired_wd/hand && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B hand-raw.ll hand-unopt.ll results.txt VERBOSE=1 -f %s
+# RUN: cd %desired_wd/hand && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B hand-raw.ll -f %s
+# TODO run
 
 .PHONY: clean
 

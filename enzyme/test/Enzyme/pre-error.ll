@@ -154,7 +154,7 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   %5 = fadd fast double %4, %m0diffeloaded
 ; CHECK-NEXT:   store double %5, double* %"arrayidx'ipg", align 8
 ; CHECK-NEXT:   %6 = icmp eq i64 %"iv1'ac.0", 0
-; CHECK-NEXT:   %7 = select i1 %6, double 0.000000e+00, double %10
+; CHECK-NEXT:   %7 = select {{(fast )?}}i1 %6, double 0.000000e+00, double %10
 ; CHECK-NEXT:   br i1 %6, label %invertfor1, label %incinvertfor2
 
 ; CHECK: incinvertfor2:                                    ; preds = %invertfor2

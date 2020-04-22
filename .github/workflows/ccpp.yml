@@ -14,7 +14,7 @@ jobs:
         build: ["Release", "Debug"] # "RelWithDebInfo"
         os: [self-hosted]
     
-    timeout-minutes: 30 
+    timeout-minutes: 45 
     steps:
     - name: add llvm 
       run: |

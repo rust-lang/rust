@@ -3144,7 +3144,7 @@ badfn:;
     std::reverse(postCreate.begin(), postCreate.end());
     for(auto a : postCreate) {
       for(unsigned i=0; i<a->getNumOperands(); i++) {
-        a->setOperand(i, gutils->unwrapM(a->getOperand(i), Builder2, mapp, true));
+        a->setOperand(i, gutils->unwrapM(a->getOperand(i), Builder2, mapp, UnwrapMode::LegalFullUnwrap));
       }
       llvm::errs() << "moving instruction for postcreate: " << *a << "\n";
       a->moveBefore(*Builder2.GetInsertBlock(), Builder2.GetInsertPoint());

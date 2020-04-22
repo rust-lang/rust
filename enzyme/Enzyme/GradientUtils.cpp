@@ -104,13 +104,23 @@
 
 bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& available) {
   if (available.count(val)) return true;
-  if (isa<PHINode>(val)) return false;
+
+  if (isa<PHINode>(val)) {
+    if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(val))) {
+      return legalRecompute(dli, available); // TODO ADD && !TR.intType(getOriginal(dli), /*mustfind*/false).isPossibleFloat();
+    }
+    return false;
+  }
 
   if (isa<Instruction>(val) && cast<Instruction>(val)->getMetadata("enzyme_mustcache")) return false;
+
+  // If this is a load from cache already, dont force a cache of this
+  if (isa<LoadInst>(val) && cast<LoadInst>(val)->getMetadata("enzyme_fromcache")) return true;
 
   //TODO consider callinst here
 
   if (auto li = dyn_cast<LoadInst>(val)) {
+
 
     //TODO this is more conservative than necessary
     //if (isa<AllocaInst>(GetUnderlyingObject(li->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100))) {
@@ -935,8 +945,8 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
     //llvm::errs() << " considering " << *inst << " legal: " << legalRecompute(inst, available) << " should: " << shouldRecompute(inst, available) << "\n";
     if (legalRecompute(inst, available)) {
       if (shouldRecompute(inst, available)) {
-          //llvm::errs() << "for op " << *inst << " choosing to unwrap\n";
-          auto op = unwrapM(inst, BuilderM, available, /*lookupIfAble*/false, /*fullUnwrap*/false);
+          auto op = unwrapM(inst, BuilderM, available, UnwrapMode::AttemptSingleUnwrap);
+          //llvm::errs() << "for op " << *inst << " choosing to unwrap and found: " << op << "\n";
           if (op) {
             assert(op);
             assert(op->getType());
@@ -955,7 +965,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM, const ValueToVa
           }
       } else {
         if (isa<LoadInst>(inst)) {
-          llvm::errs() << " + loading " << *inst << "\n";
+          //llvm::errs() << " + loading " << *inst << "\n";
         }
       }
     }

@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -early-cse -instcombine -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -early-cse -simplifycfg -S | FileCheck %s
 
 source_filename = "/mnt/Data/git/Enzyme/enzyme/test/Integration/readwriteread.c"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -113,9 +113,11 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"ret'", align 8
 ; CHECK-NEXT:   %2 = load double, double* %"x'", align 8
 ; CHECK-NEXT:   %3 = fadd fast double %1, %2
-; CHECK-NEXT:   %4 = fmul fast double %0, %0
-; CHECK-NEXT:   %5 = fmul fast double %4, 3.000000e+00
-; CHECK-NEXT:   %6 = fmul fast double %3, %5
-; CHECK-NEXT:   store double %6, double* %"x'", align 8
+; CHECK-NEXT:   %m0diffe = fmul fast double %3, %mul.i.i
+; CHECK-NEXT:   %m1diffemul.i.i = fmul fast double %3, %0
+; CHECK-NEXT:   %m0diffe1 = fmul fast double %m1diffemul.i.i, %0
+; CHECK-NEXT:   %4 = fadd fast double %m0diffe, %m0diffe1
+; CHECK-NEXT:   %5 = fadd fast double %4, %m0diffe1
+; CHECK-NEXT:   store double %5, double* %"x'", align 8
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
