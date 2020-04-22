@@ -223,6 +223,11 @@ fn main() {
     println!("{}, `{name:>8.*}` has 3 right-aligned characters", "Hello", 3, name="1234.56");
     println!("Hello {{}}");
     println!("{{ Hello");
+
+    println!(r"Hello, {}!", "world");
+
+    println!("{\x41}", A = 92);
+    println!("{ничоси}", ничоси = 92);
 }"#
         .trim(),
     );

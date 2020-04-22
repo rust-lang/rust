@@ -245,28 +245,29 @@ pub(crate) fn highlight(
                 stack.push();
                 if is_format_string {
                     string.lex_format_specifier(|piece_range, kind| {
-                        let highlight = match kind {
-                            FormatSpecifier::Open
-                            | FormatSpecifier::Close
-                            | FormatSpecifier::Colon
-                            | FormatSpecifier::Fill
-                            | FormatSpecifier::Align
-                            | FormatSpecifier::Sign
-                            | FormatSpecifier::NumberSign
-                            | FormatSpecifier::DollarSign
-                            | FormatSpecifier::Dot
-                            | FormatSpecifier::Asterisk
-                            | FormatSpecifier::QuestionMark => HighlightTag::Attribute,
-                            FormatSpecifier::Integer | FormatSpecifier::Zero => {
-                                HighlightTag::NumericLiteral
-                            }
-                            FormatSpecifier::Identifier => HighlightTag::Local,
-                        };
-                        stack.add(HighlightedRange {
-                            range: piece_range + range.start(),
-                            highlight: highlight.into(),
-                            binding_hash: None,
-                        });
+                        if let Some(highlight) = highlight_format_specifier(kind) {
+                            stack.add(HighlightedRange {
+                                range: piece_range + range.start(),
+                                highlight: highlight.into(),
+                                binding_hash: None,
+                            });
+                        }
+                    });
+                }
+                stack.pop();
+            } else if let Some(string) =
+                element_to_highlight.as_token().cloned().and_then(ast::RawString::cast)
+            {
+                stack.push();
+                if is_format_string {
+                    string.lex_format_specifier(|piece_range, kind| {
+                        if let Some(highlight) = highlight_format_specifier(kind) {
+                            stack.add(HighlightedRange {
+                                range: piece_range + range.start(),
+                                highlight: highlight.into(),
+                                binding_hash: None,
+                            });
+                        }
                     });
                 }
                 stack.pop();
@@ -275,6 +276,24 @@ pub(crate) fn highlight(
     }
 
     stack.flattened()
+}
+
+fn highlight_format_specifier(kind: FormatSpecifier) -> Option<HighlightTag> {
+    Some(match kind {
+        FormatSpecifier::Open
+        | FormatSpecifier::Close
+        | FormatSpecifier::Colon
+        | FormatSpecifier::Fill
+        | FormatSpecifier::Align
+        | FormatSpecifier::Sign
+        | FormatSpecifier::NumberSign
+        | FormatSpecifier::DollarSign
+        | FormatSpecifier::Dot
+        | FormatSpecifier::Asterisk
+        | FormatSpecifier::QuestionMark => HighlightTag::Attribute,
+        FormatSpecifier::Integer | FormatSpecifier::Zero => HighlightTag::NumericLiteral,
+        FormatSpecifier::Identifier => HighlightTag::Local,
+    })
 }
 
 fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
