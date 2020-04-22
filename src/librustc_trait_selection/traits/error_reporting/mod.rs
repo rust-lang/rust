@@ -317,20 +317,30 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 .starts_with("std::convert::From<std::option::NoneError");
                         let should_convert_result_to_option = format!("{}", trait_ref)
                             .starts_with("<std::option::NoneError as std::convert::From<");
-                        if is_try && is_from && should_convert_option_to_result {
-                            err.span_suggestion_verbose(
-                                span.shrink_to_lo(),
-                                "consider converting the `Option<T>` into a `Result<T, _>` using `Option::ok_or` or `Option::ok_or_else`",
-                                ".ok_or_else(|| /* error value */)".to_string(),
-                                Applicability::HasPlaceholders,
-                            );
-                        } else if is_try && is_from && should_convert_result_to_option {
-                            err.span_suggestion_verbose(
-                                span.shrink_to_lo(),
-                                "consider converting the `Result<T, _>` into an `Option<T>` using `Result::ok`",
-                                ".ok()".to_string(),
-                                Applicability::MachineApplicable,
-                            );
+                        if is_try && is_from {
+                            if should_convert_option_to_result {
+                                err.span_suggestion_verbose(
+                                    span.shrink_to_lo(),
+                                    "consider converting the `Option<T>` into a `Result<T, _>` \
+                                     using `Option::ok_or` or `Option::ok_or_else`",
+                                    ".ok_or_else(|| /* error value */)".to_string(),
+                                    Applicability::HasPlaceholders,
+                                );
+                            } else if should_convert_result_to_option {
+                                err.span_suggestion_verbose(
+                                    span.shrink_to_lo(),
+                                    "consider converting the `Result<T, _>` into an `Option<T>` \
+                                     using `Result::ok`",
+                                    ".ok()".to_string(),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            if let Some(ret_span) = self.return_type_span(obligation) {
+                                err.span_label(
+                                    ret_span,
+                                    &format!("expected `{}` because of this", trait_ref.self_ty()),
+                                );
+                            }
                         }
 
                         let explanation =

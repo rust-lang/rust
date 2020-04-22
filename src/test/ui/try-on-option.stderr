@@ -1,6 +1,9 @@
 error[E0277]: `?` couldn't convert the error to `()`
   --> $DIR/try-on-option.rs:7:6
    |
+LL | fn foo() -> Result<u32, ()> {
+   |             --------------- expected `()` because of this
+LL |     let x: Option<u32> = None;
 LL |     x?;
    |      ^ the trait `std::convert::From<std::option::NoneError>` is not implemented for `()`
    |
