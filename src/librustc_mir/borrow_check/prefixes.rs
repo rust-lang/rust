@@ -10,7 +10,7 @@
 use super::MirBorrowckCtxt;
 
 use rustc_hir as hir;
-use rustc_middle::mir::{Place, PlaceRef, ProjectionElem, ReadOnlyBodyAndCache};
+use rustc_middle::mir::{Body, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, TyCtxt};
 
 pub trait IsPrefixOf<'tcx> {
@@ -26,7 +26,7 @@ impl<'tcx> IsPrefixOf<'tcx> for PlaceRef<'tcx> {
 }
 
 pub(super) struct Prefixes<'cx, 'tcx> {
-    body: ReadOnlyBodyAndCache<'cx, 'tcx>,
+    body: &'cx Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     kind: PrefixSet,
     next: Option<PlaceRef<'tcx>>,
@@ -120,7 +120,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                     // derefs, except we stop at the deref of a shared
                     // reference.
 
-                    let ty = Place::ty_from(cursor.local, proj_base, *self.body, self.tcx).ty;
+                    let ty = Place::ty_from(cursor.local, proj_base, self.body, self.tcx).ty;
                     match ty.kind {
                         ty::RawPtr(_) | ty::Ref(_ /*rgn*/, _ /*ty*/, hir::Mutability::Not) => {
                             // don't continue traversing over derefs of raw pointers or shared

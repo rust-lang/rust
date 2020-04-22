@@ -405,7 +405,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         instance: ty::InstanceDef<'tcx>,
         promoted: Option<mir::Promoted>,
-    ) -> InterpResult<'tcx, mir::ReadOnlyBodyAndCache<'tcx, 'tcx>> {
+    ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let did = instance.def_id();
         if did.is_local() && self.tcx.has_typeck_tables(did) {
@@ -415,12 +415,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return Ok(self.tcx.promoted_mir(did)[promoted].unwrap_read_only());
+            return Ok(&self.tcx.promoted_mir(did)[promoted]);
         }
         match instance {
             ty::InstanceDef::Item(def_id) => {
                 if self.tcx.is_mir_available(did) {
-                    Ok(self.tcx.optimized_mir(did).unwrap_read_only())
+                    Ok(self.tcx.optimized_mir(did))
                 } else {
                     throw_unsup!(NoMirFor(def_id))
                 }

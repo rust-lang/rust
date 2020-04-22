@@ -21,7 +21,7 @@ pub mod validation;
 /// Information about the item currently being const-checked, as well as a reference to the global
 /// context.
 pub struct Item<'mir, 'tcx> {
-    pub body: mir::ReadOnlyBodyAndCache<'mir, 'tcx>,
+    pub body: &'mir mir::Body<'tcx>,
     pub tcx: TyCtxt<'tcx>,
     pub def_id: DefId,
     pub param_env: ty::ParamEnv<'tcx>,
@@ -29,11 +29,7 @@ pub struct Item<'mir, 'tcx> {
 }
 
 impl Item<'mir, 'tcx> {
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        def_id: DefId,
-        body: mir::ReadOnlyBodyAndCache<'mir, 'tcx>,
-    ) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'mir mir::Body<'tcx>) -> Self {
         let param_env = tcx.param_env(def_id);
         let const_kind = ConstKind::for_item(tcx, def_id);
 

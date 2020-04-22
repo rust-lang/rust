@@ -296,7 +296,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.
-        let ty = deref_target_place.ty(*self.body, self.infcx.tcx).ty;
+        let ty = deref_target_place.ty(self.body, self.infcx.tcx).ty;
         let upvar_field = self
             .prefixes(move_place.as_ref(), PrefixSet::All)
             .find_map(|p| self.is_upvar_field_projection(p));
@@ -385,7 +385,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         };
         if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
-            let def_id = match move_place.ty(*self.body, self.infcx.tcx).ty.kind {
+            let def_id = match move_place.ty(self.body, self.infcx.tcx).ty.kind {
                 ty::Adt(self_def, _) => self_def.did,
                 ty::Foreign(def_id)
                 | ty::FnDef(def_id, _)
@@ -441,7 +441,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
 
                 if binds_to.is_empty() {
-                    let place_ty = move_from.ty(*self.body, self.infcx.tcx).ty;
+                    let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
                         Some(desc) => format!("`{}`", desc),
                         None => "value".to_string(),
@@ -464,7 +464,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
                 let span = use_spans.var_or_use();
-                let place_ty = original_path.ty(*self.body, self.infcx.tcx).ty;
+                let place_ty = original_path.ty(self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
                     Some(desc) => format!("`{}`", desc),
                     None => "value".to_string(),

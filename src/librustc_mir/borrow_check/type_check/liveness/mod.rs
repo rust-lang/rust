@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::mir::{Body, Local, ReadOnlyBodyAndCache};
+use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use std::rc::Rc;
 
@@ -32,7 +32,7 @@ mod trace;
 /// performed before
 pub(super) fn generate<'mir, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    body: &Body<'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,

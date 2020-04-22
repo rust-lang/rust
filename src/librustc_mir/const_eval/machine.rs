@@ -226,7 +226,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         }
         // This is a const fn. Call it.
         Ok(Some(match ecx.load_mir(instance.def, None) {
-            Ok(body) => *body,
+            Ok(body) => body,
             Err(err) => {
                 if let err_unsup!(NoMirFor(did)) = err.kind {
                     let path = ecx.tcx.def_path_str(did);

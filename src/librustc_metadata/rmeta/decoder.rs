@@ -26,7 +26,7 @@ use rustc_middle::middle::cstore::{CrateSource, ExternCrate};
 use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLibrary};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::mir::{self, interpret, BodyAndCache, Promoted};
+use rustc_middle::mir::{self, interpret, Body, Promoted};
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::common::record_time;
@@ -1099,9 +1099,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         !self.is_proc_macro(id) && self.root.tables.mir.get(self, id).is_some()
     }
 
-    fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> BodyAndCache<'tcx> {
-        let mut cache = self
-            .root
+    fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
+        self.root
             .tables
             .mir
             .get(self, id)
@@ -1109,18 +1108,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .unwrap_or_else(|| {
                 bug!("get_optimized_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
-            .decode((self, tcx));
-        cache.ensure_predecessors();
-        cache
+            .decode((self, tcx))
     }
 
-    fn get_promoted_mir(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        id: DefIndex,
-    ) -> IndexVec<Promoted, BodyAndCache<'tcx>> {
-        let mut cache = self
-            .root
+    fn get_promoted_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> IndexVec<Promoted, Body<'tcx>> {
+        self.root
             .tables
             .promoted_mir
             .get(self, id)
@@ -1128,11 +1120,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .unwrap_or_else(|| {
                 bug!("get_promoted_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
-            .decode((self, tcx));
-        for body in cache.iter_mut() {
-            body.ensure_predecessors();
-        }
-        cache
+            .decode((self, tcx))
     }
 
     fn mir_const_qualif(&self, id: DefIndex) -> mir::ConstQualifs {

@@ -14,9 +14,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::interpret::{Allocation, ConstValue, Scalar};
-use crate::mir::{
-    interpret, BodyAndCache, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
-};
+use crate::mir::{interpret, Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::traits;
 use crate::traits::{Clause, Clauses, Goal, GoalKind, Goals};
 use crate::ty::query;
@@ -993,21 +991,21 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn alloc_steal_mir(self, mir: BodyAndCache<'tcx>) -> &'tcx Steal<BodyAndCache<'tcx>> {
+    pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
         self.arena.alloc(Steal::new(mir))
     }
 
     pub fn alloc_steal_promoted(
         self,
-        promoted: IndexVec<Promoted, BodyAndCache<'tcx>>,
-    ) -> &'tcx Steal<IndexVec<Promoted, BodyAndCache<'tcx>>> {
+        promoted: IndexVec<Promoted, Body<'tcx>>,
+    ) -> &'tcx Steal<IndexVec<Promoted, Body<'tcx>>> {
         self.arena.alloc(Steal::new(promoted))
     }
 
     pub fn intern_promoted(
         self,
-        promoted: IndexVec<Promoted, BodyAndCache<'tcx>>,
-    ) -> &'tcx IndexVec<Promoted, BodyAndCache<'tcx>> {
+        promoted: IndexVec<Promoted, Body<'tcx>>,
+    ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
         self.arena.alloc(promoted)
     }
 
