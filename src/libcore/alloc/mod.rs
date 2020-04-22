@@ -18,7 +18,7 @@ use crate::ptr::{self, NonNull};
 /// something wrong when combining the given input arguments with this
 /// allocator.
 #[unstable(feature = "allocator_api", issue = "32838")]
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct AllocErr;
 
 // (we need this for downstream impl of trait Error)
