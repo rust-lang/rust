@@ -302,8 +302,7 @@ bool isFunctionArgumentConstant(TypeResults &TR, CallInst* CI, Value* val, Small
     SmallPtrSet<Value*, 20> newnonconstant;
 
 
-    NewFnTypeInfo nextTypeInfo;
-    nextTypeInfo.function = F;
+    NewFnTypeInfo nextTypeInfo(F);
     int argnum = 0;
     for(auto &arg : F->args()) {
         nextTypeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, TR.query(CI->getArgOperand(argnum))));

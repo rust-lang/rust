@@ -72,6 +72,7 @@ public:
 
     DataType(llvm::Type* type) : type(type), typeEnum(IntType::Float) {
         assert(type != nullptr);
+        assert(!llvm::isa<llvm::VectorType>(type));
     }
 
     DataType(IntType typeEnum) : type(nullptr), typeEnum(typeEnum) {
@@ -858,27 +859,34 @@ public:
 typedef std::map<llvm::Argument*, DataType> FnTypeInfo;
 
 //First is ; then ; then
-struct NewFnTypeInfo {
+class NewFnTypeInfo {
 public:
     llvm::Function* function;
+    NewFnTypeInfo(llvm::Function* fn) : function(fn) {}
+    NewFnTypeInfo(const NewFnTypeInfo&) = default;
+    NewFnTypeInfo& operator=(NewFnTypeInfo&) = default;
+    NewFnTypeInfo& operator=(NewFnTypeInfo&&) = default;
 
     // arguments:type
     std::map<llvm::Argument*, ValueData> first;
     // return type
     ValueData second;
     // the specific constant of an argument, if it is constant
-    std::map<llvm::Argument*, llvm::Constant*> third;
+    std::map<llvm::Argument*, std::set<int64_t>> knownValues;
 
-    llvm::Constant* isConstant(llvm::Value* val) const;
-    llvm::ConstantInt* isConstantInt(llvm::Value* val) const;
+    std::set<int64_t> isConstantInt(llvm::Value* val, const llvm::DominatorTree& DT, std::map<llvm::Value*, std::set<int64_t>>& intseen) const;
 };
 
 static inline bool operator<(const NewFnTypeInfo& lhs, const NewFnTypeInfo& rhs) {
+
+    if (lhs.function < rhs.function) return true;
+    if (rhs.function < lhs.function) return false;
+
     if (lhs.first < rhs.first) return true;
     if (rhs.first < lhs.first) return false;
     if (lhs.second < rhs.second) return true;
     if (rhs.second < lhs.second) return false;
-    return lhs.third < rhs.third;
+    return lhs.knownValues < rhs.knownValues;
 }
 
 class TypeAnalyzer;
@@ -900,6 +908,7 @@ public:
     NewFnTypeInfo getAnalyzedTypeInfo();
     ValueData getReturnAnalysis();
     void dump();
+    std::set<int64_t> isConstantInt(llvm::Value* val) const;
 };
 
 
@@ -908,6 +917,7 @@ private:
     //List of value's which should be re-analyzed now with new information
     std::deque<llvm::Value*> workList;
     void addToWorkList(llvm::Value* val);
+    std::map<llvm::Value*, std::set<int64_t>> intseen;
 public:
     //Calling context
     const NewFnTypeInfo fntypeinfo;
@@ -989,9 +999,15 @@ public:
 
     void visitCallInst(llvm::CallInst &call);
 
+    void visitMemTransferInst(llvm::MemTransferInst& MTI);
+
+    void visitIntrinsicInst(llvm::IntrinsicInst &II);
+
     ValueData getReturnAnalysis();
 
     void dump();
+
+    std::set<int64_t> isConstantInt(llvm::Value* val);
 };
 
 

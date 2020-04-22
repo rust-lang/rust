@@ -143,7 +143,7 @@ DataType parseTBAA(Instruction* inst) {
     }
 }
 
-TypeAnalyzer::TypeAnalyzer(const NewFnTypeInfo& fn, TypeAnalysis& TA) : fntypeinfo(fn), interprocedural(TA), DT(*fn.function) {
+TypeAnalyzer::TypeAnalyzer(const NewFnTypeInfo& fn, TypeAnalysis& TA) : intseen(), fntypeinfo(fn), interprocedural(TA), DT(*fn.function) {
     for(BasicBlock &BB: *fntypeinfo.function) {
         for(auto &inst : BB) {
 	        workList.push_back(&inst);
@@ -285,6 +285,7 @@ void TypeAnalyzer::updateAnalysis(Value* val, ValueData data, Value* origin) {
     llvm::errs() << " + old: " << analysis[val].str() << "\n";
     llvm::errs() << " + tomerge: " << data.str() << "\n";
     */
+
     if (analysis[val] |= data) {
     	//Add val so it can explicitly propagate this new info, if able to
     	if (val != origin)
@@ -348,18 +349,18 @@ void TypeAnalyzer::considerTBAA() {
 
             if (auto call = dyn_cast<CallInst>(&inst)) {
                 if (call->getCalledFunction() && (call->getCalledFunction()->getIntrinsicID() == Intrinsic::memcpy || call->getCalledFunction()->getIntrinsicID() == Intrinsic::memmove)) {
-                    if (auto ci = fntypeinfo.isConstantInt(call->getOperand(2))) {
-                        for(int i=0; i<(int)ci->getLimitedValue(); i++) {
+                    int64_t sz = 1;
+                    for(auto val : fntypeinfo.isConstantInt(call->getOperand(2), DT, intseen)) {
+                        sz = max(sz, val);
+                    }
+                    for(int64_t i=0; i<sz; i++) {
                             ValueData iptr = ValueData(dt).Only({i});
                             iptr |= ValueData(IntType::Pointer);
 
                             updateAnalysis(call->getOperand(0), iptr, call);
                             updateAnalysis(call->getOperand(1), iptr, call);
-                        }
-                        continue;
                     }
-                    updateAnalysis(call->getOperand(0), vdptr, call);
-                    updateAnalysis(call->getOperand(1), vdptr, call);
+                    continue;
                 } else if (call->getType()->isPointerTy()) {
                     updateAnalysis(call, ValueData(dt).Only({-1}), call);
                 } else {
@@ -378,139 +379,6 @@ void TypeAnalyzer::considerTBAA() {
             }
         }
     }
-}
-
-
-std::set<int64_t> couldBeZero(Value* val, std::map<Value*, std::set<int64_t>>& intseen, const NewFnTypeInfo& info, DominatorTree& DT) {
-    if (intseen.find(val) != intseen.end()) return intseen[val];
-    //todo what to insert to intseen
-
-    intseen[val] = {};
-
-    if (auto ci = info.isConstantInt(val)) {
-        return intseen[val] = { ci->getSExtValue() };
-    }
-
-    if (auto ci = dyn_cast<CastInst>(val)) {
-        return intseen[val] = couldBeZero(ci->getOperand(0), intseen, info, DT);
-    }
-
-    if (auto pn = dyn_cast<PHINode>(val)) {
-
-        for(unsigned i=0; i<pn->getNumIncomingValues(); i++) {
-            auto a = pn->getIncomingValue(i);
-            auto b = pn->getIncomingBlock(i);
-
-            //do not consider loop incoming edges
-            if (pn->getParent() == b || DT.dominates(pn, b)) {
-                continue;
-            }
-
-            auto inset = couldBeZero(a, intseen, info, DT);
-            //TODO this here is not fully justified yet
-            for(auto pval : inset) {
-                if (pval < 20 && pval > -20) {
-                    intseen[val].insert(pval);
-                }
-            }
-
-            // if we are an iteration variable, suppose that it could be zero in that range
-            // TODO: could actually check the range intercepts 0
-            if (auto bo = dyn_cast<BinaryOperator>(a)) {
-                if (bo->getOperand(0) == pn || bo->getOperand(1) == pn) {
-                    if (bo->getOpcode() == BinaryOperator::Add || bo->getOpcode() == BinaryOperator::Sub) {
-                        intseen[val].insert(0);
-                    }
-                }
-            }
-        }
-        return intseen[val];
-    }
-
-    if (auto bo = dyn_cast<BinaryOperator>(val)) {
-        if (bo->getOpcode() == BinaryOperator::Mul) {
-            auto inset0 = couldBeZero(bo->getOperand(0), intseen, info, DT);
-            auto inset1 = couldBeZero(bo->getOperand(1), intseen, info, DT);
-
-            if (auto ci = info.isConstantInt(bo->getOperand(0))) {
-                for(auto pval : inset1) {
-                    intseen[val].insert(ci->getSExtValue() * pval);
-                }
-            }
-            if (auto ci = info.isConstantInt(bo->getOperand(1))) {
-                for(auto pval : inset0) {
-                    intseen[val].insert(pval * ci->getSExtValue());
-                }
-            }
-            if (inset0.count(0) || inset1.count(0)) {
-                intseen[val].insert(0);
-            }
-        }
-
-        if (bo->getOpcode() == BinaryOperator::Add) {
-            if (auto ci = info.isConstantInt(bo->getOperand(0))) {
-                auto inset = couldBeZero(bo->getOperand(1), intseen, info, DT);
-                for(auto pval : inset) {
-                    intseen[val].insert(ci->getSExtValue() + pval);
-                }
-            }
-            if (auto ci = info.isConstantInt(bo->getOperand(1))) {
-                auto inset = couldBeZero(bo->getOperand(0), intseen, info, DT);
-                for(auto pval : inset) {
-                    intseen[val].insert(pval + ci->getSExtValue());
-                }
-            }
-        }
-        if (bo->getOpcode() == BinaryOperator::Sub) {
-            if (auto ci = info.isConstantInt(bo->getOperand(0))) {
-                auto inset = couldBeZero(bo->getOperand(1), intseen, info, DT);
-                for(auto pval : inset) {
-                    intseen[val].insert(ci->getSExtValue() - pval);
-                }
-            }
-            if (auto ci = info.isConstantInt(bo->getOperand(1))) {
-                auto inset = couldBeZero(bo->getOperand(0), intseen, info, DT);
-                for(auto pval : inset) {
-                    intseen[val].insert(pval - ci->getSExtValue());
-                }
-            }
-        }
-
-        if (bo->getOpcode() == BinaryOperator::Shl) {
-            if (auto ci = info.isConstantInt(bo->getOperand(0))) {
-                auto inset = couldBeZero(bo->getOperand(1), intseen, info, DT);
-                for(auto pval : inset) {
-                    intseen[val].insert(ci->getSExtValue() << pval);
-                }
-            }
-            if (auto ci = info.isConstantInt(bo->getOperand(1))) {
-                auto inset = couldBeZero(bo->getOperand(0), intseen, info, DT);
-                for(auto pval : inset) {
-                    intseen[val].insert(pval << ci->getSExtValue());
-                }
-            }
-        }
-
-        //TOOD note C++ doesnt guarantee behavior of >> being arithmetic or logical
-        //     and should replace with llvm apint internal
-        if (bo->getOpcode() == BinaryOperator::AShr || bo->getOpcode() == BinaryOperator::LShr) {
-            if (auto ci = info.isConstantInt(bo->getOperand(0))) {
-                auto inset = couldBeZero(bo->getOperand(1), intseen, info, DT);
-                for(auto pval : inset) {
-                    intseen[val].insert(ci->getSExtValue() >> pval);
-                }
-            }
-            if (auto ci = info.isConstantInt(bo->getOperand(1))) {
-                auto inset = couldBeZero(bo->getOperand(0), intseen, info, DT);
-                for(auto pval : inset) {
-                    intseen[val].insert(pval >> ci->getSExtValue());
-                }
-            }
-        }
-
-    }
-
-    return intseen[val];
 }
 
 bool hasAnyUse(TypeAnalyzer& TAZ, Value* val, std::map<Value*, bool>& intseen, bool* sawReturn/*if sawReturn != nullptr, we can ignore uses of returninst, setting the bool to true if we see one*/) {
@@ -867,8 +735,6 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 
     std::vector<std::set<Value*>> idnext;
 
-    std::map<Value*, std::set<int64_t>> intseen;
-
     // If we know that the pointer operand is indeed a pointer, then the indicies must be integers
     // Note that we can't do this if we don't know the pointer operand is a pointer since doing 1[pointer] is legal
     //  sadly this still may not work since (nullptr)[fn] => fn where fn is pointer and not int (whereas nullptr is a pointer)
@@ -887,9 +753,11 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 
 
     for(auto& a : gep.indices()) {
-        auto iset = couldBeZero(a, intseen, fntypeinfo, DT);
+        auto iset = fntypeinfo.isConstantInt(a, DT, intseen);
         std::set<Value*> vset;
         for(auto i : iset) {
+            // Don't consider negative indices of gep
+            if (i < 0) continue;
             vset.insert(ConstantInt::get(a->getType(), i));
         }
         idnext.push_back(vset);
@@ -922,8 +790,10 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
             for(auto v: vec) llvm::errs() << *v << ", ";
             llvm::errs() << "] " << "\n";
         }
+        */
 
-        if (gep.getName() == "m_inputImpl.i") {
+        /*
+        if (gep.getName() == "arrayidx.i.i") {
             dump();
             llvm::errs() << *gep.getParent()->getParent() << "\n";
             llvm::errs() << "GEP: " << gep << " - " << getAnalysis(&gep).str() << " - off=" << off << "\n";
@@ -931,6 +801,7 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
             llvm::errs() << "  + pa unmerge: " << pointerAnalysis.UnmergeIndices(off, maxSize).str() << "\n";
         }
         */
+
         //llvm::errs() << "gep: " << gep << "\n";
 
         updateAnalysis(&gep, pointerAnalysis.UnmergeIndices(off, maxSize), &gep);
@@ -962,7 +833,7 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
         }
     };
 
-    //llvm::errs() << "phi: " << phi << "\n";
+    //llvm::errs() << "visting phi: " << phi << "\n";
 
     //TODO generalize this (and for recursive, etc)
     std::deque<Value*> vals;
@@ -984,10 +855,16 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
             }
             continue;
         }
+        if (auto sel = dyn_cast<SelectInst>(todo)) {
+            vals.push_back(sel->getOperand(1));
+            vals.push_back(sel->getOperand(2));
+            continue;
+        }
 
-        //llvm::errs() << " + " << vd.str() << " ga: " << getAnalysis(op).str() << "\n";
+        //llvm::errs() << " + sub" << *todo << " ga: " << getAnalysis(todo).str() << "\n";
         consider(getAnalysis(todo));
     }
+    //llvm::errs() << " -- res" << vd.str() << "\n";
 
     updateAnalysis(&phi, vd, &phi);
 }
@@ -1144,7 +1021,7 @@ void TypeAnalyzer::visitInsertValueInst(InsertValueInst &I) {
 void TypeAnalyzer::dump() {
     llvm::errs() << "<analysis>\n";
     for(auto& pair : analysis) {
-        llvm::errs() << *pair.first << ": " << pair.second.str() << "\n";
+        llvm::errs() << *pair.first << ": " << pair.second.str() << ", intvals: " << to_string(isConstantInt(pair.first)) << "\n";
     }
     llvm::errs() << "</analysis>\n";
 }
@@ -1202,19 +1079,81 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
         //llvm::errs() << "op(1): " << getAnalysis(I.getOperand(1)).str() << "\n";
 
         if (I.getOpcode() == BinaryOperator::And) {
-            for(int i=0; i<2; i++)
-            if (auto ci = fntypeinfo.isConstantInt(I.getOperand(i))) {
-                if (ci->getLimitedValue() <= 16 && ci->getLimitedValue() >= 0) {
+            for(int i=0; i<2; i++) {
+                for(auto andval : fntypeinfo.isConstantInt(I.getOperand(i), DT, intseen)) {
+                    if (andval <= 16 && andval >= 0) {
 
-                    //I.getParent()->getParent()->dump();
-                    //dump();
-                    //llvm::errs() << "I: " << I << "\n";
+                        //I.getParent()->getParent()->dump();
+                        //dump();
+                        //llvm::errs() << "I: " << I << "\n";
 
-                    vd |= ValueData(IntType::Integer);
+                        vd |= ValueData(IntType::Integer);
+                    }
                 }
             }
         }
 		updateAnalysis(&I, vd, &I);
+    }
+}
+
+void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst& MTI) {
+    //If memcpy / memmove of pointer, we can propagate type information from src to dst up to the length and vice versa
+    //TODO length enforcement
+    int64_t sz = 1;
+    for (auto val : fntypeinfo.isConstantInt(MTI.getArgOperand(2), DT, intseen)) {
+        sz = max(sz, val);
+    }
+
+    ValueData res = getAnalysis(MTI.getArgOperand(0)).AtMost(sz);
+    ValueData res2 = getAnalysis(MTI.getArgOperand(1)).AtMost(sz);
+    //llvm::errs() << " memcpy: " << MTI << " res1: " << res.str() << " res2: " << res2.str() << "\n";
+    res |= res2;
+
+    updateAnalysis(MTI.getArgOperand(0), res, &MTI);
+    updateAnalysis(MTI.getArgOperand(1), res, &MTI);
+
+    //MTI.getParent()->getParent()->dump();
+    //dump();
+    //llvm::errs() << "call: " << MTI << "\n";
+
+    for(unsigned i=2; i<MTI.getNumArgOperands(); i++) {
+        updateAnalysis(MTI.getArgOperand(i), IntType::Integer, &MTI);
+    }
+}
+
+void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
+    switch(I.getIntrinsicID()) {
+        case Intrinsic::log:
+        case Intrinsic::log2:
+        case Intrinsic::log10:
+        case Intrinsic::exp:
+        case Intrinsic::exp2:
+        case Intrinsic::sin:
+        case Intrinsic::cos:
+        case Intrinsic::floor:
+        case Intrinsic::ceil:
+        case Intrinsic::trunc:
+        case Intrinsic::rint:
+        case Intrinsic::nearbyint:
+        case Intrinsic::round:
+        case Intrinsic::sqrt:
+        case Intrinsic::fabs:
+            updateAnalysis(&I, DataType(I.getType()->getScalarType()), &I);
+            updateAnalysis(I.getOperand(0), DataType(I.getOperand(0)->getType()->getScalarType()), &I);
+            return;
+
+        case Intrinsic::x86_sse_max_ss:
+        case Intrinsic::x86_sse_max_ps:
+        case Intrinsic::maxnum:
+        case Intrinsic::x86_sse_min_ss:
+        case Intrinsic::x86_sse_min_ps:
+        case Intrinsic::minnum:
+        case Intrinsic::pow:
+            updateAnalysis(&I, DataType(I.getType()->getScalarType()), &I);
+            updateAnalysis(I.getOperand(0), DataType(I.getOperand(0)->getType()->getScalarType()), &I);
+            updateAnalysis(I.getOperand(1), DataType(I.getOperand(1)->getType()->getScalarType()), &I);
+            return;
+        default: return;
     }
 }
 
@@ -1239,32 +1178,6 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
             updateAnalysis(call.getArgOperand(1), ValueData(IntType::Integer).Only({0}), &call);
 
         }
-
-
-		//If memcpy / memmove of pointer, we can propagate type information from src to dst up to the length and vice versa
-		if (ci->getIntrinsicID() == Intrinsic::memcpy || ci->getIntrinsicID() == Intrinsic::memmove) {
-            //TODO length enforcement
-            int sz = 1;
-            if (auto ci = fntypeinfo.isConstantInt(call.getArgOperand(2))) {
-                sz = (int)ci->getLimitedValue();
-            }
-
-			ValueData res = getAnalysis(call.getArgOperand(0)).AtMost(sz);
-            ValueData res2 = getAnalysis(call.getArgOperand(1)).AtMost(sz);
-            //llvm::errs() << " memcpy: " << call << " res1: " << res.str() << " res2: " << res2.str() << "\n";
-            res |= res2;
-
-			updateAnalysis(call.getArgOperand(0), res, &call);
-			updateAnalysis(call.getArgOperand(1), res, &call);
-
-            //call.getParent()->getParent()->dump();
-            //dump();
-            //llvm::errs() << "call: " << call << "\n";
-
-			for(unsigned i=2; i<call.getNumArgOperands(); i++) {
-				updateAnalysis(call.getArgOperand(i), IntType::Integer, &call);
-			}
-		}
 
 		//TODO we should handle calls interprocedurally, allowing better propagation of type information
 		if (!ci->empty()) {
@@ -1295,40 +1208,140 @@ ValueData TypeAnalyzer::getReturnAnalysis() {
 }
 
 
-llvm::Constant* NewFnTypeInfo::isConstant(llvm::Value* val) const {
-    if (auto constant = dyn_cast<Constant>(val)) {
-        return constant;
+std::set<int64_t> NewFnTypeInfo::isConstantInt(llvm::Value* val, const DominatorTree& DT, std::map<Value*, std::set<int64_t>>& intseen) const {
+    if (auto constant = dyn_cast<ConstantInt>(val)) {
+        return { constant->getSExtValue() };
     }
+
     if (auto arg = dyn_cast<llvm::Argument>(val)) {
-        auto found = third.find(arg);
-        if (found == third.end()) {
-            for(const auto& pair : third) {
-                llvm::errs() << " third[" << *pair.first << "]=" << pair.second << " - " << pair.first->getParent()->getName() << "\n";
+        auto found = knownValues.find(arg);
+        if (found == knownValues.end()) {
+            for(const auto& pair : knownValues) {
+                llvm::errs() << " knownValues[" << *pair.first << "] - " << pair.first->getParent()->getName() << "\n";
             }
             llvm::errs() << " arg: " << *arg << " - " << arg->getParent()->getName() << "\n";
         }
-        assert(found != third.end());
-        if (found->second) return found->second;
+        assert(found != knownValues.end());
+        return found->second;
     }
-    return nullptr;
-}
 
-llvm::ConstantInt* NewFnTypeInfo::isConstantInt(llvm::Value* val) const {
-    if (auto ci = dyn_cast_or_null<ConstantInt>(isConstant(val))) {
-        return ci;
+    if (intseen.find(val) != intseen.end()) return intseen[val];
+    intseen[val] = {};
+
+    if (auto ci = dyn_cast<CastInst>(val)) {
+        intseen[val] = isConstantInt(ci->getOperand(0), DT, intseen);
     }
-    return nullptr;
+
+    auto insert = [&](int64_t v) {
+        if (v > -100 && v < 100) {
+            intseen[val].insert(v);
+        }
+    };
+
+    if (auto pn = dyn_cast<PHINode>(val)) {
+        for(unsigned i=0; i<pn->getNumIncomingValues(); i++) {
+            auto a = pn->getIncomingValue(i);
+            auto b = pn->getIncomingBlock(i);
+
+            //do not consider loop incoming edges
+            if (pn->getParent() == b || DT.dominates(pn, b)) {
+                continue;
+            }
+
+            auto inset = isConstantInt(a, DT, intseen);
+
+            //TODO this here is not fully justified yet
+            for(auto pval : inset) {
+                if (pval < 20 && pval > -20) {
+                    insert(pval);
+                }
+            }
+
+            // if we are an iteration variable, suppose that it could be zero in that range
+            // TODO: could actually check the range intercepts 0
+            if (auto bo = dyn_cast<BinaryOperator>(a)) {
+                if (bo->getOperand(0) == pn || bo->getOperand(1) == pn) {
+                    if (bo->getOpcode() == BinaryOperator::Add || bo->getOpcode() == BinaryOperator::Sub) {
+                        insert(0);
+                    }
+                }
+            }
+        }
+        return intseen[val];
+    }
+
+    if (auto bo = dyn_cast<BinaryOperator>(val)) {
+        auto inset0 = isConstantInt(bo->getOperand(0), DT, intseen);
+        auto inset1 = isConstantInt(bo->getOperand(1), DT, intseen);
+        if (bo->getOpcode() == BinaryOperator::Mul) {
+
+            if (inset0.size() == 1 || inset1.size() == 1) {
+                for(auto val0 : inset0) {
+                    for(auto val1 : inset1) {
+
+                        insert(val0 * val1);
+                    }
+                }
+            }
+            if (inset0.count(0) || inset1.count(0)) {
+                intseen[val].insert(0);
+            }
+        }
+
+        if (bo->getOpcode() == BinaryOperator::Add) {
+            if (inset0.size() == 1 || inset1.size() == 1) {
+                for(auto val0 : inset0) {
+                    for(auto val1 : inset1) {
+                        insert(val0 + val1);
+                    }
+                }
+            }
+        }
+        if (bo->getOpcode() == BinaryOperator::Sub) {
+            if (inset0.size() == 1 || inset1.size() == 1) {
+                for(auto val0 : inset0) {
+                    for(auto val1 : inset1) {
+                        insert(val0 - val1);
+                    }
+                }
+            }
+        }
+
+        if (bo->getOpcode() == BinaryOperator::Shl) {
+            if (inset0.size() == 1 || inset1.size() == 1) {
+                for(auto val0 : inset0) {
+                    for(auto val1 : inset1) {
+                        insert(val0 << val1);
+                    }
+                }
+            }
+        }
+
+        //TOOD note C++ doesnt guarantee behavior of >> being arithmetic or logical
+        //     and should replace with llvm apint internal
+        if (bo->getOpcode() == BinaryOperator::AShr || bo->getOpcode() == BinaryOperator::LShr) {
+            if (inset0.size() == 1 || inset1.size() == 1) {
+                for(auto val0 : inset0) {
+                    for(auto val1 : inset1) {
+                        insert(val0 >> val1);
+                    }
+                }
+            }
+        }
+
+    }
+
+    return intseen[val];
 }
 
 void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
-	NewFnTypeInfo typeInfo;
-    typeInfo.function = &fn;
+	NewFnTypeInfo typeInfo(&fn);
 
     int argnum = 0;
 	for(auto &arg : fn.args()) {
 		auto dt = getAnalysis(call.getArgOperand(argnum));
 		typeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, dt));
-        typeInfo.third.insert(std::pair<Argument*, Constant*>(&arg, fntypeinfo.isConstant(call.getArgOperand(argnum))));
+        typeInfo.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&arg, fntypeinfo.isConstantInt(call.getArgOperand(argnum), DT, intseen)));
 
 		argnum++;
 	}
@@ -1348,12 +1361,14 @@ void TypeAnalyzer::visitIPOCall(CallInst& call, Function& fn) {
 }
 
 TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn) {
-    if (analyzedFunctions.find(fn) != analyzedFunctions.end()) {
 
-        auto& analysis = analyzedFunctions.find(fn)->second;
+    auto found = analyzedFunctions.find(fn);
+    if (found != analyzedFunctions.end()) {
+        auto& analysis = found->second;
         if (analysis.fntypeinfo.function != fn.function) {
             llvm::errs() << " queryFunc: " << *fn.function << "\n";
             llvm::errs() << " analysisFunc: " << *analysis.fntypeinfo.function << "\n";
+           //llvm::errs() << " eq: " << (fn == analysis.fntypeinfo) << "\n";
         }
         assert(analysis.fntypeinfo.function == fn.function);
 
@@ -1367,9 +1382,9 @@ TypeResults TypeAnalysis::analyzeFunction(const NewFnTypeInfo& fn) {
 	    llvm::errs() << "analyzing function " << fn.function->getName() << "\n";
 	    for(auto &pair : fn.first) {
 	        llvm::errs() << " + knowndata: " << *pair.first << " : " << pair.second.str();
-            auto found = fn.third.find(pair.first);
-            if (found != fn.third.end() && found->second) {
-                llvm::errs() << " - " << *found->second;
+            auto found = fn.knownValues.find(pair.first);
+            if (found != fn.knownValues.end()) {
+                llvm::errs() << " - " << to_string(found->second);
             }
             llvm::errs() << "\n";
 	    }
@@ -1480,9 +1495,10 @@ DataType TypeAnalysis::firstPointer(size_t num, Value* val, const NewFnTypeInfo&
     */
 
 	if (errIfNotFound && (!dt.isKnown() || dt.typeEnum == IntType::Anything) ) {
+        auto& res = analyzedFunctions.find(fn)->second;
 		if (auto inst = dyn_cast<Instruction>(val)) {
 			llvm::errs() << *inst->getParent()->getParent() << "\n";
-			for(auto &pair : analyzedFunctions.find(fn)->second.analysis) {
+			for(auto &pair : res.analysis) {
                 if (auto in = dyn_cast<Instruction>(pair.first)) {
                     if (in->getParent()->getParent() != inst->getParent()->getParent()) {
                         llvm::errs() << "inf: " << *in->getParent()->getParent() << "\n";
@@ -1492,15 +1508,15 @@ DataType TypeAnalysis::firstPointer(size_t num, Value* val, const NewFnTypeInfo&
                     }
                     assert(in->getParent()->getParent() == inst->getParent()->getParent());
                 }
-				llvm::errs() << "val: " << *pair.first << " - " << pair.second.str() << "\n";
+				llvm::errs() << "val: " << *pair.first << " - " << pair.second.str() << " int: " + to_string(res.isConstantInt(pair.first)) << "\n";
 			}
 		}
         if (auto arg = dyn_cast<Argument>(val)) {
             llvm::errs() << *arg->getParent() << "\n";
-            for(auto &pair : analyzedFunctions.find(fn)->second.analysis) {
+            for(auto &pair : res.analysis) {
                 if (auto in = dyn_cast<Instruction>(pair.first))
                     assert(in->getParent()->getParent() == arg->getParent());
-                llvm::errs() << "val: " << *pair.first << " - " << pair.second.str() << "\n";
+                llvm::errs() << "val: " << *pair.first << " - " << pair.second.str() << " int: " + to_string(res.isConstantInt(pair.first)) << "\n";
             }
         }
 		llvm::errs() << "could not deduce type of integer " << *val << " num:" << num << " q:" << q.str() << " \n";
@@ -1513,12 +1529,12 @@ TypeResults::TypeResults(TypeAnalysis &analysis, const NewFnTypeInfo& fn) : anal
 
 
 NewFnTypeInfo TypeResults::getAnalyzedTypeInfo() {
-	NewFnTypeInfo res;
+	NewFnTypeInfo res(info.function);
 	for(auto &arg : info.function->args()) {
 		res.first.insert(std::pair<Argument*, ValueData>(&arg, analysis.query(&arg, info)));
 	}
     res.second = getReturnAnalysis();
-    res.third = info.third;
+    res.knownValues = info.knownValues;
 	return res;
 }
 
@@ -1551,4 +1567,17 @@ DataType TypeResults::firstPointer(size_t num, Value* val, bool errIfNotFound, b
 
 ValueData TypeResults::getReturnAnalysis() {
     return analysis.getReturnAnalysis(info);
+}
+
+
+std::set<int64_t> TypeResults::isConstantInt(Value* val) const {
+    auto found = analysis.analyzedFunctions.find(info);
+    assert(found != analysis.analyzedFunctions.end());
+    auto& sub = found->second;
+    return sub.isConstantInt(val);
+}
+
+
+std::set<int64_t> TypeAnalyzer::isConstantInt(Value* val) {
+    return fntypeinfo.isConstantInt(val, DT, intseen);
 }

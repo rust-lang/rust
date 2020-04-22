@@ -353,12 +353,6 @@ std::map<CallInst*, const std::map<Argument*, bool> > compute_uncacheable_args_f
   return uncacheable_args_map;
 }
 
-std::string to_string(const std::set<unsigned>& us) {
-    std::string s = "{";
-    for(auto y : us) s += std::to_string(y) + ",";
-    return s + "}";
-}
-
 std::string to_string(const std::map<Argument*, bool>& us) {
     std::string s = "{";
     for(auto y : us) s += y.first->getName().str() + "@" + y.first->getParent()->getName().str() + ":" + std::to_string(y.second) + ",";
@@ -747,7 +741,14 @@ public:
     auto storeSize = gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(valType) / 8;
 
     //! Storing a floating point value
-    if (Type* FT = TR.firstPointer(storeSize, gutils->getOriginal(ptr), /*errifnotfound*/true, /*pointerIntSame*/true).isFloat()) {
+    Type* FT = nullptr;
+    if (valType->isFPOrFPVectorTy()) {
+      FT = valType->getScalarType();
+    } else if (!valType->isPointerTy()) {
+      FT = TR.firstPointer(storeSize, gutils->getOriginal(ptr), /*errifnotfound*/true, /*pointerIntSame*/true).isFloat();
+    }
+
+    if (FT) {
       //! Only need to update the reverse function
       if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
         IRBuilder<> Builder2 = getReverseBuilder(SI.getParent());
@@ -883,6 +884,8 @@ public:
     Value* dif1 = nullptr;
     Value* idiff = diffe(&BO, Builder2);
 
+    Type* addingType = BO.getType();
+
     switch(BO.getOpcode()) {
       case Instruction::FMul:{
         if (!gutils->isConstantValue(BO.getOperand(0)))
@@ -916,15 +919,31 @@ public:
           );
         break;
       }
-      default:
+      case Instruction::LShr:{
+        if (!gutils->isConstantValue(BO.getOperand(0))) {
+          if (auto ci = dyn_cast<ConstantInt>(BO.getOperand(1))) {
+            if (Type* flt = TR.intType(gutils->getOriginal(BO.getOperand(0)), /*necessary*/false).isFloat()) {
+              auto bits = gutils->newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(flt);
+              if (ci->getSExtValue() >= bits && ci->getSExtValue() % bits == 0) {
+                dif0 = Builder2.CreateShl(idiff, ci);
+                addingType = flt;
+                goto done;
+              }
+            }
+          }
+        }
+        goto def;
+      }
+      default:def:;
         llvm::errs() << *gutils->newFunc << "\n";
         llvm::errs() << "cannot handle unknown binary operator: " << BO << "\n";
         report_fatal_error("unknown binary operator");
     }
 
+    done:;
     if (dif0 || dif1) setDiffe(&BO, Constant::getNullValue(BO.getType()), Builder2);
-    if (dif0) addToDiffe(BO.getOperand(0), dif0, Builder2, BO.getType());
-    if (dif1) addToDiffe(BO.getOperand(1), dif1, Builder2, BO.getType());
+    if (dif0) addToDiffe(BO.getOperand(0), dif0, Builder2, addingType);
+    if (dif1) addToDiffe(BO.getOperand(1), dif1, Builder2, addingType);
   }
 
   void visitCallInst(llvm::CallInst &call);
@@ -1384,6 +1403,18 @@ typename std::map<K, V>::iterator insert_or_assign(std::map<K, V>& map, K2 key, 
   return map.find(key);
 }
 
+template<typename K, typename V, typename K2>
+typename std::map<K, V>::iterator insert_or_assign(std::map<K, V>& map, K2 key, const V& val) {
+  // map.insert_or_assign(key, val);
+  auto found = map.find(key);
+  if (found == map.end()) {}
+    return map.emplace(key, val).first;
+
+  map.at(key) = val;
+  //map->second = val;
+  return map.find(key);
+}
+
 
 //! return structtype if recursive function
 const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &global_AA,
@@ -1465,8 +1496,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
 
   gutils->forceContexts();
 
-  NewFnTypeInfo typeInfo;
-  typeInfo.function = gutils->oldFunc;
+  NewFnTypeInfo typeInfo(gutils->oldFunc);
   {
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
@@ -1479,15 +1509,9 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
         }
 
         {
-        auto cfd = oldTypeInfo.third.find(toarg);
-        if (cfd == oldTypeInfo.third.end()) {
-          for(const auto& pair : oldTypeInfo.third) {
-              llvm::errs() << " oldTypeInfo.third[" << *pair.first << "]=" << pair.second << " - " << pair.first->getParent()->getName() << "\n";
-          }
-          llvm::errs() << " toarg: " << *toarg << " - " << toarg->getParent()->getName() << "\n";
-        }
-        assert(cfd != oldTypeInfo.third.end());
-        typeInfo.third.insert(std::pair<Argument*, Constant*>(olarg, cfd->second));
+        auto cfd = oldTypeInfo.knownValues.find(toarg);
+        assert(cfd != oldTypeInfo.knownValues.end());
+        typeInfo.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(olarg, cfd->second));
         }
     }
     typeInfo.second = oldTypeInfo.second;
@@ -1826,7 +1850,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
   cachedfunctions.find(tup)->second.fn = NewF;
   if (recursive)
       cachedfunctions.find(tup)->second.tapeType = tapeType;
-  cachedfinished[tup] = true;
+  insert_or_assign(cachedfinished, tup, true);
 
   //llvm::errs() << "augmented fn seeing sub_index_map of " << std::get<2>(cachedfunctions[tup]).size() << " in ap " << NewF->getName() << "\n";
   gutils->newFunc->eraseFromParent();
@@ -1895,12 +1919,25 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, Basic
     for (auto I = BB->begin(), E = BB->end(); I != E; I++) {
         if(PHINode* PN = dyn_cast<PHINode>(&*I)) {
             if (gutils->isConstantValue(PN)) continue;
-            if (PN->getType()->isPointerTy()) continue;
+
+            auto PNtype = TR.intType(gutils->getOriginal(PN), /*necessary*/false);
+
+            //TODO remove explicit type check and only use PNtype
+            if (PNtype == IntType::Pointer || PN->getType()->isPointerTy()) continue;
+
             //TODO consider skipping if not a secret float
             //if (!isIntASecretFloat(PN))) continue;
 
             auto prediff = gutils->diffe(PN, Builder);
             gutils->setDiffe(PN, Constant::getNullValue(PN->getType()), Builder);
+
+            //TODO make the necessary flag just true.
+            //
+            Type* PNfloatType = PNtype.isFloat();
+            if (!PNfloatType)
+              llvm::errs() << " for PN " << *PN << " saw " << TR.intType(gutils->getOriginal(PN), /*necessary*/false).str() << "\n";
+            TR.intType(gutils->getOriginal(PN), /*necessary*/true);
+            assert(PNfloatType);
 
             for (BasicBlock* pred : predecessors(BB)) {
                 if (gutils->isConstantValue(PN->getIncomingValueForBlock(pred))) {
@@ -1908,7 +1945,7 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, Basic
                 }
 
                 if (PN->getNumIncomingValues() == 1) {
-                    gutils->addToDiffe(PN->getIncomingValueForBlock(pred), prediff, Builder, TR.intType(gutils->getOriginal(PN), false).isFloat());
+                    gutils->addToDiffe(PN->getIncomingValueForBlock(pred), prediff, Builder, PNfloatType);
                 } else {
                     if (replacePHIs.find(pred) == replacePHIs.end()) {
                         replacePHIs[pred] = Builder.CreatePHI(Type::getInt1Ty(pred->getContext()), 1);
@@ -1919,7 +1956,7 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, Basic
                     }
                     SelectInst* dif = cast<SelectInst>(Builder.CreateSelect(replacePHIs[pred], prediff, Constant::getNullValue(prediff->getType())));
                     //llvm::errs() << "creating prediff " << *dif << " for value incoming " << PN->getIncomingValueForBlock(pred) << " for " << *PN << "\n";
-                    auto addedSelects = gutils->addToDiffe(PN->getIncomingValueForBlock(pred), dif, Builder, TR.intType(gutils->getOriginal(PN), false).isFloat());
+                    auto addedSelects = gutils->addToDiffe(PN->getIncomingValueForBlock(pred), dif, Builder, PNfloatType);
                     /*if (dif->getNumUses() != 0) {
                       llvm::errs() << "oldFunc: " << *gutils->oldFunc << "\n";
                       llvm::errs() << "newFunc: " << *gutils->newFunc << "\n";
@@ -2085,7 +2122,6 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
             gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self) );
         }
         if (!gutils->isConstantValue(op)) {
-            auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
             gutils->createAntiMalloc(op, getIndex(gutils->getOriginal(op), CacheType::Shadow));
         }
         return;
@@ -2176,12 +2212,12 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
 
 
       if (called) {
-        NewFnTypeInfo nextTypeInfo;
+        NewFnTypeInfo nextTypeInfo(called);
         int argnum = 0;
 
         for(auto &arg : called->args()) {
             nextTypeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, TR.query(gutils->getOriginal(op->getArgOperand(argnum)))));
-            nextTypeInfo.third.insert(std::pair<Argument*, Constant*>(&arg, TR.info.isConstant(gutils->getOriginal(op->getArgOperand(argnum)))));
+            nextTypeInfo.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&arg, TR.isConstantInt(gutils->getOriginal(op->getArgOperand(argnum)))));
             argnum++;
         }
         nextTypeInfo.second = TR.query(gutils->getOriginal(op));
@@ -2345,7 +2381,6 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   if (called && isAllocationFunction(*called, gutils->TLI)) {
     bool constval = gutils->isConstantValue(op);
     if (!constval) {
-      PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[op]);
       auto anti = gutils->createAntiMalloc(op, getIndex(gutils->getOriginal(op), CacheType::Shadow));
       Value* tofree = gutils->lookupM(anti, Builder2);
       assert(tofree);
@@ -2758,13 +2793,15 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
 
   bool constval = gutils->isConstantValue(op);
 
-  NewFnTypeInfo nextTypeInfo;
+  NewFnTypeInfo nextTypeInfo(called);
   int argnum = 0;
 
   if (called) {
+      std::map<Value*, std::set<int64_t>> intseen;
+
       for(auto &arg : called->args()) {
         nextTypeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, TR.query(gutils->getOriginal(op->getArgOperand(argnum)))));
-        nextTypeInfo.third.insert(std::pair<Argument*, Constant*>(&arg, TR.info.isConstant(gutils->getOriginal(op->getArgOperand(argnum)))));
+        nextTypeInfo.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&arg, TR.isConstantInt(gutils->getOriginal(op->getArgOperand(argnum)))));
 
         argnum++;
       }
@@ -3177,7 +3214,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::map<Argument*, bool>/*uncacheable_args*/, bool/*retval*/, bool/*differentialReturn*/, bool/*dretptr*/, bool/*topLevel*/, llvm::Type*, const NewFnTypeInfo>, Function*> cachedfunctions;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::map<Argument*, bool>(_uncacheable_args.begin(), _uncacheable_args.end()), returnUsed, differentialReturn, dretPtr, topLevel, additionalArg, oldTypeInfo);
   if (cachedfunctions.find(tup) != cachedfunctions.end()) {
-    return cachedfunctions[tup];
+    return cachedfunctions.find(tup)->second;
   }
 
   //Whether we shuold actually return the value
@@ -3261,7 +3298,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         bb.CreateRet(val);
         foundcalled = NewF;
       }
-      return cachedfunctions[tup] = foundcalled;
+      return insert_or_assign(cachedfunctions, tup, foundcalled)->second;
   }
 
   assert(!todiff->empty());
@@ -3271,7 +3308,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   AAResults AA(TLI);
   //AA.addAAResult(global_AA);
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, TLI, TA, AA, constant_args, returnValue ? ( dretPtr ? ReturnType::ArgsWithTwoReturns: ReturnType::ArgsWithReturn ) : ReturnType::Args, differentialReturn, additionalArg);
-  cachedfunctions[tup] = gutils->newFunc;
+  insert_or_assign(cachedfunctions, tup, gutils->newFunc);
 
   const SmallPtrSet<BasicBlock*, 4> guaranteedUnreachable = getGuaranteedUnreachable(gutils->oldFunc);
 
@@ -3315,8 +3352,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
   gutils->forceContexts();
 
-  NewFnTypeInfo typeInfo;
-  typeInfo.function = gutils->oldFunc;
+  NewFnTypeInfo typeInfo(gutils->oldFunc);
   {
     auto toarg = todiff->arg_begin();
     auto olarg = gutils->oldFunc->arg_begin();
@@ -3329,17 +3365,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       }
 
       {
-      auto cfd = oldTypeInfo.third.find(toarg);
-
-      if (cfd == oldTypeInfo.third.end()) {
-          for(const auto& pair : oldTypeInfo.third) {
-              llvm::errs() << " oldTypeInfo.third[" << *pair.first << "]=" << pair.second << " - " << pair.first->getParent()->getName() << "\n";
-          }
-          llvm::errs() << " toarg: " << *toarg << " - " << toarg->getParent()->getName() << "\n";
-      }
-
-      assert(cfd != oldTypeInfo.third.end());
-      typeInfo.third.insert(std::pair<Argument*, Constant*>(olarg, cfd->second));
+      auto cfd = oldTypeInfo.knownValues.find(toarg);
+      assert(cfd != oldTypeInfo.knownValues.end());
+      typeInfo.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(olarg, cfd->second));
       }
     }
     typeInfo.second = oldTypeInfo.second;

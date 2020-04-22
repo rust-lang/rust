@@ -1,6 +1,6 @@
 /*
  * Utils.h
- * 
+ *
  * Copyright (C) 2019 William S. Moses (enzyme@wsmoses.com) - All Rights Reserved
  *
  * For commercial use of this code please contact the author(s) above.
@@ -33,11 +33,27 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/ValueMap.h"
 
+#include <set>
+
 static inline llvm::FastMathFlags getFast() {
     llvm::FastMathFlags f;
     f.set();
     return f;
 }
+
+template<typename T>
+static inline T max(T a, T b) {
+  if (a > b) return a;
+  return b;
+}
+
+template<typename T>
+static inline std::string to_string(const std::set<T>& us) {
+    std::string s = "{";
+    for(const auto& y : us) s += std::to_string(y) + ",";
+    return s + "}";
+}
+
 
 template<typename T, typename N>
 static inline void dumpMap(const llvm::ValueMap<T, N> &o) {
@@ -177,14 +193,14 @@ static inline bool isReturned(llvm::Instruction *inst) {
 	}
 	return false;
 }
-    
+
 static inline llvm::Type* FloatToIntTy(llvm::Type* T) {
     assert(T->isFPOrFPVectorTy());
     if (auto ty = llvm::dyn_cast<llvm::VectorType>(T)) {
         return llvm::VectorType::get(FloatToIntTy(ty->getElementType()), ty->getNumElements());
     }
-    if (T->isHalfTy()) return llvm::IntegerType::get(T->getContext(), 16); 
-    if (T->isFloatTy()) return llvm::IntegerType::get(T->getContext(), 32); 
+    if (T->isHalfTy()) return llvm::IntegerType::get(T->getContext(), 16);
+    if (T->isFloatTy()) return llvm::IntegerType::get(T->getContext(), 32);
     if (T->isDoubleTy()) return llvm::IntegerType::get(T->getContext(), 64);
     assert(0 && "unknown floating point type");
     return nullptr;
@@ -228,7 +244,7 @@ static inline bool isCertainMallocOrFree(llvm::Function* called) {
 
 static inline bool isCertainPrintOrFree(llvm::Function* called) {
     if (called == nullptr) return false;
-    
+
     if (called->getName() == "printf" || called->getName() == "puts" || called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" || called->getName() == "free") return true;
     switch(called->getIntrinsicID()) {
         case llvm::Intrinsic::dbg_declare:
@@ -248,7 +264,7 @@ static inline bool isCertainPrintOrFree(llvm::Function* called) {
 
 static inline bool isCertainPrintMallocOrFree(llvm::Function* called) {
     if (called == nullptr) return false;
-    
+
     if (called->getName() == "printf" || called->getName() == "puts" || called->getName() == "malloc" || called->getName() == "_Znwm" || called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" || called->getName() == "free") return true;
     switch(called->getIntrinsicID()) {
         case llvm::Intrinsic::dbg_declare:

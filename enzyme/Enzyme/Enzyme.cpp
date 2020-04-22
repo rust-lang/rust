@@ -182,8 +182,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
   bool differentialReturn = cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 
   std::map<Argument*, bool> volatile_args;
-  NewFnTypeInfo type_args;
-  type_args.function = cast<Function>(fn);
+  NewFnTypeInfo type_args(cast<Function>(fn));
   for(auto &a : type_args.function->args()) {
     volatile_args[&a] = false;
     ValueData dt;
@@ -199,7 +198,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
     }
     type_args.first.insert(std::pair<Argument*, ValueData>(&a, dt));
     //TODO note that here we do NOT propagate constants in type info (and should consider whether we should)
-    type_args.third.insert(std::pair<Argument*, Constant*>(&a, nullptr));
+    type_args.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&a, {}));
   }
 
   TypeAnalysis TA;

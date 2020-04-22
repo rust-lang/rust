@@ -1905,9 +1905,6 @@ public:
           addingType = VectorType::get(addingType, oldBitSize / newBitSize);
         }
 
-        llvm::errs() << "old: " << *old << "\n";
-        llvm::errs() << "dif: " << *dif << "\n";
-        llvm::errs() << "addingType: " << *addingType << "\n";
         Value* bcold = BuilderM.CreateBitCast(old, addingType);
         Value* bcdif = BuilderM.CreateBitCast(dif, addingType);
 
