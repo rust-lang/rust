@@ -2,6 +2,9 @@
 // edition:2018
 // run-pass
 
+// revisions: default nomiropt
+//[nomiropt]compile-flags: -Z mir-opt-level=0
+
 #![allow(unused_variables)]
 
 // Test the drop order for parameters relative to local variables and
