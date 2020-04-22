@@ -14,6 +14,8 @@ fn main() {
     test_seek();
     test_metadata();
     test_file_set_len();
+    test_file_sync_all();
+    test_file_sync_data();
     test_symlink();
     test_errors();
     test_rename();
@@ -178,6 +180,28 @@ fn test_file_set_len() {
     // Can't use set_len on a file not opened for writing
     let file = OpenOptions::new().read(true).open(&path).unwrap();
     assert_eq!(ErrorKind::InvalidInput, file.set_len(14).unwrap_err().kind());
+
+    remove_file(&path).unwrap();
+}
+
+fn test_file_sync_all() {
+    let bytes = b"Hello, World!\n";
+    let path = prepare_with_content("miri_test_fs_sync_all.txt", bytes);
+
+    // Test that we can call sync_all (can't readily test effects of this operation)
+    let file = File::open(&path).unwrap();
+    file.sync_all().unwrap();
+
+    remove_file(&path).unwrap();
+}
+
+fn test_file_sync_data() {
+    let bytes = b"Hello, World!\n";
+    let path = prepare_with_content("miri_test_fs_sync_data.txt", bytes);
+
+    // Test that we can call sync_data (can't readily test effects of this operation)
+    let file = File::open(&path).unwrap();
+    file.sync_data().unwrap();
 
     remove_file(&path).unwrap();
 }

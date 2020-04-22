@@ -54,6 +54,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // fadvise is only informational, we can ignore it.
                 this.write_null(dest)?;
             }
+            // Linux-only
+            "sync_file_range" => {
+                let result = this.sync_file_range(args[0], args[1], args[2], args[3])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             // Time related shims
             "clock_gettime" => {

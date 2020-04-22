@@ -136,6 +136,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // "lseek" is only used on macOS which is 64bit-only, so `i64` always works.
                 this.write_scalar(Scalar::from_i64(result), dest)?;
             }
+            "fsync" => {
+                let result = this.fsync(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "fdatasync" => {
+                let result = this.fdatasync(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             // Allocation
             "posix_memalign" => {

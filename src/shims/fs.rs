@@ -375,6 +375,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 fh.insert_fd_with_min_fd(FileHandle { file: duplicated, writable }, start)
             });
             this.try_unwrap_io_result(fd_result)
+        } else if this.tcx.sess.target.target.target_os == "macos"
+            && cmd == this.eval_libc_i32("F_FULLFSYNC")?
+        {
+            if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
+                let result = file.sync_all();
+                this.try_unwrap_io_result(result.map(|_| 0i32))
+            } else {
+                this.handle_not_found()
+            }
         } else {
             throw_unsup_format!("the {:#x} command is not supported for `fcntl`)", cmd);
         }
@@ -1099,6 +1108,59 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.set_last_error(einval)?;
                 Ok(-1)
             }
+        } else {
+            this.handle_not_found()
+        }
+    }
+
+    fn fsync(&mut self, fd_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("fsync")?;
+
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
+            let result = file.sync_all();
+            this.try_unwrap_io_result(result.map(|_| 0i32))
+        } else {
+            this.handle_not_found()
+        }
+    }
+
+    fn fdatasync(&mut self, fd_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("fdatasync")?;
+
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
+            let result = file.sync_data();
+            this.try_unwrap_io_result(result.map(|_| 0i32))
+        } else {
+            this.handle_not_found()
+        }
+    }
+
+    fn sync_file_range(
+        &mut self,
+        fd_op: OpTy<'tcx, Tag>,
+        offset_op: OpTy<'tcx, Tag>,
+        nbytes_op: OpTy<'tcx, Tag>,
+        flags_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("sync_file_range")?;
+
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        let _offset = this.read_scalar(offset_op)?.to_i64()?;
+        let _nbytes = this.read_scalar(nbytes_op)?.to_i64()?;
+        let _flags = this.read_scalar(flags_op)?.to_u32()?;
+        if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
+            // In the interest of host compatibility, we conservatively ignore
+            // offset, nbytes, and flags, and sync the entire file.
+            let result = file.sync_data();
+            this.try_unwrap_io_result(result.map(|_| 0i32))
         } else {
             this.handle_not_found()
         }

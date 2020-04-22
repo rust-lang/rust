@@ -17,7 +17,7 @@ fn test_posix_fadvise() {
     use std::io::Write;
     use std::os::unix::io::AsRawFd;
 
-    let path = tmp().join("miri_test_libc.txt");
+    let path = tmp().join("miri_test_libc_posix_fadvise.txt");
     // Cleanup before test
     remove_file(&path).ok();
 
@@ -33,6 +33,37 @@ fn test_posix_fadvise() {
             0,
             bytes.len().try_into().unwrap(),
             libc::POSIX_FADV_DONTNEED,
+        )
+    };
+    drop(file);
+    remove_file(&path).unwrap();
+    assert_eq!(result, 0);
+}
+
+#[cfg(target_os = "linux")]
+fn test_sync_file_range() {
+    use std::fs::{remove_file, File};
+    use std::io::Write;
+    use std::os::unix::io::AsRawFd;
+
+    let path = tmp().join("miri_test_libc_sync_file_range.txt");
+    // Cleanup before test
+    remove_file(&path).ok();
+
+    // Write to a file
+    let mut file = File::create(&path).unwrap();
+    let bytes = b"Hello, World!\n";
+    file.write(bytes).unwrap();
+
+    // Test calling sync_file_range on a file.
+    let result = unsafe {
+        libc::sync_file_range(
+            file.as_raw_fd(),
+            0,
+            0,
+            libc::SYNC_FILE_RANGE_WAIT_BEFORE
+                | libc::SYNC_FILE_RANGE_WRITE
+                | libc::SYNC_FILE_RANGE_WAIT_AFTER,
         )
     };
     drop(file);
@@ -168,6 +199,9 @@ fn test_prctl_thread_name() {
 fn main() {
     #[cfg(target_os = "linux")]
     test_posix_fadvise();
+
+    #[cfg(target_os = "linux")]
+    test_sync_file_range();
 
     test_mutex_libc_init_recursive();
     test_mutex_libc_init_normal();
