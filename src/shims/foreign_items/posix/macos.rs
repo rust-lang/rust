@@ -44,6 +44,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.macos_readdir_r(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "ftruncate" => {
+                let result = this.ftruncate64(args[0], args[1])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
 
             // Environment related shims
             "_NSGetEnviron" => {
