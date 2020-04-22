@@ -364,4 +364,51 @@ pub unsafe trait AllocRef {
             }
         }
     }
+
+    /// Creates a "by reference" adaptor for this instance of `AllocRef`.
+    ///
+    /// The returned adaptor also implements `AllocRef` and will simply borrow this.
+    #[inline(always)]
+    fn by_ref(&mut self) -> &mut Self {
+        self
+    }
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<A> AllocRef for &mut A
+where
+    A: AllocRef + ?Sized,
+{
+    #[inline]
+    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr> {
+        (**self).alloc(layout, init)
+    }
+
+    #[inline]
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
+        (**self).dealloc(ptr, layout)
+    }
+
+    #[inline]
+    unsafe fn grow(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+        placement: ReallocPlacement,
+        init: AllocInit,
+    ) -> Result<MemoryBlock, AllocErr> {
+        (**self).grow(ptr, layout, new_size, placement, init)
+    }
+
+    #[inline]
+    unsafe fn shrink(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+        placement: ReallocPlacement,
+    ) -> Result<MemoryBlock, AllocErr> {
+        (**self).shrink(ptr, layout, new_size, placement)
+    }
 }
