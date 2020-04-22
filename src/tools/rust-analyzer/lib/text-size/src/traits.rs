@@ -3,12 +3,18 @@ use {
     std::{borrow::Cow, convert::TryInto, rc::Rc, sync::Arc},
 };
 
-/// Text-like structures that have a text size.
-pub trait TextLen: Copy {
-    /// The size of this text-alike.
+use priv_in_pub::Sealed;
+mod priv_in_pub {
+    pub trait Sealed {}
+}
+
+/// Primitives with a textual length that can be passed to [`TextSize::of`].
+pub trait TextLen: Copy + Sealed {
+    /// The textual length of this primitive.
     fn text_len(self) -> TextSize;
 }
 
+impl Sealed for &'_ str {}
 impl TextLen for &'_ str {
     #[inline]
     fn text_len(self) -> TextSize {
@@ -16,6 +22,7 @@ impl TextLen for &'_ str {
     }
 }
 
+impl Sealed for char {}
 impl TextLen for char {
     #[inline]
     fn text_len(self) -> TextSize {
@@ -23,6 +30,7 @@ impl TextLen for char {
     }
 }
 
+impl<D> Sealed for &'_ D where D: TextLen + Copy {}
 impl<D> TextLen for &'_ D
 where
     D: TextLen + Copy,
@@ -38,6 +46,7 @@ where
 // open a PR and we are likely to accept it. Or convince Rust to deref to &str.
 macro_rules! impl_textlen_for_string {
     ($($ty:ty),+ $(,)?) => {$(
+        impl Sealed for $ty {}
         impl TextLen for $ty {
             #[inline]
             fn text_len(self) -> TextSize {
