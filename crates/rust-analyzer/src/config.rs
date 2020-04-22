@@ -132,7 +132,7 @@ impl Config {
         set(value, "/cargo/features", &mut self.cargo.features);
         set(value, "/cargo/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
 
-        match get::<bool>(value, "/procMacro/enabled") {
+        match get::<bool>(value, "/procMacro/enable") {
             Some(true) => {
                 if let Ok(path) = std::env::current_exe() {
                     self.proc_macro_srv = Some((path.to_string_lossy().to_string(), vec!["proc-macro".to_string()]));
