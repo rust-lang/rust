@@ -331,7 +331,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         indirect_dest: PlaceRef<'tcx, V>,
     ) {
         debug!("OperandRef::store_unsized: operand={:?}, indirect_dest={:?}", self, indirect_dest);
-        let flags = MemFlags::empty();
+        let _flags = MemFlags::empty();
 
         // `indirect_dest` must have `*mut T` type. We extract `T` out of it.
         let unsized_ty = indirect_dest
@@ -341,24 +341,27 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             .unwrap_or_else(|| bug!("indirect_dest has non-pointer type: {:?}", indirect_dest))
             .ty;
 
-        let (llptr, llextra) = if let OperandValue::Ref(llptr, Some(llextra), _) = self {
+        let (_llptr, llextra) = if let OperandValue::Ref(llptr, Some(llextra), _) = self {
             (llptr, llextra)
         } else {
             bug!("store_unsized called with a sized value")
         };
 
-        // FIXME: choose an appropriate alignment, or use dynamic align somehow
-        let max_align = Align::from_bits(128).unwrap();
+        let (_llsize, _llalign) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
+
+        // FIXME: we have to use dynamic align somehow, but LLVM does not support that.
+        bug!("compiling unsized alloca is not supported by LLVM");
+        /*
         let min_align = Align::from_bits(8).unwrap();
 
         // Allocate an appropriate region on the stack, and copy the value into it
-        let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
-        let lldst = bx.array_alloca(bx.cx().type_i8(), llsize, max_align);
-        bx.memcpy(lldst, max_align, llptr, min_align, llsize, flags);
+        let lldst = bx.array_alloca(bx.cx().type_i8(), llsize, llalign);
+        bx.memcpy(lldst, llalign, llptr, min_align, llsize, flags);
 
         // Store the allocated region and the extra to the indirect place.
         let indirect_operand = OperandValue::Pair(lldst, llextra);
         indirect_operand.store(bx, indirect_dest);
+        */
     }
 }
 
