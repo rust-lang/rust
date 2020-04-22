@@ -70,7 +70,7 @@ macro_rules! step_identical_methods {
         fn sub_one(&self) -> Self {
             Sub::sub(*self, 1)
         }
-    }
+    };
 }
 
 macro_rules! step_impl_unsigned {
