@@ -276,7 +276,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
                     };
-                    self.visit_place_base(&place.local, ctx, location);
+                    self.visit_local(&place.local, ctx, location);
                     self.visit_projection(place.local, reborrowed_proj, ctx, location);
                     return;
                 }
@@ -289,7 +289,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                         }
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
-                    self.visit_place_base(&place.local, ctx, location);
+                    self.visit_local(&place.local, ctx, location);
                     self.visit_projection(place.local, reborrowed_proj, ctx, location);
                     return;
                 }
@@ -386,14 +386,13 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         }
     }
 
-    fn visit_place_base(&mut self, place_local: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, place_local: &Local, context: PlaceContext, location: Location) {
         trace!(
-            "visit_place_base: place_local={:?} context={:?} location={:?}",
+            "visit_local: place_local={:?} context={:?} location={:?}",
             place_local,
             context,
             location,
         );
-        self.super_place_base(place_local, context, location);
     }
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
