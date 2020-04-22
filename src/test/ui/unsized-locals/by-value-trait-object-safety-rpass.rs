@@ -1,5 +1,6 @@
 // run-pass
 
+#![allow(incomplete_features)]
 #![feature(unsized_locals)]
 
 pub trait Foo {
@@ -13,7 +14,6 @@ impl Foo for A {
         format!("hello")
     }
 }
-
 
 fn main() {
     let x = *(Box::new(A) as Box<dyn Foo>);
