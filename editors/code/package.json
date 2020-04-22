@@ -389,7 +389,7 @@
                     "type": "boolean",
                     "default": false
                 },
-                "rust-analyzer.procMacro.enabled": {
+                "rust-analyzer.procMacro.enable": {
                     "description": "Enable Proc macro support, cargo.loadOutDirsFromCheck must be enabled.",
                     "type": "boolean",
                     "default": false
