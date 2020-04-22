@@ -1084,6 +1084,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     Ok(-1)
                 }
             } else {
+                // The file is not writable
                 let einval = this.eval_libc("EINVAL")?;
                 this.set_last_error(einval)?;
                 Ok(-1)
