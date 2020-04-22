@@ -63,15 +63,6 @@ fn is_derive(attr: &ast::Attribute) -> bool {
     attr.has_name(sym::derive)
 }
 
-/// Returns the arguments of `#[derive(...)]`.
-fn get_derive_spans<'a>(attr: &'a ast::Attribute) -> Option<impl Iterator<Item = Span> + 'a> {
-    attr.meta_item_list().map(|meta_item_list| {
-        meta_item_list
-            .into_iter()
-            .map(|nested_meta_item| nested_meta_item.span())
-    })
-}
-
 // The shape of the arguments to a function-like attribute.
 fn argument_shape(
     left: usize,
@@ -100,36 +91,104 @@ fn argument_shape(
 }
 
 fn format_derive(
-    derive_args: &[Span],
-    prefix: &str,
+    derives: &[ast::Attribute],
     shape: Shape,
     context: &RewriteContext<'_>,
 ) -> Option<String> {
+    // Collect all items from all attributes
+    let all_items = derives
+        .iter()
+        .map(|attr| {
+            // Parse the derive items and extract the span for each item; if any
+            // attribute is not parseable, none of the attributes will be
+            // reformatted.
+            let item_spans = attr.meta_item_list().map(|meta_item_list| {
+                meta_item_list
+                    .into_iter()
+                    .map(|nested_meta_item| nested_meta_item.span())
+            })?;
+
+            let items = itemize_list(
+                context.snippet_provider,
+                item_spans,
+                ")",
+                ",",
+                |span| span.lo(),
+                |span| span.hi(),
+                |span| Some(context.snippet(*span).to_owned()),
+                attr.span.lo(),
+                attr.span.hi(),
+                false,
+            );
+
+            Some(items)
+        })
+        // Fail if any attribute failed.
+        .collect::<Option<Vec<_>>>()?
+        // Collect the results into a single, flat, Vec.
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+
+    // Collect formatting parameters.
+    let prefix = attr_prefix(&derives[0]);
+    let argument_shape = argument_shape(
+        "[derive()]".len() + prefix.len(),
+        ")]".len(),
+        false,
+        shape,
+        context,
+    )?;
+    let one_line_shape = shape
+        .offset_left("[derive()]".len() + prefix.len())?
+        .sub_width("()]".len())?;
+    let one_line_budget = one_line_shape.width;
+
+    let tactic = definitive_tactic(
+        &all_items,
+        ListTactic::HorizontalVertical,
+        Separator::Comma,
+        argument_shape.width,
+    );
+    let trailing_separator = match context.config.indent_style() {
+        // We always add the trailing comma and remove it if it is not needed.
+        IndentStyle::Block => SeparatorTactic::Always,
+        IndentStyle::Visual => SeparatorTactic::Never,
+    };
+
+    // Format the collection of items.
+    let fmt = ListFormatting::new(argument_shape, context.config)
+        .tactic(tactic)
+        .trailing_separator(trailing_separator)
+        .ends_with_newline(false);
+    let item_str = write_list(&all_items, &fmt)?;
+
+    debug!("item_str: '{}'", item_str);
+
+    // Determine if the result will be nested, i.e. if we're using the block
+    // indent style and either the items are on multiple lines or we've exceeded
+    // our budget to fit on a single line.
+    let nested = context.config.indent_style() == IndentStyle::Block
+        && (item_str.contains('\n') || item_str.len() > one_line_budget);
+
+    // Format the final result.
     let mut result = String::with_capacity(128);
     result.push_str(prefix);
     result.push_str("[derive(");
-
-    let argument_shape = argument_shape(10 + prefix.len(), 2, false, shape, context)?;
-    let item_str = format_arg_list(
-        derive_args.iter(),
-        |_| DUMMY_SP.lo(),
-        |_| DUMMY_SP.hi(),
-        |sp| Some(context.snippet(**sp).to_owned()),
-        DUMMY_SP,
-        context,
-        argument_shape,
-        // 10 = "[derive()]", 3 = "()" and "]"
-        shape.offset_left(10 + prefix.len())?.sub_width(3)?,
-        None,
-        false,
-    )?;
-
-    result.push_str(&item_str);
-    if item_str.starts_with('\n') {
-        result.push(',');
+    if nested {
+        let nested_indent = argument_shape.indent.to_string_with_newline(context.config);
+        result.push_str(&nested_indent);
+        result.push_str(&item_str);
         result.push_str(&shape.indent.to_string_with_newline(context.config));
+    } else if let SeparatorTactic::Always = context.config.trailing_comma() {
+        // Retain the trailing comma.
+        result.push_str(&item_str);
+    } else {
+        // Remove the trailing comma.
+        result.push_str(&item_str[..item_str.len() - 1]);
     }
     result.push_str(")]");
+
     Some(result)
 }
 
@@ -255,68 +314,13 @@ impl Rewrite for ast::MetaItem {
                 // width. Since a literal is basically unformattable unless it
                 // is a string literal (and only if `format_strings` is set),
                 // we might be better off ignoring the fact that the attribute
-                // is longer than the max width and contiue on formatting.
+                // is longer than the max width and continue on formatting.
                 // See #2479 for example.
                 let value = rewrite_literal(context, literal, lit_shape)
                     .unwrap_or_else(|| context.snippet(literal.span).to_owned());
                 format!("{} = {}", path, value)
             }
         })
-    }
-}
-
-fn format_arg_list<I, T, F1, F2, F3>(
-    list: I,
-    get_lo: F1,
-    get_hi: F2,
-    get_item_string: F3,
-    span: Span,
-    context: &RewriteContext<'_>,
-    shape: Shape,
-    one_line_shape: Shape,
-    one_line_limit: Option<usize>,
-    combine: bool,
-) -> Option<String>
-where
-    I: Iterator<Item = T>,
-    F1: Fn(&T) -> BytePos,
-    F2: Fn(&T) -> BytePos,
-    F3: Fn(&T) -> Option<String>,
-{
-    let items = itemize_list(
-        context.snippet_provider,
-        list,
-        ")",
-        ",",
-        get_lo,
-        get_hi,
-        get_item_string,
-        span.lo(),
-        span.hi(),
-        false,
-    );
-    let item_vec = items.collect::<Vec<_>>();
-    let tactic = if let Some(limit) = one_line_limit {
-        ListTactic::LimitedHorizontalVertical(limit)
-    } else {
-        ListTactic::HorizontalVertical
-    };
-
-    let tactic = definitive_tactic(&item_vec, tactic, Separator::Comma, shape.width);
-    let fmt = ListFormatting::new(shape, context.config)
-        .tactic(tactic)
-        .ends_with_newline(false);
-    let item_str = write_list(&item_vec, &fmt)?;
-
-    let one_line_budget = one_line_shape.width;
-    if context.config.indent_style() == IndentStyle::Visual
-        || combine
-        || (!item_str.contains('\n') && item_str.len() <= one_line_budget)
-    {
-        Some(item_str)
-    } else {
-        let nested_indent = shape.indent.to_string_with_newline(context.config);
-        Some(format!("{}{}", nested_indent, item_str))
     }
 }
 
@@ -424,13 +428,7 @@ impl<'a> Rewrite for [ast::Attribute] {
             // Handle derives if we will merge them.
             if context.config.merge_derives() && is_derive(&attrs[0]) {
                 let derives = take_while_with_pred(context, attrs, is_derive);
-                let derive_spans: Vec<_> = derives
-                    .iter()
-                    .filter_map(get_derive_spans)
-                    .flatten()
-                    .collect();
-                let derive_str =
-                    format_derive(&derive_spans, attr_prefix(&attrs[0]), shape, context)?;
+                let derive_str = format_derive(derives, shape, context)?;
                 result.push_str(&derive_str);
 
                 let missing_span = attrs
