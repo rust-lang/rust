@@ -465,6 +465,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     start_def_id,
                     cx.tcx().intern_substs(&[main_ret_ty.into()]),
                 )
+                .unwrap()
                 .unwrap(),
             );
             (

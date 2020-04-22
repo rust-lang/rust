@@ -39,12 +39,13 @@ impl<'tcx> TyCtxt<'tcx> {
         promoted: Option<mir::Promoted>,
         span: Option<Span>,
     ) -> ConstEvalResult<'tcx> {
-        let instance = ty::Instance::resolve(self, param_env, def_id, substs);
-        if let Some(instance) = instance {
-            let cid = GlobalId { instance, promoted };
-            self.const_eval_global_id(param_env, cid, span)
-        } else {
-            Err(ErrorHandled::TooGeneric)
+        match ty::Instance::resolve(self, param_env, def_id, substs) {
+            Ok(Some(instance)) => {
+                let cid = GlobalId { instance, promoted };
+                self.const_eval_global_id(param_env, cid, span)
+            }
+            Ok(None) => Err(ErrorHandled::TooGeneric),
+            Err(error_reported) => Err(ErrorHandled::Reported(error_reported)),
         }
     }
 

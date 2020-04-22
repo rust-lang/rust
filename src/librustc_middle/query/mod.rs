@@ -679,7 +679,7 @@ rustc_queries! {
     Codegen {
         query codegen_fulfill_obligation(
             key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
-        ) -> Option<Vtable<'tcx, ()>> {
+        ) -> Result<Vtable<'tcx, ()>, ErrorReported> {
             cache_on_disk_if { true }
             desc { |tcx|
                 "checking if `{}` fulfills its obligations",
@@ -1258,8 +1258,19 @@ rustc_queries! {
             desc { "looking up enabled feature gates" }
         }
 
-        query resolve_instance(key: (ty::ParamEnv<'tcx>, DefId, SubstsRef<'tcx>)) -> Option<ty::Instance<'tcx>> {
-            desc { "resolving instance `{:?}` `{:?}` with {:?}", key.1, key.2, key.0 }
+        /// Attempt to resolve the given `DefId` to an `Instance`, for the
+        /// given generics args (`SubstsRef`), returning one of:
+        ///  * `Ok(Some(instance))` on success
+        ///  * `Ok(None)` when the `SubstsRef` are still too generic,
+        ///    and therefore don't allow finding the final `Instance`
+        ///  * `Err(ErrorReported)` when the `Instance` resolution process
+        ///    couldn't complete due to errors elsewhere - this is distinct
+        ///    from `Ok(None)` to avoid misleading diagnostics when an error
+        ///    has already been/will be emitted, for the original cause
+        query resolve_instance(
+            key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>
+        ) -> Result<Option<ty::Instance<'tcx>>, ErrorReported> {
+            desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
         }
     }
 }

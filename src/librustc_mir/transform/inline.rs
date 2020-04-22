@@ -176,7 +176,8 @@ impl Inliner<'tcx> {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func: ref op, .. } = terminator.kind {
             if let ty::FnDef(callee_def_id, substs) = op.ty(caller_body, self.tcx).kind {
-                let instance = Instance::resolve(self.tcx, param_env, callee_def_id, substs)?;
+                let instance =
+                    Instance::resolve(self.tcx, param_env, callee_def_id, substs).ok().flatten()?;
 
                 if let InstanceDef::Virtual(..) = instance.def {
                     return None;
