@@ -2831,13 +2831,13 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// Returns a shared reference to the output at this location, panicking
     /// if out of bounds.
     #[unstable(feature = "slice_index_methods", issue = "none")]
-    #[cfg_attr(not(bootstrap), track_caller)]
+    #[track_caller]
     fn index(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, panicking
     /// if out of bounds.
     #[unstable(feature = "slice_index_methods", issue = "none")]
-    #[cfg_attr(not(bootstrap), track_caller)]
+    #[track_caller]
     fn index_mut(self, slice: &mut T) -> &mut Self::Output;
 }
 

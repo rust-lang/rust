@@ -207,7 +207,6 @@ macro_rules! acquire {
 /// counting in general.
 ///
 /// [rc_examples]: ../../std/rc/index.html#examples
-#[cfg_attr(all(bootstrap, not(test)), lang = "arc")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {

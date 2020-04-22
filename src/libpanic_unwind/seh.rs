@@ -213,7 +213,6 @@ extern "C" {
 //
 // This is fine since the MSVC runtime uses string comparison on the type name
 // to match TypeDescriptors rather than pointer equality.
-#[cfg_attr(bootstrap, lang = "eh_catch_typeinfo")]
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
     pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
     spare: core::ptr::null_mut(),

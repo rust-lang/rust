@@ -99,7 +99,7 @@
 #![feature(internal_uninit_const)]
 #![feature(lang_items)]
 #![feature(libc)]
-#![cfg_attr(not(bootstrap), feature(negative_impls))]
+#![feature(negative_impls)]
 #![feature(new_uninit)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
