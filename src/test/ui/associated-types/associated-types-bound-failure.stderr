@@ -4,11 +4,13 @@ error[E0277]: the trait bound `<G as GetToInt>::R: ToInt` is not satisfied
 LL |     fn to_int(&self) -> isize;
    |     -------------------------- required by `ToInt::to_int`
 ...
-LL |     where G : GetToInt
-   |                       - help: consider further restricting the associated type: `, <G as GetToInt>::R: ToInt`
-LL | {
 LL |     ToInt::to_int(&g.get())
    |                   ^^^^^^^^ the trait `ToInt` is not implemented for `<G as GetToInt>::R`
+   |
+help: consider further restricting the associated type
+   |
+LL |     where G : GetToInt, <G as GetToInt>::R: ToInt
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

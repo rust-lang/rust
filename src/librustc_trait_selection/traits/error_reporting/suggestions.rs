@@ -156,7 +156,7 @@ fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, St
     (
         generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi(),
         format!(
-            "{} {} ",
+            "{} {}",
             if !generics.where_clause.predicates.is_empty() { "," } else { " where" },
             pred,
         ),
@@ -263,7 +263,7 @@ fn suggest_restriction(
         );
     } else {
         // Trivial case: `T` needs an extra bound: `T: Bound`.
-        let (sp, sugg) = match super_traits {
+        let (sp, suggestion) = match super_traits {
             None => {
                 predicate_constraint(generics, trait_ref.without_const().to_predicate().to_string())
             }
@@ -279,8 +279,12 @@ fn suggest_restriction(
             },
         };
 
-        let appl = Applicability::MachineApplicable;
-        err.span_suggestion(sp, &format!("consider further restricting {}", msg), sugg, appl);
+        err.span_suggestion_verbose(
+            sp,
+            &format!("consider further restricting {}", msg),
+            suggestion,
+            Applicability::MachineApplicable,
+        );
     }
 }
 
