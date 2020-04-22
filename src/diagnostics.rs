@@ -114,6 +114,9 @@ pub fn report_error<'tcx, 'mir>(
     };
 
     e.print_backtrace();
+    if let UndefinedBehavior(UndefinedBehaviorInfo::InvalidUndefBytes(Some(ptr))) = e.kind {
+        ecx.memory.dump_alloc(ptr.alloc_id);
+    }
     let msg = e.to_string();
     report_msg(ecx, &format!("{}: {}", title, msg), msg, helps, true)
 }
