@@ -51,3 +51,4 @@ add_subdirectory(matdescent)
 
 add_subdirectory(gmm)
 add_subdirectory(ba)
+add_subdirectory(hand)
