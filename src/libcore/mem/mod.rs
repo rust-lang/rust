@@ -378,7 +378,6 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// assert_eq!(13, unsafe { mem::size_of_val_raw(y) });
 /// ```
 #[inline]
-#[cfg(not(bootstrap))]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
 pub unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     intrinsics::size_of_val(val)
@@ -509,7 +508,6 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// assert_eq!(4, unsafe { mem::align_of_val_raw(&5i32) });
 /// ```
 #[inline]
-#[cfg(not(bootstrap))]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
 pub unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     intrinsics::min_align_of_val(val)
@@ -621,10 +619,7 @@ pub const fn needs_drop<T>() -> bool {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 pub unsafe fn zeroed<T>() -> T {
-    #[cfg(not(bootstrap))]
     intrinsics::assert_zero_valid::<T>();
-    #[cfg(bootstrap)]
-    intrinsics::panic_if_uninhabited::<T>();
     MaybeUninit::zeroed().assume_init()
 }
 
@@ -657,10 +652,7 @@ pub unsafe fn zeroed<T>() -> T {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_uninitialized"]
 pub unsafe fn uninitialized<T>() -> T {
-    #[cfg(not(bootstrap))]
     intrinsics::assert_uninit_valid::<T>();
-    #[cfg(bootstrap)]
-    intrinsics::panic_if_uninhabited::<T>();
     MaybeUninit::uninit().assume_init()
 }
 

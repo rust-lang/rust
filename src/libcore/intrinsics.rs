@@ -980,22 +980,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::size_of_val`](../../std/mem/fn.size_of_val.html).
-    #[cfg(bootstrap)]
-    pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
-    /// The minimum alignment of the type of the value that `val` points to.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`std::mem::min_align_of_val`](../../std/mem/fn.min_align_of_val.html).
-    #[cfg(bootstrap)]
-    pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
-
-    /// The size of the referenced value in bytes.
-    ///
-    /// The stabilized version of this intrinsic is
-    /// [`std::mem::size_of_val`](../../std/mem/fn.size_of_val.html).
-    #[cfg(not(bootstrap))]
     pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
-    #[cfg(not(bootstrap))]
     pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
@@ -1016,22 +1001,14 @@ extern "rust-intrinsic" {
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
     /// This will statically either panic, or do nothing.
-    #[cfg(bootstrap)]
-    pub fn panic_if_uninhabited<T>();
-
-    /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
-    /// This will statically either panic, or do nothing.
-    #[cfg(not(bootstrap))]
     pub fn assert_inhabited<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
     /// zero-initialization: This will statically either panic, or do nothing.
-    #[cfg(not(bootstrap))]
     pub fn assert_zero_valid<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` has invalid
     /// bit patterns: This will statically either panic, or do nothing.
-    #[cfg(not(bootstrap))]
     pub fn assert_uninit_valid<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
@@ -1599,15 +1576,8 @@ extern "rust-intrinsic" {
 
     /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
     /// (<https://github.com/rust-lang/rust/issues/10184>)
-    /// This is under stabilization at <https://github.com/rust-lang/rust/issues/67058>
-    #[cfg(bootstrap)]
-    pub fn float_to_int_approx_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
-
-    /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
-    /// (<https://github.com/rust-lang/rust/issues/10184>)
     ///
     /// Stabilized as `f32::to_int_unchecked` and `f64::to_int_unchecked`.
-    #[cfg(not(bootstrap))]
     pub fn float_to_int_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
 
     /// Returns the number of bits set in an integer type `T`
@@ -1877,10 +1847,7 @@ extern "rust-intrinsic" {
     /// takes the data pointer and a pointer to the target-specific exception
     /// object that was caught. For more information see the compiler's
     /// source as well as std's catch implementation.
-    #[cfg(not(bootstrap))]
     pub fn r#try(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
-    #[cfg(bootstrap)]
-    pub fn r#try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.

@@ -24,11 +24,10 @@
 #![feature(decl_macro)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
-#![cfg_attr(not(bootstrap), feature(negative_impls))]
+#![feature(negative_impls)]
 #![feature(optin_builtin_traits)]
 #![feature(rustc_attrs)]
-#![cfg_attr(bootstrap, feature(specialization))]
-#![cfg_attr(not(bootstrap), feature(min_specialization))]
+#![feature(min_specialization)]
 #![recursion_limit = "256"]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]

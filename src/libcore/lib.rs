@@ -99,7 +99,7 @@
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(llvm_asm)]
-#![cfg_attr(not(bootstrap), feature(negative_impls))]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(exhaustive_patterns)]
