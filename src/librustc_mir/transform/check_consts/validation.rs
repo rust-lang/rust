@@ -478,14 +478,24 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             StatementKind::Assign(..) | StatementKind::SetDiscriminant { .. } => {
                 self.super_statement(statement, location);
             }
-            StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
+
+            StatementKind::FakeRead(
+                FakeReadCause::ForMatchedPlace
+                | FakeReadCause::ForMatchGuard
+                | FakeReadCause::ForGuardBinding,
+                _,
+            ) => {
+                self.super_statement(statement, location);
                 self.check_op(ops::IfOrMatch);
             }
-            // FIXME(eddyb) should these really do nothing?
-            StatementKind::FakeRead(..)
+            StatementKind::LlvmInlineAsm { .. } => {
+                self.super_statement(statement, location);
+                self.check_op(ops::InlineAsm);
+            }
+
+            StatementKind::FakeRead(FakeReadCause::ForLet | FakeReadCause::ForIndex, _)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::LlvmInlineAsm { .. }
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Nop => {}
@@ -572,7 +582,19 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
-            _ => {}
+            // FIXME: Some of these are only caught by `min_const_fn`, but should error here
+            // instead.
+            TerminatorKind::Abort
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::Goto { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Return
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Yield { .. } => {}
         }
     }
 }

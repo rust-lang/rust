@@ -11,4 +11,6 @@ static TEST_BAD: () = {
     //~^ ERROR could not evaluate static initializer
     //~| NOTE in this expansion of llvm_asm!
     //~| NOTE inline assembly is not supported
+    //~| WARN skipping const checks
+    //~| NOTE in this expansion of llvm_asm!
 };
