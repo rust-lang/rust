@@ -192,7 +192,7 @@ pub enum FormatSpecifier {
 }
 
 pub trait HasFormatSpecifier: AstToken {
-    fn lex_format_specifier<F>(&self, callback: &mut F)
+    fn lex_format_specifier<F>(&self, mut callback: F)
     where
         F: FnMut(TextRange, FormatSpecifier),
     {
@@ -217,21 +217,15 @@ pub trait HasFormatSpecifier: AstToken {
                         FormatSpecifier::Open,
                     );
 
-                    let next_char = if let Some(c) = chars.clone().next() {
-                        c
-                    } else {
-                        break;
-                    };
-
                     // check for integer/identifier
-                    match next_char {
+                    match chars.clone().next().unwrap_or_default() {
                         '0'..='9' => {
                             // integer
-                            read_integer(&mut chars, initial_len, callback);
+                            read_integer(&mut chars, initial_len, &mut callback);
                         }
                         'a'..='z' | 'A'..='Z' | '_' => {
                             // identifier
-                            read_identifier(&mut chars, initial_len, callback);
+                            read_identifier(&mut chars, initial_len, &mut callback);
                         }
                         _ => {}
                     }
@@ -241,7 +235,7 @@ pub trait HasFormatSpecifier: AstToken {
                             &mut chars,
                             initial_len,
                             FormatSpecifier::Colon,
-                            callback,
+                            &mut callback,
                         );
 
                         // check for fill/align
@@ -255,13 +249,13 @@ pub trait HasFormatSpecifier: AstToken {
                                     &mut chars,
                                     initial_len,
                                     FormatSpecifier::Fill,
-                                    callback,
+                                    &mut callback,
                                 );
                                 skip_char_and_emit(
                                     &mut chars,
                                     initial_len,
                                     FormatSpecifier::Align,
-                                    callback,
+                                    &mut callback,
                                 );
                             }
                             _ => match first {
@@ -270,7 +264,7 @@ pub trait HasFormatSpecifier: AstToken {
                                         &mut chars,
                                         initial_len,
                                         FormatSpecifier::Align,
-                                        callback,
+                                        &mut callback,
                                     );
                                 }
                                 _ => {}
@@ -284,7 +278,7 @@ pub trait HasFormatSpecifier: AstToken {
                                     &mut chars,
                                     initial_len,
                                     FormatSpecifier::Sign,
-                                    callback,
+                                    &mut callback,
                                 );
                             }
                             _ => {}
@@ -296,7 +290,7 @@ pub trait HasFormatSpecifier: AstToken {
                                 &mut chars,
                                 initial_len,
                                 FormatSpecifier::NumberSign,
-                                callback,
+                                &mut callback,
                             );
                         }
 
@@ -310,25 +304,25 @@ pub trait HasFormatSpecifier: AstToken {
                                 &mut chars,
                                 initial_len,
                                 FormatSpecifier::Zero,
-                                callback,
+                                &mut callback,
                             );
                         }
 
                         // width
                         match chars.clone().next().unwrap_or_default() {
                             '0'..='9' => {
-                                read_integer(&mut chars, initial_len, callback);
+                                read_integer(&mut chars, initial_len, &mut callback);
                                 if chars.clone().next() == Some('$') {
                                     skip_char_and_emit(
                                         &mut chars,
                                         initial_len,
                                         FormatSpecifier::DollarSign,
-                                        callback,
+                                        &mut callback,
                                     );
                                 }
                             }
                             'a'..='z' | 'A'..='Z' | '_' => {
-                                read_identifier(&mut chars, initial_len, callback);
+                                read_identifier(&mut chars, initial_len, &mut callback);
                                 if chars.clone().next() != Some('$') {
                                     continue;
                                 }
@@ -336,7 +330,7 @@ pub trait HasFormatSpecifier: AstToken {
                                     &mut chars,
                                     initial_len,
                                     FormatSpecifier::DollarSign,
-                                    callback,
+                                    &mut callback,
                                 );
                             }
                             _ => {}
@@ -348,7 +342,7 @@ pub trait HasFormatSpecifier: AstToken {
                                 &mut chars,
                                 initial_len,
                                 FormatSpecifier::Dot,
-                                callback,
+                                &mut callback,
                             );
 
                             match chars.clone().next().unwrap_or_default() {
@@ -357,22 +351,22 @@ pub trait HasFormatSpecifier: AstToken {
                                         &mut chars,
                                         initial_len,
                                         FormatSpecifier::Asterisk,
-                                        callback,
+                                        &mut callback,
                                     );
                                 }
                                 '0'..='9' => {
-                                    read_integer(&mut chars, initial_len, callback);
+                                    read_integer(&mut chars, initial_len, &mut callback);
                                     if chars.clone().next() == Some('$') {
                                         skip_char_and_emit(
                                             &mut chars,
                                             initial_len,
                                             FormatSpecifier::DollarSign,
-                                            callback,
+                                            &mut callback,
                                         );
                                     }
                                 }
                                 'a'..='z' | 'A'..='Z' | '_' => {
-                                    read_identifier(&mut chars, initial_len, callback);
+                                    read_identifier(&mut chars, initial_len, &mut callback);
                                     if chars.clone().next() != Some('$') {
                                         continue;
                                     }
@@ -380,7 +374,7 @@ pub trait HasFormatSpecifier: AstToken {
                                         &mut chars,
                                         initial_len,
                                         FormatSpecifier::DollarSign,
-                                        callback,
+                                        &mut callback,
                                     );
                                 }
                                 _ => {
@@ -396,11 +390,11 @@ pub trait HasFormatSpecifier: AstToken {
                                     &mut chars,
                                     initial_len,
                                     FormatSpecifier::QuestionMark,
-                                    callback,
+                                    &mut callback,
                                 );
                             }
                             'a'..='z' | 'A'..='Z' | '_' => {
-                                read_identifier(&mut chars, initial_len, callback);
+                                read_identifier(&mut chars, initial_len, &mut callback);
                             }
                             _ => {}
                         }
@@ -416,7 +410,12 @@ pub trait HasFormatSpecifier: AstToken {
                         // Escaped format end specifier, `}}`
                         continue;
                     }
-                    skip_char_and_emit(&mut chars, initial_len, FormatSpecifier::Close, callback);
+                    skip_char_and_emit(
+                        &mut chars,
+                        initial_len,
+                        FormatSpecifier::Close,
+                        &mut callback,
+                    );
                 }
                 _ => {
                     while let Some(next_char) = chars.clone().next() {

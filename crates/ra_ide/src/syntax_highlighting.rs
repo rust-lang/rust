@@ -194,7 +194,7 @@ pub(crate) fn highlight(
             let token = sema.descend_into_macros(token.clone());
             let parent = token.parent();
 
-            // Check if macro takes a format string and remeber it for highlighting later.
+            // Check if macro takes a format string and remember it for highlighting later.
             // The macros that accept a format string expand to a compiler builtin macros
             // `format_args` and `format_args_nl`.
             if let Some(fmt_macro_call) = parent.parent().and_then(ast::MacroCall::cast) {
@@ -233,8 +233,7 @@ pub(crate) fn highlight(
             }
         }
 
-        let is_format_string =
-            format_string.as_ref().map(|fs| fs == &element_to_highlight).unwrap_or_default();
+        let is_format_string = format_string.as_ref() == Some(&element_to_highlight);
 
         if let Some((highlight, binding_hash)) =
             highlight_element(&sema, &mut bindings_shadow_count, element_to_highlight.clone())
@@ -245,7 +244,7 @@ pub(crate) fn highlight(
             {
                 stack.push();
                 if is_format_string {
-                    string.lex_format_specifier(&mut |piece_range, kind| {
+                    string.lex_format_specifier(|piece_range, kind| {
                         let highlight = match kind {
                             FormatSpecifier::Open
                             | FormatSpecifier::Close
