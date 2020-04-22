@@ -11,7 +11,7 @@ LL |     fn foo<'b, L: X<&'b Nested<K>>>();
    |                     ^ expected named lifetime parameter
    |
 note: these named lifetimes are available to use
-  --> $DIR/issue-65285-incorrect-explicit-lifetime-name-needed.rs:9:12
+  --> $DIR/issue-65285-incorrect-explicit-lifetime-name-needed.rs:8:9
    |
 LL | trait X<'a, K: 'a> {
    |         ^^
