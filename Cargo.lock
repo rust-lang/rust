@@ -4295,6 +4295,7 @@ version = "0.0.0"
 dependencies = [
  "log",
  "rustc_data_structures",
+ "rustc_errors",
  "rustc_hir",
  "rustc_infer",
  "rustc_middle",

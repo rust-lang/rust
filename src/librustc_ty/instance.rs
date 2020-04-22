@@ -1,3 +1,4 @@
+use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::SubstsRef;
@@ -9,10 +10,12 @@ use traits::{translate_substs, Reveal};
 
 use log::debug;
 
-pub fn resolve_instance<'tcx>(
+fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (param_env, def_id, substs): (ty::ParamEnv<'tcx>, DefId, SubstsRef<'tcx>),
-) -> Option<Instance<'tcx>> {
+    key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
+) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+    let (param_env, (def_id, substs)) = key.into_parts();
+
     debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
@@ -38,7 +41,7 @@ pub fn resolve_instance<'tcx>(
                 if ty.needs_drop(tcx, param_env) {
                     // `DropGlue` requires a monomorphic aka concrete type.
                     if ty.needs_subst() {
-                        return None;
+                        return Ok(None);
                     }
 
                     debug!(" => nontrivial drop glue");
@@ -53,7 +56,7 @@ pub fn resolve_instance<'tcx>(
                 ty::InstanceDef::Item(def_id)
             }
         };
-        Some(Instance { def, substs })
+        Ok(Some(Instance { def, substs }))
     };
     debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
     result
@@ -65,7 +68,7 @@ fn resolve_associated_item<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,
     rcvr_substs: SubstsRef<'tcx>,
-) -> Option<Instance<'tcx>> {
+) -> Result<Option<Instance<'tcx>>, ErrorReported> {
     let def_id = trait_item.def_id;
     debug!(
         "resolve_associated_item(trait_item={:?}, \
@@ -80,7 +83,7 @@ fn resolve_associated_item<'tcx>(
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
-    match vtbl {
+    Ok(match vtbl {
         traits::VtableImpl(impl_data) => {
             debug!(
                 "resolving VtableImpl: {:?}, {:?}, {:?}, {:?}",
@@ -92,13 +95,11 @@ fn resolve_associated_item<'tcx>(
             let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
             let trait_def = tcx.trait_def(trait_def_id);
             let leaf_def = trait_def
-                .ancestors(tcx, impl_data.impl_def_id)
-                .ok()?
+                .ancestors(tcx, impl_data.impl_def_id)?
                 .leaf_def(tcx, trait_item.ident, trait_item.kind)
                 .unwrap_or_else(|| {
                     bug!("{:?} not found in {:?}", trait_item, impl_data.impl_def_id);
                 });
-            let def_id = leaf_def.item.def_id;
 
             let substs = tcx.infer_ctxt().enter(|infcx| {
                 let param_env = param_env.with_reveal_all();
@@ -133,11 +134,52 @@ fn resolve_associated_item<'tcx>(
             };
 
             if !eligible {
-                return None;
+                return Ok(None);
             }
 
             let substs = tcx.erase_regions(&substs);
-            Some(ty::Instance::new(def_id, substs))
+
+            // Check if we just resolved an associated `const` declaration from
+            // a `trait` to an associated `const` definition in an `impl`, where
+            // the definition in the `impl` has the wrong type (for which an
+            // error has already been/will be emitted elsewhere).
+            //
+            // NB: this may be expensive, we try to skip it in all the cases where
+            // we know the error would've been caught (e.g. in an upstream crate).
+            //
+            // A better approach might be to just introduce a query (returning
+            // `Result<(), ErrorReported>`) for the check that `rustc_typeck`
+            // performs (i.e. that the definition's type in the `impl` matches
+            // the declaration in the `trait`), so that we can cheaply check
+            // here if it failed, instead of approximating it.
+            if trait_item.kind == ty::AssocKind::Const
+                && trait_item.def_id != leaf_def.item.def_id
+                && leaf_def.item.def_id.is_local()
+            {
+                let normalized_type_of = |def_id, substs| {
+                    tcx.subst_and_normalize_erasing_regions(substs, param_env, &tcx.type_of(def_id))
+                };
+
+                let original_ty = normalized_type_of(trait_item.def_id, rcvr_substs);
+                let resolved_ty = normalized_type_of(leaf_def.item.def_id, substs);
+
+                if original_ty != resolved_ty {
+                    let msg = format!(
+                        "Instance::resolve: inconsistent associated `const` type: \
+                         was `{}: {}` but resolved to `{}: {}`",
+                        tcx.def_path_str_with_substs(trait_item.def_id, rcvr_substs),
+                        original_ty,
+                        tcx.def_path_str_with_substs(leaf_def.item.def_id, substs),
+                        resolved_ty,
+                    );
+                    let span = tcx.def_span(leaf_def.item.def_id);
+                    tcx.sess.delay_span_bug(span, &msg);
+
+                    return Err(ErrorReported);
+                }
+            }
+
+            Some(ty::Instance::new(leaf_def.item.def_id, substs))
         }
         traits::VtableGenerator(generator_data) => Some(Instance {
             def: ty::InstanceDef::Item(generator_data.generator_def_id),
@@ -155,7 +197,7 @@ fn resolve_associated_item<'tcx>(
         traits::VtableFnPointer(ref data) => {
             // `FnPtrShim` requires a monomorphic aka concrete type.
             if data.fn_ty.needs_subst() {
-                return None;
+                return Ok(None);
             }
 
             Some(Instance {
@@ -176,7 +218,7 @@ fn resolve_associated_item<'tcx>(
 
                     // `CloneShim` requires a monomorphic aka concrete type.
                     if self_ty.needs_subst() {
-                        return None;
+                        return Ok(None);
                     }
 
                     Some(Instance {
@@ -195,7 +237,7 @@ fn resolve_associated_item<'tcx>(
             }
         }
         traits::VtableAutoImpl(..) | traits::VtableParam(..) | traits::VtableTraitAlias(..) => None,
-    }
+    })
 }
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {

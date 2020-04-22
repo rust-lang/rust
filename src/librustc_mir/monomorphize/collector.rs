@@ -674,9 +674,12 @@ fn visit_fn_use<'tcx>(
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
     if let ty::FnDef(def_id, substs) = ty.kind {
-        let resolver =
-            if is_direct_call { ty::Instance::resolve } else { ty::Instance::resolve_for_fn_ptr };
-        let instance = resolver(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
+        let instance = if is_direct_call {
+            ty::Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
+        } else {
+            ty::Instance::resolve_for_fn_ptr(tcx, ty::ParamEnv::reveal_all(), def_id, substs)
+                .unwrap()
+        };
         visit_instance_use(tcx, instance, is_direct_call, output);
     }
 }
@@ -1056,6 +1059,7 @@ impl RootCollector<'_, 'v> {
             start_def_id,
             self.tcx.intern_substs(&[main_ret_ty.into()]),
         )
+        .unwrap()
         .unwrap();
 
         self.output.push(create_fn_mono_item(start_instance));
@@ -1111,8 +1115,9 @@ fn create_mono_items_for_default_impls<'tcx>(
                                 trait_ref.substs[param.index as usize]
                             }
                         });
-                    let instance =
-                        ty::Instance::resolve(tcx, param_env, method.def_id, substs).unwrap();
+                    let instance = ty::Instance::resolve(tcx, param_env, method.def_id, substs)
+                        .unwrap()
+                        .unwrap();
 
                     let mono_item = create_fn_mono_item(instance);
                     if mono_item.is_instantiable(tcx) && should_monomorphize_locally(tcx, &instance)

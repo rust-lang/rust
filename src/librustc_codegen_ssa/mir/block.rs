@@ -537,6 +537,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             ty::FnDef(def_id, substs) => (
                 Some(
                     ty::Instance::resolve(bx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs)
+                        .unwrap()
                         .unwrap(),
                 ),
                 None,

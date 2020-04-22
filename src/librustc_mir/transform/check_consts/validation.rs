@@ -522,7 +522,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 if self.tcx.features().const_trait_impl {
                     let instance = Instance::resolve(self.tcx, self.param_env, def_id, substs);
                     debug!("Resolving ({:?}) -> {:?}", def_id, instance);
-                    if let Some(func) = instance {
+                    if let Ok(Some(func)) = instance {
                         if let InstanceDef::Item(def_id) = func.def {
                             if is_const_fn(self.tcx, def_id) {
                                 return;

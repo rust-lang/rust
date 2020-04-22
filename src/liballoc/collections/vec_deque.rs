@@ -50,6 +50,7 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (64 - 1); // Largest possible power of 
 /// [`pop_front`]: #method.pop_front
 /// [`extend`]: #method.extend
 /// [`append`]: #method.append
+#[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VecDeque<T> {
     // tail and head are pointers into the buffer. Tail always points

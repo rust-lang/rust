@@ -1,6 +1,7 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
+use rustc_errors::ErrorReported;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::DropInPlaceFnLangItem;
@@ -268,29 +269,41 @@ impl<'tcx> Instance<'tcx> {
     /// this is used to find the precise code that will run for a trait method invocation,
     /// if known.
     ///
-    /// Returns `None` if we cannot resolve `Instance` to a specific instance.
+    /// Returns `Ok(None)` if we cannot resolve `Instance` to a specific instance.
     /// For example, in a context like this,
     ///
     /// ```
     /// fn foo<T: Debug>(t: T) { ... }
     /// ```
     ///
-    /// trying to resolve `Debug::fmt` applied to `T` will yield `None`, because we do not
+    /// trying to resolve `Debug::fmt` applied to `T` will yield `Ok(None)`, because we do not
     /// know what code ought to run. (Note that this setting is also affected by the
     /// `RevealMode` in the parameter environment.)
     ///
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
-    /// `Some`.
+    /// `Ok(Some(instance))`.
+    ///
+    /// Returns `Err(ErrorReported)` when the `Instance` resolution process
+    /// couldn't complete due to errors elsewhere - this is distinct
+    /// from `Ok(None)` to avoid misleading diagnostics when an error
+    /// has already been/will be emitted, for the original cause
     pub fn resolve(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-    ) -> Option<Instance<'tcx>> {
+    ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
-        tcx.resolve_instance((tcx.erase_regions(&param_env), def_id, tcx.erase_regions(&substs)))
+
+        // HACK(eddyb) erase regions in `substs` first, so that `param_env.and(...)`
+        // below is more likely to ignore the bounds in scope (e.g. if the only
+        // generic parameters mentioned by `substs` were lifetime ones).
+        let substs = tcx.erase_regions(&substs);
+
+        // FIXME(eddyb) should this always use `param_env.with_reveal_all()`?
+        tcx.resolve_instance(tcx.erase_regions(&param_env.and((def_id, substs))))
     }
 
     pub fn resolve_for_fn_ptr(
@@ -300,7 +313,7 @@ impl<'tcx> Instance<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-        Instance::resolve(tcx, param_env, def_id, substs).map(|mut resolved| {
+        Instance::resolve(tcx, param_env, def_id, substs).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def_id) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
@@ -332,7 +345,7 @@ impl<'tcx> Instance<'tcx> {
             debug!(" => associated item with unsizeable self: Self");
             Some(Instance { def: InstanceDef::VtableShim(def_id), substs })
         } else {
-            Instance::resolve(tcx, param_env, def_id, substs)
+            Instance::resolve(tcx, param_env, def_id, substs).ok().flatten()
         }
     }
 
@@ -353,7 +366,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(DropInPlaceFnLangItem, None);
         let substs = tcx.intern_substs(&[ty.into()]);
-        Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap()
+        Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
     }
 
     pub fn fn_once_adapter_instance(

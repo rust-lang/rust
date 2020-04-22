@@ -96,6 +96,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         span: source_span,
                         ty: &ty,
                         scope_span,
+                        yield_span: yield_data.span,
                         expr: expr.map(|e| e.hir_id),
                     })
                     .or_insert(entries);

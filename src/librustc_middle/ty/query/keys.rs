@@ -296,14 +296,3 @@ impl Key for (Symbol, u32, u32) {
         DUMMY_SP
     }
 }
-
-impl<'tcx> Key for (ty::ParamEnv<'tcx>, DefId, SubstsRef<'tcx>) {
-    type CacheSelector = DefaultCacheSelector;
-
-    fn query_crate(&self) -> CrateNum {
-        self.1.krate
-    }
-    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        tcx.def_span(self.1)
-    }
-}

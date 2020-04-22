@@ -125,6 +125,7 @@ pub trait InferCtxtExt<'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         target_span: Span,
         scope_span: &Option<Span>,
+        await_span: Span,
         expr: Option<hir::HirId>,
         snippet: String,
         inner_generator_body: Option<&hir::Body<'_>>,
@@ -1289,8 +1290,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         ty_matches(ty)
                     })
                     .map(|expr| expr.span);
-                let ty::GeneratorInteriorTypeCause { span, scope_span, expr, .. } = cause;
-                (span, source_map.span_to_snippet(*span), scope_span, expr, from_awaited_ty)
+                let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } =
+                    cause;
+                (
+                    span,
+                    source_map.span_to_snippet(*span),
+                    scope_span,
+                    yield_span,
+                    expr,
+                    from_awaited_ty,
+                )
             });
 
         debug!(
@@ -1298,11 +1307,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 generator_interior_types={:?} target_span={:?}",
             target_ty, tables.generator_interior_types, target_span
         );
-        if let Some((target_span, Ok(snippet), scope_span, expr, from_awaited_ty)) = target_span {
+        if let Some((target_span, Ok(snippet), scope_span, yield_span, expr, from_awaited_ty)) =
+            target_span
+        {
             self.note_obligation_cause_for_async_await(
                 err,
                 *target_span,
                 scope_span,
+                *yield_span,
                 *expr,
                 snippet,
                 generator_body,
@@ -1327,6 +1339,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         target_span: Span,
         scope_span: &Option<Span>,
+        yield_span: Span,
         expr: Option<hir::HirId>,
         snippet: String,
         inner_generator_body: Option<&hir::Body<'_>>,
@@ -1418,10 +1431,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 "note_obligation_cause_for_async_await generator_interior_types: {:#?}",
                 tables.generator_interior_types
             );
-            let await_span = tables.generator_interior_types.iter().map(|t| t.span).last().unwrap();
-            let mut span = MultiSpan::from_span(await_span);
+            let mut span = MultiSpan::from_span(yield_span);
             span.push_span_label(
-                await_span,
+                yield_span,
                 format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
             );
 

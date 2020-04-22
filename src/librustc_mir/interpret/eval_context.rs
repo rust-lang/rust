@@ -461,8 +461,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
         trace!("param_env: {:#?}", self.param_env);
         trace!("substs: {:#?}", substs);
-        ty::Instance::resolve(*self.tcx, self.param_env, def_id, substs)
-            .ok_or_else(|| err_inval!(TooGeneric).into())
+        match ty::Instance::resolve(*self.tcx, self.param_env, def_id, substs) {
+            Ok(Some(instance)) => Ok(instance),
+            Ok(None) => throw_inval!(TooGeneric),
+
+            // FIXME(eddyb) this could be a bit more specific than `TypeckError`.
+            Err(error_reported) => throw_inval!(TypeckError(error_reported)),
+        }
     }
 
     pub fn layout_of_local(
