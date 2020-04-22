@@ -9,7 +9,7 @@
     ],
     "repository": {
         "node_type": {
-            "match": "^\\s*([A-Z_]+?)@",
+            "match": "^\\s*([A-Z_][A-Z_0-9]*?)@",
             "captures": {
                 "1": {
                     "name": "entity.name.class"
