@@ -730,6 +730,17 @@ impl From<&CStr> for Box<CStr> {
     }
 }
 
+#[stable(feature = "box_from_cow", since = "1.45.0")]
+impl From<Cow<'_, CStr>> for Box<CStr> {
+    #[inline]
+    fn from(cow: Cow<'_, CStr>) -> Box<CStr> {
+        match cow {
+            Cow::Borrowed(s) => Box::from(s),
+            Cow::Owned(s) => Box::from(s),
+        }
+    }
+}
+
 #[stable(feature = "c_string_from_box", since = "1.18.0")]
 impl From<Box<CStr>> for CString {
     /// Converts a [`Box`]`<CStr>` into a [`CString`] without copying or allocating.

@@ -1433,6 +1433,17 @@ impl From<&Path> for Box<Path> {
     }
 }
 
+#[stable(feature = "box_from_cow", since = "1.45.0")]
+impl From<Cow<'_, Path>> for Box<Path> {
+    #[inline]
+    fn from(cow: Cow<'_, Path>) -> Box<Path> {
+        match cow {
+            Cow::Borrowed(path) => Box::from(path),
+            Cow::Owned(path) => Box::from(path),
+        }
+    }
+}
+
 #[stable(feature = "path_buf_from_box", since = "1.18.0")]
 impl From<Box<Path>> for PathBuf {
     /// Converts a `Box<Path>` into a `PathBuf`
