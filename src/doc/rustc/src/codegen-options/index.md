@@ -7,12 +7,100 @@ a version of this list for your exact compiler by running `rustc -C help`.
 
 This option is deprecated and does nothing.
 
-## linker
+## code-model
 
-This flag controls which linker `rustc` invokes to link your code. It takes a
-path to the linker executable. If this flag is not specified, the linker will
-be inferred based on the target. See also the [linker-flavor](#linker-flavor)
-flag for another way to specify the linker.
+This option lets you choose which code model to use.
+
+To find the valid options for this flag, run `rustc --print code-models`.
+
+## codegen-units
+
+This flag controls how many code generation units the crate is split into. It
+takes an integer greater than 0.
+
+When a crate is split into multiple codegen units, LLVM is able to process
+them in parallel. Increasing parallelism may speed up compile times, but may
+also produce slower code. Setting this to 1 may improve the performance of
+generated code, but may be slower to compile.
+
+The default value, if not specified, is 16 for non-incremental builds. For
+incremental builds the default is 256 which allows caching to be more granular.
+
+## debug-assertions
+
+This flag lets you turn `cfg(debug_assertions)` [conditional
+compilation](../../reference/conditional-compilation.md#debug_assertions) on
+or off. It takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: enable debug-assertions.
+* `n`, `no`, or `off`: disable debug-assertions.
+
+If not specified, debug assertions are automatically enabled only if the
+[opt-level](#opt-level) is 0.
+
+## debuginfo
+
+This flag controls the generation of debug information. It takes one of the
+following values:
+
+* `0`: no debug info at all (the default).
+* `1`: line tables only.
+* `2`: full debug info.
+
+Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
+
+## default-linker-libraries
+
+This flag controls whether or not the linker includes its default libraries.
+It takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: include default libraries (the default).
+* `n`, `no`, or `off`: exclude default libraries.
+
+For example, for gcc flavor linkers, this issues the `-nodefaultlibs` flag to
+the linker.
+
+## extra-filename
+
+This option allows you to put extra data in each output filename. It takes a
+string to add as a suffix to the filename. See the [`--emit`
+flag][option-emit] for more information.
+
+## force-frame-pointers
+
+This flag forces the use of frame pointers. It takes one of the following
+values:
+
+* `y`, `yes`, `on`, or no value: force-enable frame pointers.
+* `n`, `no`, or `off`: do not force-enable frame pointers. This does
+  not necessarily mean frame pointers will be removed.
+
+The default behaviour, if frame pointers are not force-enabled, depends on the
+target.
+
+## incremental
+
+This flag allows you to enable incremental compilation, which allows `rustc`
+to save information after compiling a crate to be reused when recompiling the
+crate, improving re-compile times. This takes a path to a directory where
+incremental files will be stored.
+
+## inline-threshold
+
+This option lets you set the default threshold for inlining a function. It
+takes an unsigned integer as a value. Inlining is based on a cost model, where
+a higher threshold will allow more inlining.
+
+The default depends on the [opt-level](#opt-level):
+
+| opt-level | Threshold |
+|-----------|-----------|
+| 0         | N/A, only inlines always-inline functions |
+| 1         | N/A, only inlines always-inline functions and LLVM lifetime intrinsics |
+| 2         | 225 |
+| 3         | 275 |
+| s         | 75 |
+| z         | 25 |
 
 ## link-arg
 
@@ -24,6 +112,24 @@ This flag lets you append a single extra argument to the linker invocation.
 
 This flag lets you append multiple extra arguments to the linker invocation. The
 options should be separated by spaces.
+
+## link-dead-code
+
+This flag controls whether the linker will keep dead code. It takes one of
+the following values:
+
+* `y`, `yes`, `on`, or no value: keep dead code.
+* `n`, `no`, or `off`: remove dead code (the default).
+
+An example of when this flag might be useful is when trying to construct code coverage
+metrics.
+
+## linker
+
+This flag controls which linker `rustc` invokes to link your code. It takes a
+path to the linker executable. If this flag is not specified, the linker will
+be inferred based on the target. See also the [linker-flavor](#linker-flavor)
+flag for another way to specify the linker.
 
 ## linker-flavor
 
@@ -51,16 +157,23 @@ flavor. Valid options are:
 
 [lld-flavor]: https://lld.llvm.org/Driver.html
 
-## link-dead-code
+## linker-plugin-lto
 
-This flag controls whether the linker will keep dead code. It takes one of
+This flag defers LTO optimizations to the linker. See
+[linker-plugin-LTO](../linker-plugin-lto.md) for more details. It takes one of
 the following values:
 
-* `y`, `yes`, `on`, or no value: keep dead code.
-* `n`, `no`, or `off`: remove dead code (the default).
+* `y`, `yes`, `on`, or no value: enable linker plugin LTO.
+* `n`, `no`, or `off`: disable linker plugin LTO (the default).
+* A path to the linker plugin.
 
-An example of when this flag might be useful is when trying to construct code coverage
-metrics.
+## llvm-args
+
+This flag can be used to pass a list of arguments directly to LLVM.
+
+The list must be separated by spaces.
+
+Pass `--help` to see a list of options.
 
 ## lto
 
@@ -92,15 +205,157 @@ opt-level=0`](#opt-level)). That is:
 
 See also [linker-plugin-lto](#linker-plugin-lto) for cross-language LTO.
 
-## linker-plugin-lto
+## metadata
 
-This flag defers LTO optimizations to the linker. See
-[linker-plugin-LTO](../linker-plugin-lto.md) for more details. It takes one of
-the following values:
+This option allows you to control the metadata used for symbol mangling. This
+takes a space-separated list of strings. Mangled symbols will incorporate a
+hash of the metadata. This may be used, for example, to differentiate symbols
+between two different versions of the same crate being linked.
 
-* `y`, `yes`, `on`, or no value: enable linker plugin LTO.
-* `n`, `no`, or `off`: disable linker plugin LTO (the default).
-* A path to the linker plugin.
+## no-prepopulate-passes
+
+This flag tells the pass manager to use an empty list of passes, instead of the
+usual pre-populated list of passes.
+
+## no-redzone
+
+This flag allows you to disable [the
+red zone](https://en.wikipedia.org/wiki/Red_zone_\(computing\)). It takes one
+of the following values:
+
+* `y`, `yes`, `on`, or no value: disable the red zone.
+* `n`, `no`, or `off`: enable the red zone.
+
+The default behaviour, if the flag is not specified, depends on the target.
+
+## no-stack-check
+
+This option is deprecated and does nothing.
+
+## no-vectorize-loops
+
+This flag disables [loop
+vectorization](https://llvm.org/docs/Vectorizers.html#the-loop-vectorizer).
+
+## no-vectorize-slp
+
+This flag disables vectorization using
+[superword-level
+parallelism](https://llvm.org/docs/Vectorizers.html#the-slp-vectorizer).
+
+## opt-level
+
+This flag controls the optimization level.
+
+* `0`: no optimizations, also turns on
+  [`cfg(debug_assertions)`](#debug-assertions) (the default).
+* `1`: basic optimizations.
+* `2`: some optimizations.
+* `3`: all optimizations.
+* `s`: optimize for binary size.
+* `z`: optimize for binary size, but also turn off loop vectorization.
+
+Note: The [`-O` flag][option-o-optimize] is an alias for `-C opt-level=2`.
+
+The default is `0`.
+
+## overflow-checks
+
+This flag allows you to control the behavior of [runtime integer
+overflow](../../reference/expressions/operator-expr.md#overflow). When
+overflow-checks are enabled, a panic will occur on overflow. This flag takes
+one of the following values:
+
+* `y`, `yes`, `on`, or no value: enable overflow checks.
+* `n`, `no`, or `off`: disable overflow checks.
+
+If not specified, overflow checks are enabled if
+[debug-assertions](#debug-assertions) are enabled, disabled otherwise.
+
+## panic
+
+This option lets you control what happens when the code panics.
+
+* `abort`: terminate the process upon panic
+* `unwind`: unwind the stack upon panic
+
+If not specified, the default depends on the target.
+
+## passes
+
+This flag can be used to add extra [LLVM
+passes](http://llvm.org/docs/Passes.html) to the compilation.
+
+The list must be separated by spaces.
+
+See also the [`no-prepopulate-passes`](#no-prepopulate-passes) flag.
+
+## prefer-dynamic
+
+By default, `rustc` prefers to statically link dependencies. This option will
+indicate that dynamic linking should be used if possible if both a static and
+dynamic versions of a library are available. There is an internal algorithm
+for determining whether or not it is possible to statically or dynamically
+link with a dependency. For example, `cdylib` crate types may only use static
+linkage. This flag takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: use dynamic linking.
+* `n`, `no`, or `off`: use static linking (the default).
+
+## profile-generate
+
+This flag allows for creating instrumented binaries that will collect
+profiling data for use with profile-guided optimization (PGO). The flag takes
+an optional argument which is the path to a directory into which the
+instrumented binary will emit the collected data. See the chapter on
+[profile-guided optimization] for more information.
+
+## profile-use
+
+This flag specifies the profiling data file to be used for profile-guided
+optimization (PGO). The flag takes a mandatory argument which is the path
+to a valid `.profdata` file. See the chapter on
+[profile-guided optimization] for more information.
+
+## relocation-model
+
+This option lets you choose which
+[relocation](https://en.wikipedia.org/wiki/Relocation_\(computing\)) model to
+use.
+
+To find the valid options for this flag, run `rustc --print relocation-models`.
+
+## remark
+
+This flag lets you print remarks for optimization passes.
+
+The list of passes should be separated by spaces.
+
+`all` will remark on every pass.
+
+## rpath
+
+This flag controls whether [`rpath`](https://en.wikipedia.org/wiki/Rpath) is
+enabled. It takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: enable rpath.
+* `n`, `no`, or `off`: disable rpath (the default).
+
+## save-temps
+
+This flag controls whether temporary files generated during compilation are
+deleted once compilation finishes. It takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: save temporary files.
+* `n`, `no`, or `off`: delete temporary files (the default).
+
+## soft-float
+
+This option controls whether `rustc` generates code that emulates floating
+point instructions in software. It takes one of the following values:
+
+* `y`, `yes`, `on`, or no value: use soft floats.
+* `n`, `no`, or `off`: use hardware floats (the default).
 
 ## target-cpu
 
@@ -131,261 +386,6 @@ This also supports the feature `+crt-static` and `-crt-static` to control
 
 Each target and [`target-cpu`](#target-cpu) has a default set of enabled
 features.
-
-## passes
-
-This flag can be used to add extra [LLVM
-passes](http://llvm.org/docs/Passes.html) to the compilation.
-
-The list must be separated by spaces.
-
-See also the [`no-prepopulate-passes`](#no-prepopulate-passes) flag.
-
-## llvm-args
-
-This flag can be used to pass a list of arguments directly to LLVM.
-
-The list must be separated by spaces.
-
-Pass `--help` to see a list of options.
-
-## save-temps
-
-This flag controls whether temporary files generated during compilation are
-deleted once compilation finishes. It takes one of the following values:
-
-* `y`, `yes`, `on`, or no value: save temporary files.
-* `n`, `no`, or `off`: delete temporary files (the default).
-
-## rpath
-
-This flag controls whether [`rpath`](https://en.wikipedia.org/wiki/Rpath) is
-enabled. It takes one of the following values:
-
-* `y`, `yes`, `on`, or no value: enable rpath.
-* `n`, `no`, or `off`: disable rpath (the default).
-
-## overflow-checks
-
-This flag allows you to control the behavior of [runtime integer
-overflow](../../reference/expressions/operator-expr.md#overflow). When
-overflow-checks are enabled, a panic will occur on overflow. This flag takes
-one of the following values:
-
-* `y`, `yes`, `on`, or no value: enable overflow checks.
-* `n`, `no`, or `off`: disable overflow checks.
-
-If not specified, overflow checks are enabled if
-[debug-assertions](#debug-assertions) are enabled, disabled otherwise.
-
-## no-prepopulate-passes
-
-This flag tells the pass manager to use an empty list of passes, instead of the
-usual pre-populated list of passes.
-
-## no-vectorize-loops
-
-This flag disables [loop
-vectorization](https://llvm.org/docs/Vectorizers.html#the-loop-vectorizer).
-
-## no-vectorize-slp
-
-This flag disables vectorization using
-[superword-level
-parallelism](https://llvm.org/docs/Vectorizers.html#the-slp-vectorizer).
-
-## soft-float
-
-This option controls whether `rustc` generates code that emulates floating
-point instructions in software. It takes one of the following values:
-
-* `y`, `yes`, `on`, or no value: use soft floats.
-* `n`, `no`, or `off`: use hardware floats (the default).
-
-## prefer-dynamic
-
-By default, `rustc` prefers to statically link dependencies. This option will
-indicate that dynamic linking should be used if possible if both a static and
-dynamic versions of a library are available. There is an internal algorithm
-for determining whether or not it is possible to statically or dynamically
-link with a dependency. For example, `cdylib` crate types may only use static
-linkage. This flag takes one of the following values:
-
-* `y`, `yes`, `on`, or no value: use dynamic linking.
-* `n`, `no`, or `off`: use static linking (the default).
-
-## no-redzone
-
-This flag allows you to disable [the
-red zone](https://en.wikipedia.org/wiki/Red_zone_\(computing\)). It takes one
-of the following values:
-
-* `y`, `yes`, `on`, or no value: disable the red zone.
-* `n`, `no`, or `off`: enable the red zone.
-
-The default behaviour, if the flag is not specified, depends on the target.
-
-## relocation-model
-
-This option lets you choose which
-[relocation](https://en.wikipedia.org/wiki/Relocation_\(computing\)) model to
-use.
-
-To find the valid options for this flag, run `rustc --print relocation-models`.
-
-## code-model
-
-This option lets you choose which code model to use.
-
-To find the valid options for this flag, run `rustc --print code-models`.
-
-## metadata
-
-This option allows you to control the metadata used for symbol mangling. This
-takes a space-separated list of strings. Mangled symbols will incorporate a
-hash of the metadata. This may be used, for example, to differentiate symbols
-between two different versions of the same crate being linked.
-
-## extra-filename
-
-This option allows you to put extra data in each output filename. It takes a
-string to add as a suffix to the filename. See the [`--emit`
-flag][option-emit] for more information.
-
-## codegen-units
-
-This flag controls how many code generation units the crate is split into. It
-takes an integer greater than 0.
-
-When a crate is split into multiple codegen units, LLVM is able to process
-them in parallel. Increasing parallelism may speed up compile times, but may
-also produce slower code. Setting this to 1 may improve the performance of
-generated code, but may be slower to compile.
-
-The default value, if not specified, is 16 for non-incremental builds. For
-incremental builds the default is 256 which allows caching to be more granular.
-
-## remark
-
-This flag lets you print remarks for optimization passes.
-
-The list of passes should be separated by spaces.
-
-`all` will remark on every pass.
-
-## no-stack-check
-
-This option is deprecated and does nothing.
-
-## debuginfo
-
-This flag controls the generation of debug information. It takes one of the
-following values:
-
-* `0`: no debug info at all (the default).
-* `1`: line tables only.
-* `2`: full debug info.
-
-Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
-
-## opt-level
-
-This flag controls the optimization level.
-
-* `0`: no optimizations, also turns on
-  [`cfg(debug_assertions)`](#debug-assertions) (the default).
-* `1`: basic optimizations.
-* `2`: some optimizations.
-* `3`: all optimizations.
-* `s`: optimize for binary size.
-* `z`: optimize for binary size, but also turn off loop vectorization.
-
-Note: The [`-O` flag][option-o-optimize] is an alias for `-C opt-level=2`.
-
-The default is `0`.
-
-## debug-assertions
-
-This flag lets you turn `cfg(debug_assertions)` [conditional
-compilation](../../reference/conditional-compilation.md#debug_assertions) on
-or off. It takes one of the following values:
-
-* `y`, `yes`, `on`, or no value: enable debug-assertions.
-* `n`, `no`, or `off`: disable debug-assertions.
-
-If not specified, debug assertions are automatically enabled only if the
-[opt-level](#opt-level) is 0.
-
-## inline-threshold
-
-This option lets you set the default threshold for inlining a function. It
-takes an unsigned integer as a value. Inlining is based on a cost model, where
-a higher threshold will allow more inlining.
-
-The default depends on the [opt-level](#opt-level):
-
-| opt-level | Threshold |
-|-----------|-----------|
-| 0         | N/A, only inlines always-inline functions |
-| 1         | N/A, only inlines always-inline functions and LLVM lifetime intrinsics |
-| 2         | 225 |
-| 3         | 275 |
-| s         | 75 |
-| z         | 25 |
-
-## panic
-
-This option lets you control what happens when the code panics.
-
-* `abort`: terminate the process upon panic
-* `unwind`: unwind the stack upon panic
-
-If not specified, the default depends on the target.
-
-## incremental
-
-This flag allows you to enable incremental compilation, which allows `rustc`
-to save information after compiling a crate to be reused when recompiling the
-crate, improving re-compile times. This takes a path to a directory where
-incremental files will be stored.
-
-## profile-generate
-
-This flag allows for creating instrumented binaries that will collect
-profiling data for use with profile-guided optimization (PGO). The flag takes
-an optional argument which is the path to a directory into which the
-instrumented binary will emit the collected data. See the chapter on
-[profile-guided optimization] for more information.
-
-## profile-use
-
-This flag specifies the profiling data file to be used for profile-guided
-optimization (PGO). The flag takes a mandatory argument which is the path
-to a valid `.profdata` file. See the chapter on
-[profile-guided optimization] for more information.
-
-## force-frame-pointers
-
-This flag forces the use of frame pointers. It takes one of the following
-values:
-
-* `y`, `yes`, `on`, or no value: force-enable frame pointers.
-* `n`, `no`, or `off`: do not force-enable frame pointers. This does
-  not necessarily mean frame pointers will be removed.
-
-The default behaviour, if frame pointers are not force-enabled, depends on the
-target.
-
-## default-linker-libraries
-
-This flag controls whether or not the linker includes its default libraries.
-It takes one of the following values:
-
-* `y`, `yes`, `on`, or no value: include default libraries (the default).
-* `n`, `no`, or `off`: exclude default libraries.
-
-For example, for gcc flavor linkers, this issues the `-nodefaultlibs` flag to
-the linker.
 
 ## bitcode-in-rlib
 

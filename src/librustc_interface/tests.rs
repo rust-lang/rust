@@ -5,15 +5,16 @@ use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_middle::middle::cstore;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
-use rustc_session::config::{ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
-use rustc_session::config::{Externs, OutputType, OutputTypes, SymbolManglingVersion};
+use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
+use rustc_session::config::{Externs, OutputType, OutputTypes, Sanitizer, SymbolManglingVersion};
 use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::{build_session, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
-use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
+use rustc_span::SourceFileHashAlgorithm;
+use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::PathBuf;
@@ -374,141 +375,65 @@ fn test_codegen_options_tracking_hash() {
     let reference = Options::default();
     let mut opts = Options::default();
 
-    // Make sure the changing an [UNTRACKED] option leaves the hash unchanged
-    opts.cg.ar = String::from("abc");
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+    macro_rules! untracked {
+        ($name: ident, $non_default_value: expr) => {
+            opts.cg.$name = $non_default_value;
+            assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+        };
+    }
 
-    opts.cg.linker = Some(PathBuf::from("linker"));
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+    // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
+    // This list is in alphabetical order.
+    untracked!(ar, String::from("abc"));
+    untracked!(codegen_units, Some(42));
+    untracked!(default_linker_libraries, true);
+    untracked!(extra_filename, String::from("extra-filename"));
+    untracked!(incremental, Some(String::from("abc")));
+    // `link_arg` is omitted because it just forwards to `link_args`.
+    untracked!(link_args, vec![String::from("abc"), String::from("def")]);
+    untracked!(link_dead_code, true);
+    untracked!(linker, Some(PathBuf::from("linker")));
+    untracked!(linker_flavor, Some(LinkerFlavor::Gcc));
+    untracked!(no_stack_check, true);
+    untracked!(remark, Passes::Some(vec![String::from("pass1"), String::from("pass2")]));
+    untracked!(rpath, true);
+    untracked!(save_temps, true);
 
-    opts.cg.link_args = vec![String::from("abc"), String::from("def")];
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+    macro_rules! tracked {
+        ($name: ident, $non_default_value: expr) => {
+            opts = reference.clone();
+            opts.cg.$name = $non_default_value;
+            assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+        };
+    }
 
-    opts.cg.link_dead_code = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts.cg.rpath = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts.cg.extra_filename = String::from("extra-filename");
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts.cg.codegen_units = Some(42);
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts.cg.remark = Passes::Some(vec![String::from("pass1"), String::from("pass2")]);
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts.cg.save_temps = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts.cg.incremental = Some(String::from("abc"));
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    // Make sure changing a [TRACKED] option changes the hash
-    opts = reference.clone();
-    opts.cg.lto = LtoCli::Fat;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.target_cpu = Some(String::from("abc"));
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.target_feature = String::from("all the features, all of them");
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.passes = vec![String::from("1"), String::from("2")];
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.llvm_args = vec![String::from("1"), String::from("2")];
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.overflow_checks = Some(true);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.no_prepopulate_passes = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.no_vectorize_loops = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.no_vectorize_slp = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.soft_float = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.prefer_dynamic = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.no_redzone = Some(true);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.relocation_model = Some(String::from("relocation model"));
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.code_model = Some(String::from("code model"));
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.tls_model = Some(String::from("tls model"));
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.profile_generate = SwitchWithOptPath::Enabled(None);
-    assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.profile_use = Some(PathBuf::from("abc"));
-    assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.metadata = vec![String::from("A"), String::from("B")];
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.debuginfo = 0xdeadbeef;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.debuginfo = 0xba5eba11;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.force_frame_pointers = Some(false);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.debug_assertions = Some(true);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.inline_threshold = Some(0xf007ba11);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.panic = Some(PanicStrategy::Abort);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.linker_plugin_lto = LinkerPluginLto::LinkerPluginAuto;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.cg.bitcode_in_rlib = false;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+    // Make sure that changing a [TRACKED] option changes the hash.
+    // This list is in alphabetical order.
+    tracked!(bitcode_in_rlib, false);
+    tracked!(code_model, Some(String::from("code model")));
+    tracked!(debug_assertions, Some(true));
+    tracked!(debuginfo, 0xdeadbeef);
+    tracked!(force_frame_pointers, Some(false));
+    tracked!(inline_threshold, Some(0xf007ba11));
+    tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
+    tracked!(llvm_args, vec![String::from("1"), String::from("2")]);
+    tracked!(lto, LtoCli::Fat);
+    tracked!(metadata, vec![String::from("A"), String::from("B")]);
+    tracked!(no_prepopulate_passes, true);
+    tracked!(no_redzone, Some(true));
+    tracked!(no_vectorize_loops, true);
+    tracked!(no_vectorize_slp, true);
+    tracked!(opt_level, "3".to_string());
+    tracked!(overflow_checks, Some(true));
+    tracked!(panic, Some(PanicStrategy::Abort));
+    tracked!(passes, vec![String::from("1"), String::from("2")]);
+    tracked!(prefer_dynamic, true);
+    tracked!(profile_generate, SwitchWithOptPath::Enabled(None));
+    tracked!(profile_use, Some(PathBuf::from("abc")));
+    tracked!(relocation_model, Some(String::from("relocation model")));
+    tracked!(soft_float, true);
+    tracked!(target_cpu, Some(String::from("abc")));
+    tracked!(target_feature, String::from("all the features, all of them"));
 }
 
 #[test]
@@ -516,114 +441,136 @@ fn test_debugging_options_tracking_hash() {
     let reference = Options::default();
     let mut opts = Options::default();
 
-    // Make sure the changing an [UNTRACKED] option leaves the hash unchanged
-    opts.debugging_opts.verbose = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.time_passes = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.time_llvm_passes = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.input_stats = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.borrowck_stats = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.meta_stats = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.print_link_args = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.print_llvm_passes = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.ast_json = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.ast_json_noexpand = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.ls = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.save_analysis = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.print_region_graph = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.parse_only = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.dump_dep_graph = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.query_dep_graph = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.no_analysis = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.unstable_options = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.trace_macros = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.keep_hygiene_data = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.print_mono_items = Some(String::from("abc"));
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.dump_mir = Some(String::from("abc"));
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.dump_mir_dir = String::from("abc");
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.dump_mir_graphviz = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-    opts.debugging_opts.dump_mir_dataflow = true;
-    assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+    macro_rules! untracked {
+        ($name: ident, $non_default_value: expr) => {
+            opts.debugging_opts.$name = $non_default_value;
+            assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+        };
+    }
 
-    // Make sure changing a [TRACKED] option changes the hash
-    opts = reference.clone();
-    opts.debugging_opts.asm_comments = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+    // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
+    // This list is in alphabetical order.
+    untracked!(ast_json, true);
+    untracked!(ast_json_noexpand, true);
+    untracked!(borrowck, String::from("other"));
+    untracked!(borrowck_stats, true);
+    untracked!(control_flow_guard, CFGuard::Checks);
+    untracked!(deduplicate_diagnostics, true);
+    untracked!(dep_tasks, true);
+    untracked!(dont_buffer_diagnostics, true);
+    untracked!(dump_dep_graph, true);
+    untracked!(dump_mir, Some(String::from("abc")));
+    untracked!(dump_mir_dataflow, true);
+    untracked!(dump_mir_dir, String::from("abc"));
+    untracked!(dump_mir_exclude_pass_number, true);
+    untracked!(dump_mir_graphviz, true);
+    untracked!(emit_stack_sizes, true);
+    untracked!(hir_stats, true);
+    untracked!(identify_regions, true);
+    untracked!(incremental_ignore_spans, true);
+    untracked!(incremental_info, true);
+    untracked!(incremental_verify_ich, true);
+    untracked!(input_stats, true);
+    untracked!(keep_hygiene_data, true);
+    untracked!(link_native_libraries, false);
+    untracked!(llvm_time_trace, true);
+    untracked!(ls, true);
+    untracked!(macro_backtrace, true);
+    untracked!(meta_stats, true);
+    untracked!(nll_facts, true);
+    untracked!(no_analysis, true);
+    untracked!(no_interleave_lints, true);
+    untracked!(no_leak_check, true);
+    untracked!(no_parallel_llvm, true);
+    untracked!(parse_only, true);
+    untracked!(perf_stats, true);
+    untracked!(polonius, true);
+    // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
+    untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
+    untracked!(print_link_args, true);
+    untracked!(print_llvm_passes, true);
+    untracked!(print_mono_items, Some(String::from("abc")));
+    untracked!(print_region_graph, true);
+    untracked!(print_type_sizes, true);
+    untracked!(query_dep_graph, true);
+    untracked!(query_stats, true);
+    untracked!(save_analysis, true);
+    untracked!(self_profile, SwitchWithOptPath::Enabled(None));
+    untracked!(self_profile_events, Some(vec![String::new()]));
+    untracked!(span_free_formats, true);
+    untracked!(terminal_width, Some(80));
+    untracked!(threads, 99);
+    untracked!(time, true);
+    untracked!(time_llvm_passes, true);
+    untracked!(time_passes, true);
+    untracked!(trace_macros, true);
+    untracked!(ui_testing, true);
+    untracked!(unpretty, Some("expanded".to_string()));
+    untracked!(unstable_options, true);
+    untracked!(verbose, true);
 
-    opts = reference.clone();
-    opts.debugging_opts.verify_llvm_ir = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+    macro_rules! tracked {
+        ($name: ident, $non_default_value: expr) => {
+            opts = reference.clone();
+            opts.debugging_opts.$name = $non_default_value;
+            assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+        };
+    }
 
-    opts = reference.clone();
-    opts.debugging_opts.no_landing_pads = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.fewer_names = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.no_codegen = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.treat_err_as_bug = Some(1);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.report_delayed_bugs = true;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.force_overflow_checks = Some(true);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.show_span = Some(String::from("abc"));
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.mir_opt_level = 3;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.relro_level = Some(RelroLevel::Full);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.merge_functions = Some(MergeFunctions::Disabled);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.allow_features = Some(vec![String::from("lang_items")]);
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
-    opts.debugging_opts.symbol_mangling_version = SymbolManglingVersion::V0;
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+    // Make sure that changing a [TRACKED] option changes the hash.
+    // This list is in alphabetical order.
+    tracked!(allow_features, Some(vec![String::from("lang_items")]));
+    tracked!(always_encode_mir, true);
+    tracked!(asm_comments, true);
+    tracked!(binary_dep_depinfo, true);
+    tracked!(codegen_backend, Some("abc".to_string()));
+    tracked!(crate_attr, vec!["abc".to_string()]);
+    tracked!(debug_macros, true);
+    tracked!(dep_info_omit_d_target, true);
+    tracked!(dual_proc_macros, true);
+    tracked!(embed_bitcode, true);
+    tracked!(fewer_names, true);
+    tracked!(force_overflow_checks, Some(true));
+    tracked!(force_unstable_if_unmarked, true);
+    tracked!(fuel, Some(("abc".to_string(), 99)));
+    tracked!(human_readable_cgu_names, true);
+    tracked!(inline_in_all_cgus, Some(true));
+    tracked!(insert_sideeffect, true);
+    tracked!(instrument_mcount, true);
+    tracked!(link_only, true);
+    tracked!(merge_functions, Some(MergeFunctions::Disabled));
+    tracked!(mir_emit_retag, true);
+    tracked!(mir_opt_level, 3);
+    tracked!(mutable_noalias, true);
+    tracked!(new_llvm_pass_manager, true);
+    tracked!(no_codegen, true);
+    tracked!(no_generate_arange_section, true);
+    tracked!(no_landing_pads, true);
+    tracked!(no_link, true);
+    tracked!(no_profiler_runtime, true);
+    tracked!(osx_rpath_install_name, true);
+    tracked!(panic_abort_tests, true);
+    tracked!(plt, Some(true));
+    tracked!(print_fuel, Some("abc".to_string()));
+    tracked!(profile, true);
+    tracked!(relro_level, Some(RelroLevel::Full));
+    tracked!(report_delayed_bugs, true);
+    tracked!(run_dsymutil, false);
+    tracked!(sanitizer, Some(Sanitizer::Address));
+    tracked!(sanitizer_memory_track_origins, 2);
+    tracked!(sanitizer_recover, vec![Sanitizer::Address]);
+    tracked!(saturating_float_casts, true);
+    tracked!(share_generics, Some(true));
+    tracked!(show_span, Some(String::from("abc")));
+    tracked!(src_hash_algorithm, Some(SourceFileHashAlgorithm::Sha1));
+    tracked!(strip_debuginfo_if_disabled, true);
+    tracked!(symbol_mangling_version, SymbolManglingVersion::V0);
+    tracked!(teach, true);
+    tracked!(thinlto, Some(true));
+    tracked!(tls_model, Some(String::from("tls model")));
+    tracked!(treat_err_as_bug, Some(1));
+    tracked!(unleash_the_miri_inside_of_you, true);
+    tracked!(verify_llvm_ir, true);
 }
 
 #[test]
