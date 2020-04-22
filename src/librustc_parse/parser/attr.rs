@@ -4,7 +4,7 @@ use rustc_ast::attr;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::util::comments;
 use rustc_ast_pretty::pprust;
-use rustc_errors::PResult;
+use rustc_errors::{error_code, PResult};
 use rustc_span::{Span, Symbol};
 
 use log::debug;
@@ -50,10 +50,16 @@ impl<'a> Parser<'a> {
             } else if let token::DocComment(s) = self.token.kind {
                 let attr = self.mk_doc_comment(s);
                 if attr.style != ast::AttrStyle::Outer {
-                    self.struct_span_err(self.token.span, "expected outer doc comment")
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_err_with_code(
+                            self.token.span,
+                            "expected outer doc comment",
+                            error_code!(E0753),
+                        )
                         .note(
                             "inner doc comments like this (starting with \
-                              `//!` or `/*!`) can only appear before items",
+                             `//!` or `/*!`) can only appear before items",
                         )
                         .emit();
                 }
