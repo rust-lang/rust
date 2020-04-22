@@ -566,7 +566,7 @@ pub trait LintContext: Sized {
                     stability::deprecation_suggestion(&mut db, suggestion, span)
                 }
                 BuiltinLintDiagnostics::UnusedDocComment(span) => {
-                    db.span_label(span, "rustdoc does not generate documentation for macros");
+                    db.span_label(span, "rustdoc does not generate documentation for macro invocations");
                     db.help("to document an item produced by a macro, \
                                   the macro must produce the documentation as part of its expansion");
                 }
