@@ -236,10 +236,15 @@ pub enum Base {
 /// (e.g. "#![deny(missing_docs)]").
 pub fn strip_shebang(input: &str) -> Option<usize> {
     debug_assert!(!input.is_empty());
-    if !input.starts_with("#!") || input.starts_with("#![") {
+    let s: &str = &remove_whitespace(input);
+    if !s.starts_with("#!") || s.starts_with("#![") {
         return None;
     }
     Some(input.find('\n').unwrap_or(input.len()))
+}
+
+fn remove_whitespace(s: &str) -> String {
+    s.chars().filter(|c| !c.is_whitespace()).collect()
 }
 
 /// Parses the first token from the provided input string.
