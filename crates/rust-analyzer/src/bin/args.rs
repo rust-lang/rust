@@ -75,6 +75,10 @@ impl Args {
         let subcommand = match matches.subcommand()? {
             Some(it) => it,
             None => {
+                if matches.contains(["-h", "--help"]) {
+                    print_subcommands();
+                    return Ok(Err(HelpPrinted));
+                }
                 matches.finish().or_else(handle_extra_flags)?;
                 return Ok(Ok(Args { verbosity, command: Command::RunServer }));
             }
@@ -267,8 +271,17 @@ ARGS:
             }
             "proc-macro" => Command::ProcMacro,
             _ => {
-                eprintln!(
-                    "\
+                print_subcommands();
+                return Ok(Err(HelpPrinted));
+            }
+        };
+        Ok(Ok(Args { verbosity, command }))
+    }
+}
+
+fn print_subcommands() {
+    eprintln!(
+        "\
 rust-analyzer
 
 USAGE:
@@ -285,12 +298,7 @@ SUBCOMMANDS:
     proc-macro
     parse
     symbols"
-                );
-                return Ok(Err(HelpPrinted));
-            }
-        };
-        Ok(Ok(Args { verbosity, command }))
-    }
+    )
 }
 
 pub(crate) struct HelpPrinted;
