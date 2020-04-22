@@ -180,11 +180,14 @@ fn do_mir_borrowck<'a, 'tcx>(
     let location_table = &LocationTable::new(&body);
 
     let mut errors_buffer = Vec::new();
-    let (move_data, move_errors): (MoveData<'tcx>, Option<Vec<(Place<'tcx>, MoveError<'tcx>)>>) =
+    let (move_data, move_errors): (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>) =
         match MoveData::gather_moves(&body, tcx, param_env) {
-            Ok(move_data) => (move_data, None),
-            Err((move_data, move_errors)) => (move_data, Some(move_errors)),
+            Ok(move_data) => (move_data, Vec::new()),
+            Err((move_data, move_errors)) => (move_data, move_errors),
         };
+    let promoted_errors = promoted
+        .iter_enumerated()
+        .map(|(idx, body)| (idx, MoveData::gather_moves(&body, tcx, param_env)));
 
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
@@ -264,6 +267,41 @@ fn do_mir_borrowck<'a, 'tcx>(
         _ => true,
     };
 
+    for (idx, move_data_results) in promoted_errors {
+        let promoted_body = &promoted[idx];
+        let dominators = promoted_body.dominators();
+
+        if let Err((move_data, move_errors)) = move_data_results {
+            let mut promoted_mbcx = MirBorrowckCtxt {
+                infcx,
+                body: promoted_body,
+                mir_def_id: def_id.to_def_id(),
+                move_data: &move_data,
+                location_table: &LocationTable::new(promoted_body),
+                movable_generator,
+                locals_are_invalidated_at_exit,
+                access_place_error_reported: Default::default(),
+                reservation_error_reported: Default::default(),
+                reservation_warnings: Default::default(),
+                move_error_reported: BTreeMap::new(),
+                uninitialized_error_reported: Default::default(),
+                errors_buffer,
+                regioncx: regioncx.clone(),
+                used_mut: Default::default(),
+                used_mut_upvars: SmallVec::new(),
+                borrow_set: borrow_set.clone(),
+                dominators,
+                upvars: Vec::new(),
+                local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
+                region_names: RefCell::default(),
+                next_region_name: RefCell::new(1),
+                polonius_output: None,
+            };
+            promoted_mbcx.report_move_errors(move_errors);
+            errors_buffer = promoted_mbcx.errors_buffer;
+        };
+    }
+
     let dominators = body.dominators();
 
     let mut mbcx = MirBorrowckCtxt {
@@ -301,9 +339,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         borrows: flow_borrows,
     };
 
-    if let Some(errors) = move_errors {
-        mbcx.report_move_errors(errors);
-    }
+    mbcx.report_move_errors(move_errors);
 
     dataflow::visit_results(
         &body,
