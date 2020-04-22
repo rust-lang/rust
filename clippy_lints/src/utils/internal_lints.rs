@@ -1,7 +1,7 @@
 use crate::utils::SpanlessEq;
 use crate::utils::{
-    is_expn_of, match_def_path, match_qpath, match_type, method_calls, paths, snippet, span_lint, span_lint_and_help,
-    span_lint_and_sugg, walk_ptrs_ty,
+    is_expn_of, match_def_path, match_qpath, match_type, method_calls, paths, run_lints, snippet, span_lint,
+    span_lint_and_help, span_lint_and_sugg, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, Name, NodeId};
@@ -10,7 +10,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::hir_id::CRATE_HIR_ID;
+use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{Crate, Expr, ExprKind, HirId, Item, MutTy, Mutability, Path, StmtKind, Ty, TyKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
@@ -252,6 +253,10 @@ impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+        if !run_lints(cx, &[DEFAULT_LINT], item.hir_id) {
+            return;
+        }
+
         if let hir::ItemKind::Static(ref ty, Mutability::Not, body_id) = item.kind {
             if is_lint_ref_type(cx, ty) {
                 let expr = &cx.tcx.hir().body(body_id).value;
@@ -306,6 +311,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     }
 
     fn check_crate_post(&mut self, cx: &LateContext<'a, 'tcx>, _: &'tcx Crate<'_>) {
+        if !run_lints(cx, &[LINT_WITHOUT_LINT_PASS], CRATE_HIR_ID) {
+            return;
+        }
+
         for (lint_name, &lint_span) in &self.declared_lints {
             // When using the `declare_tool_lint!` macro, the original `lint_span`'s
             // file points to "<rustc macros>".
@@ -355,15 +364,12 @@ struct LintCollector<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        walk_expr(self, expr);
-    }
-
     fn visit_path(&mut self, path: &'tcx Path<'_>, _: HirId) {
         if path.segments.len() == 1 {
             self.output.insert(path.segments[0].ident.name);
         }
     }
+
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::All(self.cx.tcx.hir())
     }
@@ -391,6 +397,10 @@ impl_lint_pass!(CompilerLintFunctions => [COMPILER_LINT_FUNCTIONS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+        if !run_lints(cx, &[COMPILER_LINT_FUNCTIONS], expr.hir_id) {
+            return;
+        }
+
         if_chain! {
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
             let fn_name = path.ident;
@@ -416,6 +426,10 @@ declare_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+        if !run_lints(cx, &[OUTER_EXPN_EXPN_DATA], expr.hir_id) {
+            return;
+        }
+
         let (method_names, arg_lists, spans) = method_calls(expr, 2);
         let method_names: Vec<SymbolStr> = method_names.iter().map(|s| s.as_str()).collect();
         let method_names: Vec<&str> = method_names.iter().map(|s| &**s).collect();
@@ -462,6 +476,10 @@ declare_lint_pass!(CollapsibleCalls => [COLLAPSIBLE_SPAN_LINT_CALLS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CollapsibleCalls {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+        if !run_lints(cx, &[COLLAPSIBLE_SPAN_LINT_CALLS], expr.hir_id) {
+            return;
+        }
+
         if_chain! {
             if let ExprKind::Call(ref func, ref and_then_args) = expr.kind;
             if let ExprKind::Path(ref path) = func.kind;
