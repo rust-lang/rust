@@ -230,6 +230,7 @@ pub(crate) struct AstSrc<'a> {
 }
 
 pub(crate) struct AstNodeSrc<'a> {
+    pub(crate) doc: &'a [&'a str],
     pub(crate) name: &'a str,
     pub(crate) traits: &'a [&'a str],
     pub(crate) fields: &'a [Field<'a>],
@@ -247,6 +248,7 @@ pub(crate) enum FieldSrc<'a> {
 }
 
 pub(crate) struct AstEnumSrc<'a> {
+    pub(crate) doc: &'a [&'a str],
     pub(crate) name: &'a str,
     pub(crate) traits: &'a [&'a str],
     pub(crate) variants: &'a [&'a str],
@@ -254,12 +256,14 @@ pub(crate) struct AstEnumSrc<'a> {
 
 macro_rules! ast_nodes {
     ($(
+        $(#[doc = $doc:expr])+
         struct $name:ident$(: $($trait:ident),*)? {
             $($field_name:ident $(![$token:tt])? $(: $ty:tt)?),*$(,)?
         }
     )*) => {
         [$(
             AstNodeSrc {
+                doc: &[$($doc),*],
                 name: stringify!($name),
                 traits: &[$($(stringify!($trait)),*)?],
                 fields: &[
@@ -288,12 +292,14 @@ macro_rules! field {
 
 macro_rules! ast_enums {
     ($(
+        $(#[doc = $doc:expr])+
         enum $name:ident $(: $($trait:ident),*)? {
             $($variant:ident),*$(,)?
         }
     )*) => {
         [$(
             AstEnumSrc {
+                doc: &[$($doc),*],
                 name: stringify!($name),
                 traits: &[$($(stringify!($trait)),*)?],
                 variants: &[$(stringify!($variant)),*],
@@ -305,10 +311,35 @@ macro_rules! ast_enums {
 pub(crate) const AST_SRC: AstSrc = AstSrc {
     tokens: &["Whitespace", "Comment", "String", "RawString"],
     nodes: &ast_nodes! {
+        /// The entire Rust source file. Includes all top-level inner attributes and module items.
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/crates-and-source-files.html)
         struct SourceFile: ModuleItemOwner, AttrsOwner, DocCommentsOwner {
             modules: [Module],
         }
 
+        /// Function definition either with body or not.
+        /// Includes all of its attributes and doc comments.
+        ///
+        /// ```
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     pub extern "C" fn foo<T>(#[attr] Patern {p}: Pattern) -> u32
+        ///     where
+        ///         T: Debug
+        ///     {
+        ///         42
+        ///     }
+        /// ❱
+        ///
+        /// extern "C" {
+        ///     ❰ fn fn_decl(also_variadic_ffi: u32, ...) -> u32; ❱
+        /// }
+        /// ```
+        ///
+        /// - [Reference](https://doc.rust-lang.org/reference/items/functions.html)
+        /// - [Nomicon](https://doc.rust-lang.org/nomicon/ffi.html#variadic-functions)
         struct FnDef: VisibilityOwner, NameOwner, TypeParamsOwner, DocCommentsOwner, AttrsOwner {
             Abi,
             T![const],
@@ -318,46 +349,205 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![fn],
             ParamList,
             RetType,
-            body: BlockExpr,
-            T![;]
-        }
+            body: BlockExpr, // TODO: maybe it makes sense to make it `Block` instead,
+            T![;]            // Or what if there may be a posibility of tryblocks as function body?
+        }                    // But try blocks are not `BlockExpr`
 
+        /// Return type annotation.
+        ///
+        /// ```
+        /// fn foo(a: u32) ❰ -> Option<u32> ❱ { Some(a) }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/functions.html)
         struct RetType { T![->], TypeRef }
 
+        /// Struct definition.
+        /// Includes all of its attributes and doc comments.
+        ///
+        /// ```
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     struct Foo<T> where T: Debug {
+        ///         /// Docs
+        ///         #[attr]
+        ///         pub a: u32,
+        ///         b: T,
+        ///     }
+        /// ❱
+        ///
+        /// ❰ struct Foo; ❱
+        /// ❰ struct Foo<T>(#[attr] T) where T: Debug; ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/structs.html)
         struct StructDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner {
             T![struct],
             FieldDefList,
             T![;]
         }
 
+        /// Union definition.
+        /// Includes all of its attributes and doc comments.
+        ///
+        /// ```
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     pub union Foo<T> where T: Debug {
+        ///         /// Docs
+        ///         #[attr]
+        ///         a: T,
+        ///         b: u32,
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/unions.html)
         struct UnionDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner {
             T![union],
             RecordFieldDefList,
         }
 
+        /// Record field definition list including enclosing curly braces.
+        ///
+        /// ```
+        /// struct Foo // same for union
+        /// ❰
+        ///     {
+        ///         a: u32,
+        ///         b: bool,
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/structs.html)
         struct RecordFieldDefList { T!['{'], fields: [RecordFieldDef], T!['}'] }
+
+        /// Record field definition including its attributes and doc comments.
+        ///
+        /// ` ``
+        /// same for union
+        /// struct Foo {
+        ///      ❰
+        ///          /// Docs
+        ///          #[attr]
+        ///          pub a: u32
+        ///      ❱
+        ///
+        ///      ❰ b: bool ❱
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/structs.html)
         struct RecordFieldDef: VisibilityOwner, NameOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner { }
 
+        /// Tuple field definition list including enclosing parens.
+        ///
+        /// ```
+        /// struct Foo ❰ (u32, String, Vec<u32>) ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/structs.html)
         struct TupleFieldDefList { T!['('], fields: [TupleFieldDef], T![')'] }
+
+        /// Tuple field definition including its attributes.
+        ///
+        /// ```
+        /// struct Foo(❰ #[attr] u32 ❱);
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/structs.html)
         struct TupleFieldDef: VisibilityOwner, AttrsOwner {
             TypeRef,
         }
 
+        /// Enum definition.
+        /// Includes all of its attributes and doc comments.
+        ///
+        /// ```
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     pub enum Foo<T> where T: Debug {
+        ///         /// Docs
+        ///         #[attr]
+        ///         Bar,
+        ///         Baz(#[attr] u32),
+        ///         Bruh {
+        ///             a: u32,
+        ///             /// Docs
+        ///             #[attr]
+        ///             b: T,
+        ///         }
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/enumerations.html)
         struct EnumDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner {
             T![enum],
             variant_list: EnumVariantList,
         }
+
+        /// Enum variant definition list including enclosing curly braces.
+        ///
+        /// ```
+        /// enum Foo
+        /// ❰
+        ///     {
+        ///         Bar,
+        ///         Baz(u32),
+        ///         Bruh {
+        ///             a: u32
+        ///         }
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/enumerations.html)
         struct EnumVariantList {
             T!['{'],
             variants: [EnumVariant],
             T!['}']
         }
+
+        /// Enum variant definition including its attributes and discriminant value definition.
+        ///
+        /// ```
+        /// enum Foo {
+        ///     ❰
+        ///         /// Docs
+        ///         #[attr]
+        ///         Bar
+        ///     ❱
+        ///
+        ///     // same for tuple and record variants
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/enumerations.html)
         struct EnumVariant: VisibilityOwner, NameOwner, DocCommentsOwner, AttrsOwner {
             FieldDefList,
             T![=],
             Expr
         }
 
+        /// Trait definition.
+        /// Includes all of its attributes and doc comments.
+        ///
+        /// ```
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     pub unsafe trait Foo<T>: Debug where T: Debug {
+        ///         // ...
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/traits.html)
         struct TraitDef: VisibilityOwner, NameOwner, AttrsOwner, DocCommentsOwner, TypeParamsOwner, TypeBoundsOwner {
             T![unsafe],
             T![auto],
@@ -365,18 +555,73 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             ItemList,
         }
 
+        /// Module definition either with body or not.
+        /// Includes all of its inner and outer attributes, module items, doc comments.
+        ///
+        /// ```
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     pub mod foo;
+        /// ❱
+        ///
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     pub mod bar {
+        ///        //! Inner docs
+        ///        #![inner_attr]
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/modules.html)
         struct Module: VisibilityOwner, NameOwner, AttrsOwner, DocCommentsOwner {
             T![mod],
             ItemList,
             T![;]
         }
 
+        /// Item defintion list.
+        /// This is used for both top-level items and impl block items.
+        ///
+        /// ```
+        /// ❰
+        ///     fn foo {}
+        ///     struct Bar;
+        ///     enum Baz;
+        ///     trait Bruh;
+        ///     const BRUUH: u32 = 42;
+        /// ❱
+        ///
+        /// impl Foo
+        /// ❰
+        ///     {
+        ///         fn bar() {}
+        ///         const BAZ: u32 = 42;
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items.html)
         struct ItemList: ModuleItemOwner {
             T!['{'],
             assoc_items: [AssocItem],
             T!['}']
         }
 
+        /// Constant variable definition.
+        /// Includes all of its attributes and doc comments.
+        ///
+        /// ```
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     pub const FOO: u32 = 42;
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/constant-items.html)
         struct ConstDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner {
             T![default],
             T![const],
@@ -385,6 +630,19 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![;]
         }
 
+
+        /// Static variable definition.
+        /// Includes all of its attributes and doc comments.
+        ///
+        /// ```
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     pub static mut FOO: u32 = 42;
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/static-items.html)
         struct StaticDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeAscriptionOwner {
             T![static],
             T![mut],
@@ -393,6 +651,25 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![;]
         }
 
+        // TODO: clarify whether this does include assoc type with bounds
+        /// Type alias definition.
+        /// Includes associated type clauses with type bounds.
+        ///
+        /// ```
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     pub type Foo<T> where T: Debug = T;
+        /// ❱
+        ///
+        /// trait Bar {
+        ///     ❰ type Baz: Debug; ❱
+        ///     ❰ type Bruh = String; ❱
+        ///     ❰ type Bruuh: Debug = u32; ❱
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/type-aliases.html)
         struct TypeAliasDef: VisibilityOwner, NameOwner, TypeParamsOwner, AttrsOwner, DocCommentsOwner, TypeBoundsOwner {
             T![default],
             T![type],
@@ -401,9 +678,23 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![;]
         }
 
+        /// Inherent and trait impl definition.
+        /// Includes all of its inner and outer attributes.
+        ///
+        /// ```
+        /// ❰
+        ///     #[attr]
+        ///     unsafe impl<T> !Foo for Bar where T: Debug {
+        ///         #![inner_attr]
+        ///         // ...
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/implementations.html)
         struct ImplDef: TypeParamsOwner, AttrsOwner, DocCommentsOwner {
             T![default],
-            T![const],
+            T![const], // TODO: wat?
             T![unsafe],
             T![impl],
             T![!],
@@ -411,76 +702,611 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             ItemList,
         }
 
+
+        /// Parenthesized type reference.
+        /// Note: parens are only used for grouping, this is not a tuple type.
+        ///
+        /// ```
+        /// // This is effectively just `u32`.
+        /// // Single-item tuple must be defined with a trailing comma: `(u32,)`
+        /// type Foo = ❰ (u32) ❱;
+        ///
+        /// let bar: &'static ❰ (dyn Debug) ❱ = "bruh";
+        /// ```
         struct ParenType { T!['('], TypeRef, T![')'] }
+
+        /// Unnamed tuple type.
+        ///
+        /// ```
+        /// let foo: ❰ (u32, bool) ❱ = (42, true);
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/types/tuple.html)
         struct TupleType { T!['('], fields: [TypeRef], T![')'] }
+
+        /// The never type (i.e. the exclamation point).
+        ///
+        /// ```
+        /// type T = ❰ ! ❱;
+        ///
+        /// fn no_return() -> ❰ ! ❱ {
+        ///     loop {}
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/types/never.html)
         struct NeverType { T![!] }
+
+        /// Path to a type.
+        /// Includes single identifier type names and elaborate paths with
+        /// generic parameters.
+        ///
+        /// ```
+        /// type Foo = ❰ String ❱;
+        /// type Bar = ❰ std::vec::Vec<T> ❱;
+        /// type Baz = ❰ ::bruh::<Bruuh as Iterator>::Item ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/paths.html)
         struct PathType { Path }
+
+        /// Raw pointer type.
+        ///
+        /// ```
+        /// type Foo = ❰ *const u32 ❱;
+        /// type Bar = ❰ *mut u32 ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/types/pointer.html#raw-pointers-const-and-mut)
         struct PointerType { T![*], T![const], T![mut], TypeRef }
+
+        /// Array type.
+        ///
+        /// ```
+        /// type Foo = ❰ [u32; 24 - 3] ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/types/array.html)
         struct ArrayType { T!['['], TypeRef, T![;], Expr, T![']'] }
+
+        /// Slice type.
+        ///
+        /// ```
+        /// type Foo = ❰ [u8] ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/types/slice.html)
         struct SliceType { T!['['], TypeRef, T![']'] }
+
+        /// Reference type.
+        ///
+        /// ```
+        /// type Foo = ❰ &'static str ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/types/pointer.html)
         struct ReferenceType { T![&], T![lifetime], T![mut], TypeRef }
+
+        /// Placeholder type (i.e. the underscore).
+        ///
+        /// ```
+        /// let foo: ❰ _ ❱ = 42_u32;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/types/inferred.html)
         struct PlaceholderType { T![_] }
+
+        /// Function pointer type (not to be confused with `Fn*` family of traits).
+        ///
+        /// ```
+        /// type Foo = ❰ async fn(#[attr] u32, named: bool) -> u32 ❱;
+        ///
+        /// type Bar = ❰ extern "C" fn(variadic: u32, #[attr] ...) ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/types/function-pointer.html)
         struct FnPointerType { Abi, T![unsafe], T![fn], ParamList, RetType }
+
+        /// Higher order type.
+        ///
+        /// ```
+        /// type Foo = ❰ for<'a> fn(&'a str) ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/nomicon/hrtb.html)
         struct ForType { T![for], TypeParamList, TypeRef }
+
+        /// Opaque `impl Trait` type.
+        ///
+        /// ```
+        /// fn foo(bar: ❰ impl Debug + Eq ❱) {}
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/types/impl-trait.html)
         struct ImplTraitType: TypeBoundsOwner { T![impl] }
+
+        /// Trait object type.
+        ///
+        /// ```
+        /// type Foo = ❰ dyn Debug ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/types/trait-object.html)
         struct DynTraitType: TypeBoundsOwner { T![dyn] }
 
+        /// Tuple literal.
+        ///
+        /// ```
+        /// ❰ (42, true) ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/tuple-expr.html)
         struct TupleExpr: AttrsOwner { T!['('], exprs: [Expr], T![')'] }
+
+        /// Array literal.
+        ///
+        /// ```
+        /// ❰ [#![inner_attr] true, false, true] ❱;
+        ///
+        /// ❰ ["baz"; 24] ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/array-expr.html)
         struct ArrayExpr: AttrsOwner { T!['['], exprs: [Expr], T![;], T![']'] }
+
+        /// Parenthesized expression.
+        /// Note: parens are only used for grouping, this is not a tuple literal.
+        ///
+        /// ```
+        /// ❰ (#![inner_attr] 2 + 2) ❱ * 2;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/grouped-expr.html)
         struct ParenExpr: AttrsOwner { T!['('], Expr, T![')'] }
-        struct PathExpr  { Path }
+
+        /// Path to a symbol in expression context.
+        /// Includes single identifier variable names and elaborate paths with
+        /// generic parameters.
+        ///
+        /// ```
+        /// ❰ Some::<i32> ❱;
+        /// ❰ foo ❱ + 42;
+        /// ❰ Vec::<i32>::push ❱;
+        /// ❰ <[i32]>::reverse ❱;
+        /// ❰ <String as std::borrow::Borrow<str>>::borrow ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/path-expr.html)
+        struct PathExpr { Path }
+
+        /// Anonymous callable object literal a.k.a. closure, lambda or functor.
+        ///
+        /// ```
+        /// ❰ || 42 ❱;
+        /// ❰ |a: u32| val + 1 ❱;
+        /// ❰ async |#[attr] Pattern(_): Pattern| { bar } ❱;
+        /// ❰ move || baz ❱;
+        /// ❰ || -> u32 { closure_with_ret_type_annotation_requires_block_expr } ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/closure-expr.html)
         struct LambdaExpr: AttrsOwner {
-            T![static],
+            // T![static], // TODO: what's this?
             T![async],
             T![move],
             ParamList,
             RetType,
             body: Expr,
         }
+
+        /// If expression. Includes both regular `if` and `if let` forms.
+        /// Beware that `else if` is a special case syntax sugar, because in general
+        /// there has to be block expression after `else`.
+        ///
+        /// ```
+        /// ❰ if bool_cond { 42 } ❱
+        /// ❰ if bool_cond { 42 } else { 24 } ❱
+        /// ❰ if bool_cond { 42 } else if bool_cond2 { 42 } ❱
+        ///
+        /// ❰
+        ///     if let Pattern(foo) = bar {
+        ///         foo
+        ///     } else {
+        ///         panic!();
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/if-expr.html)
         struct IfExpr: AttrsOwner { T![if], Condition }
+
+        /// Unconditional loop expression.
+        ///
+        /// ```
+        /// ❰
+        ///     loop {
+        ///         // yeah, it's that simple...
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html)
         struct LoopExpr: AttrsOwner, LoopBodyOwner { T![loop] }
+
+        /// Block expression with an optional prefix (label, try ketword,
+        /// unsafe keyword, async keyword...).
+        ///
+        /// ```
+        /// ❰
+        ///     'label: try {
+        ///         None?
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// - [try block](https://doc.rust-lang.org/unstable-book/language-features/try-blocks.html)
+        /// - [unsafe block](https://doc.rust-lang.org/reference/expressions/block-expr.html#unsafe-blocks)
+        /// - [async block](https://doc.rust-lang.org/reference/expressions/block-expr.html#async-blocks)
         struct EffectExpr: AttrsOwner { Label, T![try], T![unsafe], T![async], BlockExpr }
+
+
+        /// For loop expression.
+        /// Note: record struct literals are not valid as iterable expression
+        /// due to ambiguity.
+        ///
+        /// ```
+        /// ❰
+        /// for i in (0..4) {
+        ///     dbg!(i);
+        /// }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html#iterator-loops)
         struct ForExpr: AttrsOwner, LoopBodyOwner {
             T![for],
             Pat,
             T![in],
             iterable: Expr,
         }
+
+        /// While loop expression. Includes both regular `while` and `while let` forms.
+        ///
+        /// ```
+        /// ❰
+        ///     while bool_cond {
+        ///         42;
+        ///     }
+        /// ❱
+        /// ❰
+        ///     while let Pattern(foo) = bar {
+        ///         bar += 1;
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html#predicate-loops)
         struct WhileExpr: AttrsOwner, LoopBodyOwner { T![while], Condition }
+
+        /// Continue expression.
+        ///
+        /// ```
+        /// while bool_cond {
+        ///     ❰ continue ❱;
+        /// }
+        ///
+        /// 'outer: loop {
+        ///     loop {
+        ///         ❰ continue 'outer ❱;
+        ///     }
+        /// }
+        ///
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html#continue-expressions)
         struct ContinueExpr: AttrsOwner { T![continue], T![lifetime] }
+
+        /// Break expression.
+        ///
+        /// ```
+        /// while bool_cond {
+        ///     ❰ break ❱;
+        /// }
+        /// 'outer: loop {
+        ///     for foo in bar {
+        ///         ❰ break 'outer ❱;
+        ///     }
+        /// }
+        /// 'outer: loop {
+        ///     loop {
+        ///         ❰ break 'outer 42 ❱;
+        ///     }
+        /// }
+        /// ```
+        ///
+        /// [Refernce](https://doc.rust-lang.org/reference/expressions/loop-expr.html#break-expressions)
         struct BreakExpr: AttrsOwner { T![break], T![lifetime], Expr }
+
+        /// Label.
+        ///
+        /// ```
+        /// ❰ 'outer: ❱ loop {}
+        ///
+        /// let foo = ❰ 'bar: ❱ loop {}
+        ///
+        /// ❰ 'baz: ❱ {
+        ///     break 'baz;
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html?highlight=label#loop-labels)
+        /// [Labels for blocks RFC](https://github.com/rust-lang/rfcs/blob/master/text/2046-label-break-value.md)
         struct Label { T![lifetime] }
+
+        /// Block expression. Includes unsafe blocks and block labels.
+        ///
+        /// ```
+        ///     let foo = ❰
+        ///         {
+        ///             #![inner_attr]
+        ///             ❰ { } ❱
+        ///
+        ///             ❰ 'label: { break 'label } ❱
+        ///         }
+        ///     ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/block-expr.html)
+        /// [Labels for blocks RFC](https://github.com/rust-lang/rfcs/blob/master/text/2046-label-break-value.md)
         struct BlockExpr: AttrsOwner, ModuleItemOwner {
             T!['{'], statements: [Stmt], Expr, T!['}'],
         }
+
+        /// Return expression.
+        ///
+        /// ```
+        /// || ❰ return 42 ❱;
+        ///
+        /// fn bar() {
+        ///     ❰ return ❱;
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/return-expr.html)
         struct ReturnExpr: AttrsOwner { Expr }
+
+        /// Call expression (not to be confused with method call expression, it is
+        /// a separate ast node).
+        ///
+        /// ```
+        /// ❰ foo() ❱;
+        /// ❰ &str::len("bar") ❱;
+        /// ❰ <&str as PartialEq<&str>>::eq(&"", &"") ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/call-expr.html)
         struct CallExpr: ArgListOwner { Expr }
+
+        /// Method call expression.
+        ///
+        /// ```
+        /// ❰ receiver_expr.method() ❱;
+        /// ❰ receiver_expr.method::<T>(42, true) ❱;
+        ///
+        /// ❰ ❰ ❰ foo.bar() ❱ .baz() ❱ .bruh() ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/method-call-expr.html)
         struct MethodCallExpr: AttrsOwner, ArgListOwner {
             Expr, T![.], NameRef, TypeArgList,
         }
+
+        /// Index expression a.k.a. subscript operator call.
+        ///
+        /// ```
+        /// ❰ foo[42] ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/array-expr.html)
         struct IndexExpr: AttrsOwner { T!['['], T![']'] }
+
+        /// Field access expression.
+        ///
+        /// ```
+        /// ❰ expr.bar ❱;
+        ///
+        /// ❰ ❰ ❰ foo.bar ❱ .baz ❱ .bruh ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/field-expr.html)
         struct FieldExpr: AttrsOwner { Expr, T![.], NameRef }
+
+        /// Await operator call expression.
+        ///
+        /// ```
+        /// ❰ expr.await ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/await-expr.html)
         struct AwaitExpr: AttrsOwner { Expr, T![.], T![await] }
+
+        /// The question mark operator call.
+        ///
+        /// ```
+        /// ❰ expr? ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#the-question-mark-operator)
         struct TryExpr: AttrsOwner { Expr, T![?] }
+
+        /// Type cast expression.
+        ///
+        /// ```
+        /// ❰ expr as T ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions)
         struct CastExpr: AttrsOwner { Expr, T![as], TypeRef }
+
+
+        /// Borrow operator call.
+        ///
+        /// ```
+        /// ❰ &foo ❱;
+        /// ❰ &mut bar ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#borrow-operators)
         struct RefExpr: AttrsOwner { T![&], T![raw], T![mut], Expr }
+
+        /// Prefix operator call. This is either `!` or `*` or `-`.
+        ///
+        /// ```
+        /// ❰ !foo ❱;
+        /// ❰ *bar ❱;
+        /// ❰ -42 ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html)
         struct PrefixExpr: AttrsOwner { /*PrefixOp,*/ Expr }
+
+        /// Box operator call.
+        ///
+        /// ```
+        /// ❰ box 42 ❱;
+        /// ```
+        ///
+        /// [RFC](https://github.com/rust-lang/rfcs/blob/0806be4f282144cfcd55b1d20284b43f87cbe1c6/text/0809-box-and-in-for-stdlib.md)
         struct BoxExpr: AttrsOwner { T![box], Expr }
+
+        /// Range operator call.
+        ///
+        /// ```
+        /// ❰ 0..42 ❱;
+        /// ❰ ..42 ❱;
+        /// ❰ 0.. ❱;
+        /// ❰ .. ❱;
+        /// ❰ 0..=42 ❱;
+        /// ❰ ..=42 ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/range-expr.html)
         struct RangeExpr: AttrsOwner { /*RangeOp*/ }
+
+
+        /// Binary operator call.
+        /// Includes all arithmetic, logic, bitwise and assignment operators.
+        ///
+        /// ```
+        /// ❰ 2 + ❰ 2 * 2 ❱ ❱;
+        /// ❰ ❰ true && false ❱ || true ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/operator-expr.html#arithmetic-and-logical-binary-operators)
         struct BinExpr: AttrsOwner { /*BinOp*/ }
+
+
+        /// [Raw] string, [raw] byte string, char, byte, integer, float or bool literal.
+        ///
+        /// ```
+        /// ❰ "str" ❱;
+        /// ❰ br##"raw byte str"## ❱;
+        /// ❰ 'c' ❱;
+        /// ❰ b'c' ❱;
+        /// ❰ 42 ❱;
+        /// ❰ 1e9 ❱;
+        /// ❰ true ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/literal-expr.html)
         struct Literal { /*LiteralToken*/ }
 
+        /// Match expression.
+        ///
+        /// ```
+        /// ❰
+        ///     match expr {
+        ///         Pat1 => {}
+        ///         Pat2(_) => 42,
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/match-expr.html)
         struct MatchExpr: AttrsOwner { T![match], Expr, MatchArmList }
+
+        /// Match arm list part of match expression. Includes its inner attributes.
+        ///
+        /// ```
+        /// match expr
+        /// ❰
+        ///     {
+        ///         #![inner_attr]
+        ///         Pat1 => {}
+        ///         Pat2(_) => 42,
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/match-expr.html)
         struct MatchArmList: AttrsOwner { T!['{'], arms: [MatchArm], T!['}'] }
+
+
+        /// Match arm.
+        /// Note: record struct literals are not valid as target match expression
+        /// due to ambiguity.
+        /// ```
+        /// match expr {
+        ///     ❰ #[attr] Pattern(it) if bool_cond => it ❱,
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/match-expr.html)
         struct MatchArm: AttrsOwner {
             pat: Pat,
             guard: MatchGuard,
             T![=>],
             Expr,
         }
+
+        /// Match guard.
+        ///
+        /// ```
+        /// match expr {
+        ///     Pattern(it) ❰ if bool_cond ❱ => it,
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/match-expr.html#match-guards)
         struct MatchGuard { T![if], Expr }
 
+        /// Record literal expression. The same syntax is used for structs,
+        /// unions and record enum variants.
+        ///
+        /// ```
+        /// ❰
+        ///     foo::Bar {
+        ///         #![inner_attr]
+        ///         baz: 42,
+        ///         bruh: true,
+        ///         ..spread
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/struct-expr.html)
         struct RecordLit { Path, RecordFieldList}
+
+        /// Record field list including enclosing curly braces.
+        ///
+        /// foo::Bar ❰
+        ///     {
+        ///         baz: 42,
+        ///         ..spread
+        ///     }
+        /// ❱
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/struct-expr.html)
         struct RecordFieldList {
             T!['{'],
             fields: [RecordField],
@@ -488,22 +1314,162 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             spread: Expr,
             T!['}']
         }
+
+        /// Record field.
+        ///
+        /// ```
+        /// foo::Bar {
+        ///     ❰ #[attr] baz: 42 ❱
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/struct-expr.html)
         struct RecordField: AttrsOwner { NameRef, T![:], Expr }
 
+        /// Disjunction of patterns.
+        ///
+        /// ```
+        /// let ❰ Foo(it) | Bar(it) | Baz(it) ❱ = bruh;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html)
         struct OrPat { pats: [Pat] }
+
+        /// Parenthesized pattern.
+        /// Note: parens are only used for grouping, this is not a tuple pattern.
+        ///
+        /// ```
+        /// if let ❰ &(0..=42) ❱ = foo {}
+        /// ```
+        ///
+        /// https://doc.rust-lang.org/reference/patterns.html#grouped-patterns
         struct ParenPat { T!['('], Pat, T![')'] }
+
+        /// Reference pattern.
+        /// Note: this has nothing to do with `ref` keyword, the latter is used in bind patterns.
+        ///
+        /// ```
+        /// let ❰ &mut foo ❱ = bar;
+        /// ```
+        /// // TODO: clarify on the special case of double reference pattern
+        /// // described in the link bellow
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#reference-patterns)
         struct RefPat { T![&], T![mut], Pat }
+
+        /// Box pattern.
+        ///
+        /// ```
+        /// let ❰ box foo ❱ = box 42;
+        /// ```
+        ///
+        /// [Unstable book](https://doc.rust-lang.org/unstable-book/language-features/box-patterns.html)
         struct BoxPat { T![box], Pat }
+
+        /// Bind pattern.
+        ///
+        /// ```
+        /// match foo {
+        ///     Some(❰ ref mut bar ❱) => {}
+        ///     ❰ baz @ None ❱ => {}
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#identifier-patterns)
         struct BindPat: AttrsOwner, NameOwner { T![ref], T![mut], T![@], Pat }
+
+        /// Placeholder pattern a.k.a. the wildcard pattern or the underscore.
+        ///
+        /// ```
+        /// let ❰ _ ❱ = foo;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#wildcard-pattern)
         struct PlaceholderPat { T![_] }
+
+        /// Rest-of-the record/tuple pattern.
+        /// Note: this is not the unbonded range pattern (even more: it doesn't exist).
+        ///
+        /// ```
+        /// let Foo { bar, ❰ .. ❱ } = baz;
+        /// let (❰ .. ❱, bruh) = (42, 24, 42);
+        /// let Bruuh(❰ .. ❱) = bruuuh;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#struct-patterns)
         struct DotDotPat { T![..] }
+
+        /// Path pattern.
+        /// Doesn't include the underscore pattern (it is a special case, namely `PlaceholderPat`).
+        ///
+        /// ```
+        /// let ❰ foo::bar::Baz ❱ { .. } = bruh;
+        /// if let ❰ CONST ❱ = 42 {}
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#path-patterns)
         struct PathPat { Path }
+
+        /// Slice pattern.
+        ///
+        /// ```
+        /// let ❰ [foo, bar, baz] ❱ = [1, 2, 3];
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#slice-patterns)
         struct SlicePat { T!['['], args: [Pat], T![']'] }
-        struct RangePat { /*RangeSeparator*/ }
+
+        /// Range pattern.
+        ///
+        /// ```
+        /// match foo {
+        ///     ❰ 0..42 ❱ => {}
+        ///     ❰ 0..=42 ❱ => {}
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#range-patterns)
+        struct RangePat { /*RangeSeparator*/ } // TODO: where is RangeSeparator?
+
+        /// Literal pattern.
+        /// Includes only bool, number, char, and string literals.
+        ///
+        /// ```
+        /// match foo {
+        ///     Number(❰ 42 ❱) => {}
+        ///     String(❰ "42" ❱) => {}
+        ///     Bool(❰ true ❱) => {}
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#literal-patterns)
         struct LiteralPat { Literal }
+
+        /// Macro invocation in pattern position.
+        ///
+        /// ```
+        /// let ❰ foo!(my custom syntax) ❱ = baz;
+        ///
+        /// ```
+        /// [Reference](https://doc.rust-lang.org/reference/macros.html#macro-invocation)
         struct MacroPat { MacroCall }
 
+        /// Record literal pattern.
+        ///
+        /// ```
+        /// let ❰ foo::Bar { baz, .. } ❱ = bruh;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#struct-patterns)
         struct RecordPat { RecordFieldPatList, Path }
+
+        /// Record literal's field patterns list including enclosing curly braces.
+        ///
+        /// ```
+        /// let foo::Bar ❰ { baz, bind @ bruh, .. } ❱ = bruuh;
+        /// ``
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#struct-patterns)
         struct RecordFieldPatList {
             T!['{'],
             pats: [RecordInnerPat],
@@ -512,20 +1478,131 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![..],
             T!['}']
         }
+
+        /// Record literal's field pattern.
+        /// Note: record literal can also match tuple structs.
+        ///
+        /// ```
+        /// let Foo { ❰ bar: _ ❱ } = baz;
+        /// let TupleStruct { ❰ 0: _ ❱ } = bruh;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#struct-patterns)
         struct RecordFieldPat: AttrsOwner { NameRef, T![:], Pat }
 
+        /// Tuple struct literal pattern.
+        ///
+        /// ```
+        /// let ❰ foo::Bar(baz, bruh) ❱ = bruuh;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#tuple-struct-patterns)
         struct TupleStructPat { Path, T!['('], args: [Pat], T![')'] }
+
+        /// Tuple pattern.
+        /// Note: this doesn't include tuple structs (see `TupleStructPat`)
+        ///
+        /// ```
+        /// let ❰ (foo, bar, .., baz) ❱ = bruh;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/patterns.html#tuple-patterns)
         struct TuplePat { T!['('], args: [Pat], T![')'] }
 
+        /// Visibility.
+        ///
+        /// ```
+        /// ❰ pub mod ❱ foo;
+        /// ❰ pub(crate) ❱ struct Bar;
+        /// ❰ pub(self) ❱ enum Baz {}
+        /// ❰ pub(super) ❱ fn bruh() {}
+        /// ❰ pub(in bruuh::bruuuh) ❱ type T = u64;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/visibility-and-privacy.html)
         struct Visibility { T![pub], T![super], T![self], T![crate] }
-        struct Name { T![ident] }
-        struct NameRef { /*NameRefToken*/ }
 
-        struct MacroCall: NameOwner, AttrsOwner,DocCommentsOwner {
-            Path, T![!], TokenTree, T![;]
+        /// Single identifier.
+        /// // TODO: clarify the difference between Name and NameRef
+        ///
+        /// ```
+        /// let ❰ foo ❱ = bar;
+        /// struct ❰ Baz ❱;
+        /// fn ❰ bruh ❱() {}
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/identifiers.html)
+        struct Name { T![ident] }
+
+        /// Reference to a name.
+        ///
+        /// ```
+        /// let foo = ❰ bar ❱(❰ Baz(❰ bruh ❱) ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/identifiers.html)
+        struct NameRef { /*NameRefToken*/ } // TODO: where is NameRefToken?
+
+        /// Macro call.
+        /// Includes all of its attributes and doc comments.
+        ///
+        /// ```
+        /// ❰
+        ///     /// Docs
+        ///     #[attr]
+        ///     macro_rules! foo {   // macro rules is also a macro call
+        ///         ($bar: tt) => {}
+        ///     }
+        /// ❱
+        ///
+        /// ❰ foo!() ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/macros.html)
+        struct MacroCall: NameOwner, AttrsOwner, DocCommentsOwner {
+            Path, T![!], TokenTree, T![;] // TODO: what is the meaning of the semicolon here?
         }
+
+        /// Attribute.
+        ///
+        /// ```
+        /// ❰ #![inner_attr] ❱
+        ///
+        /// ❰ #[attr] ❱
+        /// ❰ #[foo = "bar"] ❱
+        /// ❰ #[baz(bruh::bruuh = "42")] ❱
+        /// struct Foo;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/attributes.html)
         struct Attr { T![#], T![!], T!['['], Path, T![=], input: AttrInput, T![']'] }
+
+        /// // TODO: clarify on this AST type @edwin0cheng
+        ///
+        /// ```
+        /// macro_call! ❰ { my syntax here } ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/macros.html)
         struct TokenTree {}
+
+        // TODO: clarify this param vs arg i.e. delcaration vs instantiation
+        // TODO: arg vs param doesn't really make a difference, the naming here is very confusing
+        // This one is not so obvious as pattern vs template (@matklad)
+        //
+        /// Generic lifetime, type and constants parameters list **declaration**.
+        ///
+        /// ```
+        /// fn foo❰ <'a, 'b, T, U, const BAR: u64> ❱() {}
+        ///
+        /// struct Baz❰ <T> ❱(T);
+        ///
+        /// impl❰ <T> ❱ Bruh<T> {}
+        ///
+        /// type Bruuh = for❰ <'a> ❱ fn(&'a str) -> &'a str;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/generics.html)
         struct TypeParamList {
             T![<],
             generic_params: [GenericParam],
@@ -534,21 +1611,144 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             const_params: [ConstParam],
             T![>]
         }
+
+        /// Single type parameter **declaration**.
+        ///
+        /// ```
+        /// fn foo<❰ K ❱, ❰ I ❱, ❰ E: Debug ❱, ❰ V = DefaultType ❱>() {}
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/generics.html)
         struct TypeParam: NameOwner, AttrsOwner, TypeBoundsOwner {
             T![=],
             default_type: TypeRef,
         }
+
+        /// Const generic parameter **declaration**.
+        /// ```
+        /// fn foo<T, U, ❰ const BAR: usize ❱, ❰ const BAZ: bool ❱>() {}
+        /// ```
+        ///
+        /// [RFC](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md#declaring-a-const-parameter)
         struct ConstParam: NameOwner, AttrsOwner, TypeAscriptionOwner {
             T![=],
             default_val: Expr,
         }
+
+        /// Lifetime parameter **declaration**.
+        ///
+        /// ```
+        /// fn foo<❰ 'a ❱, ❰ 'b ❱, V, G, D>(bar: &'a str, baz: &'b mut str) {}
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/generics.html)
         struct LifetimeParam: AttrsOwner { T![lifetime] }
-        struct TypeBound { T![lifetime], /* Question,  */ T![const], /* Question,  */ TypeRef}
+
+        // TODO: better clarify where is the colon token and what `const` pertains to.
+        // TODO: add example with `const`
+        /// Type bound declaration clause.
+        ///
+        /// ```
+        /// fn foo<T: ❰ ?Sized ❱ + ❰ Debug ❱>() {}
+        ///
+        /// trait Bar<T>
+        /// where
+        ///     T: ❰ Send ❱ + ❰ Sync ❱
+        /// {
+        ///     type Baz: ❰ !Sync ❱ + ❰ Debug ❱;
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/trait-bounds.html)
+        struct TypeBound { T![lifetime], /* Question,  */ T![const], /* Question,  */ TypeRef }
+
+        /// Type bounds list.
+        ///
+        /// ```
+        ///
+        /// fn foo<T: ❰ ?Sized + Debug ❱>() {}
+        ///
+        /// trait Bar<T>
+        /// where
+        ///     T: ❰ Send + Sync ❱
+        /// {
+        ///     type Baz: ❰ !Sync + Debug ❱;
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/trait-bounds.html)
         struct TypeBoundList { bounds: [TypeBound] }
+
+        /// Single where predicate.
+        ///
+        /// ```
+        /// trait Foo<'a, 'b, T>
+        /// where
+        ///     ❰ 'a: 'b ❱,
+        ///     ❰ T: IntoIterator ❱,
+        ///     ❰ for<'c> <T as IntoIterator>::Item: Bar<'c> ❱
+        /// {}
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/generics.html#where-clauses)
         struct WherePred: TypeBoundsOwner { T![lifetime], TypeRef }
+
+        /// Where clause.
+        ///
+        /// ```
+        /// trait Foo<'a, T> ❰ where 'a: 'static, T: Debug ❱ {}
+        ///
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/generics.html#where-clauses)
         struct WhereClause { T![where], predicates: [WherePred] }
+
+        /// Abi declaration.
+        /// Note: the abi string is optional.
+        ///
+        /// ```
+        /// ❰ extern "C" ❱ {
+        ///     fn foo() {}
+        /// }
+        ///
+        /// type Bar = ❰ extern ❱ fn() -> u32;
+        ///
+        /// type Baz = ❰ extern r#"stdcall"# ❱ fn() -> bool;
+        /// ```
+        ///
+        /// - [Extern blocks reference](https://doc.rust-lang.org/reference/items/external-blocks.html)
+        /// - [FFI function pointers reference](https://doc.rust-lang.org/reference/items/functions.html#functions)
         struct Abi { /*String*/ }
+
+        // TODO: clarify how empty statements are handled
+        /// Expression statement.
+        /// Note: may be empty (i.e. only semicolon).
+        ///
+        /// ```
+        /// ❰ 42; ❱
+        /// ❰ foo(); ❱
+        /// ❰ (); ❱
+        /// ❰ {}; ❱
+        /// ❰ /* empty */; ❱
+        ///
+        /// // constructions with trailing curly brace can omit the semicolon // TODO: clarify
+        /// ❰ if bool_cond { } ❱
+        /// ❰ loop {} ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/statements.html)
         struct ExprStmt: AttrsOwner { Expr, T![;] }
+
+        /// Let statement.
+        ///
+        /// ```
+        /// ❰ #[attr] let foo; ❱
+        /// ❰ let bar: u64; ❱
+        /// ❰ let baz = 42; ❱
+        /// ❰ let bruh: bool = true; ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/statements.html#let-statements)
         struct LetStmt: AttrsOwner, TypeAscriptionOwner {
             T![let],
             Pat,
@@ -556,42 +1756,192 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             initializer: Expr,
             T![;],
         }
+
+        /// Condition of `if` or `while` expression.
+        ///
+        /// ```
+        /// if ❰ true ❱ {}
+        /// if ❰ let Pat(foo) = bar ❱ {}
+        ///
+        /// while ❰ true ❱ {}
+        /// while ❰ let Pat(baz) = bruh ❱ {}
+        /// ```
+        ///
+        /// [If expression reference](https://doc.rust-lang.org/reference/expressions/if-expr.html)
+        /// [While expression reference](https://doc.rust-lang.org/reference/expressions/loop-expr.html#predicate-loops)
         struct Condition { T![let], Pat, T![=], Expr }
+
+        // TODO: this one is used by closure expressions too, but hey use pipes instead of parens
+        /// Parameter list **declaration**.
+        ///
+        /// ```
+        /// fn foo❰ (a: u32, b: bool) ❱ -> u32 {}
+        /// let bar = ❰ |a, b| ❱ {};
+        ///
+        /// impl Baz {
+        ///     fn bruh❰ (&self, a: u32) ❱ {}
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/functions.html)ocs to codegen script
         struct ParamList {
             T!['('],
             SelfParam,
             params: [Param],
             T![')']
         }
+
+        /// Self parameter **declaration**.
+        ///
+        /// ```
+        /// impl Bruh {
+        ///     fn foo(❰ self ❱) {}
+        ///     fn bar(❰ &self ❱) {}
+        ///     fn baz(❰ &mut self ❱) {}
+        ///     fn blah<'a>(❰ &'a self ❱) {}
+        ///     fn blin(❰ self: Box<Self> ❱) {}
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/functions.html)
         struct SelfParam: TypeAscriptionOwner, AttrsOwner { T![&], T![mut], T![lifetime], T![self] }
+
+        /// Parameter **declaration**.
+        ///
+        /// ```
+        /// fn foo(❰ #[attr] Pat(bar): Pat(u32) ❱, ❰ #[attr] _: bool ❱) {}
+        ///
+        /// extern "C" {
+        ///     fn bar(❰ baz: u32 ❱, ❰ ... ❱) -> u32;
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/functions.html)
         struct Param: TypeAscriptionOwner, AttrsOwner {
             Pat,
             T![...]
         }
+
+        /// Use declaration.
+        ///
+        /// ```
+        /// ❰ #[attr] pub use foo; ❱
+        /// ❰ use bar as baz; ❱
+        /// ❰ use bruh::{self, bruuh}; ❱
+        /// ❰ use { blin::blen, blah::* };
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/use-declarations.html)
         struct UseItem: AttrsOwner, VisibilityOwner {
             T![use],
             UseTree,
         }
+
+        // TODO: verify example correctness
+        /// Use tree.
+        ///
+        /// ```
+        /// pub use ❰ foo::❰ * ❱ ❱;
+        /// use ❰ bar as baz ❱;
+        /// use ❰ bruh::bruuh::{ ❰ self ❱, ❰ blin ❱ } ❱;
+        /// use ❰ { ❰ blin::blen ❱ } ❱ // TODO: clarify if top-level curlies are `UseTree`
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/use-declarations.html)
         struct UseTree {
             Path, T![*], UseTreeList, Alias
         }
+
+        /// Item alias.
+        /// Note: this is not the type alias.
+        ///
+        /// ```
+        /// use foo ❰ as bar ❱;
+        /// use baz::{bruh ❰ as _ ❱};
+        /// extern crate bruuh ❰ as blin ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/use-declarations.html)
         struct Alias: NameOwner { T![as] }
+
+        /// Sublist of use trees.
+        ///
+        /// ```
+        /// use bruh::bruuh::❰ { ❰ self ❱, ❰ blin ❱ } ❱;
+        /// use ❰ { blin::blen::❰ {} ❱ } ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/use-declarations.html)
         struct UseTreeList { T!['{'], use_trees: [UseTree], T!['}'] }
+
+        /// Extern crate item.
+        ///
+        /// ```
+        /// ❰ #[attr] pub extern crate foo; ❱
+        /// ❰ extern crate self as bar; ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/extern-crates.html)
         struct ExternCrateItem: AttrsOwner, VisibilityOwner {
             T![extern], T![crate], NameRef, Alias,
         }
+
+        /// Call site arguments list.
+        ///
+        /// ```
+        /// foo::<T, U>❰ (42, true) ❱;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/expressions/call-expr.html)
         struct ArgList {
             T!['('],
             args: [Expr],
             T![')']
         }
+
+        // TODO: correct the example
+        /// Path to a symbol. Includes single identifier names and elaborate paths with
+        /// generic parameters.
+        ///
+        /// ```
+        /// (0..10).❰ collect ❰ ::<Vec<_>> ❱ ❱();
+        /// ❰ Vec ❰ ::<u8> ❰ ::with_capacity ❱ ❱ ❱(1024);
+        /// ❰ <Foo as Bar> ❰ ::baz ❱ ❱();
+        /// ❰ <bruh> ❰ ::bruuh ❱ ❱();
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/paths.html)
         struct Path {
             segment: PathSegment,
             qualifier: Path,
         }
+
+        // TODO: verify the example
+        // TODO: what RetType is doing here? is this for Fn() -> T syntax?
+        /// Segment of the path to a symbol.
+        ///
+        /// ```
+        /// (0..10).❰ collect ❱ ❰ ::<Vec<_>> ❱();
+        /// ❰ Vec >| ❰ ::<u8> ❱ ❰ ::with_capacity ❱(1024);
+        /// ❰ <Foo as Bar> ❱ ❰ ::baz ❱();
+        /// ❰ <bruh> ❱ ❰ ::bruuh ❱();
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/paths.html)
         struct PathSegment {
             T![::], T![crate], T![self], T![super], T![<], NameRef, TypeArgList, ParamList, RetType, PathType, T![>]
         }
+
+        // TODO: verify the example
+        /// List of type arguments that are passed at generic instantiation site.
+        ///
+        /// ```
+        /// use foo ❰ ::<'a, u64, Item = Bar, 42, true> ❱::bar;
+        ///
+        /// Vec❰ ::<bool> ❱::();
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)
         struct TypeArgList {
             T![::],
             T![<],
@@ -602,48 +1952,157 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             const_args: [ConstArg],
             T![>]
         }
+
+        /// Type argument that is passed at generic instantiation site.
+        ///
+        /// ```
+        /// use foo::<'a, ❰ u64 ❱, ❰ bool ❱, Item = Bar, 42>::baz;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)
         struct TypeArg { TypeRef }
+
+        // TODO: verify inline type bounds example
+        /// Associated type argument that is passed at generic instantiation site.
+        /// ```
+        /// use foo::<'a, u64, bool, ❰ Item = Bar ❱, 42>::baz;
+        ///
+        /// trait Bruh<T>: Iterator<❰ Item: Debug ❱> {}
+        /// ```
+        ///
         struct AssocTypeArg : TypeBoundsOwner { NameRef, T![=], TypeRef }
+
+        // TODO: verify?
+        /// Lifetime argument that is passed at generic instantiation site.
+        ///
+        /// ```
+        /// fn foo<'a>(s: &'a str) {
+        ///     bar::<❰ 'a ❱>(s);
+        /// }
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/paths.html#paths-in-expressions)
         struct LifetimeArg { T![lifetime] }
+
+        // TODO: does this peratain to const generics?
+        // What does equal sign do here?
+        /// Constant value argument that is passed at generic instantiation site.
+        ///
+        /// ```
+        /// foo::<❰ u32 ❱, ❰ true ❱ >();
+        ///
+        /// bar::<❰ { 2 + 2} ❱>();
+        /// ```
+        ///
+        /// [RFC](https://github.com/rust-lang/rfcs/blob/master/text/2000-const-generics.md#declaring-a-const-parameter)
         struct ConstArg { Literal, T![=], BlockExpr }
 
-        struct MacroItems: ModuleItemOwner{ }
+        // TODO: Idk what I am writing here, please don't believe these words.
+        // TODO: clarify @matklad @edwin0cheng
+        /// Macro items is a node that holds all the items created by expanding a macro.
+        ///
+        /// ```
+        /// foo!(); // expands into some items -v
+        ///         // ❰ struct Foo; impl Bar for Foo; ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/macros.html)
+        struct MacroItems: ModuleItemOwner { }
 
+        // TODO: Idk what I am writing here, please don't believe these words.
+        // TODO: clarify @matklad @edwin0cheng
+        /// Macro statements is a node that holds an statements created by expanding a macro.
+        ///
+        /// ```
+        /// foo!(); // expands into some statements -v
+        ///         // ❰ foo_crate::bar(); ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/macros.html)
         struct MacroStmts {
             statements: [Stmt],
             Expr,
         }
 
+        /// List of items in an extern block.
+        ///
+        /// ```
+        /// extern "C" ❰
+        ///     {
+        ///         fn foo();
+        ///         static var: u32;
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/external-blocks.html)
         struct ExternItemList: ModuleItemOwner {
             T!['{'],
             extern_items: [ExternItem],
             T!['}']
         }
 
+        /// Extern block.
+        ///
+        /// ```
+        /// ❰
+        ///     extern "C" {
+        ///         fn foo();
+        ///     }
+        /// ❱
+        ///
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/items/external-blocks.html)
         struct ExternBlock {
             Abi,
             ExternItemList
         }
 
+        /// Meta item in an attribute.
+        ///
+        /// ```
+        /// #[❰ bar::baz = "42" ❱]
+        /// #[❰ bruh(bruuh("true")) ❱]
+        /// struct Foo;
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/attributes.html?highlight=meta,item#meta-item-attribute-syntax)
         struct MetaItem {
             Path, T![=], AttrInput, nested_meta_items: [MetaItem]
         }
 
+        // TODO: is this a special case of `MacroCall` where `Name` = `macro_rules`?
+        // It doesn't seem this ast node is used anywhere
+        /// Macro definition.
+        ///
+        /// ```
+        /// ❰
+        ///     macro_rules! foo {
+        ///         ($bar:tt) => {$bar}
+        ///     }
+        /// ❱
+        /// ```
+        ///
+        /// [Reference](https://doc.rust-lang.org/reference/macros-by-example.html)
         struct MacroDef {
             Name, TokenTree
         }
     },
     enums: &ast_enums! {
+        /// Any kind of nominal type definition.
         enum NominalDef: NameOwner, TypeParamsOwner, AttrsOwner {
             StructDef, EnumDef, UnionDef,
         }
 
+        /// Any kind of **declared** generic parameter
         enum GenericParam {
             LifetimeParam,
             TypeParam,
             ConstParam
         }
 
+        /// Any kind of generic argument passed at instantiation site
         enum GenericArg {
             LifetimeArg,
             TypeArg,
@@ -651,6 +2110,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             AssocTypeArg
         }
 
+        /// Any kind of construct valid in type context
         enum TypeRef {
             ParenType,
             TupleType,
@@ -667,6 +2127,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             DynTraitType,
         }
 
+        /// Any kind of top-level item that may appear in a module
         enum ModuleItem: NameOwner, AttrsOwner, VisibilityOwner {
             StructDef,
             UnionDef,
@@ -684,16 +2145,25 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             ExternBlock
         }
 
-        /* impl blocks can also contain MacroCall */
+
+
+        /// Any kind of item that may appear in an impl block
+        ///
+        /// // TODO: is the following a fixme?
+        /// impl blocks can also contain MacroCall
         enum AssocItem: NameOwner, AttrsOwner {
             FnDef, TypeAliasDef, ConstDef
         }
 
-        /* extern blocks can also contain MacroCall */
+        /// Any kind of item that may appear in an extern block
+        ///
+        /// // TODO: is the following a fixme?
+        /// extern blocks can also contain MacroCall
         enum ExternItem: NameOwner, AttrsOwner, VisibilityOwner {
             FnDef, StaticDef
         }
 
+        /// Any kind of expression
         enum Expr: AttrsOwner {
             TupleExpr,
             ArrayExpr,
@@ -728,6 +2198,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             BoxExpr,
         }
 
+        /// Any kind of pattern
         enum Pat {
             OrPat,
             ParenPat,
@@ -746,18 +2217,24 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             MacroPat,
         }
 
+        /// Any kind of pattern that appears directly inside of the curly
+        /// braces of a record pattern
         enum RecordInnerPat {
             RecordFieldPat,
             BindPat
         }
 
+        /// Any kind of input to an attribute
         enum AttrInput { Literal, TokenTree }
+
+        /// Any kind of statement
         enum Stmt {
             LetStmt,
             ExprStmt,
-            // macro calls are parsed as expression statements */
+            // macro calls are parsed as expression statements
         }
 
+        /// Any kind of fields list (record or tuple field lists)
         enum FieldDefList {
             RecordFieldDefList,
             TupleFieldDefList,
