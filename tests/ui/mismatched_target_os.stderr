@@ -1,0 +1,83 @@
+error: `linux` is not a valid target family
+  --> $DIR/mismatched_target_os.rs:6:7
+   |
+LL | #[cfg(linux)]
+   |       ^^^^^ help: try: `target_os = "linux"`
+   |
+   = note: `-D clippy::mismatched-target-os` implied by `-D warnings`
+   = help: Did you mean `unix`?
+
+error: `freebsd` is not a valid target family
+  --> $DIR/mismatched_target_os.rs:9:7
+   |
+LL | #[cfg(freebsd)]
+   |       ^^^^^^^ help: try: `target_os = "freebsd"`
+   |
+   = help: Did you mean `unix`?
+
+error: `dragonfly` is not a valid target family
+  --> $DIR/mismatched_target_os.rs:12:7
+   |
+LL | #[cfg(dragonfly)]
+   |       ^^^^^^^^^ help: try: `target_os = "dragonfly"`
+   |
+   = help: Did you mean `unix`?
+
+error: `openbsd` is not a valid target family
+  --> $DIR/mismatched_target_os.rs:15:7
+   |
+LL | #[cfg(openbsd)]
+   |       ^^^^^^^ help: try: `target_os = "openbsd"`
+   |
+   = help: Did you mean `unix`?
+
+error: `netbsd` is not a valid target family
+  --> $DIR/mismatched_target_os.rs:18:7
+   |
+LL | #[cfg(netbsd)]
+   |       ^^^^^^ help: try: `target_os = "netbsd"`
+   |
+   = help: Did you mean `unix`?
+
+error: `macos` is not a valid target family
+  --> $DIR/mismatched_target_os.rs:21:7
+   |
+LL | #[cfg(macos)]
+   |       ^^^^^ help: try: `target_os = "macos"`
+   |
+   = help: Did you mean `unix`?
+
+error: `ios` is not a valid target family
+  --> $DIR/mismatched_target_os.rs:24:7
+   |
+LL | #[cfg(ios)]
+   |       ^^^ help: try: `target_os = "ios"`
+   |
+   = help: Did you mean `unix`?
+
+error: `android` is not a valid target family
+  --> $DIR/mismatched_target_os.rs:27:7
+   |
+LL | #[cfg(android)]
+   |       ^^^^^^^ help: try: `target_os = "android"`
+   |
+   = help: Did you mean `unix`?
+
+error: `linux` is not a valid target family
+  --> $DIR/mismatched_target_os.rs:30:28
+   |
+LL | #[cfg(all(not(any(windows, linux)), freebsd))]
+   |                            ^^^^^ help: try: `target_os = "linux"`
+   |
+   = help: Did you mean `unix`?
+
+error: `freebsd` is not a valid target family
+  --> $DIR/mismatched_target_os.rs:30:37
+   |
+LL | #[cfg(all(not(any(windows, linux)), freebsd))]
+   |                                     ^^^^^^^ help: try: `target_os = "freebsd"`
+   |
+   = help: Did you mean `unix`?
+
+error: aborting due to 10 previous errors
+

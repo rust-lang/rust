@@ -1229,6 +1229,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "minmax",
     },
     Lint {
+        name: "mismatched_target_os",
+        group: "correctness",
+        desc: "usage of `cfg(operating_system)` instead of `cfg(target_os = \"operating_system\")`",
+        deprecation: None,
+        module: "attrs",
+    },
+    Lint {
         name: "misrefactored_assign_op",
         group: "complexity",
         desc: "having a variable on both sides of an assign op",

@@ -1,0 +1,41 @@
+// run-rustfix
+
+#![warn(clippy::mismatched_target_os)]
+#![allow(unused)]
+
+#[cfg(target_os = "linux")]
+fn linux() {}
+
+#[cfg(target_os = "freebsd")]
+fn freebsd() {}
+
+#[cfg(target_os = "dragonfly")]
+fn dragonfly() {}
+
+#[cfg(target_os = "openbsd")]
+fn openbsd() {}
+
+#[cfg(target_os = "netbsd")]
+fn netbsd() {}
+
+#[cfg(target_os = "macos")]
+fn macos() {}
+
+#[cfg(target_os = "ios")]
+fn ios() {}
+
+#[cfg(target_os = "android")]
+fn android() {}
+
+#[cfg(all(not(any(windows, target_os = "linux")), target_os = "freebsd"))]
+fn list() {}
+
+// windows is a valid target family, should be ignored
+#[cfg(windows)]
+fn windows() {}
+
+// correct use, should be ignored
+#[cfg(target_os = "freebsd")]
+fn freebsd() {}
+
+fn main() {}
