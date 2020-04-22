@@ -24,6 +24,9 @@ name: CI
   pull_request:
     branches:
       - "**"
+defaults:
+  run:
+    shell: "python src/ci/exec-with-shell.py {0}"
 jobs:
   pr:
     name: PR
@@ -68,79 +71,60 @@ jobs:
         run: src/ci/scripts/setup-environment.sh
         env:
           EXTRA_VARIABLES: "${{ toJson(matrix.env) }}"
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install awscli
         run: src/ci/scripts/install-awscli.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install InnoSetup
         run: src/ci/scripts/install-innosetup.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: ensure the build happens on a partition with enough space
         run: src/ci/scripts/symlink-build-dir.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install MSYS2 packages
         run: src/ci/scripts/install-msys2-packages.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: enable ipv6 on Docker
         run: src/ci/scripts/enable-docker-ipv6.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh
@@ -148,7 +132,6 @@ jobs:
           AWS_ACCESS_KEY_ID: "${{ env.CACHES_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
@@ -156,7 +139,6 @@ jobs:
           AWS_ACCESS_KEY_ID: "${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
         if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
-        shell: "python src/ci/exec-with-shell.py {0}"
   try:
     name: try
     env:
@@ -201,79 +183,60 @@ jobs:
         run: src/ci/scripts/setup-environment.sh
         env:
           EXTRA_VARIABLES: "${{ toJson(matrix.env) }}"
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install awscli
         run: src/ci/scripts/install-awscli.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install InnoSetup
         run: src/ci/scripts/install-innosetup.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: ensure the build happens on a partition with enough space
         run: src/ci/scripts/symlink-build-dir.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install MSYS2 packages
         run: src/ci/scripts/install-msys2-packages.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: enable ipv6 on Docker
         run: src/ci/scripts/enable-docker-ipv6.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh
@@ -281,7 +244,6 @@ jobs:
           AWS_ACCESS_KEY_ID: "${{ env.CACHES_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
@@ -289,7 +251,6 @@ jobs:
           AWS_ACCESS_KEY_ID: "${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
         if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
-        shell: "python src/ci/exec-with-shell.py {0}"
   auto:
     name: auto
     env:
@@ -631,79 +592,60 @@ jobs:
         run: src/ci/scripts/setup-environment.sh
         env:
           EXTRA_VARIABLES: "${{ toJson(matrix.env) }}"
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install awscli
         run: src/ci/scripts/install-awscli.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install InnoSetup
         run: src/ci/scripts/install-innosetup.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: ensure the build happens on a partition with enough space
         run: src/ci/scripts/symlink-build-dir.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install MSYS2 packages
         run: src/ci/scripts/install-msys2-packages.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: enable ipv6 on Docker
         run: src/ci/scripts/enable-docker-ipv6.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh
@@ -711,7 +653,6 @@ jobs:
           AWS_ACCESS_KEY_ID: "${{ env.CACHES_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}"
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
@@ -719,7 +660,6 @@ jobs:
           AWS_ACCESS_KEY_ID: "${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}"
         if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
-        shell: "python src/ci/exec-with-shell.py {0}"
   master:
     name: master
     runs-on: ubuntu-latest
@@ -741,7 +681,6 @@ jobs:
         run: src/ci/publish_toolstate.sh
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
-        shell: "python src/ci/exec-with-shell.py {0}"
         if: success() && !env.SKIP_JOB
   try-success:
     needs:
