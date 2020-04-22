@@ -152,7 +152,7 @@ impl WorldState {
                 Ok(it) => it,
                 Err(err) => {
                     log::error!(
-                        "Fail to run ra_proc_macro_srv from path {}, error: {:?}",
+                        "Failed to run ra_proc_macro_srv from path {}, error: {:?}",
                         path,
                         err
                     );
