@@ -298,14 +298,14 @@ pub struct ResolvedOpaqueTy<'tcx> {
 ///
 /// ```ignore (pseudo-Rust)
 /// async move {
-///     let x: T = ...;
+///     let x: T = expr;
 ///     foo.await
 ///     ...
 /// }
 /// ```
 ///
-/// Here, we would store the type `T`, the span of the value `x`, and the "scope-span" for
-/// the scope that contains `x`.
+/// Here, we would store the type `T`, the span of the value `x`, the "scope-span" for
+/// the scope that contains `x`, the expr `T` evaluated from, and the span of `foo.await`.
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, PartialEq, HashStable)]
 pub struct GeneratorInteriorTypeCause<'tcx> {
     /// Type of the captured binding.
@@ -314,6 +314,8 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
     pub span: Span,
     /// Span of the scope of the captured binding.
     pub scope_span: Option<Span>,
+    /// Span of `.await` or `yield` expression.
+    pub yield_span: Span,
     /// Expr which the type evaluated from.
     pub expr: Option<hir::HirId>,
 }
