@@ -278,6 +278,7 @@ use crate::vec::Vec;
 /// [`Deref`]: ../../std/ops/trait.Deref.html
 /// [`as_str()`]: struct.String.html#method.as_str
 #[derive(PartialOrd, Eq, Ord)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "string_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct String {
     vec: Vec<u8>,
