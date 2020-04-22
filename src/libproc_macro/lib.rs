@@ -58,7 +58,7 @@ use std::{error, fmt, iter, mem};
 /// non-panicking way to detect whether the infrastructure required to use the
 /// API of proc_macro is presently available. Returns true if invoked from
 /// inside of a procedural macro, false if invoked from any other binary.
-#[unstable(feature = "proc_macro_is_available", issue = "none")] // FIXME
+#[unstable(feature = "proc_macro_is_available", issue = "71436")]
 pub fn is_available() -> bool {
     bridge::Bridge::is_available()
 }
