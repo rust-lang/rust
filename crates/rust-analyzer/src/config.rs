@@ -118,7 +118,7 @@ impl Config {
         self.client_caps = client_caps;
 
         set(value, "/withSysroot", &mut self.with_sysroot);
-        set(value, "/featureFlags/lsp.diagnostics", &mut self.publish_diagnostics);
+        set(value, "/diagnostics/enable", &mut self.publish_diagnostics);
         set(value, "/lruCapacity", &mut self.lru_capacity);
         self.files.watcher = match get(value, "/files/watcher") {
             Some("client") => FilesWatcher::Client,
