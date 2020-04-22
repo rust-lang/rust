@@ -333,7 +333,7 @@ where
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
         let place = self.ref_to_mplace(val)?;
-        self.mplace_access_checked(place)
+        self.mplace_access_checked(place, None)
     }
 
     /// Check if the given place is good for memory access with the given
@@ -358,15 +358,20 @@ where
 
     /// Return the "access-checked" version of this `MPlace`, where for non-ZST
     /// this is definitely a `Pointer`.
+    ///
+    /// `force_align` must only be used when correct alignment does not matter,
+    /// like in Stacked Borrows.
     pub fn mplace_access_checked(
         &self,
         mut place: MPlaceTy<'tcx, M::PointerTag>,
+        force_align: Option<Align>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let (size, align) = self
             .size_and_align_of_mplace(place)?
             .unwrap_or((place.layout.size, place.layout.align.abi));
         assert!(place.mplace.align <= align, "dynamic alignment less strict than static one?");
-        place.mplace.align = align; // maximally strict checking
+        // Check (stricter) dynamic alignment, unless forced otherwise.
+        place.mplace.align = force_align.unwrap_or(align);
         // When dereferencing a pointer, it must be non-NULL, aligned, and live.
         if let Some(ptr) = self.check_mplace_access(place, Some(size))? {
             place.mplace.ptr = ptr.into();

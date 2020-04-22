@@ -276,7 +276,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
                     };
-                    self.visit_place_base(&place.local, ctx, location);
+                    self.visit_local(&place.local, ctx, location);
                     self.visit_projection(place.local, reborrowed_proj, ctx, location);
                     return;
                 }
@@ -289,7 +289,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                         }
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
-                    self.visit_place_base(&place.local, ctx, location);
+                    self.visit_local(&place.local, ctx, location);
                     self.visit_projection(place.local, reborrowed_proj, ctx, location);
                     return;
                 }
@@ -386,14 +386,13 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         }
     }
 
-    fn visit_place_base(&mut self, place_local: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, place_local: &Local, context: PlaceContext, location: Location) {
         trace!(
-            "visit_place_base: place_local={:?} context={:?} location={:?}",
+            "visit_local: place_local={:?} context={:?} location={:?}",
             place_local,
             context,
             location,
         );
-        self.super_place_base(place_local, context, location);
     }
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
@@ -478,14 +477,24 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             StatementKind::Assign(..) | StatementKind::SetDiscriminant { .. } => {
                 self.super_statement(statement, location);
             }
-            StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
+
+            StatementKind::FakeRead(
+                FakeReadCause::ForMatchedPlace
+                | FakeReadCause::ForMatchGuard
+                | FakeReadCause::ForGuardBinding,
+                _,
+            ) => {
+                self.super_statement(statement, location);
                 self.check_op(ops::IfOrMatch);
             }
-            // FIXME(eddyb) should these really do nothing?
-            StatementKind::FakeRead(..)
+            StatementKind::LlvmInlineAsm { .. } => {
+                self.super_statement(statement, location);
+                self.check_op(ops::InlineAsm);
+            }
+
+            StatementKind::FakeRead(FakeReadCause::ForLet | FakeReadCause::ForIndex, _)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::LlvmInlineAsm { .. }
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Nop => {}
@@ -572,7 +581,19 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
-            _ => {}
+            // FIXME: Some of these are only caught by `min_const_fn`, but should error here
+            // instead.
+            TerminatorKind::Abort
+            | TerminatorKind::Assert { .. }
+            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseUnwind { .. }
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::Goto { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Return
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Yield { .. } => {}
         }
     }
 }
