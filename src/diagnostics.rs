@@ -114,11 +114,14 @@ pub fn report_error<'tcx, 'mir>(
     };
 
     e.print_backtrace();
+    let msg = e.to_string();
+    let result = report_msg(ecx, &format!("{}: {}", title, msg), msg, helps, true);
+
     if let UndefinedBehavior(UndefinedBehaviorInfo::InvalidUndefBytes(Some(ptr))) = e.kind {
         ecx.memory.dump_alloc(ptr.alloc_id);
     }
-    let msg = e.to_string();
-    report_msg(ecx, &format!("{}: {}", title, msg), msg, helps, true)
+
+    result
 }
 
 /// Report an error or note (depending on the `error` argument) at the current frame's current statement.
