@@ -1,5 +1,5 @@
 #![feature(const_generics, const_compare_raw_pointers)]
-//~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
+//~^ WARN the feature `const_generics` is incomplete
 
 struct Const<const P: *const u32>;
 
