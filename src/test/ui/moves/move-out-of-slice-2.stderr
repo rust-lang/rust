@@ -1,51 +1,60 @@
+warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/move-out-of-slice-2.rs:1:12
+   |
+LL | #![feature(unsized_locals)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
+
 error[E0508]: cannot move out of type `[A]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:9:11
+  --> $DIR/move-out-of-slice-2.rs:10:11
    |
 LL |     match *a {
    |           ^^ cannot move out of here
 LL |
-LL |         [a @ ..] => {},
+LL |         [a @ ..] => {}
    |          ------
    |          |
    |          data moved here
    |          move occurs because `a` has type `[A]`, which does not implement the `Copy` trait
 
 error[E0508]: cannot move out of type `[A]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:15:11
+  --> $DIR/move-out-of-slice-2.rs:16:11
    |
 LL |     match *b {
    |           ^^ cannot move out of here
 LL |
-LL |         [_, _, b @ .., _] => {},
+LL |         [_, _, b @ .., _] => {}
    |                ------
    |                |
    |                data moved here
    |                move occurs because `b` has type `[A]`, which does not implement the `Copy` trait
 
 error[E0508]: cannot move out of type `[C]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:23:11
+  --> $DIR/move-out-of-slice-2.rs:24:11
    |
 LL |     match *c {
    |           ^^ cannot move out of here
 LL |
-LL |         [c @ ..] => {},
+LL |         [c @ ..] => {}
    |          ------
    |          |
    |          data moved here
    |          move occurs because `c` has type `[C]`, which does not implement the `Copy` trait
 
 error[E0508]: cannot move out of type `[C]`, a non-copy slice
-  --> $DIR/move-out-of-slice-2.rs:29:11
+  --> $DIR/move-out-of-slice-2.rs:30:11
    |
 LL |     match *d {
    |           ^^ cannot move out of here
 LL |
-LL |         [_, _, d @ .., _] => {},
+LL |         [_, _, d @ .., _] => {}
    |                ------
    |                |
    |                data moved here
    |                move occurs because `d` has type `[C]`, which does not implement the `Copy` trait
 
-error: aborting due to 4 previous errors
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0508`.

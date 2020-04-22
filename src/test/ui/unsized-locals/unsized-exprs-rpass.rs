@@ -1,5 +1,5 @@
 // run-pass
-#![allow(unused_braces, unused_parens)]
+#![allow(incomplete_features, unused_braces, unused_parens)]
 #![feature(unsized_tuple_coercion, unsized_locals, unsized_fn_params)]
 
 struct A<X: ?Sized>(X);

@@ -1,11 +1,20 @@
-error: the `foo` method cannot be invoked on a trait object
-  --> $DIR/by-value-trait-object-safety.rs:18:7
+warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/by-value-trait-object-safety.rs:1:12
    |
-LL |     fn foo(self) -> String where Self: Sized;
-   |                                        ----- this has a `Sized` requirement
+LL | #![feature(unsized_locals)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
+
+error: the `foo` method cannot be invoked on a trait object
+  --> $DIR/by-value-trait-object-safety.rs:20:7
+   |
+LL |         Self: Sized;
+   |               ----- this has a `Sized` requirement
 ...
 LL |     x.foo();
    |       ^^^
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 

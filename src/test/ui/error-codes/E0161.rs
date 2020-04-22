@@ -9,13 +9,13 @@
 //[zflagsul]compile-flags: -Z borrowck=migrate
 //[editionul]edition:2018
 
+#![allow(incomplete_features)]
 #![cfg_attr(nll, feature(nll))]
 #![cfg_attr(nllul, feature(nll))]
 #![cfg_attr(migrateul, feature(unsized_locals))]
 #![cfg_attr(zflagsul, feature(unsized_locals))]
 #![cfg_attr(nllul, feature(unsized_locals))]
 #![cfg_attr(editionul, feature(unsized_locals))]
-
 #![feature(box_syntax)]
 
 fn foo(x: Box<[i32]>) {
