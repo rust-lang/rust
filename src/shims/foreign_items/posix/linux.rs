@@ -34,6 +34,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.linux_readdir64_r(args[0], args[1], args[2])?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "ftruncate64" => {
+                let result = this.ftruncate64(args[0], args[1])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
             // Linux-only
             "posix_fadvise" => {
                 let _fd = this.read_scalar(args[0])?.to_i32()?;

@@ -1062,6 +1062,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.handle_not_found()
         }
     }
+
+    fn ftruncate64(
+        &mut self, fd_op: OpTy<'tcx, Tag>,
+        length_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("ftruncate64")?;
+
+        let fd = this.read_scalar(fd_op)?.to_i32()?;
+        let length = this.read_scalar(length_op)?.to_i64()?;
+        if let Some(FileHandle { file, writable }) = this.machine.file_handler.handles.get_mut(&fd) {
+            if *writable {
+                if let Ok(length) = length.try_into() {
+                    let result = file.set_len(length);
+                    this.try_unwrap_io_result(result.map(|_| 0i32))
+                } else {
+                    let einval = this.eval_libc("EINVAL")?;
+                    this.set_last_error(einval)?;
+                    Ok(-1)
+                }
+            } else {
+                let einval = this.eval_libc("EINVAL")?;
+                this.set_last_error(einval)?;
+                Ok(-1)
+            }
+        } else {
+            this.handle_not_found()
+        }
+    }
 }
 
 /// Extracts the number of seconds and nanoseconds elapsed between `time` and the unix epoch when

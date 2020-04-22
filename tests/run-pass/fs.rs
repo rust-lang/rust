@@ -13,6 +13,7 @@ fn main() {
     test_file_create_new();
     test_seek();
     test_metadata();
+    test_file_set_len();
     test_symlink();
     test_errors();
     test_rename();
@@ -152,6 +153,32 @@ fn test_metadata() {
     check_metadata(bytes, Path::new(path.file_name().unwrap())).unwrap();
 
     // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_file_set_len() {
+    let bytes = b"Hello, World!\n";
+    let path = prepare_with_content("miri_test_fs_set_len.txt", bytes);
+
+    // Test extending the file
+    let mut file = OpenOptions::new().read(true).write(true).open(&path).unwrap();
+    let bytes_extended = b"Hello, World!\n\x00\x00\x00\x00\x00\x00";
+    file.set_len(20).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(bytes_extended, contents.as_slice());
+
+    // Test truncating the file
+    file.seek(SeekFrom::Start(0)).unwrap();
+    file.set_len(10).unwrap();
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents).unwrap();
+    assert_eq!(&bytes[..10], contents.as_slice());
+
+    // Can't use set_len on a file not opened for writing
+    let file = OpenOptions::new().read(true).open(&path).unwrap();
+    assert_eq!(ErrorKind::InvalidInput, file.set_len(14).unwrap_err().kind());
+
     remove_file(&path).unwrap();
 }
 
