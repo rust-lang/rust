@@ -27,7 +27,7 @@
 // differentiate these targets from our other `arm(v7)-*-*-gnueabi(hf)` targets in the context of
 // build scripts / gcc flags.
 
-use crate::spec::{PanicStrategy, TargetOptions};
+use crate::spec::{PanicStrategy, RelocModel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     // See rust-lang/rfcs#1645 for a discussion about these defaults
@@ -40,7 +40,7 @@ pub fn opts() -> TargetOptions {
         panic_strategy: PanicStrategy::Abort,
         // Similarly, one almost always never wants to use relocatable code because of the extra
         // costs it involves.
-        relocation_model: "static".to_string(),
+        relocation_model: RelocModel::Static,
         abi_blacklist: super::arm_base::abi_blacklist(),
         // When this section is added a volatile load to its start address is also generated. This
         // volatile load is a footgun as it can end up loading an invalid memory address, depending

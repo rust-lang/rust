@@ -7,7 +7,7 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::consts;
-use crate::context::{get_reloc_model, is_pie_binary};
+use crate::context::is_pie_binary;
 use crate::llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -25,6 +25,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, Sanitizer, SwitchWithOptPath};
 use rustc_session::Session;
+use rustc_target::spec::RelocModel;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
 use std::ffi::CString;
@@ -34,16 +35,6 @@ use std::path::{Path, PathBuf};
 use std::slice;
 use std::str;
 use std::sync::Arc;
-
-pub const RELOC_MODEL_ARGS: [(&str, llvm::RelocMode); 7] = [
-    ("pic", llvm::RelocMode::PIC),
-    ("static", llvm::RelocMode::Static),
-    ("default", llvm::RelocMode::Default),
-    ("dynamic-no-pic", llvm::RelocMode::DynamicNoPic),
-    ("ropi", llvm::RelocMode::ROPI),
-    ("rwpi", llvm::RelocMode::RWPI),
-    ("ropi-rwpi", llvm::RelocMode::ROPI_RWPI),
-];
 
 pub const CODE_GEN_MODEL_ARGS: &[(&str, llvm::CodeModel)] = &[
     ("small", llvm::CodeModel::Small),
@@ -126,6 +117,17 @@ fn to_pass_builder_opt_level(cfg: config::OptLevel) -> llvm::PassBuilderOptLevel
     }
 }
 
+fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocMode {
+    match relocation_model {
+        RelocModel::Static => llvm::RelocMode::Static,
+        RelocModel::Pic => llvm::RelocMode::PIC,
+        RelocModel::DynamicNoPic => llvm::RelocMode::DynamicNoPic,
+        RelocModel::Ropi => llvm::RelocMode::ROPI,
+        RelocModel::Rwpi => llvm::RelocMode::RWPI,
+        RelocModel::RopiRwpi => llvm::RelocMode::ROPI_RWPI,
+    }
+}
+
 // If find_features is true this won't access `sess.crate_types` by assuming
 // that `is_pie_binary` is false. When we discover LLVM target features
 // `sess.crate_types` is uninitialized so we cannot access it.
@@ -134,7 +136,7 @@ pub fn target_machine_factory(
     optlvl: config::OptLevel,
     find_features: bool,
 ) -> Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync> {
-    let reloc_model = get_reloc_model(sess);
+    let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
     let use_softfp = sess.opts.cg.soft_float;

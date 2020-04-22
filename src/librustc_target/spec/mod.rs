@@ -265,6 +265,46 @@ impl ToJson for MergeFunctions {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum RelocModel {
+    Static,
+    Pic,
+    DynamicNoPic,
+    Ropi,
+    Rwpi,
+    RopiRwpi,
+}
+
+impl FromStr for RelocModel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<RelocModel, ()> {
+        Ok(match s {
+            "static" => RelocModel::Static,
+            "pic" => RelocModel::Pic,
+            "dynamic-no-pic" => RelocModel::DynamicNoPic,
+            "ropi" => RelocModel::Ropi,
+            "rwpi" => RelocModel::Rwpi,
+            "ropi-rwpi" => RelocModel::RopiRwpi,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl ToJson for RelocModel {
+    fn to_json(&self) -> Json {
+        match *self {
+            RelocModel::Static => "static",
+            RelocModel::Pic => "pic",
+            RelocModel::DynamicNoPic => "dynamic-no-pic",
+            RelocModel::Ropi => "ropi",
+            RelocModel::Rwpi => "rwpi",
+            RelocModel::RopiRwpi => "ropi-rwpi",
+        }
+        .to_json()
+    }
+}
+
 pub enum LoadTargetError {
     BuiltinTargetNotFound(String),
     Other(String),
@@ -614,8 +654,8 @@ pub struct TargetOptions {
     /// libraries. Defaults to false.
     pub executables: bool,
     /// Relocation model to use in object file. Corresponds to `llc
-    /// -relocation-model=$relocation_model`. Defaults to "pic".
-    pub relocation_model: String,
+    /// -relocation-model=$relocation_model`. Defaults to `Pic`.
+    pub relocation_model: RelocModel,
     /// Code model to use. Corresponds to `llc -code-model=$code_model`.
     pub code_model: Option<String>,
     /// TLS model to use. Options are "global-dynamic" (default), "local-dynamic", "initial-exec"
@@ -821,7 +861,7 @@ impl Default for TargetOptions {
             dynamic_linking: false,
             only_cdylib: false,
             executables: false,
-            relocation_model: "pic".to_string(),
+            relocation_model: RelocModel::Pic,
             code_model: None,
             tls_model: "global-dynamic".to_string(),
             disable_redzone: false,
@@ -1008,6 +1048,18 @@ impl Target {
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, RelocModel) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match s.parse::<RelocModel>() {
+                        Ok(relocation_model) => base.options.$key_name = relocation_model,
+                        _ => return Some(Err(format!("'{}' is not a valid relocation model. \
+                                                      Run `rustc --print relocation-models` to \
+                                                      see the list of supported values.", s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, PanicStrategy) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1146,7 +1198,7 @@ impl Target {
         key!(dynamic_linking, bool);
         key!(only_cdylib, bool);
         key!(executables, bool);
-        key!(relocation_model);
+        key!(relocation_model, RelocModel)?;
         key!(code_model, optional);
         key!(tls_model);
         key!(disable_redzone, bool);

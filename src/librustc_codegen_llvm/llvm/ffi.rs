@@ -446,7 +446,6 @@ pub struct SanitizerOptions {
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum RelocMode {
-    Default,
     Static,
     PIC,
     DynamicNoPic,

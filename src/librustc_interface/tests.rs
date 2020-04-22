@@ -14,7 +14,7 @@ use rustc_session::{build_session, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::SourceFileHashAlgorithm;
-use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
+use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelocModel, RelroLevel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::PathBuf;
@@ -430,7 +430,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(prefer_dynamic, true);
     tracked!(profile_generate, SwitchWithOptPath::Enabled(None));
     tracked!(profile_use, Some(PathBuf::from("abc")));
-    tracked!(relocation_model, Some(String::from("relocation model")));
+    tracked!(relocation_model, Some(RelocModel::Pic));
     tracked!(soft_float, true);
     tracked!(target_cpu, Some(String::from("abc")));
     tracked!(target_feature, String::from("all the features, all of them"));

@@ -347,7 +347,6 @@ static PassBuilder::OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level
 }
 
 enum class LLVMRustRelocMode {
-  Default,
   Static,
   PIC,
   DynamicNoPic,
@@ -356,10 +355,8 @@ enum class LLVMRustRelocMode {
   ROPIRWPI,
 };
 
-static Optional<Reloc::Model> fromRust(LLVMRustRelocMode RustReloc) {
+static Reloc::Model fromRust(LLVMRustRelocMode RustReloc) {
   switch (RustReloc) {
-  case LLVMRustRelocMode::Default:
-    return None;
   case LLVMRustRelocMode::Static:
     return Reloc::Static;
   case LLVMRustRelocMode::PIC:
