@@ -358,6 +358,9 @@ where
 
     /// Return the "access-checked" version of this `MPlace`, where for non-ZST
     /// this is definitely a `Pointer`.
+    ///
+    /// `force_align` must only be used when correct alignment does not matter,
+    /// like in Stacked Borrows.
     pub fn mplace_access_checked(
         &self,
         mut place: MPlaceTy<'tcx, M::PointerTag>,
