@@ -1,4 +1,4 @@
-error[E0748]: found both positive and negative implementation of trait `MyTrait` for type `u32`:
+error[E0751]: found both positive and negative implementation of trait `MyTrait` for type `u32`:
   --> $DIR/negative-specializes-positive-item.rs:11:1
    |
 LL | impl<T> MyTrait for T {
@@ -9,4 +9,4 @@ LL | impl !MyTrait for u32 {}
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0748`.
+For more information about this error, try `rustc --explain E0751`.
