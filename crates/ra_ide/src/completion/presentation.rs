@@ -311,12 +311,14 @@ pub(crate) fn compute_score(
     name: &str,
 ) -> Option<CompletionScore> {
     let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
+        tested_by!(test_struct_field_completion_in_record_lit);
         let (struct_field, _local) = ctx.sema.resolve_record_field(record_field)?;
         (
             struct_field.name(ctx.db).to_string(),
             struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
         )
     } else if let Some(active_parameter) = &ctx.active_parameter {
+        tested_by!(test_struct_field_completion_in_func_call);
         (active_parameter.name.clone(), active_parameter.ty.clone())
     } else {
         return None;
@@ -1072,6 +1074,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion_in_func_call() {
+        covers!(test_struct_field_completion_in_func_call);
         assert_debug_snapshot!(
         do_reference_completion(
                 r"
@@ -1161,6 +1164,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion_in_record_lit() {
+        covers!(test_struct_field_completion_in_func_call);
         assert_debug_snapshot!(
         do_reference_completion(
                 r"
