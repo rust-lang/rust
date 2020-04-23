@@ -36,6 +36,7 @@ macro_rules! throw_validation_failure {
     }};
 }
 
+/// Returns a validation failure for any Err value of $e.
 macro_rules! try_validation {
     ($e:expr, $what:expr, $where:expr $(, $details:expr )?) => {{
         match $e {
@@ -43,6 +44,24 @@ macro_rules! try_validation {
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
             Err(_) => throw_validation_failure!($what, $where $(, $details)?),
+        }
+    }};
+}
+/// Like try_validation, but will throw a validation error if any of the patterns in $p are
+/// matched. Other errors are passed back to the caller, unchanged. This lets you use the patterns
+/// as a kind of validation blacklist:
+///
+/// ```rust
+/// let v = try_validation_pat(some_fn(), Foo | Bar | Baz, "some failure", "some place");
+/// // Failures that match $p are thrown up as validation errors, but other errors are passed back
+/// // unchanged.
+/// ```
+macro_rules! try_validation_pat {
+    ($e:expr, $( $p:pat )|*, $what:expr, $where:expr $(, $details:expr )?) => {{
+        match $e {
+            Ok(x) => x,
+            $( Err($p) )|* if true => throw_validation_failure!($what, $where $(, $details)?),
+            Err(e) =>  Err::<!, _>(e)?,
         }
     }};
 }
@@ -474,8 +493,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // We are conservative with undef for integers, but try to
                 // actually enforce the strict rules for raw pointers (mostly because
                 // that lets us re-use `ref_to_mplace`).
-                let place = try_validation!(
+                let place = try_validation_pat!(
                     self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
+                    _,
                     "uninitialized raw pointer",
                     self.path
                 );
