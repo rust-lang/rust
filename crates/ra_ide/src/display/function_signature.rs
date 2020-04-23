@@ -36,6 +36,8 @@ pub struct FunctionSignature {
     pub parameters: Vec<String>,
     /// Parameter names of the function
     pub parameter_names: Vec<String>,
+    /// Parameter types of the function
+    pub parameter_types: Vec<String>,
     /// Optional return type
     pub ret_type: Option<String>,
     /// Where predicates
@@ -62,14 +64,20 @@ impl FunctionSignature {
             return None;
         };
 
-        let params = st
-            .fields(db)
-            .into_iter()
-            .map(|field: hir::StructField| {
-                let ty = field.signature_ty(db);
-                format!("{}", ty.display(db))
-            })
-            .collect();
+        let mut params = vec![];
+        let mut parameter_types = vec![];
+        for field in st.fields(db).into_iter() {
+            let ty = field.signature_ty(db);
+            let raw_param = format!("{}", ty.display(db));
+
+            if let Some(param_type) = raw_param.split(':').nth(1) {
+                parameter_types.push(param_type[1..].to_string());
+            } else {
+                // useful when you have tuple struct
+                parameter_types.push(raw_param.clone());
+            }
+            params.push(raw_param);
+        }
 
         Some(
             FunctionSignature {
@@ -79,6 +87,7 @@ impl FunctionSignature {
                 ret_type: node.name().map(|n| n.text().to_string()),
                 parameters: params,
                 parameter_names: vec![],
+                parameter_types,
                 generic_parameters: generic_parameters(&node),
                 where_predicates: where_predicates(&node),
                 doc: None,
@@ -99,15 +108,21 @@ impl FunctionSignature {
 
         let name = format!("{}::{}", parent_name, variant.name(db));
 
-        let params = variant
-            .fields(db)
-            .into_iter()
-            .map(|field: hir::StructField| {
-                let name = field.name(db);
-                let ty = field.signature_ty(db);
-                format!("{}: {}", name, ty.display(db))
-            })
-            .collect();
+        let mut params = vec![];
+        let mut parameter_types = vec![];
+        for field in variant.fields(db).into_iter() {
+            let ty = field.signature_ty(db);
+            let raw_param = format!("{}", ty.display(db));
+            if let Some(param_type) = raw_param.split(':').nth(1) {
+                parameter_types.push(param_type[1..].to_string());
+            } else {
+                // The unwrap_or_else is useful when you have tuple
+                parameter_types.push(raw_param);
+            }
+            let name = field.name(db);
+
+            params.push(format!("{}: {}", name, ty.display(db)));
+        }
 
         Some(
             FunctionSignature {
@@ -117,6 +132,7 @@ impl FunctionSignature {
                 ret_type: None,
                 parameters: params,
                 parameter_names: vec![],
+                parameter_types,
                 generic_parameters: vec![],
                 where_predicates: vec![],
                 doc: None,
@@ -139,6 +155,7 @@ impl FunctionSignature {
                 ret_type: None,
                 parameters: params,
                 parameter_names: vec![],
+                parameter_types: vec![],
                 generic_parameters: vec![],
                 where_predicates: vec![],
                 doc: None,
@@ -151,18 +168,27 @@ impl FunctionSignature {
 
 impl From<&'_ ast::FnDef> for FunctionSignature {
     fn from(node: &ast::FnDef) -> FunctionSignature {
-        fn param_list(node: &ast::FnDef) -> (bool, Vec<String>) {
+        fn param_list(node: &ast::FnDef) -> (bool, Vec<String>, Vec<String>) {
             let mut res = vec![];
+            let mut res_types = vec![];
             let mut has_self_param = false;
             if let Some(param_list) = node.param_list() {
                 if let Some(self_param) = param_list.self_param() {
                     has_self_param = true;
-                    res.push(self_param.syntax().text().to_string())
+                    let raw_param = self_param.syntax().text().to_string();
+
+                    res_types.push(
+                        raw_param.split(':').nth(1).unwrap_or_else(|| " Self")[1..].to_string(),
+                    );
+                    res.push(raw_param);
                 }
 
                 res.extend(param_list.params().map(|param| param.syntax().text().to_string()));
+                res_types.extend(param_list.params().map(|param| {
+                    param.syntax().text().to_string().split(':').nth(1).unwrap()[1..].to_string()
+                }));
             }
-            (has_self_param, res)
+            (has_self_param, res, res_types)
         }
 
         fn param_name_list(node: &ast::FnDef) -> Vec<String> {
@@ -192,7 +218,7 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
             res
         }
 
-        let (has_self_param, parameters) = param_list(node);
+        let (has_self_param, parameters, parameter_types) = param_list(node);
 
         FunctionSignature {
             kind: CallableKind::Function,
@@ -204,6 +230,7 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
                 .map(|n| n.syntax().text().to_string()),
             parameters,
             parameter_names: param_name_list(node),
+            parameter_types,
             generic_parameters: generic_parameters(node),
             where_predicates: where_predicates(node),
             // docs are processed separately

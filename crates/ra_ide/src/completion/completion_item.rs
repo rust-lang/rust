@@ -51,6 +51,9 @@ pub struct CompletionItem {
     /// If completing a function call, ask the editor to show parameter popup
     /// after completion.
     trigger_call_info: bool,
+
+    /// Score is usefull to pre select or display in better order completion items
+    score: Option<CompletionScore>,
 }
 
 // We use custom debug for CompletionItem to make `insta`'s diffs more readable.
@@ -79,6 +82,9 @@ impl fmt::Debug for CompletionItem {
         }
         if self.deprecated {
             s.field("deprecated", &true);
+        }
+        if let Some(score) = &self.score {
+            s.field("score", score);
         }
         if self.trigger_call_info {
             s.field("trigger_call_info", &true);
@@ -147,6 +153,7 @@ impl CompletionItem {
             text_edit: None,
             deprecated: None,
             trigger_call_info: None,
+            score: None,
         }
     }
     /// What user sees in pop-up in the UI.
@@ -186,6 +193,14 @@ impl CompletionItem {
         self.deprecated
     }
 
+    pub fn score(&self) -> Option<CompletionScore> {
+        self.score.clone()
+    }
+
+    pub fn set_score(&mut self, score: CompletionScore) {
+        self.score = Some(score);
+    }
+
     pub fn trigger_call_info(&self) -> bool {
         self.trigger_call_info
     }
@@ -206,6 +221,7 @@ pub(crate) struct Builder {
     text_edit: Option<TextEdit>,
     deprecated: Option<bool>,
     trigger_call_info: Option<bool>,
+    score: Option<CompletionScore>,
 }
 
 impl Builder {
@@ -235,6 +251,7 @@ impl Builder {
             completion_kind: self.completion_kind,
             deprecated: self.deprecated.unwrap_or(false),
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
+            score: self.score,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -285,6 +302,11 @@ impl Builder {
         self.deprecated = Some(deprecated);
         self
     }
+    #[allow(unused)]
+    pub(crate) fn set_score(mut self, score: CompletionScore) -> Builder {
+        self.score = Some(score);
+        self
+    }
     pub(crate) fn trigger_call_info(mut self) -> Builder {
         self.trigger_call_info = Some(true);
         self
@@ -295,6 +317,14 @@ impl<'a> Into<CompletionItem> for Builder {
     fn into(self) -> CompletionItem {
         self.build()
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum CompletionScore {
+    /// If only type match
+    TypeMatch,
+    /// If type and name match
+    TypeAndNameMatch,
 }
 
 /// Represents an in-progress set of completions being built.

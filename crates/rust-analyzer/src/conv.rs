@@ -9,10 +9,10 @@ use lsp_types::{
     TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, WorkspaceEdit,
 };
 use ra_ide::{
-    translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
-    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag,
-    InlayHint, InlayKind, InsertTextFormat, LineCol, LineIndex, NavigationTarget, RangeInfo,
-    ReferenceAccess, Severity, SourceChange, SourceFileEdit,
+    translate_offset_with_edit, CompletionItem, CompletionItemKind, CompletionScore, FileId,
+    FilePosition, FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier,
+    HighlightTag, InlayHint, InlayKind, InsertTextFormat, LineCol, LineIndex, NavigationTarget,
+    RangeInfo, ReferenceAccess, Severity, SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
@@ -114,10 +114,10 @@ impl Conv for Severity {
     }
 }
 
-impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
+impl ConvWith<(&LineIndex, LineEndings, &mut usize)> for CompletionItem {
     type Output = ::lsp_types::CompletionItem;
 
-    fn conv_with(self, ctx: (&LineIndex, LineEndings)) -> ::lsp_types::CompletionItem {
+    fn conv_with(self, ctx: (&LineIndex, LineEndings, &mut usize)) -> ::lsp_types::CompletionItem {
         let mut additional_text_edits = Vec::new();
         let mut text_edit = None;
         // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -125,7 +125,7 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
         for atom_edit in self.text_edit().as_atoms() {
             if self.source_range().is_subrange(&atom_edit.delete) {
                 text_edit = Some(if atom_edit.delete == self.source_range() {
-                    atom_edit.conv_with(ctx)
+                    atom_edit.conv_with((ctx.0, ctx.1))
                 } else {
                     assert!(self.source_range().end() == atom_edit.delete.end());
                     let range1 =
@@ -133,12 +133,12 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
                     let range2 = self.source_range();
                     let edit1 = AtomTextEdit::replace(range1, String::new());
                     let edit2 = AtomTextEdit::replace(range2, atom_edit.insert.clone());
-                    additional_text_edits.push(edit1.conv_with(ctx));
-                    edit2.conv_with(ctx)
+                    additional_text_edits.push(edit1.conv_with((ctx.0, ctx.1)));
+                    edit2.conv_with((ctx.0, ctx.1))
                 })
             } else {
                 assert!(self.source_range().intersection(&atom_edit.delete).is_none());
-                additional_text_edits.push(atom_edit.conv_with(ctx));
+                additional_text_edits.push(atom_edit.conv_with((ctx.0, ctx.1)));
             }
         }
         let text_edit = text_edit.unwrap();
@@ -164,6 +164,15 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
             },
             ..Default::default()
         };
+
+        if let Some(score) = self.score() {
+            match score {
+                CompletionScore::TypeAndNameMatch => res.preselect = Some(true),
+                CompletionScore::TypeMatch => {}
+            }
+            res.sort_text = Some(format!("{:02}", *ctx.2));
+            *ctx.2 += 1;
+        }
 
         if self.deprecated() {
             res.tags = Some(vec![lsp_types::CompletionItemTag::Deprecated])

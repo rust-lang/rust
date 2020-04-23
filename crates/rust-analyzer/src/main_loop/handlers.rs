@@ -423,8 +423,11 @@ pub fn handle_completion(
     };
     let line_index = world.analysis().file_line_index(position.file_id)?;
     let line_endings = world.file_line_endings(position.file_id);
-    let items: Vec<CompletionItem> =
-        items.into_iter().map(|item| item.conv_with((&line_index, line_endings))).collect();
+    let mut count_sort_text_item = 0usize;
+    let items: Vec<CompletionItem> = items
+        .into_iter()
+        .map(|item| item.conv_with((&line_index, line_endings, &mut count_sort_text_item)))
+        .collect();
 
     Ok(Some(items.into()))
 }

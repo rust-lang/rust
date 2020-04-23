@@ -6,12 +6,13 @@ use stdx::SepBy;
 use test_utils::tested_by;
 
 use crate::{
+    call_info::call_info,
     completion::{
         completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
         CompletionKind, Completions,
     },
     display::{const_label, macro_label, type_label, FunctionSignature},
-    RootDatabase,
+    CompletionScore, RootDatabase,
 };
 
 impl Completions {
@@ -22,7 +23,7 @@ impl Completions {
         ty: &Type,
     ) {
         let is_deprecated = is_deprecated(field, ctx.db);
-        CompletionItem::new(
+        let mut completion_item = CompletionItem::new(
             CompletionKind::Reference,
             ctx.source_range(),
             field.name(ctx.db).to_string(),
@@ -31,7 +32,11 @@ impl Completions {
         .detail(ty.display(ctx.db).to_string())
         .set_documentation(field.docs(ctx.db))
         .set_deprecated(is_deprecated)
-        .add_to(self);
+        .build();
+
+        compute_score(&mut completion_item, ctx);
+
+        self.add(completion_item);
     }
 
     pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &Type) {
@@ -297,6 +302,42 @@ impl Completions {
         }
 
         res.add_to(self);
+    }
+}
+
+pub(crate) fn compute_score(completion_item: &mut CompletionItem, ctx: &CompletionContext) {
+    let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
+        if let Some((struct_field, _)) = ctx.sema.resolve_record_field(record_field) {
+            (
+                struct_field.name(ctx.db).to_string(),
+                struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
+            )
+        } else {
+            return;
+        }
+    } else if let Some(call_info) = call_info(ctx.db, ctx.file_position) {
+        if call_info.active_parameter_type().is_some()
+            && call_info.active_parameter_name().is_some()
+        {
+            (call_info.active_parameter_name().unwrap(), call_info.active_parameter_type().unwrap())
+        } else {
+            return;
+        }
+    } else {
+        return;
+    };
+
+    // Compute score
+    // For the same type
+    if let Some(a_parameter_type) = completion_item.detail() {
+        if &active_type == a_parameter_type {
+            // If same type + same name then go top position
+            if active_name == completion_item.label() {
+                completion_item.set_score(CompletionScore::TypeAndNameMatch);
+            } else {
+                completion_item.set_score(CompletionScore::TypeMatch);
+            }
+        }
     }
 }
 

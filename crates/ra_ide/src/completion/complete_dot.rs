@@ -2,9 +2,11 @@
 
 use hir::{HasVisibility, Type};
 
-use crate::completion::completion_item::CompletionKind;
 use crate::{
-    completion::{completion_context::CompletionContext, completion_item::Completions},
+    completion::{
+        completion_context::CompletionContext,
+        completion_item::{CompletionKind, Completions},
+    },
     CompletionItem,
 };
 use rustc_hash::FxHashSet;
@@ -97,6 +99,237 @@ mod tests {
                 insert: "the_field",
                 kind: Field,
                 detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_func_call() {
+        assert_debug_snapshot!(
+        do_ref_completion(
+                r"
+                struct A { another_field: i64, the_field: u32, my_string: String }
+                fn test(my_param: u32) -> u32 { my_param }
+                fn foo(a: A) {
+                    test(a.<|>)
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "another_field",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+            },
+            CompletionItem {
+                label: "my_string",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "my_string",
+                kind: Field,
+                detail: "{unknown}",
+            },
+            CompletionItem {
+                label: "the_field",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                score: TypeMatch,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_func_call_with_type_and_name() {
+        assert_debug_snapshot!(
+        do_ref_completion(
+                r"
+                struct A { another_field: i64, another_good_type: u32, the_field: u32 }
+                fn test(the_field: u32) -> u32 { the_field }
+                fn foo(a: A) {
+                    test(a.<|>)
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "another_field",
+                source_range: [208; 208),
+                delete: [208; 208),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+            },
+            CompletionItem {
+                label: "another_good_type",
+                source_range: [208; 208),
+                delete: [208; 208),
+                insert: "another_good_type",
+                kind: Field,
+                detail: "u32",
+                score: TypeMatch,
+            },
+            CompletionItem {
+                label: "the_field",
+                source_range: [208; 208),
+                delete: [208; 208),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                score: TypeAndNameMatch,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_record_lit() {
+        assert_debug_snapshot!(
+        do_ref_completion(
+                r"
+                struct A { another_field: i64, another_good_type: u32, the_field: u32 }
+                struct B { my_string: String, my_vec: Vec<u32>, the_field: u32 }
+                fn foo(a: A) {
+                    let b = B {
+                        the_field: a.<|>
+                    };
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "another_field",
+                source_range: [270; 270),
+                delete: [270; 270),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+            },
+            CompletionItem {
+                label: "another_good_type",
+                source_range: [270; 270),
+                delete: [270; 270),
+                insert: "another_good_type",
+                kind: Field,
+                detail: "u32",
+                score: TypeMatch,
+            },
+            CompletionItem {
+                label: "the_field",
+                source_range: [270; 270),
+                delete: [270; 270),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                score: TypeAndNameMatch,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_record_lit_and_fn_call() {
+        assert_debug_snapshot!(
+        do_ref_completion(
+                r"
+                struct A { another_field: i64, another_good_type: u32, the_field: u32 }
+                struct B { my_string: String, my_vec: Vec<u32>, the_field: u32 }
+                fn test(the_field: i64) -> i64 { the_field }
+                fn foo(a: A) {
+                    let b = B {
+                        the_field: test(a.<|>)
+                    };
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "another_field",
+                source_range: [336; 336),
+                delete: [336; 336),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+                score: TypeMatch,
+            },
+            CompletionItem {
+                label: "another_good_type",
+                source_range: [336; 336),
+                delete: [336; 336),
+                insert: "another_good_type",
+                kind: Field,
+                detail: "u32",
+            },
+            CompletionItem {
+                label: "the_field",
+                source_range: [336; 336),
+                delete: [336; 336),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_fn_call_and_record_lit() {
+        assert_debug_snapshot!(
+        do_ref_completion(
+                r"
+                struct A { another_field: i64, another_good_type: u32, the_field: u32 }
+                struct B { my_string: String, my_vec: Vec<u32>, the_field: u32 }
+                fn test(the_field: i64) -> i64 { the_field }
+                fn foo(a: A) {
+                    test(B {
+                        the_field: a.<|>
+                    });
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "another_field",
+                source_range: [328; 328),
+                delete: [328; 328),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+            },
+            CompletionItem {
+                label: "another_good_type",
+                source_range: [328; 328),
+                delete: [328; 328),
+                insert: "another_good_type",
+                kind: Field,
+                detail: "u32",
+                score: TypeMatch,
+            },
+            CompletionItem {
+                label: "the_field",
+                source_range: [328; 328),
+                delete: [328; 328),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                score: TypeAndNameMatch,
             },
         ]
         "###

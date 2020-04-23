@@ -21,6 +21,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) db: &'a RootDatabase,
     pub(super) config: &'a CompletionConfig,
     pub(super) offset: TextUnit,
+    pub(super) file_position: FilePosition,
     /// The token before the cursor, in the original file.
     pub(super) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
@@ -31,6 +32,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) use_item_syntax: Option<ast::UseItem>,
     pub(super) record_lit_syntax: Option<ast::RecordLit>,
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
+    pub(super) record_field_syntax: Option<ast::RecordField>,
     pub(super) impl_def: Option<ast::ImplDef>,
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
@@ -88,12 +90,14 @@ impl<'a> CompletionContext<'a> {
             original_token,
             token,
             offset: position.offset,
+            file_position: position,
             krate,
             name_ref_syntax: None,
             function_syntax: None,
             use_item_syntax: None,
             record_lit_syntax: None,
             record_pat_syntax: None,
+            record_field_syntax: None,
             impl_def: None,
             is_param: false,
             is_pat_binding_or_const: false,
@@ -278,6 +282,14 @@ impl<'a> CompletionContext<'a> {
             .ancestors_with_macros(self.token.parent())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::FnDef::cast);
+
+        self.record_field_syntax = self
+            .sema
+            .ancestors_with_macros(self.token.parent())
+            .take_while(|it| {
+                it.kind() != SOURCE_FILE && it.kind() != MODULE && it.kind() != CALL_EXPR
+            })
+            .find_map(ast::RecordField::cast);
 
         let parent = match name_ref.syntax().parent() {
             Some(it) => it,

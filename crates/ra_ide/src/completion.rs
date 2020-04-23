@@ -29,7 +29,7 @@ use crate::{
 };
 
 pub use crate::completion::completion_item::{
-    CompletionItem, CompletionItemKind, InsertTextFormat,
+    CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
