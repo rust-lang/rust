@@ -570,8 +570,9 @@ mod impls {
                 fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
                     let newlen = data.len() * mem::size_of::<$ty>();
                     let ptr = data.as_ptr() as *const u8;
-                    // SAFETY: `ptr` is valid and aligned, the new slice only spans
-                    // across `data` and is never mutated, and its total size is the
+                    // SAFETY: `ptr` is valid and aligned, as this macro is only used
+                    // for numeric primitives which have no padding. The new slice only
+                    // spans across `data` and is never mutated, and its total size is the
                     // same as the original `data` so it can't be over `isize::MAX`.
                     state.write(unsafe { slice::from_raw_parts(ptr, newlen) })
                 }
