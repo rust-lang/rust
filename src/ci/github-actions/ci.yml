@@ -70,21 +70,6 @@ x--expand-yaml-anchors--remove:
   - &step
     if: success() && !env.SKIP_JOB
 
-  - &step-run
-    <<: *step
-    # While on Linux and macOS builders it just forwards the arguments to the
-    # system bash, this wrapper allows switching from the host's bash.exe to
-    # the one we install along with MSYS2 mid-build on Windows.
-    #
-    # Once the step to install MSYS2 is executed, the CI_OVERRIDE_SHELL
-    # environment variable is set pointing to our MSYS2's bash.exe. From that
-    # moment the host's bash.exe will not be called anymore.
-    #
-    # This is needed because we can't launch our own bash.exe from the host
-    # bash.exe, as that would load two different cygwin1.dll in memory, causing
-    # "cygwin heap mismatch" errors.
-    shell: python src/ci/exec-with-shell.py {0}
-
   - &base-ci-job
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
@@ -114,67 +99,67 @@ x--expand-yaml-anchors--remove:
           # are passed to the `setup-environment.sh` script encoded in JSON,
           # which then uses log commands to actually set them.
           EXTRA_VARIABLES: ${{ toJson(matrix.env) }}
-        <<: *step-run
+        <<: *step
 
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
-        <<: *step-run
+        <<: *step
 
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
-        <<: *step-run
+        <<: *step
 
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
-        <<: *step-run
+        <<: *step
 
       - name: install awscli
         run: src/ci/scripts/install-awscli.sh
-        <<: *step-run
+        <<: *step
 
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
-        <<: *step-run
+        <<: *step
 
       - name: install clang
         run: src/ci/scripts/install-clang.sh
-        <<: *step-run
+        <<: *step
 
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
-        <<: *step-run
+        <<: *step
 
       - name: install InnoSetup
         run: src/ci/scripts/install-innosetup.sh
-        <<: *step-run
+        <<: *step
 
       - name: ensure the build happens on a partition with enough space
         run: src/ci/scripts/symlink-build-dir.sh
-        <<: *step-run
+        <<: *step
 
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        <<: *step-run
+        <<: *step
 
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
-        <<: *step-run
+        <<: *step
 
       - name: install MSYS2 packages
         run: src/ci/scripts/install-msys2-packages.sh
-        <<: *step-run
+        <<: *step
 
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
-        <<: *step-run
+        <<: *step
 
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
-        <<: *step-run
+        <<: *step
 
       - name: enable ipv6 on Docker
         run: src/ci/scripts/enable-docker-ipv6.sh
-        <<: *step-run
+        <<: *step
 
       # Disable automatic line ending conversion (again). On Windows, when we're
       # installing dependencies, something switches the git configuration directory or
@@ -183,15 +168,15 @@ x--expand-yaml-anchors--remove:
       # appropriate line endings.
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        <<: *step-run
+        <<: *step
 
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
-        <<: *step-run
+        <<: *step
 
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
-        <<: *step-run
+        <<: *step
 
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh
@@ -199,7 +184,7 @@ x--expand-yaml-anchors--remove:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
           TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
-        <<: *step-run
+        <<: *step
 
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
@@ -212,7 +197,7 @@ x--expand-yaml-anchors--remove:
         # deploying artifacts from a dist builder if the variables are misconfigured,
         # erroring about invalid credentials instead.
         if: success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')
-        <<: *step-run
+        <<: *step
 
   # These snippets are used by the try-success, try-failure, auto-success and auto-failure jobs.
   # Check out their documentation for more information on why they're needed.
@@ -248,6 +233,21 @@ on:
     branches:
       - "**"
 
+defaults:
+  run:
+    # While on Linux and macOS builders it just forwards the arguments to the
+    # system bash, this wrapper allows switching from the host's bash.exe to
+    # the one we install along with MSYS2 mid-build on Windows.
+    #
+    # Once the step to install MSYS2 is executed, the CI_OVERRIDE_SHELL
+    # environment variable is set pointing to our MSYS2's bash.exe. From that
+    # moment the host's bash.exe will not be called anymore.
+    #
+    # This is needed because we can't launch our own bash.exe from the host
+    # bash.exe, as that would load two different cygwin1.dll in memory, causing
+    # "cygwin heap mismatch" errors.
+    shell: python src/ci/exec-with-shell.py {0}
+
 jobs:
   pr:
     <<: *base-ci-job
@@ -257,10 +257,6 @@ jobs:
     if: github.event_name == 'pull_request'
     strategy:
       matrix:
-        name:
-          - mingw-check
-          - x86_64-gnu-llvm-8
-          - x86_64-gnu-tools
         include:
           - name: mingw-check
             <<: *job-linux-xl
@@ -281,9 +277,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'
     strategy:
       matrix:
-        name:
-          - dist-x86_64-linux
-          - dist-x86_64-linux-alt
         include:
           - name: dist-x86_64-linux
             <<: *job-linux-xl
@@ -301,64 +294,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
     strategy:
       matrix:
-        name:
-          - arm-android
-          - armhf-gnu
-          - dist-aarch64-linux
-          - dist-android
-          - dist-arm-linux
-          - dist-armhf-linux
-          - dist-armv7-linux
-          - dist-i586-gnu-i586-i686-musl
-          - dist-i686-freebsd
-          - dist-i686-linux
-          - dist-i686-mingw
-          - dist-i686-msvc
-          - dist-mips-linux
-          - dist-mips64-linux
-          - dist-mips64el-linux
-          - dist-mipsel-linux
-          - dist-powerpc-linux
-          - dist-powerpc64-linux
-          - dist-powerpc64le-linux
-          - dist-s390x-linux
-          - dist-various-1
-          - dist-various-2
-          - dist-x86_64-apple
-          - dist-x86_64-apple-alt
-          - dist-x86_64-freebsd
-          - dist-x86_64-linux
-          - dist-x86_64-linux-alt
-          - dist-x86_64-mingw
-          - dist-x86_64-msvc
-          - dist-x86_64-msvc-alt
-          - dist-x86_64-musl
-          - dist-x86_64-netbsd
-          - i686-gnu
-          - i686-gnu-nopt
-          - i686-mingw-1
-          - i686-mingw-2
-          - i686-msvc-1
-          - i686-msvc-2
-          - mingw-check
-          - test-various
-          - wasm32
-          - x86_64-apple
-          - x86_64-gnu
-          - x86_64-gnu-aux
-          - x86_64-gnu-debug
-          - x86_64-gnu-distcheck
-          - x86_64-gnu-full-bootstrap
-          - x86_64-gnu-llvm-8
-          - x86_64-gnu-nopt
-          - x86_64-gnu-tools
-          - x86_64-mingw-1
-          - x86_64-mingw-2
-          - x86_64-msvc-1
-          - x86_64-msvc-2
-          - x86_64-msvc-aux
-          - x86_64-msvc-cargo
-          - x86_64-msvc-tools
         include:
           #############################
           #   Linux/Docker builders   #
@@ -687,7 +622,7 @@ jobs:
         run: src/ci/publish_toolstate.sh
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
-        <<: *step-run
+        <<: *step
 
   # These jobs don't actually test anything, but they're used to tell bors the
   # build completed, as there is no practical way to detect when a workflow is
