@@ -5,9 +5,11 @@ use rustc_errors::ErrorReported;
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
+use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
-use rustc_session::{self, config, DiagnosticOutput, Session};
+use rustc_middle::ty::TyCtxt;
+use rustc_session::{self, config, lint, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
@@ -25,6 +27,7 @@ use tempfile::Builder as TempFileBuilder;
 use crate::clean::Attributes;
 use crate::config::Options;
 use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
+use crate::passes::span_of_attrs;
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -40,6 +43,45 @@ pub struct TestOptions {
 pub fn run(options: Options) -> i32 {
     let input = config::Input::File(options.input.clone());
 
+    let warnings_lint_name = lint::builtin::WARNINGS.name;
+    let invalid_codeblock_attribute_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTE.name;
+
+    // In addition to those specific lints, we also need to whitelist those given through
+    // command line, otherwise they'll get ignored and we don't want that.
+    let mut whitelisted_lints =
+        vec![warnings_lint_name.to_owned(), invalid_codeblock_attribute_name.to_owned()];
+
+    whitelisted_lints.extend(options.lint_opts.iter().map(|(lint, _)| lint).cloned());
+
+    let lints = || {
+        lint::builtin::HardwiredLints::get_lints()
+            .into_iter()
+            .chain(rustc_lint::SoftLints::get_lints().into_iter())
+    };
+
+    let lint_opts = lints()
+        .filter_map(|lint| {
+            if lint.name == warnings_lint_name || lint.name == invalid_codeblock_attribute_name {
+                None
+            } else {
+                Some((lint.name_lower(), lint::Allow))
+            }
+        })
+        .chain(options.lint_opts.clone().into_iter())
+        .collect::<Vec<_>>();
+
+    let lint_caps = lints()
+        .filter_map(|lint| {
+            // We don't want to whitelist *all* lints so let's
+            // ignore those ones.
+            if whitelisted_lints.iter().any(|l| lint.name == l) {
+                None
+            } else {
+                Some((lint::LintId::of(lint), lint::Allow))
+            }
+        })
+        .collect();
+
     let crate_types = if options.proc_macro_crate {
         vec![config::CrateType::ProcMacro]
     } else {
@@ -50,10 +92,11 @@ pub fn run(options: Options) -> i32 {
         maybe_sysroot: options.maybe_sysroot.clone(),
         search_paths: options.libs.clone(),
         crate_types,
+        lint_opts: if !options.display_warnings { lint_opts } else { vec![] },
+        lint_cap: Some(options.lint_cap.clone().unwrap_or_else(|| lint::Forbid)),
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
-        lint_cap: Some(rustc_session::lint::Level::Allow),
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions { ..config::basic_debugging_options() },
         edition: options.edition,
@@ -75,7 +118,7 @@ pub fn run(options: Options) -> i32 {
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         crate_name: options.crate_name.clone(),
-        lint_caps: Default::default(),
+        lint_caps,
         register_lints: None,
         override_queries: None,
         registry: rustc_driver::diagnostics_registry(),
@@ -105,6 +148,7 @@ pub fn run(options: Options) -> i32 {
 
             global_ctxt.enter(|tcx| {
                 let krate = tcx.hir().krate();
+
                 let mut hir_collector = HirCollector {
                     sess: compiler.session(),
                     collector: &mut collector,
@@ -112,10 +156,17 @@ pub fn run(options: Options) -> i32 {
                     codes: ErrorCodes::from(
                         compiler.session().opts.unstable_features.is_nightly_build(),
                     ),
+                    tcx,
                 };
-                hir_collector.visit_testable("".to_string(), &krate.item.attrs, |this| {
-                    intravisit::walk_crate(this, krate);
-                });
+                hir_collector.visit_testable(
+                    "".to_string(),
+                    &krate.item.attrs,
+                    CRATE_HIR_ID,
+                    krate.item.span,
+                    |this| {
+                        intravisit::walk_crate(this, krate);
+                    },
+                );
             });
             compiler.session().abort_if_errors();
 
@@ -881,18 +932,21 @@ impl Tester for Collector {
     }
 }
 
-struct HirCollector<'a, 'hir> {
+struct HirCollector<'a, 'hir, 'tcx> {
     sess: &'a Session,
     collector: &'a mut Collector,
     map: Map<'hir>,
     codes: ErrorCodes,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'hir> HirCollector<'a, 'hir> {
+impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
     fn visit_testable<F: FnOnce(&mut Self)>(
         &mut self,
         name: String,
         attrs: &[ast::Attribute],
+        hir_id: HirId,
+        sp: Span,
         nested: F,
     ) {
         let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs);
@@ -918,6 +972,11 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
                 self.collector,
                 self.codes,
                 self.collector.enable_per_target_ignores,
+                Some(&crate::html::markdown::ExtraInfo::new(
+                    &self.tcx,
+                    hir_id,
+                    span_of_attrs(&attrs).unwrap_or(sp),
+                )),
             );
         }
 
@@ -929,7 +988,7 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
     }
 }
 
-impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
+impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> {
     type Map = Map<'hir>;
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
@@ -943,25 +1002,25 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
             item.ident.to_string()
         };
 
-        self.visit_testable(name, &item.attrs, |this| {
+        self.visit_testable(name, &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_item(this, item);
         });
     }
 
     fn visit_trait_item(&mut self, item: &'hir hir::TraitItem) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, |this| {
+        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, |this| {
+        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_impl_item(this, item);
         });
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, |this| {
+        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_foreign_item(this, item);
         });
     }
@@ -972,19 +1031,25 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
         g: &'hir hir::Generics,
         item_id: hir::HirId,
     ) {
-        self.visit_testable(v.ident.to_string(), &v.attrs, |this| {
+        self.visit_testable(v.ident.to_string(), &v.attrs, v.id, v.span, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }
 
     fn visit_struct_field(&mut self, f: &'hir hir::StructField) {
-        self.visit_testable(f.ident.to_string(), &f.attrs, |this| {
+        self.visit_testable(f.ident.to_string(), &f.attrs, f.hir_id, f.span, |this| {
             intravisit::walk_struct_field(this, f);
         });
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef) {
-        self.visit_testable(macro_def.ident.to_string(), &macro_def.attrs, |_| ());
+        self.visit_testable(
+            macro_def.ident.to_string(),
+            &macro_def.attrs,
+            macro_def.hir_id,
+            macro_def.span,
+            |_| (),
+        );
     }
 }
 

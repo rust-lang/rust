@@ -73,7 +73,7 @@ pub struct VecDeque<T> {
 /// It produces the following sequence of matching slices:
 ///
 /// ([0 1], [a b])
-/// ([2], [c])
+/// (\[2\], \[c\])
 /// ([3 4], [d e])
 ///
 /// and the uneven remainder of either A or B is skipped.
