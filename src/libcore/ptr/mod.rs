@@ -76,12 +76,15 @@ use crate::intrinsics::{self, is_aligned_and_not_null, is_nonoverlapping};
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use crate::intrinsics::copy_nonoverlapping;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use crate::intrinsics::copy;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use crate::intrinsics::write_bytes;
 
 mod non_null;
