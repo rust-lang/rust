@@ -1,0 +1,48 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/usize_literal_propagation.rs:4:11: 4:11
+      let _1: usize;                       // in scope 0 at $DIR/usize_literal_propagation.rs:5:9: 5:10
+      let _2: ();                          // in scope 0 at $DIR/usize_literal_propagation.rs:6:5: 6:15
+      let mut _3: usize;                   // in scope 0 at $DIR/usize_literal_propagation.rs:6:13: 6:14
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/usize_literal_propagation.rs:5:9: 5:10
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/usize_literal_propagation.rs:5:9: 5:10
+          _1 = const 1usize;               // bb0[1]: scope 0 at $DIR/usize_literal_propagation.rs:5:13: 5:14
+                                           // ty::Const
+                                           // + ty: usize
+                                           // + val: Value(Scalar(0x0000000000000001))
+                                           // mir::Constant
+                                           // + span: $DIR/usize_literal_propagation.rs:5:13: 5:14
+                                           // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
+          StorageLive(_2);                 // bb0[2]: scope 1 at $DIR/usize_literal_propagation.rs:6:5: 6:15
+          StorageLive(_3);                 // bb0[3]: scope 1 at $DIR/usize_literal_propagation.rs:6:13: 6:14
+          _3 = _1;                         // bb0[4]: scope 1 at $DIR/usize_literal_propagation.rs:6:13: 6:14
+          _2 = const consume(move _3) -> bb1; // bb0[5]: scope 1 at $DIR/usize_literal_propagation.rs:6:5: 6:15
+                                           // ty::Const
+                                           // + ty: fn(usize) {consume}
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/usize_literal_propagation.rs:6:5: 6:12
+                                           // + literal: Const { ty: fn(usize) {consume}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          StorageDead(_3);                 // bb1[0]: scope 1 at $DIR/usize_literal_propagation.rs:6:14: 6:15
+          StorageDead(_2);                 // bb1[1]: scope 1 at $DIR/usize_literal_propagation.rs:6:15: 6:16
+          _0 = const ();                   // bb1[2]: scope 0 at $DIR/usize_literal_propagation.rs:4:11: 7:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/usize_literal_propagation.rs:4:11: 7:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
+          StorageDead(_1);                 // bb1[3]: scope 0 at $DIR/usize_literal_propagation.rs:7:1: 7:2
+          return;                          // bb1[4]: scope 0 at $DIR/usize_literal_propagation.rs:7:2: 7:2
+      }
+  }
+  
