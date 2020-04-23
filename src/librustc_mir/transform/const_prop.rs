@@ -334,6 +334,8 @@ struct ConstPropagator<'mir, 'tcx> {
     // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
     // the last known `SourceInfo` here and just keep revisiting it.
     source_info: Option<SourceInfo>,
+    // Locals we need to forget at the end of the current block
+    locals_of_current_block: BitSet<Local>,
 }
 
 impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
@@ -404,6 +406,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             local_decls: body.local_decls.clone(),
             ret: ret.map(Into::into),
             source_info: None,
+            locals_of_current_block: BitSet::new_empty(body.local_decls.len()),
         }
     }
 
@@ -767,6 +770,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 enum ConstPropMode {
     /// The `Local` can be propagated into and reads of this `Local` can also be propagated.
     FullConstProp,
+    /// The `Local` can only be propagated into and from its own block.
+    OnlyInsideOwnBlock,
     /// The `Local` can be propagated into but reads cannot be propagated.
     OnlyPropagateInto,
     /// No propagation is allowed at all.
@@ -798,10 +803,18 @@ impl CanConstProp {
             //        lint for x != y
             // FIXME(oli-obk): lint variables until they are used in a condition
             // FIXME(oli-obk): lint if return value is constant
-            if cpv.local_kinds[local] == LocalKind::Arg || cpv.local_kinds[local] == LocalKind::Var
-            {
+            if cpv.local_kinds[local] == LocalKind::Arg {
                 *val = ConstPropMode::OnlyPropagateInto;
-                trace!("local {:?} can't be const propagated because it's not a temporary", local);
+                trace!(
+                    "local {:?} can't be const propagated because it's a function argument",
+                    local
+                );
+            } else if cpv.local_kinds[local] == LocalKind::Var {
+                *val = ConstPropMode::OnlyInsideOwnBlock;
+                trace!(
+                    "local {:?} will only be propagated inside its block, because it's a user variable",
+                    local
+                );
             }
         }
         cpv.visit_body(&body);
@@ -863,22 +876,32 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 if let Some(local) = place.as_local() {
                     let can_const_prop = self.can_const_prop[local];
                     if let Some(()) = self.const_prop(rval, place_layout, source_info, place) {
-                        if can_const_prop == ConstPropMode::FullConstProp
-                            || can_const_prop == ConstPropMode::OnlyPropagateInto
-                        {
+                        if can_const_prop != ConstPropMode::NoPropagation {
+                            // This will return None for Locals that are from other blocks,
+                            // so it should be okay to propagate from here on down.
                             if let Some(value) = self.get_const(local) {
                                 if self.should_const_prop(value) {
                                     trace!("replacing {:?} with {:?}", rval, value);
                                     self.replace_with_const(rval, value, statement.source_info);
-
-                                    if can_const_prop == ConstPropMode::FullConstProp {
+                                    if can_const_prop == ConstPropMode::FullConstProp
+                                        || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
+                                    {
                                         trace!("propagated into {:?}", local);
                                     }
+                                }
+                                if can_const_prop == ConstPropMode::OnlyInsideOwnBlock {
+                                    trace!(
+                                        "found local restricted to its block. Will remove it from const-prop after block is finished. Local: {:?}",
+                                        local
+                                    );
+                                    self.locals_of_current_block.insert(local);
                                 }
                             }
                         }
                     }
-                    if self.can_const_prop[local] != ConstPropMode::FullConstProp {
+                    if self.can_const_prop[local] == ConstPropMode::OnlyPropagateInto
+                        || self.can_const_prop[local] == ConstPropMode::NoPropagation
+                    {
                         trace!("can't propagate into {:?}", local);
                         if local != RETURN_PLACE {
                             self.remove_const(local);
@@ -997,5 +1020,18 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             //FIXME(wesleywiser) Call does have Operands that could be const-propagated
             TerminatorKind::Call { .. } => {}
         }
+        // We remove all Locals which are restricted in propagation to their containing blocks.
+        // We wouldn't need to clone, but the borrow checker can't see that we're not aliasing
+        // the locals_of_current_block field, so we need to clone it first.
+        for local in self.locals_of_current_block.clone().iter() {
+            trace!(
+                "removing local {:?} from const-prop, since it's restricted to just its own block.",
+                local
+            );
+            self.remove_const(local);
+        }
+        // Before moving on to the next block, we must forget all restricted locals, because we
+        // have already removed them from the `const` pool
+        self.locals_of_current_block.clear();
     }
 }

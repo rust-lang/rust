@@ -29,7 +29,20 @@
                                            // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000002)) }
           StorageLive(_2);                 // bb0[2]: scope 1 at $DIR/tuple_literal_propagation.rs:7:5: 7:15
           StorageLive(_3);                 // bb0[3]: scope 1 at $DIR/tuple_literal_propagation.rs:7:13: 7:14
-          _3 = _1;                         // bb0[4]: scope 1 at $DIR/tuple_literal_propagation.rs:7:13: 7:14
+-         _3 = _1;                         // bb0[4]: scope 1 at $DIR/tuple_literal_propagation.rs:7:13: 7:14
++         _3 = (const 1usize, const 2usize); // bb0[4]: scope 1 at $DIR/tuple_literal_propagation.rs:7:13: 7:14
++                                          // ty::Const
++                                          // + ty: usize
++                                          // + val: Value(Scalar(0x0000000000000001))
++                                          // mir::Constant
++                                          // + span: $DIR/tuple_literal_propagation.rs:7:13: 7:14
++                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
++                                          // ty::Const
++                                          // + ty: usize
++                                          // + val: Value(Scalar(0x0000000000000002))
++                                          // mir::Constant
++                                          // + span: $DIR/tuple_literal_propagation.rs:7:13: 7:14
++                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000002)) }
           _2 = const consume(move _3) -> bb1; // bb0[5]: scope 1 at $DIR/tuple_literal_propagation.rs:7:5: 7:15
                                            // ty::Const
                                            // + ty: fn((usize, usize)) {consume}
