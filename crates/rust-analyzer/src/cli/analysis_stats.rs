@@ -162,9 +162,13 @@ pub fn analysis_stats(
                 let (_, sm) = db.body_with_source_map(f_id.into());
                 let src = sm.expr_syntax(expr_id);
                 if let Ok(src) = src {
+                    let node = {
+                        let root = db.parse_or_expand(src.file_id).unwrap();
+                        src.value.to_node(&root)
+                    };
                     let original_file = src.file_id.original_file(db);
                     let line_index = host.analysis().file_line_index(original_file).unwrap();
-                    let text_range = src.value.syntax_node_ptr().range();
+                    let text_range = node.syntax().text_range();
                     let (start, end) = (
                         line_index.line_col(text_range.start()),
                         line_index.line_col(text_range.end()),

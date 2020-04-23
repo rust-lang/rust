@@ -30,9 +30,9 @@ impl SyntaxNodePtr {
         .unwrap_or_else(|| panic!("can't resolve local ptr to SyntaxNode: {:?}", self))
     }
 
-    pub fn range(&self) -> TextRange {
-        self.range
-    }
+    // pub fn range(&self) -> TextRange {
+    //     self.range
+    // }
 
     pub fn cast<N: AstNode>(self) -> Option<AstPtr<N>> {
         if !N::can_cast(self.kind) {

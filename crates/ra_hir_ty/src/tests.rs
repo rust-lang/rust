@@ -18,16 +18,19 @@ use hir_def::{
     nameres::CrateDefMap,
     AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
-use hir_expand::InFile;
+use hir_expand::{db::AstDatabase, InFile};
 use insta::assert_snapshot;
 use ra_db::{fixture::WithFixture, salsa::Database, FilePosition, SourceDatabase};
 use ra_syntax::{
     algo,
     ast::{self, AstNode},
+    SyntaxNode,
 };
 use stdx::format_to;
 
-use crate::{db::HirDatabase, display::HirDisplay, test_db::TestDB, InferenceResult};
+use crate::{
+    db::HirDatabase, display::HirDisplay, infer::TypeMismatch, test_db::TestDB, InferenceResult, Ty,
+};
 
 // These tests compare the inference results for all expressions in a file
 // against snapshots of the expected results using insta. Use cargo-insta to
@@ -67,13 +70,19 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
 
     let mut infer_def = |inference_result: Arc<InferenceResult>,
                          body_source_map: Arc<BodySourceMap>| {
-        let mut types = Vec::new();
-        let mut mismatches = Vec::new();
+        let mut types: Vec<(InFile<SyntaxNode>, &Ty)> = Vec::new();
+        let mut mismatches: Vec<(InFile<SyntaxNode>, &TypeMismatch)> = Vec::new();
 
         for (pat, ty) in inference_result.type_of_pat.iter() {
             let syntax_ptr = match body_source_map.pat_syntax(pat) {
                 Ok(sp) => {
-                    sp.map(|ast| ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr()))
+                    let root = db.parse_or_expand(sp.file_id).unwrap();
+                    sp.map(|ptr| {
+                        ptr.either(
+                            |it| it.to_node(&root).syntax().clone(),
+                            |it| it.to_node(&root).syntax().clone(),
+                        )
+                    })
                 }
                 Err(SyntheticSyntax) => continue,
             };
@@ -81,29 +90,31 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         }
 
         for (expr, ty) in inference_result.type_of_expr.iter() {
-            let syntax_ptr = match body_source_map.expr_syntax(expr) {
-                Ok(sp) => sp.map(|ast| ast.syntax_node_ptr()),
+            let node = match body_source_map.expr_syntax(expr) {
+                Ok(sp) => {
+                    let root = db.parse_or_expand(sp.file_id).unwrap();
+                    sp.map(|ptr| ptr.to_node(&root).syntax().clone())
+                }
                 Err(SyntheticSyntax) => continue,
             };
-            types.push((syntax_ptr.clone(), ty));
+            types.push((node.clone(), ty));
             if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr) {
-                mismatches.push((syntax_ptr, mismatch));
+                mismatches.push((node, mismatch));
             }
         }
 
         // sort ranges for consistency
-        types.sort_by_key(|(src_ptr, _)| {
-            (src_ptr.value.range().start(), src_ptr.value.range().end())
+        types.sort_by_key(|(node, _)| {
+            let range = node.value.text_range();
+            (range.start(), range.end())
         });
-        for (src_ptr, ty) in &types {
-            let node = src_ptr.value.to_node(&src_ptr.file_syntax(&db));
-
-            let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.clone()) {
+        for (node, ty) in &types {
+            let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.value.clone()) {
                 (self_param.self_token().unwrap().text_range(), "self".to_string())
             } else {
-                (src_ptr.value.range(), node.text().to_string().replace("\n", " "))
+                (node.value.text_range(), node.value.text().to_string().replace("\n", " "))
             };
-            let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
+            let macro_prefix = if node.file_id != file_id.into() { "!" } else { "" };
             format_to!(
                 buf,
                 "{}{} '{}': {}\n",
@@ -114,11 +125,12 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             );
         }
         if include_mismatches {
-            mismatches.sort_by_key(|(src_ptr, _)| {
-                (src_ptr.value.range().start(), src_ptr.value.range().end())
+            mismatches.sort_by_key(|(node, _)| {
+                let range = node.value.text_range();
+                (range.start(), range.end())
             });
             for (src_ptr, mismatch) in &mismatches {
-                let range = src_ptr.value.range();
+                let range = src_ptr.value.text_range();
                 let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
                 format_to!(
                     buf,
