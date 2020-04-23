@@ -291,10 +291,11 @@ where
     }
 
     if !found {
-        // This happens if the provided regex in `clippy_dev/src/main.rs` is not found in the
+        // This happens if the provided regex in `clippy_dev/src/main.rs` does not match in the
         // given text or file. Most likely this is an error on the programmer's side and the Regex
         // is incorrect.
-        eprintln!("error: regex `{:?}` not found. You may have to update it.", start);
+        eprintln!("error: regex \n{:?}\ndoesn't match. You may have to update it.", start);
+        std::process::exit(1);
     }
 
     let mut new_lines = new_lines.join("\n");
