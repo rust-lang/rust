@@ -1,5 +1,5 @@
 use crate::utils::SpanlessEq;
-use crate::utils::{get_item_name, higher, match_type, paths, snippet, snippet_opt};
+use crate::utils::{get_item_name, higher, is_type_diagnostic_item, match_type, paths, snippet, snippet_opt};
 use crate::utils::{snippet_with_applicability, span_lint_and_then, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -114,7 +114,7 @@ fn check_cond<'a, 'tcx, 'b>(
             return if match_type(cx, obj_ty, &paths::BTREEMAP) {
                 Some(("BTreeMap", map, key))
             }
-            else if match_type(cx, obj_ty, &paths::HASHMAP) {
+            else if is_type_diagnostic_item(cx, obj_ty, sym!(hashmap_type)) {
                 Some(("HashMap", map, key))
             }
             else {

@@ -1,6 +1,6 @@
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    differing_macro_contexts, is_type_diagnostic_item, match_type, paths, snippet_with_applicability,
+    differing_macro_contexts, is_type_diagnostic_item, snippet_with_applicability,
     span_lint_and_then, walk_ptrs_ty, SpanlessEq,
 };
 use if_chain::if_chain;
@@ -199,7 +199,7 @@ fn check_for_slice<'a>(cx: &LateContext<'_, '_>, lhs1: &'a Expr<'_>, lhs2: &'a E
                 if matches!(ty.kind, ty::Slice(_))
                     || matches!(ty.kind, ty::Array(_, _))
                     || is_type_diagnostic_item(cx, ty, sym!(vec_type))
-                    || match_type(cx, ty, &paths::VEC_DEQUE)
+                    || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
                 {
                     return Slice::Swappable(lhs1, idx1, idx2);
                 }
