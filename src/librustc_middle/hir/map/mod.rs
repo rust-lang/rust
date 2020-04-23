@@ -641,7 +641,8 @@ impl<'hir> Map<'hir> {
     pub fn get_parent_item(&self, hir_id: HirId) -> HirId {
         for (hir_id, node) in self.parent_iter(hir_id) {
             match node {
-                Node::Crate(_)
+                Node::AnonConst(_)
+                | Node::Crate(_)
                 | Node::Item(_)
                 | Node::ForeignItem(_)
                 | Node::TraitItem(_)
