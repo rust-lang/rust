@@ -423,6 +423,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         self.ecx.access_local(self.ecx.frame(), local, None).ok()
     }
 
+    /// Remove `local` from the pool of `Locals`. Allows writing to them,
+    /// but not reading from them anymore.
     fn remove_const(&mut self, local: Local) {
         self.ecx.frame_mut().locals[local] =
             LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
@@ -455,6 +457,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
+    /// Returns the value, if any, of evaluating `c`.
     fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.needs_subst() {
@@ -495,11 +498,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
+    /// Returns the value, if any, of evaluating `place`.
     fn eval_place(&mut self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
         trace!("eval_place(place={:?})", place);
         self.use_ecx(|this| this.ecx.eval_place_to_op(place, None))
     }
 
+    /// Returns the value, if any, of evaluating `op`. Calls upon `eval_constant`
+    /// or `eval_place`, depending on the variant of `Operand` used.
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         match *op {
             Operand::Constant(ref c) => self.eval_constant(c, source_info),
@@ -658,6 +664,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         })
     }
 
+    /// Creates a new `Operand::Constant` from a `Scalar` value
     fn operand_from_scalar(&self, scalar: Scalar, ty: Ty<'tcx>, span: Span) -> Operand<'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
@@ -703,6 +710,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // Found a value represented as a pair. For now only do cont-prop if type of
                     // Rvalue is also a pair with two scalars. The more general case is more
                     // complicated to implement so we'll do it later.
+                    // FIXME: implement the general case stated above ^.
                     let ty = &value.layout.ty.kind;
                     // Only do it for tuples
                     if let ty::Tuple(substs) = ty {
@@ -739,6 +747,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
+    /// Returns `true` if and only if this `op` should be const-propagated into.
     fn should_const_prop(&mut self, op: OpTy<'tcx>) -> bool {
         let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;
 
@@ -780,14 +789,14 @@ enum ConstPropMode {
 
 struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
-    // false at the beginning, once set, there are not allowed to be any more assignments
+    // False at the beginning. Once set, no more assignments are allowed to that local.
     found_assignment: BitSet<Local>,
     // Cache of locals' information
     local_kinds: IndexVec<Local, LocalKind>,
 }
 
 impl CanConstProp {
-    /// returns true if `local` can be propagated
+    /// Returns true if `local` can be propagated
     fn check(body: &Body<'_>) -> IndexVec<Local, ConstPropMode> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
@@ -798,8 +807,8 @@ impl CanConstProp {
             ),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
-            // cannot use args at all
-            // cannot use locals because if x < y { y - x } else { x - y } would
+            // Cannot use args at all
+            // Cannot use locals because if x < y { y - x } else { x - y } would
             //        lint for x != y
             // FIXME(oli-obk): lint variables until they are used in a condition
             // FIXME(oli-obk): lint if return value is constant
@@ -939,7 +948,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     let expected = ScalarMaybeUndef::from(Scalar::from_bool(*expected));
                     let value_const = self.ecx.read_scalar(value).unwrap();
                     if expected != value_const {
-                        // poison all places this operand references so that further code
+                        // Poison all places this operand references so that further code
                         // doesn't use the invalid value
                         match cond {
                             Operand::Move(ref place) | Operand::Copy(ref place) => {
@@ -1005,7 +1014,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     }
                 }
             }
-            //none of these have Operands to const-propagate
+            // None of these have Operands to const-propagate
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Abort
@@ -1023,22 +1032,17 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 for opr in args {
                     // We see if the operand can be evaluated, and if so, we continue.
                     if let Some(op_ty) = self.eval_operand(&opr, source_info) {
-                        trace!("OpTy of the place: {:?}", &op_ty);
                         // We must also ask if it *should* be evaluated.
                         if self.should_const_prop(op_ty) {
                             if let interpret::Operand::Immediate(immediate) = *op_ty {
                                 // Only Immediate from here on
                                 // FIXME(felix91gr): The code only works for Immediate. Investigate
                                 // if it could be made to work for Indirect as well.
-                                trace!("Immediate of the OpTy: {:?}", &immediate);
                                 if let interpret::Immediate::Scalar(scalar_mu) = immediate {
                                     // FIXME(felix91gr): This only works for Scalar
                                     // Could probably be expanded for Scalar Tuples (inside the Immediate)
-                                    trace!("ScalarMaybeUndef of the OpTy: {:?}", &scalar_mu);
                                     if let ScalarMaybeUndef::Scalar(scalar) = scalar_mu {
-                                        trace!("Scalar of the ScalarMU: {:?}", &scalar);
                                         let operand_type = opr.ty(&self.local_decls, self.tcx);
-                                        trace!("Type of the OpTy: {:?}", &operand_type);
                                         *opr = self.operand_from_scalar(
                                             scalar,
                                             operand_type,
