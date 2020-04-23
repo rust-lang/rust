@@ -831,12 +831,28 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
     // GDB versions look like this: "major.minor.patch?.yyyymmdd?", with both
     // of the ? sections being optional
 
-    // We will parse up to 3 digits for minor and patch, ignoring the date
-    // We limit major to 1 digit, otherwise, on openSUSE, we parse the openSUSE version
+    // We will parse up to 3 digits for each component, ignoring the date
+
+    // We skip text in parentheses.  This avoids accidentally parsing
+    // the openSUSE version, which looks like:
+    //  GNU gdb (GDB; openSUSE Leap 15.0) 8.1
+    // This particular form is documented in the GNU coding standards:
+    // https://www.gnu.org/prep/standards/html_node/_002d_002dversion.html#g_t_002d_002dversion
 
     // don't start parsing in the middle of a number
     let mut prev_was_digit = false;
+    let mut in_parens = false;
     for (pos, c) in full_version_line.char_indices() {
+        if in_parens {
+            if c == ')' {
+                in_parens = false;
+            }
+            continue;
+        } else if c == '(' {
+            in_parens = true;
+            continue;
+        }
+
         if prev_was_digit || !c.is_digit(10) {
             prev_was_digit = c.is_digit(10);
             continue;
@@ -876,7 +892,7 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
             None => (line, None),
         };
 
-        if major.len() != 1 || minor.is_empty() {
+        if minor.is_empty() {
             continue;
         }
 
