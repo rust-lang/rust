@@ -52,7 +52,7 @@ pub struct CompletionItem {
     /// after completion.
     trigger_call_info: bool,
 
-    /// Score is usefull to pre select or display in better order completion items
+    /// Score is useful to pre select or display in better order completion items
     score: Option<CompletionScore>,
 }
 
@@ -91,6 +91,14 @@ impl fmt::Debug for CompletionItem {
         }
         s.finish()
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum CompletionScore {
+    /// If only type match
+    TypeMatch,
+    /// If type and name match
+    TypeAndNameMatch,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -317,14 +325,6 @@ impl<'a> Into<CompletionItem> for Builder {
     fn into(self) -> CompletionItem {
         self.build()
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum CompletionScore {
-    /// If only type match
-    TypeMatch,
-    /// If type and name match
-    TypeAndNameMatch,
 }
 
 /// Represents an in-progress set of completions being built.
