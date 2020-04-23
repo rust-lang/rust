@@ -46,8 +46,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(false);
         }
 
-        let block = match self.frame().block {
-            Some(block) => block,
+        let loc = match self.frame().loc {
+            Some(loc) => loc,
             None => {
                 // We are unwinding and this fn has no cleanup code.
                 // Just go on unwinding.
@@ -56,13 +56,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 return Ok(true);
             }
         };
-        let stmt_id = self.frame().stmt;
-        let body = self.body();
-        let basic_block = &body.basic_blocks()[block];
+        let basic_block = &self.body().basic_blocks()[loc.block];
 
         let old_frames = self.frame_idx();
 
-        if let Some(stmt) = basic_block.statements.get(stmt_id) {
+        if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
             assert_eq!(old_frames, self.frame_idx());
             self.statement(stmt)?;
             return Ok(true);
@@ -126,7 +124,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             LlvmInlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
         }
 
-        self.stack_mut()[frame_idx].stmt += 1;
+        self.stack_mut()[frame_idx].loc.as_mut().unwrap().statement_index += 1;
         Ok(())
     }
 
@@ -279,8 +277,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         self.eval_terminator(terminator)?;
         if !self.stack().is_empty() {
-            if let Some(block) = self.frame().block {
-                info!("// executing {:?}", block);
+            if let Some(loc) = self.frame().loc {
+                info!("// executing {:?}", loc.block);
             }
         }
         Ok(())
