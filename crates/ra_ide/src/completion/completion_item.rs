@@ -93,7 +93,7 @@ impl fmt::Debug for CompletionItem {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum CompletionScore {
     /// If only type match
     TypeMatch,
@@ -202,7 +202,7 @@ impl CompletionItem {
     }
 
     pub fn score(&self) -> Option<CompletionScore> {
-        self.score.clone()
+        self.score
     }
 
     pub fn set_score(&mut self, score: CompletionScore) {

@@ -34,7 +34,9 @@ impl Completions {
         .set_deprecated(is_deprecated)
         .build();
 
-        compute_score(&mut completion_item, ctx);
+        if let Some(score) = compute_score(&completion_item, ctx) {
+            completion_item.set_score(score);
+        }
 
         self.add(completion_item);
     }
@@ -305,7 +307,10 @@ impl Completions {
     }
 }
 
-pub(crate) fn compute_score(completion_item: &mut CompletionItem, ctx: &CompletionContext) {
+pub(crate) fn compute_score(
+    completion_item: &CompletionItem,
+    ctx: &CompletionContext,
+) -> Option<CompletionScore> {
     let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
         if let Some((struct_field, _)) = ctx.sema.resolve_record_field(record_field) {
             (
@@ -313,7 +318,7 @@ pub(crate) fn compute_score(completion_item: &mut CompletionItem, ctx: &Completi
                 struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
             )
         } else {
-            return;
+            return None;
         }
     } else if let Some(call_info) = call_info(ctx.db, ctx.file_position) {
         if call_info.active_parameter_type().is_some()
@@ -321,10 +326,10 @@ pub(crate) fn compute_score(completion_item: &mut CompletionItem, ctx: &Completi
         {
             (call_info.active_parameter_name().unwrap(), call_info.active_parameter_type().unwrap())
         } else {
-            return;
+            return None;
         }
     } else {
-        return;
+        return None;
     };
 
     // Compute score
@@ -332,13 +337,15 @@ pub(crate) fn compute_score(completion_item: &mut CompletionItem, ctx: &Completi
     if let Some(a_parameter_type) = completion_item.detail() {
         if &active_type == a_parameter_type {
             // If same type + same name then go top position
-            if active_name == completion_item.label() {
-                completion_item.set_score(CompletionScore::TypeAndNameMatch);
+            let res = if active_name == completion_item.label() {
+                CompletionScore::TypeAndNameMatch
             } else {
-                completion_item.set_score(CompletionScore::TypeMatch);
-            }
+                CompletionScore::TypeMatch
+            };
+            return Some(res);
         }
     }
+    None
 }
 
 enum Params {
