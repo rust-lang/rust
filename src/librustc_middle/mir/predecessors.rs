@@ -1,3 +1,5 @@
+//! Lazily compute the reverse control-flow graph for the MIR.
+
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_index::vec::IndexVec;
@@ -10,13 +12,13 @@ use crate::mir::{BasicBlock, BasicBlockData};
 pub type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
 
 #[derive(Clone, Debug)]
-pub struct PredecessorCache {
+pub(super) struct PredecessorCache {
     cache: Lock<Option<Lrc<Predecessors>>>,
 }
 
 impl PredecessorCache {
     #[inline]
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         PredecessorCache { cache: Lock::new(None) }
     }
 
@@ -27,7 +29,7 @@ impl PredecessorCache {
     /// callers of `invalidate` have a unique reference to the MIR and thus to the predecessor
     /// cache. This means we don't actually need to take a lock when `invalidate` is called.
     #[inline]
-    pub fn invalidate(&mut self) {
+    pub(super) fn invalidate(&mut self) {
         *self.cache.get_mut() = None;
     }
 
@@ -37,7 +39,7 @@ impl PredecessorCache {
     /// `cache` is only held inside this function. As long as no other locks are taken while
     /// computing the predecessor graph, deadlock is impossible.
     #[inline]
-    pub fn compute(
+    pub(super) fn compute(
         &self,
         basic_blocks: &IndexVec<BasicBlock, BasicBlockData<'_>>,
     ) -> Lrc<Predecessors> {

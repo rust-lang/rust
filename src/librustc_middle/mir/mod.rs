@@ -164,7 +164,7 @@ pub struct Body<'tcx> {
     /// FIXME(oli-obk): rewrite the promoted during promotion to eliminate the cell components.
     pub ignore_interior_mut_in_const_validation: bool,
 
-    pub predecessor_cache: PredecessorCache,
+    predecessor_cache: PredecessorCache,
 }
 
 impl<'tcx> Body<'tcx> {
