@@ -1,5 +1,6 @@
 #![feature(inner_deref)]
 
+use std::env;
 use std::fs::{self, File};
 use std::io::{self, BufRead, Write};
 use std::ops::Not;
@@ -435,7 +436,8 @@ fn in_cargo_miri() {
     test_sysroot_consistency();
 
     // We always setup.
-    let ask = subcommand != MiriCommand::Setup;
+    // Disable interactive prompts in CI (GitHub Actions, Travis, AppVeyor, etc).
+    let ask = subcommand != MiriCommand::Setup && env::var_os("CI").is_none();
     setup(ask);
     if subcommand == MiriCommand::Setup {
         // Stop here.
