@@ -153,7 +153,7 @@ impl WorldState {
                 Err(err) => {
                     log::error!(
                         "Failed to run ra_proc_macro_srv from path {}, error: {:?}",
-                        path,
+                        path.display(),
                         err
                     );
                     ProcMacroClient::dummy()

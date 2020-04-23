@@ -7,6 +7,8 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
+use std::{ffi::OsString, path::PathBuf};
+
 use lsp_types::TextDocumentClientCapabilities;
 use ra_flycheck::FlycheckConfig;
 use ra_ide::{CompletionConfig, InlayHintsConfig};
@@ -20,7 +22,7 @@ pub struct Config {
     pub with_sysroot: bool,
     pub publish_diagnostics: bool,
     pub lru_capacity: Option<usize>,
-    pub proc_macro_srv: Option<(String, Vec<String>)>,
+    pub proc_macro_srv: Option<(PathBuf, Vec<OsString>)>,
     pub files: FilesConfig,
     pub notifications: NotificationsConfig,
 
@@ -135,7 +137,7 @@ impl Config {
         match get(value, "/procMacro/enable") {
             Some(true) => {
                 if let Ok(path) = std::env::current_exe() {
-                    self.proc_macro_srv = Some((path.to_string_lossy().to_string(), vec!["proc-macro".to_string()]));
+                    self.proc_macro_srv = Some((path, vec!["proc-macro".into()]));
                 }
             }
             _ => self.proc_macro_srv = None,
