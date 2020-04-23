@@ -33,15 +33,14 @@
       }
   
       bb1: {
-          ((_2 as Foo).0: u8) = const 0u8; // scope 1 at $DIR/simplify-arm-identity.rs:20:21: 20:32
+          _2 = const Dst::Foo(0u8);        // bb1[0]: scope 1 at $DIR/simplify-arm-identity.rs:20:21: 20:32
                                            // ty::Const
-                                           // + ty: u8
+                                           // + ty: Dst
                                            // + val: Value(Scalar(0x00))
                                            // mir::Constant
-                                           // + span: $DIR/simplify-arm-identity.rs:20:30: 20:31
-                                           // + literal: Const { ty: u8, val: Value(Scalar(0x00)) }
-          discriminant(_2) = 0;            // scope 1 at $DIR/simplify-arm-identity.rs:20:21: 20:32
-          goto -> bb4;                     // scope 1 at $DIR/simplify-arm-identity.rs:18:18: 21:6
+                                           // + span: $DIR/simplify-arm-identity.rs:20:21: 20:32
+                                           // + literal: Const { ty: Dst, val: Value(Scalar(0x00)) }
+          goto -> bb4;                     // bb1[1]: scope 1 at $DIR/simplify-arm-identity.rs:18:18: 21:6
       }
   
       bb2: {
