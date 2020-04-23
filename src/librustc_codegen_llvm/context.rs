@@ -103,9 +103,14 @@ fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
     }
 }
 
-pub fn is_pie_binary(sess: &Session) -> bool {
+/// PIE is potentially more effective than PIC, but can only be used in executables.
+/// If all our outputs are executables, then we can relax PIC to PIE when producing object code.
+/// If the list of crate types is not yet known we conservatively return `false`.
+pub fn all_outputs_are_pic_executables(sess: &Session) -> bool {
     sess.relocation_model() == RelocModel::Pic
-        && !sess.crate_types.borrow().iter().any(|ty| *ty != config::CrateType::Executable)
+        && sess.crate_types.try_get().map_or(false, |crate_types| {
+            crate_types.iter().all(|ty| *ty == config::CrateType::Executable)
+        })
 }
 
 fn strip_function_ptr_alignment(data_layout: String) -> String {
@@ -138,7 +143,7 @@ pub unsafe fn create_module(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.target.options.is_builtin {
-        let tm = crate::back::write::create_informational_target_machine(&tcx.sess, false);
+        let tm = crate::back::write::create_informational_target_machine(tcx.sess);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
 
@@ -185,7 +190,7 @@ pub unsafe fn create_module(
         llvm::LLVMRustSetModulePICLevel(llmod);
     }
 
-    if is_pie_binary(sess) {
+    if all_outputs_are_pic_executables(sess) {
         llvm::LLVMRustSetModulePIELevel(llmod);
     }
 
