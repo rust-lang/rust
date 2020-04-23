@@ -791,6 +791,11 @@ impl<'a> Builder<'a> {
             rustflags.arg("--cfg=bootstrap");
         }
 
+        // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
+        // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
+        // #71458.
+        let rustdocflags = rustflags.clone();
+
         if let Ok(s) = env::var("CARGOFLAGS") {
             cargo.args(s.split_whitespace());
         }
@@ -1269,7 +1274,7 @@ impl<'a> Builder<'a> {
             }
         }
 
-        Cargo { command: cargo, rustflags }
+        Cargo { command: cargo, rustflags, rustdocflags }
     }
 
     /// Ensure that a given step is built, returning its output. This will
@@ -1327,7 +1332,7 @@ impl<'a> Builder<'a> {
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Rustflags(String);
 
 impl Rustflags {
@@ -1367,6 +1372,7 @@ impl Rustflags {
 pub struct Cargo {
     command: Command,
     rustflags: Rustflags,
+    rustdocflags: Rustflags,
 }
 
 impl Cargo {
@@ -1400,6 +1406,7 @@ impl Cargo {
 impl From<Cargo> for Command {
     fn from(mut cargo: Cargo) -> Command {
         cargo.command.env("RUSTFLAGS", &cargo.rustflags.0);
+        cargo.command.env("RUSTDOCFLAGS", &cargo.rustdocflags.0);
         cargo.command
     }
 }
