@@ -19,7 +19,7 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{call_info::call_info_for_token, Analysis, FileId};
+use crate::{call_info::ActiveParameter, Analysis, FileId};
 
 pub(crate) use html::highlight_as_html;
 pub use tags::{Highlight, HighlightModifier, HighlightModifiers, HighlightTag};
@@ -364,10 +364,8 @@ fn highlight_injection(
     literal: ast::RawString,
     expanded: SyntaxToken,
 ) -> Option<()> {
-    let call_info = call_info_for_token(&sema, expanded)?;
-    let idx = call_info.active_parameter?;
-    let name = call_info.signature.parameter_names.get(idx)?;
-    if !name.starts_with("ra_fixture") {
+    let active_parameter = ActiveParameter::at_token(&sema, expanded)?;
+    if !active_parameter.name.starts_with("ra_fixture") {
         return None;
     }
     let value = literal.value()?;

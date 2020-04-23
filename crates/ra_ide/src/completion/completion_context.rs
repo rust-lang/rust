@@ -11,7 +11,7 @@ use ra_syntax::{
 };
 use ra_text_edit::AtomTextEdit;
 
-use crate::{completion::CompletionConfig, FilePosition};
+use crate::{call_info::ActiveParameter, completion::CompletionConfig, FilePosition};
 
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
@@ -21,7 +21,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) db: &'a RootDatabase,
     pub(super) config: &'a CompletionConfig,
     pub(super) offset: TextUnit,
-    pub(super) file_position: FilePosition,
     /// The token before the cursor, in the original file.
     pub(super) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
@@ -34,6 +33,8 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
     pub(super) record_field_syntax: Option<ast::RecordField>,
     pub(super) impl_def: Option<ast::ImplDef>,
+    /// FIXME: `ActiveParameter` is string-based, which is very wrong
+    pub(super) active_parameter: Option<ActiveParameter>,
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
@@ -90,7 +91,6 @@ impl<'a> CompletionContext<'a> {
             original_token,
             token,
             offset: position.offset,
-            file_position: position,
             krate,
             name_ref_syntax: None,
             function_syntax: None,
@@ -99,6 +99,7 @@ impl<'a> CompletionContext<'a> {
             record_pat_syntax: None,
             record_field_syntax: None,
             impl_def: None,
+            active_parameter: ActiveParameter::at(db, position),
             is_param: false,
             is_pat_binding_or_const: false,
             is_trivial_path: false,

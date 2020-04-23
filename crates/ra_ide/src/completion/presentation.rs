@@ -6,7 +6,6 @@ use stdx::SepBy;
 use test_utils::tested_by;
 
 use crate::{
-    call_info::call_info,
     completion::{
         completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
         CompletionKind, Completions,
@@ -317,8 +316,8 @@ pub(crate) fn compute_score(
             struct_field.name(ctx.db).to_string(),
             struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
         )
-    } else if let Some(call_info) = call_info(ctx.db, ctx.file_position) {
-        (call_info.active_parameter_name()?, call_info.active_parameter_type()?)
+    } else if let Some(active_parameter) = &ctx.active_parameter {
+        (active_parameter.name.clone(), active_parameter.ty.clone())
     } else {
         return None;
     };
