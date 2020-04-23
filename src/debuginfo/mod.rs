@@ -270,6 +270,11 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             .add(scope, gimli::DW_TAG_subprogram);
         let entry = debug_context.dwarf.unit.get_mut(entry_id);
         let name_id = debug_context.dwarf.strings.add(name);
+        // Gdb requires DW_AT_name. Otherwise the DW_TAG_subprogram is skipped.
+        entry.set(
+            gimli::DW_AT_name,
+            AttributeValue::StringRef(name_id),
+        );
         entry.set(
             gimli::DW_AT_linkage_name,
             AttributeValue::StringRef(name_id),
@@ -323,6 +328,15 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 },
                 length: u64::from(end),
             });
+
+        let func_entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
+        // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.
+        func_entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(Address::Symbol {
+            symbol: self.symbol,
+            addend: 0,
+        }));
+        // Using Udata for DW_AT_high_pc requires at least DWARF4
+        func_entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(end)));
 
         // FIXME Remove once actual debuginfo for locals works.
         for (i, (param, &val)) in context.func.signature.params.iter().zip(context.func.dfg.block_params(context.func.layout.entry_block().unwrap())).enumerate() {
