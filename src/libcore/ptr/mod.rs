@@ -65,8 +65,6 @@
 //! [`write_volatile`]: ./fn.write_volatile.html
 //! [`NonNull::dangling`]: ./struct.NonNull.html#method.dangling
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering;
@@ -248,8 +246,8 @@ pub(crate) struct FatPtr<T> {
 ///
 /// // create a slice pointer when starting out with a pointer to the first element
 /// let x = [5, 6, 7];
-/// let ptr = x.as_ptr();
-/// let slice = ptr::slice_from_raw_parts(ptr, 3);
+/// let raw_pointer = x.as_ptr();
+/// let slice = ptr::slice_from_raw_parts(raw_pointer, 3);
 /// assert_eq!(unsafe { &*slice }[2], 7);
 /// ```
 #[inline]
