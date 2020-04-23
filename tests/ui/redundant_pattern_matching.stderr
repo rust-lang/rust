@@ -137,22 +137,58 @@ LL |     let _ = if let Ok(_) = Ok::<usize, ()>(4) { true } else { false };
    |             -------^^^^^--------------------- help: try this: `if Ok::<usize, ()>(4).is_ok()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching.rs:90:20
+  --> $DIR/redundant_pattern_matching.rs:87:20
    |
 LL |     let x = if let Some(_) = opt { true } else { false };
    |             -------^^^^^^^------ help: try this: `if opt.is_some()`
 
-error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:101:12
+error: redundant pattern matching, consider using `is_some()`
+  --> $DIR/redundant_pattern_matching.rs:92:20
    |
-LL |     if let Ok(_) = Ok::<i32, i32>(4) {
-   |     -------^^^^^-------------------- help: try this: `if Ok::<i32, i32>(4).is_ok()`
+LL |     let _ = if let Some(_) = gen_opt() {
+   |             -------^^^^^^^------------ help: try this: `if gen_opt().is_some()`
+
+error: redundant pattern matching, consider using `is_none()`
+  --> $DIR/redundant_pattern_matching.rs:94:19
+   |
+LL |     } else if let None = gen_opt() {
+   |            -------^^^^------------ help: try this: `if gen_opt().is_none()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:109:12
+  --> $DIR/redundant_pattern_matching.rs:96:19
    |
-LL |     if let Ok(_) = Ok::<i32, i32>(4) {
-   |     -------^^^^^-------------------- help: try this: `if Ok::<i32, i32>(4).is_ok()`
+LL |     } else if let Ok(_) = gen_res() {
+   |            -------^^^^^------------ help: try this: `if gen_res().is_ok()`
 
-error: aborting due to 22 previous errors
+error: redundant pattern matching, consider using `is_err()`
+  --> $DIR/redundant_pattern_matching.rs:98:19
+   |
+LL |     } else if let Err(_) = gen_res() {
+   |            -------^^^^^^------------ help: try this: `if gen_res().is_err()`
+
+error: redundant pattern matching, consider using `is_some()`
+  --> $DIR/redundant_pattern_matching.rs:131:19
+   |
+LL |         while let Some(_) = r#try!(result_opt()) {}
+   |         ----------^^^^^^^----------------------- help: try this: `while r#try!(result_opt()).is_some()`
+
+error: redundant pattern matching, consider using `is_some()`
+  --> $DIR/redundant_pattern_matching.rs:132:16
+   |
+LL |         if let Some(_) = r#try!(result_opt()) {}
+   |         -------^^^^^^^----------------------- help: try this: `if r#try!(result_opt()).is_some()`
+
+error: redundant pattern matching, consider using `is_some()`
+  --> $DIR/redundant_pattern_matching.rs:138:12
+   |
+LL |     if let Some(_) = m!() {}
+   |     -------^^^^^^^------- help: try this: `if m!().is_some()`
+
+error: redundant pattern matching, consider using `is_some()`
+  --> $DIR/redundant_pattern_matching.rs:139:15
+   |
+LL |     while let Some(_) = m!() {}
+   |     ----------^^^^^^^------- help: try this: `while m!().is_some()`
+
+error: aborting due to 28 previous errors
 

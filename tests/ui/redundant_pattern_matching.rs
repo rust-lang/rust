@@ -2,7 +2,7 @@
 
 #![warn(clippy::all)]
 #![warn(clippy::redundant_pattern_matching)]
-#![allow(clippy::unit_arg, unused_must_use, clippy::needless_bool)]
+#![allow(clippy::unit_arg, unused_must_use, clippy::needless_bool, deprecated)]
 
 fn main() {
     if let Ok(_) = Ok::<i32, i32>(42) {}
@@ -83,12 +83,31 @@ fn main() {
 
     let _ = if let Ok(_) = Ok::<usize, ()>(4) { true } else { false };
 
-    let _ = does_something();
-    let _ = returns_unit();
-
     let opt = Some(false);
     let x = if let Some(_) = opt { true } else { false };
     takes_bool(x);
+
+    issue5504();
+
+    let _ = if let Some(_) = gen_opt() {
+        1
+    } else if let None = gen_opt() {
+        2
+    } else if let Ok(_) = gen_res() {
+        3
+    } else if let Err(_) = gen_res() {
+        4
+    } else {
+        5
+    };
+}
+
+fn gen_opt() -> Option<()> {
+    None
+}
+
+fn gen_res() -> Result<(), ()> {
+    Ok(())
 }
 
 fn takes_bool(_: bool) {}
@@ -97,18 +116,25 @@ fn foo() {}
 
 fn bar() {}
 
-fn does_something() -> bool {
-    if let Ok(_) = Ok::<i32, i32>(4) {
-        true
-    } else {
-        false
-    }
+macro_rules! m {
+    () => {
+        Some(42u32)
+    };
 }
 
-fn returns_unit() {
-    if let Ok(_) = Ok::<i32, i32>(4) {
-        true
-    } else {
-        false
-    };
+fn issue5504() {
+    fn result_opt() -> Result<Option<i32>, i32> {
+        Err(42)
+    }
+
+    fn try_result_opt() -> Result<i32, i32> {
+        while let Some(_) = r#try!(result_opt()) {}
+        if let Some(_) = r#try!(result_opt()) {}
+        Ok(42)
+    }
+
+    try_result_opt();
+
+    if let Some(_) = m!() {}
+    while let Some(_) = m!() {}
 }

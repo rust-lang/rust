@@ -103,14 +103,21 @@ fn find_sugg_for_if_let<'a, 'tcx>(
         arms[0].pat.span,
         &format!("redundant pattern matching, consider using `{}`", good_method),
         |diag| {
-            // in the case of WhileLetDesugar expr.span == op.span incorrectly.
-            // this is a workaround to restore true value of expr.span
-            let expr_span = expr.span.to(arms[1].span);
-            let span = expr_span.until(op.span.shrink_to_hi());
+            // while let ... = ... { ... }
+            // ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            let expr_span = expr.span;
+
+            // while let ... = ... { ... }
+            //                 ^^^
+            let op_span = op.span.source_callsite();
+
+            // while let ... = ... { ... }
+            // ^^^^^^^^^^^^^^^^^^^
+            let span = expr_span.until(op_span.shrink_to_hi());
             diag.span_suggestion(
                 span,
                 "try this",
-                format!("{} {}.{}", keyword, snippet(cx, op.span, "_"), good_method),
+                format!("{} {}.{}", keyword, snippet(cx, op_span, "_"), good_method),
                 Applicability::MachineApplicable, // snippet
             );
         },
