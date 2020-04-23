@@ -404,7 +404,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     // We may be reading from a static.
                     // In order to ensure that `static FOO: Type = FOO;` causes a cycle error
                     // instead of magically pulling *any* ZST value from the ether, we need to
-                    // trigger a read here.
+                    // actually access the referenced allocation. The caller is likely
+                    // to short-circuit on `None`, so we trigger the access here to
+                    // make sure it happens.
                     self.get_raw(ptr.alloc_id)?;
                     None
                 } else {
