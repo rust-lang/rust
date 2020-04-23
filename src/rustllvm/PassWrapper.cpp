@@ -346,7 +346,7 @@ static PassBuilder::OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level
   }
 }
 
-enum class LLVMRustRelocMode {
+enum class LLVMRustRelocModel {
   Static,
   PIC,
   DynamicNoPic,
@@ -355,19 +355,19 @@ enum class LLVMRustRelocMode {
   ROPIRWPI,
 };
 
-static Reloc::Model fromRust(LLVMRustRelocMode RustReloc) {
+static Reloc::Model fromRust(LLVMRustRelocModel RustReloc) {
   switch (RustReloc) {
-  case LLVMRustRelocMode::Static:
+  case LLVMRustRelocModel::Static:
     return Reloc::Static;
-  case LLVMRustRelocMode::PIC:
+  case LLVMRustRelocModel::PIC:
     return Reloc::PIC_;
-  case LLVMRustRelocMode::DynamicNoPic:
+  case LLVMRustRelocModel::DynamicNoPic:
     return Reloc::DynamicNoPIC;
-  case LLVMRustRelocMode::ROPI:
+  case LLVMRustRelocModel::ROPI:
     return Reloc::ROPI;
-  case LLVMRustRelocMode::RWPI:
+  case LLVMRustRelocModel::RWPI:
     return Reloc::RWPI;
-  case LLVMRustRelocMode::ROPIRWPI:
+  case LLVMRustRelocModel::ROPIRWPI:
     return Reloc::ROPI_RWPI;
   }
   report_fatal_error("Bad RelocModel.");
@@ -437,7 +437,7 @@ extern "C" const char* LLVMRustGetHostCPUName(size_t *len) {
 
 extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     const char *TripleStr, const char *CPU, const char *Feature,
-    const char *ABIStr, LLVMRustCodeModel RustCM, LLVMRustRelocMode RustReloc,
+    const char *ABIStr, LLVMRustCodeModel RustCM, LLVMRustRelocModel RustReloc,
     LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
     bool PositionIndependentExecutable, bool FunctionSections,
     bool DataSections,

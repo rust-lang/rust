@@ -117,14 +117,14 @@ fn to_pass_builder_opt_level(cfg: config::OptLevel) -> llvm::PassBuilderOptLevel
     }
 }
 
-fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocMode {
+fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocModel {
     match relocation_model {
-        RelocModel::Static => llvm::RelocMode::Static,
-        RelocModel::Pic => llvm::RelocMode::PIC,
-        RelocModel::DynamicNoPic => llvm::RelocMode::DynamicNoPic,
-        RelocModel::Ropi => llvm::RelocMode::ROPI,
-        RelocModel::Rwpi => llvm::RelocMode::RWPI,
-        RelocModel::RopiRwpi => llvm::RelocMode::ROPI_RWPI,
+        RelocModel::Static => llvm::RelocModel::Static,
+        RelocModel::Pic => llvm::RelocModel::PIC,
+        RelocModel::DynamicNoPic => llvm::RelocModel::DynamicNoPic,
+        RelocModel::Ropi => llvm::RelocModel::ROPI,
+        RelocModel::Rwpi => llvm::RelocModel::RWPI,
+        RelocModel::RopiRwpi => llvm::RelocModel::ROPI_RWPI,
     }
 }
 
