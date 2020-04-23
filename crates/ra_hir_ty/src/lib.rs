@@ -863,7 +863,7 @@ pub trait TypeWalk {
             &mut |ty, binders| {
                 if let &mut Ty::Bound(bound) = ty {
                     if bound.debruijn >= binders {
-                        *ty = substs.0[bound.index].clone();
+                        *ty = substs.0[bound.index].clone().shift_bound_vars(binders);
                     }
                 }
             },
