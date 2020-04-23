@@ -189,7 +189,7 @@ fn mk_child(path: &Path, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> i
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::inherit())
         .spawn()
 }
 
