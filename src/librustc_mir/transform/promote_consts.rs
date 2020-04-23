@@ -30,7 +30,7 @@ use std::cell::Cell;
 use std::{cmp, iter, mem};
 
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
-use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstKind, Item};
+use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstCx, ConstKind};
 use crate::transform::{MirPass, MirSource};
 
 /// A `MirPass` for promotion.
@@ -62,9 +62,10 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let def_id = src.def_id();
 
         let mut rpo = traversal::reverse_postorder(body);
-        let (temps, all_candidates) = collect_temps_and_candidates(tcx, body, &mut rpo);
+        let ccx = ConstCx::new(tcx, def_id, body);
+        let (temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);
 
-        let promotable_candidates = validate_candidates(tcx, body, def_id, &temps, &all_candidates);
+        let promotable_candidates = validate_candidates(&ccx, &temps, &all_candidates);
 
         let promoted = promote_candidates(def_id, body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
@@ -139,8 +140,7 @@ fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Vec<usize>> {
 }
 
 struct Collector<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    ccx: &'a ConstCx<'a, 'tcx>,
     temps: IndexVec<Local, TempState>,
     candidates: Vec<Candidate>,
     span: Span,
@@ -150,7 +150,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
     fn visit_local(&mut self, &index: &Local, context: PlaceContext, location: Location) {
         debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries and the return place
-        match self.body.local_kind(index) {
+        match self.ccx.body.local_kind(index) {
             LocalKind::Temp | LocalKind::ReturnPointer => {}
             LocalKind::Arg | LocalKind::Var => return,
         }
@@ -203,7 +203,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
             Rvalue::Ref(..) => {
                 self.candidates.push(Candidate::Ref(location));
             }
-            Rvalue::Repeat(..) if self.tcx.features().const_in_array_repeat_expressions => {
+            Rvalue::Repeat(..) if self.ccx.tcx.features().const_in_array_repeat_expressions => {
                 // FIXME(#49147) only promote the element when it isn't `Copy`
                 // (so that code that can copy it at runtime is unaffected).
                 self.candidates.push(Candidate::Repeat(location));
@@ -216,10 +216,10 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         self.super_terminator_kind(kind, location);
 
         if let TerminatorKind::Call { ref func, .. } = *kind {
-            if let ty::FnDef(def_id, _) = func.ty(self.body, self.tcx).kind {
-                let fn_sig = self.tcx.fn_sig(def_id);
+            if let ty::FnDef(def_id, _) = func.ty(self.ccx.body, self.ccx.tcx).kind {
+                let fn_sig = self.ccx.tcx.fn_sig(def_id);
                 if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
-                    let name = self.tcx.item_name(def_id);
+                    let name = self.ccx.tcx.item_name(def_id);
                     // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
                     if name.as_str().starts_with("simd_shuffle") {
                         self.candidates.push(Candidate::Argument { bb: location.block, index: 2 });
@@ -228,7 +228,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
                     }
                 }
 
-                if let Some(constant_args) = args_required_const(self.tcx, def_id) {
+                if let Some(constant_args) = args_required_const(self.ccx.tcx, def_id) {
                     for index in constant_args {
                         self.candidates.push(Candidate::Argument { bb: location.block, index });
                     }
@@ -243,16 +243,14 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 }
 
 pub fn collect_temps_and_candidates(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
+    ccx: &ConstCx<'mir, 'tcx>,
     rpo: &mut ReversePostorder<'_, 'tcx>,
 ) -> (IndexVec<Local, TempState>, Vec<Candidate>) {
     let mut collector = Collector {
-        tcx,
-        body,
-        temps: IndexVec::from_elem(TempState::Undefined, &body.local_decls),
+        temps: IndexVec::from_elem(TempState::Undefined, &ccx.body.local_decls),
         candidates: vec![],
-        span: body.span,
+        span: ccx.body.span,
+        ccx,
     };
     for (bb, data) in rpo {
         collector.visit_basic_block_data(bb, data);
@@ -264,7 +262,7 @@ pub fn collect_temps_and_candidates(
 ///
 /// This wraps an `Item`, and has access to all fields of that `Item` via `Deref` coercion.
 struct Validator<'a, 'tcx> {
-    item: Item<'a, 'tcx>,
+    ccx: &'a ConstCx<'a, 'tcx>,
     temps: &'a IndexVec<Local, TempState>,
 
     /// Explicit promotion happens e.g. for constant arguments declared via
@@ -277,10 +275,10 @@ struct Validator<'a, 'tcx> {
 }
 
 impl std::ops::Deref for Validator<'a, 'tcx> {
-    type Target = Item<'a, 'tcx>;
+    type Target = ConstCx<'a, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.item
+        &self.ccx
     }
 }
 
@@ -413,7 +411,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box (_, rhs)) => qualifs::in_rvalue::<Q, _>(
-                        &self.item,
+                        &self.ccx,
                         &mut |l| self.qualif_local::<Q>(l),
                         rhs,
                     ),
@@ -430,7 +428,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 match &terminator.kind {
                     TerminatorKind::Call { .. } => {
                         let return_ty = self.body.local_decls[local].ty;
-                        Q::in_any_value_of_ty(&self.item, return_ty)
+                        Q::in_any_value_of_ty(&self.ccx, return_ty)
                     }
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
@@ -717,13 +715,11 @@ impl<'tcx> Validator<'_, 'tcx> {
 
 // FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
 pub fn validate_candidates(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    def_id: DefId,
+    ccx: &ConstCx<'_, '_>,
     temps: &IndexVec<Local, TempState>,
     candidates: &[Candidate],
 ) -> Vec<Candidate> {
-    let mut validator = Validator { item: Item::new(tcx, def_id, body), temps, explicit: false };
+    let mut validator = Validator { ccx, temps, explicit: false };
 
     candidates
         .iter()
@@ -735,11 +731,23 @@ pub fn validate_candidates(
             // and `#[rustc_args_required_const]` arguments here.
 
             let is_promotable = validator.validate_candidate(candidate).is_ok();
+
+            // If we use explicit validation, we carry the risk of turning a legitimate run-time
+            // operation into a failing compile-time operation. Make sure that does not happen
+            // by asserting that there is no possible run-time behavior here in case promotion
+            // fails.
+            if validator.explicit && !is_promotable {
+                ccx.tcx.sess.delay_span_bug(
+                    ccx.body.span,
+                    "Explicit promotion requested, but failed to promote",
+                );
+            }
+
             match candidate {
                 Candidate::Argument { bb, index } if !is_promotable => {
-                    let span = body[bb].terminator().source_info.span;
+                    let span = ccx.body[bb].terminator().source_info.span;
                     let msg = format!("argument {} is required to be a constant", index + 1);
-                    tcx.sess.span_err(span, &msg);
+                    ccx.tcx.sess.span_err(span, &msg);
                 }
                 _ => (),
             }
@@ -1147,22 +1155,19 @@ pub fn promote_candidates<'tcx>(
 /// Feature attribute should be suggested if `operand` can be promoted and the feature is not
 /// enabled.
 crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    mir_def_id: DefId,
-    body: &Body<'tcx>,
+    ccx: &ConstCx<'_, 'tcx>,
     operand: &Operand<'tcx>,
 ) -> bool {
-    let mut rpo = traversal::reverse_postorder(&body);
-    let (temps, _) = collect_temps_and_candidates(tcx, &body, &mut rpo);
-    let validator =
-        Validator { item: Item::new(tcx, mir_def_id, body), temps: &temps, explicit: false };
+    let mut rpo = traversal::reverse_postorder(&ccx.body);
+    let (temps, _) = collect_temps_and_candidates(&ccx, &mut rpo);
+    let validator = Validator { ccx, temps: &temps, explicit: false };
 
     let should_promote = validator.validate_operand(operand).is_ok();
-    let feature_flag = tcx.features().const_in_array_repeat_expressions;
+    let feature_flag = validator.ccx.tcx.features().const_in_array_repeat_expressions;
     debug!(
-        "should_suggest_const_in_array_repeat_expressions_flag: mir_def_id={:?} \
+        "should_suggest_const_in_array_repeat_expressions_flag: def_id={:?} \
             should_promote={:?} feature_flag={:?}",
-        mir_def_id, should_promote, feature_flag
+        validator.ccx.def_id, should_promote, feature_flag
     );
     should_promote && !feature_flag
 }

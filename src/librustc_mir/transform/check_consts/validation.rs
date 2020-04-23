@@ -20,7 +20,7 @@ use std::ops::Deref;
 use super::ops::{self, NonConstOp};
 use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
-use super::{is_lang_panic_fn, ConstKind, Item, Qualif};
+use super::{is_lang_panic_fn, ConstCx, ConstKind, Qualif};
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::dataflow::MaybeMutBorrowedLocals;
 use crate::dataflow::{self, Analysis};
@@ -37,15 +37,15 @@ struct QualifCursor<'a, 'mir, 'tcx, Q: Qualif> {
 }
 
 impl<Q: Qualif> QualifCursor<'a, 'mir, 'tcx, Q> {
-    pub fn new(q: Q, item: &'a Item<'mir, 'tcx>) -> Self {
-        let cursor = FlowSensitiveAnalysis::new(q, item)
-            .into_engine(item.tcx, item.body, item.def_id)
+    pub fn new(q: Q, ccx: &'a ConstCx<'mir, 'tcx>) -> Self {
+        let cursor = FlowSensitiveAnalysis::new(q, ccx)
+            .into_engine(ccx.tcx, ccx.body, ccx.def_id)
             .iterate_to_fixpoint()
-            .into_results_cursor(item.body);
+            .into_results_cursor(ccx.body);
 
-        let mut in_any_value_of_ty = BitSet::new_empty(item.body.local_decls.len());
-        for (local, decl) in item.body.local_decls.iter_enumerated() {
-            if Q::in_any_value_of_ty(item, decl.ty) {
+        let mut in_any_value_of_ty = BitSet::new_empty(ccx.body.local_decls.len());
+        for (local, decl) in ccx.body.local_decls.iter_enumerated() {
+            if Q::in_any_value_of_ty(ccx, decl.ty) {
                 in_any_value_of_ty.insert(local);
             }
         }
@@ -91,12 +91,12 @@ impl Qualifs<'a, 'mir, 'tcx> {
             || self.indirectly_mutable(local, location)
     }
 
-    fn in_return_place(&mut self, item: &Item<'_, 'tcx>) -> ConstQualifs {
+    fn in_return_place(&mut self, ccx: &ConstCx<'_, 'tcx>) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
         // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
         // qualifs for the return type.
-        let return_block = item
+        let return_block = ccx
             .body
             .basic_blocks()
             .iter_enumerated()
@@ -107,11 +107,11 @@ impl Qualifs<'a, 'mir, 'tcx> {
             .map(|(bb, _)| bb);
 
         let return_block = match return_block {
-            None => return qualifs::in_any_value_of_ty(item, item.body.return_ty()),
+            None => return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty()),
             Some(bb) => bb,
         };
 
-        let return_loc = item.body.terminator_loc(return_block);
+        let return_loc = ccx.body.terminator_loc(return_block);
 
         ConstQualifs {
             needs_drop: self.needs_drop(RETURN_PLACE, return_loc),
@@ -121,7 +121,7 @@ impl Qualifs<'a, 'mir, 'tcx> {
 }
 
 pub struct Validator<'a, 'mir, 'tcx> {
-    item: &'a Item<'mir, 'tcx>,
+    ccx: &'a ConstCx<'mir, 'tcx>,
     qualifs: Qualifs<'a, 'mir, 'tcx>,
 
     /// The span of the current statement.
@@ -129,19 +129,19 @@ pub struct Validator<'a, 'mir, 'tcx> {
 }
 
 impl Deref for Validator<'_, 'mir, 'tcx> {
-    type Target = Item<'mir, 'tcx>;
+    type Target = ConstCx<'mir, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.item
+        &self.ccx
     }
 }
 
 impl Validator<'a, 'mir, 'tcx> {
-    pub fn new(item: &'a Item<'mir, 'tcx>) -> Self {
-        let Item { tcx, body, def_id, param_env, .. } = *item;
+    pub fn new(ccx: &'a ConstCx<'mir, 'tcx>) -> Self {
+        let ConstCx { tcx, body, def_id, param_env, .. } = *ccx;
 
-        let needs_drop = QualifCursor::new(NeedsDrop, item);
-        let has_mut_interior = QualifCursor::new(HasMutInterior, item);
+        let needs_drop = QualifCursor::new(NeedsDrop, ccx);
+        let has_mut_interior = QualifCursor::new(HasMutInterior, ccx);
 
         // We can use `unsound_ignore_borrow_on_drop` here because custom drop impls are not
         // allowed in a const.
@@ -156,11 +156,11 @@ impl Validator<'a, 'mir, 'tcx> {
 
         let qualifs = Qualifs { needs_drop, has_mut_interior, indirectly_mutable };
 
-        Validator { span: item.body.span, item, qualifs }
+        Validator { span: ccx.body.span, ccx, qualifs }
     }
 
     pub fn check_body(&mut self) {
-        let Item { tcx, body, def_id, const_kind, .. } = *self.item;
+        let ConstCx { tcx, body, def_id, const_kind, .. } = *self.ccx;
 
         let use_min_const_fn_checks = (const_kind == Some(ConstKind::ConstFn)
             && crate::const_eval::is_min_const_fn(tcx, def_id))
@@ -175,7 +175,7 @@ impl Validator<'a, 'mir, 'tcx> {
             }
         }
 
-        check_short_circuiting_in_const_local(self.item);
+        check_short_circuiting_in_const_local(self.ccx);
 
         if body.is_cfg_cyclic() {
             // We can't provide a good span for the error here, but this should be caught by the
@@ -196,7 +196,7 @@ impl Validator<'a, 'mir, 'tcx> {
     }
 
     pub fn qualifs_in_return_place(&mut self) -> ConstQualifs {
-        self.qualifs.in_return_place(self.item)
+        self.qualifs.in_return_place(self.ccx)
     }
 
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
@@ -344,7 +344,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, ref place)
             | Rvalue::AddressOf(Mutability::Not, ref place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
-                    &self.item,
+                    &self.ccx,
                     &mut |local| self.qualifs.has_mut_interior(local, location),
                     place.as_ref(),
                 );
@@ -608,8 +608,8 @@ fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) 
         .emit();
 }
 
-fn check_short_circuiting_in_const_local(item: &Item<'_, 'tcx>) {
-    let body = item.body;
+fn check_short_circuiting_in_const_local(ccx: &ConstCx<'_, 'tcx>) {
+    let body = ccx.body;
 
     if body.control_flow_destroyed.is_empty() {
         return;
@@ -618,12 +618,12 @@ fn check_short_circuiting_in_const_local(item: &Item<'_, 'tcx>) {
     let mut locals = body.vars_iter();
     if let Some(local) = locals.next() {
         let span = body.local_decls[local].source_info.span;
-        let mut error = item.tcx.sess.struct_span_err(
+        let mut error = ccx.tcx.sess.struct_span_err(
             span,
             &format!(
                 "new features like let bindings are not permitted in {}s \
                 which also use short circuiting operators",
-                item.const_kind(),
+                ccx.const_kind(),
             ),
         );
         for (span, kind) in body.control_flow_destroyed.iter() {

@@ -42,7 +42,10 @@ use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligations}
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::dataflow::ResultsCursor;
-use crate::transform::promote_consts::should_suggest_const_in_array_repeat_expressions_attribute;
+use crate::transform::{
+    check_consts::ConstCx,
+    promote_consts::should_suggest_const_in_array_repeat_expressions_attribute,
+};
 
 use crate::borrow_check::{
     borrow_set::BorrowSet,
@@ -1984,14 +1987,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let span = body.source_info(location).span;
                         let ty = operand.ty(body, tcx);
                         if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
+                            let ccx = ConstCx::new_with_param_env(
+                                tcx,
+                                self.mir_def_id,
+                                body,
+                                self.param_env,
+                            );
                             // To determine if `const_in_array_repeat_expressions` feature gate should
                             // be mentioned, need to check if the rvalue is promotable.
                             let should_suggest =
                                 should_suggest_const_in_array_repeat_expressions_attribute(
-                                    tcx,
-                                    self.mir_def_id,
-                                    body,
-                                    operand,
+                                    &ccx, operand,
                                 );
                             debug!("check_rvalue: should_suggest={:?}", should_suggest);
 

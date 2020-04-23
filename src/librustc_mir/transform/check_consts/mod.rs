@@ -20,7 +20,7 @@ pub mod validation;
 
 /// Information about the item currently being const-checked, as well as a reference to the global
 /// context.
-pub struct Item<'mir, 'tcx> {
+pub struct ConstCx<'mir, 'tcx> {
     pub body: &'mir mir::Body<'tcx>,
     pub tcx: TyCtxt<'tcx>,
     pub def_id: DefId,
@@ -28,12 +28,21 @@ pub struct Item<'mir, 'tcx> {
     pub const_kind: Option<ConstKind>,
 }
 
-impl Item<'mir, 'tcx> {
+impl ConstCx<'mir, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'mir mir::Body<'tcx>) -> Self {
         let param_env = tcx.param_env(def_id);
+        Self::new_with_param_env(tcx, def_id, body, param_env)
+    }
+
+    pub fn new_with_param_env(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        body: &'mir mir::Body<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Self {
         let const_kind = ConstKind::for_item(tcx, def_id);
 
-        Item { body, tcx, def_id, param_env, const_kind }
+        ConstCx { body, tcx, def_id, param_env, const_kind }
     }
 
     /// Returns the kind of const context this `Item` represents (`const`, `static`, etc.).
