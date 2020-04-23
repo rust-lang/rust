@@ -177,6 +177,26 @@ let g:LanguageClient_serverCommands = {
 \ }
 ----
 
+==== YouCompleteMe
+
+1. Install YouCompleteMe by following the instructions
+  https://ycm-core.github.io/YouCompleteMe/#rust-semantic-completion[here]
+
+2. Configure by adding this to your vim/neovim config file (replacing the existing Rust-specific line if it exists):
++
+[source,vim]   
+----
+let g:ycm_language_server =
+\ [
+\   {
+\     'name': 'rust',
+\     'cmdline': ['rust-analyzer'],
+\     'filetypes': ['rust'],
+\     'project_root_files': ['Cargo.toml']
+\   }
+\ ]
+----
+
 ==== nvim-lsp
 
 NeoVim 0.5 (not yet released) has built-in language server support.
