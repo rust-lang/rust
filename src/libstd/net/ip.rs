@@ -42,11 +42,9 @@ use crate::sys_common::{AsInner, FromInner};
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
     /// An IPv4 address.
-    #[stable(feature = "ip_addr", since = "1.7.0")]
-    V4(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv4Addr),
+    V4(Ipv4Addr),
     /// An IPv6 address.
-    #[stable(feature = "ip_addr", since = "1.7.0")]
-    V6(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv6Addr),
+    V6(Ipv6Addr),
 }
 
 /// An IPv4 address.

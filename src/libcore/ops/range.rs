@@ -633,11 +633,9 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {
     /// An inclusive bound.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Included(#[stable(feature = "collections_bound", since = "1.17.0")] T),
+    Included(T),
     /// An exclusive bound.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Excluded(#[stable(feature = "collections_bound", since = "1.17.0")] T),
+    Excluded(T),
     /// An infinite endpoint. Indicates that there is no bound in this direction.
     #[stable(feature = "collections_bound", since = "1.17.0")]
     Unbounded,

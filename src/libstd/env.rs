@@ -260,14 +260,12 @@ fn _var_os(key: &OsStr) -> Option<OsString> {
 pub enum VarError {
     /// The specified environment variable was not present in the current
     /// process's environment.
-    #[stable(feature = "env", since = "1.0.0")]
     NotPresent,
 
     /// The specified environment variable was found, but it did not contain
     /// valid unicode data. The found data is returned as a payload of this
     /// variant.
-    #[stable(feature = "env", since = "1.0.0")]
-    NotUnicode(#[stable(feature = "env", since = "1.0.0")] OsString),
+    NotUnicode(OsString),
 }
 
 #[stable(feature = "env", since = "1.0.0")]

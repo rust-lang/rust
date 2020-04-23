@@ -553,7 +553,7 @@ unsafe impl<T: Send> Send for SyncSender<T> {}
 /// [`SyncSender::send`]: struct.SyncSender.html#method.send
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub struct SendError<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
+pub struct SendError<T>(pub T);
 
 /// An error returned from the [`recv`] function on a [`Receiver`].
 ///
@@ -626,15 +626,13 @@ pub enum TrySendError<T> {
     ///
     /// [`sync_channel`]: fn.sync_channel.html
     /// [`Receiver`]: struct.Receiver.html
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Full(#[stable(feature = "rust1", since = "1.0.0")] T),
+    Full(T),
 
     /// This [`sync_channel`]'s receiving half has disconnected, so the data could not be
     /// sent. The data is returned back to the callee in this case.
     ///
     /// [`sync_channel`]: fn.sync_channel.html
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Disconnected(#[stable(feature = "rust1", since = "1.0.0")] T),
+    Disconnected(T),
 }
 
 enum Flavor<T> {

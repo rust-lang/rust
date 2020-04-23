@@ -187,7 +187,7 @@ pub auto trait RefUnwindSafe {}
 /// // ...
 /// ```
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-pub struct AssertUnwindSafe<T>(#[stable(feature = "catch_unwind", since = "1.9.0")] pub T);
+pub struct AssertUnwindSafe<T>(pub T);
 
 // Implementations of the `UnwindSafe` trait:
 //

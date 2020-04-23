@@ -173,12 +173,10 @@ where
     B: ToOwned,
 {
     /// Borrowed data.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Borrowed(#[stable(feature = "rust1", since = "1.0.0")] &'a B),
+    Borrowed(&'a B),
 
     /// Owned data.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Owned(#[stable(feature = "rust1", since = "1.0.0")] <B as ToOwned>::Owned),
+    Owned(<B as ToOwned>::Owned),
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

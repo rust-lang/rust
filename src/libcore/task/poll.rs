@@ -10,15 +10,13 @@ use crate::result::Result;
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub enum Poll<T> {
     /// Represents that a value is immediately ready.
-    #[stable(feature = "futures_api", since = "1.36.0")]
-    Ready(#[stable(feature = "futures_api", since = "1.36.0")] T),
+    Ready(T),
 
     /// Represents that a value is not ready yet.
     ///
     /// When a function returns `Pending`, the function *must* also
     /// ensure that the current task is scheduled to be awoken when
     /// progress can be made.
-    #[stable(feature = "futures_api", since = "1.36.0")]
     Pending,
 }
 

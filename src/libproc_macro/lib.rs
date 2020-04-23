@@ -453,17 +453,13 @@ impl Eq for SourceFile {}
 #[derive(Clone)]
 pub enum TokenTree {
     /// A token stream surrounded by bracket delimiters.
-    #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-    Group(#[stable(feature = "proc_macro_lib2", since = "1.29.0")] Group),
+    Group(Group),
     /// An identifier.
-    #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-    Ident(#[stable(feature = "proc_macro_lib2", since = "1.29.0")] Ident),
+    Ident(Ident),
     /// A single punctuation character (`+`, `,`, `$`, etc.).
-    #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-    Punct(#[stable(feature = "proc_macro_lib2", since = "1.29.0")] Punct),
+    Punct(Punct),
     /// A literal character (`'a'`), string (`"hello"`), number (`2.3`), etc.
-    #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-    Literal(#[stable(feature = "proc_macro_lib2", since = "1.29.0")] Literal),
+    Literal(Literal),
 }
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]

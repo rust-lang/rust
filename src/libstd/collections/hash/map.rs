@@ -1592,12 +1592,10 @@ impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, K: 'a, V: 'a> {
     /// An occupied entry.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Occupied(#[stable(feature = "rust1", since = "1.0.0")] OccupiedEntry<'a, K, V>),
+    Occupied(OccupiedEntry<'a, K, V>),
 
     /// A vacant entry.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    Vacant(#[stable(feature = "rust1", since = "1.0.0")] VacantEntry<'a, K, V>),
+    Vacant(VacantEntry<'a, K, V>),
 }
 
 #[stable(feature = "debug_hash_map", since = "1.12.0")]

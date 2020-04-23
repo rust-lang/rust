@@ -40,11 +40,9 @@ use crate::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SocketAddr {
     /// An IPv4 socket address.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    V4(#[stable(feature = "rust1", since = "1.0.0")] SocketAddrV4),
+    V4(SocketAddrV4),
     /// An IPv6 socket address.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    V6(#[stable(feature = "rust1", since = "1.0.0")] SocketAddrV6),
+    V6(SocketAddrV6),
 }
 
 /// An IPv4 socket address.
