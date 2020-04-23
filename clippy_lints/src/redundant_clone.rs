@@ -85,7 +85,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         }
 
         let mir = cx.tcx.optimized_mir(def_id.to_def_id());
-        let mir_read_only = mir.unwrap_read_only();
 
         let maybe_storage_live_result = MaybeStorageLive
             .into_engine(cx.tcx, mir, def_id.to_def_id())
@@ -93,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
             .into_results_cursor(mir);
         let mut possible_borrower = {
             let mut vis = PossibleBorrowerVisitor::new(cx, mir);
-            vis.visit_body(&mir_read_only);
+            vis.visit_body(&mir);
             vis.into_map(cx, maybe_storage_live_result)
         };
 
@@ -146,7 +145,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 // `arg` is a reference as it is `.deref()`ed in the previous block.
                 // Look into the predecessor block and find out the source of deref.
 
-                let ps = mir_read_only.predecessors_for(bb);
+                let ps = mir.predecessors_for(bb);
                 if ps.len() != 1 {
                     continue;
                 }
@@ -191,7 +190,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 (local, deref_clone_ret)
             };
 
-            let is_temp = mir_read_only.local_kind(ret_local) == mir::LocalKind::Temp;
+            let is_temp = mir.local_kind(ret_local) == mir::LocalKind::Temp;
 
             // 1. `local` can be moved out if it is not used later.
             // 2. If `ret_local` is a temporary and is neither consumed nor mutated, we can remove this `clone`
