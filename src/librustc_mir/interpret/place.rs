@@ -135,12 +135,6 @@ impl<Tag> MemPlace<Tag> {
         MemPlace { ptr, align, meta: MemPlaceMeta::None }
     }
 
-    /// Produces a Place that will error if attempted to be read from or written to
-    #[inline(always)]
-    fn null(cx: &impl HasDataLayout) -> Self {
-        Self::from_scalar_ptr(Scalar::null_ptr(cx), Align::from_bytes(1).unwrap())
-    }
-
     #[inline(always)]
     pub fn from_ptr(ptr: Pointer<Tag>, align: Align) -> Self {
         Self::from_scalar_ptr(ptr.into(), align)
@@ -260,12 +254,6 @@ impl<'tcx, Tag: ::std::fmt::Debug + Copy> OpTy<'tcx, Tag> {
 }
 
 impl<Tag: ::std::fmt::Debug> Place<Tag> {
-    /// Produces a Place that will error if attempted to be read from or written to
-    #[inline(always)]
-    fn null(cx: &impl HasDataLayout) -> Self {
-        Place::Ptr(MemPlace::null(cx))
-    }
-
     #[inline]
     pub fn assert_mem_place(self) -> MemPlace<Tag> {
         match self {
@@ -641,35 +629,10 @@ where
         &mut self,
         place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        let mut place_ty = match place.local {
-            mir::RETURN_PLACE => {
-                // `return_place` has the *caller* layout, but we want to use our
-                // `layout to verify our assumption. The caller will validate
-                // their layout on return.
-                PlaceTy {
-                    place: match self.frame().return_place {
-                        Some(p) => *p,
-                        // Even if we don't have a return place, we sometimes need to
-                        // create this place, but any attempt to read from / write to it
-                        // (even a ZST read/write) needs to error, so let us make this
-                        // a NULL place.
-                        //
-                        // FIXME: Ideally we'd make sure that the place projections also
-                        // bail out.
-                        None => Place::null(&*self),
-                    },
-                    layout: self.layout_of(
-                        self.subst_from_current_frame_and_normalize_erasing_regions(
-                            self.frame().body.return_ty(),
-                        ),
-                    )?,
-                }
-            }
-            local => PlaceTy {
-                // This works even for dead/uninitialized locals; we check further when writing
-                place: Place::Local { frame: self.frame_idx(), local },
-                layout: self.layout_of_local(self.frame(), local, None)?,
-            },
+        let mut place_ty = PlaceTy {
+            // This works even for dead/uninitialized locals; we check further when writing
+            place: Place::Local { frame: self.frame_idx(), local: place.local },
+            layout: self.layout_of_local(self.frame(), place.local, None)?,
         };
 
         for elem in place.projection.iter() {

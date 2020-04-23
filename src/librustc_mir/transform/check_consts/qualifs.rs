@@ -6,7 +6,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
 
-use super::Item as ConstCx;
+use super::ConstCx;
 
 pub fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> ConstQualifs {
     ConstQualifs {

@@ -419,7 +419,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        assert_ne!(local, mir::RETURN_PLACE);
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = if layout.is_zst() {
             // Do not read from ZST, they might not be initialized
@@ -454,16 +453,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         place: mir::Place<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let base_op = match place.local {
-            mir::RETURN_PLACE => throw_ub!(ReadFromReturnPlace),
-            local => {
-                // Do not use the layout passed in as argument if the base we are looking at
-                // here is not the entire place.
-                let layout = if place.projection.is_empty() { layout } else { None };
+        // Do not use the layout passed in as argument if the base we are looking at
+        // here is not the entire place.
+        let layout = if place.projection.is_empty() { layout } else { None };
 
-                self.access_local(self.frame(), local, layout)?
-            }
-        };
+        let base_op = self.access_local(self.frame(), place.local, layout)?;
 
         let op = place
             .projection

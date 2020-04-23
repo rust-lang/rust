@@ -361,8 +361,6 @@ pub enum UndefinedBehaviorInfo {
     InvalidUndefBytes(Option<Pointer>),
     /// Working with a local that is not currently live.
     DeadLocal,
-    /// Trying to read from the return place of a function.
-    ReadFromReturnPlace,
 }
 
 impl fmt::Debug for UndefinedBehaviorInfo {
@@ -424,7 +422,6 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 "using uninitialized data, but this operation requires initialized memory"
             ),
             DeadLocal => write!(f, "accessing a dead local variable"),
-            ReadFromReturnPlace => write!(f, "reading from return place"),
         }
     }
 }

@@ -628,35 +628,30 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let frame = M::init_frame_extra(self, pre_frame)?;
         self.stack_mut().push(frame);
 
-        // don't allocate at all for trivial constants
-        if body.local_decls.len() > 1 {
-            // Locals are initially uninitialized.
-            let dummy = LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
-            let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
-            // Return place is handled specially by the `eval_place` functions, and the
-            // entry in `locals` should never be used. Make it dead, to be sure.
-            locals[mir::RETURN_PLACE].value = LocalValue::Dead;
-            // Now mark those locals as dead that we do not want to initialize
-            match self.tcx.def_kind(instance.def_id()) {
-                // statics and constants don't have `Storage*` statements, no need to look for them
-                //
-                // FIXME: The above is likely untrue. See
-                // <https://github.com/rust-lang/rust/pull/70004#issuecomment-602022110>. Is it
-                // okay to ignore `StorageDead`/`StorageLive` annotations during CTFE?
-                Some(DefKind::Static | DefKind::Const | DefKind::AssocConst) => {}
-                _ => {
-                    // Mark locals that use `Storage*` annotations as dead on function entry.
-                    let always_live = AlwaysLiveLocals::new(self.body());
-                    for local in locals.indices() {
-                        if !always_live.contains(local) {
-                            locals[local].value = LocalValue::Dead;
-                        }
+        // Locals are initially uninitialized.
+        let dummy = LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
+        let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
+
+        // Now mark those locals as dead that we do not want to initialize
+        match self.tcx.def_kind(instance.def_id()) {
+            // statics and constants don't have `Storage*` statements, no need to look for them
+            //
+            // FIXME: The above is likely untrue. See
+            // <https://github.com/rust-lang/rust/pull/70004#issuecomment-602022110>. Is it
+            // okay to ignore `StorageDead`/`StorageLive` annotations during CTFE?
+            Some(DefKind::Static | DefKind::Const | DefKind::AssocConst) => {}
+            _ => {
+                // Mark locals that use `Storage*` annotations as dead on function entry.
+                let always_live = AlwaysLiveLocals::new(self.body());
+                for local in locals.indices() {
+                    if !always_live.contains(local) {
+                        locals[local].value = LocalValue::Dead;
                     }
                 }
             }
-            // done
-            self.frame_mut().locals = locals;
         }
+        // done
+        self.frame_mut().locals = locals;
 
         M::after_stack_push(self)?;
         info!("ENTERING({}) {}", self.frame_idx(), self.frame().instance);
@@ -734,6 +729,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let frame =
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
 
+        if !unwinding {
+            // Copy the return value to the caller's stack frame.
+            if let Some(return_place) = frame.return_place {
+                let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
+                self.copy_op_transmute(op, return_place)?;
+                self.dump_place(*return_place);
+            } else {
+                throw_ub!(Unreachable);
+            }
+        }
+
         // Now where do we jump next?
 
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
@@ -759,7 +765,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.deallocate_local(local.value)?;
         }
 
-        let return_place = frame.return_place;
         if M::after_stack_pop(self, frame, unwinding)? == StackPopJump::NoJump {
             // The hook already did everything.
             // We want to skip the `info!` below, hence early return.
@@ -772,25 +777,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.unwind_to_block(unwind);
         } else {
             // Follow the normal return edge.
-            // Validate the return value. Do this after deallocating so that we catch dangling
-            // references.
-            if let Some(return_place) = return_place {
-                if M::enforce_validity(self) {
-                    // Data got changed, better make sure it matches the type!
-                    // It is still possible that the return place held invalid data while
-                    // the function is running, but that's okay because nobody could have
-                    // accessed that same data from the "outside" to observe any broken
-                    // invariant -- that is, unless a function somehow has a ptr to
-                    // its return place... but the way MIR is currently generated, the
-                    // return place is always a local and then this cannot happen.
-                    self.validate_operand(self.place_to_op(return_place)?)?;
-                }
-            } else {
-                // Uh, that shouldn't happen... the function did not intend to return
-                throw_ub!(Unreachable);
-            }
-
-            // Jump to new block -- *after* validation so that the spans make more sense.
             if let Some(ret) = next_block {
                 self.return_to_block(ret)?;
             }

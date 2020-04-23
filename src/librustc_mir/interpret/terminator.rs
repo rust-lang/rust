@@ -19,7 +19,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
-                self.frame().return_place.map(|r| self.dump_place(*r));
                 self.pop_stack_frame(/* unwinding */ false)?
             }
 
