@@ -97,12 +97,17 @@ use std::time::{Duration, Instant};
 use measureme::{EventId, EventIdBuilder, SerializableString, StringId};
 use parking_lot::RwLock;
 
-/// MmapSerializatioSink is faster on macOS and Linux
-/// but FileSerializationSink is faster on Windows
-#[cfg(not(windows))]
-type SerializationSink = measureme::MmapSerializationSink;
-#[cfg(windows)]
-type SerializationSink = measureme::FileSerializationSink;
+cfg_if! {
+    if #[cfg(any(windows, target_os = "wasi"))] {
+        /// FileSerializationSink is faster on Windows
+        type SerializationSink = measureme::FileSerializationSink;
+    } else if #[cfg(target_arch = "wasm32")] {
+        type SerializationSink = measureme::ByteVecSink;
+    } else {
+        /// MmapSerializatioSink is faster on macOS and Linux
+        type SerializationSink = measureme::MmapSerializationSink;
+    }
+}
 
 type Profiler = measureme::Profiler<SerializationSink>;
 
@@ -602,31 +607,37 @@ pub fn duration_to_secs_str(dur: std::time::Duration) -> String {
 }
 
 // Memory reporting
-#[cfg(unix)]
-fn get_resident() -> Option<usize> {
-    let field = 1;
-    let contents = fs::read("/proc/self/statm").ok()?;
-    let contents = String::from_utf8(contents).ok()?;
-    let s = contents.split_whitespace().nth(field)?;
-    let npages = s.parse::<usize>().ok()?;
-    Some(npages * 4096)
-}
+cfg_if! {
+    if #[cfg(windows)] {
+        fn get_resident() -> Option<usize> {
+            use std::mem::{self, MaybeUninit};
+            use winapi::shared::minwindef::DWORD;
+            use winapi::um::processthreadsapi::GetCurrentProcess;
+            use winapi::um::psapi::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
 
-#[cfg(windows)]
-fn get_resident() -> Option<usize> {
-    use std::mem::{self, MaybeUninit};
-    use winapi::shared::minwindef::DWORD;
-    use winapi::um::processthreadsapi::GetCurrentProcess;
-    use winapi::um::psapi::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
-
-    let mut pmc = MaybeUninit::<PROCESS_MEMORY_COUNTERS>::uninit();
-    match unsafe {
-        GetProcessMemoryInfo(GetCurrentProcess(), pmc.as_mut_ptr(), mem::size_of_val(&pmc) as DWORD)
-    } {
-        0 => None,
-        _ => {
-            let pmc = unsafe { pmc.assume_init() };
-            Some(pmc.WorkingSetSize as usize)
+            let mut pmc = MaybeUninit::<PROCESS_MEMORY_COUNTERS>::uninit();
+            match unsafe {
+                GetProcessMemoryInfo(GetCurrentProcess(), pmc.as_mut_ptr(), mem::size_of_val(&pmc) as DWORD)
+            } {
+                0 => None,
+                _ => {
+                    let pmc = unsafe { pmc.assume_init() };
+                    Some(pmc.WorkingSetSize as usize)
+                }
+            }
+        }
+    } else if #[cfg(unix)] {
+        fn get_resident() -> Option<usize> {
+            let field = 1;
+            let contents = fs::read("/proc/self/statm").ok()?;
+            let contents = String::from_utf8(contents).ok()?;
+            let s = contents.split_whitespace().nth(field)?;
+            let npages = s.parse::<usize>().ok()?;
+            Some(npages * 4096)
+        }
+    } else {
+        fn get_resident() -> Option<usize> {
+            None
         }
     }
 }

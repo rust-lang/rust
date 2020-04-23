@@ -290,6 +290,13 @@ impl BridgeState<'_> {
 }
 
 impl Bridge<'_> {
+    pub(crate) fn is_available() -> bool {
+        BridgeState::with(|state| match state {
+            BridgeState::Connected(_) | BridgeState::InUse => true,
+            BridgeState::NotConnected => false,
+        })
+    }
+
     fn enter<R>(self, f: impl FnOnce() -> R) -> R {
         // Hide the default panic output within `proc_macro` expansions.
         // NB. the server can't do this because it may use a different libstd.

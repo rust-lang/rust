@@ -105,7 +105,7 @@ impl<'a> Parser<'a> {
                     }
                     Err(mut err) => {
                         err.cancel();
-                        std::mem::replace(self, snapshot);
+                        *self = snapshot;
                         break;
                     }
                 }
