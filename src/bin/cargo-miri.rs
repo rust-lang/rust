@@ -247,10 +247,9 @@ fn xargo_version() -> Option<(u32, u32, u32)> {
     Some((major, minor, patch))
 }
 
-fn ask_to_run(mut cmd: Command, subcommand: MiriCommand, text: &str) {
+fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
     // Disable interactive prompts in CI (GitHub Actions, Travis, AppVeyor, etc).
-    let ask = subcommand != MiriCommand::Setup && env::var_os("CI").is_none();
-    if ask {
+    if ask && env::var_os("CI").is_none() {
         let mut buf = String::new();
         print!("I will run `{:?}` to {}. Proceed? [Y/n] ", cmd, text);
         io::stdout().flush().unwrap();
@@ -281,6 +280,10 @@ fn setup(subcommand: MiriCommand) {
         return;
     }
 
+    // Subcommands other than `setup` will do a setup if necessary, but
+    // interactively confirm first.
+    let ask_user = subcommand != MiriCommand::Setup;
+
     // First, we need xargo.
     if xargo_version().map_or(true, |v| v < XARGO_MIN_VERSION) {
         if std::env::var("XARGO_CHECK").is_ok() {
@@ -289,7 +292,7 @@ fn setup(subcommand: MiriCommand) {
         }
         let mut cmd = cargo();
         cmd.args(&["install", "xargo", "-f"]);
-        ask_to_run(cmd, subcommand, "install a recent enough xargo");
+        ask_to_run(cmd, ask_user, "install a recent enough xargo");
     }
 
     // Determine where the rust sources are located.  `XARGO_RUST_SRC` env var trumps everything.
@@ -312,7 +315,7 @@ fn setup(subcommand: MiriCommand) {
                 cmd.args(&["component", "add", "rust-src"]);
                 ask_to_run(
                     cmd,
-                    subcommand,
+                    ask_user,
                     "install the rustc-src component for the selected toolchain",
                 );
             }
