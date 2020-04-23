@@ -307,42 +307,36 @@ impl Completions {
 
 pub(crate) fn compute_score(
     ctx: &CompletionContext,
+    // FIXME: this definitely should be a `Type`
     ty: &str,
     name: &str,
 ) -> Option<CompletionScore> {
     let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
-        if let Some((struct_field, _)) = ctx.sema.resolve_record_field(record_field) {
-            (
-                struct_field.name(ctx.db).to_string(),
-                struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
-            )
-        } else {
-            return None;
-        }
+        let (struct_field, _local) = ctx.sema.resolve_record_field(record_field)?;
+        (
+            struct_field.name(ctx.db).to_string(),
+            struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
+        )
     } else if let Some(call_info) = call_info(ctx.db, ctx.file_position) {
-        if call_info.active_parameter_type().is_some()
-            && call_info.active_parameter_name().is_some()
-        {
-            (call_info.active_parameter_name().unwrap(), call_info.active_parameter_type().unwrap())
-        } else {
-            return None;
-        }
+        (call_info.active_parameter_name()?, call_info.active_parameter_type()?)
     } else {
         return None;
     };
 
     // Compute score
     // For the same type
-    if &active_type == ty {
-        // If same type + same name then go top position
-        let res = if active_name == name {
-            CompletionScore::TypeAndNameMatch
-        } else {
-            CompletionScore::TypeMatch
-        };
-        return Some(res);
+    if &active_type != ty {
+        return None;
     }
-    None
+
+    let mut res = CompletionScore::TypeMatch;
+
+    // If same type + same name then go top position
+    if active_name == name {
+        res = CompletionScore::TypeAndNameMatch
+    }
+
+    Some(res)
 }
 
 enum Params {
