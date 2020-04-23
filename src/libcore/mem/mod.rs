@@ -924,7 +924,12 @@ pub fn drop<T>(_x: T) {}
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    ptr::read_unaligned(src as *const T as *const U)
+    // If U has a higher alignment requirement, src may not be suitably aligned.
+    if align_of::<U>() > align_of::<T>() {
+        ptr::read_unaligned(src as *const T as *const U)
+    } else {
+        ptr::read(src as *const T as *const U)
+    }
 }
 
 /// Opaque type representing the discriminant of an enum.
