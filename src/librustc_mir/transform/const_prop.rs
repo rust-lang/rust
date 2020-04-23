@@ -8,6 +8,7 @@ use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
+use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::visit::{
@@ -775,7 +776,7 @@ enum ConstPropMode {
 struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // false at the beginning, once set, there are not allowed to be any more assignments
-    found_assignment: IndexVec<Local, bool>,
+    found_assignment: BitSet<Local>,
 }
 
 impl CanConstProp {
@@ -783,7 +784,7 @@ impl CanConstProp {
     fn check(body: &Body<'_>) -> IndexVec<Local, ConstPropMode> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
-            found_assignment: IndexVec::from_elem(false, &body.local_decls),
+            found_assignment: BitSet::new_empty(body.local_decls.len()),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             // cannot use args at all
@@ -811,11 +812,9 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // FIXME(oli-obk): we could be more powerful here, if the multiple writes
             // only occur in independent execution paths
             MutatingUse(MutatingUseContext::Store) => {
-                if self.found_assignment[local] {
+                if !self.found_assignment.insert(local) {
                     trace!("local {:?} can't be propagated because of multiple assignments", local);
                     self.can_const_prop[local] = ConstPropMode::NoPropagation;
-                } else {
-                    self.found_assignment[local] = true
                 }
             }
             // Reading constants is allowed an arbitrary number of times
