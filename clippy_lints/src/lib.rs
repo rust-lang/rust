@@ -346,13 +346,8 @@ mod reexport {
 /// level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
 ///
 /// Used in `./src/driver.rs`.
-pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &Conf) {
+pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore) {
     store.register_pre_expansion_pass(|| box write::Write::default());
-    store.register_pre_expansion_pass(|| box redundant_field_names::RedundantFieldNames);
-    let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
-    store.register_pre_expansion_pass(move || box non_expressive_names::NonExpressiveNames {
-        single_char_binding_names_threshold,
-    });
     store.register_pre_expansion_pass(|| box attrs::EarlyAttributes);
     store.register_pre_expansion_pass(|| box dbg_macro::DbgMacro);
 }
@@ -1066,6 +1061,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box match_on_vec_items::MatchOnVecItems);
     store.register_early_pass(|| box manual_non_exhaustive::ManualNonExhaustive);
     store.register_late_pass(|| box manual_async_fn::ManualAsyncFn);
+    store.register_early_pass(|| box redundant_field_names::RedundantFieldNames);
+    let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
+    store.register_early_pass(move || box non_expressive_names::NonExpressiveNames {
+        single_char_binding_names_threshold,
+    });
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
