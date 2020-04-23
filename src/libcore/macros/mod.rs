@@ -326,6 +326,7 @@ macro_rules! matches {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.39.0", reason = "use the `?` operator instead")]
 #[doc(alias = "?")]
+#[rustfmt::skip] // rustfmt will eat the raw identifer in the r#try! below.
 macro_rules! r#try {
     ($expr:expr) => {
         match $expr {
@@ -336,7 +337,7 @@ macro_rules! r#try {
         }
     };
     ($expr:expr,) => {
-        $crate::try!($expr)
+        $crate::r#try!($expr)
     };
 }
 
