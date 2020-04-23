@@ -6,11 +6,13 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0741]: the types of const generic parameters must derive `PartialEq` and `Eq`
+error[E0741]: `T` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be used as the type of a const parameter
   --> $DIR/const-param-type-depends-on-type-param.rs:9:34
    |
 LL | pub struct Dependent<T, const X: T>([(); X]);
-   |                                  ^ `T` doesn't derive both `PartialEq` and `Eq`
+   |                                  ^ `T` may not derive both `PartialEq` and `Eq`
+   |
+   = note: it is not currently possible to use a type parameter as the type of a const parameter
 
 error: aborting due to previous error; 1 warning emitted
 
