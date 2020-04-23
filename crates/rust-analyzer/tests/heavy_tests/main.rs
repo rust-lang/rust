@@ -1,6 +1,6 @@
 mod support;
 
-use std::{collections::HashMap, time::Instant};
+use std::{collections::HashMap, path::PathBuf, time::Instant};
 
 use lsp_types::{
     CodeActionContext, DidOpenTextDocumentParams, DocumentFormattingParams, FormattingOptions,
@@ -692,15 +692,10 @@ pub fn foo(_input: TokenStream) -> TokenStream {
 "###,
     )
     .with_config(|config| {
-        // FIXME: Use env!("CARGO_BIN_EXE_ra-analyzer") instead after
-        // https://github.com/rust-lang/cargo/pull/7697 landed
-        let macro_srv_path = std::path::Path::new(std::env!("CARGO_MANIFEST_DIR"))
-            .join("../../target/debug/rust-analyzer")
-            .to_string_lossy()
-            .to_string();
+        let macro_srv_path = PathBuf::from(env!("CARGO_BIN_EXE_rust-analyzer"));
 
         config.cargo.load_out_dirs_from_check = true;
-        config.proc_macro_srv = Some((macro_srv_path, vec!["proc-macro".to_string()]));
+        config.proc_macro_srv = Some((macro_srv_path, vec!["proc-macro".into()]));
     })
     .root("foo")
     .root("bar")
