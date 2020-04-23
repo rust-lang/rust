@@ -4,8 +4,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::{
-    get_trait_def_id, is_type_diagnostic_item, implements_trait, paths, return_ty, span_lint_and_help, trait_ref_of_method,
-    walk_ptrs_ty,
+    get_trait_def_id, implements_trait, is_type_diagnostic_item, paths, return_ty, span_lint_and_help,
+    trait_ref_of_method, walk_ptrs_ty,
 };
 
 declare_clippy_lint! {

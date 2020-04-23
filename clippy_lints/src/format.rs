@@ -1,7 +1,7 @@
 use crate::utils::paths;
 use crate::utils::{
-    is_expn_of, is_type_diagnostic_item, last_path_segment, match_def_path, match_function_call, snippet, span_lint_and_then,
-    walk_ptrs_ty,
+    is_expn_of, is_type_diagnostic_item, last_path_segment, match_def_path, match_function_call, snippet,
+    span_lint_and_then, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;

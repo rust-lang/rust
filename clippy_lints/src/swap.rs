@@ -1,7 +1,7 @@
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    differing_macro_contexts, is_type_diagnostic_item, snippet_with_applicability,
-    span_lint_and_then, walk_ptrs_ty, SpanlessEq,
+    differing_macro_contexts, is_type_diagnostic_item, snippet_with_applicability, span_lint_and_then, walk_ptrs_ty,
+    SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;

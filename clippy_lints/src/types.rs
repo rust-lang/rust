@@ -29,10 +29,10 @@ use rustc_typeck::hir_ty_to_ty;
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, is_type_diagnostic_item, last_path_segment, match_def_path,
-    match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral, qpath_res, same_tys, sext, snippet,
-    snippet_opt, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help,
-    span_lint_and_sugg, span_lint_and_then, unsext,
+    clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, is_type_diagnostic_item,
+    last_path_segment, match_def_path, match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral,
+    qpath_res, same_tys, sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
