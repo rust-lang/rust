@@ -864,11 +864,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("`{}` would have to be valid for `{}`...", name, region_name),
             );
 
-            if let Some(fn_hir_id) = self
-                .mir_def_id
-                .as_local()
-                .map(|def_id| self.infcx.tcx.hir().as_local_hir_id(def_id))
-            {
+            if let Some(def_id) = self.mir_def_id.as_local() {
+                let fn_hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id);
                 err.span_label(
                     drop_span,
                     format!(

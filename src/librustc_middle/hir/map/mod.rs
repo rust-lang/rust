@@ -482,7 +482,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        if let Some(id) = id.as_local() { Some(self.get(self.as_local_hir_id(id))) } else { None }
+        id.as_local().map(|id| self.get(self.as_local_hir_id(id)))
     }
 
     pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics<'hir>> {
@@ -883,7 +883,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
-        if let Some(id) = id.as_local() { Some(self.span(self.as_local_hir_id(id))) } else { None }
+        id.as_local().map(|id| self.span(self.as_local_hir_id(id)))
     }
 
     pub fn res_span(&self, res: Res) -> Option<Span> {
@@ -1082,11 +1082,6 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
-    providers.def_kind = |tcx, def_id| {
-        if let Some(def_id) = def_id.as_local() {
-            tcx.hir().def_kind(tcx.hir().as_local_hir_id(def_id))
-        } else {
-            bug!("calling local def_kind query provider for upstream DefId: {:?}", def_id);
-        }
-    };
+    providers.def_kind =
+        |tcx, def_id| tcx.hir().def_kind(tcx.hir().as_local_hir_id(def_id.expect_local()));
 }

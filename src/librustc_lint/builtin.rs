@@ -436,9 +436,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
-                if let Some(hir_id) =
-                    real_trait.as_local().map(|def_id| cx.tcx.hir().as_local_hir_id(def_id))
-                {
+                if let Some(def_id) = real_trait.as_local() {
+                    let hir_id = cx.tcx.hir().as_local_hir_id(def_id);
                     if let Some(Node::Item(item)) = cx.tcx.hir().find(hir_id) {
                         if let hir::VisibilityKind::Inherited = item.vis.node {
                             for impl_item_ref in items {
@@ -611,10 +610,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             let mut impls = HirIdSet::default();
             cx.tcx.for_each_impl(debug, |d| {
                 if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
-                    if let Some(hir_id) =
-                        ty_def.did.as_local().map(|def_id| cx.tcx.hir().as_local_hir_id(def_id))
-                    {
-                        impls.insert(hir_id);
+                    if let Some(def_id) = ty_def.did.as_local() {
+                        impls.insert(cx.tcx.hir().as_local_hir_id(def_id));
                     }
                 }
             });

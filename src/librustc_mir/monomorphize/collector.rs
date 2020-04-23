@@ -430,7 +430,8 @@ fn check_recursion_limit<'tcx>(
     // infinite expansion.
     if adjusted_recursion_depth > *tcx.sess.recursion_limit.get() {
         let error = format!("reached the recursion limit while instantiating `{}`", instance);
-        if let Some(hir_id) = def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id)) {
+        if let Some(def_id) = def_id.as_local() {
+            let hir_id = tcx.hir().as_local_hir_id(def_id);
             tcx.sess.span_fatal(tcx.hir().span(hir_id), &error);
         } else {
             tcx.sess.fatal(&error);

@@ -596,10 +596,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // In the future, this should be fixed and this error should be removed.
                         let def = self.map.defs.get(&lifetime.hir_id).cloned();
                         if let Some(Region::LateBound(_, def_id, _)) = def {
-                            if let Some(hir_id) = def_id
-                                .as_local()
-                                .map(|def_id| self.tcx.hir().as_local_hir_id(def_id))
-                            {
+                            if let Some(def_id) = def_id.as_local() {
+                                let hir_id = self.tcx.hir().as_local_hir_id(def_id);
                                 // Ensure that the parent of the def is an item, not HRTB
                                 let parent_id = self.tcx.hir().get_parent_node(hir_id);
                                 let parent_impl_id = hir::ImplItemId { hir_id: parent_id };
@@ -1559,10 +1557,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         }
 
                         if let Some(parent_def_id) = self.tcx.parent(def_id) {
-                            if let Some(parent_hir_id) = parent_def_id
-                                .as_local()
-                                .map(|def_id| self.tcx.hir().as_local_hir_id(def_id))
-                            {
+                            if let Some(def_id) = parent_def_id.as_local() {
+                                let parent_hir_id = self.tcx.hir().as_local_hir_id(def_id);
                                 // lifetimes in `derive` expansions don't count (Issue #53738)
                                 if self
                                     .tcx
@@ -1959,9 +1955,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             };
 
             let map = &self.map;
-            let unsubst = if let Some(id) =
-                def_id.as_local().map(|def_id| self.tcx.hir().as_local_hir_id(def_id))
-            {
+            let unsubst = if let Some(def_id) = def_id.as_local() {
+                let id = self.tcx.hir().as_local_hir_id(def_id);
                 &map.object_lifetime_defaults[&id]
             } else {
                 let tcx = self.tcx;

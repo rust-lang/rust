@@ -445,9 +445,8 @@ impl VisibilityLike for Option<AccessLevel> {
     const SHALLOW: bool = true;
     fn new_min(find: &FindMin<'_, '_, Self>, def_id: DefId) -> Self {
         cmp::min(
-            if let Some(hir_id) =
-                def_id.as_local().map(|def_id| find.tcx.hir().as_local_hir_id(def_id))
-            {
+            if let Some(def_id) = def_id.as_local() {
+                let hir_id = find.tcx.hir().as_local_hir_id(def_id);
                 find.access_levels.map.get(&hir_id).cloned()
             } else {
                 Self::MAX
@@ -549,9 +548,8 @@ impl EmbargoVisitor<'tcx> {
                 if export.vis.is_accessible_from(defining_mod, self.tcx) {
                     if let Res::Def(def_kind, def_id) = export.res {
                         let vis = def_id_visibility(self.tcx, def_id).0;
-                        if let Some(hir_id) =
-                            def_id.as_local().map(|def_id| self.tcx.hir().as_local_hir_id(def_id))
-                        {
+                        if let Some(def_id) = def_id.as_local() {
+                            let hir_id = self.tcx.hir().as_local_hir_id(def_id);
                             self.update_macro_reachable_def(hir_id, def_kind, vis, defining_mod);
                         }
                     }
@@ -914,10 +912,8 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 for export in exports.iter() {
                     if export.vis == ty::Visibility::Public {
                         if let Some(def_id) = export.res.opt_def_id() {
-                            if let Some(hir_id) = def_id
-                                .as_local()
-                                .map(|def_id| self.tcx.hir().as_local_hir_id(def_id))
-                            {
+                            if let Some(def_id) = def_id.as_local() {
+                                let hir_id = self.tcx.hir().as_local_hir_id(def_id);
                                 self.update(hir_id, Some(AccessLevel::Exported));
                             }
                         }

@@ -377,9 +377,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             return;
         }
 
-        let (local, remote) = if let Some(id) =
-            def_id.as_local().map(|def_id| self.tcx().hir().as_local_hir_id(def_id))
-        {
+        let (local, remote) = if let Some(def_id) = def_id.as_local() {
+            let id = self.tcx().hir().as_local_hir_id(def_id);
             (Some(self.terms_cx.inferred_starts[&id]), None)
         } else {
             (None, Some(self.tcx().variances_of(def_id)))

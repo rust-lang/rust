@@ -409,9 +409,8 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
 
     match *terr {
         TypeError::Mutability => {
-            if let Some(trait_m_hir_id) =
-                trait_m.def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
-            {
+            if let Some(def_id) = trait_m.def_id.as_local() {
+                let trait_m_hir_id = tcx.hir().as_local_hir_id(def_id);
                 let trait_m_iter = match tcx.hir().expect_trait_item(trait_m_hir_id).kind {
                     TraitItemKind::Fn(ref trait_m_sig, _) => trait_m_sig.decl.inputs.iter(),
                     _ => bug!("{:?} is not a TraitItemKind::Fn", trait_m),
@@ -438,9 +437,8 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
             }
         }
         TypeError::Sorts(ExpectedFound { .. }) => {
-            if let Some(trait_m_hir_id) =
-                trait_m.def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
-            {
+            if let Some(def_id) = trait_m.def_id.as_local() {
+                let trait_m_hir_id = tcx.hir().as_local_hir_id(def_id);
                 let (trait_m_output, trait_m_iter) =
                     match tcx.hir().expect_trait_item(trait_m_hir_id).kind {
                         TraitItemKind::Fn(ref trait_m_sig, _) => {
@@ -591,9 +589,8 @@ fn compare_number_of_generics<'tcx>(
         if impl_count != trait_count {
             err_occurred = true;
 
-            let (trait_spans, impl_trait_spans) = if let Some(trait_hir_id) =
-                trait_.def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
-            {
+            let (trait_spans, impl_trait_spans) = if let Some(def_id) = trait_.def_id.as_local() {
+                let trait_hir_id = tcx.hir().as_local_hir_id(def_id);
                 let trait_item = tcx.hir().expect_trait_item(trait_hir_id);
                 if trait_item.generics.params.is_empty() {
                     (Some(vec![trait_item.generics.span]), vec![])
