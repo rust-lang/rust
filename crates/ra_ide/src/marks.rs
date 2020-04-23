@@ -9,4 +9,6 @@ test_utils::marks!(
     search_filters_by_range
     dont_insert_macro_call_parens_unncessary
     self_fulfilling_completion
+    test_struct_field_completion_in_func_call
+    test_struct_field_completion_in_record_lit
 );

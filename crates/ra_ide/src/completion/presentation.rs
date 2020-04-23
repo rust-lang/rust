@@ -6,7 +6,6 @@ use stdx::SepBy;
 use test_utils::tested_by;
 
 use crate::{
-    call_info::call_info,
     completion::{
         completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
         CompletionKind, Completions,
@@ -23,20 +22,20 @@ impl Completions {
         ty: &Type,
     ) {
         let is_deprecated = is_deprecated(field, ctx.db);
-        let mut completion_item = CompletionItem::new(
-            CompletionKind::Reference,
-            ctx.source_range(),
-            field.name(ctx.db).to_string(),
-        )
-        .kind(CompletionItemKind::Field)
-        .detail(ty.display(ctx.db).to_string())
-        .set_documentation(field.docs(ctx.db))
-        .set_deprecated(is_deprecated)
-        .build();
+        let ty = ty.display(ctx.db).to_string();
+        let name = field.name(ctx.db);
+        let mut completion_item =
+            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
+                .kind(CompletionItemKind::Field)
+                .detail(ty.clone())
+                .set_documentation(field.docs(ctx.db))
+                .set_deprecated(is_deprecated);
 
-        compute_score(&mut completion_item, ctx);
+        if let Some(score) = compute_score(ctx, &ty, &name.to_string()) {
+            completion_item = completion_item.set_score(score);
+        }
 
-        self.add(completion_item);
+        completion_item.add_to(self);
     }
 
     pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &Type) {
@@ -305,40 +304,40 @@ impl Completions {
     }
 }
 
-pub(crate) fn compute_score(completion_item: &mut CompletionItem, ctx: &CompletionContext) {
+pub(crate) fn compute_score(
+    ctx: &CompletionContext,
+    // FIXME: this definitely should be a `Type`
+    ty: &str,
+    name: &str,
+) -> Option<CompletionScore> {
     let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
-        if let Some((struct_field, _)) = ctx.sema.resolve_record_field(record_field) {
-            (
-                struct_field.name(ctx.db).to_string(),
-                struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
-            )
-        } else {
-            return;
-        }
-    } else if let Some(call_info) = call_info(ctx.db, ctx.file_position) {
-        if call_info.active_parameter_type().is_some()
-            && call_info.active_parameter_name().is_some()
-        {
-            (call_info.active_parameter_name().unwrap(), call_info.active_parameter_type().unwrap())
-        } else {
-            return;
-        }
+        tested_by!(test_struct_field_completion_in_record_lit);
+        let (struct_field, _local) = ctx.sema.resolve_record_field(record_field)?;
+        (
+            struct_field.name(ctx.db).to_string(),
+            struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
+        )
+    } else if let Some(active_parameter) = &ctx.active_parameter {
+        tested_by!(test_struct_field_completion_in_func_call);
+        (active_parameter.name.clone(), active_parameter.ty.clone())
     } else {
-        return;
+        return None;
     };
 
     // Compute score
     // For the same type
-    if let Some(a_parameter_type) = completion_item.detail() {
-        if &active_type == a_parameter_type {
-            // If same type + same name then go top position
-            if active_name == completion_item.label() {
-                completion_item.set_score(CompletionScore::TypeAndNameMatch);
-            } else {
-                completion_item.set_score(CompletionScore::TypeMatch);
-            }
-        }
+    if &active_type != ty {
+        return None;
     }
+
+    let mut res = CompletionScore::TypeMatch;
+
+    // If same type + same name then go top position
+    if active_name == name {
+        res = CompletionScore::TypeAndNameMatch
+    }
+
+    Some(res)
 }
 
 enum Params {
@@ -1067,6 +1066,239 @@ mod tests {
                 kind: Function,
                 lookup: "main",
                 detail: "fn main()",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_func_call() {
+        covers!(test_struct_field_completion_in_func_call);
+        assert_debug_snapshot!(
+        do_reference_completion(
+                r"
+                struct A { another_field: i64, the_field: u32, my_string: String }
+                fn test(my_param: u32) -> u32 { my_param }
+                fn foo(a: A) {
+                    test(a.<|>)
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "another_field",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+            },
+            CompletionItem {
+                label: "my_string",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "my_string",
+                kind: Field,
+                detail: "{unknown}",
+            },
+            CompletionItem {
+                label: "the_field",
+                source_range: [201; 201),
+                delete: [201; 201),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                score: TypeMatch,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_func_call_with_type_and_name() {
+        assert_debug_snapshot!(
+        do_reference_completion(
+                r"
+                struct A { another_field: i64, another_good_type: u32, the_field: u32 }
+                fn test(the_field: u32) -> u32 { the_field }
+                fn foo(a: A) {
+                    test(a.<|>)
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "another_field",
+                source_range: [208; 208),
+                delete: [208; 208),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+            },
+            CompletionItem {
+                label: "another_good_type",
+                source_range: [208; 208),
+                delete: [208; 208),
+                insert: "another_good_type",
+                kind: Field,
+                detail: "u32",
+                score: TypeMatch,
+            },
+            CompletionItem {
+                label: "the_field",
+                source_range: [208; 208),
+                delete: [208; 208),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                score: TypeAndNameMatch,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_record_lit() {
+        covers!(test_struct_field_completion_in_func_call);
+        assert_debug_snapshot!(
+        do_reference_completion(
+                r"
+                struct A { another_field: i64, another_good_type: u32, the_field: u32 }
+                struct B { my_string: String, my_vec: Vec<u32>, the_field: u32 }
+                fn foo(a: A) {
+                    let b = B {
+                        the_field: a.<|>
+                    };
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "another_field",
+                source_range: [270; 270),
+                delete: [270; 270),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+            },
+            CompletionItem {
+                label: "another_good_type",
+                source_range: [270; 270),
+                delete: [270; 270),
+                insert: "another_good_type",
+                kind: Field,
+                detail: "u32",
+                score: TypeMatch,
+            },
+            CompletionItem {
+                label: "the_field",
+                source_range: [270; 270),
+                delete: [270; 270),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                score: TypeAndNameMatch,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_record_lit_and_fn_call() {
+        assert_debug_snapshot!(
+        do_reference_completion(
+                r"
+                struct A { another_field: i64, another_good_type: u32, the_field: u32 }
+                struct B { my_string: String, my_vec: Vec<u32>, the_field: u32 }
+                fn test(the_field: i64) -> i64 { the_field }
+                fn foo(a: A) {
+                    let b = B {
+                        the_field: test(a.<|>)
+                    };
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "another_field",
+                source_range: [336; 336),
+                delete: [336; 336),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+                score: TypeMatch,
+            },
+            CompletionItem {
+                label: "another_good_type",
+                source_range: [336; 336),
+                delete: [336; 336),
+                insert: "another_good_type",
+                kind: Field,
+                detail: "u32",
+            },
+            CompletionItem {
+                label: "the_field",
+                source_range: [336; 336),
+                delete: [336; 336),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn test_struct_field_completion_in_fn_call_and_record_lit() {
+        assert_debug_snapshot!(
+        do_reference_completion(
+                r"
+                struct A { another_field: i64, another_good_type: u32, the_field: u32 }
+                struct B { my_string: String, my_vec: Vec<u32>, the_field: u32 }
+                fn test(the_field: i64) -> i64 { the_field }
+                fn foo(a: A) {
+                    test(B {
+                        the_field: a.<|>
+                    });
+                }
+                ",
+        ),
+            @r###"
+        [
+            CompletionItem {
+                label: "another_field",
+                source_range: [328; 328),
+                delete: [328; 328),
+                insert: "another_field",
+                kind: Field,
+                detail: "i64",
+            },
+            CompletionItem {
+                label: "another_good_type",
+                source_range: [328; 328),
+                delete: [328; 328),
+                insert: "another_good_type",
+                kind: Field,
+                detail: "u32",
+                score: TypeMatch,
+            },
+            CompletionItem {
+                label: "the_field",
+                source_range: [328; 328),
+                delete: [328; 328),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                score: TypeAndNameMatch,
             },
         ]
         "###

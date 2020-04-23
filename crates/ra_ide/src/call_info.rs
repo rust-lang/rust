@@ -19,10 +19,24 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     call_info_for_token(&sema, token)
 }
 
-pub(crate) fn call_info_for_token(
-    sema: &Semantics<RootDatabase>,
-    token: SyntaxToken,
-) -> Option<CallInfo> {
+#[derive(Debug)]
+pub(crate) struct ActiveParameter {
+    /// FIXME: should be `Type` and `Name
+    pub(crate) ty: String,
+    pub(crate) name: String,
+}
+
+impl ActiveParameter {
+    pub(crate) fn at(db: &RootDatabase, position: FilePosition) -> Option<Self> {
+        call_info(db, position)?.into_active_parameter()
+    }
+
+    pub(crate) fn at_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Self> {
+        call_info_for_token(sema, token)?.into_active_parameter()
+    }
+}
+
+fn call_info_for_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<CallInfo> {
     // Find the calling expression and it's NameRef
     let calling_node = FnCallNode::with_node(&token.parent())?;
 
@@ -160,6 +174,14 @@ impl FnCallNode {
 }
 
 impl CallInfo {
+    fn into_active_parameter(self) -> Option<ActiveParameter> {
+        let idx = self.active_parameter?;
+        let ty = self.signature.parameter_types.get(idx)?.clone();
+        let name = self.signature.parameter_names.get(idx)?.clone();
+        let res = ActiveParameter { ty, name };
+        Some(res)
+    }
+
     fn with_fn(db: &RootDatabase, function: hir::Function) -> Self {
         let signature = FunctionSignature::from_hir(db, function);
 
