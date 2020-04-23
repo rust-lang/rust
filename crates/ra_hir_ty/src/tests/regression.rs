@@ -533,3 +533,44 @@ fn foo(b: Bar) {
     "###
     );
 }
+
+#[test]
+fn issue_4053_diesel_where_clauses() {
+    assert_snapshot!(
+        infer(r#"
+trait BoxedDsl<DB> {
+    type Output;
+    fn internal_into_boxed(self) -> Self::Output;
+}
+
+struct SelectStatement<From, Select, Distinct, Where, Order, LimitOffset, GroupBy, Locking> {
+    order: Order,
+}
+
+trait QueryFragment<DB: Backend> {}
+
+trait Into<T> { fn into(self) -> T; }
+
+impl<F, S, D, W, O, LOf, DB> BoxedDsl<DB>
+    for SelectStatement<F, S, D, W, O, LOf, G>
+where
+    O: Into<dyn QueryFragment<DB>>,
+{
+    type Output = XXX;
+
+    fn internal_into_boxed(self) -> Self::Output {
+        self.order.into();
+    }
+}
+"#),
+        @r###"
+    [66; 70) 'self': Self
+    [268; 272) 'self': Self
+    [467; 471) 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
+    [489; 523) '{     ...     }': ()
+    [499; 503) 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
+    [499; 509) 'self.order': O
+    [499; 516) 'self.o...into()': dyn QueryFragment<DB>
+    "###
+    );
+}
