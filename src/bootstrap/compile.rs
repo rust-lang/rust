@@ -733,7 +733,7 @@ impl Step for Assemble {
         // when not performing a full bootstrap).
         builder.ensure(Rustc { compiler: build_compiler, target: target_compiler.host });
 
-        let lld_install = if builder.config.lld_enabled {
+        let lld_install = if builder.lld_enabled(target_compiler.host) {
             Some(builder.ensure(native::Lld { target: target_compiler.host }))
         } else {
             None

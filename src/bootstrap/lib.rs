@@ -561,6 +561,12 @@ impl Build {
         self.out.join(&*target).join("lld")
     }
 
+    fn lld_enabled(&self, target: Interned<String>) -> bool {
+        // LLD does not currently cross compile correctly, so build it only for
+        // the native toolchain:
+        self.config.lld_enabled && self.config.build == target
+    }
+
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: Interned<String>) -> PathBuf {
         self.out.join(&*target).join("doc")

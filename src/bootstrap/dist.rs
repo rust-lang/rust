@@ -519,7 +519,7 @@ impl Step for Rustc {
             maybe_install_llvm_dylib(builder, host, image);
 
             // Copy over lld if it's there
-            if builder.config.lld_enabled {
+            if builder.lld_enabled(compiler.host) {
                 let exe = exe("rust-lld", &compiler.host);
                 let src =
                     builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin").join(&exe);

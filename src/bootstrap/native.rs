@@ -440,7 +440,7 @@ impl Step for Lld {
         run.builder.ensure(Lld { target: run.target });
     }
 
-    /// Compile LLVM for `target`.
+    /// Compile LLD for `target`.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         if builder.config.dry_run {
             return PathBuf::from("lld-out-dir-test-gen");
