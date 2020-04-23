@@ -285,7 +285,7 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [`align_to_mut` violating uniqueness of mutable references](https://github.com/rust-lang/rust/issues/68549)
 * [Aliasing mutable references in `sized-chunks`](https://github.com/bodil/sized-chunks/issues/8)
 * [`String::push_str` invalidating existing references into the string](https://github.com/rust-lang/rust/issues/70301)
-- [`ryu` creating incorrect mutable references](https://github.com/dtolnay/ryu/issues/24)
+* [`ryu` using raw pointers outside their valid memory area](https://github.com/dtolnay/ryu/issues/24)
 
 ## License
 
