@@ -145,7 +145,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 // `arg` is a reference as it is `.deref()`ed in the previous block.
                 // Look into the predecessor block and find out the source of deref.
 
-                let ps = mir.predecessors_for(bb);
+                let ps = &mir.predecessors()[bb];
                 if ps.len() != 1 {
                     continue;
                 }
