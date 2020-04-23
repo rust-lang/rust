@@ -57,6 +57,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_macro_call: bool,
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
+    pub(super) is_attribute: bool,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -113,6 +114,7 @@ impl<'a> CompletionContext<'a> {
             is_path_type: false,
             has_type_args: false,
             dot_receiver_is_ambiguous_float_literal: false,
+            is_attribute: false,
         };
 
         let mut original_file = original_file.syntax().clone();
@@ -306,6 +308,7 @@ impl<'a> CompletionContext<'a> {
                 .and_then(|it| it.syntax().parent().and_then(ast::CallExpr::cast))
                 .is_some();
             self.is_macro_call = path.syntax().parent().and_then(ast::MacroCall::cast).is_some();
+            self.is_attribute = path.syntax().parent().and_then(ast::Attr::cast).is_some();
 
             self.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
             self.has_type_args = segment.type_arg_list().is_some();
