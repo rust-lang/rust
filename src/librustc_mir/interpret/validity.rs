@@ -39,12 +39,7 @@ macro_rules! throw_validation_failure {
 /// Returns a validation failure for any Err value of $e.
 macro_rules! try_validation {
     ($e:expr, $what:expr, $where:expr $(, $details:expr )?) => {{
-        match $e {
-            Ok(x) => x,
-            // We catch the error and turn it into a validation failure. We are okay with
-            // allocation here as this can only slow down builds that fail anyway.
-            Err(_) => throw_validation_failure!($what, $where $(, $details)?),
-        }
+        try_validation_pat!($e, _, $what, $where $(, $details )?)
     }};
 }
 /// Like try_validation, but will throw a validation error if any of the patterns in $p are
@@ -60,6 +55,8 @@ macro_rules! try_validation_pat {
     ($e:expr, $( $p:pat )|*, $what:expr, $where:expr $(, $details:expr )?) => {{
         match $e {
             Ok(x) => x,
+            // We catch the error and turn it into a validation failure. We are okay with
+            // allocation here as this can only slow down builds that fail anyway.
             $( Err($p) )|* if true => throw_validation_failure!($what, $where $(, $details)?),
             Err(e) =>  Err::<!, _>(e)?,
         }
