@@ -1,0 +1,27 @@
+error: indexing vector may panic
+  --> $DIR/match_vec_item.rs:17:5
+   |
+LL | /     match arr[idx] {
+LL | |         0 => println!("0"),
+LL | |         1 => println!("1"),
+LL | |         _ => {},
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::match-vec-item` implied by `-D warnings`
+   = help: consider using `get(..)` instead.
+
+error: indexing vector may panic
+  --> $DIR/match_vec_item.rs:24:5
+   |
+LL | /     match arr[range] {
+LL | |         [0, 1] => println!("0 1"),
+LL | |         [1, 2] => println!("1 2"),
+LL | |         _ => {},
+LL | |     }
+   | |_____^
+   |
+   = help: consider using `get(..)` instead.
+
+error: aborting due to 2 previous errors
+

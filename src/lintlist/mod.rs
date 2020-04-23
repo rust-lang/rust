@@ -1173,6 +1173,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "matches",
     },
     Lint {
+        name: "match_vec_item",
+        group: "style",
+        desc: "match vector by indexing can panic",
+        deprecation: None,
+        module: "match_vec_item",
+    },
+    Lint {
         name: "match_wild_err_arm",
         group: "style",
         desc: "a `match` with `Err(_)` arm and take drastic actions",
