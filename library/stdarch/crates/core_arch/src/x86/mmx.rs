@@ -634,16 +634,7 @@ mod tests {
     unsafe fn test_mm_subs_pi8() {
         let a = _mm_setr_pi8(-100, 100, 0, 0, 0, 0, -5, 5);
         let b = _mm_setr_pi8(100, -100, i8::MIN, 127, -1, 1, 3, -3);
-        let e = _mm_setr_pi8(
-            i8::MIN,
-            i8::MAX,
-            i8::MAX,
-            -127,
-            1,
-            -1,
-            -8,
-            8,
-        );
+        let e = _mm_setr_pi8(i8::MIN, i8::MAX, i8::MAX, -127, 1, -1, -8, 8);
         assert_eq_m64(e, _mm_subs_pi8(a, b));
         assert_eq_m64(e, _m_psubsb(a, b));
     }

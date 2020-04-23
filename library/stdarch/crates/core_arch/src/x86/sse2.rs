@@ -5229,7 +5229,6 @@ mod tests {
 
     #[simd_test(enable = "sse2,mmx")]
     unsafe fn test_mm_cvttpd_pi32() {
-
         let a = _mm_setr_pd(5., 0.);
         let r = _mm_cvttpd_pi32(a);
         assert_eq_m64(r, _mm_setr_pi32(5, 0));

@@ -2481,8 +2481,7 @@ mod tests {
             7 * 256,
         ));
         let b: vector_signed_short = transmute(i16x8::new(256, 256, 256, 256, 256, 256, 256, 256));
-        let c: vector_signed_short =
-            transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, i16::MAX - 1));
+        let c: vector_signed_short = transmute(i16x8::new(0, 1, 2, 3, 4, 5, 6, i16::MAX - 1));
 
         let d = i16x8::new(0, 3, 6, 9, 12, 15, 18, i16::MAX);
 
