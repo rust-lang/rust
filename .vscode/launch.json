@@ -11,7 +11,7 @@
   "configurations": [
     {
       // Used for testing the extension with the installed LSP server.
-      "name": "Run Extension",
+      "name": "Run Installed Extension",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
@@ -30,7 +30,7 @@
     },
     {
       // Used for testing the extension with a local build of the LSP server (in `target/debug`).
-      "name": "Run Extension (Dev Server)",
+      "name": "Run Extension (Debug Build)",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
@@ -47,6 +47,27 @@
       ],
       "env": {
         "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/debug/rust-analyzer"
+      }
+    },
+    {
+      // Used for testing the extension with a local build of the LSP server (in `target/release`).
+      "name": "Run Extension (Release Build)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--disable-extensions",
+        "--extensionDevelopmentPath=${workspaceFolder}/editors/code"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/editors/code/out/**/*.js"
+      ],
+      "preLaunchTask": "Build Extension",
+      "skipFiles": [
+        "<node_internals>/**/*.js"
+      ],
+      "env": {
+        "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/release/rust-analyzer"
       }
     },
     {

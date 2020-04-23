@@ -266,8 +266,8 @@ impl RawItemsCollector {
                 self.add_macro(current_module, it);
                 return;
             }
-            ast::ModuleItem::ExternBlock(_) => {
-                // FIXME: add extern block
+            ast::ModuleItem::ExternBlock(it) => {
+                self.add_extern_block(current_module, it);
                 return;
             }
         };
@@ -275,6 +275,34 @@ impl RawItemsCollector {
             let name = name.as_name();
             let def = self.raw_items.defs.alloc(DefData { name, kind, visibility });
             self.push_item(current_module, attrs, RawItemKind::Def(def));
+        }
+    }
+
+    fn add_extern_block(
+        &mut self,
+        current_module: Option<Idx<ModuleData>>,
+        block: ast::ExternBlock,
+    ) {
+        if let Some(items) = block.extern_item_list() {
+            for item in items.extern_items() {
+                let attrs = self.parse_attrs(&item);
+                let visibility =
+                    RawVisibility::from_ast_with_hygiene(item.visibility(), &self.hygiene);
+                let (kind, name) = match item {
+                    ast::ExternItem::FnDef(it) => {
+                        (DefKind::Function(self.source_ast_id_map.ast_id(&it)), it.name())
+                    }
+                    ast::ExternItem::StaticDef(it) => {
+                        (DefKind::Static(self.source_ast_id_map.ast_id(&it)), it.name())
+                    }
+                };
+
+                if let Some(name) = name {
+                    let name = name.as_name();
+                    let def = self.raw_items.defs.alloc(DefData { name, kind, visibility });
+                    self.push_item(current_module, attrs, RawItemKind::Def(def));
+                }
+            }
         }
     }
 

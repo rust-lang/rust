@@ -25,7 +25,7 @@ fn compute_crate_def_map(fixture: &str) -> Arc<CrateDefMap> {
 #[test]
 fn crate_def_map_smoke_test() {
     let map = def_map(
-        "
+        r"
         //- /lib.rs
         mod foo;
         struct S;
@@ -45,6 +45,11 @@ fn crate_def_map_smoke_test() {
         }
 
         enum E { V }
+
+        extern {
+            static EXT: u8;
+            fn ext();
+        }
         ",
     );
     assert_snapshot!(map, @r###"
@@ -61,7 +66,9 @@ fn crate_def_map_smoke_test() {
         ⋮crate::foo::bar
         ⋮Baz: t v
         ⋮E: t
+        ⋮EXT: v
         ⋮U: t v
+        ⋮ext: v
     "###)
 }
 
