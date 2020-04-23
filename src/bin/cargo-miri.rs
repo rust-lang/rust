@@ -247,7 +247,9 @@ fn xargo_version() -> Option<(u32, u32, u32)> {
     Some((major, minor, patch))
 }
 
-fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
+fn ask_to_run(mut cmd: Command, subcommand: MiriCommand, text: &str) {
+    // Disable interactive prompts in CI (GitHub Actions, Travis, AppVeyor, etc).
+    let ask = subcommand != MiriCommand::Setup && env::var_os("CI").is_none();
     if ask {
         let mut buf = String::new();
         print!("I will run `{:?}` to {}. Proceed? [Y/n] ", cmd, text);
@@ -271,9 +273,9 @@ fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
 /// Performs the setup required to make `cargo miri` work: Getting a custom-built libstd. Then sets
 /// `MIRI_SYSROOT`. Skipped if `MIRI_SYSROOT` is already set, in which case we expect the user has
 /// done all this already.
-fn setup(ask_user: bool) {
+fn setup(subcommand: MiriCommand) {
     if std::env::var("MIRI_SYSROOT").is_ok() {
-        if !ask_user {
+        if subcommand == MiriCommand::Setup {
             println!("WARNING: MIRI_SYSROOT already set, not doing anything.")
         }
         return;
@@ -287,7 +289,7 @@ fn setup(ask_user: bool) {
         }
         let mut cmd = cargo();
         cmd.args(&["install", "xargo", "-f"]);
-        ask_to_run(cmd, ask_user, "install a recent enough xargo");
+        ask_to_run(cmd, subcommand, "install a recent enough xargo");
     }
 
     // Determine where the rust sources are located.  `XARGO_RUST_SRC` env var trumps everything.
@@ -310,7 +312,7 @@ fn setup(ask_user: bool) {
                 cmd.args(&["component", "add", "rust-src"]);
                 ask_to_run(
                     cmd,
-                    ask_user,
+                    subcommand,
                     "install the rustc-src component for the selected toolchain",
                 );
             }
@@ -361,7 +363,8 @@ path = "lib.rs"
     File::create(dir.join("lib.rs")).unwrap();
     // Prepare xargo invocation.
     let target = get_arg_flag_value("--target");
-    let print_sysroot = !ask_user && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
+    let print_sysroot = subcommand == MiriCommand::Setup
+        && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
     let mut command = xargo_check();
     command.arg("build").arg("-q");
     command.current_dir(&dir);
@@ -389,7 +392,7 @@ path = "lib.rs"
     if print_sysroot {
         // Print just the sysroot and nothing else; this way we do not need any escaping.
         println!("{}", sysroot.display());
-    } else if !ask_user {
+    } else if subcommand == MiriCommand::Setup {
         println!("A libstd for Miri is now available in `{}`.", sysroot.display());
     }
 }
@@ -436,9 +439,7 @@ fn in_cargo_miri() {
     test_sysroot_consistency();
 
     // We always setup.
-    // Disable interactive prompts in CI (GitHub Actions, Travis, AppVeyor, etc).
-    let ask = subcommand != MiriCommand::Setup && env::var_os("CI").is_none();
-    setup(ask);
+    setup(subcommand);
     if subcommand == MiriCommand::Setup {
         // Stop here.
         return;
