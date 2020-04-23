@@ -24,43 +24,25 @@ use super::{
 };
 
 macro_rules! throw_validation_failure {
-    ($what:expr, $where:expr, $details:expr) => {{
+    ($what:expr, $where:expr $(, $details:expr )?) => {{
         let mut msg = format!("encountered {}", $what);
         let where_ = &$where;
         if !where_.is_empty() {
             msg.push_str(" at ");
             write_path(&mut msg, where_);
         }
-        write!(&mut msg, ", but expected {}", $details).unwrap();
-        throw_ub!(ValidationFailure(msg))
-    }};
-    ($what:expr, $where:expr) => {{
-        let mut msg = format!("encountered {}", $what);
-        let where_ = &$where;
-        if !where_.is_empty() {
-            msg.push_str(" at ");
-            write_path(&mut msg, where_);
-        }
+        $( write!(&mut msg, ", but expected {}", $details).unwrap(); )?
         throw_ub!(ValidationFailure(msg))
     }};
 }
 
 macro_rules! try_validation {
-    ($e:expr, $what:expr, $where:expr, $details:expr) => {{
+    ($e:expr, $what:expr, $where:expr $(, $details:expr )?) => {{
         match $e {
             Ok(x) => x,
-            // We re-throw the error, so we are okay with allocation:
-            // this can only slow down builds that fail anyway.
-            Err(_) => throw_validation_failure!($what, $where, $details),
-        }
-    }};
-
-    ($e:expr, $what:expr, $where:expr) => {{
-        match $e {
-            Ok(x) => x,
-            // We re-throw the error, so we are okay with allocation:
-            // this can only slow down builds that fail anyway.
-            Err(_) => throw_validation_failure!($what, $where),
+            // We catch the error and turn it into a validation failure. We are okay with
+            // allocation here as this can only slow down builds that fail anyway.
+            Err(_) => throw_validation_failure!($what, $where $(, $details)?),
         }
     }};
 }
