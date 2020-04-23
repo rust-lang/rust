@@ -313,6 +313,7 @@ pub struct FileSymbol {
     pub file_id: FileId,
     pub name: SmolStr,
     pub kind: SyntaxKind,
+    pub range: TextRange,
     pub ptr: SyntaxNodePtr,
     pub name_range: Option<TextRange>,
     pub container_name: Option<SmolStr>,
@@ -379,6 +380,7 @@ fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
     to_symbol(node).map(move |(name, ptr, name_range)| FileSymbol {
         name,
         kind: node.kind(),
+        range: node.text_range(),
         ptr,
         file_id,
         name_range: Some(name_range),
