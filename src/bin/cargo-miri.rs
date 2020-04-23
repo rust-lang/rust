@@ -1,5 +1,6 @@
 #![feature(inner_deref)]
 
+use std::env;
 use std::fs::{self, File};
 use std::io::{self, BufRead, Write};
 use std::ops::Not;
@@ -247,7 +248,8 @@ fn xargo_version() -> Option<(u32, u32, u32)> {
 }
 
 fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
-    if ask {
+    // Disable interactive prompts in CI (GitHub Actions, Travis, AppVeyor, etc).
+    if ask && env::var_os("CI").is_none() {
         let mut buf = String::new();
         print!("I will run `{:?}` to {}. Proceed? [Y/n] ", cmd, text);
         io::stdout().flush().unwrap();
@@ -270,13 +272,17 @@ fn ask_to_run(mut cmd: Command, ask: bool, text: &str) {
 /// Performs the setup required to make `cargo miri` work: Getting a custom-built libstd. Then sets
 /// `MIRI_SYSROOT`. Skipped if `MIRI_SYSROOT` is already set, in which case we expect the user has
 /// done all this already.
-fn setup(ask_user: bool) {
+fn setup(subcommand: MiriCommand) {
     if std::env::var("MIRI_SYSROOT").is_ok() {
-        if !ask_user {
+        if subcommand == MiriCommand::Setup {
             println!("WARNING: MIRI_SYSROOT already set, not doing anything.")
         }
         return;
     }
+
+    // Subcommands other than `setup` will do a setup if necessary, but
+    // interactively confirm first.
+    let ask_user = subcommand != MiriCommand::Setup;
 
     // First, we need xargo.
     if xargo_version().map_or(true, |v| v < XARGO_MIN_VERSION) {
@@ -360,7 +366,8 @@ path = "lib.rs"
     File::create(dir.join("lib.rs")).unwrap();
     // Prepare xargo invocation.
     let target = get_arg_flag_value("--target");
-    let print_sysroot = !ask_user && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
+    let print_sysroot = subcommand == MiriCommand::Setup
+        && has_arg_flag("--print-sysroot"); // whether we just print the sysroot path
     let mut command = xargo_check();
     command.arg("build").arg("-q");
     command.current_dir(&dir);
@@ -388,7 +395,7 @@ path = "lib.rs"
     if print_sysroot {
         // Print just the sysroot and nothing else; this way we do not need any escaping.
         println!("{}", sysroot.display());
-    } else if !ask_user {
+    } else if subcommand == MiriCommand::Setup {
         println!("A libstd for Miri is now available in `{}`.", sysroot.display());
     }
 }
@@ -435,8 +442,7 @@ fn in_cargo_miri() {
     test_sysroot_consistency();
 
     // We always setup.
-    let ask = subcommand != MiriCommand::Setup;
-    setup(ask);
+    setup(subcommand);
     if subcommand == MiriCommand::Setup {
         // Stop here.
         return;
