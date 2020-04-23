@@ -372,6 +372,14 @@ fn assert_covariance() {
     }
 }
 
+#[test]
+fn test_retain() {
+    let mut a = BinaryHeap::from(vec![-10, -5, 1, 2, 4, 13]);
+    a.retain(|x| x % 2 == 0);
+
+    assert_eq!(a.into_sorted_vec(), [-10, 2, 4])
+}
+
 // old binaryheap failed this test
 //
 // Integrity means that all elements are present after a comparison panics,
