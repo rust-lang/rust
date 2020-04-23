@@ -42,6 +42,7 @@
 #![feature(unwrap_infallible)]
 #![feature(leading_trailing_ones)]
 #![feature(const_forget)]
+#![feature(option_unwrap_none)]
 
 extern crate test;
 
