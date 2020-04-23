@@ -63,6 +63,9 @@ to the beta Rust release. The remerge is then necessary, to make sure that the
 Clippy commit, that was used by the now stable Rust release, persists in the
 tree of the Clippy repository.
 
+To find out if this step is necessary run `git branch master --contains beta`.
+If this command outputs `master`, this step is **not** necessary.
+
 ```bash
 # Assuming `HEAD` is the current `master` branch of rust-lang/rust-clippy
 $ git checkout -b backport_remerge
