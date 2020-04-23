@@ -66,6 +66,15 @@ features! {
     /// * `"avx512ifma"`
     /// * `"avx512vbmi"`
     /// * `"avx512vpopcntdq"`
+    /// * `"avx512vbmi2"`
+    /// * `"avx512gfni"`
+    /// * `"avx512vaes"`
+    /// * `"avx512vpclmulqdq"`
+    /// * `"avx512vnni"`
+    /// * `"avx512bitalg"`
+    /// * `"avx512bf16"`
+    /// * `"avx512vp2intersect"`
+    /// * `"f16c"`
     /// * `"fma"`
     /// * `"bmi1"`
     /// * `"bmi2"`
@@ -78,6 +87,9 @@ features! {
     /// * `"xsaveopt"`
     /// * `"xsaves"`
     /// * `"xsavec"`
+    /// * `"cmpxchg16b"`
+    /// * `"adx"`
+    /// * `"rtm"`
     ///
     /// [docs]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
     #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -86,7 +98,7 @@ features! {
     /// AES (Advanced Encryption Standard New Instructions AES-NI)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] pclmulqdq: "pclmulqdq";
     /// CLMUL (Carry-less Multiplication)
-    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")]  rdrand: "rdrand";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] rdrand: "rdrand";
     /// RDRAND
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] rdseed: "rdseed";
     /// RDSEED
@@ -114,10 +126,6 @@ features! {
     /// AVX (Advanced Vector Extensions)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx2: "avx2";
     /// AVX2 (Advanced Vector Extensions 2)
-    // Detection for the AVX-512 features below was accidentally stabilized in
-    // Rust 1.27.0, even though the corresponding intrinsics are still unstable
-    // or unimplemeted. There are stable callers who rely on detection support,
-    // e.g. to call AVX-512 C code via FFI.
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512f: "avx512f" ;
     /// AVX-512 F (Foundation)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512cd: "avx512cd" ;
@@ -132,30 +140,30 @@ features! {
     /// AVX-512 DQ (Doubleword and Quadword)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vl: "avx512vl";
     /// AVX-512 VL (Vector Length Extensions)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512ifma: "avx512ifma";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512ifma: "avx512ifma";
     /// AVX-512 IFMA (Integer Fused Multiply Add)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vbmi: "avx512vbmi";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vbmi: "avx512vbmi";
     /// AVX-512 VBMI (Vector Byte Manipulation Instructions)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vpopcntdq: "avx512vpopcntdq";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vpopcntdq: "avx512vpopcntdq";
     /// AVX-512 VPOPCNTDQ (Vector Population Count Doubleword and
     /// Quadword)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vbmi2: "avx512vbmi2";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vbmi2: "avx512vbmi2";
     /// AVX-512 VBMI2 (Additional byte, word, dword and qword capabilities)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512gfni: "avx512gfni";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512gfni: "avx512gfni";
     /// AVX-512 GFNI (Galois Field New Instruction)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vaes: "avx512vaes";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vaes: "avx512vaes";
     /// AVX-512 VAES (Vector AES instruction)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vpclmulqdq: "avx512vpclmulqdq";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vpclmulqdq: "avx512vpclmulqdq";
     /// AVX-512 VPCLMULQDQ (Vector PCLMULQDQ instructions)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vnni: "avx512vnni";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vnni: "avx512vnni";
     /// AVX-512 VNNI (Vector Neural Network Instructions)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512bitalg: "avx512bitalg";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512bitalg: "avx512bitalg";
     /// AVX-512 BITALG (Support for VPOPCNT[B,W] and VPSHUFBITQMB)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512bf16: "avx512bf16";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512bf16: "avx512bf16";
     /// AVX-512 BF16 (BFLOAT16 instructions)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] avx512vp2intersect: "avx512vp2intersect";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] avx512vp2intersect: "avx512vp2intersect";
     /// AVX-512 P2INTERSECT
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] f16c: "f16c";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] f16c: "f16c";
     /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] fma: "fma";
     /// FMA (Fused Multiply Add)
@@ -179,10 +187,10 @@ features! {
     /// XSAVES (Save Processor Extended States Supervisor)
     @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] xsavec: "xsavec";
     /// XSAVEC (Save Processor Extended States Compacted)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] cmpxchg16b: "cmpxchg16b";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] cmpxchg16b: "cmpxchg16b";
     /// CMPXCH16B (16-byte compare-and-swap instruction)
     @FEATURE: #[stable(feature = "simd_x86_adx", since = "1.33.0")] adx: "adx";
     /// ADX, Intel ADX (Multi-Precision Add-Carry Instruction Extensions)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] rtm: "rtm";
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] rtm: "rtm";
     /// RTM, Intel (Restricted Transactional Memory)
 }
