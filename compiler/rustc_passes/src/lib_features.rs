@@ -109,7 +109,7 @@ impl LibFeatureCollector<'tcx> {
     }
 
     fn span_feature_error(&self, span: Span, msg: &str) {
-        struct_span_err!(self.tcx.sess, span, E0711, "{}", &msg,).emit();
+        struct_span_err!(self.tcx.sess, span, E0711, "{}", &msg).emit();
     }
 }
 

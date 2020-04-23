@@ -62,12 +62,11 @@ fn multiple3() { }
 #[rustc_deprecated(since = "b", reason = "text")] //~ ERROR multiple deprecated attributes
 #[rustc_const_unstable(feature = "c", issue = "none")]
 #[rustc_const_unstable(feature = "d", issue = "none")] //~ ERROR multiple stability levels
-pub const fn multiple4() { }
-//~^ ERROR Invalid stability version found
+pub const fn multiple4() { } //~ ERROR invalid stability version found
 
 #[stable(feature = "a", since = "1.0.0")]
 #[rustc_deprecated(since = "invalid", reason = "text")]
-fn invalid_deprecation_version() {} //~ ERROR Invalid deprecation version found
+fn invalid_deprecation_version() {} //~ ERROR invalid deprecation version found
 
 #[rustc_deprecated(since = "a", reason = "text")]
 fn deprecated_without_unstable_or_stable() { }
