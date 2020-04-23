@@ -706,7 +706,6 @@ impl<T: ?Sized> *const T {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[lang = "const_slice_ptr"]
 impl<T> *const [T] {
     /// Returns the length of a raw slice.

@@ -65,7 +65,7 @@ pub trait Index<Idx: ?Sized> {
 
     /// Performs the indexing (`container[index]`) operation.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), track_caller)]
+    #[track_caller]
     fn index(&self, index: Idx) -> &Self::Output;
 }
 
@@ -167,6 +167,6 @@ see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#ind
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     /// Performs the mutable indexing (`container[index]`) operation.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(bootstrap), track_caller)]
+    #[track_caller]
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
 }

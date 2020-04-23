@@ -28,14 +28,7 @@ macro_rules! impl_float_to_int {
                 #[doc(hidden)]
                 #[inline]
                 unsafe fn to_int_unchecked(self) -> $Int {
-                    #[cfg(bootstrap)]
-                    {
-                        crate::intrinsics::float_to_int_approx_unchecked(self)
-                    }
-                    #[cfg(not(bootstrap))]
-                    {
-                        crate::intrinsics::float_to_int_unchecked(self)
-                    }
+                    crate::intrinsics::float_to_int_unchecked(self)
                 }
             }
         )+

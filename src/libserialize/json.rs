@@ -2305,7 +2305,7 @@ macro_rules! read_primitive {
                 value => Err(ExpectedError("Number".to_owned(), value.to_string())),
             }
         }
-    }
+    };
 }
 
 impl crate::Decoder for Decoder {
