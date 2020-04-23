@@ -23,22 +23,20 @@ impl Completions {
         ty: &Type,
     ) {
         let is_deprecated = is_deprecated(field, ctx.db);
-        let mut completion_item = CompletionItem::new(
-            CompletionKind::Reference,
-            ctx.source_range(),
-            field.name(ctx.db).to_string(),
-        )
-        .kind(CompletionItemKind::Field)
-        .detail(ty.display(ctx.db).to_string())
-        .set_documentation(field.docs(ctx.db))
-        .set_deprecated(is_deprecated)
-        .build();
+        let ty = ty.display(ctx.db).to_string();
+        let name = field.name(ctx.db);
+        let mut completion_item =
+            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.to_string())
+                .kind(CompletionItemKind::Field)
+                .detail(ty.clone())
+                .set_documentation(field.docs(ctx.db))
+                .set_deprecated(is_deprecated);
 
-        if let Some(score) = compute_score(&completion_item, ctx) {
-            completion_item.set_score(score);
+        if let Some(score) = compute_score(ctx, &ty, &name.to_string()) {
+            completion_item = completion_item.set_score(score);
         }
 
-        self.add(completion_item);
+        completion_item.add_to(self);
     }
 
     pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &Type) {
@@ -308,8 +306,9 @@ impl Completions {
 }
 
 pub(crate) fn compute_score(
-    completion_item: &CompletionItem,
     ctx: &CompletionContext,
+    ty: &str,
+    name: &str,
 ) -> Option<CompletionScore> {
     let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
         if let Some((struct_field, _)) = ctx.sema.resolve_record_field(record_field) {
@@ -334,16 +333,14 @@ pub(crate) fn compute_score(
 
     // Compute score
     // For the same type
-    if let Some(a_parameter_type) = completion_item.detail() {
-        if &active_type == a_parameter_type {
-            // If same type + same name then go top position
-            let res = if active_name == completion_item.label() {
-                CompletionScore::TypeAndNameMatch
-            } else {
-                CompletionScore::TypeMatch
-            };
-            return Some(res);
-        }
+    if &active_type == ty {
+        // If same type + same name then go top position
+        let res = if active_name == name {
+            CompletionScore::TypeAndNameMatch
+        } else {
+            CompletionScore::TypeMatch
+        };
+        return Some(res);
     }
     None
 }
