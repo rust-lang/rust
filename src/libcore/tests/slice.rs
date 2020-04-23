@@ -1227,15 +1227,9 @@ fn sort_unstable() {
     use core::slice::heapsort;
     use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 
-    #[cfg(not(miri))] // Miri is too slow
-    let large_range = 500..510;
-    #[cfg(not(miri))] // Miri is too slow
-    let rounds = 100;
-
-    #[cfg(miri)]
-    let large_range = 0..0; // empty range
-    #[cfg(miri)]
-    let rounds = 1;
+    // Miri is too slow
+    let large_range = if cfg!(miri) { 0..0 } else { 500..510 };
+    let rounds = if cfg!(miri) { 1 } else { 100 };
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
