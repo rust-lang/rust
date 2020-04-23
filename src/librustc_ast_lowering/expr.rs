@@ -397,12 +397,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let then_arm = self.arm(then_pat, self.arena.alloc(then_expr));
 
         // `match <scrutinee> { ... }`
-        let match_expr = self.expr_match(
-            scrutinee.span,
-            scrutinee,
-            arena_vec![self; then_arm, else_arm],
-            desugar,
-        );
+        let match_expr =
+            self.expr_match(span, scrutinee, arena_vec![self; then_arm, else_arm], desugar);
 
         // `[opt_ident]: loop { ... }`
         hir::ExprKind::Loop(self.block_expr(self.arena.alloc(match_expr)), opt_label, source)
