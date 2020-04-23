@@ -36,7 +36,7 @@
                                            // + ty: i32
                                            // + val: Value(Scalar(0xffffffff))
                                            // mir::Constant
-                                           // + span: $DIR/switch_int.rs:9:18: 9:20
+                                           // + span: $DIR/switch_int.rs:9:14: 9:21
                                            // + literal: Const { ty: i32, val: Value(Scalar(0xffffffff)) }
       }
   
@@ -52,7 +52,7 @@
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000000))
                                            // mir::Constant
-                                           // + span: $DIR/switch_int.rs:8:18: 8:19
+                                           // + span: $DIR/switch_int.rs:8:14: 8:20
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
       }
   

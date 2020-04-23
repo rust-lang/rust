@@ -1017,8 +1017,40 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdges { .. }
             | TerminatorKind::FalseUnwind { .. } => {}
-            //FIXME(wesleywiser) Call does have Operands that could be const-propagated
-            TerminatorKind::Call { .. } => {}
+            TerminatorKind::Call { ref mut args, .. } => {
+                // Every argument in our function calls can be const propagated.
+                // We try to, before exiting.
+                for opr in args {
+                    // We see if the operand can be evaluated, and if so, we continue.
+                    if let Some(op_ty) = self.eval_operand(&opr, source_info) {
+                        trace!("OpTy of the place: {:?}", &op_ty);
+                        // We must also ask if it *should* be evaluated.
+                        if self.should_const_prop(op_ty) {
+                            if let interpret::Operand::Immediate(immediate) = *op_ty {
+                                // Only Immediate from here on
+                                // FIXME(felix91gr): The code only works for Immediate. Investigate
+                                // if it could be made to work for Indirect as well.
+                                trace!("Immediate of the OpTy: {:?}", &immediate);
+                                if let interpret::Immediate::Scalar(scalar_mu) = immediate {
+                                    // FIXME(felix91gr): This only works for Scalar
+                                    // Could probably be expanded for Scalar Tuples (inside the Immediate)
+                                    trace!("ScalarMaybeUndef of the OpTy: {:?}", &scalar_mu);
+                                    if let ScalarMaybeUndef::Scalar(scalar) = scalar_mu {
+                                        trace!("Scalar of the ScalarMU: {:?}", &scalar);
+                                        let operand_type = opr.ty(&self.local_decls, self.tcx);
+                                        trace!("Type of the OpTy: {:?}", &operand_type);
+                                        *opr = self.operand_from_scalar(
+                                            scalar,
+                                            operand_type,
+                                            source_info.span,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         // We remove all Locals which are restricted in propagation to their containing blocks.
         // We wouldn't need to clone, but the borrow checker can't see that we're not aliasing
