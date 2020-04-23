@@ -695,6 +695,9 @@ mod impls {
                 // Fat pointer
                 // SAFETY: we are accessing the memory occupied by `self`
                 // which is guaranteed to be valid.
+                // This assumes a fat pointer can be represented by a `(usize, usize)`,
+                // which is safe to do in `std` because it is shipped and kept in sync
+                // with the implementation of fat pointers in `rustc`.
                 let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
                 state.write_usize(a);
                 state.write_usize(b);
@@ -712,6 +715,9 @@ mod impls {
                 // Fat pointer
                 // SAFETY: we are accessing the memory occupied by `self`
                 // which is guaranteed to be valid.
+                // This assumes a fat pointer can be represented by a `(usize, usize)`,
+                // which is safe to do in `std` because it is shipped and kept in sync
+                // with the implementation of fat pointers in `rustc`.
                 let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
                 state.write_usize(a);
                 state.write_usize(b);
