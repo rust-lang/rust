@@ -176,7 +176,7 @@ impl ToNav for FileSymbol {
             file_id: self.file_id,
             name: self.name.clone(),
             kind: self.kind,
-            full_range: self.ptr.range(),
+            full_range: self.range,
             focus_range: self.name_range,
             container_name: self.container_name.clone(),
             description: description_from_symbol(db, self),

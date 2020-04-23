@@ -325,8 +325,11 @@ mod tests {
         let resolved = scopes.resolve_name_in_scope(expr_scope, &name_ref.as_name()).unwrap();
         let pat_src = source_map.pat_syntax(resolved.pat()).unwrap();
 
-        let local_name = pat_src.value.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
-        assert_eq!(local_name.range(), expected_name.syntax().text_range());
+        let local_name = pat_src.value.either(
+            |it| it.syntax_node_ptr().to_node(file.syntax()),
+            |it| it.syntax_node_ptr().to_node(file.syntax()),
+        );
+        assert_eq!(local_name.text_range(), expected_name.syntax().text_range());
     }
 
     #[test]
