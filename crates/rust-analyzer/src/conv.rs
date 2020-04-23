@@ -9,10 +9,10 @@ use lsp_types::{
     TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, WorkspaceEdit,
 };
 use ra_ide::{
-    translate_offset_with_edit, CompletionItem, CompletionItemKind, CompletionScore, FileId,
-    FilePosition, FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier,
-    HighlightTag, InlayHint, InlayKind, InsertTextFormat, LineCol, LineIndex, NavigationTarget,
-    RangeInfo, ReferenceAccess, Severity, SourceChange, SourceFileEdit,
+    translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
+    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag,
+    InlayHint, InlayKind, InsertTextFormat, LineCol, LineIndex, NavigationTarget, RangeInfo,
+    ReferenceAccess, Severity, SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
@@ -114,10 +114,10 @@ impl Conv for Severity {
     }
 }
 
-impl ConvWith<(&LineIndex, LineEndings, &mut usize)> for CompletionItem {
+impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
     type Output = ::lsp_types::CompletionItem;
 
-    fn conv_with(self, ctx: (&LineIndex, LineEndings, &mut usize)) -> ::lsp_types::CompletionItem {
+    fn conv_with(self, ctx: (&LineIndex, LineEndings)) -> ::lsp_types::CompletionItem {
         let mut additional_text_edits = Vec::new();
         let mut text_edit = None;
         // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -165,13 +165,8 @@ impl ConvWith<(&LineIndex, LineEndings, &mut usize)> for CompletionItem {
             ..Default::default()
         };
 
-        if let Some(score) = self.score() {
-            match score {
-                CompletionScore::TypeAndNameMatch => res.preselect = Some(true),
-                CompletionScore::TypeMatch => {}
-            }
-            res.sort_text = Some(format!("{:02}", *ctx.2));
-            *ctx.2 += 1;
+        if self.score().is_some() {
+            res.preselect = Some(true)
         }
 
         if self.deprecated() {
