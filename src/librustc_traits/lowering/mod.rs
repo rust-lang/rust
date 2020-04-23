@@ -150,10 +150,10 @@ crate fn program_clauses_for(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
     // FIXME(eddyb) this should only be using `def_kind`.
     match tcx.def_key(def_id).disambiguated_data.data {
         DefPathData::TypeNs(..) => match tcx.def_kind(def_id) {
-            Some(DefKind::Trait | DefKind::TraitAlias) => program_clauses_for_trait(tcx, def_id),
+            DefKind::Trait | DefKind::TraitAlias => program_clauses_for_trait(tcx, def_id),
             // FIXME(eddyb) deduplicate this `associated_item` call with
             // `program_clauses_for_associated_type_{value,def}`.
-            Some(DefKind::AssocTy) => match tcx.associated_item(def_id).container {
+            DefKind::AssocTy => match tcx.associated_item(def_id).container {
                 ty::AssocItemContainer::ImplContainer(_) => {
                     program_clauses_for_associated_type_value(tcx, def_id)
                 }
@@ -161,13 +161,11 @@ crate fn program_clauses_for(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
                     program_clauses_for_associated_type_def(tcx, def_id)
                 }
             },
-            Some(
-                DefKind::Struct
-                | DefKind::Enum
-                | DefKind::TyAlias
-                | DefKind::Union
-                | DefKind::OpaqueTy,
-            ) => program_clauses_for_type_def(tcx, def_id),
+            DefKind::Struct
+            | DefKind::Enum
+            | DefKind::TyAlias
+            | DefKind::Union
+            | DefKind::OpaqueTy => program_clauses_for_type_def(tcx, def_id),
             _ => List::empty(),
         },
         DefPathData::Impl => program_clauses_for_impl(tcx, def_id),

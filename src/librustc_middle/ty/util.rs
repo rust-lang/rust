@@ -16,7 +16,6 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::definitions::DefPathData;
 use rustc_macros::HashStable;
 use rustc_span::Span;
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
@@ -446,24 +445,24 @@ impl<'tcx> TyCtxt<'tcx> {
     /// those are not yet phased out). The parent of the closure's
     /// `DefId` will also be the context where it appears.
     pub fn is_closure(self, def_id: DefId) -> bool {
-        self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
+        matches!(self.def_kind(def_id), DefKind::Closure | DefKind::Generator)
     }
 
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
     pub fn is_trait(self, def_id: DefId) -> bool {
-        self.def_kind(def_id) == Some(DefKind::Trait)
+        self.def_kind(def_id) == DefKind::Trait
     }
 
     /// Returns `true` if `def_id` refers to a trait alias (i.e., `trait Foo = ...;`),
     /// and `false` otherwise.
     pub fn is_trait_alias(self, def_id: DefId) -> bool {
-        self.def_kind(def_id) == Some(DefKind::TraitAlias)
+        self.def_kind(def_id) == DefKind::TraitAlias
     }
 
     /// Returns `true` if this `DefId` refers to the implicit constructor for
     /// a tuple struct like `struct Foo(u32)`, and `false` otherwise.
     pub fn is_constructor(self, def_id: DefId) -> bool {
-        self.def_key(def_id).disambiguated_data.data == DefPathData::Ctor
+        matches!(self.def_kind(def_id), DefKind::Ctor(..))
     }
 
     /// Given the def-ID of a fn or closure, returns the def-ID of
