@@ -4,16 +4,13 @@ use crate::{expand_task, list_macros};
 use ra_proc_macro::msg::{self, Message};
 use std::io;
 
-pub fn run() {
+pub fn run() -> io::Result<()> {
     loop {
-        let req = match read_request() {
-            Err(err) => {
-                // Panic here, as the stdin pipe may be closed.
-                // Otherwise, client will be restarted the service anyway.
-                panic!("Read message error on ra_proc_macro_srv: {}", err);
-            }
-            Ok(None) => continue,
-            Ok(Some(req)) => req,
+        // bubble up the error for read request,
+        // as the stdin pipe may be closed.
+        let req = match read_request()? {
+            None => continue,
+            Some(req) => req,
         };
 
         let res = match req {
