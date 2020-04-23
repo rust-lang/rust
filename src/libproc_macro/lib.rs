@@ -45,6 +45,24 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::{error, fmt, iter, mem};
 
+/// Determines whether proc_macro has been made accessible to the currently
+/// running program.
+///
+/// The proc_macro crate is only intended for use inside the implementation of
+/// procedural macros. All the functions in this crate panic if invoked from
+/// outside of a procedural macro, such as from a build script or unit test or
+/// ordinary Rust binary.
+///
+/// With consideration for Rust libraries that are designed to support both
+/// macro and non-macro use cases, `proc_macro::is_available()` provides a
+/// non-panicking way to detect whether the infrastructure required to use the
+/// API of proc_macro is presently available. Returns true if invoked from
+/// inside of a procedural macro, false if invoked from any other binary.
+#[unstable(feature = "proc_macro_is_available", issue = "71436")]
+pub fn is_available() -> bool {
+    bridge::Bridge::is_available()
+}
+
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
 /// The type provide interfaces for iterating over those token trees and, conversely,

@@ -45,7 +45,7 @@ impl SimplifyCfg {
     }
 }
 
-pub fn simplify_cfg(body: &mut BodyAndCache<'_>) {
+pub fn simplify_cfg(body: &mut Body<'_>) {
     CfgSimplifier::new(body).simplify();
     remove_dead_blocks(body);
 
@@ -58,7 +58,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body);
         simplify_cfg(body);
     }
@@ -70,7 +70,7 @@ pub struct CfgSimplifier<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
-    pub fn new(body: &'a mut BodyAndCache<'tcx>) -> Self {
+    pub fn new(body: &'a mut Body<'tcx>) -> Self {
         let mut pred_count = IndexVec::from_elem(0u32, body.basic_blocks());
 
         // we can't use mir.predecessors() here because that counts
@@ -272,7 +272,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 }
 
-pub fn remove_dead_blocks(body: &mut BodyAndCache<'_>) {
+pub fn remove_dead_blocks(body: &mut Body<'_>) {
     let mut seen = BitSet::new_empty(body.basic_blocks().len());
     for (bb, _) in traversal::preorder(body) {
         seen.insert(bb.index());
@@ -304,15 +304,14 @@ pub fn remove_dead_blocks(body: &mut BodyAndCache<'_>) {
 pub struct SimplifyLocals;
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         trace!("running SimplifyLocals on {:?}", source);
 
         // First, we're going to get a count of *actual* uses for every `Local`.
         // Take a look at `DeclMarker::visit_local()` to see exactly what is ignored.
         let mut used_locals = {
-            let read_only_cache = read_only!(body);
             let mut marker = DeclMarker::new(body);
-            marker.visit_body(&read_only_cache);
+            marker.visit_body(&body);
 
             marker.local_counts
         };

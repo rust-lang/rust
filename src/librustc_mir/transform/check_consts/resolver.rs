@@ -72,7 +72,7 @@ where
     ) {
         // We cannot reason about another function's internals, so use conservative type-based
         // qualification for the result of a function call.
-        let return_ty = return_place.ty(*self.item.body, self.item.tcx).ty;
+        let return_ty = return_place.ty(self.item.body, self.item.tcx).ty;
         let qualif = Q::in_any_value_of_ty(self.item, return_ty);
 
         if !return_place.is_indirect() {

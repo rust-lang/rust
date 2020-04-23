@@ -354,7 +354,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
     }
 }
 
-fn make_generator_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyAndCache<'tcx>) {
+fn make_generator_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let gen_ty = body.local_decls.raw[1].ty;
 
     let ref_gen_ty =
@@ -367,7 +367,7 @@ fn make_generator_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Bo
     DerefArgVisitor { tcx }.visit_body(body);
 }
 
-fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyAndCache<'tcx>) {
+fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let ref_gen_ty = body.local_decls.raw[1].ty;
 
     let pin_did = tcx.lang_items().pin_type().unwrap();
@@ -391,7 +391,7 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
 fn replace_local<'tcx>(
     local: Local,
     ty: Ty<'tcx>,
-    body: &mut BodyAndCache<'tcx>,
+    body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Local {
     let source_info = source_info(body);
@@ -436,7 +436,7 @@ struct LivenessInfo {
 
 fn locals_live_across_suspend_points(
     tcx: TyCtxt<'tcx>,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    body: &Body<'tcx>,
     source: MirSource<'tcx>,
     always_live_locals: &storage::AlwaysLiveLocals,
     movable: bool,
@@ -686,7 +686,7 @@ fn compute_layout<'tcx>(
     interior: Ty<'tcx>,
     always_live_locals: &storage::AlwaysLiveLocals,
     movable: bool,
-    body: &mut BodyAndCache<'tcx>,
+    body: &mut Body<'tcx>,
 ) -> (
     FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
     GeneratorLayout<'tcx>,
@@ -698,13 +698,7 @@ fn compute_layout<'tcx>(
         live_locals_at_suspension_points,
         storage_conflicts,
         storage_liveness,
-    } = locals_live_across_suspend_points(
-        tcx,
-        read_only!(body),
-        source,
-        always_live_locals,
-        movable,
-    );
+    } = locals_live_across_suspend_points(tcx, body, source, always_live_locals, movable);
 
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
@@ -779,7 +773,7 @@ fn compute_layout<'tcx>(
 ///
 /// After this function, the former entry point of the function will be bb1.
 fn insert_switch<'tcx>(
-    body: &mut BodyAndCache<'tcx>,
+    body: &mut Body<'tcx>,
     cases: Vec<(usize, BasicBlock)>,
     transform: &TransformVisitor<'tcx>,
     default: TerminatorKind<'tcx>,
@@ -810,11 +804,7 @@ fn insert_switch<'tcx>(
     }
 }
 
-fn elaborate_generator_drops<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    body: &mut BodyAndCache<'tcx>,
-) {
+fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut Body<'tcx>) {
     use crate::shim::DropShimElaborator;
     use crate::util::elaborate_drops::{elaborate_drop, Unwind};
     use crate::util::patch::MirPatch;
@@ -865,9 +855,9 @@ fn create_generator_drop_shim<'tcx>(
     transform: &TransformVisitor<'tcx>,
     source: MirSource<'tcx>,
     gen_ty: Ty<'tcx>,
-    body: &mut BodyAndCache<'tcx>,
+    body: &mut Body<'tcx>,
     drop_clean: BasicBlock,
-) -> BodyAndCache<'tcx> {
+) -> Body<'tcx> {
     let mut body = body.clone();
     body.arg_count = 1; // make sure the resume argument is not included here
 
@@ -934,10 +924,7 @@ fn create_generator_drop_shim<'tcx>(
     body
 }
 
-fn insert_term_block<'tcx>(
-    body: &mut BodyAndCache<'tcx>,
-    kind: TerminatorKind<'tcx>,
-) -> BasicBlock {
+fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let term_block = BasicBlock::new(body.basic_blocks().len());
     let source_info = source_info(body);
     body.basic_blocks_mut().push(BasicBlockData {
@@ -950,7 +937,7 @@ fn insert_term_block<'tcx>(
 
 fn insert_panic_block<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &mut BodyAndCache<'tcx>,
+    body: &mut Body<'tcx>,
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks().len());
@@ -1036,7 +1023,7 @@ fn create_generator_resume_function<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: TransformVisitor<'tcx>,
     source: MirSource<'tcx>,
-    body: &mut BodyAndCache<'tcx>,
+    body: &mut Body<'tcx>,
     can_return: bool,
 ) {
     let can_unwind = can_unwind(tcx, body);
@@ -1115,7 +1102,7 @@ fn source_info(body: &Body<'_>) -> SourceInfo {
     SourceInfo { span: body.span, scope: OUTERMOST_SOURCE_SCOPE }
 }
 
-fn insert_clean_drop(body: &mut BodyAndCache<'_>) -> BasicBlock {
+fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
@@ -1152,7 +1139,7 @@ impl Operation {
 }
 
 fn create_cases<'tcx>(
-    body: &mut BodyAndCache<'tcx>,
+    body: &mut Body<'tcx>,
     transform: &TransformVisitor<'tcx>,
     operation: Operation,
 ) -> Vec<(usize, BasicBlock)> {
@@ -1215,7 +1202,7 @@ fn create_cases<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let yield_ty = if let Some(yield_ty) = body.yield_ty {
             yield_ty
         } else {

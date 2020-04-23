@@ -1,7 +1,7 @@
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::mir::{BasicBlock, Body, Location, Place, ReadOnlyBodyAndCache, Rvalue};
+use rustc_middle::mir::{BasicBlock, Body, Location, Place, Rvalue};
 use rustc_middle::mir::{BorrowKind, Mutability, Operand};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
@@ -18,7 +18,7 @@ pub(super) fn generate_invalidates<'tcx>(
     tcx: TyCtxt<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     if all_facts.is_none() {
@@ -37,7 +37,7 @@ pub(super) fn generate_invalidates<'tcx>(
             body: &body,
             dominators,
         };
-        ig.visit_body(&body);
+        ig.visit_body(body);
     }
 }
 

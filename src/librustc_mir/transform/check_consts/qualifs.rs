@@ -113,7 +113,7 @@ where
     F: FnMut(Local) -> bool,
 {
     match rvalue {
-        Rvalue::NullaryOp(..) => Q::in_any_value_of_ty(cx, rvalue.ty(*cx.body, cx.tcx)),
+        Rvalue::NullaryOp(..) => Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)),
 
         Rvalue::Discriminant(place) | Rvalue::Len(place) => {
             in_place::<Q, _>(cx, in_local, place.as_ref())
@@ -131,7 +131,7 @@ where
         Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
             // Special-case reborrows to be more like a copy of the reference.
             if let &[ref proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
-                let base_ty = Place::ty_from(place.local, proj_base, *cx.body, cx.tcx).ty;
+                let base_ty = Place::ty_from(place.local, proj_base, cx.body, cx.tcx).ty;
                 if let ty::Ref(..) = base_ty.kind {
                     return in_place::<Q, _>(
                         cx,
@@ -178,7 +178,7 @@ where
             | ProjectionElem::Index(_) => {}
         }
 
-        let base_ty = Place::ty_from(place.local, proj_base, *cx.body, cx.tcx);
+        let base_ty = Place::ty_from(place.local, proj_base, cx.body, cx.tcx);
         let proj_ty = base_ty.projection_ty(cx.tcx, proj_elem).ty;
         if !Q::in_any_value_of_ty(cx, proj_ty) {
             return false;

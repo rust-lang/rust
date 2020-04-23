@@ -8,16 +8,16 @@ use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
+use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{
-    read_only, AggregateKind, AssertKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate,
-    Constant, Local, LocalDecl, LocalKind, Location, Operand, Place, ReadOnlyBodyAndCache, Rvalue,
-    SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
-    UnOp, RETURN_PLACE,
+    AggregateKind, AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, Local,
+    LocalDecl, LocalKind, Location, Operand, Place, Rvalue, SourceInfo, SourceScope,
+    SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -59,7 +59,7 @@ macro_rules! throw_machine_stop_str {
 pub struct ConstProp;
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
             return;
@@ -150,8 +150,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // constants, instead of just checking for const-folding succeeding.
         // That would require an uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
-        let mut optimization_finder =
-            ConstPropagator::new(read_only!(body), dummy_body, tcx, source);
+        let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx, source);
         optimization_finder.visit_body(body);
 
         trace!("ConstProp done for {:?}", source.def_id());
@@ -362,7 +361,7 @@ impl<'mir, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
 
 impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(
-        body: ReadOnlyBodyAndCache<'_, 'tcx>,
+        body: &Body<'tcx>,
         dummy_body: &'mir Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         source: MirSource<'tcx>,
@@ -777,15 +776,15 @@ enum ConstPropMode {
 struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // false at the beginning, once set, there are not allowed to be any more assignments
-    found_assignment: IndexVec<Local, bool>,
+    found_assignment: BitSet<Local>,
 }
 
 impl CanConstProp {
     /// returns true if `local` can be propagated
-    fn check(body: ReadOnlyBodyAndCache<'_, '_>) -> IndexVec<Local, ConstPropMode> {
+    fn check(body: &Body<'_>) -> IndexVec<Local, ConstPropMode> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
-            found_assignment: IndexVec::from_elem(false, &body.local_decls),
+            found_assignment: BitSet::new_empty(body.local_decls.len()),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             // cannot use args at all
@@ -813,11 +812,9 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // FIXME(oli-obk): we could be more powerful here, if the multiple writes
             // only occur in independent execution paths
             MutatingUse(MutatingUseContext::Store) => {
-                if self.found_assignment[local] {
+                if !self.found_assignment.insert(local) {
                     trace!("local {:?} can't be propagated because of multiple assignments", local);
                     self.can_const_prop[local] = ConstPropMode::NoPropagation;
-                } else {
-                    self.found_assignment[local] = true
                 }
             }
             // Reading constants is allowed an arbitrary number of times

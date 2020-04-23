@@ -4,7 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
-use rustc_middle::mir::{BodyAndCache, ConstQualifs, MirPhase, Promoted};
+use rustc_middle::mir::{Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{InstanceDef, TyCtxt, TypeFoldable};
@@ -131,12 +131,12 @@ pub trait MirPass<'tcx> {
         default_name::<Self>()
     }
 
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>);
 }
 
 pub fn run_passes(
     tcx: TyCtxt<'tcx>,
-    body: &mut BodyAndCache<'tcx>,
+    body: &mut Body<'tcx>,
     instance: InstanceDef<'tcx>,
     promoted: Option<Promoted>,
     mir_phase: MirPhase,
@@ -194,13 +194,8 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
         return Default::default();
     }
 
-    let item = check_consts::Item {
-        body: body.unwrap_read_only(),
-        tcx,
-        def_id,
-        const_kind,
-        param_env: tcx.param_env(def_id),
-    };
+    let item =
+        check_consts::Item { body, tcx, def_id, const_kind, param_env: tcx.param_env(def_id) };
 
     let mut validator = check_consts::validation::Validator::new(&item);
     validator.check_body();
@@ -210,7 +205,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     validator.qualifs_in_return_place()
 }
 
-fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
+fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
 
@@ -230,14 +225,13 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
             &rustc_peek::SanityCheck,
         ],
     );
-    body.ensure_predecessors();
     tcx.alloc_steal_mir(body)
 }
 
 fn mir_validated(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> (&'tcx Steal<BodyAndCache<'tcx>>, &'tcx Steal<IndexVec<Promoted, BodyAndCache<'tcx>>>) {
+) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
     let _ = tcx.mir_const_qualif(def_id);
@@ -263,7 +257,7 @@ fn mir_validated(
 
 fn run_optimization_passes<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &mut BodyAndCache<'tcx>,
+    body: &mut Body<'tcx>,
     def_id: DefId,
     promoted: Option<Promoted>,
 ) {
@@ -319,7 +313,7 @@ fn run_optimization_passes<'tcx>(
     );
 }
 
-fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyAndCache<'_> {
+fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
     if tcx.is_constructor(def_id) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
@@ -335,14 +329,13 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyAndCache<'_> {
     let (body, _) = tcx.mir_validated(def_id);
     let mut body = body.steal();
     run_optimization_passes(tcx, &mut body, def_id, None);
-    body.ensure_predecessors();
 
     debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
 
     tcx.arena.alloc(body)
 }
 
-fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, BodyAndCache<'_>> {
+fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, Body<'_>> {
     if tcx.is_constructor(def_id) {
         return tcx.intern_promoted(IndexVec::new());
     }
@@ -353,7 +346,6 @@ fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, BodyAndCa
 
     for (p, mut body) in promoted.iter_enumerated_mut() {
         run_optimization_passes(tcx, &mut body, def_id, Some(p));
-        body.ensure_predecessors();
     }
 
     debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");

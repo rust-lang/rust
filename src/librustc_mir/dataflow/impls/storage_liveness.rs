@@ -84,13 +84,13 @@ type BorrowedLocalsResults<'a, 'tcx> = ResultsRefCursor<'a, 'a, 'tcx, MaybeBorro
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
 pub struct MaybeRequiresStorage<'mir, 'tcx> {
-    body: ReadOnlyBodyAndCache<'mir, 'tcx>,
+    body: &'mir Body<'tcx>,
     borrowed_locals: RefCell<BorrowedLocalsResults<'mir, 'tcx>>,
 }
 
 impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     pub fn new(
-        body: ReadOnlyBodyAndCache<'mir, 'tcx>,
+        body: &'mir Body<'tcx>,
         borrowed_locals: &'mir Results<'tcx, MaybeBorrowedLocals>,
     ) -> Self {
         MaybeRequiresStorage {

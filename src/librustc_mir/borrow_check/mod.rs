@@ -10,8 +10,8 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::{
-    read_only, traversal, Body, BodyAndCache, ClearCrossCrate, Local, Location, Mutability,
-    Operand, Place, PlaceElem, PlaceRef, ReadOnlyBodyAndCache,
+    traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
+    PlaceRef,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
@@ -106,7 +106,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> &BorrowCheckResult<'_> {
 fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
-    input_promoted: &IndexVec<Promoted, BodyAndCache<'tcx>>,
+    input_promoted: &IndexVec<Promoted, Body<'tcx>>,
     def_id: DefId,
 ) -> BorrowCheckResult<'tcx> {
     debug!("do_mir_borrowck(def_id = {:?})", def_id);
@@ -168,13 +168,11 @@ fn do_mir_borrowck<'a, 'tcx>(
     // requires first making our own copy of the MIR. This copy will
     // be modified (in place) to contain non-lexical lifetimes. It
     // will have a lifetime tied to the inference context.
-    let body_clone: Body<'tcx> = input_body.clone();
+    let mut body = input_body.clone();
     let mut promoted = input_promoted.clone();
-    let mut body = BodyAndCache::new(body_clone);
     let free_regions =
         nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body, &mut promoted);
-    let body = read_only!(body); // no further changes
-    let promoted: IndexVec<_, _> = promoted.iter_mut().map(|body| read_only!(body)).collect();
+    let body = &body; // no further changes
 
     let location_table = &LocationTable::new(&body);
 
@@ -415,7 +413,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
 crate struct MirBorrowckCtxt<'cx, 'tcx> {
     crate infcx: &'cx InferCtxt<'cx, 'tcx>,
-    body: ReadOnlyBodyAndCache<'cx, 'tcx>,
+    body: &'cx Body<'tcx>,
     mir_def_id: DefId,
     move_data: &'cx MoveData<'tcx>,
 
@@ -619,7 +617,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 let tcx = self.infcx.tcx;
 
                 // Compute the type with accurate region information.
-                let drop_place_ty = drop_place.ty(*self.body, self.infcx.tcx);
+                let drop_place_ty = drop_place.ty(self.body, self.infcx.tcx);
 
                 // Erase the regions.
                 let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty).ty;
@@ -871,7 +869,7 @@ impl InitializationRequiringAction {
 
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     fn body(&self) -> &'cx Body<'tcx> {
-        *self.body
+        self.body
     }
 
     /// Checks an access to the given place to see if it is allowed. Examines the set of borrows
@@ -952,7 +950,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut error_reported = false;
         let tcx = self.infcx.tcx;
         let body = self.body;
-        let body: &Body<'_> = &body;
         let borrow_set = self.borrow_set.clone();
 
         // Use polonius output if it has been enabled.
