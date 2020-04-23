@@ -9,7 +9,7 @@ pub fn run() {
         let req = match read_request() {
             Err(err) => {
                 // Panic here, as the stdin pipe may be closed.
-                // Otherwise, client will be restart the service anyway.
+                // Otherwise, client will be restarted the service anyway.
                 panic!("Read message error on ra_proc_macro_srv: {}", err);
             }
             Ok(None) => continue,
