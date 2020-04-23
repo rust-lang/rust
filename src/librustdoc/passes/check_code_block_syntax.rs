@@ -10,7 +10,7 @@ use crate::clean;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::{self, RustCodeBlock};
-use crate::passes::Pass;
+use crate::passes::{span_of_attrs, Pass};
 
 pub const CHECK_CODE_BLOCK_SYNTAX: Pass = Pass {
     name: "check-code-block-syntax",
@@ -114,7 +114,9 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
 impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if let Some(dox) = &item.attrs.collapsed_doc_value() {
-            for code_block in markdown::rust_code_blocks(&dox) {
+            let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
+            let extra = crate::html::markdown::ExtraInfo::new_did(&self.cx.tcx, item.def_id, sp);
+            for code_block in markdown::rust_code_blocks(&dox, &extra) {
                 self.check_rust_syntax(&item, &dox, code_block);
             }
         }

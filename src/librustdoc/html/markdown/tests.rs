@@ -64,7 +64,7 @@ fn test_lang_string_parse() {
         edition: Option<Edition>,
     ) {
         assert_eq!(
-            LangString::parse(s, ErrorCodes::Yes, true),
+            LangString::parse(s, ErrorCodes::Yes, true, None),
             LangString {
                 should_panic,
                 no_run,
