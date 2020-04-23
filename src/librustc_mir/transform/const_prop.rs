@@ -766,6 +766,8 @@ struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // false at the beginning, once set, there are not allowed to be any more assignments
     found_assignment: BitSet<Local>,
+    // Cache of locals' information
+    local_kinds: IndexVec<Local, LocalKind>,
 }
 
 impl CanConstProp {
@@ -774,6 +776,10 @@ impl CanConstProp {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
             found_assignment: BitSet::new_empty(body.local_decls.len()),
+            local_kinds: IndexVec::from_fn_n(
+                |local| body.local_kind(local),
+                body.local_decls.len(),
+            ),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             // cannot use args at all
@@ -781,9 +787,8 @@ impl CanConstProp {
             //        lint for x != y
             // FIXME(oli-obk): lint variables until they are used in a condition
             // FIXME(oli-obk): lint if return value is constant
-            let local_kind = body.local_kind(local);
-
-            if local_kind == LocalKind::Arg || local_kind == LocalKind::Var {
+            if cpv.local_kinds[local] == LocalKind::Arg || cpv.local_kinds[local] == LocalKind::Var
+            {
                 *val = ConstPropMode::OnlyPropagateInto;
                 trace!("local {:?} can't be const propagated because it's not a temporary", local);
             }
@@ -811,8 +816,12 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             | NonMutatingUse(NonMutatingUseContext::Move)
             | NonMutatingUse(NonMutatingUseContext::Inspect)
             | NonMutatingUse(NonMutatingUseContext::Projection)
-            | MutatingUse(MutatingUseContext::Projection)
             | NonUse(_) => {}
+            MutatingUse(MutatingUseContext::Projection) => {
+                if self.local_kinds[local] != LocalKind::Temp {
+                    self.can_const_prop[local] = ConstPropMode::NoPropagation;
+                }
+            }
             _ => {
                 trace!("local {:?} can't be propagaged because it's used: {:?}", local, context);
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
