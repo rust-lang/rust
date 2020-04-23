@@ -406,14 +406,31 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         );
     }
 
-    fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
-        self.super_operand(op, location);
-        if let Operand::Constant(c) = op {
-            if let Some(def_id) = c.check_static_ptr(self.tcx) {
-                self.check_static(def_id, self.span);
+    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+        self.super_constant(constant, location);
+
+        if let ty::ConstKind::Unevaluated(def_id, _, promoted) = constant.literal.val {
+            assert!(promoted.is_none(), "Const-checking should run before promotion");
+
+            // If a cyclic data dependency exists within a const initializer, try to find
+            // it during const-checking. This is important because MIR optimizations could
+            // eliminate a cycle before const-eval runs. See #71078 for an example of this.
+            //
+            // FIXME: This means we don't look for cycles involving associated constants, but we
+            // should handle fully monomorphized ones here at least.
+            if self.tcx.trait_of_item(def_id).is_none() {
+                let _ = self.tcx.at(self.span).mir_const_qualif(def_id);
             }
         }
+
+        if let Some(def_id) = constant.check_static_ptr(self.tcx) {
+            self.check_static(def_id, self.span);
+
+            // NOTE: Because we are allowed to refer to the address of a static within its
+            // initializer, we don't try to trigger cycle errors every time we see a static.
+        }
     }
+
     fn visit_projection_elem(
         &mut self,
         place_local: Local,
