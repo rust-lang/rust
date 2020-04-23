@@ -12,7 +12,7 @@ fn miri_path() -> PathBuf {
     if rustc_test_suite().is_some() {
         PathBuf::from(option_env!("MIRI_PATH").unwrap())
     } else {
-        PathBuf::from(concat!("target/", env!("PROFILE"), "/miri"))
+        PathBuf::from(env!("CARGO_BIN_EXE_miri"))
     }
 }
 
