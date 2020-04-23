@@ -100,5 +100,5 @@ be updated.
 # Assuming the current directory corresponds to the Clippy repository
 $ git checkout beta
 $ git rebase $BETA_SHA
-$ git push upstream beta [-f]   # This requires a force push, if a remerge was done
+$ git push upstream beta
 ```
