@@ -34,7 +34,7 @@ impl Display for TestId {
 
 #[derive(Debug)]
 pub enum RunnableKind {
-    Test { test_id: TestId },
+    Test { test_id: TestId, attr: TestAttr },
     TestMod { path: String },
     Bench { test_id: TestId },
     Bin,
@@ -77,7 +77,8 @@ fn runnable_fn(sema: &Semantics<RootDatabase>, fn_def: ast::FnDef) -> Option<Run
         };
 
         if has_test_related_attribute(&fn_def) {
-            RunnableKind::Test { test_id }
+            let attr = TestAttr::from_fn(&fn_def);
+            RunnableKind::Test { test_id, attr }
         } else if fn_def.has_atom_attr("bench") {
             RunnableKind::Bench { test_id }
         } else {
@@ -85,6 +86,21 @@ fn runnable_fn(sema: &Semantics<RootDatabase>, fn_def: ast::FnDef) -> Option<Run
         }
     };
     Some(Runnable { range: fn_def.syntax().text_range(), kind })
+}
+
+#[derive(Debug)]
+pub struct TestAttr {
+    pub ignore: bool,
+}
+
+impl TestAttr {
+    fn from_fn(fn_def: &ast::FnDef) -> TestAttr {
+        let ignore = fn_def
+            .attrs()
+            .filter_map(|attr| attr.simple_name())
+            .any(|attribute_text| attribute_text == "ignore");
+        TestAttr { ignore }
+    }
 }
 
 /// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
@@ -157,6 +173,9 @@ mod tests {
                     test_id: Path(
                         "test_foo",
                     ),
+                    attr: TestAttr {
+                        ignore: false,
+                    },
                 },
             },
             Runnable {
@@ -165,6 +184,9 @@ mod tests {
                     test_id: Path(
                         "test_foo",
                     ),
+                    attr: TestAttr {
+                        ignore: true,
+                    },
                 },
             },
         ]
@@ -200,6 +222,9 @@ mod tests {
                     test_id: Path(
                         "test_mod::test_foo1",
                     ),
+                    attr: TestAttr {
+                        ignore: false,
+                    },
                 },
             },
         ]
@@ -237,6 +262,9 @@ mod tests {
                     test_id: Path(
                         "foo::test_mod::test_foo1",
                     ),
+                    attr: TestAttr {
+                        ignore: false,
+                    },
                 },
             },
         ]
@@ -276,6 +304,9 @@ mod tests {
                     test_id: Path(
                         "foo::bar::test_mod::test_foo1",
                     ),
+                    attr: TestAttr {
+                        ignore: false,
+                    },
                 },
             },
         ]

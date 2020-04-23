@@ -968,7 +968,7 @@ fn to_lsp_runnable(
     let (args, extra_args) = CargoTargetSpec::runnable_args(spec, &runnable.kind)?;
     let line_index = world.analysis().file_line_index(file_id)?;
     let label = match &runnable.kind {
-        RunnableKind::Test { test_id } => format!("test {}", test_id),
+        RunnableKind::Test { test_id, .. } => format!("test {}", test_id),
         RunnableKind::TestMod { path } => format!("test-mod {}", path),
         RunnableKind::Bench { test_id } => format!("bench {}", test_id),
         RunnableKind::Bin => "run binary".to_string(),

@@ -23,7 +23,7 @@ impl CargoTargetSpec {
         let mut args = Vec::new();
         let mut extra_args = Vec::new();
         match kind {
-            RunnableKind::Test { test_id } => {
+            RunnableKind::Test { test_id, attr } => {
                 args.push("test".to_string());
                 if let Some(spec) = spec {
                     spec.push_to(&mut args);
@@ -33,6 +33,9 @@ impl CargoTargetSpec {
                     extra_args.push("--exact".to_string());
                 }
                 extra_args.push("--nocapture".to_string());
+                if attr.ignore {
+                    extra_args.push("--ignored".to_string())
+                }
             }
             RunnableKind::TestMod { path } => {
                 args.push("test".to_string());
