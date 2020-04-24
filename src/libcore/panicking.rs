@@ -19,8 +19,6 @@
 //! necessary lang items for the compiler. All panics are funneled through this
 //! one function. The actual symbol is declared through the `#[panic_handler]` attribute.
 
-// ignore-tidy-undocumented-unsafe
-
 #![allow(dead_code, missing_docs)]
 #![unstable(
     feature = "core_panic",
@@ -41,6 +39,7 @@ use crate::panic::{Location, PanicInfo};
 #[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
 pub fn panic(expr: &str) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
+        // SAFETY: the `abort` intrinsic has no requirements to be called.
         unsafe { super::intrinsics::abort() }
     }
 
@@ -63,6 +62,7 @@ pub fn panic(expr: &str) -> ! {
 #[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
 fn panic_bounds_check(index: usize, len: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
+        // SAFETY: the `abort` intrinsic has no requirements to be called.
         unsafe { super::intrinsics::abort() }
     }
 
@@ -77,6 +77,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
 fn panic_bounds_check(location: &Location<'_>, index: usize, len: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
+        // SAFETY: the `abort` intrinsic has no requirements to be called.
         unsafe { super::intrinsics::abort() }
     }
 
@@ -93,6 +94,7 @@ fn panic_bounds_check(location: &Location<'_>, index: usize, len: usize) -> ! {
 #[cfg_attr(not(bootstrap), track_caller)]
 pub fn panic_fmt(fmt: fmt::Arguments<'_>, #[cfg(bootstrap)] location: &Location<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
+        // SAFETY: the `abort` intrinsic has no requirements to be called.
         unsafe { super::intrinsics::abort() }
     }
 
@@ -108,5 +110,6 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>, #[cfg(bootstrap)] location: &Location<
     #[cfg(not(bootstrap))]
     let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller());
 
+    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }
 }

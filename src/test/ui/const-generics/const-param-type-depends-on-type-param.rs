@@ -7,6 +7,6 @@
 // details.
 
 pub struct Dependent<T, const X: T>([(); X]);
-//~^ ERROR the types of const generic parameters must derive `PartialEq` and `Eq`
+//~^ ERROR `T` is not guaranteed to `#[derive(PartialEq, Eq)]`
 
 fn main() {}

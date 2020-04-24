@@ -1,4 +1,4 @@
-error[E0748]: found both positive and negative implementation of trait `std::marker::Send` for type `TestType<_>`:
+error[E0751]: found both positive and negative implementation of trait `std::marker::Send` for type `TestType<_>`:
   --> $DIR/coherence-conflicting-negative-trait-impl.rs:11:1
    |
 LL | unsafe impl<T: MyTrait + 'static> Send for TestType<T> {}
@@ -18,5 +18,5 @@ LL | unsafe impl<T: 'static> Send for TestType<T> {}
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0119, E0748.
+Some errors have detailed explanations: E0119, E0751.
 For more information about an error, try `rustc --explain E0119`.

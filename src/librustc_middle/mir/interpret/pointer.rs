@@ -121,13 +121,13 @@ static_assert_size!(Pointer, 16);
 
 impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Pointer<Tag, Id> {
     default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}+{:x}[{:?}]", self.alloc_id, self.offset.bytes(), self.tag)
+        write!(f, "{:?}+0x{:x}[{:?}]", self.alloc_id, self.offset.bytes(), self.tag)
     }
 }
 // Specialization for no tag
 impl<Id: fmt::Debug> fmt::Debug for Pointer<(), Id> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}+{:x}", self.alloc_id, self.offset.bytes())
+        write!(f, "{:?}+0x{:x}", self.alloc_id, self.offset.bytes())
     }
 }
 
