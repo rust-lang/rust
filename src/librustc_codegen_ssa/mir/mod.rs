@@ -1,6 +1,8 @@
 use crate::base;
 use crate::traits::*;
+use rustc_errors::ErrorReported;
 use rustc_middle::mir;
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_target::abi::call::{FnAbi, PassMode};
@@ -188,6 +190,18 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     };
 
     fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info();
+
+    for const_ in &mir.required_consts {
+        if let Err(err) = fx.eval_mir_constant(const_) {
+            match err {
+                // errored or at least linted
+                ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {}
+                ErrorHandled::TooGeneric => {
+                    span_bug!(const_.span, "codgen encountered polymorphic constant: {:?}", err)
+                }
+            }
+        }
+    }
 
     let memory_locals = analyze::non_ssa_locals(&fx);
 

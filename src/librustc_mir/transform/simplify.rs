@@ -32,7 +32,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use std::borrow::Cow;
 
 pub struct SimplifyCfg {
@@ -400,33 +400,18 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
             if location.statement_index != block.statements.len() {
                 let stmt = &block.statements[location.statement_index];
 
-                fn can_skip_constant(c: &ty::Const<'tcx>) -> bool {
-                    // Keep assignments from unevaluated constants around, since the
-                    // evaluation may report errors, even if the use of the constant
-                    // is dead code.
-                    !matches!(c.val, ty::ConstKind::Unevaluated(..))
-                }
-
-                fn can_skip_operand(o: &Operand<'_>) -> bool {
-                    match o {
-                        Operand::Copy(_) | Operand::Move(_) => true,
-                        Operand::Constant(c) => can_skip_constant(c.literal),
-                    }
-                }
-
                 if let StatementKind::Assign(box (dest, rvalue)) = &stmt.kind {
                     if !dest.is_indirect() && dest.local == *local {
                         let can_skip = match rvalue {
-                            Rvalue::Use(op) => can_skip_operand(op),
-                            Rvalue::Discriminant(_) => true,
-                            Rvalue::BinaryOp(_, l, r) | Rvalue::CheckedBinaryOp(_, l, r) => {
-                                can_skip_operand(l) && can_skip_operand(r)
-                            }
-                            Rvalue::Repeat(op, c) => can_skip_operand(op) && can_skip_constant(c),
-                            Rvalue::AddressOf(_, _) => true,
-                            Rvalue::Len(_) => true,
-                            Rvalue::UnaryOp(_, op) => can_skip_operand(op),
-                            Rvalue::Aggregate(_, operands) => operands.iter().all(can_skip_operand),
+                            Rvalue::Use(_)
+                            | Rvalue::Discriminant(_)
+                            | Rvalue::BinaryOp(_, _, _)
+                            | Rvalue::CheckedBinaryOp(_, _, _)
+                            | Rvalue::Repeat(_, _)
+                            | Rvalue::AddressOf(_, _)
+                            | Rvalue::Len(_)
+                            | Rvalue::UnaryOp(_, _)
+                            | Rvalue::Aggregate(_, _) => true,
 
                             _ => false,
                         };

@@ -830,6 +830,12 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         self.tcx
     }
 
+    fn visit_body(&mut self, body: &mut Body<'tcx>) {
+        for (bb, data) in body.basic_blocks_mut().iter_enumerated_mut() {
+            self.visit_basic_block_data(bb, data);
+        }
+    }
+
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);

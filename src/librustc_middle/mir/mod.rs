@@ -156,6 +156,10 @@ pub struct Body<'tcx> {
     /// A span representing this MIR, for error reporting.
     pub span: Span,
 
+    /// Constants that are required to evaluate successfully for this MIR to be well-formed.
+    /// We hold in this field all the constants we are not able to evaluate yet.
+    pub required_consts: Vec<Constant<'tcx>>,
+
     /// The user may be writing e.g. &[(SOME_CELL, 42)][i].1 and this would get promoted, because
     /// we'd statically know that no thing with interior mutability will ever be available to the
     /// user without some serious unsafe code.  Now this means that our promoted is actually
@@ -203,6 +207,7 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             var_debug_info,
             span,
+            required_consts: Vec::new(),
             ignore_interior_mut_in_const_validation: false,
             control_flow_destroyed,
             predecessor_cache: PredecessorCache::new(),
@@ -227,6 +232,7 @@ impl<'tcx> Body<'tcx> {
             arg_count: 0,
             spread_arg: None,
             span: DUMMY_SP,
+            required_consts: Vec::new(),
             control_flow_destroyed: Vec::new(),
             generator_kind: None,
             var_debug_info: Vec::new(),
@@ -2395,7 +2401,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// this does not necessarily mean that they are "==" in Rust -- in
 /// particular one must be wary of `NaN`!
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Constant<'tcx> {
     pub span: Span,
 
