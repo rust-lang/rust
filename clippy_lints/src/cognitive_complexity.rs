@@ -123,7 +123,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CognitiveComplexity {
         hir_id: HirId,
     ) {
         let def_id = cx.tcx.hir().local_def_id(hir_id);
-        if !cx.tcx.has_attr(def_id, sym!(test)) {
+        if !cx.tcx.has_attr(def_id.to_def_id(), sym!(test)) {
             self.check(cx, kind, decl, body, span);
         }
     }

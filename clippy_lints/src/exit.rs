@@ -37,7 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Exit {
                     // If the next item up is a function we check if it is an entry point
                     // and only then emit a linter warning
                     let def_id = cx.tcx.hir().local_def_id(parent);
-                    if !is_entrypoint_fn(cx, def_id) {
+                    if !is_entrypoint_fn(cx, def_id.to_def_id()) {
                         span_lint(cx, EXIT, e.span, "usage of `process::exit`");
                     }
                 }

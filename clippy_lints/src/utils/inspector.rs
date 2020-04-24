@@ -378,7 +378,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
         },
         hir::ItemKind::Trait(..) => {
             println!("trait decl");
-            if cx.tcx.trait_is_auto(did) {
+            if cx.tcx.trait_is_auto(did.to_def_id()) {
                 println!("trait is auto");
             } else {
                 println!("trait is not auto");

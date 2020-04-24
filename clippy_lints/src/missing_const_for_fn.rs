@@ -83,12 +83,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
     ) {
         let def_id = cx.tcx.hir().local_def_id(hir_id);
 
-        if in_external_macro(cx.tcx.sess, span) || is_entrypoint_fn(cx, def_id) {
+        if in_external_macro(cx.tcx.sess, span) || is_entrypoint_fn(cx, def_id.to_def_id()) {
             return;
         }
 
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_preds(cx, def_id) {
+        if fn_has_unsatisfiable_preds(cx, def_id.to_def_id()) {
             return;
         }
 
@@ -118,8 +118,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
 
         let mir = cx.tcx.optimized_mir(def_id);
 
-        if let Err((span, err)) = is_min_const_fn(cx.tcx, def_id, &mir) {
-            if rustc_mir::const_eval::is_min_const_fn(cx.tcx, def_id) {
+        if let Err((span, err)) = is_min_const_fn(cx.tcx, def_id.to_def_id(), &mir) {
+            if rustc_mir::const_eval::is_min_const_fn(cx.tcx, def_id.to_def_id()) {
                 cx.tcx.sess.span_err(span, &err);
             }
         } else {
