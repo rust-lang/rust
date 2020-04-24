@@ -6,7 +6,7 @@ LL | #![feature(const_generics)]
    |
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0741]: the types of const generic parameters must derive `PartialEq` and `Eq`
+error[E0741]: `C` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the type of a const parameter
   --> $DIR/forbid-non-structural_match-types.rs:11:19
    |
 LL | struct D<const X: C>;
