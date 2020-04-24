@@ -4,6 +4,7 @@ fn main() {
     match_with_wildcard();
     match_without_wildcard();
     match_wildcard_and_action();
+    match_vec_ref();
     match_with_get();
     match_with_array();
 }
@@ -33,14 +34,14 @@ fn match_without_wildcard() {
     let range = 1..3;
     let idx = 2;
 
-    // Ok
+    // Lint, may panic
     match arr[idx] {
         0 => println!("0"),
         1 => println!("1"),
         num => {},
     }
 
-    // Ok
+    // Lint, may panic
     match arr[range] {
         [0, 1] => println!("0 1"),
         [1, 2] => println!("1 2"),
@@ -53,18 +54,38 @@ fn match_wildcard_and_action() {
     let range = 1..3;
     let idx = 3;
 
-    // Ok
+    // Lint, may panic
     match arr[idx] {
         0 => println!("0"),
         1 => println!("1"),
         _ => println!("Hello, World!"),
     }
 
-    // Ok
+    // Lint, may panic
     match arr[range] {
         [0, 1] => println!("0 1"),
         [1, 2] => println!("1 2"),
         _ => println!("Hello, World!"),
+    }
+}
+
+fn match_vec_ref() {
+    let arr = &vec![0, 1, 2, 3];
+    let range = 1..3;
+    let idx = 3;
+
+    // Lint, may panic
+    match arr[idx] {
+        0 => println!("0"),
+        1 => println!("1"),
+        _ => {},
+    }
+
+    // Lint, may panic
+    match arr[range] {
+        [0, 1] => println!("0 1"),
+        [1, 2] => println!("1 2"),
+        _ => {},
     }
 }
 

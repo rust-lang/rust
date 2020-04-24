@@ -1,9 +1,9 @@
-use crate::utils::{is_wild, span_lint_and_help};
+use crate::utils::{is_type_diagnostic_item, snippet_with_applicability, span_lint_and_sugg, walk_ptrs_ty};
 use if_chain::if_chain;
-use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
+use rustc_errors::Applicability;
+use rustc_hir::{Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, AdtDef};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -48,64 +48,41 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchVecItem {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
             if !in_external_macro(cx.sess(), expr.span);
-            if let ExprKind::Match(ref ex, ref arms, MatchSource::Normal) = expr.kind;
-            if contains_wild_arm(arms);
-            if is_vec_indexing(cx, ex);
+            if let ExprKind::Match(ref match_expr, _, MatchSource::Normal) = expr.kind;
+            if let Some(idx_expr) = is_vec_indexing(cx, match_expr);
+            if let ExprKind::Index(vec, idx) = idx_expr.kind;
 
             then {
-                span_lint_and_help(
+                let mut applicability = Applicability::MaybeIncorrect;
+                span_lint_and_sugg(
                     cx,
                     MATCH_VEC_ITEM,
-                    expr.span,
-                    "indexing vector may panic",
-                    None,
-                    "consider using `get(..)` instead.",
+                    match_expr.span,
+                    "indexing vector may panic. Consider using `get`",
+                    "try this",
+                    format!(
+                        "{}.get({})",
+                        snippet_with_applicability(cx, vec.span, "..", &mut applicability),
+                        snippet_with_applicability(cx, idx.span, "..", &mut applicability)
+                    ),
+                    applicability
                 );
             }
         }
     }
 }
 
-fn contains_wild_arm(arms: &[Arm<'_>]) -> bool {
-    arms.iter().any(|arm| is_wild(&arm.pat) && is_unit_expr(arm.body))
-}
-
-fn is_vec_indexing<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+fn is_vec_indexing<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     if_chain! {
         if let ExprKind::Index(ref array, _) = expr.kind;
         let ty = cx.tables.expr_ty(array);
-        if let ty::Adt(def, _) = ty.kind;
-        if is_vec(cx, def);
+        let ty = walk_ptrs_ty(ty);
+        if is_type_diagnostic_item(cx, ty, sym!(vec_type));
 
         then {
-            return true;
+            return Some(expr);
         }
     }
 
-    false
-}
-
-fn is_vec<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, def: &'a AdtDef) -> bool {
-    if_chain! {
-        let def_path = cx.tcx.def_path(def.did);
-        if def_path.data.len() == 2;
-        if let Some(module) = def_path.data.get(0);
-        if module.data.as_symbol() == sym!(vec);
-        if let Some(name) = def_path.data.get(1);
-        if name.data.as_symbol() == sym!(Vec);
-
-        then {
-            return true;
-        }
-    }
-
-    false
-}
-
-fn is_unit_expr(expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Tup(ref v) if v.is_empty() => true,
-        ExprKind::Block(ref b, _) if b.stmts.is_empty() && b.expr.is_none() => true,
-        _ => false,
-    }
+    None
 }
