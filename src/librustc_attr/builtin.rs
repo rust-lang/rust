@@ -98,7 +98,7 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
                         }
                     }
 
-                    diagnostic.map(|d| {
+                    if let Some(d) = diagnostic {
                         struct_span_err!(d, attr.span, E0633, "malformed `unwind` attribute input")
                             .span_label(attr.span, "invalid argument")
                             .span_suggestions(
@@ -110,7 +110,7 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
                                 Applicability::MachineApplicable,
                             )
                             .emit();
-                    });
+                    };
                 }
             }
         }

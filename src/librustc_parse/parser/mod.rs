@@ -1206,8 +1206,8 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &Pa
     *sess.reached_eof.borrow_mut() |=
         unclosed_delims.iter().any(|unmatched_delim| unmatched_delim.found_delim.is_none());
     for unmatched in unclosed_delims.drain(..) {
-        make_unclosed_delims_error(unmatched, sess).map(|mut e| {
+        if let Some(mut e) = make_unclosed_delims_error(unmatched, sess) {
             e.emit();
-        });
+        }
     }
 }

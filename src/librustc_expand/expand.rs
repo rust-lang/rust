@@ -1172,10 +1172,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             // ignore derives so they remain unused
             let (attr, after_derive) = self.classify_nonitem(&mut expr);
 
-            if attr.is_some() {
+            if let Some(ref attr_value) = attr {
                 // Collect the invoc regardless of whether or not attributes are permitted here
                 // expansion will eat the attribute so it won't error later.
-                attr.as_ref().map(|a| self.cfg.maybe_emit_expr_attr_err(a));
+                self.cfg.maybe_emit_expr_attr_err(attr_value);
 
                 // AstFragmentKind::Expr requires the macro to emit an expression.
                 return self
@@ -1322,8 +1322,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             // Ignore derives so they remain unused.
             let (attr, after_derive) = self.classify_nonitem(&mut expr);
 
-            if attr.is_some() {
-                attr.as_ref().map(|a| self.cfg.maybe_emit_expr_attr_err(a));
+            if let Some(ref attr_value) = attr {
+                self.cfg.maybe_emit_expr_attr_err(attr_value);
 
                 return self
                     .collect_attr(

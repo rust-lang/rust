@@ -68,7 +68,9 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.with_context(LabeledBlock, |v| v.visit_block(&b));
             }
             hir::ExprKind::Break(label, ref opt_expr) => {
-                opt_expr.as_ref().map(|e| self.visit_expr(e));
+                if let Some(e) = opt_expr {
+                    self.visit_expr(e);
+                }
 
                 if self.require_label_in_labeled_block(e.span, &label, "break") {
                     // If we emitted an error about an unlabeled break in a labeled

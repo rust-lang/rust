@@ -246,7 +246,7 @@ impl DefPath {
 
         let mut opt_delimiter = None;
         for component in &self.data {
-            opt_delimiter.map(|d| s.push(d));
+            s.extend(opt_delimiter);
             opt_delimiter = Some('-');
             if component.disambiguator == 0 {
                 write!(s, "{}", component.data.as_symbol()).unwrap();

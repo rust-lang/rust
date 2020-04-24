@@ -165,12 +165,18 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         hir::ExprKind::Binary(..) => {
                             if !op.node.is_by_value() {
                                 let mut adjustments = tables.adjustments_mut();
-                                adjustments.get_mut(lhs.hir_id).map(|a| a.pop());
-                                adjustments.get_mut(rhs.hir_id).map(|a| a.pop());
+                                if let Some(a) = adjustments.get_mut(lhs.hir_id) {
+                                    a.pop();
+                                }
+                                if let Some(a) = adjustments.get_mut(rhs.hir_id) {
+                                    a.pop();
+                                }
                             }
                         }
                         hir::ExprKind::AssignOp(..) => {
-                            tables.adjustments_mut().get_mut(lhs.hir_id).map(|a| a.pop());
+                            if let Some(a) = tables.adjustments_mut().get_mut(lhs.hir_id) {
+                                a.pop();
+                            }
                         }
                         _ => {}
                     }
@@ -215,7 +221,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     tables.type_dependent_defs_mut().remove(e.hir_id);
                     tables.node_substs_mut().remove(e.hir_id);
 
-                    tables.adjustments_mut().get_mut(base.hir_id).map(|a| {
+                    if let Some(a) = tables.adjustments_mut().get_mut(base.hir_id) {
                         // Discard the need for a mutable borrow
 
                         // Extra adjustment made when indexing causes a drop
@@ -229,7 +235,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             // So the borrow discard actually happens here
                             a.pop();
                         }
-                    });
+                    }
                 }
             }
         }

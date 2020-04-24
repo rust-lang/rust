@@ -1996,7 +1996,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     this.visit_expr(cond);
                     this.visit_block(then);
                 });
-                opt_else.as_ref().map(|expr| self.visit_expr(expr));
+                if let Some(expr) = opt_else {
+                    self.visit_expr(expr);
+                }
             }
 
             ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),

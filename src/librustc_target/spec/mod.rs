@@ -979,20 +979,21 @@ impl Target {
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).map(|o| o.as_string()
-                                    .map(|s| base.options.$key_name = s.to_string()));
+                if let Some(s) = obj.find(&name).and_then(Json::as_string) {
+                    base.options.$key_name = s.to_string();
+                }
             } );
             ($key_name:ident, bool) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..])
-                    .map(|o| o.as_boolean()
-                         .map(|s| base.options.$key_name = s));
+                if let Some(s) = obj.find(&name).and_then(Json::as_boolean) {
+                    base.options.$key_name = s;
+                }
             } );
             ($key_name:ident, Option<u64>) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..])
-                    .map(|o| o.as_u64()
-                         .map(|s| base.options.$key_name = Some(s)));
+                if let Some(s) = obj.find(&name).and_then(Json::as_u64) {
+                    base.options.$key_name = Some(s);
+                }
             } );
             ($key_name:ident, MergeFunctions) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
@@ -1034,19 +1035,19 @@ impl Target {
             } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).map(|o| o.as_array()
-                    .map(|v| base.options.$key_name = v.iter()
-                        .map(|a| a.as_string().unwrap().to_string()).collect()
-                        )
-                    );
+                if let Some(v) = obj.find(&name).and_then(Json::as_array) {
+                    base.options.$key_name = v.iter()
+                        .map(|a| a.as_string().unwrap().to_string())
+                        .collect();
+                }
             } );
             ($key_name:ident, opt_list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).map(|o| o.as_array()
-                    .map(|v| base.options.$key_name = Some(v.iter()
-                        .map(|a| a.as_string().unwrap().to_string()).collect())
-                        )
-                    );
+                if let Some(v) = obj.find(&name).and_then(Json::as_array) {
+                    base.options.$key_name = Some(v.iter()
+                        .map(|a| a.as_string().unwrap().to_string())
+                        .collect());
+                }
             } );
             ($key_name:ident, optional) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
