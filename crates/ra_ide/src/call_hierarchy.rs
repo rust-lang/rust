@@ -183,8 +183,8 @@ mod tests {
                 call<|>ee();
             }
             "#,
-            "callee FN_DEF FileId(1) [0; 14) [3; 9)",
-            &["caller FN_DEF FileId(1) [15; 44) [18; 24) : [[33; 39)]"],
+            "callee FN_DEF FileId(1) 0..14 3..9",
+            &["caller FN_DEF FileId(1) 15..44 18..24 : [33..39]"],
             &[],
         );
     }
@@ -199,8 +199,8 @@ mod tests {
                 callee();
             }
             "#,
-            "callee FN_DEF FileId(1) [0; 14) [3; 9)",
-            &["caller FN_DEF FileId(1) [15; 44) [18; 24) : [[33; 39)]"],
+            "callee FN_DEF FileId(1) 0..14 3..9",
+            &["caller FN_DEF FileId(1) 15..44 18..24 : [33..39]"],
             &[],
         );
     }
@@ -216,8 +216,8 @@ mod tests {
                 callee();
             }
             "#,
-            "callee FN_DEF FileId(1) [0; 14) [3; 9)",
-            &["caller FN_DEF FileId(1) [15; 58) [18; 24) : [[33; 39), [47; 53)]"],
+            "callee FN_DEF FileId(1) 0..14 3..9",
+            &["caller FN_DEF FileId(1) 15..58 18..24 : [33..39, 47..53]"],
             &[],
         );
     }
@@ -236,10 +236,10 @@ mod tests {
                 callee();
             }
             "#,
-            "callee FN_DEF FileId(1) [0; 14) [3; 9)",
+            "callee FN_DEF FileId(1) 0..14 3..9",
             &[
-                "caller1 FN_DEF FileId(1) [15; 45) [18; 25) : [[34; 40)]",
-                "caller2 FN_DEF FileId(1) [46; 76) [49; 56) : [[65; 71)]",
+                "caller1 FN_DEF FileId(1) 15..45 18..25 : [34..40]",
+                "caller2 FN_DEF FileId(1) 46..76 49..56 : [65..71]",
             ],
             &[],
         );
@@ -260,8 +260,8 @@ mod tests {
             //- /foo/mod.rs
             pub fn callee() {}
             "#,
-            "callee FN_DEF FileId(2) [0; 18) [7; 13)",
-            &["caller FN_DEF FileId(1) [26; 55) [29; 35) : [[44; 50)]"],
+            "callee FN_DEF FileId(2) 0..18 7..13",
+            &["caller FN_DEF FileId(1) 26..55 29..35 : [44..50]"],
             &[],
         );
     }
@@ -277,9 +277,9 @@ mod tests {
                 callee();
             }
             "#,
-            "caller FN_DEF FileId(1) [15; 58) [18; 24)",
+            "caller FN_DEF FileId(1) 15..58 18..24",
             &[],
-            &["callee FN_DEF FileId(1) [0; 14) [3; 9) : [[33; 39), [47; 53)]"],
+            &["callee FN_DEF FileId(1) 0..14 3..9 : [33..39, 47..53]"],
         );
     }
 
@@ -298,9 +298,9 @@ mod tests {
             //- /foo/mod.rs
             pub fn callee() {}
             "#,
-            "caller FN_DEF FileId(1) [26; 55) [29; 35)",
+            "caller FN_DEF FileId(1) 26..55 29..35",
             &[],
-            &["callee FN_DEF FileId(2) [0; 18) [7; 13) : [[44; 50)]"],
+            &["callee FN_DEF FileId(2) 0..18 7..13 : [44..50]"],
         );
     }
 
@@ -321,9 +321,9 @@ mod tests {
 
             }
             "#,
-            "caller2 FN_DEF FileId(1) [32; 63) [35; 42)",
-            &["caller1 FN_DEF FileId(1) [0; 31) [3; 10) : [[19; 26)]"],
-            &["caller3 FN_DEF FileId(1) [64; 80) [67; 74) : [[51; 58)]"],
+            "caller2 FN_DEF FileId(1) 32..63 35..42",
+            &["caller1 FN_DEF FileId(1) 0..31 3..10 : [19..26]"],
+            &["caller3 FN_DEF FileId(1) 64..80 67..74 : [51..58]"],
         );
     }
 }

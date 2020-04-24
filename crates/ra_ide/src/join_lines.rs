@@ -170,7 +170,7 @@ mod tests {
 
     fn check_join_lines(before: &str, after: &str) {
         check_action(before, after, |file, offset| {
-            let range = TextRange::offset_len(offset, 0.into());
+            let range = TextRange::empty(offset);
             let res = join_lines(file, range);
             Some(res)
         })

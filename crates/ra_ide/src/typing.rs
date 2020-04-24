@@ -109,13 +109,8 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange>
 
     Some(SingleFileChange {
         label: "reindent dot".to_string(),
-        edit: TextEdit::replace(
-            TextRange::new(offset - current_indent_len, offset),
-            target_indent,
-        ),
-        cursor_position: Some(
-            offset + target_indent_len - current_indent_len + TextSize::of('.'),
-        ),
+        edit: TextEdit::replace(TextRange::new(offset - current_indent_len, offset), target_indent),
+        cursor_position: Some(offset + target_indent_len - current_indent_len + TextSize::of('.')),
     })
 }
 

@@ -7,4 +7,4 @@ IDENT 1 "a"
 WHITESPACE 1 " "
 IDENT 5 "quote"
 BANG 1 "!"
-> error[0; 4) token("r## ") msg(Missing `"` symbol after `#` symbols to begin the raw string literal)
+> error0..4 token("r## ") msg(Missing `"` symbol after `#` symbols to begin the raw string literal)

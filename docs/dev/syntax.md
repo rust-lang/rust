@@ -82,29 +82,29 @@ Points of note:
 An input like `fn f() { 90 + 2 }` might be parsed as
 
 ```
-FN_DEF@[0; 17)
-  FN_KW@[0; 2) "fn"
-  WHITESPACE@[2; 3) " "
-  NAME@[3; 4)
-    IDENT@[3; 4) "f"
-  PARAM_LIST@[4; 6)
-    L_PAREN@[4; 5) "("
-    R_PAREN@[5; 6) ")"
-  WHITESPACE@[6; 7) " "
-  BLOCK_EXPR@[7; 17)
-    BLOCK@[7; 17)
-      L_CURLY@[7; 8) "{"
-      WHITESPACE@[8; 9) " "
-      BIN_EXPR@[9; 15)
-        LITERAL@[9; 11)
-          INT_NUMBER@[9; 11) "90"
-        WHITESPACE@[11; 12) " "
-        PLUS@[12; 13) "+"
-        WHITESPACE@[13; 14) " "
-        LITERAL@[14; 15)
-          INT_NUMBER@[14; 15) "2"
-      WHITESPACE@[15; 16) " "
-      R_CURLY@[16; 17) "}"
+FN_DEF@0..17
+  FN_KW@0..2 "fn"
+  WHITESPACE@2..3 " "
+  NAME@3..4
+    IDENT@3..4 "f"
+  PARAM_LIST@4..6
+    L_PAREN@4..5 "("
+    R_PAREN@5..6 ")"
+  WHITESPACE@6..7 " "
+  BLOCK_EXPR@7..17
+    BLOCK@7..17
+      L_CURLY@7..8 "{"
+      WHITESPACE@8..9 " "
+      BIN_EXPR@9..15
+        LITERAL@9..11
+          INT_NUMBER@9..11 "90"
+        WHITESPACE@11..12 " "
+        PLUS@12..13 "+"
+        WHITESPACE@13..14 " "
+        LITERAL@14..15
+          INT_NUMBER@14..15 "2"
+      WHITESPACE@15..16 " "
+      R_CURLY@16..17 "}"
 ```
 
 #### Optimizations

@@ -76,7 +76,7 @@ mod tests {
             ",
         );
         let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
-        nav.assert_match("foo MODULE FileId(1) [0; 8)");
+        nav.assert_match("foo MODULE FileId(1) 0..8");
     }
 
     #[test]
@@ -95,7 +95,7 @@ mod tests {
             ",
         );
         let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
-        nav.assert_match("foo MODULE FileId(1) [0; 8)");
+        nav.assert_match("foo MODULE FileId(1) 0..8");
     }
 
     #[test]
@@ -111,7 +111,7 @@ mod tests {
             ",
         );
         let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
-        nav.assert_match("baz MODULE FileId(1) [32; 44)");
+        nav.assert_match("baz MODULE FileId(1) 32..44");
     }
 
     #[test]

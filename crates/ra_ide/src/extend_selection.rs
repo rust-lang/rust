@@ -316,7 +316,7 @@ mod tests {
     fn do_check(before: &str, afters: &[&str]) {
         let (cursor, before) = extract_offset(before);
         let (analysis, file_id) = single_file(&before);
-        let range = TextRange::offset_len(cursor, 0.into());
+        let range = TextRange::empty(cursor);
         let mut frange = FileRange { file_id, range };
 
         for &after in afters {

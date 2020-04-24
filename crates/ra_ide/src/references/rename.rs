@@ -54,10 +54,7 @@ fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFil
         ReferenceKind::StructFieldShorthandForField => {
             replacement_text.push_str(new_name);
             replacement_text.push_str(": ");
-            TextRange::new(
-                reference.file_range.range.start(),
-                reference.file_range.range.start(),
-            )
+            TextRange::new(reference.file_range.range.start(), reference.file_range.range.start())
         }
         ReferenceKind::StructFieldShorthandForLocal => {
             replacement_text.push_str(": ");
@@ -528,7 +525,7 @@ mod tests {
 @r###"
         Some(
             RangeInfo {
-                range: [4; 7),
+                range: 4..7,
                 info: SourceChange {
                     label: "rename",
                     source_file_edits: [
@@ -539,7 +536,7 @@ mod tests {
                             edit: TextEdit {
                                 atoms: [
                                     AtomTextEdit {
-                                        delete: [4; 7),
+                                        delete: 4..7,
                                         insert: "foo2",
                                     },
                                 ],
@@ -580,7 +577,7 @@ mod tests {
         @r###"
         Some(
             RangeInfo {
-                range: [4; 7),
+                range: 4..7,
                 info: SourceChange {
                     label: "rename",
                     source_file_edits: [
@@ -591,7 +588,7 @@ mod tests {
                             edit: TextEdit {
                                 atoms: [
                                     AtomTextEdit {
-                                        delete: [4; 7),
+                                        delete: 4..7,
                                         insert: "foo2",
                                     },
                                 ],
@@ -663,7 +660,7 @@ mod tests {
 @r###"
         Some(
             RangeInfo {
-                range: [8; 11),
+                range: 8..11,
                 info: SourceChange {
                     label: "rename",
                     source_file_edits: [
@@ -674,7 +671,7 @@ mod tests {
                             edit: TextEdit {
                                 atoms: [
                                     AtomTextEdit {
-                                        delete: [8; 11),
+                                        delete: 8..11,
                                         insert: "foo2",
                                     },
                                 ],
@@ -687,7 +684,7 @@ mod tests {
                             edit: TextEdit {
                                 atoms: [
                                     AtomTextEdit {
-                                        delete: [27; 30),
+                                        delete: 27..30,
                                         insert: "foo2",
                                     },
                                 ],

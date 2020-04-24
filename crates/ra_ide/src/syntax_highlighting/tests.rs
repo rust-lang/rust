@@ -126,7 +126,7 @@ fn test_ranges() {
 
     // The "x"
     let highlights = &analysis
-        .highlight_range(FileRange { file_id, range: TextRange::offset_len(82.into(), 1.into()) })
+        .highlight_range(FileRange { file_id, range: TextRange::at(82.into(), 1.into()) })
         .unwrap();
 
     assert_eq!(&highlights[0].highlight.to_string(), "field.declaration");

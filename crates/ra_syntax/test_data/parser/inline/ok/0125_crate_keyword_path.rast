@@ -1,32 +1,32 @@
-SOURCE_FILE@[0; 27)
-  FN_DEF@[0; 26)
-    FN_KW@[0; 2) "fn"
-    WHITESPACE@[2; 3) " "
-    NAME@[3; 6)
-      IDENT@[3; 6) "foo"
-    PARAM_LIST@[6; 8)
-      L_PAREN@[6; 7) "("
-      R_PAREN@[7; 8) ")"
-    WHITESPACE@[8; 9) " "
-    BLOCK_EXPR@[9; 26)
-      BLOCK@[9; 26)
-        L_CURLY@[9; 10) "{"
-        WHITESPACE@[10; 11) " "
-        EXPR_STMT@[11; 24)
-          CALL_EXPR@[11; 23)
-            PATH_EXPR@[11; 21)
-              PATH@[11; 21)
-                PATH@[11; 16)
-                  PATH_SEGMENT@[11; 16)
-                    CRATE_KW@[11; 16) "crate"
-                COLON2@[16; 18) "::"
-                PATH_SEGMENT@[18; 21)
-                  NAME_REF@[18; 21)
-                    IDENT@[18; 21) "foo"
-            ARG_LIST@[21; 23)
-              L_PAREN@[21; 22) "("
-              R_PAREN@[22; 23) ")"
-          SEMICOLON@[23; 24) ";"
-        WHITESPACE@[24; 25) " "
-        R_CURLY@[25; 26) "}"
-  WHITESPACE@[26; 27) "\n"
+SOURCE_FILE@0..27
+  FN_DEF@0..26
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..6
+      IDENT@3..6 "foo"
+    PARAM_LIST@6..8
+      L_PAREN@6..7 "("
+      R_PAREN@7..8 ")"
+    WHITESPACE@8..9 " "
+    BLOCK_EXPR@9..26
+      BLOCK@9..26
+        L_CURLY@9..10 "{"
+        WHITESPACE@10..11 " "
+        EXPR_STMT@11..24
+          CALL_EXPR@11..23
+            PATH_EXPR@11..21
+              PATH@11..21
+                PATH@11..16
+                  PATH_SEGMENT@11..16
+                    CRATE_KW@11..16 "crate"
+                COLON2@16..18 "::"
+                PATH_SEGMENT@18..21
+                  NAME_REF@18..21
+                    IDENT@18..21 "foo"
+            ARG_LIST@21..23
+              L_PAREN@21..22 "("
+              R_PAREN@22..23 ")"
+          SEMICOLON@23..24 ";"
+        WHITESPACE@24..25 " "
+        R_CURLY@25..26 "}"
+  WHITESPACE@26..27 "\n"

@@ -1,2 +1,2 @@
 STRING 9 "\"\\u{20AA}"
-> error[0; 9) token("\"\\u{20AA}") msg(Missing trailing `"` symbol to terminate the string literal)
+> error0..9 token("\"\\u{20AA}") msg(Missing trailing `"` symbol to terminate the string literal)

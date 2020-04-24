@@ -277,7 +277,7 @@ mod tests {
         assert!(
             diagnostic.range.start() <= file_position.offset
                 && diagnostic.range.end() >= file_position.offset,
-            "diagnostic range {} does not touch cursor position {}",
+            "diagnostic range {:?} does not touch cursor position {:?}",
             diagnostic.range,
             file_position.offset
         );
@@ -603,7 +603,7 @@ mod tests {
         [
             Diagnostic {
                 message: "unresolved module",
-                range: [0; 8),
+                range: 0..8,
                 fix: Some(
                     SourceChange {
                         label: "create module",
@@ -652,7 +652,7 @@ mod tests {
         [
             Diagnostic {
                 message: "Missing structure fields:\n- b",
-                range: [224; 233),
+                range: 224..233,
                 fix: Some(
                     SourceChange {
                         label: "fill struct fields",
@@ -664,7 +664,7 @@ mod tests {
                                 edit: TextEdit {
                                     atoms: [
                                         AtomTextEdit {
-                                            delete: [3; 9),
+                                            delete: 3..9,
                                             insert: "{a:42, b: ()}",
                                         },
                                     ],

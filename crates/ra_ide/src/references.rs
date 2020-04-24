@@ -214,8 +214,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) [5; 39) [12; 15) Other",
-            &["FileId(1) [138; 141) StructLiteral"],
+            "Foo STRUCT_DEF FileId(1) 5..39 12..15 Other",
+            &["FileId(1) 138..141 StructLiteral"],
         );
     }
 
@@ -231,8 +231,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) [5; 18) [12; 15) Other",
-            &["FileId(1) [54; 57) Other", "FileId(1) [71; 74) StructLiteral"],
+            "Foo STRUCT_DEF FileId(1) 5..18 12..15 Other",
+            &["FileId(1) 54..57 Other", "FileId(1) 71..74 StructLiteral"],
         );
     }
 
@@ -248,8 +248,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) [5; 21) [12; 15) Other",
-            &["FileId(1) [81; 84) StructLiteral"],
+            "Foo STRUCT_DEF FileId(1) 5..21 12..15 Other",
+            &["FileId(1) 81..84 StructLiteral"],
         );
     }
 
@@ -266,8 +266,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) [5; 21) [12; 15) Other",
-            &["FileId(1) [71; 74) StructLiteral"],
+            "Foo STRUCT_DEF FileId(1) 5..21 12..15 Other",
+            &["FileId(1) 71..74 StructLiteral"],
         );
     }
 
@@ -289,12 +289,12 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "i BIND_PAT FileId(1) [33; 34) Other Write",
+            "i BIND_PAT FileId(1) 33..34 Other Write",
             &[
-                "FileId(1) [67; 68) Other Write",
-                "FileId(1) [71; 72) Other Read",
-                "FileId(1) [101; 102) Other Write",
-                "FileId(1) [127; 128) Other Write",
+                "FileId(1) 67..68 Other Write",
+                "FileId(1) 71..72 Other Read",
+                "FileId(1) 101..102 Other Write",
+                "FileId(1) 127..128 Other Write",
             ],
         );
     }
@@ -315,8 +315,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "spam BIND_PAT FileId(1) [44; 48) Other",
-            &["FileId(1) [71; 75) Other Read", "FileId(1) [78; 82) Other Read"],
+            "spam BIND_PAT FileId(1) 44..48 Other",
+            &["FileId(1) 71..75 Other Read", "FileId(1) 78..82 Other Read"],
         );
     }
 
@@ -328,11 +328,7 @@ mod tests {
     }"#;
 
         let refs = get_all_refs(code);
-        check_result(
-            refs,
-            "i BIND_PAT FileId(1) [12; 13) Other",
-            &["FileId(1) [38; 39) Other Read"],
-        );
+        check_result(refs, "i BIND_PAT FileId(1) 12..13 Other", &["FileId(1) 38..39 Other Read"]);
     }
 
     #[test]
@@ -343,11 +339,7 @@ mod tests {
     }"#;
 
         let refs = get_all_refs(code);
-        check_result(
-            refs,
-            "i BIND_PAT FileId(1) [12; 13) Other",
-            &["FileId(1) [38; 39) Other Read"],
-        );
+        check_result(refs, "i BIND_PAT FileId(1) 12..13 Other", &["FileId(1) 38..39 Other Read"]);
     }
 
     #[test]
@@ -366,8 +358,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "spam RECORD_FIELD_DEF FileId(1) [66; 79) [70; 74) Other",
-            &["FileId(1) [152; 156) Other Read"],
+            "spam RECORD_FIELD_DEF FileId(1) 66..79 70..74 Other",
+            &["FileId(1) 152..156 Other Read"],
         );
     }
 
@@ -382,7 +374,7 @@ mod tests {
         "#;
 
         let refs = get_all_refs(code);
-        check_result(refs, "f FN_DEF FileId(1) [88; 104) [91; 92) Other", &[]);
+        check_result(refs, "f FN_DEF FileId(1) 88..104 91..92 Other", &[]);
     }
 
     #[test]
@@ -397,7 +389,7 @@ mod tests {
         "#;
 
         let refs = get_all_refs(code);
-        check_result(refs, "B ENUM_VARIANT FileId(1) [83; 84) [83; 84) Other", &[]);
+        check_result(refs, "B ENUM_VARIANT FileId(1) 83..84 83..84 Other", &[]);
     }
 
     #[test]
@@ -438,8 +430,8 @@ mod tests {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(2) [16; 50) [27; 30) Other",
-            &["FileId(1) [52; 55) StructLiteral", "FileId(3) [77; 80) StructLiteral"],
+            "Foo STRUCT_DEF FileId(2) 16..50 27..30 Other",
+            &["FileId(1) 52..55 StructLiteral", "FileId(3) 77..80 StructLiteral"],
         );
     }
 
@@ -466,11 +458,7 @@ mod tests {
 
         let (analysis, pos) = analysis_and_position(code);
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
-        check_result(
-            refs,
-            "foo SOURCE_FILE FileId(2) [0; 35) Other",
-            &["FileId(1) [13; 16) Other"],
-        );
+        check_result(refs, "foo SOURCE_FILE FileId(2) 0..35 Other", &["FileId(1) 13..16 Other"]);
     }
 
     #[test]
@@ -497,8 +485,8 @@ mod tests {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(3) [0; 41) [18; 21) Other",
-            &["FileId(2) [20; 23) Other", "FileId(2) [46; 49) StructLiteral"],
+            "Foo STRUCT_DEF FileId(3) 0..41 18..21 Other",
+            &["FileId(2) 20..23 Other", "FileId(2) 46..49 StructLiteral"],
         );
     }
 
@@ -525,16 +513,16 @@ mod tests {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) [18; 34) [25; 29) Other",
-            &["FileId(2) [16; 20) StructLiteral", "FileId(3) [16; 20) StructLiteral"],
+            "quux FN_DEF FileId(1) 18..34 25..29 Other",
+            &["FileId(2) 16..20 StructLiteral", "FileId(3) 16..20 StructLiteral"],
         );
 
         let refs =
             analysis.find_all_refs(pos, Some(SearchScope::single_file(bar))).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) [18; 34) [25; 29) Other",
-            &["FileId(3) [16; 20) StructLiteral"],
+            "quux FN_DEF FileId(1) 18..34 25..29 Other",
+            &["FileId(3) 16..20 StructLiteral"],
         );
     }
 
@@ -552,8 +540,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "m1 MACRO_CALL FileId(1) [9; 63) [46; 48) Other",
-            &["FileId(1) [96; 98) StructLiteral", "FileId(1) [114; 116) StructLiteral"],
+            "m1 MACRO_CALL FileId(1) 9..63 46..48 Other",
+            &["FileId(1) 96..98 StructLiteral", "FileId(1) 114..116 StructLiteral"],
         );
     }
 
@@ -568,8 +556,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "i BIND_PAT FileId(1) [40; 41) Other Write",
-            &["FileId(1) [59; 60) Other Write", "FileId(1) [63; 64) Other Read"],
+            "i BIND_PAT FileId(1) 40..41 Other Write",
+            &["FileId(1) 59..60 Other Write", "FileId(1) 63..64 Other Read"],
         );
     }
 
@@ -588,8 +576,8 @@ mod tests {
         let refs = get_all_refs(code);
         check_result(
             refs,
-            "f RECORD_FIELD_DEF FileId(1) [32; 38) [32; 33) Other",
-            &["FileId(1) [96; 97) Other Read", "FileId(1) [117; 118) Other Write"],
+            "f RECORD_FIELD_DEF FileId(1) 32..38 32..33 Other",
+            &["FileId(1) 96..97 Other Read", "FileId(1) 117..118 Other Write"],
         );
     }
 
@@ -602,11 +590,7 @@ mod tests {
         }"#;
 
         let refs = get_all_refs(code);
-        check_result(
-            refs,
-            "i BIND_PAT FileId(1) [36; 37) Other",
-            &["FileId(1) [51; 52) Other Write"],
-        );
+        check_result(refs, "i BIND_PAT FileId(1) 36..37 Other", &["FileId(1) 51..52 Other Write"]);
     }
 
     fn get_all_refs(text: &str) -> ReferenceSearchResult {

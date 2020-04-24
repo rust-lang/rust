@@ -257,30 +257,30 @@ fn test_expr_order() {
     let dump = format!("{:#?}", expanded);
     assert_eq_text!(
         dump.trim(),
-        r#"MACRO_ITEMS@[0; 15)
-  FN_DEF@[0; 15)
-    FN_KW@[0; 2) "fn"
-    NAME@[2; 5)
-      IDENT@[2; 5) "bar"
-    PARAM_LIST@[5; 7)
-      L_PAREN@[5; 6) "("
-      R_PAREN@[6; 7) ")"
-    BLOCK_EXPR@[7; 15)
-      BLOCK@[7; 15)
-        L_CURLY@[7; 8) "{"
-        EXPR_STMT@[8; 14)
-          BIN_EXPR@[8; 13)
-            BIN_EXPR@[8; 11)
-              LITERAL@[8; 9)
-                INT_NUMBER@[8; 9) "1"
-              PLUS@[9; 10) "+"
-              LITERAL@[10; 11)
-                INT_NUMBER@[10; 11) "1"
-            STAR@[11; 12) "*"
-            LITERAL@[12; 13)
-              INT_NUMBER@[12; 13) "2"
-          SEMICOLON@[13; 14) ";"
-        R_CURLY@[14; 15) "}""#,
+        r#"MACRO_ITEMS@0..15
+  FN_DEF@0..15
+    FN_KW@0..2 "fn"
+    NAME@2..5
+      IDENT@2..5 "bar"
+    PARAM_LIST@5..7
+      L_PAREN@5..6 "("
+      R_PAREN@6..7 ")"
+    BLOCK_EXPR@7..15
+      BLOCK@7..15
+        L_CURLY@7..8 "{"
+        EXPR_STMT@8..14
+          BIN_EXPR@8..13
+            BIN_EXPR@8..11
+              LITERAL@8..9
+                INT_NUMBER@8..9 "1"
+              PLUS@9..10 "+"
+              LITERAL@10..11
+                INT_NUMBER@10..11 "1"
+            STAR@11..12 "*"
+            LITERAL@12..13
+              INT_NUMBER@12..13 "2"
+          SEMICOLON@13..14 ";"
+        R_CURLY@14..15 "}""#,
     );
 }
 
@@ -490,39 +490,39 @@ fn test_expand_to_item_list() {
     assert_eq!(
         format!("{:#?}", tree).trim(),
         r#"
-MACRO_ITEMS@[0; 40)
-  STRUCT_DEF@[0; 20)
-    STRUCT_KW@[0; 6) "struct"
-    NAME@[6; 9)
-      IDENT@[6; 9) "Foo"
-    RECORD_FIELD_DEF_LIST@[9; 20)
-      L_CURLY@[9; 10) "{"
-      RECORD_FIELD_DEF@[10; 19)
-        NAME@[10; 15)
-          IDENT@[10; 15) "field"
-        COLON@[15; 16) ":"
-        PATH_TYPE@[16; 19)
-          PATH@[16; 19)
-            PATH_SEGMENT@[16; 19)
-              NAME_REF@[16; 19)
-                IDENT@[16; 19) "u32"
-      R_CURLY@[19; 20) "}"
-  STRUCT_DEF@[20; 40)
-    STRUCT_KW@[20; 26) "struct"
-    NAME@[26; 29)
-      IDENT@[26; 29) "Bar"
-    RECORD_FIELD_DEF_LIST@[29; 40)
-      L_CURLY@[29; 30) "{"
-      RECORD_FIELD_DEF@[30; 39)
-        NAME@[30; 35)
-          IDENT@[30; 35) "field"
-        COLON@[35; 36) ":"
-        PATH_TYPE@[36; 39)
-          PATH@[36; 39)
-            PATH_SEGMENT@[36; 39)
-              NAME_REF@[36; 39)
-                IDENT@[36; 39) "u32"
-      R_CURLY@[39; 40) "}""#
+MACRO_ITEMS@0..40
+  STRUCT_DEF@0..20
+    STRUCT_KW@0..6 "struct"
+    NAME@6..9
+      IDENT@6..9 "Foo"
+    RECORD_FIELD_DEF_LIST@9..20
+      L_CURLY@9..10 "{"
+      RECORD_FIELD_DEF@10..19
+        NAME@10..15
+          IDENT@10..15 "field"
+        COLON@15..16 ":"
+        PATH_TYPE@16..19
+          PATH@16..19
+            PATH_SEGMENT@16..19
+              NAME_REF@16..19
+                IDENT@16..19 "u32"
+      R_CURLY@19..20 "}"
+  STRUCT_DEF@20..40
+    STRUCT_KW@20..26 "struct"
+    NAME@26..29
+      IDENT@26..29 "Bar"
+    RECORD_FIELD_DEF_LIST@29..40
+      L_CURLY@29..30 "{"
+      RECORD_FIELD_DEF@30..39
+        NAME@30..35
+          IDENT@30..35 "field"
+        COLON@35..36 ":"
+        PATH_TYPE@36..39
+          PATH@36..39
+            PATH_SEGMENT@36..39
+              NAME_REF@36..39
+                IDENT@36..39 "u32"
+      R_CURLY@39..40 "}""#
             .trim()
     );
 }
@@ -623,37 +623,37 @@ fn test_tt_to_stmts() {
 
     assert_eq!(
         format!("{:#?}", stmts).trim(),
-        r#"MACRO_STMTS@[0; 15)
-  LET_STMT@[0; 7)
-    LET_KW@[0; 3) "let"
-    BIND_PAT@[3; 4)
-      NAME@[3; 4)
-        IDENT@[3; 4) "a"
-    EQ@[4; 5) "="
-    LITERAL@[5; 6)
-      INT_NUMBER@[5; 6) "0"
-    SEMICOLON@[6; 7) ";"
-  EXPR_STMT@[7; 14)
-    BIN_EXPR@[7; 13)
-      PATH_EXPR@[7; 8)
-        PATH@[7; 8)
-          PATH_SEGMENT@[7; 8)
-            NAME_REF@[7; 8)
-              IDENT@[7; 8) "a"
-      EQ@[8; 9) "="
-      BIN_EXPR@[9; 13)
-        LITERAL@[9; 11)
-          INT_NUMBER@[9; 11) "10"
-        PLUS@[11; 12) "+"
-        LITERAL@[12; 13)
-          INT_NUMBER@[12; 13) "1"
-    SEMICOLON@[13; 14) ";"
-  EXPR_STMT@[14; 15)
-    PATH_EXPR@[14; 15)
-      PATH@[14; 15)
-        PATH_SEGMENT@[14; 15)
-          NAME_REF@[14; 15)
-            IDENT@[14; 15) "a""#,
+        r#"MACRO_STMTS@0..15
+  LET_STMT@0..7
+    LET_KW@0..3 "let"
+    BIND_PAT@3..4
+      NAME@3..4
+        IDENT@3..4 "a"
+    EQ@4..5 "="
+    LITERAL@5..6
+      INT_NUMBER@5..6 "0"
+    SEMICOLON@6..7 ";"
+  EXPR_STMT@7..14
+    BIN_EXPR@7..13
+      PATH_EXPR@7..8
+        PATH@7..8
+          PATH_SEGMENT@7..8
+            NAME_REF@7..8
+              IDENT@7..8 "a"
+      EQ@8..9 "="
+      BIN_EXPR@9..13
+        LITERAL@9..11
+          INT_NUMBER@9..11 "10"
+        PLUS@11..12 "+"
+        LITERAL@12..13
+          INT_NUMBER@12..13 "1"
+    SEMICOLON@13..14 ";"
+  EXPR_STMT@14..15
+    PATH_EXPR@14..15
+      PATH@14..15
+        PATH_SEGMENT@14..15
+          NAME_REF@14..15
+            IDENT@14..15 "a""#,
     );
 }
 
@@ -974,20 +974,20 @@ fn test_tt_composite2() {
     let res = format!("{:#?}", &node);
     assert_eq_text!(
         res.trim(),
-        r###"MACRO_ITEMS@[0; 10)
-  MACRO_CALL@[0; 10)
-    PATH@[0; 3)
-      PATH_SEGMENT@[0; 3)
-        NAME_REF@[0; 3)
-          IDENT@[0; 3) "abs"
-    BANG@[3; 4) "!"
-    TOKEN_TREE@[4; 10)
-      L_PAREN@[4; 5) "("
-      EQ@[5; 6) "="
-      R_ANGLE@[6; 7) ">"
-      WHITESPACE@[7; 8) " "
-      POUND@[8; 9) "#"
-      R_PAREN@[9; 10) ")""###
+        r###"MACRO_ITEMS@0..10
+  MACRO_CALL@0..10
+    PATH@0..3
+      PATH_SEGMENT@0..3
+        NAME_REF@0..3
+          IDENT@0..3 "abs"
+    BANG@3..4 "!"
+    TOKEN_TREE@4..10
+      L_PAREN@4..5 "("
+      EQ@5..6 "="
+      R_ANGLE@6..7 ">"
+      WHITESPACE@7..8 " "
+      POUND@8..9 "#"
+      R_PAREN@9..10 ")""###
     );
 }
 
@@ -1113,69 +1113,69 @@ fn test_vec() {
 
     assert_eq!(
         format!("{:#?}", tree).trim(),
-        r#"BLOCK_EXPR@[0; 45)
-  BLOCK@[0; 45)
-    L_CURLY@[0; 1) "{"
-    LET_STMT@[1; 20)
-      LET_KW@[1; 4) "let"
-      BIND_PAT@[4; 8)
-        MUT_KW@[4; 7) "mut"
-        NAME@[7; 8)
-          IDENT@[7; 8) "v"
-      EQ@[8; 9) "="
-      CALL_EXPR@[9; 19)
-        PATH_EXPR@[9; 17)
-          PATH@[9; 17)
-            PATH@[9; 12)
-              PATH_SEGMENT@[9; 12)
-                NAME_REF@[9; 12)
-                  IDENT@[9; 12) "Vec"
-            COLON2@[12; 14) "::"
-            PATH_SEGMENT@[14; 17)
-              NAME_REF@[14; 17)
-                IDENT@[14; 17) "new"
-        ARG_LIST@[17; 19)
-          L_PAREN@[17; 18) "("
-          R_PAREN@[18; 19) ")"
-      SEMICOLON@[19; 20) ";"
-    EXPR_STMT@[20; 33)
-      METHOD_CALL_EXPR@[20; 32)
-        PATH_EXPR@[20; 21)
-          PATH@[20; 21)
-            PATH_SEGMENT@[20; 21)
-              NAME_REF@[20; 21)
-                IDENT@[20; 21) "v"
-        DOT@[21; 22) "."
-        NAME_REF@[22; 26)
-          IDENT@[22; 26) "push"
-        ARG_LIST@[26; 32)
-          L_PAREN@[26; 27) "("
-          LITERAL@[27; 31)
-            INT_NUMBER@[27; 31) "1u32"
-          R_PAREN@[31; 32) ")"
-      SEMICOLON@[32; 33) ";"
-    EXPR_STMT@[33; 43)
-      METHOD_CALL_EXPR@[33; 42)
-        PATH_EXPR@[33; 34)
-          PATH@[33; 34)
-            PATH_SEGMENT@[33; 34)
-              NAME_REF@[33; 34)
-                IDENT@[33; 34) "v"
-        DOT@[34; 35) "."
-        NAME_REF@[35; 39)
-          IDENT@[35; 39) "push"
-        ARG_LIST@[39; 42)
-          L_PAREN@[39; 40) "("
-          LITERAL@[40; 41)
-            INT_NUMBER@[40; 41) "2"
-          R_PAREN@[41; 42) ")"
-      SEMICOLON@[42; 43) ";"
-    PATH_EXPR@[43; 44)
-      PATH@[43; 44)
-        PATH_SEGMENT@[43; 44)
-          NAME_REF@[43; 44)
-            IDENT@[43; 44) "v"
-    R_CURLY@[44; 45) "}""#
+        r#"BLOCK_EXPR@0..45
+  BLOCK@0..45
+    L_CURLY@0..1 "{"
+    LET_STMT@1..20
+      LET_KW@1..4 "let"
+      BIND_PAT@4..8
+        MUT_KW@4..7 "mut"
+        NAME@7..8
+          IDENT@7..8 "v"
+      EQ@8..9 "="
+      CALL_EXPR@9..19
+        PATH_EXPR@9..17
+          PATH@9..17
+            PATH@9..12
+              PATH_SEGMENT@9..12
+                NAME_REF@9..12
+                  IDENT@9..12 "Vec"
+            COLON2@12..14 "::"
+            PATH_SEGMENT@14..17
+              NAME_REF@14..17
+                IDENT@14..17 "new"
+        ARG_LIST@17..19
+          L_PAREN@17..18 "("
+          R_PAREN@18..19 ")"
+      SEMICOLON@19..20 ";"
+    EXPR_STMT@20..33
+      METHOD_CALL_EXPR@20..32
+        PATH_EXPR@20..21
+          PATH@20..21
+            PATH_SEGMENT@20..21
+              NAME_REF@20..21
+                IDENT@20..21 "v"
+        DOT@21..22 "."
+        NAME_REF@22..26
+          IDENT@22..26 "push"
+        ARG_LIST@26..32
+          L_PAREN@26..27 "("
+          LITERAL@27..31
+            INT_NUMBER@27..31 "1u32"
+          R_PAREN@31..32 ")"
+      SEMICOLON@32..33 ";"
+    EXPR_STMT@33..43
+      METHOD_CALL_EXPR@33..42
+        PATH_EXPR@33..34
+          PATH@33..34
+            PATH_SEGMENT@33..34
+              NAME_REF@33..34
+                IDENT@33..34 "v"
+        DOT@34..35 "."
+        NAME_REF@35..39
+          IDENT@35..39 "push"
+        ARG_LIST@39..42
+          L_PAREN@39..40 "("
+          LITERAL@40..41
+            INT_NUMBER@40..41 "2"
+          R_PAREN@41..42 ")"
+      SEMICOLON@42..43 ";"
+    PATH_EXPR@43..44
+      PATH@43..44
+        PATH_SEGMENT@43..44
+          NAME_REF@43..44
+            IDENT@43..44 "v"
+    R_CURLY@44..45 "}""#
     );
 }
 
@@ -1798,45 +1798,45 @@ fn test_no_space_after_semi_colon() {
     let dump = format!("{:#?}", expanded);
     assert_eq_text!(
         dump.trim(),
-        r###"MACRO_ITEMS@[0; 52)
-  MODULE@[0; 26)
-    ATTR@[0; 21)
-      POUND@[0; 1) "#"
-      L_BRACK@[1; 2) "["
-      PATH@[2; 5)
-        PATH_SEGMENT@[2; 5)
-          NAME_REF@[2; 5)
-            IDENT@[2; 5) "cfg"
-      TOKEN_TREE@[5; 20)
-        L_PAREN@[5; 6) "("
-        IDENT@[6; 13) "feature"
-        EQ@[13; 14) "="
-        STRING@[14; 19) "\"std\""
-        R_PAREN@[19; 20) ")"
-      R_BRACK@[20; 21) "]"
-    MOD_KW@[21; 24) "mod"
-    NAME@[24; 25)
-      IDENT@[24; 25) "m"
-    SEMICOLON@[25; 26) ";"
-  MODULE@[26; 52)
-    ATTR@[26; 47)
-      POUND@[26; 27) "#"
-      L_BRACK@[27; 28) "["
-      PATH@[28; 31)
-        PATH_SEGMENT@[28; 31)
-          NAME_REF@[28; 31)
-            IDENT@[28; 31) "cfg"
-      TOKEN_TREE@[31; 46)
-        L_PAREN@[31; 32) "("
-        IDENT@[32; 39) "feature"
-        EQ@[39; 40) "="
-        STRING@[40; 45) "\"std\""
-        R_PAREN@[45; 46) ")"
-      R_BRACK@[46; 47) "]"
-    MOD_KW@[47; 50) "mod"
-    NAME@[50; 51)
-      IDENT@[50; 51) "f"
-    SEMICOLON@[51; 52) ";""###,
+        r###"MACRO_ITEMS@0..52
+  MODULE@0..26
+    ATTR@0..21
+      POUND@0..1 "#"
+      L_BRACK@1..2 "["
+      PATH@2..5
+        PATH_SEGMENT@2..5
+          NAME_REF@2..5
+            IDENT@2..5 "cfg"
+      TOKEN_TREE@5..20
+        L_PAREN@5..6 "("
+        IDENT@6..13 "feature"
+        EQ@13..14 "="
+        STRING@14..19 "\"std\""
+        R_PAREN@19..20 ")"
+      R_BRACK@20..21 "]"
+    MOD_KW@21..24 "mod"
+    NAME@24..25
+      IDENT@24..25 "m"
+    SEMICOLON@25..26 ";"
+  MODULE@26..52
+    ATTR@26..47
+      POUND@26..27 "#"
+      L_BRACK@27..28 "["
+      PATH@28..31
+        PATH_SEGMENT@28..31
+          NAME_REF@28..31
+            IDENT@28..31 "cfg"
+      TOKEN_TREE@31..46
+        L_PAREN@31..32 "("
+        IDENT@32..39 "feature"
+        EQ@39..40 "="
+        STRING@40..45 "\"std\""
+        R_PAREN@45..46 ")"
+      R_BRACK@46..47 "]"
+    MOD_KW@47..50 "mod"
+    NAME@50..51
+      IDENT@50..51 "f"
+    SEMICOLON@51..52 ";""###,
     );
 }
 

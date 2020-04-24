@@ -308,8 +308,7 @@ mod tests {
         let before = "struct Foo { <|>bar: u32 }";
         let (before_cursor_pos, before) = extract_offset(before);
         let (db, file_id) = helpers::with_single_file(&before);
-        let frange =
-            FileRange { file_id, range: TextRange::offset_len(before_cursor_pos, 0.into()) };
+        let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
         let assists = resolved_assists(&db, frange);
         let mut assists = assists.iter();
 
