@@ -80,7 +80,7 @@ impl TextRange {
     /// assert_eq!(range, TextRange::new(point, point));
     /// ```
     #[inline]
-    pub const fn empty(offset: TextSize) -> TextRange {
+    pub fn empty(offset: TextSize) -> TextRange {
         TextRange {
             start: offset,
             end: offset,
@@ -102,9 +102,11 @@ impl TextRange {
     /// assert_eq!(range, TextRange::at(TextSize::zero(), point));
     /// ```
     #[inline]
-    pub const fn up_to(end: TextSize) -> TextRange {
-        let start = TextSize::zero();
-        TextRange { start, end }
+    pub fn up_to(end: TextSize) -> TextRange {
+        TextRange {
+            start: 0.into(),
+            end,
+        }
     }
 }
 

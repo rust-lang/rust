@@ -53,25 +53,11 @@ impl TextSize {
     pub fn of<T: TextLen>(text: T) -> TextSize {
         text.text_len()
     }
-
-    /// A size of zero.
-    ///
-    /// This is equivalent to `TextSize::default()` or [`TextSize::MIN`],
-    /// but is more explicit on intent.
-    #[inline]
-    pub const fn zero() -> TextSize {
-        TextSize { raw: 0 }
-    }
 }
 
 /// Methods to act like a primitive integer type, where reasonably applicable.
 //  Last updated for parity with Rust 1.42.0.
 impl TextSize {
-    /// The smallest representable text size. (`u32::MIN`)
-    pub const MIN: TextSize = TextSize { raw: u32::MIN };
-    /// The largest representable text size. (`u32::MAX`)
-    pub const MAX: TextSize = TextSize { raw: u32::MAX };
-
     /// Checked addition. Returns `None` if overflow occurred.
     #[inline]
     pub fn checked_add(self, rhs: TextSize) -> Option<TextSize> {
@@ -172,6 +158,6 @@ where
 {
     #[inline]
     fn sum<I: Iterator<Item = A>>(iter: I) -> TextSize {
-        iter.fold(TextSize::zero(), Add::add)
+        iter.fold(0.into(), Add::add)
     }
 }
