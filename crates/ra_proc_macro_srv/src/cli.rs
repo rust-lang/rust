@@ -5,14 +5,7 @@ use ra_proc_macro::msg::{self, Message};
 use std::io;
 
 pub fn run() -> io::Result<()> {
-    loop {
-        // bubble up the error for read request,
-        // as the stdin pipe may be closed.
-        let req = match read_request()? {
-            None => continue,
-            Some(req) => req,
-        };
-
+    while let Some(req) = read_request()? {
         let res = match req {
             msg::Request::ListMacro(task) => Ok(msg::Response::ListMacro(list_macros(&task))),
             msg::Request::ExpansionMacro(task) => {
@@ -31,6 +24,8 @@ pub fn run() -> io::Result<()> {
             eprintln!("Write message error: {}", err);
         }
     }
+
+    Ok(())
 }
 
 fn read_request() -> io::Result<Option<msg::Request>> {
