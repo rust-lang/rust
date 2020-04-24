@@ -5,6 +5,7 @@ mod completion_item;
 mod completion_context;
 mod presentation;
 
+mod complete_attribute;
 mod complete_dot;
 mod complete_record;
 mod complete_pattern;
@@ -78,6 +79,7 @@ pub(crate) fn completions(
     complete_postfix::complete_postfix(&mut acc, &ctx);
     complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
     complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
+    complete_attribute::complete_attribute(&mut acc, &ctx);
 
     Some(acc)
 }

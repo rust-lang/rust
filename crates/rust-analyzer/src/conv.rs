@@ -100,6 +100,7 @@ impl Conv for CompletionItemKind {
             CompletionItemKind::Method => Method,
             CompletionItemKind::TypeParam => TypeParameter,
             CompletionItemKind::Macro => Method,
+            CompletionItemKind::Attribute => EnumMember,
         }
     }
 }
