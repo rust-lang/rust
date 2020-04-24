@@ -157,7 +157,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
     // Allocate a `Block` for every basic block, except
     // the start block, if nothing loops back to it.
-    let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
+    let reentrant_start_block = !mir.predecessors()[mir::START_BLOCK].is_empty();
     let block_bxs: IndexVec<mir::BasicBlock, Bx::BasicBlock> = mir
         .basic_blocks()
         .indices()
