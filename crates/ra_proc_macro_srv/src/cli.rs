@@ -4,17 +4,8 @@ use crate::{expand_task, list_macros};
 use ra_proc_macro::msg::{self, Message};
 use std::io;
 
-pub fn run() {
-    loop {
-        let req = match read_request() {
-            Err(err) => {
-                eprintln!("Read message error on ra_proc_macro_srv: {}", err);
-                continue;
-            }
-            Ok(None) => continue,
-            Ok(Some(req)) => req,
-        };
-
+pub fn run() -> io::Result<()> {
+    while let Some(req) = read_request()? {
         let res = match req {
             msg::Request::ListMacro(task) => Ok(msg::Response::ListMacro(list_macros(&task))),
             msg::Request::ExpansionMacro(task) => {
@@ -33,6 +24,8 @@ pub fn run() {
             eprintln!("Write message error: {}", err);
         }
     }
+
+    Ok(())
 }
 
 fn read_request() -> io::Result<Option<msg::Request>> {

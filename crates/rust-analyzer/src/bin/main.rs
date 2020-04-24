@@ -66,7 +66,7 @@ fn setup_logging() -> Result<()> {
 }
 
 fn run_proc_macro_srv() -> Result<()> {
-    ra_proc_macro_srv::cli::run();
+    ra_proc_macro_srv::cli::run()?;
     Ok(())
 }
 
