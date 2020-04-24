@@ -215,5 +215,13 @@ impl Config {
         if let Some(value) = caps.folding_range.as_ref().and_then(|it| it.line_folding_only) {
             self.client_caps.line_folding_only = value
         }
+        self.completion.allow_snippets(false);
+        if let Some(completion) = &caps.completion {
+            if let Some(completion_item) = &completion.completion_item {
+                if let Some(value) = completion_item.snippet_support {
+                    self.completion.allow_snippets(value);
+                }
+            }
+        }
     }
 }
