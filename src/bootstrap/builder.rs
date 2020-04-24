@@ -1405,8 +1405,16 @@ impl Cargo {
 
 impl From<Cargo> for Command {
     fn from(mut cargo: Cargo) -> Command {
-        cargo.command.env("RUSTFLAGS", &cargo.rustflags.0);
-        cargo.command.env("RUSTDOCFLAGS", &cargo.rustdocflags.0);
+        let rustflags = &cargo.rustflags.0;
+        if !rustflags.is_empty() {
+            cargo.command.env("RUSTFLAGS", rustflags);
+        }
+
+        let rustdocflags = &cargo.rustdocflags.0;
+        if !rustdocflags.is_empty() {
+            cargo.command.env("RUSTDOCFLAGS", rustdocflags);
+        }
+
         cargo.command
     }
 }
