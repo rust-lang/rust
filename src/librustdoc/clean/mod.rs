@@ -1599,7 +1599,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
                 let mut param_names = vec![];
-                reg.clean(cx).map(|b| param_names.push(GenericBound::Outlives(b)));
+                if let Some(b) = reg.clean(cx) {
+                    param_names.push(GenericBound::Outlives(b));
+                }
                 for did in dids {
                     let empty = cx.tcx.intern_substs(&[]);
                     let path =
@@ -1662,10 +1664,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             tr
                         } else if let ty::Predicate::TypeOutlives(pred) = *predicate {
                             // these should turn up at the end
-                            pred.skip_binder()
-                                .1
-                                .clean(cx)
-                                .map(|r| regions.push(GenericBound::Outlives(r)));
+                            if let Some(r) = pred.skip_binder().1.clean(cx) {
+                                regions.push(GenericBound::Outlives(r));
+                            }
                             return None;
                         } else {
                             return None;

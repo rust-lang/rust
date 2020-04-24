@@ -91,7 +91,7 @@ impl<T> Packet<T> {
     //
     // This can only be called at channel-creation time
     pub fn inherit_blocker(&self, token: Option<SignalToken>, guard: MutexGuard<'_, ()>) {
-        token.map(|token| {
+        if let Some(token) = token {
             assert_eq!(self.cnt.load(Ordering::SeqCst), 0);
             assert_eq!(self.to_wake.load(Ordering::SeqCst), 0);
             self.to_wake.store(unsafe { token.cast_to_usize() }, Ordering::SeqCst);
@@ -118,7 +118,7 @@ impl<T> Packet<T> {
             unsafe {
                 *self.steals.get() = -1;
             }
-        });
+        }
 
         // When the shared packet is constructed, we grabbed this lock. The
         // purpose of this lock is to ensure that abort_selection() doesn't
