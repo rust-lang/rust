@@ -516,7 +516,7 @@ impl TokenConvertor for Convertor {
     fn bump(&mut self) -> Option<(Self::Token, TextRange)> {
         if let Some((punct, offset)) = self.punct_offset.clone() {
             if usize::from(offset) + 1 < punct.text().len() {
-                let offset = offset + TextSize::from_usize(1);
+                let offset = offset + TextSize::of('.');
                 let range = punct.text_range();
                 self.punct_offset = Some((punct.clone(), offset));
                 let range = TextRange::at(range.start() + offset, TextSize::of('.'));
@@ -532,9 +532,9 @@ impl TokenConvertor for Convertor {
 
         let token = if curr.kind().is_punct() {
             let range = curr.text_range();
-            let range = TextRange::at(range.start(), TextSize::from_usize(1));
-            self.punct_offset = Some((curr.clone(), TextSize::from_usize(0)));
-            (SynToken::Punch(curr, TextSize::from_usize(0)), range)
+            let range = TextRange::at(range.start(), TextSize::of('.'));
+            self.punct_offset = Some((curr.clone(), 0.into()));
+            (SynToken::Punch(curr, 0.into()), range)
         } else {
             self.punct_offset = None;
             let range = curr.text_range();
@@ -546,7 +546,7 @@ impl TokenConvertor for Convertor {
 
     fn peek(&self) -> Option<Self::Token> {
         if let Some((punct, mut offset)) = self.punct_offset.clone() {
-            offset = offset + TextSize::from_usize(1);
+            offset = offset + TextSize::of('.');
             if usize::from(offset) < punct.text().len() {
                 return Some(SynToken::Punch(punct, offset));
             }
@@ -558,7 +558,7 @@ impl TokenConvertor for Convertor {
         }
 
         let token = if curr.kind().is_punct() {
-            SynToken::Punch(curr, TextSize::from_usize(0))
+            SynToken::Punch(curr, 0.into())
         } else {
             SynToken::Ordiniary(curr)
         };

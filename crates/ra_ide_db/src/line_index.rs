@@ -1,8 +1,9 @@
 //! `LineIndex` maps flat `TextSize` offsets into `(Line, Column)`
 //! representation.
+use std::iter;
+
 use ra_syntax::{TextRange, TextSize};
 use rustc_hash::FxHashMap;
-use std::iter;
 use superslice::Ext;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -116,12 +117,11 @@ impl LineIndex {
         res
     }
 
-    fn utf16_to_utf8_col(&self, line: u32, col: u32) -> TextSize {
-        let mut col: TextSize = col.into();
+    fn utf16_to_utf8_col(&self, line: u32, mut col: u32) -> TextSize {
         if let Some(utf16_chars) = self.utf16_lines.get(&line) {
             for c in utf16_chars {
-                if col >= c.start {
-                    col += c.len() - TextSize::from_usize(1);
+                if col >= u32::from(c.start) {
+                    col += u32::from(c.len()) - 1;
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
@@ -130,12 +130,12 @@ impl LineIndex {
             }
         }
 
-        col
+        col.into()
     }
 }
 
 #[cfg(test)]
-mod test_line_index {
+mod tests {
     use super::*;
 
     #[test]
@@ -224,12 +224,12 @@ const C: char = \"メ メ\";
         assert!(col_index.utf8_to_utf16_col(2, 15.into()) == 15);
 
         // UTF-16 to UTF-8
-        assert_eq!(col_index.utf16_to_utf8_col(1, 15), TextSize::from_usize(15));
+        assert_eq!(col_index.utf16_to_utf8_col(1, 15), TextSize::from(15));
 
-        assert_eq!(col_index.utf16_to_utf8_col(1, 18), TextSize::from_usize(20));
-        assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextSize::from_usize(23));
+        assert_eq!(col_index.utf16_to_utf8_col(1, 18), TextSize::from(20));
+        assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextSize::from(23));
 
-        assert_eq!(col_index.utf16_to_utf8_col(2, 15), TextSize::from_usize(15));
+        assert_eq!(col_index.utf16_to_utf8_col(2, 15), TextSize::from(15));
     }
 
     #[test]

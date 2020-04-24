@@ -129,7 +129,7 @@ impl FunctionBuilder {
                 let fn_def = indent_once.increase_indent(fn_def);
                 let fn_def = ast::make::add_trailing_newlines(1, fn_def);
                 let fn_def = indent.increase_indent(fn_def);
-                (fn_def, it.syntax().text_range().start() + TextSize::from_usize(1))
+                (fn_def, it.syntax().text_range().start() + TextSize::of('{'))
             }
         };
 

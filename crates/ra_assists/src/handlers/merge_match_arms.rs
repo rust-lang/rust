@@ -89,7 +89,7 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
 
         edit.target(current_text_range);
         edit.set_cursor(match cursor_pos {
-            CursorPos::InExpr(back_offset) => start + TextSize::from_usize(arm.len()) - back_offset,
+            CursorPos::InExpr(back_offset) => start + TextSize::of(&arm) - back_offset,
             CursorPos::InPat(offset) => offset,
         });
         edit.replace(TextRange::new(start, end), arm);

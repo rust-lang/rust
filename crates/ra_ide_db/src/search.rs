@@ -4,7 +4,7 @@
 //! get a super-set of matches. Then, we we confirm each match using precise
 //! name resolution.
 
-use std::mem;
+use std::{convert::TryInto, mem};
 
 use hir::{DefWithBody, HasSource, Module, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
@@ -207,7 +207,7 @@ impl Definition {
             let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
 
             for (idx, _) in text.match_indices(pat) {
-                let offset = TextSize::from_usize(idx);
+                let offset: TextSize = idx.try_into().unwrap();
                 if !search_range.contains_inclusive(offset) {
                     tested_by!(search_filters_by_range; force);
                     continue;

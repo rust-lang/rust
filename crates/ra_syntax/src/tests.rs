@@ -121,7 +121,7 @@ fn assert_errors_are_absent(errors: &[SyntaxError], path: &Path) {
 
 fn dump_tokens_and_errors(tokens: &[Token], errors: &[SyntaxError], text: &str) -> String {
     let mut acc = String::new();
-    let mut offset = TextSize::from_usize(0);
+    let mut offset: TextSize = 0.into();
     for token in tokens {
         let token_len = token.len;
         let token_text = &text[TextRange::at(offset, token.len)];

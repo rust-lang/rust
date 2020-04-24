@@ -77,13 +77,13 @@ pub(crate) fn add_new(ctx: AssistCtx) -> Option<Assist> {
                     .text_range()
                     .end();
 
-                Some((start, TextSize::from_usize(1)))
+                Some((start, TextSize::of("\n")))
             })
             .unwrap_or_else(|| {
                 buf = generate_impl_text(&strukt, &buf);
                 let start = strukt.syntax().text_range().end();
 
-                (start, TextSize::from_usize(3))
+                (start, TextSize::of("\n}\n"))
             });
 
         edit.set_cursor(start_offset + TextSize::of(&buf) - end_offset);

@@ -60,7 +60,6 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
             .collect::<Vec<SmolStr>>();
         let has_more_derives = !new_attr_input.is_empty();
         let new_attr_input = new_attr_input.iter().sep_by(", ").surround_with("(", ")").to_string();
-        let new_attr_input_len = new_attr_input.len();
 
         let mut buf = String::new();
         buf.push_str("\n\nimpl ");
@@ -70,8 +69,9 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
         buf.push_str(" {\n");
 
         let cursor_delta = if has_more_derives {
+            let delta = input.syntax().text_range().len() - TextSize::of(&new_attr_input);
             edit.replace(input.syntax().text_range(), new_attr_input);
-            input.syntax().text_range().len() - TextSize::from_usize(new_attr_input_len)
+            delta
         } else {
             let attr_range = attr.syntax().text_range();
             edit.delete(attr_range);

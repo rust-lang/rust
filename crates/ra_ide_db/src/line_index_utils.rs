@@ -7,6 +7,8 @@
 //! Code in this module applies this "to (Line, Column) after edit"
 //! transformation.
 
+use std::convert::TryInto;
+
 use ra_syntax::{TextRange, TextSize};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 
@@ -139,14 +141,15 @@ impl Iterator for OffsetStepIter<'_> {
             .text
             .char_indices()
             .filter_map(|(i, c)| {
+                let i: TextSize = i.try_into().unwrap();
+                let char_len = TextSize::of(c);
                 if c == '\n' {
-                    let next_offset = self.offset + TextSize::from_usize(i + 1);
+                    let next_offset = self.offset + i + char_len;
                     let next = Step::Newline(next_offset);
                     Some((next, next_offset))
                 } else {
-                    let char_len = TextSize::of(c);
-                    if char_len > TextSize::from_usize(1) {
-                        let start = self.offset + TextSize::from_usize(i);
+                    if !c.is_ascii() {
+                        let start = self.offset + i;
                         let end = start + char_len;
                         let next = Step::Utf16Char(TextRange::new(start, end));
                         let next_offset = end;

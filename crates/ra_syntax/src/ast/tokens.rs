@@ -1,5 +1,7 @@
 //! There are many AstNodes, but only a few tokens, so we hand-write them here.
 
+use std::convert::{TryFrom, TryInto};
+
 use crate::{
     ast::{AstToken, Comment, RawString, String, Whitespace},
     TextRange, TextSize,
@@ -95,8 +97,8 @@ impl QuoteOffsets {
         }
 
         let start = TextSize::from(0);
-        let left_quote = TextSize::from_usize(left_quote) + TextSize::of('"');
-        let right_quote = TextSize::from_usize(right_quote);
+        let left_quote = TextSize::try_from(left_quote).unwrap() + TextSize::of('"');
+        let right_quote = TextSize::try_from(right_quote).unwrap();
         let end = TextSize::of(literal);
 
         let res = QuoteOffsets {
@@ -498,7 +500,7 @@ impl HasFormatSpecifier for String {
         let mut res = Vec::with_capacity(text.len());
         rustc_lexer::unescape::unescape_str(text, &mut |range, unescaped_char| {
             res.push((
-                TextRange::new(TextSize::from_usize(range.start), TextSize::from_usize(range.end))
+                TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap())
                     + offset,
                 unescaped_char,
             ))
@@ -518,11 +520,7 @@ impl HasFormatSpecifier for RawString {
 
         let mut res = Vec::with_capacity(text.len());
         for (idx, c) in text.char_indices() {
-            res.push((
-                TextRange::new(TextSize::from_usize(idx), TextSize::from_usize(idx + c.len_utf8()))
-                    + offset,
-                Ok(c),
-            ));
+            res.push((TextRange::at(idx.try_into().unwrap(), TextSize::of(c)) + offset, Ok(c)));
         }
         Some(res)
     }

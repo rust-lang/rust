@@ -1,6 +1,8 @@
 //! Lexer analyzes raw input string and produces lexemes (tokens).
 //! It is just a bridge to `rustc_lexer`.
 
+use std::convert::TryInto;
+
 use crate::{
     SyntaxError,
     SyntaxKind::{self, *},
@@ -28,18 +30,19 @@ pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
     let mut tokens = Vec::new();
     let mut errors = Vec::new();
 
-    let mut offset: usize = rustc_lexer::strip_shebang(text)
-        .map(|shebang_len| {
-            tokens.push(Token { kind: SHEBANG, len: TextSize::from_usize(shebang_len) });
+    let mut offset = match rustc_lexer::strip_shebang(text) {
+        Some(shebang_len) => {
+            tokens.push(Token { kind: SHEBANG, len: shebang_len.try_into().unwrap() });
             shebang_len
-        })
-        .unwrap_or(0);
+        }
+        None => 0,
+    };
 
     let text_without_shebang = &text[offset..];
 
     for rustc_token in rustc_lexer::tokenize(text_without_shebang) {
-        let token_len = TextSize::from_usize(rustc_token.len);
-        let token_range = TextRange::at(TextSize::from_usize(offset), token_len);
+        let token_len: TextSize = rustc_token.len.try_into().unwrap();
+        let token_range = TextRange::at(offset.try_into().unwrap(), token_len);
 
         let (syntax_kind, err_message) =
             rustc_token_kind_to_syntax_kind(&rustc_token.kind, &text[token_range]);
@@ -96,10 +99,9 @@ fn lex_first_token(text: &str) -> Option<(Token, Option<SyntaxError>)> {
     let rustc_token = rustc_lexer::first_token(text);
     let (syntax_kind, err_message) = rustc_token_kind_to_syntax_kind(&rustc_token.kind, text);
 
-    let token = Token { kind: syntax_kind, len: TextSize::from_usize(rustc_token.len) };
-    let optional_error = err_message.map(|err_message| {
-        SyntaxError::new(err_message, TextRange::new(0.into(), TextSize::of(text)))
-    });
+    let token = Token { kind: syntax_kind, len: rustc_token.len.try_into().unwrap() };
+    let optional_error = err_message
+        .map(|err_message| SyntaxError::new(err_message, TextRange::up_to(TextSize::of(text))));
 
     Some((token, optional_error))
 }
