@@ -104,6 +104,7 @@ impl Default for Config {
                 enable_postfix_completions: true,
                 add_call_parenthesis: true,
                 add_call_argument_snippets: true,
+                ..CompletionConfig::default()
             },
             call_info_full: true,
         }

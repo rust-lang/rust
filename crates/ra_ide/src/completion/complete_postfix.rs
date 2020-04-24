@@ -6,6 +6,7 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEdit;
 
+use super::completion_config::SnippetCap;
 use crate::{
     completion::{
         completion_context::CompletionContext,
@@ -32,9 +33,15 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         None => return,
     };
 
+    let cap = match ctx.config.snippet_cap {
+        Some(it) => it,
+        None => return,
+    };
+
     if receiver_ty.is_bool() || receiver_ty.is_unknown() {
         postfix_snippet(
             ctx,
+            cap,
             &dot_receiver,
             "if",
             "if expr {}",
@@ -43,6 +50,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         .add_to(acc);
         postfix_snippet(
             ctx,
+            cap,
             &dot_receiver,
             "while",
             "while expr {}",
@@ -52,11 +60,20 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     }
 
     // !&&&42 is a compiler error, ergo process it before considering the references
-    postfix_snippet(ctx, &dot_receiver, "not", "!expr", &format!("!{}", receiver_text)).add_to(acc);
-
-    postfix_snippet(ctx, &dot_receiver, "ref", "&expr", &format!("&{}", receiver_text)).add_to(acc);
-    postfix_snippet(ctx, &dot_receiver, "refm", "&mut expr", &format!("&mut {}", receiver_text))
+    postfix_snippet(ctx, cap, &dot_receiver, "not", "!expr", &format!("!{}", receiver_text))
         .add_to(acc);
+
+    postfix_snippet(ctx, cap, &dot_receiver, "ref", "&expr", &format!("&{}", receiver_text))
+        .add_to(acc);
+    postfix_snippet(
+        ctx,
+        cap,
+        &dot_receiver,
+        "refm",
+        "&mut expr",
+        &format!("&mut {}", receiver_text),
+    )
+    .add_to(acc);
 
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
@@ -66,6 +83,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 
     postfix_snippet(
         ctx,
+        cap,
         &dot_receiver,
         "match",
         "match expr {}",
@@ -75,6 +93,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 
     postfix_snippet(
         ctx,
+        cap,
         &dot_receiver,
         "box",
         "Box::new(expr)",
@@ -82,8 +101,15 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     )
     .add_to(acc);
 
-    postfix_snippet(ctx, &dot_receiver, "dbg", "dbg!(expr)", &format!("dbg!({})", receiver_text))
-        .add_to(acc);
+    postfix_snippet(
+        ctx,
+        cap,
+        &dot_receiver,
+        "dbg",
+        "dbg!(expr)",
+        &format!("dbg!({})", receiver_text),
+    )
+    .add_to(acc);
 }
 
 fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: bool) -> String {
@@ -108,6 +134,7 @@ fn include_references(initial_element: &ast::Expr) -> ast::Expr {
 
 fn postfix_snippet(
     ctx: &CompletionContext,
+    cap: SnippetCap,
     receiver: &ast::Expr,
     label: &str,
     detail: &str,
@@ -121,7 +148,7 @@ fn postfix_snippet(
     };
     CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label)
         .detail(detail)
-        .snippet_edit(edit)
+        .snippet_edit(cap, edit)
 }
 
 #[cfg(test)]

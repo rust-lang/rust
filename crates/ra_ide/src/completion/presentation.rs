@@ -114,17 +114,19 @@ impl Completions {
 
         // Add `<>` for generic types
         if ctx.is_path_type && !ctx.has_type_args && ctx.config.add_call_parenthesis {
-            let has_non_default_type_params = match resolution {
-                ScopeDef::ModuleDef(Adt(it)) => it.has_non_default_type_params(ctx.db),
-                ScopeDef::ModuleDef(TypeAlias(it)) => it.has_non_default_type_params(ctx.db),
-                _ => false,
-            };
-            if has_non_default_type_params {
-                tested_by!(inserts_angle_brackets_for_generics);
-                completion_item = completion_item
-                    .lookup_by(local_name.clone())
-                    .label(format!("{}<…>", local_name))
-                    .insert_snippet(format!("{}<$0>", local_name));
+            if let Some(cap) = ctx.config.snippet_cap {
+                let has_non_default_type_params = match resolution {
+                    ScopeDef::ModuleDef(Adt(it)) => it.has_non_default_type_params(ctx.db),
+                    ScopeDef::ModuleDef(TypeAlias(it)) => it.has_non_default_type_params(ctx.db),
+                    _ => false,
+                };
+                if has_non_default_type_params {
+                    tested_by!(inserts_angle_brackets_for_generics);
+                    completion_item = completion_item
+                        .lookup_by(local_name.clone())
+                        .label(format!("{}<…>", local_name))
+                        .insert_snippet(cap, format!("{}<$0>", local_name));
+                }
             }
         }
 
@@ -184,13 +186,16 @@ impl Completions {
                 .set_deprecated(is_deprecated(macro_, ctx.db))
                 .detail(detail);
 
-        builder = if ctx.use_item_syntax.is_some() || ctx.is_macro_call {
-            tested_by!(dont_insert_macro_call_parens_unncessary);
-            builder.insert_text(name)
-        } else {
-            let macro_braces_to_insert =
-                self.guess_macro_braces(&name, docs.as_ref().map_or("", |s| s.as_str()));
-            builder.insert_snippet(macro_declaration + macro_braces_to_insert)
+        builder = match ctx.config.snippet_cap {
+            Some(cap) if ctx.use_item_syntax.is_none() && !ctx.is_macro_call => {
+                let macro_braces_to_insert =
+                    self.guess_macro_braces(&name, docs.as_ref().map_or("", |s| s.as_str()));
+                builder.insert_snippet(cap, macro_declaration + macro_braces_to_insert)
+            }
+            _ => {
+                tested_by!(dont_insert_macro_call_parens_unncessary);
+                builder.insert_text(name)
+            }
         };
 
         self.add(builder);
@@ -366,6 +371,10 @@ impl Builder {
         if ctx.use_item_syntax.is_some() || ctx.is_call {
             return self;
         }
+        let cap = match ctx.config.snippet_cap {
+            Some(it) => it,
+            None => return self,
+        };
         // If not an import, add parenthesis automatically.
         tested_by!(inserts_parens_for_function_calls);
 
@@ -387,7 +396,7 @@ impl Builder {
 
             (snippet, format!("{}(…)", name))
         };
-        self.lookup_by(name).label(label).insert_snippet(snippet)
+        self.lookup_by(name).label(label).insert_snippet(cap, snippet)
     }
 }
 
