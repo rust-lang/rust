@@ -192,36 +192,23 @@ impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
 
 /// Return Error of the FromIterator impl for array
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
-pub struct FillError<T, const N: usize>
-where
-    [MaybeUninit<T>; N]: LengthAtMost32,
-{
+pub struct FillError<T, const N: usize> {
     array: [MaybeUninit<T>; N],
     len: usize,
 }
 
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
-impl<T, const N: usize> fmt::Display for FillError<T, N>
-where
-    [MaybeUninit<T>; N]: LengthAtMost32,
-{
+impl<T, const N: usize> fmt::Display for FillError<T, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(
-            &format_args!(
-                "The iterator only returned {} items, but {} where needed",
-                self.len(),
-                N
-            ),
+            &format_args!("The iterator only returned {} items, but {} were needed", self.len(), N),
             f,
         )
     }
 }
 
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
-impl<T: fmt::Debug, const N: usize> fmt::Debug for FillError<T, N>
-where
-    [MaybeUninit<T>; N]: LengthAtMost32,
-{
+impl<T: fmt::Debug, const N: usize> fmt::Debug for FillError<T, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FillError")
             .field("array", &self.as_slice())
@@ -231,10 +218,7 @@ where
 }
 
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
-impl<T, const N: usize> Drop for FillError<T, N>
-where
-    [MaybeUninit<T>; N]: LengthAtMost32,
-{
+impl<T, const N: usize> Drop for FillError<T, N> {
     fn drop(&mut self) {
         // SAFETY: This is safe: `as_mut_slice` returns exactly the sub-slice
         // of elements that have been initialized and need to be droped
@@ -243,10 +227,7 @@ where
 }
 
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
-impl<T, const N: usize> FillError<T, N>
-where
-    [MaybeUninit<T>; N]: LengthAtMost32,
-{
+impl<T, const N: usize> FillError<T, N> {
     fn new() -> Self {
         Self { array: MaybeUninit::uninit_array(), len: 0 }
     }
@@ -299,11 +280,7 @@ where
 }
 
 #[unstable(feature = "array_from_iter_impl", issue = "none")]
-impl<T, const N: usize> FromIterator<T> for Result<[T; N], FillError<T, N>>
-where
-    [T; N]: LengthAtMost32,
-    [MaybeUninit<T>; N]: LengthAtMost32,
-{
+impl<T, const N: usize> FromIterator<T> for Result<[T; N], FillError<T, N>> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         FillError::<T, N>::new().fill(iter)
