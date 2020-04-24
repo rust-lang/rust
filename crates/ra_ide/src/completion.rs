@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+mod completion_config;
 mod completion_item;
 mod completion_context;
 mod presentation;
@@ -28,26 +29,10 @@ use crate::{
     FilePosition,
 };
 
-pub use crate::completion::completion_item::{
-    CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
+pub use crate::completion::{
+    completion_config::CompletionConfig,
+    completion_item::{CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat},
 };
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CompletionConfig {
-    pub enable_postfix_completions: bool,
-    pub add_call_parenthesis: bool,
-    pub add_call_argument_snippets: bool,
-}
-
-impl Default for CompletionConfig {
-    fn default() -> Self {
-        CompletionConfig {
-            enable_postfix_completions: true,
-            add_call_parenthesis: true,
-            add_call_argument_snippets: true,
-        }
-    }
-}
 
 /// Main entry point for completion. We run completion as a two-phase process.
 ///
