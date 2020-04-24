@@ -216,7 +216,7 @@ impl Validator<'mir, 'tcx> {
     where
         O: NonConstOp,
     {
-        trace!("check_op: op={:?}", op);
+        debug!("check_op: op={:?}", op);
 
         if op.is_allowed_in_item(self) {
             return;
@@ -395,15 +395,6 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 self.check_op(ops::HeapAllocation);
             }
         }
-    }
-
-    fn visit_local(&mut self, place_local: &Local, context: PlaceContext, location: Location) {
-        trace!(
-            "visit_local: place_local={:?} context={:?} location={:?}",
-            place_local,
-            context,
-            location,
-        );
     }
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
