@@ -79,11 +79,61 @@ pub fn write_compressed_metadata<'tcx>(
 pub fn write_idata_sections<'tcx>(
     _tcx: TyCtxt<'tcx>,
     raw_dylibs: &[RawDylibImports],
-    _llvm_module: &mut ModuleLlvm,
+    llvm_module: &mut ModuleLlvm,
 ){
+    let (idata_llctx, idata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
+
+
+    let idata_7 = SmallCStr::new(".idata$7");
+    let idata_6 = SmallCStr::new(".idata$6");
+
     for raw_dylib in raw_dylibs {
         debug!("linking raw dylib - {:?}", raw_dylib);
-        //TODO: emit.
+
+        let name = CString::new(&*raw_dylib.name.as_str()).unwrap();
+        let llname = common::bytes_in_context(idata_llctx, name.as_bytes());
+
+        let buf = CString::new("dll_name").unwrap();
+        unsafe {
+            let llglobal = llvm::LLVMAddGlobal(idata_llmod, common::val_ty(llname), buf.as_ptr());
+            
+            llvm::LLVMSetInitializer(llglobal, llname);
+            llvm::LLVMSetGlobalConstant(&llglobal, 1);
+            llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
+            llvm::LLVMSetSection(llglobal, idata_7.as_ptr());
+
+            for item in &raw_dylib.items {
+                match item {
+                    RawDylibImportName::Name(s) => {
+                        let mut buf = vec![0, 0];
+                        buf.extend(s.as_str().as_bytes());
+
+                        if buf.len() % 2 == 1 {
+                            buf.push(0);
+                        }
+
+                        let llname = common::bytes_in_context(idata_llctx, &buf);
+
+                        let global_name = format!("import.{}.fn.{}", raw_dylib.name, s);
+                        let global_name = CString::new(global_name.as_str()).unwrap();
+
+                        let llglobal = llvm::LLVMAddGlobal(
+                            idata_llmod, 
+                            common::val_ty(llname), 
+                            global_name.as_ptr()
+                        );
+            
+                        llvm::LLVMSetInitializer(llglobal, llname);
+                        llvm::LLVMSetGlobalConstant(&llglobal, 1);
+                        llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
+                        llvm::LLVMSetSection(llglobal, idata_6.as_ptr());
+                    },
+                    _ => {},
+                }
+            }
+        }
+
+
     }
 
 }
