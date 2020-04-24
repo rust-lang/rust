@@ -1,6 +1,6 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 #![feature(const_mut_refs, box_syntax)]
-#![deny(const_err)]
+#![allow(const_err)]
 
 use std::mem::ManuallyDrop;
 
