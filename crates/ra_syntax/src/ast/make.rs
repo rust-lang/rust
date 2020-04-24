@@ -293,9 +293,18 @@ pub fn fn_def(
     ast_from_text(&format!("fn {}{}{} {}", fn_name, type_params, params, body))
 }
 
-pub fn add_newlines(amount_of_newlines: usize, t: impl AstNode) -> ast::SourceFile {
+pub fn add_leading_newlines(amount_of_newlines: usize, t: impl AstNode) -> ast::SourceFile {
     let newlines = "\n".repeat(amount_of_newlines);
     ast_from_text(&format!("{}{}", newlines, t.syntax()))
+}
+
+pub fn add_trailing_newlines(amount_of_newlines: usize, t: impl AstNode) -> ast::SourceFile {
+    let newlines = "\n".repeat(amount_of_newlines);
+    ast_from_text(&format!("{}{}", t.syntax(), newlines))
+}
+
+pub fn add_pub_crate_modifier(fn_def: ast::FnDef) -> ast::FnDef {
+    ast_from_text(&format!("pub(crate) {}", fn_def))
 }
 
 fn ast_from_text<N: AstNode>(text: &str) -> N {

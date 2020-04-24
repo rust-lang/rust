@@ -10,7 +10,7 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::{AssistAction, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
+use crate::{AssistAction, AssistFile, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
 use algo::SyntaxRewriter;
 
 #[derive(Clone, Debug)]
@@ -180,6 +180,7 @@ pub(crate) struct ActionBuilder {
     edit: TextEditBuilder,
     cursor_position: Option<TextUnit>,
     target: Option<TextRange>,
+    file: AssistFile,
 }
 
 impl ActionBuilder {
@@ -241,11 +242,16 @@ impl ActionBuilder {
         algo::diff(&node, &new).into_text_edit(&mut self.edit)
     }
 
+    pub(crate) fn set_file(&mut self, assist_file: AssistFile) {
+        self.file = assist_file
+    }
+
     fn build(self) -> AssistAction {
         AssistAction {
             edit: self.edit.finish(),
             cursor_position: self.cursor_position,
             target: self.target,
+            file: self.file,
         }
     }
 }

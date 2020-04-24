@@ -37,6 +37,10 @@ fn action_to_edit(
     file_id: FileId,
     assist_label: &AssistLabel,
 ) -> SourceChange {
+    let file_id = match action.file {
+        ra_assists::AssistFile::TargetFile(it) => it,
+        _ => file_id,
+    };
     let file_edit = SourceFileEdit { file_id, edit: action.edit };
     SourceChange::source_file_edit(assist_label.label.clone(), file_edit)
         .with_cursor_opt(action.cursor_position.map(|offset| FilePosition { offset, file_id }))
