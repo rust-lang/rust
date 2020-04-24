@@ -5,7 +5,6 @@ use crate::hash;
 use crate::marker::Unsize;
 use crate::mem;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::ptr::Unique;
 
 // ignore-tidy-undocumented-unsafe
 
@@ -198,14 +197,6 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.as_ptr().hash(state)
-    }
-}
-
-#[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
-    #[inline]
-    fn from(unique: Unique<T>) -> Self {
-        unsafe { NonNull::new_unchecked(unique.as_ptr()) }
     }
 }
 

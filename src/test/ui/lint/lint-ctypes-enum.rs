@@ -1,5 +1,4 @@
 #![feature(transparent_unions)]
-#![feature(ptr_internals)]
 #![deny(improper_ctypes)]
 #![allow(dead_code)]
 
@@ -45,8 +44,6 @@ extern {
    fn option_ref(x: Option<&'static u8>);
    fn option_fn(x: Option<extern "C" fn()>);
    fn nonnull(x: Option<std::ptr::NonNull<u8>>);
-   fn unique(x: Option<std::ptr::Unique<u8>>);
-   //~^ ERROR `extern` block uses type `std::option::Option<std::ptr::Unique<u8>>`
    fn nonzero_u8(x: Option<num::NonZeroU8>);
    fn nonzero_u16(x: Option<num::NonZeroU16>);
    fn nonzero_u32(x: Option<num::NonZeroU32>);

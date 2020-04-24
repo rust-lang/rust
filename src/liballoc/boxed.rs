@@ -136,13 +136,13 @@ use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, FusedIterator, Iterator};
-use core::marker::{Unpin, Unsize};
+use core::marker::{PhantomData, Unpin, Unsize};
 use core::mem;
 use core::ops::{
     CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,
 };
 use core::pin::Pin;
-use core::ptr::{self, NonNull, Unique};
+use core::ptr::{self, NonNull};
 use core::task::{Context, Poll};
 
 use crate::alloc::{self, AllocInit, AllocRef, Global};
@@ -156,7 +156,26 @@ use crate::vec::Vec;
 #[lang = "owned_box"]
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Box<T: ?Sized>(Unique<T>);
+pub struct Box<T: ?Sized>(BoxPtr<T>);
+
+// FIXME: remove this struct and give `Box` two fields.
+// Currently this causes an ICE with 'assertion failed: sig.c_variadic || extra_args.is_empty()'
+struct BoxPtr<T: ?Sized> {
+    ptr: NonNull<T>,
+
+    // NOTE: this marker has no consequences for variance, but is necessary
+    // for dropck to understand that we logically own a `T`.
+    //
+    // For details, see:
+    // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
+    _phantom: PhantomData<T>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Send + ?Sized> Send for Box<T> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Sync + ?Sized> Sync for Box<T> {}
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
@@ -382,7 +401,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Box(Unique::new_unchecked(raw))
+        Box(BoxPtr { ptr: NonNull::new_unchecked(raw), _phantom: PhantomData })
     }
 
     /// Consumes the `Box`, returning a wrapped raw pointer.
@@ -462,22 +481,14 @@ impl<T: ?Sized> Box<T> {
     #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
     #[inline]
     pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
-        Box::into_unique(b).into()
-    }
-
-    #[unstable(feature = "ptr_internals", issue = "none", reason = "use into_raw_non_null instead")]
-    #[inline]
-    #[doc(hidden)]
-    pub fn into_unique(b: Box<T>) -> Unique<T> {
-        let b = mem::ManuallyDrop::new(b);
-        let mut unique = b.0;
+        let mut b = mem::ManuallyDrop::new(b);
         // Box is kind-of a library type, but recognized as a "unique pointer" by
         // Stacked Borrows.  This function here corresponds to "reborrowing to
         // a raw pointer", but there is no actual reborrow here -- so
         // without some care, the pointer we are returning here still carries
         // the tag of `b`, with `Unique` permission.
         // We round-trip through a mutable reference to avoid that.
-        unsafe { Unique::new_unchecked(unique.as_mut() as *mut T) }
+        unsafe { NonNull::new_unchecked(b.0.ptr.as_mut() as *mut T) }
     }
 
     /// Consumes and leaks the `Box`, returning a mutable reference,
@@ -910,7 +921,7 @@ impl<T: fmt::Debug + ?Sized> fmt::Debug for Box<T> {
 impl<T: ?Sized> fmt::Pointer for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // It's not possible to extract the inner Uniq directly from the Box,
-        // instead we cast it to a *const which aliases the Unique
+        // instead we cast it to a *const which aliases the NonNull
         let ptr: *const T = &**self;
         fmt::Pointer::fmt(&ptr, f)
     }
@@ -1025,9 +1036,11 @@ impl<A, F: Fn<A> + ?Sized> Fn<A> for Box<F> {
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<BoxPtr<U>> for BoxPtr<T> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T> {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<BoxPtr<U>> for BoxPtr<T> {}
 
 #[stable(feature = "boxed_slice_from_iter", since = "1.32.0")]
 impl<A> FromIterator<A> for Box<[A]> {

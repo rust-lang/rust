@@ -20,8 +20,7 @@ LL |     assert_send::<Box<dyn Dummy>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `dyn Dummy` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `dyn Dummy`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<dyn Dummy>`
-   = note: required because it appears within the type `std::boxed::Box<dyn Dummy>`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `std::boxed::Box<dyn Dummy>`
 
 error: aborting due to 2 previous errors
 

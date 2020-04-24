@@ -3,9 +3,10 @@
 
 use core::alloc::MemoryBlock;
 use core::cmp;
+use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
-use core::ptr::{NonNull, Unique};
+use core::ptr::NonNull;
 use core::slice;
 
 use crate::alloc::{
@@ -25,14 +26,15 @@ mod tests;
 /// involved. This type is excellent for building your own data structures like Vec and VecDeque.
 /// In particular:
 ///
-/// * Produces `Unique::empty()` on zero-sized types.
-/// * Produces `Unique::empty()` on zero-length allocations.
-/// * Avoids freeing `Unique::empty()`.
+/// * Produces `NonNull::dangling()` on zero-sized types.
+/// * Produces `NonNull::dangling()` on zero-length allocations.
+/// * Avoids freeing `NonNull::dangling()`.
 /// * Catches all overflows in capacity computations (promotes them to "capacity overflow" panics).
 /// * Guards against 32-bit systems allocating more than isize::MAX bytes.
 /// * Guards against overflowing your length.
 /// * Calls `handle_alloc_error` for fallible allocations.
-/// * Contains a `ptr::Unique` and thus endows the user with all related benefits.
+/// * Contains a `ptr::NonNull` and thus endows the user with enum layout optimizations.
+/// * Is `Send` and `Sync` when items are.
 /// * Uses the excess returned from the allocator to use the largest available capacity.
 ///
 /// This type does not in anyway inspect the memory that it manages. When dropped it *will*
@@ -44,10 +46,23 @@ mod tests;
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
 pub struct RawVec<T, A: AllocRef = Global> {
-    ptr: Unique<T>,
+    ptr: NonNull<T>,
     cap: usize,
     alloc: A,
+
+    // NOTE: this marker has no consequences for variance, but is necessary
+    // for dropck to understand that we logically own a `T`.
+    //
+    // For details, see:
+    // https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md#phantom-data
+    _phantom: PhantomData<T>,
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Send, A: AllocRef + Send> Send for RawVec<T, A> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: Sync, A: AllocRef + Sync> Sync for RawVec<T, A> {}
 
 impl<T> RawVec<T, Global> {
     /// HACK(Centril): This exists because `#[unstable]` `const fn`s needn't conform
@@ -125,7 +140,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// the returned `RawVec`.
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
-        Self { ptr: Unique::empty(), cap: 0, alloc }
+        Self { ptr: NonNull::dangling(), cap: 0, alloc, _phantom: PhantomData }
     }
 
     /// Like `with_capacity`, but parameterized over the choice of
@@ -154,6 +169,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
                 ptr: memory.ptr.cast().into(),
                 cap: Self::capacity_from_bytes(memory.size),
                 alloc,
+                _phantom: PhantomData,
             }
         }
     }
@@ -168,11 +184,11 @@ impl<T, A: AllocRef> RawVec<T, A> {
     /// If the `ptr` and `capacity` come from a `RawVec` created via `a`, then this is guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, a: A) -> Self {
-        Self { ptr: Unique::new_unchecked(ptr), cap: capacity, alloc: a }
+        Self { ptr: NonNull::new_unchecked(ptr), cap: capacity, alloc: a, _phantom: PhantomData }
     }
 
     /// Gets a raw pointer to the start of the allocation. Note that this is
-    /// `Unique::empty()` if `capacity == 0` or `T` is zero-sized. In the former case, you must
+    /// `NonNull::dangling()` if `capacity == 0` or `T` is zero-sized. In the former case, you must
     /// be careful.
     pub fn ptr(&self) -> *mut T {
         self.ptr.as_ptr()

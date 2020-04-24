@@ -1,10 +1,10 @@
-error[E0658]: use of unstable library feature 'ptr_internals': use `NonNull` instead and consider `PhantomData<T>` (if you also use `#[may_dangle]`), `Send`, and/or `Sync`
+error[E0658]: use of unstable library feature 'dispatch_from_dyn'
   --> $DIR/issue-49983-see-issue-0.rs:4:30
    |
-LL | #[allow(unused_imports)] use core::ptr::Unique;
-   |                              ^^^^^^^^^^^^^^^^^
+LL | #[allow(unused_imports)] use core::ops::DispatchFromDyn;
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add `#![feature(ptr_internals)]` to the crate attributes to enable
+   = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

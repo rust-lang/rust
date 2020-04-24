@@ -3,7 +3,7 @@
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 use core::intrinsics::{self, min_align_of_val, size_of_val};
-use core::ptr::{NonNull, Unique};
+use core::ptr::NonNull;
 
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
@@ -258,7 +258,7 @@ unsafe impl AllocRef for Global {
     }
 }
 
-/// The allocator for unique pointers.
+/// The allocator for Box.
 // This function must not unwind. If it does, MIR codegen will fail.
 #[cfg(not(test))]
 #[lang = "exchange_malloc"]
@@ -276,9 +276,9 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 // This signature has to be the same as `Box`, otherwise an ICE will happen.
 // When an additional parameter to `Box` is added (like `A: AllocRef`), this has to be added here as
 // well.
-// For example if `Box` is changed to  `struct Box<T: ?Sized, A: AllocRef>(Unique<T>, A)`,
-// this function has to be changed to `fn box_free<T: ?Sized, A: AllocRef>(Unique<T>, A)` as well.
-pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
+// For example if `Box` is changed to  `struct Box<T: ?Sized, A: AllocRef>(NonNull<T>, A)`,
+// this function has to be changed to `fn box_free<T: ?Sized, A: AllocRef>(NonNull<T>, A)` as well.
+pub(crate) unsafe fn box_free<T: ?Sized>(ptr: NonNull<T>) {
     let size = size_of_val(ptr.as_ref());
     let align = min_align_of_val(ptr.as_ref());
     let layout = Layout::from_size_align_unchecked(size, align);

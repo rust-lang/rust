@@ -105,7 +105,6 @@
 #![feature(optin_builtin_traits)]
 #![feature(or_patterns)]
 #![feature(pattern)]
-#![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]
 #![feature(receiver_trait)]

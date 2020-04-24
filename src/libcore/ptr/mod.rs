@@ -91,10 +91,6 @@ mod non_null;
 #[stable(feature = "nonnull", since = "1.25.0")]
 pub use non_null::NonNull;
 
-mod unique;
-#[unstable(feature = "ptr_internals", issue = "none")]
-pub use unique::Unique;
-
 mod const_ptr;
 mod mut_ptr;
 

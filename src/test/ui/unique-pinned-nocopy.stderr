@@ -9,7 +9,7 @@ LL |     let _j = i.clone();
    | 
   ::: $SRC_DIR/liballoc/boxed.rs:LL:COL
    |
-LL | pub struct Box<T: ?Sized>(Unique<T>);
+LL | pub struct Box<T: ?Sized>(BoxPtr<T>);
    | ------------------------------------- doesn't satisfy `std::boxed::Box<R>: std::clone::Clone`
    | 
   ::: $SRC_DIR/libcore/clone.rs:LL:COL

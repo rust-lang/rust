@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(ptr_internals, test)]
+#![feature(test)]
 
 extern crate test;
 use test::black_box as b; // prevent promotion of the argument and const-propagation of the result

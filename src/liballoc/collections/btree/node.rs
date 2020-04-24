@@ -34,7 +34,7 @@
 use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
-use core::ptr::{self, NonNull, Unique};
+use core::ptr::{self, NonNull};
 use core::slice;
 
 use crate::alloc::{AllocRef, Global, Layout};
@@ -118,20 +118,20 @@ impl<K, V> InternalNode<K, V> {
 /// of nodes it actually contains, and, partially due to this lack of information,
 /// has no destructor.
 struct BoxedNode<K, V> {
-    ptr: Unique<LeafNode<K, V>>,
+    ptr: NonNull<LeafNode<K, V>>,
 }
 
 impl<K, V> BoxedNode<K, V> {
     fn from_leaf(node: Box<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Box::into_unique(node) }
+        BoxedNode { ptr: Box::into_raw_non_null(node) }
     }
 
     fn from_internal(node: Box<InternalNode<K, V>>) -> Self {
-        BoxedNode { ptr: Box::into_unique(node).cast() }
+        BoxedNode { ptr: Box::into_raw_non_null(node).cast() }
     }
 
     unsafe fn from_ptr(ptr: NonNull<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::from(ptr) }
+        BoxedNode { ptr: NonNull::from(ptr) }
     }
 
     fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {

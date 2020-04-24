@@ -290,7 +290,6 @@
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(prelude_import)]
-#![feature(ptr_internals)]
 #![feature(raw)]
 #![feature(renamed_spin_loop)]
 #![feature(rustc_attrs)]

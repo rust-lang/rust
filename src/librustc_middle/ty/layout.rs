@@ -2250,7 +2250,6 @@ where
                     }
                 }
 
-                // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
                 if let Some(ref mut pointee) = result {
                     if let ty::Adt(def, _) = this.ty.kind {
                         if def.is_box() && offset.bytes() == 0 {

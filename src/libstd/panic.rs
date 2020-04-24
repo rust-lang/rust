@@ -10,7 +10,7 @@ use crate::future::Future;
 use crate::ops::{Deref, DerefMut};
 use crate::panicking;
 use crate::pin::Pin;
-use crate::ptr::{NonNull, Unique};
+use crate::ptr::NonNull;
 use crate::rc::Rc;
 use crate::sync::atomic;
 use crate::sync::{Arc, Mutex, RwLock};
@@ -193,7 +193,6 @@ pub struct AssertUnwindSafe<T>(#[stable(feature = "catch_unwind", since = "1.9.0
 //
 // * By default everything is unwind safe
 // * pointers T contains mutability of some form are not unwind safe
-// * Unique, an owning pointer, lifts an implementation
 // * Types like Mutex/RwLock which are explicitly poisoned are unwind safe
 // * Our custom AssertUnwindSafe wrapper is indeed unwind safe
 
@@ -205,10 +204,14 @@ impl<T: RefUnwindSafe + ?Sized> UnwindSafe for &T {}
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *const T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *mut T {}
-#[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: UnwindSafe + ?Sized> UnwindSafe for Unique<T> {}
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for NonNull<T> {}
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl<T: UnwindSafe + ?Sized> UnwindSafe for Box<T> {}
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl<T: UnwindSafe> UnwindSafe for Vec<T> {}
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl<T: UnwindSafe> UnwindSafe for alloc::collections::VecDeque<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: ?Sized> UnwindSafe for Mutex<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
