@@ -125,7 +125,7 @@ mod tests {
                 kind: Enum,
             },
             CompletionItem {
-                label: "m!",
+                label: "m!(…)",
                 source_range: [151; 151),
                 delete: [151; 151),
                 insert: "m!($0)",

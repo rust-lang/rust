@@ -133,29 +133,6 @@ impl Completions {
         completion_item.kind(kind).set_documentation(docs).add_to(self)
     }
 
-    fn guess_macro_braces(&self, macro_name: &str, docs: &str) -> &'static str {
-        let mut votes = [0, 0, 0];
-        for (idx, s) in docs.match_indices(&macro_name) {
-            let (before, after) = (&docs[..idx], &docs[idx + s.len()..]);
-            // Ensure to match the full word
-            if after.starts_with('!')
-                && !before.ends_with(|c: char| c == '_' || c.is_ascii_alphanumeric())
-            {
-                // It may have spaces before the braces like `foo! {}`
-                match after[1..].chars().find(|&c| !c.is_whitespace()) {
-                    Some('{') => votes[0] += 1,
-                    Some('[') => votes[1] += 1,
-                    Some('(') => votes[2] += 1,
-                    _ => {}
-                }
-            }
-        }
-
-        // Insert a space before `{}`.
-        // We prefer the last one when some votes equal.
-        *votes.iter().zip(&[" {$0}", "[$0]", "($0)"]).max_by_key(|&(&vote, _)| vote).unwrap().1
-    }
-
     pub(crate) fn add_macro(
         &mut self,
         ctx: &CompletionContext,
@@ -177,21 +154,27 @@ impl Completions {
         let detail = macro_label(&ast_node);
 
         let docs = macro_.docs(ctx.db);
-        let macro_declaration = format!("{}!", name);
 
-        let mut builder =
-            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), &macro_declaration)
-                .kind(CompletionItemKind::Macro)
-                .set_documentation(docs.clone())
-                .set_deprecated(is_deprecated(macro_, ctx.db))
-                .detail(detail);
+        let mut builder = CompletionItem::new(
+            CompletionKind::Reference,
+            ctx.source_range(),
+            &format!("{}!", name),
+        )
+        .kind(CompletionItemKind::Macro)
+        .set_documentation(docs.clone())
+        .set_deprecated(is_deprecated(macro_, ctx.db))
+        .detail(detail);
 
+        let needs_bang = ctx.use_item_syntax.is_none() && !ctx.is_macro_call;
         builder = match ctx.config.snippet_cap {
-            Some(cap) if ctx.use_item_syntax.is_none() && !ctx.is_macro_call => {
-                let macro_braces_to_insert =
-                    self.guess_macro_braces(&name, docs.as_ref().map_or("", |s| s.as_str()));
-                builder.insert_snippet(cap, macro_declaration + macro_braces_to_insert)
+            Some(cap) if needs_bang => {
+                let docs = docs.as_ref().map_or("", |s| s.as_str());
+                let (bra, ket) = guess_macro_braces(&name, docs);
+                builder
+                    .insert_snippet(cap, format!("{}!{}$0{}", name, bra, ket))
+                    .label(format!("{}!{}…{}", name, bra, ket))
             }
+            None if needs_bang => builder.insert_text(format!("{}!", name)),
             _ => {
                 tested_by!(dont_insert_macro_call_parens_unncessary);
                 builder.insert_text(name)
@@ -402,6 +385,34 @@ impl Builder {
 
 fn is_deprecated(node: impl HasAttrs, db: &RootDatabase) -> bool {
     node.attrs(db).by_key("deprecated").exists()
+}
+
+fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static str) {
+    let mut votes = [0, 0, 0];
+    for (idx, s) in docs.match_indices(&macro_name) {
+        let (before, after) = (&docs[..idx], &docs[idx + s.len()..]);
+        // Ensure to match the full word
+        if after.starts_with('!')
+            && !before.ends_with(|c: char| c == '_' || c.is_ascii_alphanumeric())
+        {
+            // It may have spaces before the braces like `foo! {}`
+            match after[1..].chars().find(|&c| !c.is_whitespace()) {
+                Some('{') => votes[0] += 1,
+                Some('[') => votes[1] += 1,
+                Some('(') => votes[2] += 1,
+                _ => {}
+            }
+        }
+    }
+
+    // Insert a space before `{}`.
+    // We prefer the last one when some votes equal.
+    let (_vote, (bra, ket)) = votes
+        .iter()
+        .zip(&[(" {", "}"), ("[", "]"), ("(", ")")])
+        .max_by_key(|&(&vote, _)| vote)
+        .unwrap();
+    (*bra, *ket)
 }
 
 #[cfg(test)]
