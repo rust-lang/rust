@@ -345,7 +345,7 @@ fn report_negative_positive_conflict(
     let mut err = struct_span_err!(
         tcx.sess,
         impl_span,
-        E0748,
+        E0751,
         "found both positive and negative implementation of trait `{}`{}:",
         overlap.trait_desc,
         overlap.self_desc.clone().map_or(String::new(), |ty| format!(" for type `{}`", ty))

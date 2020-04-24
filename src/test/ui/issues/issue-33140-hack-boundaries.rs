@@ -23,7 +23,7 @@ trait Trait2 {}
 
 impl Trait2 for dyn Send {}
 impl !Trait2 for dyn Send {}
-//~^ ERROR E0748
+//~^ ERROR E0751
 
 // Problem 3: type parameter
 trait Trait3<T: ?Sized> {}
