@@ -12,6 +12,12 @@ pub struct CompletionConfig {
     pub snippet_cap: Option<SnippetCap>,
 }
 
+impl CompletionConfig {
+    pub fn allow_snippets(&mut self, yes: bool) {
+        self.snippet_cap = if yes { Some(SnippetCap { _private: () }) } else { None }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SnippetCap {
     _private: (),
