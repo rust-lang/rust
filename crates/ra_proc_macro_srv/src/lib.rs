@@ -21,28 +21,40 @@ mod dylib;
 
 use proc_macro::bridge::client::TokenStream;
 use ra_proc_macro::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
-use std::path::Path;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    path::{Path, PathBuf},
+};
 
-pub(crate) fn expand_task(task: &ExpansionTask) -> Result<ExpansionResult, String> {
-    let expander = create_expander(&task.lib);
+#[derive(Default)]
+pub(crate) struct ProcMacroSrv {
+    expanders: HashMap<PathBuf, dylib::Expander>,
+}
 
-    match expander.expand(&task.macro_name, &task.macro_body, task.attributes.as_ref()) {
-        Ok(expansion) => Ok(ExpansionResult { expansion }),
-        Err(msg) => {
-            Err(format!("Cannot perform expansion for {}: error {:?}", &task.macro_name, msg))
+impl ProcMacroSrv {
+    pub fn expand(&mut self, task: &ExpansionTask) -> Result<ExpansionResult, String> {
+        let expander = self.expander(&task.lib)?;
+        match expander.expand(&task.macro_name, &task.macro_body, task.attributes.as_ref()) {
+            Ok(expansion) => Ok(ExpansionResult { expansion }),
+            Err(msg) => {
+                Err(format!("Cannot perform expansion for {}: error {:?}", &task.macro_name, msg))
+            }
         }
     }
-}
 
-pub(crate) fn list_macros(task: &ListMacrosTask) -> ListMacrosResult {
-    let expander = create_expander(&task.lib);
+    pub fn list_macros(&mut self, task: &ListMacrosTask) -> Result<ListMacrosResult, String> {
+        let expander = self.expander(&task.lib)?;
+        Ok(ListMacrosResult { macros: expander.list_macros() })
+    }
 
-    ListMacrosResult { macros: expander.list_macros() }
-}
-
-fn create_expander(lib: &Path) -> dylib::Expander {
-    dylib::Expander::new(lib)
-        .unwrap_or_else(|err| panic!("Cannot create expander for {}: {:?}", lib.display(), err))
+    fn expander(&mut self, path: &Path) -> Result<&dylib::Expander, String> {
+        Ok(match self.expanders.entry(path.to_path_buf()) {
+            Entry::Vacant(v) => v.insert(dylib::Expander::new(path).map_err(|err| {
+                format!("Cannot create expander for {}: {:?}", path.display(), err)
+            })?),
+            Entry::Occupied(e) => e.into_mut(),
+        })
+    }
 }
 
 pub mod cli;

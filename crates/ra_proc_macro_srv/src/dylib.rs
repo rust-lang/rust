@@ -112,7 +112,7 @@ impl ProcMacroLibraryLibloading {
 type ProcMacroLibraryImpl = ProcMacroLibraryLibloading;
 
 pub struct Expander {
-    libs: Vec<ProcMacroLibraryImpl>,
+    inner: ProcMacroLibraryImpl,
 }
 
 impl Expander {
@@ -125,7 +125,7 @@ impl Expander {
 
         let library = ProcMacroLibraryImpl::open(&lib).map_err(|e| e.to_string())?;
 
-        Ok(Expander { libs: vec![library] })
+        Ok(Expander { inner: library })
     }
 
     pub fn expand(
@@ -141,38 +141,36 @@ impl Expander {
                 TokenStream::with_subtree(attr.clone())
             });
 
-        for lib in &self.libs {
-            for proc_macro in &lib.exported_macros {
-                match proc_macro {
-                    bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
-                        if *trait_name == macro_name =>
-                    {
-                        let res = client.run(
-                            &crate::proc_macro::bridge::server::SameThread,
-                            crate::rustc_server::Rustc::default(),
-                            parsed_body,
-                        );
-                        return res.map(|it| it.subtree);
-                    }
-                    bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
-                        let res = client.run(
-                            &crate::proc_macro::bridge::server::SameThread,
-                            crate::rustc_server::Rustc::default(),
-                            parsed_body,
-                        );
-                        return res.map(|it| it.subtree);
-                    }
-                    bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
-                        let res = client.run(
-                            &crate::proc_macro::bridge::server::SameThread,
-                            crate::rustc_server::Rustc::default(),
-                            parsed_attributes,
-                            parsed_body,
-                        );
-                        return res.map(|it| it.subtree);
-                    }
-                    _ => continue,
+        for proc_macro in &self.inner.exported_macros {
+            match proc_macro {
+                bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
+                    if *trait_name == macro_name =>
+                {
+                    let res = client.run(
+                        &crate::proc_macro::bridge::server::SameThread,
+                        crate::rustc_server::Rustc::default(),
+                        parsed_body,
+                    );
+                    return res.map(|it| it.subtree);
                 }
+                bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
+                    let res = client.run(
+                        &crate::proc_macro::bridge::server::SameThread,
+                        crate::rustc_server::Rustc::default(),
+                        parsed_body,
+                    );
+                    return res.map(|it| it.subtree);
+                }
+                bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
+                    let res = client.run(
+                        &crate::proc_macro::bridge::server::SameThread,
+                        crate::rustc_server::Rustc::default(),
+                        parsed_attributes,
+                        parsed_body,
+                    );
+                    return res.map(|it| it.subtree);
+                }
+                _ => continue,
             }
         }
 
@@ -180,9 +178,9 @@ impl Expander {
     }
 
     pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
-        self.libs
+        self.inner
+            .exported_macros
             .iter()
-            .flat_map(|it| &it.exported_macros)
             .map(|proc_macro| match proc_macro {
                 bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
                     (trait_name.to_string(), ProcMacroKind::CustomDerive)
