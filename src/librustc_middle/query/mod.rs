@@ -89,6 +89,21 @@ rustc_queries! {
             desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
+        /// Computes the `DefId` of the corresponding const parameter of a const argument.
+        /// Returns `None` if `def_id` is not a const argument.
+        ///
+        /// ```rust
+        /// let a = foo::<7>();
+        ///               ^ Calling `const_param_of` for this argument,
+        ///
+        /// fn foo<const N: usize>()
+        ///              ^ returns this `DefId`.
+        /// ```
+        query const_param_of(key: DefId) -> Option<DefId> {
+            cache_on_disk_if { key.is_local() }
+            desc { |tcx| "computing the const parameter of `{}`", tcx.def_path_str(key) }
+        }
+
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
             desc { |tcx| "computing type of `{}`", tcx.def_path_str(key) }
