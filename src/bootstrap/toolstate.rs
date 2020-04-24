@@ -93,12 +93,12 @@ static NIGHTLY_TOOLS: &[(&str, &str)] = &[
 ];
 
 fn print_error(tool: &str, submodule: &str) {
-    eprintln!("");
+    eprintln!();
     eprintln!("We detected that this PR updated '{}', but its tests failed.", tool);
-    eprintln!("");
+    eprintln!();
     eprintln!("If you do intend to update '{}', please check the error messages above and", tool);
     eprintln!("commit another update.");
-    eprintln!("");
+    eprintln!();
     eprintln!("If you do NOT intend to update '{}', please ensure you did not accidentally", tool);
     eprintln!("change the submodule at '{}'. You may ask your reviewer for the", submodule);
     eprintln!("proper steps.");
