@@ -205,7 +205,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 }
 
 fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
-    let lib = DynamicLibrary::open(Some(path)).unwrap_or_else(|err| {
+    let lib = DynamicLibrary::open(path).unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {:?}: {:?}", path, err);
         early_error(ErrorOutputType::default(), &err);
     });
