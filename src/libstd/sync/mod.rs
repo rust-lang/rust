@@ -167,6 +167,8 @@ pub use self::mutex::{Mutex, MutexGuard};
 pub use self::once::{Once, OnceState, ONCE_INIT};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+#[unstable(feature = "static_mutex", issue = "71521")]
+pub use self::static_mutex::StaticMutex;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use crate::sys_common::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
 
@@ -177,3 +179,4 @@ mod condvar;
 mod mutex;
 mod once;
 mod rwlock;
+mod static_mutex;
