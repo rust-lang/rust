@@ -122,7 +122,7 @@ fn add_function_impl(
     ctx: &CompletionContext,
     func: &hir::Function,
 ) {
-    let display = FunctionSignature::from_hir(ctx.db, *func);
+    let signature = FunctionSignature::from_hir(ctx.db, *func);
 
     let fn_name = func.name(ctx.db).to_string();
 
@@ -141,12 +141,20 @@ fn add_function_impl(
     } else {
         CompletionItemKind::Function
     };
-
-    let snippet = format!("{} {{\n    $0\n}}", display);
-
     let range = TextRange::from_to(fn_def_node.text_range().start(), ctx.source_range().end());
 
-    builder.snippet_edit(TextEdit::replace(range, snippet)).kind(completion_kind).add_to(acc);
+    match ctx.config.snippet_cap {
+        Some(cap) => {
+            let snippet = format!("{} {{\n    $0\n}}", signature);
+            builder.snippet_edit(cap, TextEdit::replace(range, snippet))
+        }
+        None => {
+            let header = format!("{} {{", signature);
+            builder.text_edit(TextEdit::replace(range, header))
+        }
+    }
+    .kind(completion_kind)
+    .add_to(acc);
 }
 
 fn add_type_alias_impl(

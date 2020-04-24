@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use super::completion_config::SnippetCap;
 use hir::Documentation;
 use ra_syntax::TextRange;
 use ra_text_edit::TextEdit;
@@ -270,7 +271,11 @@ impl Builder {
         self.insert_text = Some(insert_text.into());
         self
     }
-    pub(crate) fn insert_snippet(mut self, snippet: impl Into<String>) -> Builder {
+    pub(crate) fn insert_snippet(
+        mut self,
+        _cap: SnippetCap,
+        snippet: impl Into<String>,
+    ) -> Builder {
         self.insert_text_format = InsertTextFormat::Snippet;
         self.insert_text(snippet)
     }
@@ -282,7 +287,7 @@ impl Builder {
         self.text_edit = Some(edit);
         self
     }
-    pub(crate) fn snippet_edit(mut self, edit: TextEdit) -> Builder {
+    pub(crate) fn snippet_edit(mut self, _cap: SnippetCap, edit: TextEdit) -> Builder {
         self.insert_text_format = InsertTextFormat::Snippet;
         self.text_edit(edit)
     }

@@ -42,10 +42,14 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
 }
 
 fn keyword(ctx: &CompletionContext, kw: &str, snippet: &str) -> CompletionItem {
-    CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw)
-        .kind(CompletionItemKind::Keyword)
-        .insert_snippet(snippet)
-        .build()
+    let res = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw)
+        .kind(CompletionItemKind::Keyword);
+
+    match ctx.config.snippet_cap {
+        Some(cap) => res.insert_snippet(cap, snippet),
+        _ => res.insert_text(if snippet.contains('$') { kw } else { snippet }),
+    }
+    .build()
 }
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {

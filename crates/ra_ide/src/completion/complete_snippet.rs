@@ -1,13 +1,13 @@
 //! FIXME: write short doc here
 
 use crate::completion::{
-    completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
-    CompletionKind, Completions,
+    completion_config::SnippetCap, completion_item::Builder, CompletionContext, CompletionItem,
+    CompletionItemKind, CompletionKind, Completions,
 };
 
-fn snippet(ctx: &CompletionContext, label: &str, snippet: &str) -> Builder {
+fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
     CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), label)
-        .insert_snippet(snippet)
+        .insert_snippet(cap, snippet)
         .kind(CompletionItemKind::Snippet)
 }
 
@@ -15,17 +15,27 @@ pub(super) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
     if !(ctx.is_trivial_path && ctx.function_syntax.is_some()) {
         return;
     }
+    let cap = match ctx.config.snippet_cap {
+        Some(it) => it,
+        None => return,
+    };
 
-    snippet(ctx, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
-    snippet(ctx, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
+    snippet(ctx, cap, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
+    snippet(ctx, cap, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
 }
 
 pub(super) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_new_item {
         return;
     }
+    let cap = match ctx.config.snippet_cap {
+        Some(it) => it,
+        None => return,
+    };
+
     snippet(
         ctx,
+        cap,
         "Test function",
         "\
 #[test]
@@ -36,8 +46,8 @@ fn ${1:feature}() {
     .lookup_by("tfn")
     .add_to(acc);
 
-    snippet(ctx, "macro_rules", "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}").add_to(acc);
-    snippet(ctx, "pub(crate)", "pub(crate) $0").add_to(acc);
+    snippet(ctx, cap, "macro_rules", "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}").add_to(acc);
+    snippet(ctx, cap, "pub(crate)", "pub(crate) $0").add_to(acc);
 }
 
 #[cfg(test)]
