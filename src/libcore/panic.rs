@@ -77,7 +77,11 @@ impl<'a> PanicInfo<'a> {
     /// use std::panic;
     ///
     /// panic::set_hook(Box::new(|panic_info| {
-    ///     println!("panic occurred: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
+    ///     if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+    ///         println!("panic occurred: {:?}", s);
+    ///     } else {
+    ///         println!("panic occurred");
+    ///     }
     /// }));
     ///
     /// panic!("Normal panic");
@@ -112,8 +116,10 @@ impl<'a> PanicInfo<'a> {
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occurred in file '{}' at line {}", location.file(),
-    ///             location.line());
+    ///         println!("panic occurred in file '{}' at line {}",
+    ///             location.file(),
+    ///             location.line(),
+    ///         );
     ///     } else {
     ///         println!("panic occurred but can't get location information...");
     ///     }
