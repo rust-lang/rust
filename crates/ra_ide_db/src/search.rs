@@ -200,7 +200,8 @@ impl Definition {
 
         for (file_id, search_range) in search_scope {
             let text = db.file_text(file_id);
-            let search_range = search_range.unwrap_or(TextRange::up_to(TextSize::of(&text)));
+            let search_range =
+                search_range.unwrap_or(TextRange::up_to(TextSize::of(text.as_str())));
 
             let sema = Semantics::new(db);
             let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());

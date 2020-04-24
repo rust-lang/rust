@@ -1,9 +1,8 @@
 //! `LineIndex` maps flat `TextSize` offsets into `(Line, Column)`
 //! representation.
-use std::iter;
-// TODO: un TextSize
 use ra_syntax::{TextRange, TextSize};
 use rustc_hash::FxHashMap;
+use std::iter;
 use superslice::Ext;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -42,7 +41,8 @@ impl LineIndex {
         let mut curr_col = 0.into();
         let mut line = 0;
         for c in text.chars() {
-            curr_row += TextSize::of(c);
+            let c_len = TextSize::of(c);
+            curr_row += c_len;
             if c == '\n' {
                 newlines.push(curr_row);
 
@@ -58,12 +58,11 @@ impl LineIndex {
                 continue;
             }
 
-            let char_len = TextSize::of(c);
-            if char_len > TextSize::from_usize(1) {
-                utf16_chars.push(Utf16Char { start: curr_col, end: curr_col + char_len });
+            if !c.is_ascii() {
+                utf16_chars.push(Utf16Char { start: curr_col, end: curr_col + c_len });
             }
 
-            curr_col += char_len;
+            curr_col += c_len;
         }
 
         // Save any utf-16 characters seen in the last line
@@ -102,22 +101,19 @@ impl LineIndex {
     }
 
     fn utf8_to_utf16_col(&self, line: u32, col: TextSize) -> usize {
+        let mut res: usize = col.into();
         if let Some(utf16_chars) = self.utf16_lines.get(&line) {
-            let mut correction = 0;
             for c in utf16_chars {
-                if col >= c.end {
-                    correction += usize::from(c.len()) - 1;
+                if c.end <= col {
+                    res -= usize::from(c.len()) - 1;
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
                     break;
                 }
             }
-
-            usize::from(col) - correction
-        } else {
-            usize::from(col)
         }
+        res
     }
 
     fn utf16_to_utf8_col(&self, line: u32, col: u32) -> TextSize {

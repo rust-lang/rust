@@ -592,7 +592,7 @@ pub fn handle_formatting(
     let crate_ids = world.analysis().crate_for(file_id)?;
 
     let file_line_index = world.analysis().file_line_index(file_id)?;
-    let end_position = TextSize::of(&file).conv_with(&file_line_index);
+    let end_position = TextSize::of(file.as_str()).conv_with(&file_line_index);
 
     let mut rustfmt = match &world.config.rustfmt {
         RustfmtConfig::Rustfmt { extra_args } => {
