@@ -16,7 +16,7 @@ use lsp_types::{
     Hover, HoverContents, Location, MarkupContent, MarkupKind, Position, PrepareRenameResponse,
     Range, RenameParams, SemanticTokensParams, SemanticTokensRangeParams,
     SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, TextDocumentIdentifier,
-    TextEdit, WorkspaceEdit,
+    TextEdit, Url, WorkspaceEdit,
 };
 use ra_ide::{
     Assist, AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
@@ -219,6 +219,7 @@ pub fn handle_document_symbol(
     let _p = profile("handle_document_symbol");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id)?;
+    let url = file_id.try_conv_with(&world)?;
 
     let mut parents: Vec<(DocumentSymbol, Option<usize>)> = Vec::new();
 
@@ -234,10 +235,10 @@ pub fn handle_document_symbol(
         };
         parents.push((doc_symbol, symbol.parent));
     }
-    let mut res = Vec::new();
+    let mut document_symbols = Vec::new();
     while let Some((node, parent)) = parents.pop() {
         match parent {
-            None => res.push(node),
+            None => document_symbols.push(node),
             Some(i) => {
                 let children = &mut parents[i].0.children;
                 if children.is_none() {
@@ -248,7 +249,35 @@ pub fn handle_document_symbol(
         }
     }
 
-    Ok(Some(res.into()))
+    if world.config.client_caps.hierarchical_symbols {
+        Ok(Some(document_symbols.into()))
+    } else {
+        let mut symbol_information = Vec::<SymbolInformation>::new();
+        for symbol in document_symbols {
+            flatten_document_symbol(&symbol, None, &url, &mut symbol_information);
+        }
+
+        Ok(Some(symbol_information.into()))
+    }
+}
+
+fn flatten_document_symbol(
+    symbol: &DocumentSymbol,
+    container_name: Option<String>,
+    url: &Url,
+    res: &mut Vec<SymbolInformation>,
+) {
+    res.push(SymbolInformation {
+        name: symbol.name.clone(),
+        kind: symbol.kind,
+        deprecated: symbol.deprecated,
+        location: Location::new(url.clone(), symbol.range),
+        container_name: container_name,
+    });
+
+    for child in symbol.children.iter().flatten() {
+        flatten_document_symbol(child, Some(symbol.name.clone()), url, res);
+    }
 }
 
 pub fn handle_workspace_symbol(
