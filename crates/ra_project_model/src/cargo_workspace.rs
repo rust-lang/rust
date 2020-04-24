@@ -143,7 +143,7 @@ impl CargoWorkspace {
     ) -> Result<CargoWorkspace> {
         let _ = Command::new(cargo_binary())
             .arg("--version")
-            .status()
+            .output()
             .context("failed to run `cargo --version`, is `cargo` in PATH?")?;
 
         let mut meta = MetadataCommand::new();
