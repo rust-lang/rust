@@ -1703,8 +1703,7 @@ fn add_local_native_libraries(
             NativeLibKind::StaticNoBundle => cmd.link_staticlib(name),
             NativeLibKind::StaticBundle => cmd.link_whole_staticlib(name, &search_path),
             NativeLibKind::RawDylib => {
-                // FIXME(#58713): Proper handling for raw dylibs.
-                bug!("raw_dylib feature not yet implemented");
+                // we shouldn't need to do anything here, code has been generated.
             }
         }
     }

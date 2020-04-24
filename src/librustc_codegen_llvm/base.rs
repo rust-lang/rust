@@ -36,6 +36,7 @@ use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
+use log::debug;
 
 use std::ffi::CString;
 use std::time::Instant;
@@ -73,6 +74,18 @@ pub fn write_compressed_metadata<'tcx>(
         let directive = format!(".section {}", section_name);
         llvm::LLVMSetModuleInlineAsm2(metadata_llmod, directive.as_ptr().cast(), directive.len())
     }
+}
+
+pub fn write_idata_sections<'tcx>(
+    _tcx: TyCtxt<'tcx>,
+    raw_dylibs: &[RawDylibImports],
+    _llvm_module: &mut ModuleLlvm,
+){
+    for raw_dylib in raw_dylibs {
+        debug!("linking raw dylib - {:?}", raw_dylib);
+        //TODO: emit.
+    }
+
 }
 
 pub struct ValueIter<'ll> {
