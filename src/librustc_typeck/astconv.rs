@@ -1017,18 +1017,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
-        let path_span = if let [segment] = &trait_ref.path.segments[..] {
-            // FIXME: `trait_ref.path.span` can point to a full path with multiple
-            // segments, even though `trait_ref.path.segments` is of length `1`. Work
-            // around that bug here, even though it should be fixed elsewhere.
-            // This would otherwise cause an invalid suggestion. For an example, look at
-            // `src/test/ui/issues/issue-28344.rs`.
-            segment.ident.span
-        } else {
-            trait_ref.path.span
-        };
         let (substs, assoc_bindings, arg_count_correct) = self.create_substs_for_ast_trait_ref(
-            path_span,
+            trait_ref.path.span,
             trait_def_id,
             self_ty,
             trait_ref.path.segments.last().unwrap(),
@@ -1729,6 +1719,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
+                        // FIXME: these can be redundant with E0106, but not always.
                         struct_span_err!(
                             tcx.sess,
                             span,

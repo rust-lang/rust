@@ -1034,101 +1034,125 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         lifetime_names: &FxHashSet<ast::Ident>,
         params: &[ElisionFailureInfo],
     ) {
-        if count > 1 {
-            err.span_label(span, format!("expected {} lifetime parameters", count));
-        } else {
-            let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok();
-            let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
-                err.span_suggestion(
-                    span,
-                    "consider using the named lifetime",
-                    sugg,
-                    Applicability::MaybeIncorrect,
-                );
-            };
-            let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg: &str| {
-                err.span_label(span, "expected named lifetime parameter");
+        let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok();
 
-                for missing in self.missing_named_lifetime_spots.iter().rev() {
-                    let mut introduce_suggestion = vec![];
-                    let msg;
-                    let should_break;
-                    introduce_suggestion.push(match missing {
-                        MissingLifetimeSpot::Generics(generics) => {
-                            msg = "consider introducing a named lifetime parameter".to_string();
-                            should_break = true;
-                            if let Some(param) = generics.params.iter().find(|p| match p.kind {
-                                hir::GenericParamKind::Type {
-                                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                    ..
-                                } => false,
-                                _ => true,
-                            }) {
-                                (param.span.shrink_to_lo(), "'a, ".to_string())
-                            } else {
-                                (generics.span, "<'a>".to_string())
-                            }
-                        }
-                        MissingLifetimeSpot::HigherRanked { span, span_type } => {
-                            msg = format!(
-                                "consider making the {} lifetime-generic with a new `'a` lifetime",
-                                span_type.descr(),
-                            );
-                            should_break = false;
-                            err.note(
-                                "for more information on higher-ranked polymorphism, visit \
-                             https://doc.rust-lang.org/nomicon/hrtb.html",
-                            );
-                            (*span, span_type.suggestion("'a"))
-                        }
-                    });
-                    for param in params {
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span)
-                        {
-                            if snippet.starts_with('&') && !snippet.starts_with("&'") {
-                                introduce_suggestion
-                                    .push((param.span, format!("&'a {}", &snippet[1..])));
-                            } else if snippet.starts_with("&'_ ") {
-                                introduce_suggestion
-                                    .push((param.span, format!("&'a {}", &snippet[4..])));
-                            }
+        err.span_label(
+            span,
+            &format!(
+                "expected {} lifetime parameter{}",
+                if count == 1 { "named".to_string() } else { count.to_string() },
+                pluralize!(count)
+            ),
+        );
+
+        let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
+            err.span_suggestion_verbose(
+                span,
+                &format!("consider using the `{}` lifetime", lifetime_names.iter().next().unwrap()),
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+        };
+        let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg: &str| {
+            for missing in self.missing_named_lifetime_spots.iter().rev() {
+                let mut introduce_suggestion = vec![];
+                let msg;
+                let should_break;
+                introduce_suggestion.push(match missing {
+                    MissingLifetimeSpot::Generics(generics) => {
+                        msg = "consider introducing a named lifetime parameter".to_string();
+                        should_break = true;
+                        if let Some(param) = generics.params.iter().find(|p| match p.kind {
+                            hir::GenericParamKind::Type {
+                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                                ..
+                            } => false,
+                            _ => true,
+                        }) {
+                            (param.span.shrink_to_lo(), "'a, ".to_string())
+                        } else {
+                            (generics.span, "<'a>".to_string())
                         }
                     }
-                    introduce_suggestion.push((span, sugg.to_string()));
-                    err.multipart_suggestion(
-                        &msg,
-                        introduce_suggestion,
-                        Applicability::MaybeIncorrect,
-                    );
-                    if should_break {
-                        break;
+                    MissingLifetimeSpot::HigherRanked { span, span_type } => {
+                        msg = format!(
+                            "consider making the {} lifetime-generic with a new `'a` lifetime",
+                            span_type.descr(),
+                        );
+                        should_break = false;
+                        err.note(
+                            "for more information on higher-ranked polymorphism, visit \
+                            https://doc.rust-lang.org/nomicon/hrtb.html",
+                        );
+                        (*span, span_type.suggestion("'a"))
+                    }
+                });
+                for param in params {
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span) {
+                        if snippet.starts_with('&') && !snippet.starts_with("&'") {
+                            introduce_suggestion
+                                .push((param.span, format!("&'a {}", &snippet[1..])));
+                        } else if snippet.starts_with("&'_ ") {
+                            introduce_suggestion
+                                .push((param.span, format!("&'a {}", &snippet[4..])));
+                        }
                     }
                 }
-            };
-
-            match (lifetime_names.len(), lifetime_names.iter().next(), snippet.as_deref()) {
-                (1, Some(name), Some("&")) => {
-                    suggest_existing(err, format!("&{} ", name));
-                }
-                (1, Some(name), Some("'_")) => {
-                    suggest_existing(err, name.to_string());
-                }
-                (1, Some(name), Some(snippet)) if !snippet.ends_with('>') => {
-                    suggest_existing(err, format!("{}<{}>", snippet, name));
-                }
-                (0, _, Some("&")) => {
-                    suggest_new(err, "&'a ");
-                }
-                (0, _, Some("'_")) => {
-                    suggest_new(err, "'a");
-                }
-                (0, _, Some(snippet)) if !snippet.ends_with('>') => {
-                    suggest_new(err, &format!("{}<'a>", snippet));
-                }
-                _ => {
-                    err.span_label(span, "expected lifetime parameter");
+                introduce_suggestion.push((span, sugg.to_string()));
+                err.multipart_suggestion(&msg, introduce_suggestion, Applicability::MaybeIncorrect);
+                if should_break {
+                    break;
                 }
             }
+        };
+
+        match (lifetime_names.len(), lifetime_names.iter().next(), snippet.as_deref()) {
+            (1, Some(name), Some("&")) => {
+                suggest_existing(err, format!("&{} ", name));
+            }
+            (1, Some(name), Some("'_")) => {
+                suggest_existing(err, name.to_string());
+            }
+            (1, Some(name), Some("")) => {
+                suggest_existing(err, format!("{}, ", name).repeat(count));
+            }
+            (1, Some(name), Some(snippet)) if !snippet.ends_with('>') => {
+                suggest_existing(
+                    err,
+                    format!(
+                        "{}<{}>",
+                        snippet,
+                        std::iter::repeat(name.to_string())
+                            .take(count)
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                );
+            }
+            (0, _, Some("&")) if count == 1 => {
+                suggest_new(err, "&'a ");
+            }
+            (0, _, Some("'_")) if count == 1 => {
+                suggest_new(err, "'a");
+            }
+            (0, _, Some(snippet)) if !snippet.ends_with('>') && count == 1 => {
+                suggest_new(err, &format!("{}<'a>", snippet));
+            }
+            (n, ..) if n > 1 => {
+                let spans: Vec<Span> = lifetime_names.iter().map(|lt| lt.span).collect();
+                err.span_note(spans, "these named lifetimes are available to use");
+                if Some("") == snippet.as_deref() {
+                    // This happens when we have `Foo<T>` where we point at the space before `T`,
+                    // but this can be confusing so we give a suggestion with placeholders.
+                    err.span_suggestion_verbose(
+                        span,
+                        "consider using one of the available lifetimes here",
+                        "'lifetime, ".repeat(count),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+            }
+            _ => {}
         }
     }
 }
