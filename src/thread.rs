@@ -248,6 +248,12 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         self.threads[thread_id].state == ThreadState::Terminated
     }
 
+    /// Enable the thread for execution. The thread must be terminated.
+    fn enable_thread(&mut self, thread_id: ThreadId) {
+        assert!(self.has_terminated(thread_id));
+        self.threads[thread_id].state = ThreadState::Enabled;
+    }
+
     /// Get the borrow of the currently active thread.
     fn active_thread_mut(&mut self) -> &mut Thread<'mir, 'tcx> {
         &mut self.threads[self.active_thread]
@@ -523,6 +529,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn has_terminated(&self, thread_id: ThreadId) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_ref();
         Ok(this.machine.threads.has_terminated(thread_id))
+    }
+
+    #[inline]
+    fn enable_thread(&mut self, thread_id: ThreadId) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.machine.threads.enable_thread(thread_id);
+        Ok(())
     }
 
     #[inline]

@@ -38,6 +38,9 @@ pub struct TlsData<'tcx> {
 
     /// Whether we are in the "destruct" phase, during which some operations are UB.
     dtors_running: HashSet<ThreadId>,
+
+    /// The last TlsKey used to retrieve a TLS destructor.
+    last_dtor_key: BTreeMap<ThreadId, TlsKey>,
 }
 
 impl<'tcx> Default for TlsData<'tcx> {
@@ -47,6 +50,7 @@ impl<'tcx> Default for TlsData<'tcx> {
             keys: Default::default(),
             global_dtors: Default::default(),
             dtors_running: Default::default(),
+            last_dtor_key: Default::default(),
         }
     }
 }
@@ -187,21 +191,15 @@ impl<'tcx> TlsData<'tcx> {
     }
 }
 
-impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-
-    /// Run TLS destructors for the main thread on Windows. The implementation
-    /// assumes that we do not support concurrency on Windows yet.
-    ///
-    /// Note: on non-Windows OS this function is a no-op.
-    fn run_windows_tls_dtors(&mut self) -> InterpResult<'tcx> {
+impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    /// Schedule TLS destructors for the main thread on Windows. The
+    /// implementation assumes that we do not support concurrency on Windows
+    /// yet.
+    fn schedule_windows_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        if this.tcx.sess.target.target.target_os != "windows" {
-            return Ok(());
-        }
         let active_thread = this.get_active_thread()?;
         assert_eq!(this.get_total_thread_count()?, 1, "concurrency on Windows not supported");
-        assert!(!this.machine.tls.dtors_running.contains(&active_thread), "running TLS dtors twice");
         this.machine.tls.dtors_running.insert(active_thread);
         // Windows has a special magic linker section that is run on certain events.
         // Instead of searching for that section and supporting arbitrary hooks in there
@@ -221,30 +219,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             StackPopCleanup::None { cleanup: true },
         )?;
 
-        // step until out of stackframes
-        this.run()?;
-
-        // Windows doesn't have other destructors.
+        this.enable_thread(active_thread)?;
         Ok(())
     }
 
-    /// Run TLS destructors for the active thread.
+    /// Schedule the MacOS global dtor to be executed.
     ///
-    /// Note: on Windows OS this function is a no-op because we do not support
-    /// concurrency on Windows yet.
-    ///
-    /// FIXME: we do not support yet deallocation of thread local statics.
-    fn run_tls_dtors_for_active_thread(&mut self) -> InterpResult<'tcx> {
+    /// Note: It is safe to call this function also on other Unixes.
+    fn schedule_macos_global_tls_dtors(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        if this.tcx.sess.target.target.target_os == "windows" {
-            return Ok(());
-        }
         let thread_id = this.get_active_thread()?;
-        assert!(!this.machine.tls.dtors_running.contains(&thread_id), "running TLS dtors twice");
-        this.machine.tls.dtors_running.insert(thread_id);
-
         // The macOS global dtor runs "before any TLS slots get freed", so do that first.
-        if let Some(&(instance, data)) = this.machine.tls.global_dtors.get(&thread_id) {
+        if let Some((instance, data)) = this.machine.tls.global_dtors.remove(&thread_id) {
             trace!("Running global dtor {:?} on {:?} at {:?}", instance, data, thread_id);
 
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
@@ -255,14 +241,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 StackPopCleanup::None { cleanup: true },
             )?;
 
-            // step until out of stackframes
-            this.run()?;
+            // Enable the thread so that it steps through the destructor which
+            // we just scheduled. Since we deleted the destructor, it is
+            // guaranteed that we will schedule it again. The `dtors_running`
+            // flag will prevent the code from adding the destructor again.
+            this.enable_thread(thread_id)?;
         }
+        Ok(())
+    }
 
-        assert!(this.has_terminated(thread_id)?, "running TLS dtors for non-terminated thread");
-        let mut dtor = this.machine.tls.fetch_tls_dtor(None, thread_id);
-        while let Some((instance, ptr, key)) = dtor {
-            trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, thread_id);
+    /// Schedule a pthread TLS destructor.
+    fn schedule_pthread_tls_dtors(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let active_thread = this.get_active_thread()?;
+
+        assert!(this.has_terminated(active_thread)?, "running TLS dtors for non-terminated thread");
+        // Fetch next dtor after `key`.
+        let last_key = this.machine.tls.last_dtor_key.get(&active_thread).cloned();
+        let dtor = match this.machine.tls.fetch_tls_dtor(last_key, active_thread) {
+            dtor @ Some(_) => dtor,
+            // We ran each dtor once, start over from the beginning.
+            None => {
+                this.machine.tls.fetch_tls_dtor(None, active_thread)
+            }
+        };
+        if let Some((instance, ptr, key)) = dtor {
+            this.machine.tls.last_dtor_key.insert(active_thread, key);
+            trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
             assert!(!this.is_null(ptr).unwrap(), "Data can't be NULL when dtor is called!");
 
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
@@ -273,15 +278,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 StackPopCleanup::None { cleanup: true },
             )?;
 
-            // step until out of stackframes
-            this.run()?;
+            this.enable_thread(active_thread)?;
+            return Ok(());
+        }
+        this.machine.tls.last_dtor_key.remove(&active_thread);
 
-            // Fetch next dtor after `key`.
-            dtor = match this.machine.tls.fetch_tls_dtor(Some(key), thread_id) {
-                dtor @ Some(_) => dtor,
-                // We ran each dtor once, start over from the beginning.
-                None => this.machine.tls.fetch_tls_dtor(None, thread_id),
-            };
+        Ok(())
+    }
+}
+
+impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+
+    /// Schedule an active thread's TLS destructor to run on the active thread.
+    /// Note that this function does not run the destructors itself, it just
+    /// schedules them one by one each time it is called.
+    ///
+    /// FIXME: we do not support yet deallocation of thread local statics.
+    fn schedule_tls_dtors_for_active_thread(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let active_thread = this.get_active_thread()?;
+
+        if this.tcx.sess.target.target.target_os == "windows" {
+            if !this.machine.tls.dtors_running.contains(&active_thread) {
+                this.machine.tls.dtors_running.insert(active_thread);
+                this.schedule_windows_tls_dtors()?;
+            }
+        } else {
+            this.machine.tls.dtors_running.insert(active_thread);
+            this.schedule_macos_global_tls_dtors()?;
+            this.schedule_pthread_tls_dtors()?;
         }
 
         Ok(())

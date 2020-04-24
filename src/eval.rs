@@ -211,7 +211,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                     assert!(ecx.step()?, "a terminated thread was scheduled for execution");
                 }
                 SchedulingAction::ExecuteDtors => {
-                    ecx.run_tls_dtors_for_active_thread()?;
+                    ecx.schedule_tls_dtors_for_active_thread()?;
                 }
                 SchedulingAction::Stop => {
                     break;
@@ -219,12 +219,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
             }
             ecx.process_diagnostics();
         }
-        // Read the return code pointer *before* we run TLS destructors, to assert
-        // that it was written to by the time that `start` lang item returned.
         let return_code = ecx.read_scalar(ret_place.into())?.not_undef()?.to_machine_isize(&ecx)?;
-        // Run Windows destructors. (We do not support concurrency on Windows
-        // yet, so we run the destructor of the main thread separately.)
-        ecx.run_windows_tls_dtors()?;
         Ok(return_code)
     })();
 
