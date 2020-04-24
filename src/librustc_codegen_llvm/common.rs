@@ -244,8 +244,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 }
             }
             Scalar::Ptr(ptr) => {
-                let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
-                let base_addr = match alloc_kind {
+                let base_addr = match self.tcx.get_global_alloc(ptr.alloc_id) {
                     Some(GlobalAlloc::Memory(alloc)) => {
                         let init = const_alloc_to_llvm(self, alloc);
                         let value = match alloc.mutability {

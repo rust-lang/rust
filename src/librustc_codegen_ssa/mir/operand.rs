@@ -92,7 +92,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     _ => bug!("from_const: invalid ScalarPair layout: {:#?}", layout),
                 };
                 let a = Scalar::from(Pointer::new(
-                    bx.tcx().alloc_map.lock().create_memory_alloc(data),
+                    bx.tcx().create_memory_alloc(data),
                     Size::from_bytes(start),
                 ));
                 let a_llval = bx.scalar_to_backend(

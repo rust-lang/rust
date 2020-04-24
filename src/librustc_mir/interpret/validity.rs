@@ -416,7 +416,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             if let Some(ptr) = ptr {
                 // not a ZST
                 // Skip validation entirely for some external statics
-                let alloc_kind = self.ecx.tcx.alloc_map.lock().get(ptr.alloc_id);
+                let alloc_kind = self.ecx.tcx.get_global_alloc(ptr.alloc_id);
                 if let Some(GlobalAlloc::Static(did)) = alloc_kind {
                     // See const_eval::machine::MemoryExtra::can_access_statics for why
                     // this check is so important.

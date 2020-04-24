@@ -956,8 +956,6 @@ pub trait PrettyPrinter<'tcx>:
             ) => {
                 let byte_str = self
                     .tcx()
-                    .alloc_map
-                    .lock()
                     .unwrap_memory(ptr.alloc_id)
                     .get_bytes(&self.tcx(), ptr, Size::from_bytes(*data))
                     .unwrap();
@@ -1021,10 +1019,7 @@ pub trait PrettyPrinter<'tcx>:
                 )?;
             }
             (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
-                let instance = {
-                    let alloc_map = self.tcx().alloc_map.lock();
-                    alloc_map.unwrap_fn(ptr.alloc_id)
-                };
+                let instance = self.tcx().unwrap_fn(ptr.alloc_id);
                 self = self.typed_value(
                     |this| this.print_value_path(instance.def_id(), instance.substs),
                     |this| this.print_type(ty),

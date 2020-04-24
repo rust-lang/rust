@@ -1136,8 +1136,7 @@ fn create_mono_items_for_default_impls<'tcx>(
 
 /// Scans the miri alloc in order to find function calls, closures, and drop-glue.
 fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut Vec<MonoItem<'tcx>>) {
-    let alloc_kind = tcx.alloc_map.lock().get(alloc_id);
-    match alloc_kind {
+    match tcx.get_global_alloc(alloc_id) {
         Some(GlobalAlloc::Static(def_id)) => {
             let instance = Instance::mono(tcx, def_id);
             if should_monomorphize_locally(tcx, &instance) {
