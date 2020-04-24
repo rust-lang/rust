@@ -467,7 +467,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     })?;
                 // Make sure we use the ID of the resolved memory, not the lazy one!
                 let id = raw_const.alloc_id;
-                let allocation = tcx.unwrap_memory(id);
+                let allocation = tcx.get_global_alloc(id).unwrap().unwrap_memory();
 
                 (allocation, Some(def_id))
             }

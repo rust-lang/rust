@@ -379,6 +379,28 @@ pub enum GlobalAlloc<'tcx> {
     Memory(&'tcx Allocation),
 }
 
+impl GlobalAlloc<'tcx> {
+    /// Panics if the `GlobalAlloc` does not refer to an `GlobalAlloc::Memory`
+    #[track_caller]
+    #[inline]
+    pub fn unwrap_memory(&self) -> &'tcx Allocation {
+        match *self {
+            GlobalAlloc::Memory(mem) => mem,
+            _ => bug!("expected memory, got {:?}", self),
+        }
+    }
+
+    /// Panics if the `GlobalAlloc` is not `GlobalAlloc::Function`
+    #[track_caller]
+    #[inline]
+    pub fn unwrap_fn(&self) -> Instance<'tcx> {
+        match *self {
+            GlobalAlloc::Function(instance) => instance,
+            _ => bug!("expected function, got {:?}", self),
+        }
+    }
+}
+
 pub struct AllocMap<'tcx> {
     /// Maps `AllocId`s to their corresponding allocations.
     alloc_map: FxHashMap<AllocId, GlobalAlloc<'tcx>>,
@@ -489,22 +511,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn get_global_alloc(&self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
         self.alloc_map.lock().alloc_map.get(&id).cloned()
-    }
-
-    /// Panics if the `AllocId` does not refer to an `Allocation`
-    pub fn unwrap_memory(&self, id: AllocId) -> &'tcx Allocation {
-        match self.get_global_alloc(id) {
-            Some(GlobalAlloc::Memory(mem)) => mem,
-            _ => bug!("expected allocation ID {} to point to memory", id),
-        }
-    }
-
-    /// Panics if the `AllocId` does not refer to a function
-    pub fn unwrap_fn(&self, id: AllocId) -> Instance<'tcx> {
-        match self.get_global_alloc(id) {
-            Some(GlobalAlloc::Function(instance)) => instance,
-            _ => bug!("expected allocation ID {} to point to a function", id),
-        }
     }
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to

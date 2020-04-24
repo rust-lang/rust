@@ -130,7 +130,7 @@ pub(super) fn op_to_const<'tcx>(
 
     let to_const_value = |mplace: MPlaceTy<'_>| match mplace.ptr {
         Scalar::Ptr(ptr) => {
-            let alloc = ecx.tcx.unwrap_memory(ptr.alloc_id);
+            let alloc = ecx.tcx.get_global_alloc(ptr.alloc_id).unwrap().unwrap_memory();
             ConstValue::ByRef { alloc, offset: ptr.offset }
         }
         Scalar::Raw { data, .. } => {
@@ -154,7 +154,10 @@ pub(super) fn op_to_const<'tcx>(
             },
             Immediate::ScalarPair(a, b) => {
                 let (data, start) = match a.not_undef().unwrap() {
-                    Scalar::Ptr(ptr) => (ecx.tcx.unwrap_memory(ptr.alloc_id), ptr.offset.bytes()),
+                    Scalar::Ptr(ptr) => (
+                        ecx.tcx.get_global_alloc(ptr.alloc_id).unwrap().unwrap_memory(),
+                        ptr.offset.bytes(),
+                    ),
                     Scalar::Raw { .. } => (
                         ecx.tcx
                             .intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
@@ -200,7 +203,10 @@ fn validate_and_turn_into_const<'tcx>(
         // whether they become immediates.
         if is_static || cid.promoted.is_some() {
             let ptr = mplace.ptr.assert_ptr();
-            Ok(ConstValue::ByRef { alloc: ecx.tcx.unwrap_memory(ptr.alloc_id), offset: ptr.offset })
+            Ok(ConstValue::ByRef {
+                alloc: ecx.tcx.get_global_alloc(ptr.alloc_id).unwrap().unwrap_memory(),
+                offset: ptr.offset,
+            })
         } else {
             Ok(op_to_const(&ecx, mplace.into()))
         }
