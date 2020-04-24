@@ -205,7 +205,7 @@ impl Validator<'a, 'mir, 'tcx> {
     where
         O: NonConstOp,
     {
-        trace!("check_op: op={:?}", op);
+        debug!("check_op: op={:?}", op);
 
         if op.is_allowed_in_item(self) {
             return;
