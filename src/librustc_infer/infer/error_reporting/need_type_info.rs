@@ -17,23 +17,27 @@ use std::borrow::Cow;
 struct FindHirNodeVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     target: GenericArg<'tcx>,
+    target_span: Span,
     found_node_ty: Option<Ty<'tcx>>,
     found_local_pattern: Option<&'tcx Pat<'tcx>>,
     found_arg_pattern: Option<&'tcx Pat<'tcx>>,
     found_closure: Option<&'tcx Expr<'tcx>>,
     found_method_call: Option<&'tcx Expr<'tcx>>,
+    found_exact_method_call: Option<&'tcx Expr<'tcx>>,
 }
 
 impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target: GenericArg<'tcx>) -> Self {
+    fn new(infcx: &'a InferCtxt<'a, 'tcx>, target: GenericArg<'tcx>, target_span: Span) -> Self {
         Self {
             infcx,
             target,
+            target_span,
             found_node_ty: None,
             found_local_pattern: None,
             found_arg_pattern: None,
             found_closure: None,
             found_method_call: None,
+            found_exact_method_call: None,
         }
     }
 
@@ -103,6 +107,17 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        if let ExprKind::MethodCall(_, call_span, exprs) = expr.kind {
+            if call_span == self.target_span
+                && Some(self.target)
+                    == self.infcx.in_progress_tables.and_then(|tables| {
+                        tables.borrow().node_type_opt(exprs.first().unwrap().hir_id).map(Into::into)
+                    })
+            {
+                self.found_exact_method_call = Some(&expr);
+                return;
+            }
+        }
         if self.node_ty_contains_target(expr.hir_id).is_some() {
             match expr.kind {
                 ExprKind::Closure(..) => self.found_closure = Some(&expr),
@@ -234,7 +249,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
         let (name, name_sp, descr, parent_name, parent_descr) = self.extract_type_name(&ty, None);
 
-        let mut local_visitor = FindHirNodeVisitor::new(&self, ty.into());
+        let mut local_visitor = FindHirNodeVisitor::new(&self, ty.into(), span);
         let ty_to_string = |ty: Ty<'tcx>| -> String {
             let mut s = String::new();
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
@@ -287,14 +302,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings)
         };
 
-        let ty_msg = match local_visitor.found_node_ty {
-            Some(ty::TyS { kind: ty::Closure(_, substs), .. }) => {
+        let ty_msg = match (local_visitor.found_node_ty, local_visitor.found_exact_method_call) {
+            (_, Some(_)) => String::new(),
+            (Some(ty::TyS { kind: ty::Closure(_, substs), .. }), _) => {
                 let fn_sig = substs.as_closure().sig();
                 let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
                 format!(" for the closure `fn({}) -> {}`", args, ret)
             }
-            Some(ty) if is_named_and_not_impl_trait(ty) => {
+            (Some(ty), _) if is_named_and_not_impl_trait(ty) => {
                 let ty = ty_to_string(ty);
                 format!(" for `{}`", ty)
             }
@@ -370,7 +386,37 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => "a type".to_string(),
         };
 
-        if let Some(pattern) = local_visitor.found_arg_pattern {
+        if let Some(e) = local_visitor.found_exact_method_call {
+            if let ExprKind::MethodCall(segment, ..) = &e.kind {
+                // Suggest specifying type params or point out the return type of the call:
+                //
+                // error[E0282]: type annotations needed
+                //   --> $DIR/type-annotations-needed-expr.rs:2:39
+                //    |
+                // LL |     let _ = x.into_iter().sum() as f64;
+                //    |                           ^^^
+                //    |                           |
+                //    |                           cannot infer type for `S`
+                //    |                           help: consider specifying the type argument in
+                //    |                           the method call: `sum::<S>`
+                //    |
+                //    = note: type must be known at this point
+                //
+                // or
+                //
+                // error[E0282]: type annotations needed
+                //   --> $DIR/issue-65611.rs:59:20
+                //    |
+                // LL |     let x = buffer.last().unwrap().0.clone();
+                //    |             -------^^^^--
+                //    |             |      |
+                //    |             |      cannot infer type for `T`
+                //    |             this method call resolves to `std::option::Option<&T>`
+                //    |
+                //    = note: type must be known at this point
+                self.annotate_method_call(segment, e, &mut err);
+            }
+        } else if let Some(pattern) = local_visitor.found_arg_pattern {
             // We don't want to show the default label for closures.
             //
             // So, before clearing, the output would look something like this:
