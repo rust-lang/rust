@@ -16,6 +16,7 @@ use ra_syntax::{AstNode, SourceFile};
 pub use analysis_bench::{analysis_bench, BenchWhat, Position};
 pub use analysis_stats::analysis_stats;
 pub use diagnostics::diagnostics;
+pub use load_cargo::load_cargo;
 
 #[derive(Clone, Copy)]
 pub enum Verbosity {
