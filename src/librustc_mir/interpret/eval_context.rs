@@ -81,14 +81,9 @@ pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
     ////////////////////////////////////////////////////////////////////////////////
-    /// The block that is currently executed (or will be executed after the above call stacks
-    /// return).
     /// If this is `None`, we are unwinding and this function doesn't need any clean-up.
     /// Just continue the same as with `Resume`.
-    pub block: Option<mir::BasicBlock>,
-
-    /// The index of the currently evaluated statement.
-    pub stmt: usize,
+    pub loc: Option<mir::Location>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
@@ -168,8 +163,7 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
             return_to_block: self.return_to_block,
             return_place: self.return_place,
             locals: self.locals,
-            block: self.block,
-            stmt: self.stmt,
+            loc: self.loc,
             extra,
         }
     }
@@ -178,10 +172,10 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
 impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// Return the `SourceInfo` of the current instruction.
     pub fn current_source_info(&self) -> Option<mir::SourceInfo> {
-        self.block.map(|block| {
-            let block = &self.body.basic_blocks()[block];
-            if self.stmt < block.statements.len() {
-                block.statements[self.stmt].source_info
+        self.loc.map(|loc| {
+            let block = &self.body.basic_blocks()[loc.block];
+            if loc.statement_index < block.statements.len() {
+                block.statements[loc.statement_index].source_info
             } else {
                 block.terminator().source_info
             }
@@ -615,14 +609,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
-            block: Some(mir::START_BLOCK),
+            loc: Some(mir::Location::START),
             return_to_block,
             return_place,
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
             instance,
-            stmt: 0,
             extra: (),
         };
         let frame = M::init_frame_extra(self, pre_frame)?;
@@ -666,9 +659,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Jump to the given block.
     #[inline]
     pub fn go_to_block(&mut self, target: mir::BasicBlock) {
-        let frame = self.frame_mut();
-        frame.block = Some(target);
-        frame.stmt = 0;
+        self.frame_mut().loc = Some(mir::Location { block: target, statement_index: 0 });
     }
 
     /// *Return* to the given `target` basic block.
@@ -690,9 +681,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// If `target` is `None`, that indicates the function does not need cleanup during
     /// unwinding, and we will just keep propagating that upwards.
     pub fn unwind_to_block(&mut self, target: Option<mir::BasicBlock>) {
-        let frame = self.frame_mut();
-        frame.block = target;
-        frame.stmt = 0;
+        self.frame_mut().loc = target.map(|block| mir::Location { block, statement_index: 0 });
     }
 
     /// Pops the current frame from the stack, deallocating the
@@ -719,9 +708,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Sanity check `unwinding`.
         assert_eq!(
             unwinding,
-            match self.frame().block {
+            match self.frame().loc {
                 None => true,
-                Some(block) => self.body().basic_blocks()[block].is_cleanup,
+                Some(loc) => self.body().basic_blocks()[loc.block].is_cleanup,
             }
         );
 
@@ -973,13 +962,14 @@ where
     Tag: HashStable<StableHashingContext<'ctx>>,
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'ctx>, hasher: &mut StableHasher) {
-        self.body.hash_stable(hcx, hasher);
-        self.instance.hash_stable(hcx, hasher);
-        self.return_to_block.hash_stable(hcx, hasher);
-        self.return_place.as_ref().map(|r| &**r).hash_stable(hcx, hasher);
-        self.locals.hash_stable(hcx, hasher);
-        self.block.hash_stable(hcx, hasher);
-        self.stmt.hash_stable(hcx, hasher);
-        self.extra.hash_stable(hcx, hasher);
+        // Exhaustive match on fields to make sure we forget no field.
+        let Frame { body, instance, return_to_block, return_place, locals, loc, extra } = self;
+        body.hash_stable(hcx, hasher);
+        instance.hash_stable(hcx, hasher);
+        return_to_block.hash_stable(hcx, hasher);
+        return_place.as_ref().map(|r| &**r).hash_stable(hcx, hasher);
+        locals.hash_stable(hcx, hasher);
+        loc.hash_stable(hcx, hasher);
+        extra.hash_stable(hcx, hasher);
     }
 }
