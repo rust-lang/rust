@@ -57,9 +57,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     }
                     match item {
                         hir::AssocItem::Function(func) => {
-                            if !func.has_self_param(ctx.db) {
-                                acc.add_function(ctx, func, None);
-                            }
+                            acc.add_function(ctx, func, None);
                         }
                         hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
                         hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
@@ -86,9 +84,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 }
                 match item {
                     hir::AssocItem::Function(func) => {
-                        if !func.has_self_param(ctx.db) {
-                            acc.add_function(ctx, func, None);
-                        }
+                        acc.add_function(ctx, func, None);
                     }
                     hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
                     hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
@@ -473,6 +469,42 @@ mod tests {
                 kind: Function,
                 lookup: "m",
                 detail: "fn m()",
+                documentation: Documentation(
+                    "An associated method",
+                ),
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn completes_struct_associated_method_with_self() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                /// A Struct
+                struct S;
+
+                impl S {
+                    /// An associated method
+                    fn m(&self) { }
+                }
+
+                fn foo() { let _ = S::<|> }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "m()",
+                source_range: [105; 105),
+                delete: [105; 105),
+                insert: "m()$0",
+                kind: Method,
+                lookup: "m",
+                detail: "fn m(&self)",
                 documentation: Documentation(
                     "An associated method",
                 ),
