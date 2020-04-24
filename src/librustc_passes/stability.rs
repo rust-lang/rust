@@ -343,7 +343,7 @@ impl<'a, 'tcx> MissingStabilityAnnotations<'a, 'tcx> {
             !self.tcx.sess.opts.test && stab.is_none() && self.access_levels.is_reachable(hir_id);
         if is_error {
             let def_id = self.tcx.hir().local_def_id(hir_id);
-            let descr = self.tcx.def_kind(def_id).descr(def_id);
+            let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
             self.tcx.sess.span_err(span, &format!("{} has missing stability attribute", descr));
         }
     }
