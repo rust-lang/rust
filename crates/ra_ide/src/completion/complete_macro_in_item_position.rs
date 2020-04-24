@@ -41,7 +41,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "foo!",
+                label: "foo!(…)",
                 source_range: [46; 46),
                 delete: [46; 46),
                 insert: "foo!($0)",
@@ -81,7 +81,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "vec!",
+                label: "vec![…]",
                 source_range: [280; 280),
                 delete: [280; 280),
                 insert: "vec![$0]",
@@ -118,7 +118,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "foo!",
+                label: "foo! {…}",
                 source_range: [163; 163),
                 delete: [163; 163),
                 insert: "foo! {$0}",

@@ -733,7 +733,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "bar!",
+                label: "bar!(…)",
                 source_range: [252; 252),
                 delete: [252; 252),
                 insert: "bar!($0)",
@@ -741,7 +741,7 @@ mod tests {
                 detail: "macro_rules! bar",
             },
             CompletionItem {
-                label: "baz!",
+                label: "baz!(…)",
                 source_range: [252; 252),
                 delete: [252; 252),
                 insert: "baz!($0)",
@@ -749,7 +749,7 @@ mod tests {
                 detail: "#[macro_export]\nmacro_rules! baz",
             },
             CompletionItem {
-                label: "foo!",
+                label: "foo!(…)",
                 source_range: [252; 252),
                 delete: [252; 252),
                 insert: "foo!($0)",
@@ -802,7 +802,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "foo!",
+                label: "foo!(…)",
                 source_range: [49; 49),
                 delete: [49; 49),
                 insert: "foo!($0)",
@@ -841,7 +841,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "foo!",
+                label: "foo!(…)",
                 source_range: [57; 57),
                 delete: [57; 57),
                 insert: "foo!($0)",
@@ -880,7 +880,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "foo!",
+                label: "foo!(…)",
                 source_range: [50; 50),
                 delete: [50; 50),
                 insert: "foo!($0)",
@@ -953,7 +953,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "m!",
+                label: "m!(…)",
                 source_range: [145; 145),
                 delete: [145; 145),
                 insert: "m!($0)",
@@ -1006,7 +1006,7 @@ mod tests {
             @r###"
         [
             CompletionItem {
-                label: "m!",
+                label: "m!(…)",
                 source_range: [145; 146),
                 delete: [145; 146),
                 insert: "m!($0)",
@@ -1059,7 +1059,7 @@ mod tests {
                     @r###"
         [
             CompletionItem {
-                label: "m!",
+                label: "m!(…)",
                 source_range: [145; 146),
                 delete: [145; 146),
                 insert: "m!($0)",
