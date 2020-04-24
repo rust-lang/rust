@@ -1,5 +1,3 @@
-// ignore-tidy-undocumented-unsafe
-
 use crate::cmp;
 use crate::fmt;
 use crate::mem;
@@ -77,6 +75,8 @@ impl Layout {
             return Err(LayoutErr { private: () });
         }
 
+        // SAFETY: the conditions for `from_size_align_unchecked` have been
+        // checked above.
         unsafe { Ok(Layout::from_size_align_unchecked(size, align)) }
     }
 
@@ -115,7 +115,7 @@ impl Layout {
     #[inline]
     pub const fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
-        // Note that the align is guaranteed by rustc to be a power of two and
+        // SAFETY: the align is guaranteed by Rust to be a power of two and
         // the size+align combo is guaranteed to fit in our address space. As a
         // result use the unchecked constructor here to avoid inserting code
         // that panics if it isn't optimized well enough.
@@ -129,8 +129,8 @@ impl Layout {
     #[inline]
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
-        // See rationale in `new` for why this is using an unsafe variant below
         debug_assert!(Layout::from_size_align(size, align).is_ok());
+        // SAFETY: see rationale in `new` for why this is using an unsafe variant below
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }
 
@@ -143,7 +143,7 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub const fn dangling(&self) -> NonNull<u8> {
-        // align is non-zero and a power of two
+        // SAFETY: align is guaranteed to be non-zero
         unsafe { NonNull::new_unchecked(self.align() as *mut u8) }
     }
 
@@ -249,11 +249,9 @@ impl Layout {
         let padded_size = self.size() + self.padding_needed_for(self.align());
         let alloc_size = padded_size.checked_mul(n).ok_or(LayoutErr { private: () })?;
 
-        unsafe {
-            // self.align is already known to be valid and alloc_size has been
-            // padded already.
-            Ok((Layout::from_size_align_unchecked(alloc_size, self.align()), padded_size))
-        }
+        // SAFETY: self.align is already known to be valid and alloc_size has been
+        // padded already.
+        unsafe { Ok((Layout::from_size_align_unchecked(alloc_size, self.align()), padded_size)) }
     }
 
     /// Creates a layout describing the record for `self` followed by
