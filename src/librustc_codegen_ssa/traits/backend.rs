@@ -89,6 +89,20 @@ pub trait CodegenBackend {
     ) -> Result<(), ErrorReported>;
 }
 
+//TODO: Put this somewhere else?
+#[derive(Debug)]
+pub enum RawDylibImportName {
+    Name(Symbol),
+    Ordinal(u16),
+}
+
+#[derive(Debug)]
+pub struct RawDylibImports {
+    pub name: Symbol,
+    pub items: Vec<RawDylibImportName>
+}
+
+
 pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Send + Sync {
     fn new_metadata(&self, sess: TyCtxt<'_>, mod_name: &str) -> Self::Module;
     fn write_compressed_metadata<'tcx>(
@@ -96,6 +110,12 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         tcx: TyCtxt<'tcx>,
         metadata: &EncodedMetadata,
         llvm_module: &mut Self::Module,
+    );
+    fn write_idata_sections<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        raw_dylib_imports: &[RawDylibImports],
+        mods: &mut Self::Module,
     );
     fn codegen_allocator<'tcx>(
         &self,

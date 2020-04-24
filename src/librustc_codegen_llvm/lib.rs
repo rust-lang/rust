@@ -90,6 +90,14 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     ) {
         base::write_compressed_metadata(tcx, metadata, llvm_module)
     }
+    fn write_idata_sections<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        raw_dylibs: &[RawDylibImports],
+        module: &mut ModuleLlvm,
+    ){
+        base::write_idata_sections(tcx, raw_dylibs, module)
+    }
     fn codegen_allocator<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
