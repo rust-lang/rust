@@ -133,7 +133,11 @@ impl<CTX: QueryContext> QueryJob<CTX> {
     /// as there are no concurrent jobs which could be waiting on us
     pub fn signal_complete(self) {
         #[cfg(parallel_compiler)]
-        self.latch.map(|latch| latch.set());
+        {
+            if let Some(latch) = self.latch {
+                latch.set();
+            }
+        }
     }
 }
 

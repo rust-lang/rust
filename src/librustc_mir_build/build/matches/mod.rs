@@ -1388,7 +1388,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         // Insert a Shallow borrow of any places that is switched on.
-        fake_borrows.as_mut().map(|fb| fb.insert(match_place));
+        if let Some(fb) = fake_borrows {
+            fb.insert(match_place);
+        }
 
         // perform the test, branching to one of N blocks. For each of
         // those N possible outcomes, create a (initially empty)

@@ -213,7 +213,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             None,
         );
 
-        assoc_bindings.first().map(|b| Self::prohibit_assoc_ty_binding(self.tcx(), b.span));
+        if let Some(b) = assoc_bindings.first() {
+            Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
+        }
 
         substs
     }
@@ -1095,7 +1097,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> ty::TraitRef<'tcx> {
         let (substs, assoc_bindings, _) =
             self.create_substs_for_ast_trait_ref(span, trait_def_id, self_ty, trait_segment);
-        assoc_bindings.first().map(|b| AstConv::prohibit_assoc_ty_binding(self.tcx(), b.span));
+        if let Some(b) = assoc_bindings.first() {
+            AstConv::prohibit_assoc_ty_binding(self.tcx(), b.span);
+        }
         ty::TraitRef::new(trait_def_id, substs)
     }
 

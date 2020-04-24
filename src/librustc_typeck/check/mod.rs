@@ -4492,15 +4492,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => Err(ErrorReported),
             };
             if item_name.name != kw::Invalid {
-                self.report_method_error(
+                if let Some(mut e) = self.report_method_error(
                     span,
                     ty,
                     item_name,
                     SelfSource::QPath(qself),
                     error,
                     None,
-                )
-                .map(|mut e| e.emit());
+                ) {
+                    e.emit();
+                }
             }
             result
         });

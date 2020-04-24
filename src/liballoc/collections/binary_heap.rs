@@ -665,6 +665,34 @@ impl<T: Ord> BinaryHeap<T> {
     pub fn drain_sorted(&mut self) -> DrainSorted<'_, T> {
         DrainSorted { inner: self }
     }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns
+    /// `false`. The elements are visited in unsorted (and unspecified) order.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_retain)]
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let mut heap = BinaryHeap::from(vec![-10, -5, 1, 2, 4, 13]);
+    ///
+    /// heap.retain(|x| x % 2 == 0); // only keep even numbers
+    ///
+    /// assert_eq!(heap.into_sorted_vec(), [-10, 2, 4])
+    /// ```
+    #[unstable(feature = "binary_heap_retain", issue = "71503")]
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&T) -> bool,
+    {
+        self.data.retain(f);
+        self.rebuild();
+    }
 }
 
 impl<T> BinaryHeap<T> {

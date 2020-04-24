@@ -36,7 +36,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Requires that the two types unify, and prints an error message if
     // they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
-        self.demand_suptype_diag(sp, expected, actual).map(|mut e| e.emit());
+        if let Some(mut e) = self.demand_suptype_diag(sp, expected, actual) {
+            e.emit();
+        }
     }
 
     pub fn demand_suptype_diag(
