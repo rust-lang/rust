@@ -254,9 +254,14 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         self.threads[thread_id].state = ThreadState::Enabled;
     }
 
-    /// Get the borrow of the currently active thread.
+    /// Get a mutable borrow of the currently active thread.
     fn active_thread_mut(&mut self) -> &mut Thread<'mir, 'tcx> {
         &mut self.threads[self.active_thread]
+    }
+
+    /// Get a shared borrow of the currently active thread.
+    fn active_thread_ref(&self) -> &Thread<'mir, 'tcx> {
+        &self.threads[self.active_thread]
     }
 
     /// Mark the thread as detached, which means that no other thread will try
@@ -304,9 +309,9 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Get the name of the active thread.
-    fn get_thread_name(&mut self) -> InterpResult<'tcx, Vec<u8>> {
-        if let Some(ref thread_name) = self.active_thread_mut().thread_name {
-            Ok(thread_name.clone())
+    fn get_thread_name(&self) -> InterpResult<'tcx, &[u8]> {
+        if let Some(ref thread_name) = self.active_thread_ref().thread_name {
+            Ok(thread_name)
         } else {
             throw_ub_format!("thread {:?} has no name set", self.active_thread)
         }
@@ -557,8 +562,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[inline]
-    fn get_active_thread_name(&mut self) -> InterpResult<'tcx, Vec<u8>> {
-        let this = self.eval_context_mut();
+    fn get_active_thread_name<'c>(&'c self) -> InterpResult<'tcx, &'c [u8]>
+    where
+        'mir: 'c,
+    {
+        let this = self.eval_context_ref();
         this.machine.threads.get_thread_name()
     }
 

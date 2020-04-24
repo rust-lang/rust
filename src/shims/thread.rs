@@ -119,7 +119,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.set_active_thread_name(name)?;
         } else if option == this.eval_libc_i32("PR_GET_NAME")? {
             let address = this.read_scalar(arg2)?.not_undef()?;
-            let name = this.get_active_thread_name()?;
+            let name = this.get_active_thread_name()?.to_vec();
             this.memory.write_bytes(address, name)?;
         } else {
             throw_unsup_format!("Unsupported prctl option.");
