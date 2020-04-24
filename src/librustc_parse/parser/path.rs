@@ -1,5 +1,5 @@
 use super::ty::{AllowPlus, RecoverQPath};
-use super::{Parser, TokenType};
+use super::{Parser, Restrictions, TokenType};
 use crate::maybe_whole;
 use rustc_ast::ast::{self, AngleBracketedArg, AngleBracketedArgs, GenericArg, ParenthesizedArgs};
 use rustc_ast::ast::{AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
@@ -479,36 +479,34 @@ impl<'a> Parser<'a> {
             GenericArg::Lifetime(self.expect_lifetime())
         } else if self.check_const_arg() {
             // Parse const argument.
-            let expr = if let token::OpenDelim(token::Brace) = self.token.kind {
+            let value = if let token::OpenDelim(token::Brace) = self.token.kind {
                 self.parse_block_expr(
                     None,
                     self.token.span,
                     BlockCheckMode::Default,
                     ast::AttrVec::new(),
                 )?
-            } else if self.token.is_ident() {
+            } else {
                 // FIXME(const_generics): to distinguish between idents for types and consts,
                 // we should introduce a GenericArg::Ident in the AST and distinguish when
                 // lowering to the HIR. For now, idents for const args are not permitted.
-                if self.token.is_bool_lit() {
-                    self.parse_literal_maybe_minus()?
-                } else {
-                    let span = self.token.span;
-                    let msg = "identifiers may currently not be used for const generics";
-                    self.struct_span_err(span, msg).emit();
-                    let block = self.mk_block_err(span);
-                    self.mk_expr(span, ast::ExprKind::Block(block, None), ast::AttrVec::new())
-                }
-            } else {
-                self.parse_literal_maybe_minus()?
+                let start = self.token.span;
+                self.parse_expr_res(Restrictions::CONST_EXPR, None).map_err(|mut err| {
+                    err.span_label(
+                        start.shrink_to_lo(),
+                        "while parsing a `const` argument starting here",
+                    );
+                    err
+                })?
             };
-            GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value: expr })
+            GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
         } else if self.check_type() {
             // Parse type argument.
             GenericArg::Type(self.parse_ty()?)
         } else {
             return Ok(None);
         };
+        // FIXME: recover from const expressions without braces that require them.
         Ok(Some(arg))
     }
 }

@@ -15,8 +15,7 @@ fn b() {
 }
 fn c() {
     let bar = 3;
-    foo::<3 + 3>();
-    //~^ ERROR expected one of `,` or `>`, found `+`
+    foo::<3 + 3>(); // ok
 }
 
 fn main() {}

@@ -4,12 +4,6 @@ error: expected one of `!`, `(`, `,`, `>`, `?`, `for`, lifetime, or path, found 
 LL |     foo::<bar + 3>();
    |                 ^ expected one of 8 possible tokens
 
-error: expected one of `,` or `>`, found `+`
-  --> $DIR/const-expression-missing-braces.rs:18:13
-   |
-LL |     foo::<3 + 3>();
-   |             ^ expected one of `,` or `>`
-
 error: likely `const` expression parsed as trait bounds
   --> $DIR/const-expression-missing-braces.rs:13:11
    |
@@ -21,5 +15,5 @@ help: if you meant to write a `const` expression, surround the expression with b
 LL |     foo::<{ bar + bar }>();
    |           ^           ^
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
