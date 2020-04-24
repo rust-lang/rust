@@ -358,7 +358,7 @@ fn env_expand(
     // However, we cannot use an empty string here, because for
     // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
     // `include!("foo.rs"), which might go to infinite loop
-    let s = get_env_inner(db, arg_id, &key).unwrap_or("__RA_UNIMPLEMENTATED__".to_string());
+    let s = get_env_inner(db, arg_id, &key).unwrap_or_else(|| "__RA_UNIMPLEMENTATED__".to_string());
     let expanded = quote! { #s };
 
     Ok((expanded, FragmentKind::Expr))

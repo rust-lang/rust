@@ -384,7 +384,7 @@ pub fn handle_runnables(
         args: check_args,
         extra_args: Vec::new(),
         env: FxHashMap::default(),
-        cwd: workspace_root.map(|root| root.to_string_lossy().to_string()),
+        cwd: workspace_root.map(|root| root.to_owned()),
     });
     Ok(res)
 }
@@ -984,7 +984,7 @@ fn to_lsp_runnable(
             m.insert("RUST_BACKTRACE".to_string(), "short".to_string());
             m
         },
-        cwd: world.workspace_root_for(file_id).map(|root| root.to_string_lossy().to_string()),
+        cwd: world.workspace_root_for(file_id).map(|root| root.to_owned()),
     })
 }
 

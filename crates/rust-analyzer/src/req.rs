@@ -17,6 +17,7 @@ pub use lsp_types::{
     SignatureHelp, SymbolKind, TextDocumentEdit, TextDocumentPositionParams, TextEdit,
     WorkDoneProgressParams, WorkspaceEdit, WorkspaceSymbolParams,
 };
+use std::path::PathBuf;
 
 pub enum AnalyzerStatus {}
 
@@ -141,7 +142,7 @@ pub struct Runnable {
     pub args: Vec<String>,
     pub extra_args: Vec<String>,
     pub env: FxHashMap<String, String>,
-    pub cwd: Option<String>,
+    pub cwd: Option<PathBuf>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
