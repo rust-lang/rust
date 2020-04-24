@@ -386,10 +386,8 @@ fn test_vec_from_vecdeque() {
         assert!(vec.into_iter().eq(vd));
     }
 
-    #[cfg(not(miri))] // Miri is too slow
-    let max_pwr = 7;
-    #[cfg(miri)]
-    let max_pwr = 5;
+    // Miri is too slow
+    let max_pwr = if cfg!(miri) { 5 } else { 7 };
 
     for cap_pwr in 0..max_pwr {
         // Make capacity as a (2^x)-1, so that the ring size is 2^x

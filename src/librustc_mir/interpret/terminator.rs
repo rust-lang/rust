@@ -52,7 +52,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Call { ref func, ref args, destination, ref cleanup, .. } => {
                 let old_stack = self.frame_idx();
-                let old_bb = self.frame().block;
+                let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
                 let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
@@ -79,7 +79,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
                 // did a jump to another block.
-                if self.frame_idx() == old_stack && self.frame().block == old_bb {
+                if self.frame_idx() == old_stack && self.frame().loc == old_loc {
                     span_bug!(terminator.source_info.span, "evaluating this call made no progress");
                 }
             }

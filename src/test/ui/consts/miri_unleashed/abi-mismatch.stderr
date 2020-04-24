@@ -1,29 +1,27 @@
 warning: skipping const checks
-  --> $DIR/abi-mismatch.rs:9:5
+  --> $DIR/abi-mismatch.rs:10:5
    |
 LL |     my_fn();
    |     ^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/abi-mismatch.rs:13:39
+  --> $DIR/abi-mismatch.rs:17:40
    |
-LL | const VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: any use of this value will cause an error
-  --> $DIR/abi-mismatch.rs:9:5
+error[E0080]: could not evaluate static initializer
+  --> $DIR/abi-mismatch.rs:10:5
    |
 LL |     my_fn();
    |     ^^^^^^^
    |     |
    |     calling a function with ABI C using caller ABI Rust
-   |     inside `call_rust_fn` at $DIR/abi-mismatch.rs:9:5
-   |     inside `VAL` at $DIR/abi-mismatch.rs:13:17
+   |     inside `call_rust_fn` at $DIR/abi-mismatch.rs:10:5
 ...
-LL | const VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
-   | --------------------------------------------------------------------------------------
-   |
-   = note: `#[deny(const_err)]` on by default
+LL | static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
+   |                  --------------------------------------------------------------------- inside `VAL` at $DIR/abi-mismatch.rs:17:18
 
 error: aborting due to previous error; 2 warnings emitted
 
+For more information about this error, try `rustc --explain E0080`.

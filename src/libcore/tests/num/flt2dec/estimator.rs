@@ -52,12 +52,10 @@ fn test_estimate_scaling_factor() {
     assert_almost_eq!(estimate_scaling_factor(1, -1074), -323);
     assert_almost_eq!(estimate_scaling_factor(0x1fffffffffffff, 971), 309);
 
-    #[cfg(not(miri))] // Miri is too slow
-    let iter = -1074..972;
-    #[cfg(miri)]
-    let iter = (-1074..972).step_by(37);
+    // Miri is too slow
+    let step = if cfg!(miri) { 37 } else { 1 };
 
-    for i in iter {
+    for i in (-1074..972).step_by(step) {
         let expected = super::ldexp_f64(1.0, i).log10().ceil();
         assert_almost_eq!(estimate_scaling_factor(1, i as i16), expected as i16);
     }

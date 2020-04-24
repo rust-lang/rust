@@ -621,10 +621,8 @@ fn test_split_off_empty_left() {
 
 #[test]
 fn test_split_off_large_random_sorted() {
-    #[cfg(not(miri))] // Miri is too slow
-    let mut data = rand_data(1529);
-    #[cfg(miri)]
-    let mut data = rand_data(529);
+    // Miri is too slow
+    let mut data = if cfg!(miri) { rand_data(529) } else { rand_data(1529) };
     // special case with maximum height.
     data.sort();
 

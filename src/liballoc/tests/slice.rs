@@ -463,15 +463,9 @@ fn test_sort() {
 
 #[test]
 fn test_sort_stability() {
-    #[cfg(not(miri))] // Miri is too slow
-    let large_range = 500..510;
-    #[cfg(not(miri))] // Miri is too slow
-    let rounds = 10;
-
-    #[cfg(miri)]
-    let large_range = 0..0; // empty range
-    #[cfg(miri)]
-    let rounds = 1;
+    // Miri is too slow
+    let large_range = if cfg!(miri) { 0..0 } else { 500..510 };
+    let rounds = if cfg!(miri) { 1 } else { 10 };
 
     for len in (2..25).chain(large_range) {
         for _ in 0..rounds {
@@ -1727,15 +1721,9 @@ fn panic_safe() {
 
     let mut rng = thread_rng();
 
-    #[cfg(not(miri))] // Miri is too slow
-    let lens = (1..20).chain(70..MAX_LEN);
-    #[cfg(not(miri))] // Miri is too slow
-    let moduli = &[5, 20, 50];
-
-    #[cfg(miri)]
-    let lens = 1..10;
-    #[cfg(miri)]
-    let moduli = &[5];
+    // Miri is too slow
+    let lens = if cfg!(miri) { (1..10).chain(20..21) } else { (1..20).chain(70..MAX_LEN) };
+    let moduli: &[u32] = if cfg!(miri) { &[5] } else { &[5, 20, 50] };
 
     for len in lens {
         for &modulus in moduli {

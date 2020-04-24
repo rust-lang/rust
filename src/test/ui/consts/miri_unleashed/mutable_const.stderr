@@ -1,25 +1,26 @@
 warning: skipping const checks
-  --> $DIR/mutable_const.rs:10:38
+  --> $DIR/mutable_const.rs:15:38
    |
 LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    |                                      ^^^^^^^^^^^^^^^^^^^^
 
 error: any use of this value will cause an error
-  --> $DIR/mutable_const.rs:16:9
+  --> $DIR/mutable_const.rs:21:9
    |
 LL | / const MUTATING_BEHIND_RAW: () = {
 LL | |     // Test that `MUTABLE_BEHIND_RAW` is actually immutable, by doing this at const time.
 LL | |     unsafe {
 LL | |         *MUTABLE_BEHIND_RAW = 99
-   | |         ^^^^^^^^^^^^^^^^^^^^^^^^ writing to alloc2 which is read-only
+   | |         ^^^^^^^^^^^^^^^^^^^^^^^^ writing to allocN which is read-only
+...  |
 LL | |     }
 LL | | };
    | |__-
    |
 note: the lint level is defined here
-  --> $DIR/mutable_const.rs:5:9
+  --> $DIR/mutable_const.rs:6:9
    |
-LL | #![deny(const_err)]
+LL | #![deny(const_err)] // The `allow` variant is tested by `mutable_const2`.
    |         ^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted

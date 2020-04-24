@@ -2,9 +2,13 @@ error[E0106]: missing lifetime specifier
   --> $DIR/foreign-fn-return-lifetime.rs:5:19
    |
 LL |     pub fn f() -> &u8;
-   |                   ^ help: consider giving it a 'static lifetime: `&'static`
+   |                   ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime
+   |
+LL |     pub fn f() -> &'static u8;
+   |                   ^^^^^^^^
 
 error: aborting due to previous error
 

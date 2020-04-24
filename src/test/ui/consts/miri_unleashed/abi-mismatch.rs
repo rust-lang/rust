@@ -2,15 +2,20 @@
 // compile-flags: -Z unleash-the-miri-inside-of-you
 
 #![feature(const_extern_fn)]
+#![allow(const_err)]
 
 const extern "C" fn c_fn() {}
 
 const fn call_rust_fn(my_fn: extern "Rust" fn()) {
-    my_fn(); //~ ERROR any use of this value will cause an error
+    my_fn();
     //~^ WARN skipping const checks
+    //~| ERROR could not evaluate static initializer
+    //~| NOTE calling a function with ABI C using caller ABI Rust
+    //~| NOTE inside `call_rust_fn`
 }
 
-const VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
+static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
 //~^ WARN skipping const checks
+//~| NOTE inside `VAL`
 
 fn main() {}

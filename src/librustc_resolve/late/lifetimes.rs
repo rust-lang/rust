@@ -2393,52 +2393,28 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
 
         let mut err = self.report_missing_lifetime_specifiers(span, lifetime_refs.len());
-        let mut add_label = true;
 
         if let Some(params) = error {
-            if lifetime_refs.len() == 1 {
-                add_label = add_label && self.report_elision_failure(&mut err, params, span);
+            // If there's no lifetime available, suggest `'static`.
+            if self.report_elision_failure(&mut err, params) && lifetime_names.is_empty() {
+                lifetime_names.insert(ast::Ident::from_str("'static"));
             }
         }
-        if add_label {
-            self.add_missing_lifetime_specifiers_label(
-                &mut err,
-                span,
-                lifetime_refs.len(),
-                &lifetime_names,
-                error.map(|p| &p[..]).unwrap_or(&[]),
-            );
-        }
-
+        self.add_missing_lifetime_specifiers_label(
+            &mut err,
+            span,
+            lifetime_refs.len(),
+            &lifetime_names,
+            error.map(|p| &p[..]).unwrap_or(&[]),
+        );
         err.emit();
-    }
-
-    fn suggest_lifetime(&self, db: &mut DiagnosticBuilder<'_>, span: Span, msg: &str) -> bool {
-        match self.tcx.sess.source_map().span_to_snippet(span) {
-            Ok(ref snippet) => {
-                let (sugg, applicability) = if snippet == "&" {
-                    ("&'static ".to_owned(), Applicability::MachineApplicable)
-                } else if snippet == "'_" {
-                    ("'static".to_owned(), Applicability::MachineApplicable)
-                } else {
-                    (format!("{} + 'static", snippet), Applicability::MaybeIncorrect)
-                };
-                db.span_suggestion(span, msg, sugg, applicability);
-                false
-            }
-            Err(_) => {
-                db.help(msg);
-                true
-            }
-        }
     }
 
     fn report_elision_failure(
         &mut self,
         db: &mut DiagnosticBuilder<'_>,
         params: &[ElisionFailureInfo],
-        span: Span,
-    ) -> bool {
+    ) -> bool /* add `'static` lifetime to lifetime list */ {
         let mut m = String::new();
         let len = params.len();
 
@@ -2487,29 +2463,28 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 "this function's return type contains a borrowed value, \
                  but there is no value for it to be borrowed from",
             );
-            self.suggest_lifetime(db, span, "consider giving it a 'static lifetime")
+            true
         } else if elided_len == 0 {
             db.help(
                 "this function's return type contains a borrowed value with \
                  an elided lifetime, but the lifetime cannot be derived from \
                  the arguments",
             );
-            let msg = "consider giving it an explicit bounded or 'static lifetime";
-            self.suggest_lifetime(db, span, msg)
+            true
         } else if elided_len == 1 {
             db.help(&format!(
                 "this function's return type contains a borrowed value, \
                  but the signature does not say which {} it is borrowed from",
                 m
             ));
-            true
+            false
         } else {
             db.help(&format!(
                 "this function's return type contains a borrowed value, \
                  but the signature does not say whether it is borrowed from {}",
                 m
             ));
-            true
+            false
         }
     }
 

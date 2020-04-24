@@ -7,9 +7,9 @@ fn test_extract_gdb_version() {
     )*}}}
 
     test! {
-        7000001: "GNU gdb (GDB) CentOS (7.0.1-45.el5.centos)",
+        7000001: "GNU gdb (GDB) CentOS 7.0.1-45.el5.centos",
 
-        7002000: "GNU gdb (GDB) Red Hat Enterprise Linux (7.2-90.el6)",
+        7002000: "GNU gdb (GDB) Red Hat Enterprise Linux 7.2-90.el6",
 
         7004000: "GNU gdb (Ubuntu/Linaro 7.4-2012.04-0ubuntu2.1) 7.4-2012.04",
         7004001: "GNU gdb (GDB) 7.4.1-debian",
