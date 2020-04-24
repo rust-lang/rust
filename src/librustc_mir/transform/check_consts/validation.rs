@@ -386,15 +386,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         }
     }
 
-    fn visit_local(&mut self, place_local: &Local, context: PlaceContext, location: Location) {
-        trace!(
-            "visit_local: place_local={:?} context={:?} location={:?}",
-            place_local,
-            context,
-            location,
-        );
-    }
-
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         self.super_operand(op, location);
         if let Operand::Constant(c) = op {
