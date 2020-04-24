@@ -954,16 +954,14 @@ fn test_append_permutations() {
         out
     }
 
-    #[cfg(not(miri))] // Miri is too slow
-    const MAX: usize = 5;
-    #[cfg(miri)]
-    const MAX: usize = 3;
+    // Miri is too slow
+    let max = if cfg!(miri) { 3 } else { 5 };
 
     // Many different permutations of both the `VecDeque` getting appended to
     // and the one getting appended are generated to check `append`.
     // This ensures all 6 code paths of `append` are tested.
-    for src_push_back in 0..MAX {
-        for src_push_front in 0..MAX {
+    for src_push_back in 0..max {
+        for src_push_front in 0..max {
             // doesn't pop more values than are pushed
             for src_pop_back in 0..(src_push_back + src_push_front) {
                 for src_pop_front in 0..(src_push_back + src_push_front - src_pop_back) {
@@ -974,8 +972,8 @@ fn test_append_permutations() {
                         src_pop_front,
                     );
 
-                    for dst_push_back in 0..MAX {
-                        for dst_push_front in 0..MAX {
+                    for dst_push_back in 0..max {
+                        for dst_push_front in 0..max {
                             for dst_pop_back in 0..(dst_push_back + dst_push_front) {
                                 for dst_pop_front in
                                     0..(dst_push_back + dst_push_front - dst_pop_back)

@@ -409,16 +409,14 @@ fn panic_safe() {
     }
     let mut rng = thread_rng();
     const DATASZ: usize = 32;
-    #[cfg(not(miri))] // Miri is too slow
-    const NTEST: usize = 10;
-    #[cfg(miri)]
-    const NTEST: usize = 1;
+    // Miri is too slow
+    let ntest = if cfg!(miri) { 1 } else { 10 };
 
     // don't use 0 in the data -- we want to catch the zeroed-out case.
     let data = (1..=DATASZ).collect::<Vec<_>>();
 
     // since it's a fuzzy test, run several tries.
-    for _ in 0..NTEST {
+    for _ in 0..ntest {
         for i in 1..=DATASZ {
             DROP_COUNTER.store(0, Ordering::SeqCst);
 
