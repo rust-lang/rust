@@ -8,13 +8,13 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
         StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
-        _2 = const {alloc0+0: &&[(std::option::Option<i32>, &[&u8])]}; // bb0[2]: scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
+        _2 = const {alloc0+0x0: &&[(std::option::Option<i32>, &[&u8])]}; // bb0[2]: scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
                                          // ty::Const
                                          // + ty: &&[(std::option::Option<i32>, &[&u8])]
-                                         // + val: Value(Scalar(alloc0+0))
+                                         // + val: Value(Scalar(alloc0+0x0))
                                          // mir::Constant
                                          // + span: $DIR/const_allocation2.rs:5:5: 5:8
-                                         // + literal: Const { ty: &&[(std::option::Option<i32>, &[&u8])], val: Value(Scalar(alloc0+0)) }
+                                         // + literal: Const { ty: &&[(std::option::Option<i32>, &[&u8])], val: Value(Scalar(alloc0+0x0)) }
         _1 = (*_2);                      // bb0[3]: scope 0 at $DIR/const_allocation2.rs:5:5: 5:8
         StorageDead(_2);                 // bb0[4]: scope 0 at $DIR/const_allocation2.rs:5:8: 5:9
         StorageDead(_1);                 // bb0[5]: scope 0 at $DIR/const_allocation2.rs:5:8: 5:9
