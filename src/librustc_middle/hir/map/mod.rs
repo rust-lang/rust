@@ -171,16 +171,14 @@ impl<'hir> Map<'hir> {
 
     // FIXME(eddyb) this function can and should return `LocalDefId`.
     #[inline]
-    pub fn local_def_id(&self, hir_id: HirId) -> DefId {
-        self.opt_local_def_id(hir_id)
-            .unwrap_or_else(|| {
-                bug!(
-                    "local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
-                    hir_id,
-                    self.find_entry(hir_id)
-                )
-            })
-            .to_def_id()
+    pub fn local_def_id(&self, hir_id: HirId) -> LocalDefId {
+        self.opt_local_def_id(hir_id).unwrap_or_else(|| {
+            bug!(
+                "local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
+                hir_id,
+                self.find_entry(hir_id)
+            )
+        })
     }
 
     #[inline]
@@ -200,7 +198,7 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
+    pub fn as_local_hir_id(&self, def_id: LocalDefId) -> HirId {
         self.tcx.definitions.as_local_hir_id(def_id)
     }
 
@@ -378,7 +376,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body_owner_def_id(&self, id: BodyId) -> LocalDefId {
-        self.local_def_id(self.body_owner(id)).expect_local()
+        self.local_def_id(self.body_owner(id))
     }
 
     /// Given a `HirId`, returns the `BodyId` associated with it,
@@ -450,8 +448,8 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn get_module(&self, module: DefId) -> (&'hir Mod<'hir>, Span, HirId) {
-        let hir_id = self.as_local_hir_id(module).unwrap();
+    pub fn get_module(&self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
+        let hir_id = self.as_local_hir_id(module);
         match self.get_entry(hir_id).node {
             Node::Item(&Item { span, kind: ItemKind::Mod(ref m), .. }) => (m, span, hir_id),
             Node::Crate(item) => (&item.module, item.span, hir_id),
@@ -484,7 +482,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        self.as_local_hir_id(id).map(|id| self.get(id))
+        id.as_local().map(|id| self.get(self.as_local_hir_id(id)))
     }
 
     pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics<'hir>> {
@@ -729,7 +727,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_parent_did(&self, id: HirId) -> LocalDefId {
-        self.local_def_id(self.get_parent_item(id)).expect_local()
+        self.local_def_id(self.get_parent_item(id))
     }
 
     pub fn get_foreign_abi(&self, hir_id: HirId) -> Abi {
@@ -885,7 +883,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
-        self.as_local_hir_id(id).map(|id| self.span(id))
+        id.as_local().map(|id| self.span(self.as_local_hir_id(id)))
     }
 
     pub fn res_span(&self, res: Res) -> Option<Span> {
@@ -995,7 +993,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
         crate::ty::tls::with_opt(|tcx| {
             if let Some(tcx) = tcx {
                 let def_id = map.local_def_id(id);
-                tcx.def_path_str(def_id)
+                tcx.def_path_str(def_id.to_def_id())
             } else if let Some(path) = map.def_path_from_hir_id(id) {
                 path.data
                     .into_iter()
@@ -1084,11 +1082,6 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
-    providers.def_kind = |tcx, def_id| {
-        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
-            tcx.hir().def_kind(hir_id)
-        } else {
-            bug!("calling local def_kind query provider for upstream DefId: {:?}", def_id);
-        }
-    };
+    providers.def_kind =
+        |tcx, def_id| tcx.hir().def_kind(tcx.hir().as_local_hir_id(def_id.expect_local()));
 }

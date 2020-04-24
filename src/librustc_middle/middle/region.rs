@@ -554,7 +554,7 @@ impl<'tcx> ScopeTree {
     pub fn early_free_scope(&self, tcx: TyCtxt<'tcx>, br: &ty::EarlyBoundRegion) -> Scope {
         let param_owner = tcx.parent(br.def_id).unwrap();
 
-        let param_owner_id = tcx.hir().as_local_hir_id(param_owner).unwrap();
+        let param_owner_id = tcx.hir().as_local_hir_id(param_owner.expect_local());
         let scope = tcx
             .hir()
             .maybe_body_owned_by(param_owner_id)
@@ -595,7 +595,7 @@ impl<'tcx> ScopeTree {
         // on the same function that they ended up being freed in.
         assert_eq!(param_owner, fr.scope);
 
-        let param_owner_id = tcx.hir().as_local_hir_id(param_owner).unwrap();
+        let param_owner_id = tcx.hir().as_local_hir_id(param_owner.expect_local());
         let body_id = tcx.hir().body_owned_by(param_owner_id);
         Scope { id: tcx.hir().body(body_id).value.hir_id.local_id, data: ScopeData::CallSite }
     }

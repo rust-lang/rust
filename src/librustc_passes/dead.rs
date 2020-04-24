@@ -52,7 +52,8 @@ struct MarkSymbolVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn check_def_id(&mut self, def_id: DefId) {
-        if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
+        if let Some(def_id) = def_id.as_local() {
+            let hir_id = self.tcx.hir().as_local_hir_id(def_id);
             if should_explore(self.tcx, hir_id) || self.struct_constructors.contains_key(&hir_id) {
                 self.worklist.push(hir_id);
             }
@@ -61,7 +62,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn insert_def_id(&mut self, def_id: DefId) {
-        if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
+        if let Some(def_id) = def_id.as_local() {
+            let hir_id = self.tcx.hir().as_local_hir_id(def_id);
             debug_assert!(!should_explore(self.tcx, hir_id));
             self.live_symbols.insert(hir_id);
         }
@@ -450,7 +452,8 @@ fn create_and_seed_worklist<'tcx>(
         )
         .chain(
             // Seed entry point
-            tcx.entry_fn(LOCAL_CRATE).map(|(def_id, _)| tcx.hir().as_local_hir_id(def_id).unwrap()),
+            tcx.entry_fn(LOCAL_CRATE)
+                .map(|(def_id, _)| tcx.hir().as_local_hir_id(def_id.expect_local())),
         )
         .collect::<Vec<_>>();
 
@@ -534,7 +537,8 @@ impl DeadVisitor<'tcx> {
         let inherent_impls = self.tcx.inherent_impls(def_id);
         for &impl_did in inherent_impls.iter() {
             for &item_did in &self.tcx.associated_item_def_ids(impl_did)[..] {
-                if let Some(item_hir_id) = self.tcx.hir().as_local_hir_id(item_did) {
+                if let Some(did) = item_did.as_local() {
+                    let item_hir_id = self.tcx.hir().as_local_hir_id(did);
                     if self.live_symbols.contains(&item_hir_id) {
                         return true;
                     }

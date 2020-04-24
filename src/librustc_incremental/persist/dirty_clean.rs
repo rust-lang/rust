@@ -434,16 +434,16 @@ impl DirtyCleanVisitor<'tcx> {
 
     fn check_item(&mut self, item_id: hir::HirId, item_span: Span) {
         let def_id = self.tcx.hir().local_def_id(item_id);
-        for attr in self.tcx.get_attrs(def_id).iter() {
+        for attr in self.tcx.get_attrs(def_id.to_def_id()).iter() {
             let assertion = match self.assertion_maybe(item_id, attr) {
                 Some(a) => a,
                 None => continue,
             };
             self.checked_attrs.insert(attr.id);
-            for dep_node in self.dep_nodes(&assertion.clean, def_id) {
+            for dep_node in self.dep_nodes(&assertion.clean, def_id.to_def_id()) {
                 self.assert_clean(item_span, dep_node);
             }
-            for dep_node in self.dep_nodes(&assertion.dirty, def_id) {
+            for dep_node in self.dep_nodes(&assertion.dirty, def_id.to_def_id()) {
                 self.assert_dirty(item_span, dep_node);
             }
         }

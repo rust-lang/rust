@@ -96,7 +96,7 @@ fn reachable_non_generics_provider(
                     if !generics.requires_monomorphization(tcx) &&
                         // Functions marked with #[inline] are only ever codegened
                         // with "internal" linkage and are never exported.
-                        !Instance::mono(tcx, def_id).def.generates_cgu_internal_copy(tcx)
+                        !Instance::mono(tcx, def_id.to_def_id()).def.generates_cgu_internal_copy(tcx)
                     {
                         Some(def_id)
                     } else {
@@ -109,7 +109,7 @@ fn reachable_non_generics_provider(
         })
         .map(|def_id| {
             let export_level = if special_runtime_crate {
-                let name = tcx.symbol_name(Instance::mono(tcx, def_id)).name.as_str();
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name.as_str();
                 // We can probably do better here by just ensuring that
                 // it has hidden visibility rather than public
                 // visibility, as this is primarily here to ensure it's
@@ -126,14 +126,14 @@ fn reachable_non_generics_provider(
                     SymbolExportLevel::Rust
                 }
             } else {
-                symbol_export_level(tcx, def_id)
+                symbol_export_level(tcx, def_id.to_def_id())
             };
             debug!(
                 "EXPORTED SYMBOL (local): {} ({:?})",
-                tcx.symbol_name(Instance::mono(tcx, def_id)),
+                tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())),
                 export_level
             );
-            (def_id, export_level)
+            (def_id.to_def_id(), export_level)
         })
         .collect();
 
@@ -361,8 +361,8 @@ fn upstream_drop_glue_for_provider<'tcx>(
 }
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
-        !tcx.reachable_set(LOCAL_CRATE).contains(&hir_id)
+    if let Some(def_id) = def_id.as_local() {
+        !tcx.reachable_set(LOCAL_CRATE).contains(&tcx.hir().as_local_hir_id(def_id))
     } else {
         bug!("is_unreachable_local_definition called with non-local DefId: {:?}", def_id)
     }

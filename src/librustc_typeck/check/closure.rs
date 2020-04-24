@@ -71,49 +71,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr_def_id = self.tcx.hir().local_def_id(expr.hir_id);
 
         let ClosureSignatures { bound_sig, liberated_sig } =
-            self.sig_of_closure(expr_def_id, decl, body, expected_sig);
+            self.sig_of_closure(expr_def_id.to_def_id(), decl, body, expected_sig);
 
         debug!("check_closure: ty_of_closure returns {:?}", liberated_sig);
 
         let generator_types =
             check_fn(self, self.param_env, liberated_sig, decl, expr.hir_id, body, gen).1;
 
-        let base_substs =
-            InternalSubsts::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
+        let base_substs = InternalSubsts::identity_for_item(
+            self.tcx,
+            self.tcx.closure_base_def_id(expr_def_id.to_def_id()),
+        );
         // HACK(eddyb) this hardcodes indices into substs but it should rely on
         // `ClosureSubsts` and `GeneratorSubsts` providing constructors, instead.
         // That would also remove the need for most of the inference variables,
         // as they immediately unified with the actual type below, including
         // the `InferCtxt::closure_sig` and `ClosureSubsts::sig_ty` methods.
         let tupled_upvars_idx = base_substs.len() + if generator_types.is_some() { 4 } else { 2 };
-        let substs = base_substs.extend_to(self.tcx, expr_def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => span_bug!(expr.span, "closure has lifetime param"),
-            GenericParamDefKind::Type { .. } => if param.index as usize == tupled_upvars_idx {
-                self.tcx.mk_tup(self.tcx.upvars(expr_def_id).iter().flat_map(|upvars| {
-                    upvars.iter().map(|(&var_hir_id, _)| {
-                        // Create type variables (for now) to represent the transformed
-                        // types of upvars. These will be unified during the upvar
-                        // inference phase (`upvar.rs`).
-                        self.infcx.next_ty_var(TypeVariableOrigin {
-                            // FIXME(eddyb) distinguish upvar inference variables from the rest.
-                            kind: TypeVariableOriginKind::ClosureSynthetic,
-                            span: self.tcx.hir().span(var_hir_id),
+        let substs =
+            base_substs.extend_to(self.tcx, expr_def_id.to_def_id(), |param, _| match param.kind {
+                GenericParamDefKind::Lifetime => span_bug!(expr.span, "closure has lifetime param"),
+                GenericParamDefKind::Type { .. } => if param.index as usize == tupled_upvars_idx {
+                    self.tcx.mk_tup(self.tcx.upvars(expr_def_id).iter().flat_map(|upvars| {
+                        upvars.iter().map(|(&var_hir_id, _)| {
+                            // Create type variables (for now) to represent the transformed
+                            // types of upvars. These will be unified during the upvar
+                            // inference phase (`upvar.rs`).
+                            self.infcx.next_ty_var(TypeVariableOrigin {
+                                // FIXME(eddyb) distinguish upvar inference variables from the rest.
+                                kind: TypeVariableOriginKind::ClosureSynthetic,
+                                span: self.tcx.hir().span(var_hir_id),
+                            })
                         })
+                    }))
+                } else {
+                    // Create type variables (for now) to represent the various
+                    // pieces of information kept in `{Closure,Generic}Substs`.
+                    // They will either be unified below, or later during the upvar
+                    // inference phase (`upvar.rs`)
+                    self.infcx.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::ClosureSynthetic,
+                        span: expr.span,
                     })
-                }))
-            } else {
-                // Create type variables (for now) to represent the various
-                // pieces of information kept in `{Closure,Generic}Substs`.
-                // They will either be unified below, or later during the upvar
-                // inference phase (`upvar.rs`)
-                self.infcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::ClosureSynthetic,
-                    span: expr.span,
-                })
-            }
-            .into(),
-            GenericParamDefKind::Const => span_bug!(expr.span, "closure has const param"),
-        });
+                }
+                .into(),
+                GenericParamDefKind::Const => span_bug!(expr.span, "closure has const param"),
+            });
         if let Some(GeneratorTypes { resume_ty, yield_ty, interior, movability }) = generator_types
         {
             let generator_substs = substs.as_generator();
@@ -126,7 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // it should rely on `GeneratorSubsts` providing a constructor, instead.
             let substs = self.resolve_vars_if_possible(&substs);
 
-            return self.tcx.mk_generator(expr_def_id, substs, movability);
+            return self.tcx.mk_generator(expr_def_id.to_def_id(), substs, movability);
         }
 
         // Tuple up the arguments and insert the resulting function type into
@@ -157,7 +160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // it should rely on `ClosureSubsts` providing a constructor, instead.
         let substs = self.resolve_vars_if_possible(&substs);
 
-        let closure_type = self.tcx.mk_closure(expr_def_id, substs);
+        let closure_type = self.tcx.mk_closure(expr_def_id.to_def_id(), substs);
 
         debug!("check_closure: expr.hir_id={:?} closure_type={:?}", expr.hir_id, closure_type);
 

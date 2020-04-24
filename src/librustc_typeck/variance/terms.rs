@@ -94,7 +94,7 @@ fn lang_items(tcx: TyCtxt<'_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
     all.into_iter() // iterating over (Option<DefId>, Variance)
         .filter(|&(ref d, _)| d.is_some())
         .map(|(d, v)| (d.unwrap(), v)) // (DefId, Variance)
-        .filter_map(|(d, v)| tcx.hir().as_local_hir_id(d).map(|n| (n, v))) // (HirId, Variance)
+        .filter_map(|(d, v)| d.as_local().map(|d| tcx.hir().as_local_hir_id(d)).map(|n| (n, v))) // (HirId, Variance)
         .collect()
 }
 

@@ -277,7 +277,7 @@ rustc_queries! {
         /// per-type-parameter predicates for resolving `T::AssocTy`.
         query type_param_predicates(key: (DefId, DefId)) -> ty::GenericPredicates<'tcx> {
             desc { |tcx| "computing the bounds for type parameter `{}`", {
-                let id = tcx.hir().as_local_hir_id(key.1).unwrap();
+                let id = tcx.hir().as_local_hir_id(key.1.expect_local());
                 tcx.hir().ty_param_name(id)
             }}
         }

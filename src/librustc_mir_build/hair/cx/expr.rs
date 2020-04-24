@@ -408,7 +408,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
 
         // Now comes the rote stuff:
         hir::ExprKind::Repeat(ref v, ref count) => {
-            let count_def_id = cx.tcx.hir().local_def_id(count.hir_id).expect_local();
+            let count_def_id = cx.tcx.hir().local_def_id(count.hir_id);
             let count = ty::Const::from_anon_const(cx.tcx, count_def_id);
 
             ExprKind::Repeat { value: v.to_ref(), count }
@@ -690,12 +690,12 @@ fn convert_path_expr<'a, 'tcx>(
         }
 
         Res::Def(DefKind::ConstParam, def_id) => {
-            let hir_id = cx.tcx.hir().as_local_hir_id(def_id).unwrap();
+            let hir_id = cx.tcx.hir().as_local_hir_id(def_id.expect_local());
             let item_id = cx.tcx.hir().get_parent_node(hir_id);
             let item_def_id = cx.tcx.hir().local_def_id(item_id);
             let generics = cx.tcx.generics_of(item_def_id);
             let local_def_id = cx.tcx.hir().local_def_id(hir_id);
-            let index = generics.param_def_id_to_index[&local_def_id];
+            let index = generics.param_def_id_to_index[&local_def_id.to_def_id()];
             let name = cx.tcx.hir().name(hir_id);
             let val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
             ExprKind::Literal {
@@ -962,7 +962,7 @@ fn capture_upvar<'tcx>(
 ) -> ExprRef<'tcx> {
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.hir_id).expect_local(),
+        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.hir_id),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);

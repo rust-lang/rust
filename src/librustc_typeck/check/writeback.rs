@@ -42,7 +42,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is uSymbol for unit tests.
-        let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_substs);
+        let rustc_dump_user_substs =
+            self.tcx.has_attr(item_def_id.to_def_id(), sym::rustc_dump_user_substs);
 
         let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
         for param in body.params {
@@ -426,7 +427,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_opaque_types(&mut self, span: Span) {
         for (&def_id, opaque_defn) in self.fcx.opaque_types.borrow().iter() {
-            let hir_id = self.tcx().hir().as_local_hir_id(def_id).unwrap();
+            let hir_id = self.tcx().hir().as_local_hir_id(def_id.expect_local());
             let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &hir_id);
 
             debug_assert!(!instantiated_ty.has_escaping_bound_vars());

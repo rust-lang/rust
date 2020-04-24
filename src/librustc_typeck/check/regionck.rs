@@ -135,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self,
             RepeatingScope(item_id),
             item_id,
-            Subject(subject),
+            Subject(subject.to_def_id()),
             self.param_env,
         );
         rcx.outlives_environment.add_implied_bounds(self, wf_tys, item_id, span);

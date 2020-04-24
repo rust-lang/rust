@@ -144,7 +144,7 @@ impl<'tcx> DocContext<'tcx> {
         if self.all_fake_def_ids.borrow().contains(&def_id) {
             None
         } else {
-            self.tcx.hir().as_local_hir_id(def_id)
+            def_id.as_local().map(|def_id| self.tcx.hir().as_local_hir_id(def_id))
         }
     }
 
@@ -389,7 +389,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     map: access_levels
                         .map
                         .iter()
-                        .map(|(&k, &v)| (tcx.hir().local_def_id(k), v))
+                        .map(|(&k, &v)| (tcx.hir().local_def_id(k).to_def_id(), v))
                         .collect(),
                 };
 

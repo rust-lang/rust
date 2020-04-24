@@ -46,7 +46,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ) = (&sub_origin, sup_region)
             {
                 let hir = &self.tcx().hir();
-                if let Some(hir_id) = hir.as_local_hir_id(free_region.scope) {
+                if let Some(def_id) = free_region.scope.as_local() {
+                    let hir_id = hir.as_local_hir_id(def_id);
                     if let Node::Expr(Expr { kind: Closure(_, _, _, closure_span, None), .. }) =
                         hir.get(hir_id)
                     {

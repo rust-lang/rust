@@ -473,7 +473,8 @@ pub fn name_from_pat(p: &hir::Pat) -> String {
 pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     match n.val {
         ty::ConstKind::Unevaluated(def_id, _, promoted) => {
-            let mut s = if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
+            let mut s = if let Some(def_id) = def_id.as_local() {
+                let hir_id = cx.tcx.hir().as_local_hir_id(def_id);
                 print_const_expr(cx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
                 inline::print_inlined_const(cx, def_id)

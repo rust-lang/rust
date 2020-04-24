@@ -3,7 +3,7 @@
 //! The second pass over the AST determines the set of constraints.
 //! We walk the set of items and, for each member, generate new constraints.
 
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LocalDefId};
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
@@ -128,16 +128,16 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         self.terms_cx.tcx
     }
 
-    fn build_constraints_for_item(&mut self, def_id: DefId) {
+    fn build_constraints_for_item(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx();
-        debug!("build_constraints_for_item({})", tcx.def_path_str(def_id));
+        debug!("build_constraints_for_item({})", tcx.def_path_str(def_id.to_def_id()));
 
         // Skip items with no generics - there's nothing to infer in them.
         if tcx.generics_of(def_id).count() == 0 {
             return;
         }
 
-        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let id = tcx.hir().as_local_hir_id(def_id);
         let inferred_start = self.terms_cx.inferred_starts[&id];
         let current_item = &CurrentItem { inferred_start };
         match tcx.type_of(def_id).kind {
@@ -377,7 +377,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             return;
         }
 
-        let (local, remote) = if let Some(id) = self.tcx().hir().as_local_hir_id(def_id) {
+        let (local, remote) = if let Some(def_id) = def_id.as_local() {
+            let id = self.tcx().hir().as_local_hir_id(def_id);
             (Some(self.terms_cx.inferred_starts[&id]), None)
         } else {
             (None, Some(self.tcx().variances_of(def_id)))

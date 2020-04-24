@@ -97,7 +97,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
                 if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind {
-                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(did).unwrap();
+                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(did.expect_local());
 
                     if let Some((span, name)) =
                         self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id)
@@ -119,7 +119,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Check if we are just moving a closure after it has been invoked.
         if let Some(target) = target {
             if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind {
-                let hir_id = self.infcx.tcx.hir().as_local_hir_id(did).unwrap();
+                let hir_id = self.infcx.tcx.hir().as_local_hir_id(did.expect_local());
 
                 if let Some((span, name)) =
                     self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id)
@@ -803,7 +803,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
         );
-        let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id)?;
+        let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id.as_local()?);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {

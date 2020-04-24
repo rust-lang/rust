@@ -5,7 +5,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 
 mod dep_node;
 
@@ -106,7 +106,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         match dep_node.kind {
             DepKind::hir_owner | DepKind::hir_owner_nodes | DepKind::CrateMetadata => {
                 if let Some(def_id) = dep_node.extract_def_id(*self) {
-                    if def_id_corresponds_to_hir_dep_node(*self, def_id) {
+                    if def_id_corresponds_to_hir_dep_node(*self, def_id.expect_local()) {
                         if dep_node.kind == DepKind::CrateMetadata {
                             // The `DefPath` has corresponding node,
                             // and that node should have been marked
@@ -180,7 +180,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     }
 }
 
-fn def_id_corresponds_to_hir_dep_node(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    def_id.index == hir_id.owner.local_def_index
+fn def_id_corresponds_to_hir_dep_node(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
+    def_id == hir_id.owner
 }

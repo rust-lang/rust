@@ -191,7 +191,7 @@ fn msg_span_from_early_bound_and_free_regions(
     let sm = tcx.sess.source_map();
 
     let scope = region.free_region_binding_scope(tcx);
-    let node = tcx.hir().as_local_hir_id(scope).unwrap();
+    let node = tcx.hir().as_local_hir_id(scope.expect_local());
     let tag = match tcx.hir().find(node) {
         Some(Node::Block(_) | Node::Expr(_)) => "body",
         Some(Node::Item(it)) => item_scope_tag(&it),
@@ -1782,10 +1782,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if !(generics.has_self && param.index == 0) {
                         let type_param = generics.type_param(param, self.tcx);
                         let hir = &self.tcx.hir();
-                        hir.as_local_hir_id(type_param.def_id).map(|id| {
+                        type_param.def_id.as_local().map(|def_id| {
                             // Get the `hir::Param` to verify whether it already has any bounds.
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                             // instead we suggest `T: 'a + 'b` in that case.
+                            let id = hir.as_local_hir_id(def_id);
                             let mut has_bounds = false;
                             if let Node::GenericParam(param) = hir.get(id) {
                                 has_bounds = !param.bounds.is_empty();

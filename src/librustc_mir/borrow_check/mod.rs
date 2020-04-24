@@ -5,7 +5,10 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
-use rustc_hir::{def_id::DefId, HirId, Node};
+use rustc_hir::{
+    def_id::{DefId, LocalDefId},
+    HirId, Node,
+};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -96,7 +99,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> &BorrowCheckResult<'_> {
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
         let input_body: &Body<'_> = &input_body.borrow();
         let promoted: &IndexVec<_, _> = &promoted.borrow();
-        do_mir_borrowck(&infcx, input_body, promoted, def_id)
+        do_mir_borrowck(&infcx, input_body, promoted, def_id.expect_local())
     });
     debug!("mir_borrowck done");
 
@@ -107,13 +110,13 @@ fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexVec<Promoted, Body<'tcx>>,
-    def_id: DefId,
+    def_id: LocalDefId,
 ) -> BorrowCheckResult<'tcx> {
     debug!("do_mir_borrowck(def_id = {:?})", def_id);
 
     let tcx = infcx.tcx;
     let param_env = tcx.param_env(def_id);
-    let id = tcx.hir().as_local_hir_id(def_id).expect("do_mir_borrowck: non-local DefId");
+    let id = tcx.hir().as_local_hir_id(def_id);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
@@ -140,7 +143,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     }
     let upvars: Vec<_> = tables
         .upvar_list
-        .get(&def_id)
+        .get(&def_id.to_def_id())
         .into_iter()
         .flat_map(|v| v.values())
         .map(|upvar_id| {
@@ -171,7 +174,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mut body = input_body.clone();
     let mut promoted = input_promoted.clone();
     let free_regions =
-        nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body, &mut promoted);
+        nll::replace_regions_in_mir(infcx, def_id.to_def_id(), param_env, &mut body, &mut promoted);
     let body = &body; // no further changes
 
     let location_table = &LocationTable::new(&body);
@@ -186,7 +189,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def_id)
+        .into_engine(tcx, &body, def_id.to_def_id())
         .iterate_to_fixpoint()
         .into_results_cursor(&body);
 
@@ -203,7 +206,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         nll_errors,
     } = nll::compute_regions(
         infcx,
-        def_id,
+        def_id.to_def_id(),
         free_regions,
         body,
         &promoted,
@@ -216,14 +219,20 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
-    nll::dump_mir_results(infcx, MirSource::item(def_id), &body, &regioncx, &opt_closure_req);
+    nll::dump_mir_results(
+        infcx,
+        MirSource::item(def_id.to_def_id()),
+        &body,
+        &regioncx,
+        &opt_closure_req,
+    );
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
     nll::dump_annotation(
         infcx,
         &body,
-        def_id,
+        def_id.to_def_id(),
         &regioncx,
         &opt_closure_req,
         &opaque_type_values,
@@ -238,13 +247,13 @@ fn do_mir_borrowck<'a, 'tcx>(
     let regioncx = Rc::new(regioncx);
 
     let flow_borrows = Borrows::new(tcx, &body, regioncx.clone(), &borrow_set)
-        .into_engine(tcx, &body, def_id)
+        .into_engine(tcx, &body, def_id.to_def_id())
         .iterate_to_fixpoint();
     let flow_uninits = MaybeUninitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def_id)
+        .into_engine(tcx, &body, def_id.to_def_id())
         .iterate_to_fixpoint();
     let flow_ever_inits = EverInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def_id)
+        .into_engine(tcx, &body, def_id.to_def_id())
         .iterate_to_fixpoint();
 
     let movable_generator = match tcx.hir().get(id) {
@@ -260,7 +269,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mut mbcx = MirBorrowckCtxt {
         infcx,
         body,
-        mir_def_id: def_id,
+        mir_def_id: def_id.to_def_id(),
         move_data: &mdpe.move_data,
         location_table,
         movable_generator,

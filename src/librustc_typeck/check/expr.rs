@@ -1625,8 +1625,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
         let param_def_id = generic_param.def_id;
-        let param_hir_id = match self.tcx.hir().as_local_hir_id(param_def_id) {
-            Some(x) => x,
+        let param_hir_id = match param_def_id.as_local() {
+            Some(x) => self.tcx.hir().as_local_hir_id(x),
             None => return,
         };
         let param_span = self.tcx.hir().span(param_hir_id);

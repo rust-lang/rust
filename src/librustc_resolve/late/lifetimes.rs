@@ -62,7 +62,7 @@ impl RegionExt for Region {
         let def_id = hir_map.local_def_id(param.hir_id);
         let origin = LifetimeDefOrigin::from_param(param);
         debug!("Region::early: index={} def_id={:?}", i, def_id);
-        (param.name.normalize_to_macros_2_0(), Region::EarlyBound(i, def_id, origin))
+        (param.name.normalize_to_macros_2_0(), Region::EarlyBound(i, def_id.to_def_id(), origin))
     }
 
     fn late(hir_map: &Map<'_>, param: &GenericParam<'_>) -> (ParamName, Region) {
@@ -73,7 +73,7 @@ impl RegionExt for Region {
             "Region::late: param={:?} depth={:?} def_id={:?} origin={:?}",
             param, depth, def_id, origin,
         );
-        (param.name.normalize_to_macros_2_0(), Region::LateBound(depth, def_id, origin))
+        (param.name.normalize_to_macros_2_0(), Region::LateBound(depth, def_id.to_def_id(), origin))
     }
 
     fn late_anon(index: &Cell<u32>) -> Region {
@@ -596,7 +596,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // In the future, this should be fixed and this error should be removed.
                         let def = self.map.defs.get(&lifetime.hir_id).cloned();
                         if let Some(Region::LateBound(_, def_id, _)) = def {
-                            if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
+                            if let Some(def_id) = def_id.as_local() {
+                                let hir_id = self.tcx.hir().as_local_hir_id(def_id);
                                 // Ensure that the parent of the def is an item, not HRTB
                                 let parent_id = self.tcx.hir().get_parent_node(hir_id);
                                 let parent_impl_id = hir::ImplItemId { hir_id: parent_id };
@@ -1166,7 +1167,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
                     if let Some(def) =
                         lifetimes.get(&hir::ParamName::Plain(label.normalize_to_macros_2_0()))
                     {
-                        let hir_id = tcx.hir().as_local_hir_id(def.id().unwrap()).unwrap();
+                        let hir_id = tcx.hir().as_local_hir_id(def.id().unwrap().expect_local());
 
                         signal_shadowing_problem(
                             tcx,
@@ -1278,7 +1279,7 @@ fn object_lifetime_defaults_for_item(
                         _ => continue,
                     };
 
-                    if res == Res::Def(DefKind::TyParam, param_def_id) {
+                    if res == Res::Def(DefKind::TyParam, param_def_id.to_def_id()) {
                         add_bounds(&mut set, &data.bounds);
                     }
                 }
@@ -1304,7 +1305,11 @@ fn object_lifetime_defaults_for_item(
                                 .find(|&(_, (_, lt_name, _))| lt_name == name)
                                 .map_or(Set1::Many, |(i, (id, _, origin))| {
                                     let def_id = tcx.hir().local_def_id(id);
-                                    Set1::One(Region::EarlyBound(i as u32, def_id, origin))
+                                    Set1::One(Region::EarlyBound(
+                                        i as u32,
+                                        def_id.to_def_id(),
+                                        origin,
+                                    ))
                                 })
                         }
                     }
@@ -1533,7 +1538,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             match lifetimeuseset {
                 Some(LifetimeUseSet::One(lifetime)) => {
-                    let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
+                    let hir_id = self.tcx.hir().as_local_hir_id(def_id.expect_local());
                     debug!("hir id first={:?}", hir_id);
                     if let Some((id, span, name)) = match self.tcx.hir().get(hir_id) {
                         Node::Lifetime(hir_lifetime) => Some((
@@ -1552,9 +1557,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         }
 
                         if let Some(parent_def_id) = self.tcx.parent(def_id) {
-                            if let Some(parent_hir_id) =
-                                self.tcx.hir().as_local_hir_id(parent_def_id)
-                            {
+                            if let Some(def_id) = parent_def_id.as_local() {
+                                let parent_hir_id = self.tcx.hir().as_local_hir_id(def_id);
                                 // lifetimes in `derive` expansions don't count (Issue #53738)
                                 if self
                                     .tcx
@@ -1596,7 +1600,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     debug!("not one use lifetime");
                 }
                 None => {
-                    let hir_id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
+                    let hir_id = self.tcx.hir().as_local_hir_id(def_id.expect_local());
                     if let Some((id, span, name)) = match self.tcx.hir().get(hir_id) {
                         Node::Lifetime(hir_lifetime) => Some((
                             hir_lifetime.hir_id,
@@ -1812,7 +1816,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     })
                     | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
                         let scope = self.tcx.hir().local_def_id(fn_id);
-                        def = Region::Free(scope, def.id().unwrap());
+                        def = Region::Free(scope.to_def_id(), def.id().unwrap());
                     }
                     _ => {}
                 }
@@ -1951,7 +1955,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             };
 
             let map = &self.map;
-            let unsubst = if let Some(id) = self.tcx.hir().as_local_hir_id(def_id) {
+            let unsubst = if let Some(def_id) = def_id.as_local() {
+                let id = self.tcx.hir().as_local_hir_id(def_id);
                 &map.object_lifetime_defaults[&id]
             } else {
                 let tcx = self.tcx;
@@ -2657,7 +2662,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::Binder { ref lifetimes, s, .. } => {
                     if let Some(&def) = lifetimes.get(&param.name.normalize_to_macros_2_0()) {
-                        let hir_id = self.tcx.hir().as_local_hir_id(def.id().unwrap()).unwrap();
+                        let hir_id =
+                            self.tcx.hir().as_local_hir_id(def.id().unwrap().expect_local());
 
                         signal_shadowing_problem(
                             self.tcx,

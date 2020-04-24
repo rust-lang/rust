@@ -57,7 +57,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
 
         debug!("InferVisitor::visit_item(item={:?})", item_did);
 
-        let hir_id = self.tcx.hir().as_local_hir_id(item_did).expect("expected local def-id");
+        let hir_id = self.tcx.hir().as_local_hir_id(item_did);
         let item = match self.tcx.hir().get(hir_id) {
             Node::Item(item) => item,
             _ => bug!(),
@@ -66,7 +66,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
         let mut item_required_predicates = RequiredPredicates::default();
         match item.kind {
             hir::ItemKind::Union(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Struct(..) => {
-                let adt_def = self.tcx.adt_def(item_did);
+                let adt_def = self.tcx.adt_def(item_did.to_def_id());
 
                 // Iterate over all fields in item_did
                 for field_def in adt_def.all_fields() {
@@ -99,10 +99,10 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
         // we walk the crates again and re-calculate predicates for all
         // items.
         let item_predicates_len: usize =
-            self.global_inferred_outlives.get(&item_did).map(|p| p.len()).unwrap_or(0);
+            self.global_inferred_outlives.get(&item_did.to_def_id()).map(|p| p.len()).unwrap_or(0);
         if item_required_predicates.len() > item_predicates_len {
             *self.predicates_added = true;
-            self.global_inferred_outlives.insert(item_did, item_required_predicates);
+            self.global_inferred_outlives.insert(item_did.to_def_id(), item_required_predicates);
         }
     }
 

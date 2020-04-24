@@ -285,7 +285,7 @@ fn dump_matched_mir_node<'tcx>(
 ) {
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
-    let item_id = tcx.hir().as_local_hir_id(source.def_id()).unwrap();
+    let item_id = tcx.hir().as_local_hir_id(source.def_id().expect_local());
     let file_name = format!("rustc.node{}{}-liveness.mir", item_id, pass_name);
     file_path.push(&file_name);
     let _ = fs::File::create(&file_path).and_then(|file| {

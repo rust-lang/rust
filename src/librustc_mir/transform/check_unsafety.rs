@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_hir::Node;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
@@ -465,12 +465,11 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
 
 fn check_unused_unsafe(
     tcx: TyCtxt<'_>,
-    def_id: DefId,
+    def_id: LocalDefId,
     used_unsafe: &FxHashSet<hir::HirId>,
     unsafe_blocks: &mut Vec<(hir::HirId, bool)>,
 ) {
-    let body_id =
-        tcx.hir().as_local_hir_id(def_id).and_then(|hir_id| tcx.hir().maybe_body_owned_by(hir_id));
+    let body_id = tcx.hir().maybe_body_owned_by(tcx.hir().as_local_hir_id(def_id));
 
     let body_id = match body_id {
         Some(body) => body,
@@ -495,7 +494,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
 
     let param_env = tcx.param_env(def_id);
 
-    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let id = tcx.hir().as_local_hir_id(def_id.expect_local());
     let (const_context, min_const_fn) = match tcx.hir().body_owner_kind(id) {
         hir::BodyOwnerKind::Closure => (false, false),
         hir::BodyOwnerKind::Fn => (is_const_fn(tcx, def_id), is_min_const_fn(tcx, def_id)),
@@ -504,7 +503,12 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
     let mut checker = UnsafetyChecker::new(const_context, min_const_fn, body, tcx, param_env);
     checker.visit_body(&body);
 
-    check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);
+    check_unused_unsafe(
+        tcx,
+        def_id.expect_local(),
+        &checker.used_unsafe,
+        &mut checker.inherited_blocks,
+    );
     UnsafetyCheckResult {
         violations: checker.violations.into(),
         unsafe_blocks: checker.inherited_blocks.into(),
@@ -512,10 +516,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
 }
 
 fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: DefId) {
-    let lint_hir_id = tcx
-        .hir()
-        .as_local_hir_id(def_id)
-        .unwrap_or_else(|| bug!("checking unsafety for non-local def id {:?}", def_id));
+    let lint_hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
 
     tcx.struct_span_lint_hir(SAFE_PACKED_BORROWS, lint_hir_id, tcx.def_span(def_id), |lint| {
         // FIXME: when we make this a hard error, this should have its

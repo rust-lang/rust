@@ -69,7 +69,7 @@ use crate::constrained_generic_params as cgp;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, RegionckMode, TyCtxtInferExt};
 use rustc_infer::traits::specialization_graph::Node;
@@ -130,7 +130,14 @@ fn check_always_applicable(
         check_static_lifetimes(tcx, &parent_substs, span);
         check_duplicate_params(tcx, impl1_substs, &parent_substs, span);
 
-        check_predicates(infcx, impl1_def_id, impl1_substs, impl2_node, impl2_substs, span);
+        check_predicates(
+            infcx,
+            impl1_def_id.expect_local(),
+            impl1_substs,
+            impl2_node,
+            impl2_substs,
+            span,
+        );
     }
 }
 
@@ -287,7 +294,7 @@ fn check_static_lifetimes<'tcx>(
 ///   including the `Self`-type.
 fn check_predicates<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
-    impl1_def_id: DefId,
+    impl1_def_id: LocalDefId,
     impl1_substs: SubstsRef<'tcx>,
     impl2_node: Node,
     impl2_substs: SubstsRef<'tcx>,
@@ -339,7 +346,7 @@ fn check_predicates<'tcx>(
         if let Some(obligations) = wf::obligations(
             infcx,
             tcx.param_env(impl1_def_id),
-            tcx.hir().as_local_hir_id(impl1_def_id).unwrap(),
+            tcx.hir().as_local_hir_id(impl1_def_id),
             ty,
             span,
         ) {

@@ -646,8 +646,8 @@ impl<'a, 'b> ExtraInfo<'a, 'b> {
         let hir_id = match (self.hir_id, self.item_did) {
             (Some(h), _) => h,
             (None, Some(item_did)) => {
-                match self.tcx.hir().as_local_hir_id(item_did) {
-                    Some(hir_id) => hir_id,
+                match item_did.as_local() {
+                    Some(item_did) => self.tcx.hir().as_local_hir_id(item_did),
                     None => {
                         // If non-local, no need to check anything.
                         return;

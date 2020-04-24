@@ -180,7 +180,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc_index::bit_set::GrowableBitSet;
@@ -430,7 +430,8 @@ fn check_recursion_limit<'tcx>(
     // infinite expansion.
     if adjusted_recursion_depth > *tcx.sess.recursion_limit.get() {
         let error = format!("reached the recursion limit while instantiating `{}`", instance);
-        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+        if let Some(def_id) = def_id.as_local() {
+            let hir_id = tcx.hir().as_local_hir_id(def_id);
             tcx.sess.span_fatal(tcx.hir().span(hir_id), &error);
         } else {
             tcx.sess.fatal(&error);
@@ -952,8 +953,8 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                             def_id_to_string(self.tcx, def_id)
                         );
 
-                        let ty =
-                            Instance::new(def_id, InternalSubsts::empty()).monomorphic_ty(self.tcx);
+                        let ty = Instance::new(def_id.to_def_id(), InternalSubsts::empty())
+                            .monomorphic_ty(self.tcx);
                         visit_drop_use(self.tcx, ty, true, self.output);
                     }
                 }
@@ -968,7 +969,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             hir::ItemKind::Static(..) => {
                 let def_id = self.tcx.hir().local_def_id(item.hir_id);
                 debug!("RootCollector: ItemKind::Static({})", def_id_to_string(self.tcx, def_id));
-                self.output.push(MonoItem::Static(def_id));
+                self.output.push(MonoItem::Static(def_id.to_def_id()));
             }
             hir::ItemKind::Const(..) => {
                 // const items only generate mono items if they are
@@ -977,7 +978,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                 // but even just declaring them must collect the items they refer to
                 let def_id = self.tcx.hir().local_def_id(item.hir_id);
 
-                if let Ok(val) = self.tcx.const_eval_poly(def_id) {
+                if let Ok(val) = self.tcx.const_eval_poly(def_id.to_def_id()) {
                     collect_const_value(self.tcx, val, &mut self.output);
                 }
             }
@@ -1002,12 +1003,12 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
 }
 
 impl RootCollector<'_, 'v> {
-    fn is_root(&self, def_id: DefId) -> bool {
+    fn is_root(&self, def_id: LocalDefId) -> bool {
         !item_requires_monomorphization(self.tcx, def_id)
             && match self.mode {
                 MonoItemCollectionMode::Eager => true,
                 MonoItemCollectionMode::Lazy => {
-                    self.entry_fn.map(|(id, _)| id) == Some(def_id)
+                    self.entry_fn.map(|(id, _)| id) == Some(def_id.to_def_id())
                         || self.tcx.is_reachable_non_generic(def_id)
                         || self
                             .tcx
@@ -1020,11 +1021,11 @@ impl RootCollector<'_, 'v> {
 
     /// If `def_id` represents a root, pushes it onto the list of
     /// outputs. (Note that all roots must be monomorphic.)
-    fn push_if_root(&mut self, def_id: DefId) {
+    fn push_if_root(&mut self, def_id: LocalDefId) {
         if self.is_root(def_id) {
             debug!("RootCollector::push_if_root: found root def_id={:?}", def_id);
 
-            let instance = Instance::mono(self.tcx, def_id);
+            let instance = Instance::mono(self.tcx, def_id.to_def_id());
             self.output.push(create_fn_mono_item(instance));
         }
     }
@@ -1066,7 +1067,7 @@ impl RootCollector<'_, 'v> {
     }
 }
 
-fn item_requires_monomorphization(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+fn item_requires_monomorphization(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let generics = tcx.generics_of(def_id);
     generics.requires_monomorphization(tcx)
 }
@@ -1170,10 +1171,10 @@ fn collect_neighbours<'tcx>(
     MirNeighborCollector { tcx, body: &body, output, instance }.visit_body(&body);
 }
 
-fn def_id_to_string(tcx: TyCtxt<'_>, def_id: DefId) -> String {
+fn def_id_to_string(tcx: TyCtxt<'_>, def_id: LocalDefId) -> String {
     let mut output = String::new();
     let printer = DefPathBasedNames::new(tcx, false, false);
-    printer.push_def_path(def_id, &mut output);
+    printer.push_def_path(def_id.to_def_id(), &mut output);
     output
 }
 

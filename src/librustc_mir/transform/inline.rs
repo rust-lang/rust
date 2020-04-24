@@ -69,7 +69,7 @@ impl Inliner<'tcx> {
         let param_env = self.tcx.param_env(self.source.def_id()).with_reveal_all();
 
         // Only do inlining into fn bodies.
-        let id = self.tcx.hir().as_local_hir_id(self.source.def_id()).unwrap();
+        let id = self.tcx.hir().as_local_hir_id(self.source.def_id().expect_local());
         if self.tcx.hir().body_owner_kind(id).is_fn_or_closure() && self.source.promoted.is_none() {
             for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated() {
                 if let Some(callsite) =
@@ -94,10 +94,10 @@ impl Inliner<'tcx> {
                     continue;
                 }
 
-                let callee_hir_id = self.tcx.hir().as_local_hir_id(callsite.callee);
-
-                let callee_body = if let Some(callee_hir_id) = callee_hir_id {
-                    let self_hir_id = self.tcx.hir().as_local_hir_id(self.source.def_id()).unwrap();
+                let callee_body = if let Some(callee_def_id) = callsite.callee.as_local() {
+                    let callee_hir_id = self.tcx.hir().as_local_hir_id(callee_def_id);
+                    let self_hir_id =
+                        self.tcx.hir().as_local_hir_id(self.source.def_id().expect_local());
                     // Avoid a cycle here by only using `optimized_mir` only if we have
                     // a lower `HirId` than the callee. This ensures that the callee will
                     // not inline us. This trick only works without incremental compilation.

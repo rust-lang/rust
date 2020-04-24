@@ -1393,7 +1393,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 let ty = AstConv::ast_ty_to_ty(fcx, ty);
                 // Get the `impl Trait`'s `DefId`.
                 if let ty::Opaque(def_id, _) = ty.kind {
-                    let hir_id = fcx.tcx.hir().as_local_hir_id(def_id).unwrap();
+                    let hir_id = fcx.tcx.hir().as_local_hir_id(def_id.expect_local());
                     // Get the `impl Trait`'s `Item` so that we can get its trait bounds and
                     // get the `Trait`'s `DefId`.
                     if let hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }) =

@@ -165,22 +165,18 @@ fn compute_symbol_name(
 
     debug!("symbol_name(def_id={:?}, substs={:?})", def_id, substs);
 
-    let hir_id = tcx.hir().as_local_hir_id(def_id);
-
-    if def_id.is_local() {
-        if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id) {
+    // FIXME(eddyb) Precompute a custom symbol name based on attributes.
+    let is_foreign = if let Some(def_id) = def_id.as_local() {
+        if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id.to_def_id()) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
         }
-        if tcx.proc_macro_decls_static(LOCAL_CRATE) == Some(def_id) {
+        if tcx.proc_macro_decls_static(LOCAL_CRATE) == Some(def_id.to_def_id()) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
         }
-    }
-
-    // FIXME(eddyb) Precompute a custom symbol name based on attributes.
-    let is_foreign = if let Some(id) = hir_id {
-        match tcx.hir().get(id) {
+        let hir_id = tcx.hir().as_local_hir_id(def_id);
+        match tcx.hir().get(hir_id) {
             Node::ForeignItem(_) => true,
             _ => false,
         }

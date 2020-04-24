@@ -5,7 +5,7 @@ use crate::hair::{BindingMode, LintLevel, PatKind};
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items;
 use rustc_hir::{GeneratorKind, HirIdMap, Node};
 use rustc_index::vec::{Idx, IndexVec};
@@ -22,12 +22,12 @@ use rustc_target::spec::PanicStrategy;
 use super::lints;
 
 crate fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::steal::Steal<Body<'_>> {
-    tcx.alloc_steal_mir(mir_build(tcx, def_id))
+    tcx.alloc_steal_mir(mir_build(tcx, def_id.expect_local()))
 }
 
 /// Construct the MIR for a given `DefId`.
-fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
-    let id = tcx.hir().as_local_hir_id(def_id).unwrap();
+fn mir_build(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Body<'_> {
+    let id = tcx.hir().as_local_hir_id(def_id);
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span) = match tcx.hir().get(id) {
@@ -181,7 +181,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
             build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
 
-        lints::check(tcx, &body, def_id);
+        lints::check(tcx, &body, def_id.to_def_id());
 
         // The borrow checker will replace all the regions here with its own
         // inference variables. There's no point having non-erased regions here.
@@ -523,9 +523,9 @@ macro_rules! unpack {
     }};
 }
 
-fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, _abi: Abi) -> bool {
+fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: LocalDefId, _abi: Abi) -> bool {
     // Validate `#[unwind]` syntax regardless of platform-specific panic strategy.
-    let attrs = &tcx.get_attrs(fn_def_id);
+    let attrs = &tcx.get_attrs(fn_def_id.to_def_id());
     let unwind_attr = attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs);
 
     // We never unwind, so it's not relevant to stop an unwind.
@@ -613,7 +613,7 @@ where
                         builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                             builder.args_and_body(
                                 block,
-                                fn_def_id,
+                                fn_def_id.to_def_id(),
                                 &arguments,
                                 arg_scope,
                                 &body.value,
@@ -643,7 +643,7 @@ where
     } else {
         None
     };
-    debug!("fn_id {:?} has attrs {:?}", fn_def_id, tcx.get_attrs(fn_def_id));
+    debug!("fn_id {:?} has attrs {:?}", fn_def_id, tcx.get_attrs(fn_def_id.to_def_id()));
 
     let mut body = builder.finish();
     body.spread_arg = spread_arg;

@@ -91,7 +91,7 @@ mod variance;
 
 use rustc_errors::{struct_span_err, ErrorReported};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
@@ -152,8 +152,8 @@ fn require_same_types<'tcx>(
     })
 }
 
-fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
-    let main_id = tcx.hir().as_local_hir_id(main_def_id).unwrap();
+fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: LocalDefId) {
+    let main_id = tcx.hir().as_local_hir_id(main_def_id);
     let main_span = tcx.def_span(main_def_id);
     let main_t = tcx.type_of(main_def_id);
     match main_t.kind {
@@ -231,8 +231,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 }
 
-fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
-    let start_id = tcx.hir().as_local_hir_id(start_def_id).unwrap();
+fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
+    let start_id = tcx.hir().as_local_hir_id(start_def_id);
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id);
     match start_t.kind {
@@ -303,8 +303,8 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
 
 fn check_for_entry_fn(tcx: TyCtxt<'_>) {
     match tcx.entry_fn(LOCAL_CRATE) {
-        Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
-        Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
+        Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id.expect_local()),
+        Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id.expect_local()),
         _ => {}
     }
 }
@@ -378,7 +378,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     // scope.  This is derived from the enclosing item-like thing.
     let env_node_id = tcx.hir().get_parent_item(hir_ty.hir_id);
     let env_def_id = tcx.hir().local_def_id(env_node_id);
-    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
 
     astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
 }
@@ -393,7 +393,7 @@ pub fn hir_trait_to_predicates<'tcx>(
     // scope.  This is derived from the enclosing item-like thing.
     let env_hir_id = tcx.hir().get_parent_item(hir_trait.hir_ref_id);
     let env_def_id = tcx.hir().local_def_id(env_hir_id);
-    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
+    let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
     let mut bounds = Bounds::default();
     let _ = AstConv::instantiate_poly_trait_ref_inner(
         &item_cx,

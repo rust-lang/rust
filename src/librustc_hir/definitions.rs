@@ -342,12 +342,8 @@ impl Definitions {
     }
 
     #[inline]
-    pub fn as_local_hir_id(&self, def_id: DefId) -> Option<hir::HirId> {
-        if let Some(def_id) = def_id.as_local() {
-            Some(self.local_def_id_to_hir_id(def_id))
-        } else {
-            None
-        }
+    pub fn as_local_hir_id(&self, def_id: LocalDefId) -> hir::HirId {
+        self.local_def_id_to_hir_id(def_id)
     }
 
     #[inline]

@@ -436,7 +436,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 // If the trait is private, add the impl items to `private_traits` so they don't get
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
-                if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(real_trait) {
+                if let Some(def_id) = real_trait.as_local() {
+                    let hir_id = cx.tcx.hir().as_local_hir_id(def_id);
                     if let Some(Node::Item(item)) = cx.tcx.hir().find(hir_id) {
                         if let hir::VisibilityKind::Inherited = item.vis.node {
                             for impl_item_ref in items {
@@ -461,7 +462,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         };
 
         let def_id = cx.tcx.hir().local_def_id(it.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id);
+        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
 
         self.check_missing_docs_attrs(cx, Some(it.hir_id), &it.attrs, it.span, article, desc);
     }
@@ -472,7 +473,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
 
         let def_id = cx.tcx.hir().local_def_id(trait_item.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id);
+        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
 
         self.check_missing_docs_attrs(
             cx,
@@ -491,7 +492,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
 
         let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id);
+        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
         self.check_missing_docs_attrs(
             cx,
             Some(impl_item.hir_id),
@@ -609,8 +610,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             let mut impls = HirIdSet::default();
             cx.tcx.for_each_impl(debug, |d| {
                 if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
-                    if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(ty_def.did) {
-                        impls.insert(hir_id);
+                    if let Some(def_id) = ty_def.did.as_local() {
+                        impls.insert(cx.tcx.hir().as_local_hir_id(def_id));
                     }
                 }
             });
@@ -1531,7 +1532,8 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
         ty_generics: &'tcx ty::Generics,
     ) -> Vec<ty::Region<'tcx>> {
-        let index = ty_generics.param_def_id_to_index[&tcx.hir().local_def_id(param.hir_id)];
+        let index =
+            ty_generics.param_def_id_to_index[&tcx.hir().local_def_id(param.hir_id).to_def_id()];
 
         match param.kind {
             hir::GenericParamKind::Lifetime { .. } => {

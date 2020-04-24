@@ -68,14 +68,13 @@ impl<'tcx> TyCtxt<'tcx> {
 pub fn provide(providers: &mut Providers<'_>) {
     providers.parent_module_from_def_id = |tcx, id| {
         let hir = tcx.hir();
-        hir.local_def_id(hir.get_module_parent_node(hir.as_local_hir_id(id.to_def_id()).unwrap()))
-            .expect_local()
+        hir.local_def_id(hir.get_module_parent_node(hir.as_local_hir_id(id)))
     };
     providers.hir_crate = |tcx, _| tcx.untracked_crate;
     providers.index_hir = map::index_hir;
     providers.hir_module_items = |tcx, id| {
         let hir = tcx.hir();
-        let module = hir.as_local_hir_id(id.to_def_id()).unwrap();
+        let module = hir.as_local_hir_id(id);
         &tcx.untracked_crate.modules[&module]
     };
     providers.hir_owner = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].signature;

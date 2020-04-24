@@ -1413,7 +1413,7 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => return None, // not a free region
         };
 
-        let hir_id = self.hir().as_local_hir_id(suitable_region_binding_scope).unwrap();
+        let hir_id = self.hir().as_local_hir_id(suitable_region_binding_scope.expect_local());
         let is_impl_item = match self.hir().find(hir_id) {
             Some(Node::Item(..) | Node::TraitItem(..)) => false,
             Some(Node::ImplItem(..)) => {
@@ -1431,7 +1431,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn return_type_impl_trait(&self, scope_def_id: DefId) -> Option<(Ty<'tcx>, Span)> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
-        let hir_id = self.hir().as_local_hir_id(scope_def_id).unwrap();
+        let hir_id = self.hir().as_local_hir_id(scope_def_id.expect_local());
         match self.hir().get(hir_id) {
             Node::Item(item) => {
                 match item.kind {
