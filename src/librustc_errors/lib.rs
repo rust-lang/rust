@@ -869,7 +869,10 @@ impl HandlerInner {
     }
 
     fn delay_span_bug(&mut self, sp: impl Into<MultiSpan>, msg: &str) {
-        if self.treat_err_as_bug() {
+        // This is technically `self.treat_err_as_bug()` but `delay_span_bug` is called before
+        // incrementing `err_count` by one, so we need to +1 the comparing.
+        // FIXME: Would be nice to increment err_count in a more coherent way.
+        if self.flags.treat_err_as_bug.map(|c| self.err_count() + 1 >= c).unwrap_or(false) {
             // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
         }
