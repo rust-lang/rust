@@ -13,7 +13,7 @@ error: ordinal value in `link_ordinal` is too large: `18446744073709551616`
 LL |     #[link_ordinal(18446744073709551616)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: the value may not exceed `usize::MAX`
+   = note: the value may not exceed `u16::MAX`
 
 error: aborting due to previous error; 1 warning emitted
 

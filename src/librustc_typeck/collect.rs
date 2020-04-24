@@ -2660,7 +2660,7 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     false
 }
 
-fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
+fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
     use rustc_ast::ast::{Lit, LitIntType, LitKind};
     let meta_item_list = attr.meta_item_list();
     let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
@@ -2669,13 +2669,13 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<usize> {
         _ => None,
     };
     if let Some(Lit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) = sole_meta_list {
-        if *ordinal <= usize::MAX as u128 {
-            Some(*ordinal as usize)
+        if *ordinal <= u16::MAX as u128 {
+            Some(*ordinal as u16)
         } else {
             let msg = format!("ordinal value in `link_ordinal` is too large: `{}`", &ordinal);
             tcx.sess
                 .struct_span_err(attr.span, &msg)
-                .note("the value may not exceed `usize::MAX`")
+                .note("the value may not exceed `u16::MAX`")
                 .emit();
             None
         }
