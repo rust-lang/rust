@@ -2,7 +2,7 @@ use ra_syntax::{
     ast::{self, HasStringValue},
     AstToken,
     SyntaxKind::{RAW_STRING, STRING},
-    TextUnit,
+    TextSize,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -81,7 +81,7 @@ pub(crate) fn add_hash(ctx: AssistCtx) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     ctx.add_assist(AssistId("add_hash"), "Add # to raw string", |edit| {
         edit.target(token.text_range());
-        edit.insert(token.text_range().start() + TextUnit::of_char('r'), "#");
+        edit.insert(token.text_range().start() + TextSize::of('r'), "#");
         edit.insert(token.text_range().end(), "#");
     })
 }

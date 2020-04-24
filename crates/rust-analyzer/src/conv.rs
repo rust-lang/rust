@@ -14,7 +14,7 @@ use ra_ide::{
     InlayHint, InlayKind, InsertTextFormat, LineCol, LineIndex, NavigationTarget, RangeInfo,
     ReferenceAccess, Severity, SourceChange, SourceFileEdit,
 };
-use ra_syntax::{SyntaxKind, TextRange, TextUnit};
+use ra_syntax::{SyntaxKind, TextRange, TextSize};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 use ra_vfs::LineEndings;
 
@@ -124,13 +124,13 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
         // LSP does not allow arbitrary edits in completion, so we have to do a
         // non-trivial mapping here.
         for atom_edit in self.text_edit().as_atoms() {
-            if self.source_range().is_subrange(&atom_edit.delete) {
+            if atom_edit.delete.contains_range(self.source_range()) {
                 text_edit = Some(if atom_edit.delete == self.source_range() {
                     atom_edit.conv_with((ctx.0, ctx.1))
                 } else {
                     assert!(self.source_range().end() == atom_edit.delete.end());
                     let range1 =
-                        TextRange::from_to(atom_edit.delete.start(), self.source_range().start());
+                        TextRange::new(atom_edit.delete.start(), self.source_range().start());
                     let range2 = self.source_range();
                     let edit1 = AtomTextEdit::replace(range1, String::new());
                     let edit2 = AtomTextEdit::replace(range2, atom_edit.insert.clone());
@@ -138,7 +138,7 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
                     edit2.conv_with((ctx.0, ctx.1))
                 })
             } else {
-                assert!(self.source_range().intersection(&atom_edit.delete).is_none());
+                assert!(self.source_range().intersect(atom_edit.delete).is_none());
                 additional_text_edits.push(atom_edit.conv_with((ctx.0, ctx.1)));
             }
         }
@@ -184,15 +184,15 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
 }
 
 impl ConvWith<&LineIndex> for Position {
-    type Output = TextUnit;
+    type Output = TextSize;
 
-    fn conv_with(self, line_index: &LineIndex) -> TextUnit {
+    fn conv_with(self, line_index: &LineIndex) -> TextSize {
         let line_col = LineCol { line: self.line as u32, col_utf16: self.character as u32 };
         line_index.offset(line_col)
     }
 }
 
-impl ConvWith<&LineIndex> for TextUnit {
+impl ConvWith<&LineIndex> for TextSize {
     type Output = Position;
 
     fn conv_with(self, line_index: &LineIndex) -> Position {
@@ -213,7 +213,7 @@ impl ConvWith<&LineIndex> for Range {
     type Output = TextRange;
 
     fn conv_with(self, line_index: &LineIndex) -> TextRange {
-        TextRange::from_to(self.start.conv_with(line_index), self.end.conv_with(line_index))
+        TextRange::new(self.start.conv_with(line_index), self.end.conv_with(line_index))
     }
 }
 
@@ -300,7 +300,7 @@ impl ConvWith<&FoldConvCtx<'_>> for Fold {
             // range.end.line from the folding region if there is more text after range.end
             // on the same line.
             let has_more_text_on_end_line = ctx.text
-                [TextRange::from_to(self.range.end(), TextUnit::of_str(ctx.text))]
+                [TextRange::new(self.range.end(), TextSize::of(ctx.text))]
             .chars()
             .take_while(|it| *it != '\n')
             .any(|it| !it.is_whitespace());

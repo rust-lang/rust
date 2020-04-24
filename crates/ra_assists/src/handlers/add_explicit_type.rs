@@ -37,8 +37,8 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
     let stmt_range = stmt.syntax().text_range();
     let eq_range = stmt.eq_token()?.text_range();
     // Assist should only be applicable if cursor is between 'let' and '='
-    let let_range = TextRange::from_to(stmt_range.start(), eq_range.start());
-    let cursor_in_range = ctx.frange.range.is_subrange(&let_range);
+    let let_range = TextRange::new(stmt_range.start(), eq_range.start());
+    let cursor_in_range = let_range.contains_range(ctx.frange.range);
     if !cursor_in_range {
         return None;
     }

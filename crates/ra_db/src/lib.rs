@@ -6,7 +6,7 @@ pub mod fixture;
 use std::{panic, sync::Arc};
 
 use ra_prof::profile;
-use ra_syntax::{ast, Parse, SourceFile, TextRange, TextUnit};
+use ra_syntax::{ast, Parse, SourceFile, TextRange, TextSize};
 
 pub use crate::{
     cancellation::Canceled,
@@ -75,7 +75,7 @@ impl<T: salsa::Database> CheckCanceled for T {
 #[derive(Clone, Copy, Debug)]
 pub struct FilePosition {
     pub file_id: FileId,
-    pub offset: TextUnit,
+    pub offset: TextSize,
 }
 
 #[derive(Clone, Copy, Debug)]

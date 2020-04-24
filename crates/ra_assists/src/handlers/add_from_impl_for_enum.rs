@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
-    TextUnit,
+    TextSize,
 };
 use stdx::format_to;
 
@@ -65,7 +65,7 @@ impl From<{0}> for {1} {{
                 variant_name
             );
             edit.insert(start_offset, buf);
-            edit.set_cursor(start_offset + TextUnit::of_str("\n\n"));
+            edit.set_cursor(start_offset + TextSize::of("\n\n"));
         },
     )
 }

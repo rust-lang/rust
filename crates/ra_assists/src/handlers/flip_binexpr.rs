@@ -23,7 +23,7 @@ pub(crate) fn flip_binexpr(ctx: AssistCtx) -> Option<Assist> {
     let rhs = expr.rhs()?.syntax().clone();
     let op_range = expr.op_token()?.text_range();
     // The assist should be applied only if the cursor is on the operator
-    let cursor_in_range = ctx.frange.range.is_subrange(&op_range);
+    let cursor_in_range = op_range.contains_range(ctx.frange.range);
     if !cursor_in_range {
         return None;
     }

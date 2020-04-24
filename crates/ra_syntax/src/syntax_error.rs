@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::{TextRange, TextUnit};
+use crate::{TextRange, TextSize};
 
 /// Represents the result of unsuccessful tokenization, parsing
 /// or tree validation.
@@ -23,8 +23,8 @@ impl SyntaxError {
     pub fn new(message: impl Into<String>, range: TextRange) -> Self {
         Self(message.into(), range)
     }
-    pub fn new_at_offset(message: impl Into<String>, offset: TextUnit) -> Self {
-        Self(message.into(), TextRange::offset_len(offset, 0.into()))
+    pub fn new_at_offset(message: impl Into<String>, offset: TextSize) -> Self {
+        Self(message.into(), TextRange::empty(offset))
     }
 
     pub fn range(&self) -> TextRange {

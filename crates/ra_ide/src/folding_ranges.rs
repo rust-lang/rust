@@ -141,7 +141,7 @@ fn contiguous_range_for_group_unless(
     }
 
     if first != &last {
-        Some(TextRange::from_to(first.text_range().start(), last.text_range().end()))
+        Some(TextRange::new(first.text_range().start(), last.text_range().end()))
     } else {
         // The group consists of only one element, therefore it cannot be folded
         None
@@ -187,7 +187,7 @@ fn contiguous_range_for_comment(
     }
 
     if first != last {
-        Some(TextRange::from_to(
+        Some(TextRange::new(
             first.syntax().text_range().start(),
             last.syntax().text_range().end(),
         ))

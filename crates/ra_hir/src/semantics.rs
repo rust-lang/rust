@@ -14,7 +14,7 @@ use ra_db::{FileId, FileRange};
 use ra_prof::profile;
 use ra_syntax::{
     algo::{find_node_at_offset, skip_trivia_token},
-    ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextUnit,
+    ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -95,7 +95,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         let token = successors(Some(parent.with_value(token)), |token| {
             let macro_call = token.value.ancestors().find_map(ast::MacroCall::cast)?;
             let tt = macro_call.token_tree()?;
-            if !token.value.text_range().is_subrange(&tt.syntax().text_range()) {
+            if !tt.syntax().text_range().contains_range(token.value.text_range()) {
                 return None;
             }
             let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
@@ -114,7 +114,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn descend_node_at_offset<N: ast::AstNode>(
         &self,
         node: &SyntaxNode,
-        offset: TextUnit,
+        offset: TextSize,
     ) -> Option<N> {
         // Handle macro token cases
         node.token_at_offset(offset)
@@ -142,7 +142,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn ancestors_at_offset_with_macros(
         &self,
         node: &SyntaxNode,
-        offset: TextUnit,
+        offset: TextSize,
     ) -> impl Iterator<Item = SyntaxNode> + '_ {
         node.token_at_offset(offset)
             .map(|token| self.ancestors_with_macros(token.parent()))
@@ -154,7 +154,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn find_node_at_offset_with_macros<N: AstNode>(
         &self,
         node: &SyntaxNode,
-        offset: TextUnit,
+        offset: TextSize,
     ) -> Option<N> {
         self.ancestors_at_offset_with_macros(node, offset).find_map(N::cast)
     }
@@ -164,7 +164,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn find_node_at_offset_with_descend<N: AstNode>(
         &self,
         node: &SyntaxNode,
-        offset: TextUnit,
+        offset: TextSize,
     ) -> Option<N> {
         if let Some(it) = find_node_at_offset(&node, offset) {
             return Some(it);
@@ -255,7 +255,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         SemanticsScope { db: self.db, resolver }
     }
 
-    pub fn scope_at_offset(&self, node: &SyntaxNode, offset: TextUnit) -> SemanticsScope<'db, DB> {
+    pub fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db, DB> {
         let node = self.find_file(node.clone());
         let resolver = self.analyze2(node.as_ref(), Some(offset)).resolver;
         SemanticsScope { db: self.db, resolver }
@@ -271,7 +271,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.analyze2(src.as_ref(), None)
     }
 
-    fn analyze2(&self, src: InFile<&SyntaxNode>, offset: Option<TextUnit>) -> SourceAnalyzer {
+    fn analyze2(&self, src: InFile<&SyntaxNode>, offset: Option<TextSize>) -> SourceAnalyzer {
         let _p = profile("Semantics::analyze2");
 
         let container = match self.with_ctx(|ctx| ctx.find_container(src)) {
@@ -463,7 +463,7 @@ fn original_range_opt(
             return None;
         }
 
-        Some(first.with_value(first.value.text_range().extend_to(&last.value.text_range())))
+        Some(first.with_value(first.value.text_range().cover(last.value.text_range())))
     })?)
 }
 

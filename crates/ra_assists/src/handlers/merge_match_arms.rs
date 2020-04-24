@@ -3,7 +3,7 @@ use std::iter::successors;
 use ra_syntax::{
     algo::neighbor,
     ast::{self, AstNode},
-    Direction, TextUnit,
+    Direction, TextSize,
 };
 
 use crate::{Assist, AssistCtx, AssistId, TextRange};
@@ -42,8 +42,8 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
     let current_text_range = current_arm.syntax().text_range();
 
     enum CursorPos {
-        InExpr(TextUnit),
-        InPat(TextUnit),
+        InExpr(TextSize),
+        InPat(TextSize),
     }
     let cursor_pos = ctx.frange.range.start();
     let cursor_pos = if current_expr.syntax().text_range().contains(cursor_pos) {
@@ -89,10 +89,10 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
 
         edit.target(current_text_range);
         edit.set_cursor(match cursor_pos {
-            CursorPos::InExpr(back_offset) => start + TextUnit::from_usize(arm.len()) - back_offset,
+            CursorPos::InExpr(back_offset) => start + TextSize::from_usize(arm.len()) - back_offset,
             CursorPos::InPat(offset) => offset,
         });
-        edit.replace(TextRange::from_to(start, end), arm);
+        edit.replace(TextRange::new(start, end), arm);
     })
 }
 

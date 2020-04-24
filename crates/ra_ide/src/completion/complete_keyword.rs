@@ -97,7 +97,7 @@ fn is_in_loop_body(leaf: &SyntaxToken) -> bool {
             }
         };
         if let Some(body) = loop_body {
-            if leaf.text_range().is_subrange(&body.syntax().text_range()) {
+            if body.syntax().text_range().contains_range(leaf.text_range()) {
                 return true;
             }
         }

@@ -1,11 +1,11 @@
 //! FIXME: write short doc here
 
-use ra_syntax::{SourceFile, TextUnit};
+use ra_syntax::{SourceFile, TextSize};
 use ra_text_edit::TextEdit;
 
 pub use test_utils::*;
 
-pub fn check_action<F: Fn(&SourceFile, TextUnit) -> Option<TextEdit>>(
+pub fn check_action<F: Fn(&SourceFile, TextSize) -> Option<TextEdit>>(
     before: &str,
     after: &str,
     f: F,

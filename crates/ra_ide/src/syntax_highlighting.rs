@@ -61,16 +61,16 @@ impl HighlightedRangeStack {
         let prev = self.stack.last_mut().unwrap();
         let needs_flattening = !children.is_empty()
             && !prev.is_empty()
-            && children.first().unwrap().range.is_subrange(&prev.last().unwrap().range);
+            && prev.last().unwrap().range.contains_range(children.first().unwrap().range);
         if !needs_flattening {
             prev.extend(children);
         } else {
             let mut parent = prev.pop().unwrap();
             for ele in children {
-                assert!(ele.range.is_subrange(&parent.range));
+                assert!(parent.range.contains_range(ele.range));
                 let mut cloned = parent.clone();
-                parent.range = TextRange::from_to(parent.range.start(), ele.range.start());
-                cloned.range = TextRange::from_to(ele.range.end(), cloned.range.end());
+                parent.range = TextRange::new(parent.range.start(), ele.range.start());
+                cloned.range = TextRange::new(ele.range.end(), cloned.range.end());
                 if !parent.range.is_empty() {
                     prev.push(parent);
                 }
@@ -152,7 +152,7 @@ pub(crate) fn highlight(
         };
 
         // Element outside of the viewport, no need to highlight
-        if range_to_highlight.intersection(&event_range).is_none() {
+        if range_to_highlight.intersect(event_range).is_none() {
             continue;
         }
 
@@ -309,7 +309,7 @@ fn macro_call_range(macro_call: &ast::MacroCall) -> Option<TextRange> {
         }
     }
 
-    Some(TextRange::from_to(range_start, range_end))
+    Some(TextRange::new(range_start, range_end))
 }
 
 fn highlight_element(

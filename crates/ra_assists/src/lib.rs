@@ -19,7 +19,7 @@ pub mod ast_transform;
 
 use ra_db::{FileId, FileRange};
 use ra_ide_db::RootDatabase;
-use ra_syntax::{TextRange, TextUnit};
+use ra_syntax::{TextRange, TextSize};
 use ra_text_edit::TextEdit;
 
 pub(crate) use crate::assist_ctx::{Assist, AssistCtx, AssistHandler};
@@ -51,7 +51,7 @@ impl AssistLabel {
 #[derive(Debug, Clone)]
 pub struct AssistAction {
     pub edit: TextEdit,
-    pub cursor_position: Option<TextUnit>,
+    pub cursor_position: Option<TextSize>,
     // FIXME: This belongs to `AssistLabel`
     pub target: Option<TextRange>,
     pub file: AssistFile,
@@ -104,7 +104,7 @@ pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssi
         .flat_map(|it| it.0)
         .map(|it| it.into_resolved().unwrap())
         .collect::<Vec<_>>();
-    a.sort_by_key(|it| it.action.target.map_or(TextUnit::from(!0u32), |it| it.len()));
+    a.sort_by_key(|it| it.action.target.map_or(TextSize::from(!0u32), |it| it.len()));
     a
 }
 

@@ -9,7 +9,7 @@ use ra_syntax::{
     ast::{self, AstNode, AstToken},
     Direction, NodeOrToken,
     SyntaxKind::{self, *},
-    SyntaxNode, SyntaxToken, TextRange, TextUnit, TokenAtOffset, T,
+    SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, T,
 };
 
 use crate::FileRange;
@@ -121,10 +121,10 @@ fn extend_tokens_from_range(
     let mut first_token = skip_trivia_token(first_token, Direction::Next)?;
     let mut last_token = skip_trivia_token(last_token, Direction::Prev)?;
 
-    while !first_token.text_range().is_subrange(&original_range) {
+    while !original_range.contains_range(first_token.text_range()) {
         first_token = skip_trivia_token(first_token.next_token()?, Direction::Next)?;
     }
-    while !last_token.text_range().is_subrange(&original_range) {
+    while !original_range.contains_range(last_token.text_range()) {
         last_token = skip_trivia_token(last_token.prev_token()?, Direction::Prev)?;
     }
 
@@ -161,8 +161,8 @@ fn extend_tokens_from_range(
     .take_while(validate)
     .last()?;
 
-    let range = first.text_range().extend_to(&last.text_range());
-    if original_range.is_subrange(&range) && original_range != range {
+    let range = first.text_range().cover(last.text_range());
+    if range.contains_range(original_range) && original_range != range {
         Some(range)
     } else {
         None
@@ -176,7 +176,7 @@ fn shallowest_node(node: &SyntaxNode) -> SyntaxNode {
 
 fn extend_single_word_in_comment_or_string(
     leaf: &SyntaxToken,
-    offset: TextUnit,
+    offset: TextSize,
 ) -> Option<TextRange> {
     let text: &str = leaf.text();
     let cursor_position: u32 = (offset - leaf.text_range().start()).into();
@@ -190,10 +190,10 @@ fn extend_single_word_in_comment_or_string(
     let start_idx = before.rfind(non_word_char)? as u32;
     let end_idx = after.find(non_word_char).unwrap_or_else(|| after.len()) as u32;
 
-    let from: TextUnit = (start_idx + 1).into();
-    let to: TextUnit = (cursor_position + end_idx).into();
+    let from: TextSize = (start_idx + 1).into();
+    let to: TextSize = (cursor_position + end_idx).into();
 
-    let range = TextRange::from_to(from, to);
+    let range = TextRange::new(from, to);
     if range.is_empty() {
         None
     } else {
@@ -201,24 +201,24 @@ fn extend_single_word_in_comment_or_string(
     }
 }
 
-fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextUnit) -> TextRange {
+fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextSize) -> TextRange {
     let ws_text = ws.text();
-    let suffix = TextRange::from_to(offset, ws.text_range().end()) - ws.text_range().start();
-    let prefix = TextRange::from_to(ws.text_range().start(), offset) - ws.text_range().start();
+    let suffix = TextRange::new(offset, ws.text_range().end()) - ws.text_range().start();
+    let prefix = TextRange::new(ws.text_range().start(), offset) - ws.text_range().start();
     let ws_suffix = &ws_text.as_str()[suffix];
     let ws_prefix = &ws_text.as_str()[prefix];
     if ws_text.contains('\n') && !ws_suffix.contains('\n') {
         if let Some(node) = ws.next_sibling_or_token() {
             let start = match ws_prefix.rfind('\n') {
-                Some(idx) => ws.text_range().start() + TextUnit::from((idx + 1) as u32),
+                Some(idx) => ws.text_range().start() + TextSize::from((idx + 1) as u32),
                 None => node.text_range().start(),
             };
             let end = if root.text().char_at(node.text_range().end()) == Some('\n') {
-                node.text_range().end() + TextUnit::of_char('\n')
+                node.text_range().end() + TextSize::of('\n')
             } else {
                 node.text_range().end()
             };
-            return TextRange::from_to(start, end);
+            return TextRange::new(start, end);
         }
     }
     ws.text_range()
@@ -270,13 +270,10 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
             .filter(|node| is_single_line_ws(node))
             .unwrap_or(delimiter_node);
 
-        return Some(TextRange::from_to(node.text_range().start(), final_node.text_range().end()));
+        return Some(TextRange::new(node.text_range().start(), final_node.text_range().end()));
     }
     if let Some(delimiter_node) = nearby_delimiter(delimiter, node, Direction::Prev) {
-        return Some(TextRange::from_to(
-            delimiter_node.text_range().start(),
-            node.text_range().end(),
-        ));
+        return Some(TextRange::new(delimiter_node.text_range().start(), node.text_range().end()));
     }
 
     None
@@ -286,10 +283,7 @@ fn extend_comments(comment: ast::Comment) -> Option<TextRange> {
     let prev = adj_comments(&comment, Direction::Prev);
     let next = adj_comments(&comment, Direction::Next);
     if prev != next {
-        Some(TextRange::from_to(
-            prev.syntax().text_range().start(),
-            next.syntax().text_range().end(),
-        ))
+        Some(TextRange::new(prev.syntax().text_range().start(), next.syntax().text_range().end()))
     } else {
         None
     }

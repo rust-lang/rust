@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use crate::{validation, AstNode, SourceFile, TextRange, TextUnit};
+use crate::{validation, AstNode, SourceFile, TextRange, TextSize};
 use ra_text_edit::AtomTextEdit;
 use std::str::{self, FromStr};
 
@@ -34,10 +34,8 @@ impl CheckReparse {
         let text = lines.collect::<Vec<_>>().join("\n");
         let text = format!("{}{}{}", PREFIX, text, SUFFIX);
         text.get(delete_start..delete_start.checked_add(delete_len)?)?; // make sure delete is a valid range
-        let delete = TextRange::offset_len(
-            TextUnit::from_usize(delete_start),
-            TextUnit::from_usize(delete_len),
-        );
+        let delete =
+            TextRange::at(TextSize::from_usize(delete_start), TextSize::from_usize(delete_len));
         let edited_text =
             format!("{}{}{}", &text[..delete_start], &insert, &text[delete_start + delete_len..]);
         let edit = AtomTextEdit { delete, insert };

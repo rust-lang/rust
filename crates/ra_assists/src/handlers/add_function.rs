@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxKind, SyntaxNode, TextUnit,
+    SyntaxKind, SyntaxNode, TextSize,
 };
 
 use crate::{Assist, AssistCtx, AssistFile, AssistId};
@@ -69,8 +69,8 @@ pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
 }
 
 struct FunctionTemplate {
-    insert_offset: TextUnit,
-    cursor_offset: TextUnit,
+    insert_offset: TextSize,
+    cursor_offset: TextSize,
     fn_def: ast::SourceFile,
     file: AssistFile,
 }
@@ -129,7 +129,7 @@ impl FunctionBuilder {
                 let fn_def = indent_once.increase_indent(fn_def);
                 let fn_def = ast::make::add_trailing_newlines(1, fn_def);
                 let fn_def = indent.increase_indent(fn_def);
-                (fn_def, it.syntax().text_range().start() + TextUnit::from_usize(1))
+                (fn_def, it.syntax().text_range().start() + TextSize::from_usize(1))
             }
         };
 

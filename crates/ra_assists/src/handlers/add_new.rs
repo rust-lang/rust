@@ -3,7 +3,7 @@ use ra_syntax::{
     ast::{
         self, AstNode, NameOwner, StructKind, TypeAscriptionOwner, TypeParamsOwner, VisibilityOwner,
     },
-    TextUnit, T,
+    TextSize, T,
 };
 use stdx::{format_to, SepBy};
 
@@ -77,16 +77,16 @@ pub(crate) fn add_new(ctx: AssistCtx) -> Option<Assist> {
                     .text_range()
                     .end();
 
-                Some((start, TextUnit::from_usize(1)))
+                Some((start, TextSize::from_usize(1)))
             })
             .unwrap_or_else(|| {
                 buf = generate_impl_text(&strukt, &buf);
                 let start = strukt.syntax().text_range().end();
 
-                (start, TextUnit::from_usize(3))
+                (start, TextSize::from_usize(3))
             });
 
-        edit.set_cursor(start_offset + TextUnit::of_str(&buf) - end_offset);
+        edit.set_cursor(start_offset + TextSize::of(&buf) - end_offset);
         edit.insert(start_offset, buf);
     })
 }

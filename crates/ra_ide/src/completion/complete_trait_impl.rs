@@ -141,7 +141,7 @@ fn add_function_impl(
     } else {
         CompletionItemKind::Function
     };
-    let range = TextRange::from_to(fn_def_node.text_range().start(), ctx.source_range().end());
+    let range = TextRange::new(fn_def_node.text_range().start(), ctx.source_range().end());
 
     match ctx.config.snippet_cap {
         Some(cap) => {
@@ -167,7 +167,7 @@ fn add_type_alias_impl(
 
     let snippet = format!("type {} = ", alias_name);
 
-    let range = TextRange::from_to(type_def_node.text_range().start(), ctx.source_range().end());
+    let range = TextRange::new(type_def_node.text_range().start(), ctx.source_range().end());
 
     CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
         .text_edit(TextEdit::replace(range, snippet))
@@ -189,7 +189,7 @@ fn add_const_impl(
         let snippet = make_const_compl_syntax(&const_.source(ctx.db).value);
 
         let range =
-            TextRange::from_to(const_def_node.text_range().start(), ctx.source_range().end());
+            TextRange::new(const_def_node.text_range().start(), ctx.source_range().end());
 
         CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
             .text_edit(TextEdit::replace(range, snippet))
@@ -216,7 +216,7 @@ fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
         .map_or(const_end, |f| f.text_range().start());
 
     let len = end - start;
-    let range = TextRange::from_to(0.into(), len);
+    let range = TextRange::new(0.into(), len);
 
     let syntax = const_.syntax().text().slice(range).to_string();
 

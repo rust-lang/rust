@@ -21,7 +21,7 @@ use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstToken},
-    AstNode, SourceFile, TextRange, TextUnit,
+    AstNode, SourceFile, TextRange, TextSize,
 };
 use ra_text_edit::TextEdit;
 
@@ -45,7 +45,7 @@ pub(crate) fn on_char_typed(
 
 fn on_char_typed_inner(
     file: &SourceFile,
-    offset: TextUnit,
+    offset: TextSize,
     char_typed: char,
 ) -> Option<SingleFileChange> {
     assert!(TRIGGER_CHARS.contains(char_typed));
@@ -60,7 +60,7 @@ fn on_char_typed_inner(
 /// Returns an edit which should be applied after `=` was typed. Primarily,
 /// this works when adding `let =`.
 // FIXME: use a snippet completion instead of this hack here.
-fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange> {
+fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange> {
     assert_eq!(file.syntax().text().char_at(offset), Some('='));
     let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
     if let_stmt.semicolon_token().is_some() {
@@ -86,7 +86,7 @@ fn on_eq_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange> 
 }
 
 /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
-fn on_dot_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange> {
+fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange> {
     assert_eq!(file.syntax().text().char_at(offset), Some('.'));
     let whitespace =
         file.syntax().token_at_offset(offset).left_biased().and_then(ast::Whitespace::cast)?;
@@ -96,13 +96,13 @@ fn on_dot_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange>
         let newline = text.rfind('\n')?;
         &text[newline + 1..]
     };
-    let current_indent_len = TextUnit::of_str(current_indent);
+    let current_indent_len = TextSize::of(current_indent);
 
     // Make sure dot is a part of call chain
     let field_expr = ast::FieldExpr::cast(whitespace.syntax().parent())?;
     let prev_indent = leading_indent(field_expr.syntax())?;
     let target_indent = format!("    {}", prev_indent);
-    let target_indent_len = TextUnit::of_str(&target_indent);
+    let target_indent_len = TextSize::of(&target_indent);
     if current_indent_len == target_indent_len {
         return None;
     }
@@ -110,20 +110,20 @@ fn on_dot_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange>
     Some(SingleFileChange {
         label: "reindent dot".to_string(),
         edit: TextEdit::replace(
-            TextRange::from_to(offset - current_indent_len, offset),
+            TextRange::new(offset - current_indent_len, offset),
             target_indent,
         ),
         cursor_position: Some(
-            offset + target_indent_len - current_indent_len + TextUnit::of_char('.'),
+            offset + target_indent_len - current_indent_len + TextSize::of('.'),
         ),
     })
 }
 
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
-fn on_arrow_typed(file: &SourceFile, offset: TextUnit) -> Option<SingleFileChange> {
+fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<SingleFileChange> {
     let file_text = file.syntax().text();
     assert_eq!(file_text.char_at(offset), Some('>'));
-    let after_arrow = offset + TextUnit::of_char('>');
+    let after_arrow = offset + TextSize::of('>');
     if file_text.char_at(after_arrow) != Some('{') {
         return None;
     }

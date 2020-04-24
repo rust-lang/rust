@@ -1180,7 +1180,7 @@ dependencies = [
 name = "ra_text_edit"
 version = "0.1.0"
 dependencies = [
- "text_unit",
+ "text-size",
 ]
 
 [[package]]
@@ -1322,13 +1322,11 @@ dependencies = [
 
 [[package]]
 name = "rowan"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ea7cadf87a9d8432e85cb4eb86bd2e765ace60c24ef86e79084dcae5d1c5a19"
+version = "0.10.0-pre.1"
 dependencies = [
  "rustc-hash",
  "smol_str",
- "text_unit",
+ "text-size",
  "thin-dst",
 ]
 
@@ -1620,14 +1618,12 @@ version = "0.1.0"
 dependencies = [
  "difference",
  "serde_json",
- "text_unit",
+ "text-size",
 ]
 
 [[package]]
-name = "text_unit"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20431e104bfecc1a40872578dbc390e10290a0e9c35fffe3ce6f73c15a9dbfc2"
+name = "text-size"
+version = "1.0.0-pre.1"
 
 [[package]]
 name = "thin-dst"

@@ -2,7 +2,7 @@ use ra_syntax::{
     ast::{self, AstNode},
     Direction, SmolStr,
     SyntaxKind::{IDENT, WHITESPACE},
-    TextRange, TextUnit,
+    TextRange, TextSize,
 };
 use stdx::SepBy;
 
@@ -71,7 +71,7 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
 
         let cursor_delta = if has_more_derives {
             edit.replace(input.syntax().text_range(), new_attr_input);
-            input.syntax().text_range().len() - TextUnit::from_usize(new_attr_input_len)
+            input.syntax().text_range().len() - TextSize::from_usize(new_attr_input_len)
         } else {
             let attr_range = attr.syntax().text_range();
             edit.delete(attr_range);
@@ -81,13 +81,13 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
                 .next_sibling_or_token()
                 .filter(|t| t.kind() == WHITESPACE)
                 .map(|t| t.text_range())
-                .unwrap_or_else(|| TextRange::from_to(TextUnit::from(0), TextUnit::from(0)));
+                .unwrap_or_else(|| TextRange::new(TextSize::from(0), TextSize::from(0)));
             edit.delete(line_break_range);
 
             attr_range.len() + line_break_range.len()
         };
 
-        edit.set_cursor(start_offset + TextUnit::of_str(&buf) - cursor_delta);
+        edit.set_cursor(start_offset + TextSize::of(&buf) - cursor_delta);
         buf.push_str("\n}");
         edit.insert(start_offset, buf);
     })

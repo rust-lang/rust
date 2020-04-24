@@ -1,7 +1,7 @@
 use ra_syntax::{
     ast,
     ast::{AstNode, AstToken, IfExpr, MatchArm},
-    TextUnit,
+    TextSize,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -49,16 +49,16 @@ pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx) -> Option<Assist> {
                     edit.delete(ele);
                     ele.len()
                 } else {
-                    TextUnit::from(0)
+                    TextSize::from(0)
                 }
             }
-            _ => TextUnit::from(0),
+            _ => TextSize::from(0),
         };
 
         edit.delete(guard.syntax().text_range());
         edit.replace_node_and_indent(arm_expr.syntax(), buf);
         edit.set_cursor(
-            arm_expr.syntax().text_range().start() + TextUnit::from(3) - offseting_amount,
+            arm_expr.syntax().text_range().start() + TextSize::from(3) - offseting_amount,
         );
     })
 }
@@ -123,7 +123,7 @@ pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
             }
 
             edit.insert(match_pat.syntax().text_range().end(), buf);
-            edit.set_cursor(match_pat.syntax().text_range().end() + TextUnit::from(1));
+            edit.set_cursor(match_pat.syntax().text_range().end() + TextSize::from(1));
         },
     )
 }

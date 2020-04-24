@@ -23,7 +23,7 @@ use hir_ty::{
 };
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxNode, TextRange, TextUnit,
+    SyntaxNode, TextRange, TextSize,
 };
 
 use crate::{
@@ -50,7 +50,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         def: DefWithBodyId,
         node: InFile<&SyntaxNode>,
-        offset: Option<TextUnit>,
+        offset: Option<TextSize>,
     ) -> SourceAnalyzer {
         let (body, source_map) = db.body_with_source_map(def);
         let scopes = db.expr_scopes(def);
@@ -318,7 +318,7 @@ fn scope_for_offset(
     db: &dyn HirDatabase,
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
-    offset: InFile<TextUnit>,
+    offset: InFile<TextSize>,
 ) -> Option<ScopeId> {
     scopes
         .scope_by_expr()
@@ -354,7 +354,7 @@ fn adjust(
     source_map: &BodySourceMap,
     expr_range: TextRange,
     file_id: HirFileId,
-    offset: TextUnit,
+    offset: TextSize,
 ) -> Option<ScopeId> {
     let child_scopes = scopes
         .scope_by_expr()
@@ -369,15 +369,15 @@ fn adjust(
             let node = source.value.to_node(&root);
             Some((node.syntax().text_range(), scope))
         })
-        .filter(|(range, _)| {
-            range.start() <= offset && range.is_subrange(&expr_range) && *range != expr_range
+        .filter(|&(range, _)| {
+            range.start() <= offset && expr_range.contains_range(range) && range != expr_range
         });
 
     child_scopes
-        .max_by(|(r1, _), (r2, _)| {
-            if r2.is_subrange(&r1) {
+        .max_by(|&(r1, _), &(r2, _)| {
+            if r1.contains_range(r2) {
                 std::cmp::Ordering::Greater
-            } else if r1.is_subrange(&r2) {
+            } else if r2.contains_range(r1) {
                 std::cmp::Ordering::Less
             } else {
                 r1.start().cmp(&r2.start())

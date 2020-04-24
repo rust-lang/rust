@@ -15,7 +15,7 @@ use std::{
 };
 
 use serde_json::Value;
-use text_unit::{TextRange, TextUnit};
+use text_size::{TextRange, TextSize};
 
 pub use difference::Changeset as __Changeset;
 
@@ -49,7 +49,7 @@ macro_rules! assert_eq_text {
 }
 
 /// Infallible version of `try_extract_offset()`.
-pub fn extract_offset(text: &str) -> (TextUnit, String) {
+pub fn extract_offset(text: &str) -> (TextSize, String) {
     match try_extract_offset(text) {
         None => panic!("text should contain cursor marker"),
         Some(result) => result,
@@ -58,12 +58,12 @@ pub fn extract_offset(text: &str) -> (TextUnit, String) {
 
 /// Returns the offset of the first occurence of `<|>` marker and the copy of `text`
 /// without the marker.
-fn try_extract_offset(text: &str) -> Option<(TextUnit, String)> {
+fn try_extract_offset(text: &str) -> Option<(TextSize, String)> {
     let cursor_pos = text.find(CURSOR_MARKER)?;
     let mut new_text = String::with_capacity(text.len() - CURSOR_MARKER.len());
     new_text.push_str(&text[..cursor_pos]);
     new_text.push_str(&text[cursor_pos + CURSOR_MARKER.len()..]);
-    let cursor_pos = TextUnit::from(cursor_pos as u32);
+    let cursor_pos = TextSize::from(cursor_pos as u32);
     Some((cursor_pos, new_text))
 }
 
@@ -80,25 +80,25 @@ pub fn extract_range(text: &str) -> (TextRange, String) {
 fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
     let (start, text) = try_extract_offset(text)?;
     let (end, text) = try_extract_offset(&text)?;
-    Some((TextRange::from_to(start, end), text))
+    Some((TextRange::new(start, end), text))
 }
 
 #[derive(Clone, Copy)]
 pub enum RangeOrOffset {
     Range(TextRange),
-    Offset(TextUnit),
+    Offset(TextSize),
 }
 
 impl From<RangeOrOffset> for TextRange {
     fn from(selection: RangeOrOffset) -> Self {
         match selection {
             RangeOrOffset::Range(it) => it,
-            RangeOrOffset::Offset(it) => TextRange::from_to(it, it),
+            RangeOrOffset::Offset(it) => TextRange::new(it, it),
         }
     }
 }
 
-/// Extracts `TextRange` or `TextUnit` depending on the amount of `<|>` markers
+/// Extracts `TextRange` or `TextSize` depending on the amount of `<|>` markers
 /// found in `text`.
 ///
 /// # Panics
@@ -129,13 +129,13 @@ pub fn extract_ranges(mut text: &str, tag: &str) -> (Vec<TextRange>, String) {
                 text = &text[i..];
                 if text.starts_with(&open) {
                     text = &text[open.len()..];
-                    let from = TextUnit::of_str(&res);
+                    let from = TextSize::of(&res);
                     stack.push(from);
                 } else if text.starts_with(&close) {
                     text = &text[close.len()..];
                     let from = stack.pop().unwrap_or_else(|| panic!("unmatched </{}>", tag));
-                    let to = TextUnit::of_str(&res);
-                    ranges.push(TextRange::from_to(from, to));
+                    let to = TextSize::of(&res);
+                    ranges.push(TextRange::new(from, to));
                 }
             }
         }
@@ -146,8 +146,8 @@ pub fn extract_ranges(mut text: &str, tag: &str) -> (Vec<TextRange>, String) {
 }
 
 /// Inserts `<|>` marker into the `text` at `offset`.
-pub fn add_cursor(text: &str, offset: TextUnit) -> String {
-    let offset: usize = offset.to_usize();
+pub fn add_cursor(text: &str, offset: TextSize) -> String {
+    let offset: usize = offset.into();
     let mut res = String::new();
     res.push_str(&text[..offset]);
     res.push_str("<|>");

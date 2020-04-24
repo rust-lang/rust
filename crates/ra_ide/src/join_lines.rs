@@ -7,7 +7,7 @@ use ra_syntax::{
     ast::{self, AstNode, AstToken},
     Direction, NodeOrToken, SourceFile,
     SyntaxKind::{self, WHITESPACE},
-    SyntaxNode, SyntaxToken, TextRange, TextUnit, T,
+    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
@@ -19,7 +19,7 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
             None => return TextEditBuilder::default().finish(),
             Some(pos) => pos,
         };
-        TextRange::offset_len(range.start() + pos, TextUnit::of_char('\n'))
+        TextRange::at(range.start() + pos, TextSize::of('\n'))
     } else {
         range
     };
@@ -30,13 +30,13 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     };
     let mut edit = TextEditBuilder::default();
     for token in node.descendants_with_tokens().filter_map(|it| it.into_token()) {
-        let range = match range.intersection(&token.text_range()) {
+        let range = match range.intersect(token.text_range()) {
             Some(range) => range,
             None => continue,
         } - token.text_range().start();
         let text = token.text();
         for (pos, _) in text[range].bytes().enumerate().filter(|&(_, b)| b == b'\n') {
-            let pos: TextUnit = (pos as u32).into();
+            let pos: TextSize = (pos as u32).into();
             let off = token.text_range().start() + range.start() + pos;
             if !edit.invalidates_offset(off) {
                 remove_newline(&mut edit, &token, off);
@@ -47,16 +47,16 @@ pub fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
     edit.finish()
 }
 
-fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextUnit) {
+fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextSize) {
     if token.kind() != WHITESPACE || token.text().bytes().filter(|&b| b == b'\n').count() != 1 {
         // The node is either the first or the last in the file
-        let suff = &token.text()[TextRange::from_to(
-            offset - token.text_range().start() + TextUnit::of_char('\n'),
-            TextUnit::of_str(token.text()),
+        let suff = &token.text()[TextRange::new(
+            offset - token.text_range().start() + TextSize::of('\n'),
+            TextSize::of(token.text().as_str()),
         )];
         let spaces = suff.bytes().take_while(|&b| b == b' ').count();
 
-        edit.replace(TextRange::offset_len(offset, ((spaces + 1) as u32).into()), " ".to_string());
+        edit.replace(TextRange::at(offset, ((spaces + 1) as u32).into()), " ".to_string());
         return;
     }
 
@@ -65,7 +65,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
     let next = token.next_sibling_or_token().unwrap();
     if is_trailing_comma(prev.kind(), next.kind()) {
         // Removes: trailing comma, newline (incl. surrounding whitespace)
-        edit.delete(TextRange::from_to(prev.text_range().start(), token.text_range().end()));
+        edit.delete(TextRange::new(prev.text_range().start(), token.text_range().end()));
         return;
     }
     if prev.kind() == T![,] && next.kind() == T!['}'] {
@@ -76,7 +76,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
             " "
         };
         edit.replace(
-            TextRange::from_to(prev.text_range().start(), token.text_range().end()),
+            TextRange::new(prev.text_range().start(), token.text_range().end()),
             space.to_string(),
         );
         return;
@@ -87,9 +87,9 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextU
         next.as_token().cloned().and_then(ast::Comment::cast),
     ) {
         // Removes: newline (incl. surrounding whitespace), start of the next comment
-        edit.delete(TextRange::from_to(
+        edit.delete(TextRange::new(
             token.text_range().start(),
-            next.syntax().text_range().start() + TextUnit::of_str(next.prefix()),
+            next.syntax().text_range().start() + TextSize::of(next.prefix()),
         ));
         return;
     }
@@ -420,10 +420,10 @@ fn foo() {
         check_join_lines(
             r"
 <|>use ra_syntax::{
-    TextUnit, TextRange,
+    TextSize, TextRange,
 };",
             r"
-<|>use ra_syntax::{TextUnit, TextRange,
+<|>use ra_syntax::{TextSize, TextRange,
 };",
         );
     }
@@ -434,11 +434,11 @@ fn foo() {
         check_join_lines(
             r"
 use ra_syntax::{
-<|>    TextUnit, TextRange
+<|>    TextSize, TextRange
 };",
             r"
 use ra_syntax::{
-<|>    TextUnit, TextRange};",
+<|>    TextSize, TextRange};",
         );
     }
 
@@ -448,11 +448,11 @@ use ra_syntax::{
         check_join_lines(
             r"
 use ra_syntax::{
-<|>    TextUnit, TextRange,
+<|>    TextSize, TextRange,
 };",
             r"
 use ra_syntax::{
-<|>    TextUnit, TextRange};",
+<|>    TextSize, TextRange};",
         );
     }
 

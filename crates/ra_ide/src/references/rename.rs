@@ -54,7 +54,7 @@ fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFil
         ReferenceKind::StructFieldShorthandForField => {
             replacement_text.push_str(new_name);
             replacement_text.push_str(": ");
-            TextRange::from_to(
+            TextRange::new(
                 reference.file_range.range.start(),
                 reference.file_range.range.start(),
             )
@@ -62,7 +62,7 @@ fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFil
         ReferenceKind::StructFieldShorthandForLocal => {
             replacement_text.push_str(": ");
             replacement_text.push_str(new_name);
-            TextRange::from_to(reference.file_range.range.end(), reference.file_range.range.end())
+            TextRange::new(reference.file_range.range.end(), reference.file_range.range.end())
         }
         _ => {
             replacement_text.push_str(new_name);

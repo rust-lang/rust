@@ -2,7 +2,7 @@
 
 use ra_syntax::{
     ast::{self, AstNode},
-    TextRange, TextUnit,
+    TextRange, TextSize,
 };
 use ra_text_edit::TextEdit;
 
@@ -115,7 +115,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: bool) -> String {
     if receiver_is_ambiguous_float_literal {
         let text = receiver.syntax().text();
-        let without_dot = ..text.len() - TextUnit::of_char('.');
+        let without_dot = ..text.len() - TextSize::of('.');
         text.slice(without_dot).to_string()
     } else {
         receiver.to_string()
@@ -143,7 +143,7 @@ fn postfix_snippet(
     let edit = {
         let receiver_syntax = receiver.syntax();
         let receiver_range = ctx.sema.original_range(receiver_syntax).range;
-        let delete_range = TextRange::from_to(receiver_range.start(), ctx.source_range().end());
+        let delete_range = TextRange::new(receiver_range.start(), ctx.source_range().end());
         TextEdit::replace(delete_range, snippet.to_string())
     };
     CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label)

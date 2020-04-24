@@ -7,7 +7,7 @@ use ra_syntax::{
     ast::{self, AstToken},
     AstNode, SmolStr, SourceFile,
     SyntaxKind::*,
-    SyntaxToken, TextUnit, TokenAtOffset,
+    SyntaxToken, TextSize, TokenAtOffset,
 };
 use ra_text_edit::TextEdit;
 
@@ -28,7 +28,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
 
     let prefix = comment.prefix();
     let comment_range = comment.syntax().text_range();
-    if position.offset < comment_range.start() + TextUnit::of_str(prefix) {
+    if position.offset < comment_range.start() + TextSize::of(prefix) {
         return None;
     }
 
@@ -39,7 +39,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
 
     let indent = node_indent(&file, comment.syntax())?;
     let inserted = format!("\n{}{} ", indent, prefix);
-    let cursor_position = position.offset + TextUnit::of_str(&inserted);
+    let cursor_position = position.offset + TextSize::of(&inserted);
     let edit = TextEdit::insert(position.offset, inserted);
 
     Some(

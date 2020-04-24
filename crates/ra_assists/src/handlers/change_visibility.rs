@@ -5,7 +5,7 @@ use ra_syntax::{
         ATTR, COMMENT, CONST_DEF, ENUM_DEF, FN_DEF, MODULE, STRUCT_DEF, TRAIT_DEF, VISIBILITY,
         WHITESPACE,
     },
-    SyntaxNode, TextUnit, T,
+    SyntaxNode, TextSize, T,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -67,7 +67,7 @@ fn add_vis(ctx: AssistCtx) -> Option<Assist> {
     })
 }
 
-fn vis_offset(node: &SyntaxNode) -> TextUnit {
+fn vis_offset(node: &SyntaxNode) -> TextSize {
     node.children_with_tokens()
         .skip_while(|it| match it.kind() {
             WHITESPACE | COMMENT | ATTR => true,

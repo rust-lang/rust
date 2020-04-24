@@ -4,7 +4,7 @@
 use crate::{
     SyntaxError,
     SyntaxKind::{self, *},
-    TextRange, TextUnit, T,
+    TextRange, TextSize, T,
 };
 
 /// A token of Rust source.
@@ -13,7 +13,7 @@ pub struct Token {
     /// The kind of token.
     pub kind: SyntaxKind,
     /// The length of the token.
-    pub len: TextUnit,
+    pub len: TextSize,
 }
 
 /// Break a string up into its component tokens.
@@ -30,7 +30,7 @@ pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
 
     let mut offset: usize = rustc_lexer::strip_shebang(text)
         .map(|shebang_len| {
-            tokens.push(Token { kind: SHEBANG, len: TextUnit::from_usize(shebang_len) });
+            tokens.push(Token { kind: SHEBANG, len: TextSize::from_usize(shebang_len) });
             shebang_len
         })
         .unwrap_or(0);
@@ -38,8 +38,8 @@ pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
     let text_without_shebang = &text[offset..];
 
     for rustc_token in rustc_lexer::tokenize(text_without_shebang) {
-        let token_len = TextUnit::from_usize(rustc_token.len);
-        let token_range = TextRange::offset_len(TextUnit::from_usize(offset), token_len);
+        let token_len = TextSize::from_usize(rustc_token.len);
+        let token_range = TextRange::at(TextSize::from_usize(offset), token_len);
 
         let (syntax_kind, err_message) =
             rustc_token_kind_to_syntax_kind(&rustc_token.kind, &text[token_range]);
@@ -65,7 +65,7 @@ pub fn tokenize(text: &str) -> (Vec<Token>, Vec<SyntaxError>) {
 /// Beware that unescape errors are not checked at tokenization time.
 pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxError>)> {
     lex_first_token(text)
-        .filter(|(token, _)| token.len == TextUnit::of_str(text))
+        .filter(|(token, _)| token.len == TextSize::of(text))
         .map(|(token, error)| (token.kind, error))
 }
 
@@ -75,7 +75,7 @@ pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxEr
 /// Beware that unescape errors are not checked at tokenization time.
 pub fn lex_single_valid_syntax_kind(text: &str) -> Option<SyntaxKind> {
     lex_first_token(text)
-        .filter(|(token, error)| !error.is_some() && token.len == TextUnit::of_str(text))
+        .filter(|(token, error)| !error.is_some() && token.len == TextSize::of(text))
         .map(|(token, _error)| token.kind)
 }
 
@@ -96,9 +96,9 @@ fn lex_first_token(text: &str) -> Option<(Token, Option<SyntaxError>)> {
     let rustc_token = rustc_lexer::first_token(text);
     let (syntax_kind, err_message) = rustc_token_kind_to_syntax_kind(&rustc_token.kind, text);
 
-    let token = Token { kind: syntax_kind, len: TextUnit::from_usize(rustc_token.len) };
+    let token = Token { kind: syntax_kind, len: TextSize::from_usize(rustc_token.len) };
     let optional_error = err_message.map(|err_message| {
-        SyntaxError::new(err_message, TextRange::from_to(0.into(), TextUnit::of_str(text)))
+        SyntaxError::new(err_message, TextRange::new(0.into(), TextSize::of(text)))
     });
 
     Some((token, optional_error))

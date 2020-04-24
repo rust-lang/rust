@@ -2,7 +2,7 @@
 use crate::db::AstDatabase;
 use crate::{
     ast::{self, AstToken, HasStringValue},
-    name, AstId, CrateId, MacroDefId, MacroDefKind, TextUnit,
+    name, AstId, CrateId, MacroDefId, MacroDefKind, TextSize,
 };
 
 use crate::{quote, EagerMacroId, LazyMacroId, MacroCallId};
@@ -127,7 +127,7 @@ fn stringify_expand(
         let arg = loc.kind.arg(db).ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
         let macro_args = arg;
         let text = macro_args.text();
-        let without_parens = TextUnit::of_char('(')..text.len() - TextUnit::of_char(')');
+        let without_parens = TextSize::of('(')..text.len() - TextSize::of(')');
         text.slice(without_parens).to_string()
     };
 
