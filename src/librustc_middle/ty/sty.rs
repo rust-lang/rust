@@ -2268,6 +2268,7 @@ impl<'tcx> Const<'tcx> {
                 let name = tcx.hir().name(hir_id);
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }
+            ExprKind::Err => ty::ConstKind::Error,
             _ => ty::ConstKind::Unevaluated(
                 def_id.to_def_id(),
                 InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
