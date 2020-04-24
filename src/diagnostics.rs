@@ -118,7 +118,12 @@ pub fn report_error<'tcx, 'mir>(
     let result = report_msg(ecx, &format!("{}: {}", title, msg), msg, helps, true);
 
     if let UndefinedBehavior(UndefinedBehaviorInfo::InvalidUndefBytes(Some(ptr))) = e.kind {
+        eprintln!(
+            "Uninitialized read occurred at offset 0x{:x} into this allocation:",
+            ptr.offset.bytes(),
+        );
         ecx.memory.dump_alloc(ptr.alloc_id);
+        eprintln!();
     }
 
     result
