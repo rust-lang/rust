@@ -401,7 +401,7 @@ impl GlobalAlloc<'tcx> {
     }
 }
 
-pub struct AllocMap<'tcx> {
+crate struct AllocMap<'tcx> {
     /// Maps `AllocId`s to their corresponding allocations.
     alloc_map: FxHashMap<AllocId, GlobalAlloc<'tcx>>,
 
@@ -417,10 +417,10 @@ pub struct AllocMap<'tcx> {
 }
 
 impl<'tcx> AllocMap<'tcx> {
-    pub fn new() -> Self {
+    crate fn new() -> Self {
         AllocMap { alloc_map: Default::default(), dedup: Default::default(), next_id: AllocId(0) }
     }
-    pub fn reserve(&mut self) -> AllocId {
+    fn reserve(&mut self) -> AllocId {
         let next = self.next_id;
         self.next_id.0 = self.next_id.0.checked_add(1).expect(
             "You overflowed a u64 by incrementing by 1... \
