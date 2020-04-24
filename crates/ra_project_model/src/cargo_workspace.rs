@@ -141,6 +141,11 @@ impl CargoWorkspace {
         cargo_toml: &Path,
         cargo_features: &CargoConfig,
     ) -> Result<CargoWorkspace> {
+        let _ = Command::new(cargo_binary())
+            .arg("--version")
+            .status()
+            .context("failed to run `cargo --version`, is `cargo` in PATH?")?;
+
         let mut meta = MetadataCommand::new();
         meta.manifest_path(cargo_toml);
         if cargo_features.all_features {
