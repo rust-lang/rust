@@ -5,44 +5,21 @@ LL |     foo::<bar + 3>();
    |                 ^ expected one of 8 possible tokens
 
 error: expected one of `,` or `>`, found `+`
-  --> $DIR/const-expression-missing-braces.rs:22:13
+  --> $DIR/const-expression-missing-braces.rs:18:13
    |
 LL |     foo::<3 + 3>();
    |             ^ expected one of `,` or `>`
 
-error[E0404]: expected trait, found local variable `bar`
+error: likely `const` expression parsed as trait bounds
   --> $DIR/const-expression-missing-braces.rs:13:11
    |
 LL |     foo::<bar + bar>();
-   |           ^^^ not a trait
-
-error[E0404]: expected trait, found local variable `bar`
-  --> $DIR/const-expression-missing-braces.rs:13:17
+   |           ^^^^^^^^^ parsed as trait bounds but traits weren't found
    |
-LL |     foo::<bar + bar>();
-   |                 ^^^ not a trait
-
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/const-expression-missing-braces.rs:13:11
+help: if you meant to write a `const` expression, surround the expression with braces
    |
-LL |     foo::<bar + bar>();
-   |           ^^^^^^^^^ help: use `dyn`: `dyn bar + bar`
-   |
-   = note: `#[warn(bare_trait_objects)]` on by default
+LL |     foo::<{ bar + bar }>();
+   |           ^           ^
 
-error[E0107]: wrong number of const arguments: expected 1, found 0
-  --> $DIR/const-expression-missing-braces.rs:13:5
-   |
-LL |     foo::<bar + bar>();
-   |     ^^^^^^^^^^^^^^^^ expected 1 const argument
+error: aborting due to 3 previous errors
 
-error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/const-expression-missing-braces.rs:13:11
-   |
-LL |     foo::<bar + bar>();
-   |           ^^^^^^^^^ unexpected type argument
-
-error: aborting due to 6 previous errors; 1 warning emitted
-
-Some errors have detailed explanations: E0107, E0404.
-For more information about an error, try `rustc --explain E0107`.

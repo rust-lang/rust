@@ -558,25 +558,22 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         let prev = replace(&mut self.diagnostic_metadata.currently_processing_generics, true);
         match arg {
             GenericArg::Type(ref ty) => {
-                // We parse const arguments as path types as we cannot distinguish them during
-                // parsing. We try to resolve that ambiguity by attempting resolution the type
-                // namespace first, and if that fails we try again in the value namespace. If
-                // resolution in the value namespace succeeds, we have an generic const argument on
-                // our hands.
-                if let TyKind::Path(ref qself, ref path) = ty.kind {
-                    // We cannot disambiguate multi-segment paths right now as that requires type
-                    // checking.
-                    if path.segments.len() == 1 && path.segments[0].args.is_none() {
-                        let mut check_ns = |ns| {
-                            self.resolve_ident_in_lexical_scope(
-                                path.segments[0].ident,
-                                ns,
-                                None,
-                                path.span,
-                            )
-                            .is_some()
-                        };
-                        if !check_ns(TypeNS) && check_ns(ValueNS) {
+                let mut check_ns = |path: &Path, ns| {
+                    self.resolve_ident_in_lexical_scope(path.segments[0].ident, ns, None, path.span)
+                        .is_some()
+                        && path.segments.len() == 1
+                        && path.segments[0].args.is_none()
+                };
+                match ty.kind {
+                    // We parse const arguments as path types as we cannot distinguish them during
+                    // parsing. We try to resolve that ambiguity by attempting resolution the type
+                    // namespace first, and if that fails we try again in the value namespace. If
+                    // resolution in the value namespace succeeds, we have an generic const argument
+                    // on our hands.
+                    TyKind::Path(ref qself, ref path) => {
+                        // We cannot disambiguate multi-segment paths right now as that requires type
+                        // checking.
+                        if !check_ns(path, TypeNS) && check_ns(path, ValueNS) {
                             // This must be equivalent to `visit_anon_const`, but we cannot call it
                             // directly due to visitor lifetimes so we have to copy-paste some code.
                             self.with_constant_rib(|this| {
@@ -597,6 +594,38 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             return;
                         }
                     }
+
+                    // Possible `a + b` expression that should be surrounded in braces but was
+                    // parsed as trait bounds in a trait object. Suggest surrounding with braces.
+                    TyKind::TraitObject(ref bounds, TraitObjectSyntax::None) => {
+                        // We cannot disambiguate multi-segment paths right now as that requires
+                        // type checking.
+                        let const_expr_without_braces = bounds.iter().all(|bound| match bound {
+                            GenericBound::Trait(
+                                PolyTraitRef {
+                                    bound_generic_params,
+                                    trait_ref: TraitRef { path, .. },
+                                    ..
+                                },
+                                TraitBoundModifier::None,
+                            ) if bound_generic_params.is_empty() => {
+                                !check_ns(path, TypeNS) && check_ns(path, ValueNS)
+                            }
+                            _ => false,
+                        });
+                        if const_expr_without_braces {
+                            // This will be handled and emit an appropriate error in
+                            // `rustc_ast_lowering::LoweringContext::lower_generic_arg`. We do not
+                            // `visit_ty` in this case to avoid extra unnecessary output.
+                            self.r.session.delay_span_bug(
+                                ty.span,
+                                "`const` expression parsed as trait bounds",
+                            );
+                            self.diagnostic_metadata.currently_processing_generics = prev;
+                            return;
+                        }
+                    }
+                    _ => {}
                 }
 
                 self.visit_ty(ty);
