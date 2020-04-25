@@ -199,3 +199,14 @@ impl NestedReturnerOk3 {
         unimplemented!();
     }
 }
+
+struct WithLifetime<'a> {
+    cat: &'a str,
+}
+
+impl<'a> WithLifetime<'a> {
+    // should not trigger the lint, because the lifetimes are different
+    pub fn new<'b: 'a>(s: &'b str) -> WithLifetime<'b> {
+        unimplemented!();
+    }
+}

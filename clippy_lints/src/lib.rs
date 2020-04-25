@@ -1024,9 +1024,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box precedence::Precedence);
     store.register_early_pass(|| box needless_continue::NeedlessContinue);
     store.register_early_pass(|| box redundant_static_lifetimes::RedundantStaticLifetimes);
-    store.register_early_pass(|| box cargo_common_metadata::CargoCommonMetadata);
-    store.register_early_pass(|| box multiple_crate_versions::MultipleCrateVersions);
-    store.register_early_pass(|| box wildcard_dependencies::WildcardDependencies);
+    store.register_late_pass(|| box cargo_common_metadata::CargoCommonMetadata);
+    store.register_late_pass(|| box multiple_crate_versions::MultipleCrateVersions);
+    store.register_late_pass(|| box wildcard_dependencies::WildcardDependencies);
     store.register_early_pass(|| box literal_representation::LiteralDigitGrouping);
     let literal_representation_threshold = conf.literal_representation_threshold;
     store.register_early_pass(move || box literal_representation::DecimalLiteralRepresentation::new(literal_representation_threshold));
@@ -1134,6 +1134,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::EXPLICIT_INTO_ITER_LOOP),
         LintId::of(&loops::EXPLICIT_ITER_LOOP),
         LintId::of(&macro_use::MACRO_USE_IMPORTS),
+        LintId::of(&matches::MATCH_BOOL),
         LintId::of(&matches::SINGLE_MATCH_ELSE),
         LintId::of(&methods::FILTER_MAP),
         LintId::of(&methods::FILTER_MAP_NEXT),
@@ -1279,7 +1280,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&map_unit_fn::RESULT_MAP_UNIT_FN),
         LintId::of(&matches::INFALLIBLE_DESTRUCTURING_MATCH),
         LintId::of(&matches::MATCH_AS_REF),
-        LintId::of(&matches::MATCH_BOOL),
         LintId::of(&matches::MATCH_OVERLAPPING_ARM),
         LintId::of(&matches::MATCH_REF_PATS),
         LintId::of(&matches::MATCH_SINGLE_BINDING),
@@ -1470,7 +1470,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&main_recursion::MAIN_RECURSION),
         LintId::of(&map_clone::MAP_CLONE),
         LintId::of(&matches::INFALLIBLE_DESTRUCTURING_MATCH),
-        LintId::of(&matches::MATCH_BOOL),
         LintId::of(&matches::MATCH_OVERLAPPING_ARM),
         LintId::of(&matches::MATCH_REF_PATS),
         LintId::of(&matches::MATCH_WILD_ERR_ARM),

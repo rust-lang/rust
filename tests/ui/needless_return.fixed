@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(unused, clippy::needless_bool, clippy::match_bool)]
+#![allow(unused, clippy::needless_bool)]
 #![allow(clippy::if_same_then_else, clippy::single_match)]
 #![warn(clippy::needless_return)]
 

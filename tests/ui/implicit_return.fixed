@@ -21,7 +21,6 @@ fn test_if_block() -> bool {
     }
 }
 
-#[allow(clippy::match_bool)]
 #[rustfmt::skip]
 fn test_match(x: bool) -> bool {
     match x {
@@ -30,7 +29,7 @@ fn test_match(x: bool) -> bool {
     }
 }
 
-#[allow(clippy::match_bool, clippy::needless_return)]
+#[allow(clippy::needless_return)]
 fn test_match_with_unreachable(x: bool) -> bool {
     match x {
         true => return false,
