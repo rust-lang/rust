@@ -56,6 +56,9 @@ const COMMENT_PREFIX_TO_KIND: &[(&str, CommentKind)] = {
 };
 
 fn kind_by_prefix(text: &str) -> CommentKind {
+    if text == "/**/" {
+        return CommentKind { shape: CommentShape::Block, doc: None };
+    }
     for (prefix, kind) in COMMENT_PREFIX_TO_KIND.iter() {
         if text.starts_with(prefix) {
             return *kind;
