@@ -77,6 +77,19 @@ impl Profiler {
     }
 }
 
+impl Drop for Profiler {
+    fn drop(&mut self) {
+        match self {
+            Profiler { label: Some(label), detail } => {
+                PROFILE_STACK.with(|stack| {
+                    stack.borrow_mut().pop(label, detail.take());
+                });
+            }
+            Profiler { label: None, .. } => (),
+        }
+    }
+}
+
 static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false);
 static FILTER: Lazy<RwLock<Filter>> = Lazy::new(Default::default);
 thread_local!(static PROFILE_STACK: RefCell<ProfileStack> = RefCell::new(ProfileStack::new()));
@@ -90,10 +103,6 @@ struct Filter {
 }
 
 impl Filter {
-    fn new(depth: usize, allowed: HashSet<String>, longer_than: Duration) -> Filter {
-        Filter { depth, allowed, longer_than, version: 0 }
-    }
-
     fn disabled() -> Filter {
         Filter::default()
     }
@@ -116,7 +125,7 @@ impl Filter {
         };
         let allowed =
             if spec == "*" { HashSet::new() } else { spec.split('|').map(String::from).collect() };
-        Filter::new(depth, allowed, longer_than)
+        Filter { depth, allowed, longer_than, version: 0 }
     }
 
     fn install(mut self) {
@@ -171,28 +180,16 @@ impl ProfileStack {
         let level = self.starts.len();
         self.messages.push(Message { level, duration, label, detail });
         if level == 0 {
-            let stdout = stderr();
             let longer_than = self.filter.longer_than;
             // Convert to millis for comparison to avoid problems with rounding
             // (otherwise we could print `0ms` despite user's `>0` filter when
             // `duration` is just a few nanos).
             if duration.as_millis() > longer_than.as_millis() {
-                print(&self.messages, longer_than, &mut stdout.lock());
+                let stderr = stderr();
+                print(&self.messages, longer_than, &mut stderr.lock());
             }
             self.messages.clear();
-        }
-    }
-}
-
-impl Drop for Profiler {
-    fn drop(&mut self) {
-        match self {
-            Profiler { label: Some(label), detail } => {
-                PROFILE_STACK.with(|stack| {
-                    stack.borrow_mut().pop(label, detail.take());
-                });
-            }
-            Profiler { label: None, .. } => (),
+            assert!(self.starts.is_empty())
         }
     }
 }
