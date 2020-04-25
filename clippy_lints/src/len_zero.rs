@@ -143,7 +143,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item<'_>, trait_i
     if cx.access_levels.is_exported(visited_trait.hir_id) && trait_items.iter().any(|i| is_named_self(cx, i, "len")) {
         let mut current_and_super_traits = FxHashSet::default();
         let visited_trait_def_id = cx.tcx.hir().local_def_id(visited_trait.hir_id);
-        fill_trait_set(visited_trait_def_id, &mut current_and_super_traits, cx);
+        fill_trait_set(visited_trait_def_id.to_def_id(), &mut current_and_super_traits, cx);
 
         let is_empty_method_found = current_and_super_traits
             .iter()

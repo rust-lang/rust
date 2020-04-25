@@ -135,7 +135,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         } = {
             let mut ctx = MovedVariablesCtxt::default();
             cx.tcx.infer_ctxt().enter(|infcx| {
-                euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.tables).consume_body(body);
+                euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id.to_def_id(), cx.param_env, cx.tables)
+                    .consume_body(body);
             });
             ctx
         };

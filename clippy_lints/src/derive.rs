@@ -160,16 +160,20 @@ fn check_hash_peq<'a, 'tcx>(
                     };
 
                     span_lint_and_then(
-                        cx, DERIVE_HASH_XOR_EQ, span,
+                        cx,
+                        DERIVE_HASH_XOR_EQ,
+                        span,
                         mess,
                         |diag| {
-                        if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(impl_id) {
-                            diag.span_note(
-                                cx.tcx.hir().span(hir_id),
-                                "`PartialEq` implemented here"
-                            );
+                            if let Some(local_def_id) = impl_id.as_local() {
+                                let hir_id = cx.tcx.hir().as_local_hir_id(local_def_id);
+                                diag.span_note(
+                                    cx.tcx.hir().span(hir_id),
+                                    "`PartialEq` implemented here"
+                                );
+                            }
                         }
-                    });
+                    );
                 }
             });
         }
@@ -225,7 +229,7 @@ fn check_unsafe_derive_deserialize<'a, 'tcx>(
     ty: Ty<'tcx>,
 ) {
     fn item_from_def_id<'tcx>(cx: &LateContext<'_, 'tcx>, def_id: DefId) -> &'tcx Item<'tcx> {
-        let hir_id = cx.tcx.hir().as_local_hir_id(def_id).unwrap();
+        let hir_id = cx.tcx.hir().as_local_hir_id(def_id.expect_local());
         cx.tcx.hir().expect_item(hir_id)
     }
 
