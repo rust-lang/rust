@@ -1,3 +1,5 @@
+#![deny(clippy::match_bool)]
+
 fn match_bool() {
     let test: bool = true;
 
