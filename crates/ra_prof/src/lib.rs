@@ -26,11 +26,18 @@ pub use crate::memory_usage::{Bytes, MemoryUsage};
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
+/// Filtering syntax
+/// env RA_PROFILE=*             // dump everything
+/// env RA_PROFILE=foo|bar|baz   // enabled only selected entries
+/// env RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10 ms
 pub fn init() {
-    set_filter(match std::env::var("RA_PROFILE") {
-        Ok(spec) => Filter::from_spec(&spec),
-        Err(_) => Filter::disabled(),
-    });
+    let spec = std::env::var("RA_PROFILE").unwrap_or_default();
+    init_from(&spec);
+}
+
+pub fn init_from(spec: &str) {
+    let filter = if spec.is_empty() { Filter::disabled() } else { Filter::from_spec(spec) };
+    set_filter(filter);
 }
 
 /// Set profiling filter. It specifies descriptions allowed to profile.
@@ -43,7 +50,7 @@ pub fn init() {
 /// let f = Filter::from_spec("profile1|profile2@2");
 /// set_filter(f);
 /// ```
-pub fn set_filter(f: Filter) {
+fn set_filter(f: Filter) {
     PROFILING_ENABLED.store(f.depth > 0, Ordering::SeqCst);
     let set: HashSet<_> = f.allowed.iter().cloned().collect();
     let mut old = FILTER.write().unwrap();
@@ -127,18 +134,14 @@ impl Profiler {
     }
 }
 
-pub struct Filter {
+struct Filter {
     depth: usize,
     allowed: Vec<String>,
     longer_than: Duration,
 }
 
 impl Filter {
-    // Filtering syntax
-    // env RA_PROFILE=*             // dump everything
-    // env RA_PROFILE=foo|bar|baz   // enabled only selected entries
-    // env RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10 ms
-    pub fn from_spec(mut spec: &str) -> Filter {
+    fn from_spec(mut spec: &str) -> Filter {
         let longer_than = if let Some(idx) = spec.rfind('>') {
             let longer_than = spec[idx + 1..].parse().expect("invalid profile longer_than");
             spec = &spec[..idx];
