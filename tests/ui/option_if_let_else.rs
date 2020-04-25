@@ -9,6 +9,16 @@ fn bad1(string: Option<&str>) -> (bool, &str) {
     }
 }
 
+fn bad2(string: Option<&str>) -> Option<(bool, &str)> {
+    if string.is_none() {
+        None
+    } else if let Some(x) = string {
+        Some((true, x))
+    } else {
+        Some((false, ""))
+    }
+}
+
 fn longer_body(arg: Option<u32>) -> u32 {
     if let Some(x) = arg {
         let y = x * x;
@@ -50,6 +60,7 @@ fn main() {
     let optional = Some(5);
     let _ = if let Some(x) = optional { x + 2 } else { 5 };
     let _ = bad1(None);
+    let _ = bad2(None);
     let _ = longer_body(None);
     test_map_or_else(None);
     let _ = negative_tests(None);
