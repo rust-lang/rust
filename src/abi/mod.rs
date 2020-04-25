@@ -446,8 +446,9 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     // Handle special calls like instrinsics and empty drop glue.
     let instance = if let ty::FnDef(def_id, substs) = fn_ty.kind {
-        let instance =
-            ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
+        let instance = ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
+            .unwrap()
+            .unwrap();
 
         if fx.tcx.symbol_name(instance).name.as_str().starts_with("llvm.") {
             crate::intrinsics::codegen_llvm_intrinsic_call(
@@ -659,7 +660,9 @@ pub(crate) fn codegen_drop<'tcx>(
             _ => {
                 let instance = match drop_fn_ty.kind {
                     ty::FnDef(def_id, substs) => {
-                        Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap()
+                        Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs)
+                            .unwrap()
+                            .unwrap()
                     }
                     _ => unreachable!("{:?}", drop_fn_ty),
                 };

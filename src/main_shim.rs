@@ -84,6 +84,7 @@ pub(crate) fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<im
                     start_def_id,
                     tcx.intern_substs(&[main_ret_ty.into()]),
                 )
+                .unwrap()
                 .unwrap();
                 let start_func_id = import_function(tcx, m, start_instance);
 

@@ -10,7 +10,7 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 ) {
     let tcx = cx.tcx;
 
-    let mir = *tcx.instance_mir(instance.def);
+    let mir = tcx.instance_mir(instance.def);
 
     // Declare function
     let (name, sig) = get_function_name_and_sig(tcx, cx.module.isa().triple(), instance, false);
