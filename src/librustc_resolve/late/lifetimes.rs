@@ -480,14 +480,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let next_early_index = self.next_early_index();
                 let was_in_fn_syntax = self.is_in_fn_syntax;
                 self.is_in_fn_syntax = true;
-                let lifetime_span: Option<Span> = c
-                    .generic_params
-                    .iter()
-                    .filter_map(|param| match param.kind {
+                let lifetime_span: Option<Span> =
+                    c.generic_params.iter().rev().find_map(|param| match param.kind {
                         GenericParamKind::Lifetime { .. } => Some(param.span),
                         _ => None,
-                    })
-                    .last();
+                    });
                 let (span, span_type) = if let Some(span) = lifetime_span {
                     (span.shrink_to_hi(), ForLifetimeSpanType::TypeTail)
                 } else {

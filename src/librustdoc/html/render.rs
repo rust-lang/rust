@@ -3527,14 +3527,13 @@ fn render_deref_methods(
         .inner_impl()
         .items
         .iter()
-        .filter_map(|item| match item.inner {
+        .find_map(|item| match item.inner {
             clean::TypedefItem(ref t, true) => Some(match *t {
                 clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
             _ => None,
         })
-        .next()
         .expect("Expected associated type binding");
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
@@ -4111,18 +4110,14 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
-                if let Some((target, real_target)) = impl_
-                    .inner_impl()
-                    .items
-                    .iter()
-                    .filter_map(|item| match item.inner {
+                if let Some((target, real_target)) =
+                    impl_.inner_impl().items.iter().find_map(|item| match item.inner {
                         clean::TypedefItem(ref t, true) => Some(match *t {
                             clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                             _ => (&t.type_, &t.type_),
                         }),
                         _ => None,
                     })
-                    .next()
                 {
                     let inner_impl = target
                         .def_id()

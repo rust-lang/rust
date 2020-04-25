@@ -47,8 +47,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 return fndecl
                     .inputs
                     .iter()
-                    .filter_map(|arg| self.find_component_for_bound_region(arg, br))
-                    .next()
+                    .find_map(|arg| self.find_component_for_bound_region(arg, br))
                     .map(|ty| (ty, &**fndecl));
             }
         }

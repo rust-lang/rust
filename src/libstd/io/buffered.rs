@@ -1043,15 +1043,10 @@ impl<W: Write> Write for LineWriter<W> {
         }
 
         // Find the last newline, and failing that write the whole buffer
-        let last_newline = bufs
-            .iter()
-            .enumerate()
-            .rev()
-            .filter_map(|(i, buf)| {
-                let pos = memchr::memrchr(b'\n', buf)?;
-                Some((i, pos))
-            })
-            .next();
+        let last_newline = bufs.iter().enumerate().rev().find_map(|(i, buf)| {
+            let pos = memchr::memrchr(b'\n', buf)?;
+            Some((i, pos))
+        });
         let (i, j) = match last_newline {
             Some(pair) => pair,
             None => return self.inner.write_vectored(bufs),

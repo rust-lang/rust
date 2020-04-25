@@ -1127,11 +1127,7 @@ fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
     }
 
     let formats = tcx.dependency_formats(LOCAL_CRATE);
-    let deps = formats
-        .iter()
-        .filter_map(|(t, list)| if *t == crate_type { Some(list) } else { None })
-        .next()
-        .unwrap();
+    let deps = formats.iter().find_map(|(t, list)| (*t == crate_type).then_some(list)).unwrap();
 
     for (index, dep_format) in deps.iter().enumerate() {
         let cnum = CrateNum::new(index + 1);

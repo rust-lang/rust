@@ -285,21 +285,18 @@ pub trait Emitter {
         let has_macro_spans = iter::once(&*span)
             .chain(children.iter().map(|child| &child.span))
             .flat_map(|span| span.primary_spans())
-            .copied()
-            .flat_map(|sp| {
-                sp.macro_backtrace().filter_map(|expn_data| {
-                    match expn_data.kind {
-                        ExpnKind::Root => None,
+            .flat_map(|sp| sp.macro_backtrace())
+            .find_map(|expn_data| {
+                match expn_data.kind {
+                    ExpnKind::Root => None,
 
-                        // Skip past non-macro entries, just in case there
-                        // are some which do actually involve macros.
-                        ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
+                    // Skip past non-macro entries, just in case there
+                    // are some which do actually involve macros.
+                    ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
-                        ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
-                    }
-                })
-            })
-            .next();
+                    ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
+                }
+            });
 
         if !backtrace {
             self.fix_multispans_in_extern_macros(source_map, span, children);

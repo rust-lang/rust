@@ -453,16 +453,13 @@ fn extract_spans_for_error_reporting<'a, 'tcx>(
                     .zip(trait_iter)
                     .zip(impl_m_iter)
                     .zip(trait_m_iter)
-                    .filter_map(
-                        |(((&impl_arg_ty, &trait_arg_ty), impl_arg), trait_arg)| match infcx
-                            .at(&cause, param_env)
-                            .sub(trait_arg_ty, impl_arg_ty)
-                        {
-                            Ok(_) => None,
-                            Err(_) => Some((impl_arg.span, Some(trait_arg.span))),
-                        },
-                    )
-                    .next()
+                    .find_map(|(((&impl_arg_ty, &trait_arg_ty), impl_arg), trait_arg)| match infcx
+                        .at(&cause, param_env)
+                        .sub(trait_arg_ty, impl_arg_ty)
+                    {
+                        Ok(_) => None,
+                        Err(_) => Some((impl_arg.span, Some(trait_arg.span))),
+                    })
                     .unwrap_or_else(|| {
                         if infcx
                             .at(&cause, param_env)
