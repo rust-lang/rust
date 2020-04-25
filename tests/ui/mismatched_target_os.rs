@@ -38,12 +38,6 @@ fn fuchsia() {}
 #[cfg(haiku)]
 fn haiku() {}
 
-#[cfg(illumos)]
-fn illumos() {}
-
-#[cfg(l4re)]
-fn l4re() {}
-
 #[cfg(redox)]
 fn redox() {}
 

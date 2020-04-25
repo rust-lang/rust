@@ -112,26 +112,6 @@ LL | #[cfg(haiku)]
 error: operating system used in target family position
   --> $DIR/mismatched_target_os.rs:41:1
    |
-LL | #[cfg(illumos)]
-   | ^^^^^^-------^^
-   |       |
-   |       help: try: `target_os = "illumos"`
-   |
-   = help: Did you mean `unix`?
-
-error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:44:1
-   |
-LL | #[cfg(l4re)]
-   | ^^^^^^----^^
-   |       |
-   |       help: try: `target_os = "l4re"`
-   |
-   = help: Did you mean `unix`?
-
-error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:47:1
-   |
 LL | #[cfg(redox)]
    | ^^^^^^-----^^
    |       |
@@ -140,7 +120,7 @@ LL | #[cfg(redox)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:50:1
+  --> $DIR/mismatched_target_os.rs:44:1
    |
 LL | #[cfg(solaris)]
    | ^^^^^^-------^^
@@ -150,7 +130,7 @@ LL | #[cfg(solaris)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:53:1
+  --> $DIR/mismatched_target_os.rs:47:1
    |
 LL | #[cfg(vxworks)]
    | ^^^^^^-------^^
@@ -160,7 +140,7 @@ LL | #[cfg(vxworks)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:58:1
+  --> $DIR/mismatched_target_os.rs:52:1
    |
 LL | #[cfg(cloudabi)]
    | ^^^^^^--------^^
@@ -168,7 +148,7 @@ LL | #[cfg(cloudabi)]
    |       help: try: `target_os = "cloudabi"`
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:61:1
+  --> $DIR/mismatched_target_os.rs:55:1
    |
 LL | #[cfg(hermit)]
    | ^^^^^^------^^
@@ -176,7 +156,7 @@ LL | #[cfg(hermit)]
    |       help: try: `target_os = "hermit"`
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:64:1
+  --> $DIR/mismatched_target_os.rs:58:1
    |
 LL | #[cfg(wasi)]
    | ^^^^^^----^^
@@ -184,7 +164,7 @@ LL | #[cfg(wasi)]
    |       help: try: `target_os = "wasi"`
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:67:1
+  --> $DIR/mismatched_target_os.rs:61:1
    |
 LL | #[cfg(none)]
    | ^^^^^^----^^
@@ -192,7 +172,7 @@ LL | #[cfg(none)]
    |       help: try: `target_os = "none"`
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:71:1
+  --> $DIR/mismatched_target_os.rs:65:1
    |
 LL | #[cfg(all(not(any(windows, linux)), freebsd))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -207,5 +187,5 @@ help: try
 LL | #[cfg(all(not(any(windows, linux)), target_os = "freebsd"))]
    |                                     ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 21 previous errors
+error: aborting due to 19 previous errors
 

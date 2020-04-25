@@ -38,12 +38,6 @@ fn fuchsia() {}
 #[cfg(target_os = "haiku")]
 fn haiku() {}
 
-#[cfg(target_os = "illumos")]
-fn illumos() {}
-
-#[cfg(target_os = "l4re")]
-fn l4re() {}
-
 #[cfg(target_os = "redox")]
 fn redox() {}
 
