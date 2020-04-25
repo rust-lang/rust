@@ -2,7 +2,7 @@
 
 use crate::{proc_macro::bridge, rustc_server::TokenStream};
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use goblin::{mach::Mach, Object};
 use libloading::Library;
@@ -123,6 +123,9 @@ impl Expander {
             .canonicalize()
             .unwrap_or_else(|err| panic!("Cannot canonicalize {}: {:?}", lib.display(), err));
 
+        // Copy the dylib to temp directory to prevent locking in Windows
+        let lib = copy_to_temp_dir(&lib).map_err(|e| e.to_string())?;
+
         let library = ProcMacroLibraryImpl::open(&lib).map_err(|e| e.to_string())?;
 
         Ok(Expander { inner: library })
@@ -194,4 +197,18 @@ impl Expander {
             })
             .collect()
     }
+}
+
+fn copy_to_temp_dir(path: &Path) -> io::Result<PathBuf> {
+    let mut to = std::env::temp_dir();
+    let file_name = path.file_name().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("File path is invalid: {}", path.display()),
+        )
+    })?;
+
+    to.push(file_name);
+    std::fs::copy(path, &to)?;
+    Ok(to)
 }
