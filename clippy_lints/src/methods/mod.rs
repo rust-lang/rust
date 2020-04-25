@@ -1,3 +1,4 @@
+mod bind_instead_of_map;
 mod inefficient_to_string;
 mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
@@ -7,6 +8,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::iter;
 
+use bind_instead_of_map::BindInsteadOfMap;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
@@ -306,27 +308,34 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.and_then(|x| Some(y))`.
+    /// **What it does:** Checks for usage of `_.and_then(|x| Some(y))`, `_.and_then(|x| Ok(y))` or
+    /// `_.or_else(|x| Err(y))`.
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.map(|x| y)`.
+    /// `_.map(|x| y)` or `_.map_err(|x| y)`.
     ///
     /// **Known problems:** None
     ///
     /// **Example:**
     ///
     /// ```rust
-    /// let x = Some("foo");
-    /// let _ = x.and_then(|s| Some(s.len()));
+    /// # fn opt() -> Option<&'static str> { Some("42") }
+    /// # fn res() -> Result<&'static str, &'static str> { Ok("42") }
+    /// let _ = opt().and_then(|s| Some(s.len()));
+    /// let _ = res().and_then(|s| if s.len() == 42 { Ok(10) } else { Ok(20) });
+    /// let _ = res().or_else(|s| if s.len() == 42 { Err(10) } else { Err(20) });
     /// ```
     ///
     /// The correct use would be:
     ///
     /// ```rust
-    /// let x = Some("foo");
-    /// let _ = x.map(|s| s.len());
+    /// # fn opt() -> Option<&'static str> { Some("42") }
+    /// # fn res() -> Result<&'static str, &'static str> { Ok("42") }
+    /// let _ = opt().map(|s| s.len());
+    /// let _ = res().map(|s| if s.len() == 42 { 10 } else { 20 });
+    /// let _ = res().map_err(|s| if s.len() == 42 { 10 } else { 20 });
     /// ```
-    pub OPTION_AND_THEN_SOME,
+    pub BIND_INSTEAD_OF_MAP,
     complexity,
     "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`"
 }
@@ -1243,7 +1252,7 @@ declare_lint_pass!(Methods => [
     MAP_UNWRAP_OR,
     RESULT_MAP_OR_INTO_OPTION,
     OPTION_MAP_OR_NONE,
-    OPTION_AND_THEN_SOME,
+    BIND_INSTEAD_OF_MAP,
     OR_FUN_CALL,
     EXPECT_FUN_CALL,
     CHARS_NEXT_CMP,
@@ -1302,7 +1311,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["unwrap_or", "map"] => option_map_unwrap_or::lint(cx, expr, arg_lists[1], arg_lists[0], method_spans[1]),
             ["unwrap_or_else", "map"] => lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]),
             ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
-            ["and_then", ..] => lint_option_and_then_some(cx, expr, arg_lists[0]),
+            ["and_then", ..] => {
+                bind_instead_of_map::OptionAndThenSome::lint(cx, expr, arg_lists[0]);
+                bind_instead_of_map::ResultAndThenOk::lint(cx, expr, arg_lists[0]);
+            },
+            ["or_else", ..] => {
+                bind_instead_of_map::ResultOrElseErrInfo::lint(cx, expr, arg_lists[0]);
+            },
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
             ["next", "skip_while"] => lint_skip_while_next(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
@@ -2599,73 +2614,6 @@ fn lint_map_or_none<'a, 'tcx>(
         hint,
         Applicability::MachineApplicable,
     );
-}
-
-/// Lint use of `_.and_then(|x| Some(y))` for `Option`s
-fn lint_option_and_then_some(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    const LINT_MSG: &str = "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`";
-    const NO_OP_MSG: &str = "using `Option.and_then(Some)`, which is a no-op";
-
-    let ty = cx.tables.expr_ty(&args[0]);
-    if !is_type_diagnostic_item(cx, ty, sym!(option_type)) {
-        return;
-    }
-
-    match args[1].kind {
-        hir::ExprKind::Closure(_, _, body_id, closure_args_span, _) => {
-            let closure_body = cx.tcx.hir().body(body_id);
-            let closure_expr = remove_blocks(&closure_body.value);
-            if_chain! {
-                if let hir::ExprKind::Call(ref some_expr, ref some_args) = closure_expr.kind;
-                if let hir::ExprKind::Path(ref qpath) = some_expr.kind;
-                if match_qpath(qpath, &paths::OPTION_SOME);
-                if some_args.len() == 1;
-                then {
-                    let inner_expr = &some_args[0];
-
-                    if contains_return(inner_expr) {
-                        return;
-                    }
-
-                    let some_inner_snip = if inner_expr.span.from_expansion() {
-                        snippet_with_macro_callsite(cx, inner_expr.span, "_")
-                    } else {
-                        snippet(cx, inner_expr.span, "_")
-                    };
-
-                    let closure_args_snip = snippet(cx, closure_args_span, "..");
-                    let option_snip = snippet(cx, args[0].span, "..");
-                    let note = format!("{}.map({} {})", option_snip, closure_args_snip, some_inner_snip);
-                    span_lint_and_sugg(
-                        cx,
-                        OPTION_AND_THEN_SOME,
-                        expr.span,
-                        LINT_MSG,
-                        "try this",
-                        note,
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-        },
-        // `_.and_then(Some)` case, which is no-op.
-        hir::ExprKind::Path(ref qpath) => {
-            if match_qpath(qpath, &paths::OPTION_SOME) {
-                let option_snip = snippet(cx, args[0].span, "..");
-                let note = format!("{}", option_snip);
-                span_lint_and_sugg(
-                    cx,
-                    OPTION_AND_THEN_SOME,
-                    expr.span,
-                    NO_OP_MSG,
-                    "use the expression directly",
-                    note,
-                    Applicability::MachineApplicable,
-                );
-            }
-        },
-        _ => {},
-    }
 }
 
 /// lint use of `filter().next()` for `Iterators`

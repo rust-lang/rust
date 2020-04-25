@@ -650,6 +650,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &mem_replace::MEM_REPLACE_OPTION_WITH_NONE,
         &mem_replace::MEM_REPLACE_WITH_DEFAULT,
         &mem_replace::MEM_REPLACE_WITH_UNINIT,
+        &methods::BIND_INSTEAD_OF_MAP,
         &methods::CHARS_LAST_CMP,
         &methods::CHARS_NEXT_CMP,
         &methods::CLONE_DOUBLE_REF,
@@ -676,7 +677,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &methods::MAP_UNWRAP_OR,
         &methods::NEW_RET_NO_SELF,
         &methods::OK_EXPECT,
-        &methods::OPTION_AND_THEN_SOME,
         &methods::OPTION_AS_REF_DEREF,
         &methods::OPTION_MAP_OR_NONE,
         &methods::OR_FUN_CALL,
@@ -1291,6 +1291,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&mem_replace::MEM_REPLACE_OPTION_WITH_NONE),
         LintId::of(&mem_replace::MEM_REPLACE_WITH_DEFAULT),
         LintId::of(&mem_replace::MEM_REPLACE_WITH_UNINIT),
+        LintId::of(&methods::BIND_INSTEAD_OF_MAP),
         LintId::of(&methods::CHARS_LAST_CMP),
         LintId::of(&methods::CHARS_NEXT_CMP),
         LintId::of(&methods::CLONE_DOUBLE_REF),
@@ -1307,7 +1308,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::MANUAL_SATURATING_ARITHMETIC),
         LintId::of(&methods::NEW_RET_NO_SELF),
         LintId::of(&methods::OK_EXPECT),
-        LintId::of(&methods::OPTION_AND_THEN_SOME),
         LintId::of(&methods::OPTION_AS_REF_DEREF),
         LintId::of(&methods::OPTION_MAP_OR_NONE),
         LintId::of(&methods::OR_FUN_CALL),
@@ -1559,10 +1559,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&matches::MATCH_AS_REF),
         LintId::of(&matches::MATCH_SINGLE_BINDING),
         LintId::of(&matches::WILDCARD_IN_OR_PATTERNS),
+        LintId::of(&methods::BIND_INSTEAD_OF_MAP),
         LintId::of(&methods::CLONE_ON_COPY),
         LintId::of(&methods::FILTER_NEXT),
         LintId::of(&methods::FLAT_MAP_IDENTITY),
-        LintId::of(&methods::OPTION_AND_THEN_SOME),
         LintId::of(&methods::OPTION_AS_REF_DEREF),
         LintId::of(&methods::SEARCH_IS_SOME),
         LintId::of(&methods::SKIP_WHILE_NEXT),
@@ -1784,6 +1784,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
     ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
     ls.register_renamed("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes");
+    ls.register_renamed("clippy::option_and_then_some", "clippy::bind_instead_of_map");
     ls.register_renamed("clippy::block_in_if_condition_expr", "clippy::blocks_in_if_conditions");
     ls.register_renamed("clippy::block_in_if_condition_stmt", "clippy::blocks_in_if_conditions");
     ls.register_renamed("clippy::option_map_unwrap_or", "clippy::map_unwrap_or");

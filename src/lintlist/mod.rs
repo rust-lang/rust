@@ -67,6 +67,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "bit_mask",
     },
     Lint {
+        name: "bind_instead_of_map",
+        group: "complexity",
+        desc: "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "blacklisted_name",
         group: "style",
         desc: "usage of a blacklisted/placeholder name",
@@ -1577,13 +1584,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "taking a reference to satisfy the type constraints on `==`",
         deprecation: None,
         module: "eq_op",
-    },
-    Lint {
-        name: "option_and_then_some",
-        group: "complexity",
-        desc: "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`",
-        deprecation: None,
-        module: "methods",
     },
     Lint {
         name: "option_as_ref_deref",

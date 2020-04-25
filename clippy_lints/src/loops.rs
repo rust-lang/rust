@@ -1462,7 +1462,7 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
                         let map = sugg::Sugg::hir(cx, arg, "map");
                         multispan_sugg(
                             diag,
-                            "use the corresponding method".into(),
+                            "use the corresponding method",
                             vec![
                                 (pat_span, snippet(cx, new_pat_span, kind).into_owned()),
                                 (arg_span, format!("{}.{}s{}()", map.maybe_par(), kind, mutbl)),

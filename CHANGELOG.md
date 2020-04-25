@@ -315,7 +315,7 @@ Released 2019-11-07
   * [`missing_safety_doc`] [#4535](https://github.com/rust-lang/rust-clippy/pull/4535)
   * [`mem_replace_with_uninit`] [#4511](https://github.com/rust-lang/rust-clippy/pull/4511)
   * [`suspicious_map`] [#4394](https://github.com/rust-lang/rust-clippy/pull/4394)
-  * [`option_and_then_some`] [#4386](https://github.com/rust-lang/rust-clippy/pull/4386)
+  * `option_and_then_some` [#4386](https://github.com/rust-lang/rust-clippy/pull/4386)
   * [`manual_saturating_arithmetic`] [#4498](https://github.com/rust-lang/rust-clippy/pull/4498)
 * Deprecate `unused_collect` lint. This is fully covered by rustc's `#[must_use]` on `collect` [#4348](https://github.com/rust-lang/rust-clippy/pull/4348)
 * Move `type_repetition_in_bounds` to pedantic group [#4403](https://github.com/rust-lang/rust-clippy/pull/4403)
@@ -1273,6 +1273,7 @@ Released 2018-09-13
 [`assign_ops`]: https://rust-lang.github.io/rust-clippy/master/index.html#assign_ops
 [`await_holding_lock`]: https://rust-lang.github.io/rust-clippy/master/index.html#await_holding_lock
 [`bad_bit_mask`]: https://rust-lang.github.io/rust-clippy/master/index.html#bad_bit_mask
+[`bind_instead_of_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#bind_instead_of_map
 [`blacklisted_name`]: https://rust-lang.github.io/rust-clippy/master/index.html#blacklisted_name
 [`blocks_in_if_conditions`]: https://rust-lang.github.io/rust-clippy/master/index.html#blocks_in_if_conditions
 [`bool_comparison`]: https://rust-lang.github.io/rust-clippy/master/index.html#bool_comparison
@@ -1494,7 +1495,6 @@ Released 2018-09-13
 [`not_unsafe_ptr_arg_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref
 [`ok_expect`]: https://rust-lang.github.io/rust-clippy/master/index.html#ok_expect
 [`op_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#op_ref
-[`option_and_then_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_and_then_some
 [`option_as_ref_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_as_ref_deref
 [`option_env_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_env_unwrap
 [`option_map_or_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_or_none

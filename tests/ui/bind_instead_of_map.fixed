@@ -1,5 +1,5 @@
 // run-rustfix
-#![deny(clippy::option_and_then_some)]
+#![deny(clippy::bind_instead_of_map)]
 
 // need a main anyway, use it get rid of unused warnings too
 pub fn main() {
@@ -12,7 +12,7 @@ pub fn main() {
 
     // Different type
     let x: Result<u32, &str> = Ok(1);
-    let _ = x.and_then(Ok);
+    let _ = x;
 }
 
 pub fn foo() -> Option<String> {

@@ -2230,7 +2230,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
             );
 
             if !vis.suggestions.is_empty() {
-                multispan_sugg(diag, "...and use generic constructor".into(), vis.suggestions);
+                multispan_sugg(diag, "...and use generic constructor", vis.suggestions);
             }
         }
 
