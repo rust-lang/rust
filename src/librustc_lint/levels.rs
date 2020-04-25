@@ -388,6 +388,11 @@ impl<'s> LintLevelsBuilder<'s> {
         self.cur = push.prev;
     }
 
+    /// Find the lint level for a lint.
+    pub fn lint_level(&self, lint: &'static Lint) -> (Level, LintSource) {
+        self.sets.get_lint_level(lint, self.cur, None, self.sess)
+    }
+
     /// Used to emit a lint-related diagnostic based on the current state of
     /// this lint context.
     pub fn struct_lint(
@@ -396,7 +401,7 @@ impl<'s> LintLevelsBuilder<'s> {
         span: Option<MultiSpan>,
         decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
     ) {
-        let (level, src) = self.sets.get_lint_level(lint, self.cur, None, self.sess);
+        let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, span, decorate)
     }
 

@@ -222,8 +222,9 @@ impl<'a> StringReader<'a> {
                     ident_start = ident_start + BytePos(2);
                 }
                 let sym = nfc_normalize(self.str_from(ident_start));
+                let span = self.mk_sp(start, self.pos);
+                self.sess.symbol_gallery.insert(sym, span);
                 if is_raw_ident {
-                    let span = self.mk_sp(start, self.pos);
                     if !sym.can_be_raw() {
                         self.err_span(span, &format!("`{}` cannot be a raw identifier", sym));
                     }
