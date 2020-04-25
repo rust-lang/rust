@@ -6,6 +6,7 @@ use crate::prelude::*;
 use rustc_span::{FileName, SourceFile, SourceFileAndLine, Pos, SourceFileHash, SourceFileHashAlgorithm};
 
 use cranelift_codegen::binemit::CodeOffset;
+use cranelift_codegen::machinst::MachSrcLoc;
 
 use gimli::write::{
     Address, AttributeValue, FileId, LineProgram, LineString, FileInfo, LineStringTable, UnitEntryId,
@@ -128,18 +129,8 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         source_info_set: &indexmap::IndexSet<SourceInfo>,
     ) -> CodeOffset {
         let tcx = self.debug_context.tcx;
-
         let line_program = &mut self.debug_context.dwarf.unit.line_program;
-
-        line_program.begin_sequence(Some(Address::Symbol {
-            symbol: self.symbol,
-            addend: 0,
-        }));
-
-        let encinfo = isa.encoding_info();
         let func = &context.func;
-        let mut blocks = func.layout.blocks().collect::<Vec<_>>();
-        blocks.sort_by_key(|block| func.offsets[*block]); // Ensure inst offsets always increase
 
         let line_strings = &mut self.debug_context.dwarf.line_strings;
         let function_span = self.mir.span;
@@ -197,22 +188,58 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             line_program.generate_row();
         };
 
-        let mut end = 0;
-        for block in blocks {
-            for (offset, inst, size) in func.inst_offsets(block, &encinfo) {
-                let srcloc = func.srclocs[inst];
-                line_program.row().address_offset = offset as u64;
-                if !srcloc.is_default() {
-                    let source_info = *source_info_set.get_index(srcloc.bits() as usize).unwrap();
+        line_program.begin_sequence(Some(Address::Symbol {
+            symbol: self.symbol,
+            addend: 0,
+        }));
+
+        let mut func_end = 0;
+
+        if let Some(ref mcr) = &context.mach_compile_result {
+            for &MachSrcLoc { start, end, loc } in mcr.sections.get_srclocs_sorted() {
+                // FIXME get_srclocs_sorted omits default srclocs
+                if func_end < start {
+                    line_program.row().address_offset = func_end as u64;
+                    create_row_for_span(line_program, self.mir.span);
+                }
+                line_program.row().address_offset = start as u64;
+                if !loc.is_default() {
+                    let source_info = *source_info_set.get_index(loc.bits() as usize).unwrap();
                     create_row_for_span(line_program, source_info.span);
                 } else {
                     create_row_for_span(line_program, self.mir.span);
                 }
-                end = offset + size;
+                func_end = end;
+            }
+            // FIXME get_srclocs_sorted omits default srclocs
+            if func_end < mcr.sections.total_size() {
+                line_program.row().address_offset = func_end as u64;
+                create_row_for_span(line_program, self.mir.span);
+                func_end = mcr.sections.total_size();
+            }
+        } else {
+            let encinfo = isa.encoding_info();
+            let mut blocks = func.layout.blocks().collect::<Vec<_>>();
+            blocks.sort_by_key(|block| func.offsets[*block]); // Ensure inst offsets always increase
+
+            for block in blocks {
+                for (offset, inst, size) in func.inst_offsets(block, &encinfo) {
+                    let srcloc = func.srclocs[inst];
+                    line_program.row().address_offset = offset as u64;
+                    if !srcloc.is_default() {
+                        let source_info = *source_info_set.get_index(srcloc.bits() as usize).unwrap();
+                        create_row_for_span(line_program, source_info.span);
+                    } else {
+                        create_row_for_span(line_program, self.mir.span);
+                    }
+                    func_end = offset + size;
+                }
             }
         }
 
-        line_program.end_sequence(end as u64);
+        assert_ne!(func_end, 0);
+
+        line_program.end_sequence(func_end as u64);
 
         let entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
         entry.set(
@@ -222,11 +249,11 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 addend: 0,
             }),
         );
-        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(end as u64));
+        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(func_end as u64));
 
         self.debug_context
             .emit_location(self.entry_id, self.mir.span);
 
-        end
+        func_end
     }
 }

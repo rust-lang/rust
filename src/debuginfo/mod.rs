@@ -312,10 +312,6 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         source_info_set: &indexmap::IndexSet<SourceInfo>,
         local_map: FxHashMap<mir::Local, CPlace<'tcx>>,
     ) {
-        if isa.get_mach_backend().is_some() {
-            return; // The AArch64 backend doesn't support line debuginfo yet.
-        }
-
         let end = self.create_debug_lines(context, isa, source_info_set);
 
         self.debug_context
@@ -328,6 +324,10 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 },
                 length: u64::from(end),
             });
+
+        if isa.get_mach_backend().is_some() {
+            return; // Not yet implemented for the AArch64 backend.
+        }
 
         let func_entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
         // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.
