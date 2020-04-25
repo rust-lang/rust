@@ -1399,6 +1399,15 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_, '_>, did: DefId) -> bool 
     )
 }
 
+pub fn run_lints(cx: &LateContext<'_, '_>, lints: &[&'static Lint], id: HirId) -> bool {
+    lints.iter().any(|lint| {
+        matches!(
+            cx.tcx.lint_level_at_node(lint, id),
+            (Level::Forbid | Level::Deny | Level::Warn, _)
+        )
+    })
+}
+
 #[cfg(test)]
 mod test {
     use super::{trim_multiline, without_block_comments};
