@@ -1,35 +1,24 @@
-use {
-    std::{borrow::Cow, sync::Arc},
-    text_size::*,
-};
+use text_size::TextSize;
 
 #[derive(Copy, Clone)]
 struct BadRope<'a>(&'a [&'a str]);
 
 impl BadRope<'_> {
     fn text_len(self) -> TextSize {
-        self.0.iter().map(TextSize::of).sum()
+        self.0.iter().copied().map(TextSize::of).sum()
     }
 }
 
 #[test]
 fn main() {
-    macro_rules! test {
-        ($($expr:expr),+ $(,)?) => {
-            $(let _ = TextSize::of($expr);)+
-        };
-    }
+    let x: char = 'c';
+    let _ = TextSize::of(x);
 
-    test! {
-        "",
-        &"",
-        'a',
-        &'a',
-        &String::new(),
-        &String::new().into_boxed_str(),
-        &Arc::new(String::new()),
-        &Cow::Borrowed(""),
-    }
+    let x: &str = "hello";
+    let _ = TextSize::of(x);
+
+    let x: &String = &"hello".into();
+    let _ = TextSize::of(x);
 
     let _ = BadRope(&[""]).text_len();
 }

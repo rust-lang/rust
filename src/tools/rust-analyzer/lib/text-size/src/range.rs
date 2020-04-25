@@ -98,8 +98,8 @@ impl TextRange {
     /// let range = TextRange::up_to(point);
     ///
     /// assert_eq!(range.len(), point);
-    /// assert_eq!(range, TextRange::new(TextSize::zero(), point));
-    /// assert_eq!(range, TextRange::at(TextSize::zero(), point));
+    /// assert_eq!(range, TextRange::new(0.into(), point));
+    /// assert_eq!(range, TextRange::at(0.into(), point));
     /// ```
     #[inline]
     pub fn up_to(end: TextSize) -> TextRange {
@@ -254,7 +254,7 @@ impl TextRange {
     /// ```rust
     /// # use text_size::*;
     /// assert_eq!(
-    ///     TextRange::empty(TextSize::zero()).cover_offset(20.into()),
+    ///     TextRange::empty(0.into()).cover_offset(20.into()),
     ///     TextRange::new(0.into(), 20.into()),
     /// )
     /// ```

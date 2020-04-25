@@ -26,7 +26,7 @@ fn checked_math() {
     assert_eq!(size(1).checked_add(size(1)), Some(size(2)));
     assert_eq!(size(1).checked_sub(size(1)), Some(size(0)));
     assert_eq!(size(1).checked_sub(size(2)), None);
-    assert_eq!(TextSize::MAX.checked_add(size(1)), None);
+    assert_eq!(size(!0).checked_add(size(1)), None);
 }
 
 #[test]
