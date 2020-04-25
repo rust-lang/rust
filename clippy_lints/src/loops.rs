@@ -576,20 +576,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
                             && !is_iterator_used_after_while_let(cx, iter_expr)
                             && !is_nested(cx, expr, &method_args[0]))
                 {
-                    let iterator = snippet(cx, method_args[0].span, "_");
+                    let mut applicability = Applicability::MachineApplicable;
+                    let iterator = snippet_with_applicability(cx, method_args[0].span, "_", &mut applicability);
                     let loop_var = if pat_args.is_empty() {
                         "_".to_string()
                     } else {
-                        snippet(cx, pat_args[0].span, "_").into_owned()
+                        snippet_with_applicability(cx, pat_args[0].span, "_", &mut applicability).into_owned()
                     };
                     span_lint_and_sugg(
                         cx,
                         WHILE_LET_ON_ITERATOR,
-                        expr.span,
+                        expr.span.with_hi(match_expr.span.hi()),
                         "this loop could be written as a `for` loop",
                         "try",
-                        format!("for {} in {} {{ .. }}", loop_var, iterator),
-                        Applicability::HasPlaceholders,
+                        format!("for {} in {}", loop_var, iterator),
+                        applicability,
                     );
                 }
             }
