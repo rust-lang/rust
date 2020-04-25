@@ -1564,10 +1564,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_did: DefId,
     ) {
         let struct_path = self.tcx().def_path_str(base_did);
-        let kind_name = match self.tcx().def_kind(base_did) {
-            Some(def_kind) => def_kind.descr(base_did),
-            _ => " ",
-        };
+        let kind_name = self.tcx().def_kind(base_did).descr(base_did);
         let mut err = struct_span_err!(
             self.tcx().sess,
             field.span,

@@ -831,6 +831,13 @@ fn primary_body_of(
 }
 
 fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    // FIXME(#71104) some `LocalDefId` do not seem to have a corresponding `HirId`.
+    if let Some(def_id) = def_id.as_local() {
+        if tcx.hir().opt_local_def_id_to_hir_id(def_id).is_none() {
+            return false;
+        }
+    }
+
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
     let outer_def_id = tcx.closure_base_def_id(def_id);
@@ -838,11 +845,8 @@ fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         return tcx.has_typeck_tables(outer_def_id);
     }
 
-    // FIXME(#71104) Should really be using just `as_local_hir_id` but
-    // some `LocalDefId` do not seem to have a corresponding HirId.
-    if let Some(id) =
-        def_id.as_local().and_then(|def_id| tcx.hir().opt_local_def_id_to_hir_id(def_id))
-    {
+    if let Some(def_id) = def_id.as_local() {
+        let id = tcx.hir().local_def_id_to_hir_id(def_id);
         primary_body_of(tcx, id).is_some()
     } else {
         false
@@ -4971,15 +4975,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
                     sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                    match def_id
-                        .as_local()
-                        .map(|def_id| hir.as_local_hir_id(def_id))
-                        .and_then(|hir_id| hir.def_kind(hir_id))
-                    {
-                        Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
+                    match def_id.as_local().map(|def_id| hir.def_kind(def_id)) {
+                        Some(DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
                             msg = "instantiate this tuple variant";
                         }
-                        Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Struct, _)) => {
+                        Some(DefKind::Ctor(CtorOf::Struct, _)) => {
                             msg = "instantiate this tuple struct";
                         }
                         _ => {}

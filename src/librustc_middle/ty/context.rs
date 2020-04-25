@@ -48,7 +48,7 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
-use rustc_hir::definitions::{DefPathData, DefPathHash, Definitions};
+use rustc_hir::definitions::{DefPathHash, Definitions};
 use rustc_hir::lang_items;
 use rustc_hir::lang_items::PanicLocationLangItem;
 use rustc_hir::{HirId, Node, TraitCandidate};
@@ -1492,21 +1492,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns a displayable description and article for the given `def_id` (e.g. `("a", "struct")`).
     pub fn article_and_description(&self, def_id: DefId) -> (&'static str, &'static str) {
-        self.def_kind(def_id)
-            .map(|def_kind| (def_kind.article(), def_kind.descr(def_id)))
-            .unwrap_or_else(|| match self.def_key(def_id).disambiguated_data.data {
-                DefPathData::ClosureExpr => match self.generator_kind(def_id) {
-                    None => ("a", "closure"),
-                    Some(rustc_hir::GeneratorKind::Async(..)) => ("an", "async closure"),
-                    Some(rustc_hir::GeneratorKind::Gen) => ("a", "generator"),
-                },
-                DefPathData::LifetimeNs(..) => ("a", "lifetime"),
-                DefPathData::Impl => ("an", "implementation"),
-                DefPathData::TypeNs(..) | DefPathData::ValueNs(..) | DefPathData::MacroNs(..) => {
-                    unreachable!()
-                }
-                _ => bug!("article_and_description called on def_id {:?}", def_id),
-            })
+        match self.def_kind(def_id) {
+            DefKind::Generator => match self.generator_kind(def_id).unwrap() {
+                rustc_hir::GeneratorKind::Async(..) => ("an", "async closure"),
+                rustc_hir::GeneratorKind::Gen => ("a", "generator"),
+            },
+            def_kind => (def_kind.article(), def_kind.descr(def_id)),
+        }
     }
 }
 

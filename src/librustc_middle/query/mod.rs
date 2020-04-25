@@ -620,7 +620,7 @@ rustc_queries! {
             cache_on_disk_if { true }
         }
 
-        query def_kind(_: DefId) -> Option<DefKind> {}
+        query def_kind(_: DefId) -> DefKind {}
         query def_span(_: DefId) -> Span {
             // FIXME(mw): DefSpans are not really inputs since they are derived from
             // HIR. But at the moment HIR hashing still contains some hacks that allow
