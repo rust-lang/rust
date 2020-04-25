@@ -1113,7 +1113,7 @@ impl<T: Clone> RawTable<T> {
     }
 
     /// Variant of `clone_from` to use when a hasher is available.
-    #[cfg(any(feature = "nightly", feature = "raw"))]
+    #[cfg(feature = "raw")]
     pub fn clone_from_with_hasher(&mut self, source: &Self, hasher: impl Fn(&T) -> u64) {
         // If we have enough capacity in the table, just clear it and insert
         // elements one by one. We don't do this if we have the same number of
