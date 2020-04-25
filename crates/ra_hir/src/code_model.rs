@@ -1136,6 +1136,13 @@ impl Type {
         matches!(&self.ty.value, Ty::Apply(ApplicationTy { ctor: TypeCtor::Closure { .. }, .. }))
     }
 
+    pub fn is_fn(&self) -> bool {
+        matches!(&self.ty.value,
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(..), .. }) |
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::FnPtr { .. }, .. })
+        )
+    }
+
     pub fn contains_unknown(&self) -> bool {
         return go(&self.ty.value);
 
