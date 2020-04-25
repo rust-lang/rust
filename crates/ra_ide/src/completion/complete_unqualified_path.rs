@@ -1333,8 +1333,8 @@ mod tests {
         [
             CompletionItem {
                 label: "f()",
-                source_range: [98; 99),
-                delete: [98; 99),
+                source_range: 98..99,
+                delete: 98..99,
                 insert: "f()$0",
                 kind: Function,
                 lookup: "f",
@@ -1342,15 +1342,15 @@ mod tests {
             },
             CompletionItem {
                 label: "m",
-                source_range: [98; 99),
-                delete: [98; 99),
+                source_range: 98..99,
+                delete: 98..99,
                 insert: "m",
                 kind: Module,
             },
             CompletionItem {
                 label: "m::E::V",
-                source_range: [98; 99),
-                delete: [98; 99),
+                source_range: 98..99,
+                delete: 98..99,
                 insert: "m::E::V",
                 kind: EnumVariant,
                 detail: "()",

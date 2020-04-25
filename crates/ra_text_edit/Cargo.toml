@@ -9,4 +9,4 @@ publish = false
 doctest = false
 
 [dependencies]
-text-size = { path = "../../../text-size" }
+text-size = "1.0.0"

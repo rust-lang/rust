@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use crate::AtomTextEdit;
-// TODO: fix Cargo.toml
+
 use text_size::{TextRange, TextSize};
 
 #[derive(Debug, Clone)]
