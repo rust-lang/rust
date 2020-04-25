@@ -19,7 +19,7 @@ impl ModPath {
 
     // When std library is present, paths starting with `std::`
     // should be preferred over paths starting with `core::` and `alloc::`
-    fn should_start_with_std(&self) -> bool {
+    fn can_start_with_std(&self) -> bool {
         self.segments
             .first()
             .filter(|&first_segment| {
@@ -132,6 +132,9 @@ fn find_path_inner(
     }
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
+    let crate_root = ModuleId { local_id: def_map.root, krate: from.krate };
+    let crate_attrs = db.attrs(crate_root.into());
+    let prefer_no_std = crate_attrs.by_key("no_std").exists();
     let importable_locations = find_importable_locations(db, item, from);
     let mut best_path = None;
     let mut best_path_len = max_len;
@@ -147,21 +150,32 @@ fn find_path_inner(
         };
         path.segments.push(name);
 
-        let new_path =
-            if let Some(best_path) = best_path { select_best_path(best_path, path) } else { path };
+        let new_path = if let Some(best_path) = best_path {
+            select_best_path(best_path, path, prefer_no_std)
+        } else {
+            path
+        };
         best_path_len = new_path.len();
         best_path = Some(new_path);
     }
     best_path
 }
 
-fn select_best_path(old_path: ModPath, new_path: ModPath) -> ModPath {
-    if old_path.starts_with_std() && new_path.should_start_with_std() {
+fn select_best_path(old_path: ModPath, new_path: ModPath, prefer_no_std: bool) -> ModPath {
+    if old_path.starts_with_std() && new_path.can_start_with_std() {
         tested_by!(prefer_std_paths);
-        old_path
-    } else if new_path.starts_with_std() && old_path.should_start_with_std() {
+        if prefer_no_std {
+            new_path
+        } else {
+            old_path
+        }
+    } else if new_path.starts_with_std() && old_path.can_start_with_std() {
         tested_by!(prefer_std_paths);
-        new_path
+        if prefer_no_std {
+            old_path
+        } else {
+            new_path
+        }
     } else if new_path.len() < old_path.len() {
         new_path
     } else {
@@ -510,6 +524,54 @@ mod tests {
         }
         "#;
         check_found_path(code, "std::sync::Arc");
+    }
+
+    #[test]
+    fn prefer_alloc_paths_over_std() {
+        covers!(prefer_std_paths);
+        let code = r#"
+        //- /main.rs crate:main deps:alloc,std
+        #![no_std]
+
+        <|>
+
+        //- /std.rs crate:std deps:alloc
+
+        pub mod sync {
+            pub use alloc::sync::Arc;
+        }
+
+        //- /zzz.rs crate:alloc
+
+        pub mod sync {
+            pub struct Arc;
+        }
+        "#;
+        check_found_path(code, "alloc::sync::Arc");
+    }
+
+    #[test]
+    fn prefer_core_paths_over_std() {
+        covers!(prefer_std_paths);
+        let code = r#"
+        //- /main.rs crate:main deps:core,std
+        #![no_std]
+
+        <|>
+
+        //- /std.rs crate:std deps:core
+
+        pub mod fmt {
+            pub use core::fmt::Error;
+        }
+
+        //- /zzz.rs crate:core
+
+        pub mod fmt {
+            pub struct Error;
+        }
+        "#;
+        check_found_path(code, "core::fmt::Error");
     }
 
     #[test]

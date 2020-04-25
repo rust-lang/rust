@@ -13,7 +13,8 @@ use ra_syntax::{
 use tt::Subtree;
 
 use crate::{
-    db::DefDatabase, path::ModPath, src::HasChildSource, src::HasSource, AdtId, AttrDefId, Lookup,
+    db::DefDatabase, nameres::ModuleSource, path::ModPath, src::HasChildSource, src::HasSource,
+    AdtId, AttrDefId, Lookup,
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -37,11 +38,19 @@ impl Attrs {
         match def {
             AttrDefId::ModuleId(module) => {
                 let def_map = db.crate_def_map(module.krate);
-                let src = match def_map[module.local_id].declaration_source(db) {
-                    Some(it) => it,
-                    None => return Attrs::default(),
-                };
-                Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
+                let mod_data = &def_map[module.local_id];
+                match mod_data.declaration_source(db) {
+                    Some(it) => {
+                        Attrs::from_attrs_owner(db, it.as_ref().map(|it| it as &dyn AttrsOwner))
+                    }
+                    None => Attrs::from_attrs_owner(
+                        db,
+                        mod_data.definition_source(db).as_ref().map(|src| match src {
+                            ModuleSource::SourceFile(file) => file as &dyn AttrsOwner,
+                            ModuleSource::Module(module) => module as &dyn AttrsOwner,
+                        }),
+                    ),
+                }
             }
             AttrDefId::FieldId(it) => {
                 let src = it.parent.child_source(db);
@@ -106,7 +115,9 @@ pub struct Attr {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttrInput {
+    /// `#[attr = "string"]`
     Literal(SmolStr),
+    /// `#[attr(subtree)]`
     TokenTree(Subtree),
 }
 
