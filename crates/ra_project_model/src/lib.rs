@@ -285,8 +285,10 @@ impl ProjectWorkspace {
                         let mut env = Env::default();
                         let mut extern_source = ExternSource::default();
                         if let Some(out_dir) = &krate.out_dir {
-                            // FIXME: We probably mangle non UTF-8 paths here, figure out a better solution
-                            env.set("OUT_DIR", out_dir.to_string_lossy().to_string());
+                            // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
+                            if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
+                                env.set("OUT_DIR", out_dir);
+                            }
                             if let Some(&extern_source_id) = extern_source_roots.get(out_dir) {
                                 extern_source.set_extern_path(&out_dir, extern_source_id);
                             }
@@ -402,8 +404,10 @@ impl ProjectWorkspace {
                             let mut env = Env::default();
                             let mut extern_source = ExternSource::default();
                             if let Some(out_dir) = &cargo[pkg].out_dir {
-                                // FIXME: We probably mangle non UTF-8 paths here, figure out a better solution
-                                env.set("OUT_DIR", out_dir.to_string_lossy().to_string());
+                                // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
+                                if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
+                                    env.set("OUT_DIR", out_dir);
+                                }
                                 if let Some(&extern_source_id) = extern_source_roots.get(out_dir) {
                                     extern_source.set_extern_path(&out_dir, extern_source_id);
                                 }

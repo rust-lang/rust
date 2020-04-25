@@ -696,7 +696,7 @@ fn on_diagnostic_task(task: DiagnosticTask, msg_sender: &Sender<Message>, state:
         let uri = match url_from_path_with_drive_lowercasing(&path) {
             Ok(uri) => uri,
             Err(err) => {
-                log::error!("Couldn't convert path to url ({}): {:?}", err, path.to_string_lossy());
+                log::error!("Couldn't convert path to url ({}): {}", err, path.display());
                 continue;
             }
         };
