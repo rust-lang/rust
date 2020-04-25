@@ -417,28 +417,29 @@ fn loop_turn(
         && loop_state.pending_libraries.is_empty()
         && loop_state.in_flight_libraries == 0
     {
+        state_changed = true;
         loop_state.workspace_loaded = true;
         if let Some(flycheck) = &world_state.flycheck {
             flycheck.update();
         }
-        pool.execute({
-            let subs = loop_state.subscriptions.subscriptions();
-            let snap = world_state.snapshot();
-            move || snap.analysis().prime_caches(subs).unwrap_or_else(|_: Canceled| ())
-        });
     }
 
     if show_progress {
         send_startup_progress(&connection.sender, loop_state);
     }
 
-    if state_changed {
+    if state_changed && loop_state.workspace_loaded {
         update_file_notifications_on_threadpool(
             pool,
             world_state.snapshot(),
             task_sender.clone(),
             loop_state.subscriptions.subscriptions(),
-        )
+        );
+        pool.execute({
+            let subs = loop_state.subscriptions.subscriptions();
+            let snap = world_state.snapshot();
+            move || snap.analysis().prime_caches(subs).unwrap_or_else(|_: Canceled| ())
+        });
     }
 
     let loop_duration = loop_start.elapsed();

@@ -3,13 +3,10 @@
 //! request takes longer to compute. This modules implemented prepopulating of
 //! various caches, it's not really advanced at the moment.
 
-use hir::Semantics;
-
 use crate::{FileId, RootDatabase};
 
 pub(crate) fn prime_caches(db: &RootDatabase, files: Vec<FileId>) {
-    let sema = Semantics::new(db);
     for file in files {
-        let _ = sema.to_module_def(file);
+        let _ = crate::syntax_highlighting::highlight(db, file, None);
     }
 }
