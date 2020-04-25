@@ -97,7 +97,7 @@ static NUM_REF: &'static u8 = unsafe { &NUM };
 macro_rules! assert {
     ($e:expr) => {
         if !$e {
-            panic(&(stringify!(! $e), file!(), line!(), 0));
+            panic(stringify!(! $e));
         }
     };
 }
@@ -105,7 +105,7 @@ macro_rules! assert {
 macro_rules! assert_eq {
     ($l:expr, $r: expr) => {
         if $l != $r {
-            panic(&(stringify!($l != $r), file!(), line!(), 0));
+            panic(stringify!($l != $r));
         }
     }
 }

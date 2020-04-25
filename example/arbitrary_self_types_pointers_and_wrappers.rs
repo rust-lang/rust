@@ -13,7 +13,7 @@ use mini_core::*;
 macro_rules! assert_eq {
     ($l:expr, $r: expr) => {
         if $l != $r {
-            panic(&(stringify!($l != $r), file!(), line!(), 0));
+            panic(stringify!($l != $r));
         }
     }
 }

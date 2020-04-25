@@ -241,14 +241,36 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 fx.bcx.ins().jump(target, &[]);
 
                 fx.bcx.switch_to_block(failure);
-                trap_panic(
-                    fx,
-                    format!(
-                        "[panic] Assert {:?} at {:?} failed.",
-                        msg,
-                        bb_data.terminator().source_info.span
-                    ),
-                );
+
+                let location = fx.get_caller_location(bb_data.terminator().source_info.span).load_scalar(fx);
+
+                let args;
+                let lang_item = match msg {
+                    AssertKind::BoundsCheck { ref len, ref index } => {
+                        let len = trans_operand(fx, len).load_scalar(fx);
+                        let index = trans_operand(fx, index).load_scalar(fx);
+                        args = [index, len, location];
+                        rustc_hir::lang_items::PanicBoundsCheckFnLangItem
+                    }
+                    _ => {
+                        let msg_str = msg.description();
+                        let msg_ptr = fx.anonymous_str("assert", msg_str);
+                        let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
+                        args = [msg_ptr, msg_len, location];
+                        rustc_hir::lang_items::PanicFnLangItem
+                    }
+                };
+
+                let def_id = fx.tcx.lang_items().require(lang_item).unwrap_or_else(|s| {
+                    fx.tcx.sess.span_fatal(bb_data.terminator().source_info.span, &s)
+                });
+
+                let instance = Instance::mono(fx.tcx, def_id);
+                let symbol_name = fx.tcx.symbol_name(instance).name.as_str();
+
+                fx.lib_call(&*symbol_name, vec![fx.pointer_type, fx.pointer_type, fx.pointer_type], vec![], &args);
+
+                crate::trap::trap_unreachable(fx, "panic lang item returned");
             }
 
             TerminatorKind::SwitchInt {

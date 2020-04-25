@@ -206,7 +206,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         func_ref
     }
 
-    fn lib_call(
+    pub(crate) fn lib_call(
         &mut self,
         name: &str,
         input_tys: Vec<types::Type>,

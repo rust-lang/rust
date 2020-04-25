@@ -1,6 +1,3 @@
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-
 use crate::prelude::*;
 
 fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, msg: &str) {
@@ -24,31 +21,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
 
     let symbol_name = fx.tcx.symbol_name(fx.instance);
     let real_msg = format!("trap at {:?} ({}): {}\0", fx.instance, symbol_name, msg);
-    let mut hasher = DefaultHasher::new();
-    real_msg.hash(&mut hasher);
-    let msg_hash = hasher.finish();
-    let mut data_ctx = DataContext::new();
-    data_ctx.define(real_msg.as_bytes().to_vec().into_boxed_slice());
-    let msg_id = fx
-        .module
-        .declare_data(
-            &format!("__trap_{:08x}", msg_hash),
-            Linkage::Local,
-            false,
-            false,
-            None,
-        )
-        .unwrap();
-
-    // Ignore DuplicateDefinition error, as the data will be the same
-    let _ = fx.module.define_data(msg_id, &data_ctx);
-
-    let local_msg_id = fx.module.declare_data_in_func(msg_id, fx.bcx.func);
-    #[cfg(debug_assertions)]
-    {
-        fx.add_comment(local_msg_id, msg);
-    }
-    let msg_ptr = fx.bcx.ins().global_value(pointer_ty(fx.tcx), local_msg_id);
+    let msg_ptr = fx.anonymous_str("trap", &real_msg);
     fx.bcx.ins().call(puts, &[msg_ptr]);
 }
 

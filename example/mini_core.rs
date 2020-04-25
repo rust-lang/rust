@@ -1,7 +1,7 @@
 #![feature(
     no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types,
     untagged_unions, decl_macro, rustc_attrs, transparent_unions, optin_builtin_traits,
-    thread_local,
+    thread_local, track_caller
 )]
 #![no_core]
 #![allow(dead_code)]
@@ -394,9 +394,19 @@ pub trait FnMut<Args>: FnOnce<Args> {
 }
 
 #[lang = "panic"]
-pub fn panic(&(_msg, _file, _line, _col): &(&'static str, &'static str, u32, u32)) -> ! {
+#[track_caller]
+pub fn panic(msg: &str) -> ! {
     unsafe {
-        libc::puts("Panicking\0" as *const str as *const u8);
+        libc::puts("Panicking\n\0" as *const str as *const u8);
+        intrinsics::abort();
+    }
+}
+
+#[lang = "panic_bounds_check"]
+#[track_caller]
+fn panic_bounds_check(index: usize, len: usize) -> ! {
+    unsafe {
+        libc::printf("index out of bounds: the len is %d but the index is %d\n\0" as *const str as *const i8, len, index);
         intrinsics::abort();
     }
 }
