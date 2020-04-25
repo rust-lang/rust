@@ -63,6 +63,16 @@ to the beta Rust release. The remerge is then necessary, to make sure that the
 Clippy commit, that was used by the now stable Rust release, persists in the
 tree of the Clippy repository.
 
+To find out if this step is necessary run
+
+```bash
+# Assumes that the local master branch is up-to-date
+$ git fetch upstream
+$ git branch master --contains upstream/beta
+```
+
+If this command outputs `master`, this step is **not** necessary.
+
 ```bash
 # Assuming `HEAD` is the current `master` branch of rust-lang/rust-clippy
 $ git checkout -b backport_remerge
@@ -97,5 +107,5 @@ be updated.
 # Assuming the current directory corresponds to the Clippy repository
 $ git checkout beta
 $ git rebase $BETA_SHA
-$ git push upstream beta [-f]   # This requires a force push, if a remerge was done
+$ git push upstream beta
 ```
