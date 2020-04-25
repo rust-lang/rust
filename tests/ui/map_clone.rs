@@ -4,6 +4,7 @@
 #![allow(clippy::clone_on_copy, clippy::redundant_clone)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::many_single_char_names)]
 
 fn main() {
     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
@@ -32,5 +33,15 @@ fn main() {
         let _: Option<u32> = o.map(|x| *x);
         let v: Vec<Rc<u32>> = vec![Rc::new(0_u32)];
         let _: Vec<u32> = v.into_iter().map(|x| *x).collect();
+    }
+
+    // Issue #5524 mutable references
+    {
+        let mut c = 42;
+        let v = vec![&mut c];
+        let _: Vec<u32> = v.into_iter().map(|x| *x).collect();
+        let mut d = 21;
+        let v = vec![&mut d];
+        let _: Vec<u32> = v.into_iter().map(|&mut x| x).collect();
     }
 }
