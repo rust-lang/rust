@@ -1235,7 +1235,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion_in_record_lit() {
-        covers!(test_struct_field_completion_in_func_call);
+        covers!(test_struct_field_completion_in_record_lit);
         assert_debug_snapshot!(
         do_reference_completion(
                 r"
