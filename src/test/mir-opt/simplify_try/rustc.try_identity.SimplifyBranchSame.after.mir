@@ -38,18 +38,18 @@ fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i
     }
 
     bb0: {
-        _5 = discriminant(_1);           // bb0[0]: scope 0 at $DIR/simplify_try.rs:6:14: 6:15
-        goto -> bb1;                     // bb0[1]: scope 0 at $DIR/simplify_try.rs:6:14: 6:15
+        _5 = discriminant(_1);           // scope 0 at $DIR/simplify_try.rs:6:14: 6:15
+        goto -> bb1;                     // scope 0 at $DIR/simplify_try.rs:6:14: 6:15
     }
 
     bb1: {
-        _0 = move _1;                    // bb1[0]: scope 1 at $DIR/simplify_try.rs:7:5: 7:10
-        nop;                             // bb1[1]: scope 1 at $DIR/simplify_try.rs:7:5: 7:10
-        nop;                             // bb1[2]: scope 1 at $DIR/simplify_try.rs:7:5: 7:10
-        goto -> bb2;                     // bb1[3]: scope 0 at $DIR/simplify_try.rs:8:2: 8:2
+        _0 = move _1;                    // scope 1 at $DIR/simplify_try.rs:7:5: 7:10
+        nop;                             // scope 1 at $DIR/simplify_try.rs:7:5: 7:10
+        nop;                             // scope 1 at $DIR/simplify_try.rs:7:5: 7:10
+        goto -> bb2;                     // scope 0 at $DIR/simplify_try.rs:8:2: 8:2
     }
 
     bb2: {
-        return;                          // bb2[0]: scope 0 at $DIR/simplify_try.rs:8:2: 8:2
+        return;                          // scope 0 at $DIR/simplify_try.rs:8:2: 8:2
     }
 }

@@ -7,9 +7,9 @@
       let mut _2: !;                       // in scope 0 at $SRC_DIR/libstd/macros.rs:LL:COL
   
       bb0: {
-          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
--         _1 = const <bool as NeedsDrop>::NEEDS; // bb0[1]: scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-+         _1 = const false;                // bb0[1]: scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
+          StorageLive(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
+-         _1 = const <bool as NeedsDrop>::NEEDS; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
++         _1 = const false;                // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
                                            // ty::Const
                                            // + ty: bool
 -                                          // + val: Unevaluated(DefId(0:4 ~ control_flow_simplification[317d]::NeedsDrop[0]::NEEDS[0]), [bool], None)
@@ -17,9 +17,9 @@
                                            // mir::Constant
                                            // + span: $DIR/control-flow-simplification.rs:12:8: 12:21
 -                                          // + literal: Const { ty: bool, val: Unevaluated(DefId(0:4 ~ control_flow_simplification[317d]::NeedsDrop[0]::NEEDS[0]), [bool], None) }
--         switchInt(_1) -> [false: bb1, otherwise: bb2]; // bb0[2]: scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
+-         switchInt(_1) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-+         switchInt(const false) -> [false: bb1, otherwise: bb2]; // bb0[2]: scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
++         switchInt(const false) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
 +                                          // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x00))
@@ -29,20 +29,20 @@
       }
   
       bb1: {
-          _0 = const ();                   // bb1[0]: scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
+          _0 = const ();                   // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/control-flow-simplification.rs:12:5: 14:6
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          StorageDead(_1);                 // bb1[1]: scope 0 at $DIR/control-flow-simplification.rs:15:1: 15:2
-          return;                          // bb1[2]: scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
+          StorageDead(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:15:1: 15:2
+          return;                          // scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
       }
   
       bb2: {
-          StorageLive(_2);                 // bb2[0]: scope 0 at $SRC_DIR/libstd/macros.rs:LL:COL
-          const std::rt::begin_panic::<&str>(const "explicit panic"); // bb2[1]: scope 0 at $SRC_DIR/libstd/macros.rs:LL:COL
+          StorageLive(_2);                 // scope 0 at $SRC_DIR/libstd/macros.rs:LL:COL
+          const std::rt::begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/libstd/macros.rs:LL:COL
                                            // ty::Const
                                            // + ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}
                                            // + val: Value(Scalar(<ZST>))

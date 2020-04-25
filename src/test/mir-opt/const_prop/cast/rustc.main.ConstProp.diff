@@ -13,17 +13,17 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/cast.rs:4:9: 4:10
--         _1 = const 42u8 as u32 (Misc);   // bb0[1]: scope 0 at $DIR/cast.rs:4:13: 4:24
-+         _1 = const 42u32;                // bb0[1]: scope 0 at $DIR/cast.rs:4:13: 4:24
+          StorageLive(_1);                 // scope 0 at $DIR/cast.rs:4:9: 4:10
+-         _1 = const 42u8 as u32 (Misc);   // scope 0 at $DIR/cast.rs:4:13: 4:24
++         _1 = const 42u32;                // scope 0 at $DIR/cast.rs:4:13: 4:24
                                            // ty::Const
 -                                          // + ty: u8
 -                                          // + val: Value(Scalar(0x2a))
 -                                          // mir::Constant
 -                                          // + span: $DIR/cast.rs:4:13: 4:17
 -                                          // + literal: Const { ty: u8, val: Value(Scalar(0x2a)) }
--         StorageLive(_2);                 // bb0[2]: scope 1 at $DIR/cast.rs:6:9: 6:10
--         _2 = const 42u32 as u8 (Misc);   // bb0[3]: scope 1 at $DIR/cast.rs:6:13: 6:24
+-         StorageLive(_2);                 // scope 1 at $DIR/cast.rs:6:9: 6:10
+-         _2 = const 42u32 as u8 (Misc);   // scope 1 at $DIR/cast.rs:6:13: 6:24
 -                                          // ty::Const
                                            // + ty: u32
                                            // + val: Value(Scalar(0x0000002a))
@@ -31,24 +31,24 @@
 -                                          // + span: $DIR/cast.rs:6:13: 6:18
 +                                          // + span: $DIR/cast.rs:4:13: 4:24
                                            // + literal: Const { ty: u32, val: Value(Scalar(0x0000002a)) }
-+         StorageLive(_2);                 // bb0[2]: scope 1 at $DIR/cast.rs:6:9: 6:10
-+         _2 = const 42u8;                 // bb0[3]: scope 1 at $DIR/cast.rs:6:13: 6:24
++         StorageLive(_2);                 // scope 1 at $DIR/cast.rs:6:9: 6:10
++         _2 = const 42u8;                 // scope 1 at $DIR/cast.rs:6:13: 6:24
 +                                          // ty::Const
 +                                          // + ty: u8
 +                                          // + val: Value(Scalar(0x2a))
 +                                          // mir::Constant
 +                                          // + span: $DIR/cast.rs:6:13: 6:24
 +                                          // + literal: Const { ty: u8, val: Value(Scalar(0x2a)) }
-          _0 = const ();                   // bb0[4]: scope 0 at $DIR/cast.rs:3:11: 7:2
+          _0 = const ();                   // scope 0 at $DIR/cast.rs:3:11: 7:2
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/cast.rs:3:11: 7:2
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          StorageDead(_2);                 // bb0[5]: scope 1 at $DIR/cast.rs:7:1: 7:2
-          StorageDead(_1);                 // bb0[6]: scope 0 at $DIR/cast.rs:7:1: 7:2
-          return;                          // bb0[7]: scope 0 at $DIR/cast.rs:7:2: 7:2
+          StorageDead(_2);                 // scope 1 at $DIR/cast.rs:7:1: 7:2
+          StorageDead(_1);                 // scope 0 at $DIR/cast.rs:7:1: 7:2
+          return;                          // scope 0 at $DIR/cast.rs:7:2: 7:2
       }
   }
   

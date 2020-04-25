@@ -36,52 +36,52 @@ fn main() -> () {
     }
 
     bb0: {
-        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
-        _1 = const 0i32;                 // bb0[1]: scope 0 at $DIR/storage_ranges.rs:4:13: 4:14
+        StorageLive(_1);                 // scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
+        _1 = const 0i32;                 // scope 0 at $DIR/storage_ranges.rs:4:13: 4:14
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000000))
                                          // mir::Constant
                                          // + span: $DIR/storage_ranges.rs:4:13: 4:14
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
-        FakeRead(ForLet, _1);            // bb0[2]: scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
-        StorageLive(_2);                 // bb0[3]: scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
-        StorageLive(_3);                 // bb0[4]: scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
-        StorageLive(_4);                 // bb0[5]: scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
-        StorageLive(_5);                 // bb0[6]: scope 1 at $DIR/storage_ranges.rs:6:23: 6:24
-        _5 = _1;                         // bb0[7]: scope 1 at $DIR/storage_ranges.rs:6:23: 6:24
-        _4 = std::option::Option::<i32>::Some(move _5); // bb0[8]: scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
-        StorageDead(_5);                 // bb0[9]: scope 1 at $DIR/storage_ranges.rs:6:24: 6:25
-        _3 = &_4;                        // bb0[10]: scope 1 at $DIR/storage_ranges.rs:6:17: 6:25
-        FakeRead(ForLet, _3);            // bb0[11]: scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
-        _2 = const ();                   // bb0[12]: scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
+        FakeRead(ForLet, _1);            // scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
+        StorageLive(_2);                 // scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
+        StorageLive(_3);                 // scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
+        StorageLive(_4);                 // scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
+        StorageLive(_5);                 // scope 1 at $DIR/storage_ranges.rs:6:23: 6:24
+        _5 = _1;                         // scope 1 at $DIR/storage_ranges.rs:6:23: 6:24
+        _4 = std::option::Option::<i32>::Some(move _5); // scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
+        StorageDead(_5);                 // scope 1 at $DIR/storage_ranges.rs:6:24: 6:25
+        _3 = &_4;                        // scope 1 at $DIR/storage_ranges.rs:6:17: 6:25
+        FakeRead(ForLet, _3);            // scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
+        _2 = const ();                   // scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
                                          // ty::Const
                                          // + ty: ()
                                          // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/storage_ranges.rs:5:5: 7:6
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-        StorageDead(_4);                 // bb0[13]: scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
-        StorageDead(_3);                 // bb0[14]: scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
-        StorageDead(_2);                 // bb0[15]: scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
-        StorageLive(_6);                 // bb0[16]: scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
-        _6 = const 1i32;                 // bb0[17]: scope 1 at $DIR/storage_ranges.rs:8:13: 8:14
+        StorageDead(_4);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
+        StorageDead(_3);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
+        StorageDead(_2);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
+        StorageLive(_6);                 // scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
+        _6 = const 1i32;                 // scope 1 at $DIR/storage_ranges.rs:8:13: 8:14
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000001))
                                          // mir::Constant
                                          // + span: $DIR/storage_ranges.rs:8:13: 8:14
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
-        FakeRead(ForLet, _6);            // bb0[18]: scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
-        _0 = const ();                   // bb0[19]: scope 0 at $DIR/storage_ranges.rs:3:11: 9:2
+        FakeRead(ForLet, _6);            // scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
+        _0 = const ();                   // scope 0 at $DIR/storage_ranges.rs:3:11: 9:2
                                          // ty::Const
                                          // + ty: ()
                                          // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/storage_ranges.rs:3:11: 9:2
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-        StorageDead(_6);                 // bb0[20]: scope 1 at $DIR/storage_ranges.rs:9:1: 9:2
-        StorageDead(_1);                 // bb0[21]: scope 0 at $DIR/storage_ranges.rs:9:1: 9:2
-        return;                          // bb0[22]: scope 0 at $DIR/storage_ranges.rs:9:2: 9:2
+        StorageDead(_6);                 // scope 1 at $DIR/storage_ranges.rs:9:1: 9:2
+        StorageDead(_1);                 // scope 0 at $DIR/storage_ranges.rs:9:1: 9:2
+        return;                          // scope 0 at $DIR/storage_ranges.rs:9:2: 9:2
     }
 }

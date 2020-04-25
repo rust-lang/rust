@@ -16,87 +16,87 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
-          StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
-          discriminant(_2) = 0;            // bb0[2]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
-          StorageLive(_3);                 // bb0[3]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
-          discriminant(_3) = 0;            // bb0[4]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
-          (_1.0: std::option::Option<u8>) = move _2; // bb0[5]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
-          (_1.1: std::option::Option<T>) = move _3; // bb0[6]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
-          StorageDead(_3);                 // bb0[7]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69
-          StorageDead(_2);                 // bb0[8]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69
-          _5 = discriminant((_1.0: std::option::Option<u8>)); // bb0[9]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:13: 4:20
-          switchInt(move _5) -> [1isize: bb2, otherwise: bb1]; // bb0[10]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:13: 4:20
+          StorageLive(_1);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
+          StorageLive(_2);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
+          discriminant(_2) = 0;            // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:31: 4:49
+          StorageLive(_3);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
+          discriminant(_3) = 0;            // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:51: 4:68
+          (_1.0: std::option::Option<u8>) = move _2; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
+          (_1.1: std::option::Option<T>) = move _3; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:30: 4:69
+          StorageDead(_3);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69
+          StorageDead(_2);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:68: 4:69
+          _5 = discriminant((_1.0: std::option::Option<u8>)); // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:13: 4:20
+          switchInt(move _5) -> [1isize: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:13: 4:20
       }
   
       bb1: {
-          _0 = const ();                   // bb1[0]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
+          _0 = const ();                   // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          goto -> bb7;                     // bb1[1]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
+          goto -> bb7;                     // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
       }
   
       bb2: {
-          _4 = discriminant((_1.1: std::option::Option<T>)); // bb2[0]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:22: 4:26
-          switchInt(move _4) -> [0isize: bb3, otherwise: bb1]; // bb2[1]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:22: 4:26
+          _4 = discriminant((_1.1: std::option::Option<T>)); // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:22: 4:26
+          switchInt(move _4) -> [0isize: bb3, otherwise: bb1]; // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:22: 4:26
       }
   
       bb3: {
-          StorageLive(_6);                 // bb3[0]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
-          _6 = (((_1.0: std::option::Option<u8>) as Some).0: u8); // bb3[1]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
-          StorageLive(_7);                 // bb3[2]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
-          StorageLive(_8);                 // bb3[3]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
-          _8 = _6;                         // bb3[4]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
-          _7 = Gt(move _8, const 42u8);    // bb3[5]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
+          StorageLive(_6);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
+          _6 = (((_1.0: std::option::Option<u8>) as Some).0: u8); // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:18: 4:19
+          StorageLive(_7);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
+          StorageLive(_8);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
+          _8 = _6;                         // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
+          _7 = Gt(move _8, const 42u8);    // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
                                            // ty::Const
                                            // + ty: u8
                                            // + val: Value(Scalar(0x2a))
                                            // mir::Constant
                                            // + span: $DIR/simplify-locals-fixedpoint.rs:5:16: 5:20
                                            // + literal: Const { ty: u8, val: Value(Scalar(0x2a)) }
-          StorageDead(_8);                 // bb3[6]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:19: 5:20
-          switchInt(_7) -> [false: bb4, otherwise: bb5]; // bb3[7]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
+          StorageDead(_8);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:19: 5:20
+          switchInt(_7) -> [false: bb4, otherwise: bb5]; // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
       }
   
       bb4: {
-          _0 = const ();                   // bb4[0]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
+          _0 = const ();                   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          goto -> bb6;                     // bb4[1]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
+          goto -> bb6;                     // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
       }
   
       bb5: {
-          _0 = const ();                   // bb5[0]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:21: 7:10
+          _0 = const ();                   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:21: 7:10
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify-locals-fixedpoint.rs:5:21: 7:10
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          goto -> bb6;                     // bb5[1]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
+          goto -> bb6;                     // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
       }
   
       bb6: {
-          StorageDead(_7);                 // bb6[0]: scope 1 at $DIR/simplify-locals-fixedpoint.rs:8:5: 8:6
-          StorageDead(_6);                 // bb6[1]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:8:5: 8:6
-          goto -> bb7;                     // bb6[2]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
+          StorageDead(_7);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:8:5: 8:6
+          StorageDead(_6);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:8:5: 8:6
+          goto -> bb7;                     // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
       }
   
       bb7: {
-          drop(_1) -> bb8;                 // bb7[0]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:9:1: 9:2
+          drop(_1) -> bb8;                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:9:1: 9:2
       }
   
       bb8: {
-          StorageDead(_1);                 // bb8[0]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:9:1: 9:2
-          return;                          // bb8[1]: scope 0 at $DIR/simplify-locals-fixedpoint.rs:9:2: 9:2
+          StorageDead(_1);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:9:1: 9:2
+          return;                          // scope 0 at $DIR/simplify-locals-fixedpoint.rs:9:2: 9:2
       }
   }
   

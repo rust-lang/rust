@@ -11,10 +11,10 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/aggregate.rs:5:9: 5:10
-          StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/aggregate.rs:5:13: 5:24
-          StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/aggregate.rs:5:13: 5:22
-          _3 = (const 0i32, const 1i32, const 2i32); // bb0[3]: scope 0 at $DIR/aggregate.rs:5:13: 5:22
+          StorageLive(_1);                 // scope 0 at $DIR/aggregate.rs:5:9: 5:10
+          StorageLive(_2);                 // scope 0 at $DIR/aggregate.rs:5:13: 5:24
+          StorageLive(_3);                 // scope 0 at $DIR/aggregate.rs:5:13: 5:22
+          _3 = (const 0i32, const 1i32, const 2i32); // scope 0 at $DIR/aggregate.rs:5:13: 5:22
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000000))
@@ -33,9 +33,9 @@
                                            // mir::Constant
                                            // + span: $DIR/aggregate.rs:5:20: 5:21
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
--         _2 = (_3.1: i32);                // bb0[4]: scope 0 at $DIR/aggregate.rs:5:13: 5:24
--         _1 = Add(move _2, const 0i32);   // bb0[5]: scope 0 at $DIR/aggregate.rs:5:13: 5:28
-+         _2 = const 1i32;                 // bb0[4]: scope 0 at $DIR/aggregate.rs:5:13: 5:24
+-         _2 = (_3.1: i32);                // scope 0 at $DIR/aggregate.rs:5:13: 5:24
+-         _1 = Add(move _2, const 0i32);   // scope 0 at $DIR/aggregate.rs:5:13: 5:28
++         _2 = const 1i32;                 // scope 0 at $DIR/aggregate.rs:5:13: 5:24
                                            // ty::Const
                                            // + ty: i32
 -                                          // + val: Value(Scalar(0x00000000))
@@ -45,24 +45,24 @@
 -                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
 +                                          // + span: $DIR/aggregate.rs:5:13: 5:24
 +                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
-+         _1 = const 1i32;                 // bb0[5]: scope 0 at $DIR/aggregate.rs:5:13: 5:28
++         _1 = const 1i32;                 // scope 0 at $DIR/aggregate.rs:5:13: 5:28
 +                                          // ty::Const
 +                                          // + ty: i32
 +                                          // + val: Value(Scalar(0x00000001))
 +                                          // mir::Constant
 +                                          // + span: $DIR/aggregate.rs:5:13: 5:28
 +                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
-          StorageDead(_2);                 // bb0[6]: scope 0 at $DIR/aggregate.rs:5:27: 5:28
-          StorageDead(_3);                 // bb0[7]: scope 0 at $DIR/aggregate.rs:5:28: 5:29
-          _0 = const ();                   // bb0[8]: scope 0 at $DIR/aggregate.rs:4:11: 6:2
+          StorageDead(_2);                 // scope 0 at $DIR/aggregate.rs:5:27: 5:28
+          StorageDead(_3);                 // scope 0 at $DIR/aggregate.rs:5:28: 5:29
+          _0 = const ();                   // scope 0 at $DIR/aggregate.rs:4:11: 6:2
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/aggregate.rs:4:11: 6:2
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          StorageDead(_1);                 // bb0[9]: scope 0 at $DIR/aggregate.rs:6:1: 6:2
-          return;                          // bb0[10]: scope 0 at $DIR/aggregate.rs:6:2: 6:2
+          StorageDead(_1);                 // scope 0 at $DIR/aggregate.rs:6:1: 6:2
+          return;                          // scope 0 at $DIR/aggregate.rs:6:2: 6:2
       }
   }
   

@@ -7,17 +7,17 @@ promoted[0] in BAR: &[&i32; 1] = {
     let mut _3: &i32;                    // in scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
 
     bb0: {
-        _3 = const {alloc0+0x0: &i32};   // bb0[0]: scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
+        _3 = const {alloc0+0x0: &i32};   // scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
                                          // ty::Const
                                          // + ty: &i32
                                          // + val: Value(Scalar(alloc0+0x0))
                                          // mir::Constant
                                          // + span: $DIR/const-promotion-extern-static.rs:9:33: 9:34
                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc0+0x0)) }
-        _2 = _3;                         // bb0[1]: scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
-        _1 = [move _2];                  // bb0[2]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
-        _0 = &_1;                        // bb0[3]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
-        return;                          // bb0[4]: scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+        _2 = _3;                         // scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
+        _1 = [move _2];                  // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+        _0 = &_1;                        // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
+        return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
     }
 }
 

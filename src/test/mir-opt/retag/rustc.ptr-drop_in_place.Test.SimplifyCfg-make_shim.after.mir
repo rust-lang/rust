@@ -6,9 +6,9 @@ fn std::intrinsics::drop_in_place(_1: *mut Test) -> () {
     let mut _3: ();                      // in scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
 
     bb0: {
-        Retag([raw] _1);                 // bb0[0]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _2 = &mut (*_1);                 // bb0[1]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
-        _3 = const <Test as std::ops::Drop>::drop(move _2) -> bb1; // bb0[2]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        Retag([raw] _1);                 // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _2 = &mut (*_1);                 // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        _3 = const <Test as std::ops::Drop>::drop(move _2) -> bb1; // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
                                          // ty::Const
                                          // + ty: for<'r> fn(&'r mut Test) {<Test as std::ops::Drop>::drop}
                                          // + val: Value(Scalar(<ZST>))
@@ -18,6 +18,6 @@ fn std::intrinsics::drop_in_place(_1: *mut Test) -> () {
     }
 
     bb1: {
-        return;                          // bb1[0]: scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+        return;                          // scope 0 at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
     }
 }

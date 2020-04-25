@@ -24,8 +24,8 @@ fn main() -> () {
     }
 
     bb0: {
-        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/array-index-is-temporary.rs:13:9: 13:14
-        _1 = [const 42u32, const 43u32, const 44u32]; // bb0[1]: scope 0 at $DIR/array-index-is-temporary.rs:13:17: 13:29
+        StorageLive(_1);                 // scope 0 at $DIR/array-index-is-temporary.rs:13:9: 13:14
+        _1 = [const 42u32, const 43u32, const 44u32]; // scope 0 at $DIR/array-index-is-temporary.rs:13:17: 13:29
                                          // ty::Const
                                          // + ty: u32
                                          // + val: Value(Scalar(0x0000002a))
@@ -44,23 +44,23 @@ fn main() -> () {
                                          // mir::Constant
                                          // + span: $DIR/array-index-is-temporary.rs:13:26: 13:28
                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000002c)) }
-        StorageLive(_2);                 // bb0[2]: scope 1 at $DIR/array-index-is-temporary.rs:14:9: 14:14
-        _2 = const 1usize;               // bb0[3]: scope 1 at $DIR/array-index-is-temporary.rs:14:17: 14:18
+        StorageLive(_2);                 // scope 1 at $DIR/array-index-is-temporary.rs:14:9: 14:14
+        _2 = const 1usize;               // scope 1 at $DIR/array-index-is-temporary.rs:14:17: 14:18
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x0000000000000001))
                                          // mir::Constant
                                          // + span: $DIR/array-index-is-temporary.rs:14:17: 14:18
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
-        StorageLive(_3);                 // bb0[4]: scope 2 at $DIR/array-index-is-temporary.rs:15:9: 15:10
-        StorageLive(_4);                 // bb0[5]: scope 2 at $DIR/array-index-is-temporary.rs:15:25: 15:31
-        _4 = &mut _2;                    // bb0[6]: scope 2 at $DIR/array-index-is-temporary.rs:15:25: 15:31
-        _3 = &raw mut (*_4);             // bb0[7]: scope 2 at $DIR/array-index-is-temporary.rs:15:25: 15:31
-        StorageDead(_4);                 // bb0[8]: scope 2 at $DIR/array-index-is-temporary.rs:15:31: 15:32
-        StorageLive(_5);                 // bb0[9]: scope 3 at $DIR/array-index-is-temporary.rs:16:12: 16:29
-        StorageLive(_6);                 // bb0[10]: scope 4 at $DIR/array-index-is-temporary.rs:16:25: 16:26
-        _6 = _3;                         // bb0[11]: scope 4 at $DIR/array-index-is-temporary.rs:16:25: 16:26
-        _5 = const foo(move _6) -> bb1;  // bb0[12]: scope 4 at $DIR/array-index-is-temporary.rs:16:21: 16:27
+        StorageLive(_3);                 // scope 2 at $DIR/array-index-is-temporary.rs:15:9: 15:10
+        StorageLive(_4);                 // scope 2 at $DIR/array-index-is-temporary.rs:15:25: 15:31
+        _4 = &mut _2;                    // scope 2 at $DIR/array-index-is-temporary.rs:15:25: 15:31
+        _3 = &raw mut (*_4);             // scope 2 at $DIR/array-index-is-temporary.rs:15:25: 15:31
+        StorageDead(_4);                 // scope 2 at $DIR/array-index-is-temporary.rs:15:31: 15:32
+        StorageLive(_5);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:12: 16:29
+        StorageLive(_6);                 // scope 4 at $DIR/array-index-is-temporary.rs:16:25: 16:26
+        _6 = _3;                         // scope 4 at $DIR/array-index-is-temporary.rs:16:25: 16:26
+        _5 = const foo(move _6) -> bb1;  // scope 4 at $DIR/array-index-is-temporary.rs:16:21: 16:27
                                          // ty::Const
                                          // + ty: unsafe fn(*mut usize) -> u32 {foo}
                                          // + val: Value(Scalar(<ZST>))
@@ -70,28 +70,28 @@ fn main() -> () {
     }
 
     bb1: {
-        StorageDead(_6);                 // bb1[0]: scope 4 at $DIR/array-index-is-temporary.rs:16:26: 16:27
-        StorageLive(_7);                 // bb1[1]: scope 3 at $DIR/array-index-is-temporary.rs:16:7: 16:8
-        _7 = _2;                         // bb1[2]: scope 3 at $DIR/array-index-is-temporary.rs:16:7: 16:8
-        _8 = Len(_1);                    // bb1[3]: scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
-        _9 = Lt(_7, _8);                 // bb1[4]: scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
-        assert(move _9, "index out of bounds: the len is {} but the index is {}", move _8, _7) -> bb2; // bb1[5]: scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
+        StorageDead(_6);                 // scope 4 at $DIR/array-index-is-temporary.rs:16:26: 16:27
+        StorageLive(_7);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:7: 16:8
+        _7 = _2;                         // scope 3 at $DIR/array-index-is-temporary.rs:16:7: 16:8
+        _8 = Len(_1);                    // scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
+        _9 = Lt(_7, _8);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
+        assert(move _9, "index out of bounds: the len is {} but the index is {}", move _8, _7) -> bb2; // scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
     }
 
     bb2: {
-        _1[_7] = move _5;                // bb2[0]: scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:29
-        StorageDead(_5);                 // bb2[1]: scope 3 at $DIR/array-index-is-temporary.rs:16:28: 16:29
-        StorageDead(_7);                 // bb2[2]: scope 3 at $DIR/array-index-is-temporary.rs:16:29: 16:30
-        _0 = const ();                   // bb2[3]: scope 0 at $DIR/array-index-is-temporary.rs:12:11: 17:2
+        _1[_7] = move _5;                // scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:29
+        StorageDead(_5);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:28: 16:29
+        StorageDead(_7);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:29: 16:30
+        _0 = const ();                   // scope 0 at $DIR/array-index-is-temporary.rs:12:11: 17:2
                                          // ty::Const
                                          // + ty: ()
                                          // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/array-index-is-temporary.rs:12:11: 17:2
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-        StorageDead(_3);                 // bb2[4]: scope 2 at $DIR/array-index-is-temporary.rs:17:1: 17:2
-        StorageDead(_2);                 // bb2[5]: scope 1 at $DIR/array-index-is-temporary.rs:17:1: 17:2
-        StorageDead(_1);                 // bb2[6]: scope 0 at $DIR/array-index-is-temporary.rs:17:1: 17:2
-        return;                          // bb2[7]: scope 0 at $DIR/array-index-is-temporary.rs:17:2: 17:2
+        StorageDead(_3);                 // scope 2 at $DIR/array-index-is-temporary.rs:17:1: 17:2
+        StorageDead(_2);                 // scope 1 at $DIR/array-index-is-temporary.rs:17:1: 17:2
+        StorageDead(_1);                 // scope 0 at $DIR/array-index-is-temporary.rs:17:1: 17:2
+        return;                          // scope 0 at $DIR/array-index-is-temporary.rs:17:2: 17:2
     }
 }
