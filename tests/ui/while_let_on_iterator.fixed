@@ -5,17 +5,17 @@
 
 fn base() {
     let mut iter = 1..20;
-    while let Option::Some(x) = iter.next() {
+    for x in iter {
         println!("{}", x);
     }
 
     let mut iter = 1..20;
-    while let Some(x) = iter.next() {
+    for x in iter {
         println!("{}", x);
     }
 
     let mut iter = 1..20;
-    while let Some(_) = iter.next() {}
+    for _ in iter {}
 
     let mut iter = 1..20;
     while let None = iter.next() {} // this is fine (if nonsensical)
@@ -94,7 +94,7 @@ fn nested_loops() {
 
     loop {
         let mut y = a.iter();
-        while let Some(_) = y.next() {
+        for _ in y {
             // use a for loop here
         }
     }
@@ -119,7 +119,7 @@ fn issue2965() {
     let mut values = HashSet::new();
     values.insert(1);
 
-    while let Some(..) = values.iter().next() {
+    for _ in values.iter() {
         // FIXME(flip1995): Linting this with the following line uncommented is a FP, see #1654
         // values.remove(&1);
     }
