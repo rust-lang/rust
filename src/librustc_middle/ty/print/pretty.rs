@@ -888,7 +888,7 @@ pub trait PrettyPrinter<'tcx>:
                     p!(write("::{:?}", promoted));
                 } else {
                     match self.tcx().def_kind(did) {
-                        Some(DefKind::Static | DefKind::Const | DefKind::AssocConst) => {
+                        DefKind::Static | DefKind::Const | DefKind::AssocConst => {
                             p!(print_value_path(did, substs))
                         }
                         _ => {

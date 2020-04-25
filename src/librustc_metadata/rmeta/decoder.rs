@@ -562,8 +562,8 @@ impl MetadataBlob {
 }
 
 impl EntryKind {
-    fn def_kind(&self) -> Option<DefKind> {
-        Some(match *self {
+    fn def_kind(&self) -> DefKind {
+        match *self {
             EntryKind::Const(..) => DefKind::Const,
             EntryKind::AssocConst(..) => DefKind::AssocConst,
             EntryKind::ImmStatic
@@ -587,14 +587,13 @@ impl EntryKind {
             EntryKind::Enum(..) => DefKind::Enum,
             EntryKind::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
             EntryKind::ForeignType => DefKind::ForeignTy,
-
-            EntryKind::ForeignMod
-            | EntryKind::GlobalAsm
-            | EntryKind::Impl(_)
-            | EntryKind::Field
-            | EntryKind::Generator(_)
-            | EntryKind::Closure => return None,
-        })
+            EntryKind::Impl(_) => DefKind::Impl,
+            EntryKind::Closure => DefKind::Closure,
+            EntryKind::ForeignMod => DefKind::ForeignMod,
+            EntryKind::GlobalAsm => DefKind::GlobalAsm,
+            EntryKind::Field => DefKind::Field,
+            EntryKind::Generator(_) => DefKind::Generator,
+        }
     }
 }
 
@@ -679,11 +678,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn def_kind(&self, index: DefIndex) -> Option<DefKind> {
+    fn def_kind(&self, index: DefIndex) -> DefKind {
         if !self.is_proc_macro(index) {
             self.kind(index).def_kind()
         } else {
-            Some(DefKind::Macro(macro_kind(self.raw_proc_macro(index))))
+            DefKind::Macro(macro_kind(self.raw_proc_macro(index)))
         }
     }
 
@@ -1009,20 +1008,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                             .get(self, child_index)
                             .unwrap_or(Lazy::empty());
                         for child_index in child_children.decode((self, sess)) {
-                            if let Some(kind) = self.def_kind(child_index) {
-                                callback(Export {
-                                    res: Res::Def(kind, self.local_def_id(child_index)),
-                                    ident: self.item_ident(child_index, sess),
-                                    vis: self.get_visibility(child_index),
-                                    span: self
-                                        .root
-                                        .tables
-                                        .span
-                                        .get(self, child_index)
-                                        .unwrap()
-                                        .decode((self, sess)),
-                                });
-                            }
+                            let kind = self.def_kind(child_index);
+                            callback(Export {
+                                res: Res::Def(kind, self.local_def_id(child_index)),
+                                ident: self.item_ident(child_index, sess),
+                                vis: self.get_visibility(child_index),
+                                span: self
+                                    .root
+                                    .tables
+                                    .span
+                                    .get(self, child_index)
+                                    .unwrap()
+                                    .decode((self, sess)),
+                            });
                         }
                         continue;
                     }
@@ -1033,10 +1031,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
                 let def_key = self.def_key(child_index);
                 let span = self.get_span(child_index, sess);
-                if let (Some(kind), true) = (
-                    self.def_kind(child_index),
-                    def_key.disambiguated_data.data.get_opt_name().is_some(),
-                ) {
+                if def_key.disambiguated_data.data.get_opt_name().is_some() {
+                    let kind = self.def_kind(child_index);
                     let ident = self.item_ident(child_index, sess);
                     let vis = self.get_visibility(child_index);
                     let def_id = self.local_def_id(child_index);

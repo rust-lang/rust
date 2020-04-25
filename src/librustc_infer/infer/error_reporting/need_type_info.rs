@@ -207,12 +207,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         .get_opt_name()
                         .map(|parent_symbol| parent_symbol.to_string());
 
-                    let type_parent_desc = self
-                        .tcx
-                        .def_kind(parent_def_id)
-                        .map(|parent_def_kind| parent_def_kind.descr(parent_def_id));
-
-                    (parent_name, type_parent_desc)
+                    (parent_name, Some(self.tcx.def_kind(parent_def_id).descr(parent_def_id)))
                 } else {
                     (None, None)
                 };

@@ -6,7 +6,7 @@ use crate::ty::TyCtxt;
 use rustc_ast::ast::{self, Name, NodeId};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -227,10 +227,14 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions.opt_local_def_id_to_hir_id(def_id)
     }
 
-    pub fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
-        let node = self.find(hir_id)?;
+    pub fn def_kind(&self, local_def_id: LocalDefId) -> DefKind {
+        // FIXME(eddyb) support `find` on the crate root.
+        if local_def_id.to_def_id().index == CRATE_DEF_INDEX {
+            return DefKind::Mod;
+        }
 
-        Some(match node {
+        let hir_id = self.local_def_id_to_hir_id(local_def_id);
+        match self.get(hir_id) {
             Node::Item(item) => match item.kind {
                 ItemKind::Static(..) => DefKind::Static,
                 ItemKind::Const(..) => DefKind::Const,
@@ -243,11 +247,11 @@ impl<'hir> Map<'hir> {
                 ItemKind::Union(..) => DefKind::Union,
                 ItemKind::Trait(..) => DefKind::Trait,
                 ItemKind::TraitAlias(..) => DefKind::TraitAlias,
-                ItemKind::ExternCrate(_)
-                | ItemKind::Use(..)
-                | ItemKind::ForeignMod(..)
-                | ItemKind::GlobalAsm(..)
-                | ItemKind::Impl { .. } => return None,
+                ItemKind::ExternCrate(_) => DefKind::ExternCrate,
+                ItemKind::Use(..) => DefKind::Use,
+                ItemKind::ForeignMod(..) => DefKind::ForeignMod,
+                ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
+                ItemKind::Impl { .. } => DefKind::Impl,
             },
             Node::ForeignItem(item) => match item.kind {
                 ForeignItemKind::Fn(..) => DefKind::Fn,
@@ -268,7 +272,7 @@ impl<'hir> Map<'hir> {
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
                 // FIXME(eddyb) is this even possible, if we have a `Node::Ctor`?
-                variant_data.ctor_hir_id()?;
+                assert_ne!(variant_data.ctor_hir_id(), None);
 
                 let ctor_of = match self.find(self.get_parent_node(hir_id)) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
@@ -277,10 +281,20 @@ impl<'hir> Map<'hir> {
                 };
                 DefKind::Ctor(ctor_of, def::CtorKind::from_hir(variant_data))
             }
-            Node::AnonConst(_)
-            | Node::Field(_)
-            | Node::Expr(_)
-            | Node::Stmt(_)
+            Node::AnonConst(_) => DefKind::AnonConst,
+            Node::Field(_) => DefKind::Field,
+            Node::Expr(expr) => match expr.kind {
+                ExprKind::Closure(.., None) => DefKind::Closure,
+                ExprKind::Closure(.., Some(_)) => DefKind::Generator,
+                _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
+            },
+            Node::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
+            Node::GenericParam(param) => match param.kind {
+                GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
+                GenericParamKind::Type { .. } => DefKind::TyParam,
+                GenericParamKind::Const { .. } => DefKind::ConstParam,
+            },
+            Node::Stmt(_)
             | Node::PathSegment(_)
             | Node::Ty(_)
             | Node::TraitRef(_)
@@ -292,14 +306,8 @@ impl<'hir> Map<'hir> {
             | Node::Lifetime(_)
             | Node::Visibility(_)
             | Node::Block(_)
-            | Node::Crate(_) => return None,
-            Node::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
-            Node::GenericParam(param) => match param.kind {
-                GenericParamKind::Lifetime { .. } => return None,
-                GenericParamKind::Type { .. } => DefKind::TyParam,
-                GenericParamKind::Const { .. } => DefKind::ConstParam,
-            },
-        })
+            | Node::Crate(_) => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
+        }
     }
 
     fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {
@@ -1082,6 +1090,5 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
-    providers.def_kind =
-        |tcx, def_id| tcx.hir().def_kind(tcx.hir().as_local_hir_id(def_id.expect_local()));
+    providers.def_kind = |tcx, def_id| tcx.hir().def_kind(def_id.expect_local());
 }

@@ -2504,10 +2504,8 @@ impl<'a> Resolver<'a> {
         }
 
         let container = match parent.kind {
-            ModuleKind::Def(DefKind::Mod, _, _) => "module",
-            ModuleKind::Def(DefKind::Trait, _, _) => "trait",
+            ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id().unwrap()),
             ModuleKind::Block(..) => "block",
-            _ => "enum",
         };
 
         let old_noun = match old_binding.is_import() {

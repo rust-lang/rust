@@ -1,6 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
+#![feature(or_patterns)]
 #![recursion_limit = "256"]
 
 use rustc_ast::ast::Ident;
@@ -537,11 +538,10 @@ impl EmbargoVisitor<'tcx> {
         for item_id in module.item_ids {
             let hir_id = item_id.id;
             let item_def_id = self.tcx.hir().local_def_id(hir_id);
-            if let Some(def_kind) = self.tcx.def_kind(item_def_id) {
-                let item = self.tcx.hir().expect_item(hir_id);
-                let vis = ty::Visibility::from_hir(&item.vis, hir_id, self.tcx);
-                self.update_macro_reachable_def(hir_id, def_kind, vis, defining_mod);
-            }
+            let def_kind = self.tcx.def_kind(item_def_id);
+            let item = self.tcx.hir().expect_item(hir_id);
+            let vis = ty::Visibility::from_hir(&item.vis, hir_id, self.tcx);
+            self.update_macro_reachable_def(hir_id, def_kind, vis, defining_mod);
         }
         if let Some(exports) = self.tcx.module_exports(module_def_id) {
             for export in exports {
@@ -613,7 +613,7 @@ impl EmbargoVisitor<'tcx> {
             }
 
             // These have type privacy, so are not reachable unless they're
-            // public
+            // public, or are not namespaced at all.
             DefKind::AssocConst
             | DefKind::AssocTy
             | DefKind::AssocOpaqueTy
@@ -626,7 +626,17 @@ impl EmbargoVisitor<'tcx> {
             | DefKind::AssocFn
             | DefKind::Trait
             | DefKind::TyParam
-            | DefKind::Variant => (),
+            | DefKind::Variant
+            | DefKind::LifetimeParam
+            | DefKind::ExternCrate
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::AnonConst
+            | DefKind::Field
+            | DefKind::GlobalAsm
+            | DefKind::Impl
+            | DefKind::Closure
+            | DefKind::Generator => (),
         }
     }
 

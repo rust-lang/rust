@@ -2135,7 +2135,7 @@ impl Clean<Vec<Item>> for doctree::Impl<'_> {
 
         let for_ = self.for_.clean(cx);
         let type_alias = for_.def_id().and_then(|did| match cx.tcx.def_kind(did) {
-            Some(DefKind::TyAlias) => Some(cx.tcx.type_of(did).clean(cx)),
+            DefKind::TyAlias => Some(cx.tcx.type_of(did).clean(cx)),
             _ => None,
         });
         let make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| Item {
