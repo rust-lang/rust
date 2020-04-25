@@ -3,15 +3,22 @@
 > `librustc_ast`, `librustc_expand`, and `librustc_builtin_macros` are all undergoing
 > refactoring, so some of the links in this chapter may be broken.
 
-Macro expansion happens during parsing. `rustc` has two parsers, in fact: the
-normal Rust parser, and the macro parser. During the parsing phase, the normal
+Rust has a very powerful macro system. There are two major types of macros:
+`macro_rules!` macros (a.k.a. "Macros By Example" (MBE)) and procedural macros
+("proc macros"; including custom derives). During the parsing phase, the normal
 Rust parser will set aside the contents of macros and their invocations. Later,
 before name resolution, macros are expanded using these portions of the code.
-The macro parser, in turn, may call the normal Rust parser when it needs to
-bind a metavariable (e.g.  `$my_expr`) while parsing the contents of a macro
+In this chapter, we will discuss MBEs, proc macros, and hygiene. Both types of
+macros are expanded during parsing, but they happen in different ways.
+
+## Macros By Example
+
+MBEs have their own parser distinct from the normal Rust parser. When macros
+are expanded, we may invoke the MBE parser to parse and expand a macro.  The
+MBE parser, in turn, may call the normal Rust parser when it needs to bind a
+metavariable (e.g.  `$my_expr`) while parsing the contents of a macro
 invocation. The code for macro expansion is in
-[`src/librustc_expand/mbe/`][code_dir]. This chapter aims to explain how macro
-expansion works.
+[`src/librustc_expand/mbe/`][code_dir].
 
 ### Example
 
@@ -56,7 +63,7 @@ The process of expanding the macro invocation into the syntax tree
 `println!("{}", foo)` and then expanding that into a call to `Display::fmt` is
 called _macro expansion_, and it is the topic of this chapter.
 
-### The macro parser
+### The MBE parser
 
 There are two parts to macro expansion: parsing the definition and parsing the
 invocations. Interestingly, both are done by the macro parser.
@@ -70,33 +77,32 @@ The interface of the macro parser is as follows (this is slightly simplified):
 
 ```rust,ignore
 fn parse_tt(
-    parser: &mut Cow<Parser>, 
+    parser: &mut Cow<Parser>,
     ms: &[TokenTree],
 ) -> NamedParseResult
 ```
 
 We use these items in macro parser:
 
-- `sess` is a "parsing session", which keeps track of some metadata. Most
-  notably, this is used to keep track of errors that are generated so they can
-  be reported to the user.
-- `tts` is a stream of tokens. The macro parser's job is to consume the raw
-  stream of tokens and output a binding of metavariables to corresponding token
-  trees.
+- `parser` is a reference to the state of a normal Rust parser, including the
+  token stream and parsing session. The token stream is what we are about to
+  ask the MBE parser to parse. We will consume the raw stream of tokens and
+  output a binding of metavariables to corresponding token trees. The parsing
+  session can be used to report parser errros.
 - `ms` a _matcher_. This is a sequence of token trees that we want to match
-  `tts` against.
+  the token stream against.
 
-In the analogy of a regex parser, `tts` is the input and we are matching it
-against the pattern `ms`. Using our examples, `tts` could be the stream of
+In the analogy of a regex parser, the token stream is the input and we are matching it
+against the pattern `ms`. Using our examples, the token stream could be the stream of
 tokens containing the inside of the example invocation `print foo`, while `ms`
 might be the sequence of token (trees) `print $mvar:ident`.
 
 The output of the parser is a `NamedParseResult`, which indicates which of
 three cases has occurred:
 
-- Success: `tts` matches the given matcher `ms`, and we have produced a binding
+- Success: the token stream matches the given matcher `ms`, and we have produced a binding
   from metavariables to the corresponding token trees.
-- Failure: `tts` does not match `ms`. This results in an error message such as
+- Failure: the token stream does not match `ms`. This results in an error message such as
   "No rule expected token _blah_".
 - Error: some fatal error has occurred _in the parser_. For example, this
   happens if there are more than one pattern match, since that indicates
@@ -143,7 +149,38 @@ error.
 For more information about the macro parser's implementation, see the comments
 in [`src/librustc_expand/mbe/macro_parser.rs`][code_mp].
 
-### Hygiene
+### `macro`s and Macros 2.0
+
+There is an old and mostly undocumented effort to improve the MBE system, give
+it more hygiene-related features, better scoping and visibility rules, etc. There
+hasn't been a lot of work on this recently, unfortunately. Internally, `macro`
+macros use the same machinery as today's MBEs; they just have additional
+syntactic sugar and are allowed to be in namespaces.
+
+## Procedural Macros
+
+Precedural macros are also expanded during parsing, as mentioned above.
+However, they use a rather different mechanism. Rather than having a parser in
+the compiler, procedural macros are implemented as custom, third-party crates.
+The compiler will compile the proc macro crate and specially annotated
+functions in them (i.e. the proc macro itself), passing them a stream of tokens.
+
+The proc macro can then transform the token stream and output a new token
+stream, which is synthesized into the AST.
+
+It's worth noting that the token stream type used by proc macros is _stable_,
+so `rustc` does not use it internally (since our internal data structures are
+unstable).
+
+TODO: more here.
+
+### Custom Derive
+
+Custom derives are a special type of proc macro.
+
+TODO: more?
+
+## Hygiene
 
 If you have ever used C/C++ preprocessor macros, you know that there are some
 annoying and hard-to-debug gotchas! For example, consider the following C code:
@@ -190,21 +227,7 @@ a macro author may want to introduce a new name to the context where the macro
 was called. Alternately, the macro author may be defining a variable for use
 only within the macro (i.e. it should not be visible outside the macro).
 
-In rustc, this "context" is tracked via `Span`s.
-
-TODO: what is call-site hygiene? what is def-site hygiene?
-
-TODO
-
-### Procedural Macros
-
-TODO
-
-### Custom Derive
-
-TODO
-
-TODO: maybe something about macros 2.0?
+This section is about how that context is tracked.
 
 
 [code_dir]: https://github.com/rust-lang/rust/tree/master/src/librustc_expand/mbe
@@ -221,135 +244,6 @@ The rest of this chapter is a dump of a discussion between `mark-i-m` and
 it never gets lost until we can make it into a proper chapter.
 
 ```txt
-mark-i-m: @Vadim Petrochenkov Hi :wave:
-I was wondering if you would have a chance sometime in the next month or so to
-just have a zulip discussion where you tell us (WG-learning) everything you
-know about macros/expansion/hygiene. We were thinking this could be less formal
-(and less work for you) than compiler lecture series lecture... thoughts?
-
-mark-i-m: The goal is to fill out that long-standing gap in the rustc-dev-guide
-
-Vadim Petrochenkov: Ok, I'm at UTC+03:00 and generally available in the
-evenings (or weekends).
-
-mark-i-m: @Vadim Petrochenkov Either of those works for me (your evenings are
-about lunch time for me :) ) Is there a particular date that would work best
-for you?
-
-mark-i-m: @WG-learning Does anyone else have a preferred date?
-
-    Vadim Petrochenkov:
-
-    Is there a particular date that would work best for you?
-
-Nah, not much difference.  (If something changes for a specific day, I'll
-notify.)
-
-Santiago Pastorino: week days are better, but I'd say let's wait for @Vadim
-Petrochenkov to say when they are ready for it and we can set a date
-
-Santiago Pastorino: also, we should record this so ... I guess it doesn't
-matter that much when :)
-
-    mark-i-m:
-
-    also, we should record this so ... I guess it doesn't matter that much when
-    :)
-
-@Santiago Pastorino My thinking was to just use zulip, so we would have the log
-
-mark-i-m: @Vadim Petrochenkov @WG-learning How about 2 weeks from now: July 24
-at 5pm UTC time (if I did the math right, that should be evening for Vadim)
-
-Amanjeev Sethi: i can try and do this but I am starting a new job that week so
-cannot promise.
-
-    Santiago Pastorino:
-
-    Vadim Petrochenkov @WG-learning How about 2 weeks from now: July 24 at 5pm
-    UTC time (if I did the math right, that should be evening for Vadim)
-
-works perfect for me
-
-Santiago Pastorino: @mark-i-m I have access to the compiler calendar so I can
-add something there
-
-Santiago Pastorino: let me know if you want to add an event to the calendar, I
-can do that
-
-Santiago Pastorino: how long it would be?
-
-    mark-i-m:
-
-    let me know if you want to add an event to the calendar, I can do that
-
-mark-i-m: That could be good :+1:
-
-    mark-i-m:
-
-    how long it would be?
-
-Let's start with 30 minutes, and if we need to schedule another we cna
-
-    Vadim Petrochenkov:
-
-    5pm UTC
-
-1-2 hours later would be better, 5pm UTC is not evening enough.
-
-Vadim Petrochenkov: How exactly do you plan the meeting to go (aka how much do
-I need to prepare)?
-
-    Santiago Pastorino:
-
-        5pm UTC
-
-    1-2 hours later would be better, 5pm UTC is not evening enough.
-
-Scheduled for 7pm UTC then
-
-    Santiago Pastorino:
-
-    How exactly do you plan the meeting to go (aka how much do I need to
-    prepare)?
-
-/cc @mark-i-m
-
-mark-i-m: @Vadim Petrochenkov
-
-    How exactly do you plan the meeting to go (aka how much do I need to
-    prepare)?
-
-My hope was that this could be less formal than for a compiler lecture series,
-but it would be nice if you could have in your mind a tour of the design and
-the code
-
-That is, imagine that a new person was joining the compiler team and needed to
-get up to speed about macros/expansion/hygiene. What would you tell such a
-person?
-
-mark-i-m: @Vadim Petrochenkov Are we still on for tomorrow at 7pm UTC?
-
-Vadim Petrochenkov: Yes.
-
-Santiago Pastorino: @Vadim Petrochenkov @mark-i-m I've added an event on rust
-compiler team calendar
-
-mark-i-m: @WG-learning @Vadim Petrochenkov Hello!
-
-mark-i-m: We will be starting in ~7 minutes
-
-mark-i-m: :wave:
-
-Vadim Petrochenkov: I'm here.
-
-mark-i-m: Cool :)
-
-Santiago Pastorino: hello @Vadim Petrochenkov
-
-mark-i-m: Shall we start?
-
-mark-i-m: First off, @Vadim Petrochenkov Thanks for doing this!
 
 Vadim Petrochenkov: Here's some preliminary data I prepared.
 
