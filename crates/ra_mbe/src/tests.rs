@@ -1657,7 +1657,7 @@ impl MacroFixture {
     }
 }
 
-pub(crate) fn parse_macro(ra_fixture: &str) -> MacroFixture {
+fn parse_macro_to_tt(ra_fixture: &str) -> tt::Subtree {
     let source_file = ast::SourceFile::parse(ra_fixture).ok().unwrap();
     let macro_definition =
         source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
@@ -1671,8 +1671,22 @@ pub(crate) fn parse_macro(ra_fixture: &str) -> MacroFixture {
     .0;
     assert_eq!(definition_tt, parsed);
 
+    definition_tt
+}
+
+pub(crate) fn parse_macro(ra_fixture: &str) -> MacroFixture {
+    let definition_tt = parse_macro_to_tt(ra_fixture);
     let rules = MacroRules::parse(&definition_tt).unwrap();
     MacroFixture { rules }
+}
+
+pub(crate) fn parse_macro_error(ra_fixture: &str) -> ParseError {
+    let definition_tt = parse_macro_to_tt(ra_fixture);
+
+    match MacroRules::parse(&definition_tt) {
+        Ok(_) => panic!("Expect error"),
+        Err(err) => err,
+    }
 }
 
 pub(crate) fn parse_to_token_tree_by_syntax(ra_fixture: &str) -> tt::Subtree {
@@ -1838,6 +1852,27 @@ fn test_no_space_after_semi_colon() {
       IDENT@50..51 "f"
     SEMICOLON@51..52 ";""###,
     );
+}
+
+// https://github.com/rust-lang/rust/blob/master/src/test/ui/issues/issue-57597.rs
+#[test]
+fn test_rustc_issue_57597() {
+    fn test_error(fixture: &str) {
+        assert_eq!(parse_macro_error(fixture), ParseError::RepetitionEmtpyTokenTree);
+    }
+
+    test_error("macro_rules! foo { ($($($i:ident)?)+) => {}; }");
+    test_error("macro_rules! foo { ($($($i:ident)?)*) => {}; }");
+    test_error("macro_rules! foo { ($($($i:ident)?)?) => {}; }");
+    test_error("macro_rules! foo { ($($($($i:ident)?)?)?) => {}; }");
+    test_error("macro_rules! foo { ($($($($i:ident)*)?)?) => {}; }");
+    test_error("macro_rules! foo { ($($($($i:ident)?)*)?) => {}; }");
+    test_error("macro_rules! foo { ($($($($i:ident)?)?)*) => {}; }");
+    test_error("macro_rules! foo { ($($($($i:ident)*)*)?) => {}; }");
+    test_error("macro_rules! foo { ($($($($i:ident)?)*)*) => {}; }");
+    test_error("macro_rules! foo { ($($($($i:ident)?)*)+) => {}; }");
+    test_error("macro_rules! foo { ($($($($i:ident)+)?)*) => {}; }");
+    test_error("macro_rules! foo { ($($($($i:ident)+)*)?) => {}; }");
 }
 
 #[test]

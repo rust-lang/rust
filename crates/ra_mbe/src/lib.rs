@@ -19,6 +19,7 @@ use crate::{
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
     Expected(String),
+    RepetitionEmtpyTokenTree,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -194,20 +195,46 @@ impl Rule {
     }
 }
 
+fn to_parse_error(e: ExpandError) -> ParseError {
+    let msg = match e {
+        ExpandError::InvalidRepeat => "invalid repeat".to_string(),
+        _ => "invalid macro definition".to_string(),
+    };
+    ParseError::Expected(msg)
+}
+
 fn validate(pattern: &tt::Subtree) -> Result<(), ParseError> {
     for op in parse_pattern(pattern) {
-        let op = match op {
-            Ok(it) => it,
-            Err(e) => {
-                let msg = match e {
-                    ExpandError::InvalidRepeat => "invalid repeat".to_string(),
-                    _ => "invalid macro definition".to_string(),
-                };
-                return Err(ParseError::Expected(msg));
-            }
-        };
+        let op = op.map_err(to_parse_error)?;
+
         match op {
-            Op::TokenTree(tt::TokenTree::Subtree(subtree)) | Op::Repeat { subtree, .. } => {
+            Op::TokenTree(tt::TokenTree::Subtree(subtree)) => validate(subtree)?,
+            Op::Repeat { subtree, separator, .. } => {
+                // Checks that no repetition which could match an empty token
+                // https://github.com/rust-lang/rust/blob/a58b1ed44f5e06976de2bdc4d7dc81c36a96934f/src/librustc_expand/mbe/macro_rules.rs#L558
+
+                if separator.is_none() {
+                    if parse_pattern(subtree).all(|child_op| {
+                        match child_op.map_err(to_parse_error) {
+                            Ok(Op::Var { kind, .. }) => {
+                                // vis is optional
+                                if kind.map_or(false, |it| it == "vis") {
+                                    return true;
+                                }
+                            }
+                            Ok(Op::Repeat { kind, .. }) => {
+                                return matches!(
+                                    kind,
+                                    parser::RepeatKind::ZeroOrMore | parser::RepeatKind::ZeroOrOne
+                                )
+                            }
+                            _ => {}
+                        }
+                        false
+                    }) {
+                        return Err(ParseError::RepetitionEmtpyTokenTree);
+                    }
+                }
                 validate(subtree)?
             }
             _ => (),
@@ -216,6 +243,7 @@ fn validate(pattern: &tt::Subtree) -> Result<(), ParseError> {
     Ok(())
 }
 
+#[derive(Debug)]
 pub struct ExpandResult<T>(pub T, pub Option<ExpandError>);
 
 impl<T> ExpandResult<T> {
