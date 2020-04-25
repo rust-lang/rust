@@ -9,7 +9,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/" }
+cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", features = ["unwind"] }
 cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/" }
 cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/" }
 cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/" }

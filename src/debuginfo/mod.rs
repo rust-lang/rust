@@ -1,5 +1,6 @@
 mod emit;
 mod line_info;
+mod unwind;
 
 use crate::prelude::*;
 
@@ -10,8 +11,8 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::ValueLocRange;
 
 use gimli::write::{
-    self, Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString, Location,
-    LocationList, Range, RangeList, UnitEntryId, Writer,
+    self, Address, AttributeValue, CieId, DwarfUnit, Expression, FrameTable, LineProgram,
+    LineString, Location, LocationList, Range, RangeList, UnitEntryId, Writer,
 };
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, X86_64};
 
@@ -34,13 +35,15 @@ pub(crate) struct DebugContext<'tcx> {
 
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
+    frame_table: FrameTable,
 
+    cie: CieId,
     clif_types: FxHashMap<Type, UnitEntryId>,
     types: FxHashMap<Ty<'tcx>, UnitEntryId>,
 }
 
 impl<'tcx> DebugContext<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, address_size: u8) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa) -> Self {
         let encoding = Encoding {
             format: Format::Dwarf32,
             // TODO: this should be configurable
@@ -53,7 +56,7 @@ impl<'tcx> DebugContext<'tcx> {
                 // support it.
                 4
             },
-            address_size,
+            address_size: isa.frontend_config().pointer_bytes(),
         };
 
         let mut dwarf = DwarfUnit::new(encoding);
@@ -108,6 +111,9 @@ impl<'tcx> DebugContext<'tcx> {
             );
         }
 
+        let mut frame_table = FrameTable::default();
+        let cie = frame_table.add_cie(isa.create_systemv_cie().expect("SystemV unwind info CIE"));
+
         DebugContext {
             tcx,
 
@@ -116,7 +122,9 @@ impl<'tcx> DebugContext<'tcx> {
 
             dwarf,
             unit_range_list: RangeList(Vec::new()),
+            frame_table,
 
+            cie,
             clif_types: FxHashMap::default(),
             types: FxHashMap::default(),
         }
@@ -312,6 +320,8 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         source_info_set: &indexmap::IndexSet<SourceInfo>,
         local_map: FxHashMap<mir::Local, CPlace<'tcx>>,
     ) {
+        self.create_unwind_info(context, isa);
+
         let end = self.create_debug_lines(context, isa, source_info_set);
 
         self.debug_context

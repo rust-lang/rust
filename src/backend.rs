@@ -39,7 +39,7 @@ impl WriteMetadata for object::write::Object {
 }
 
 pub(crate) trait WriteDebugInfo {
-    type SectionId;
+    type SectionId: Copy;
 
     fn add_debug_section(&mut self, name: SectionId, data: Vec<u8>) -> Self::SectionId;
     fn add_debug_reloc(
