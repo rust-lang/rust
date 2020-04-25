@@ -222,6 +222,7 @@ pub fn main_loop(ws_roots: Vec<PathBuf>, config: Config, connection: Connection)
     libdata_receiver.into_iter().for_each(drop);
     log::info!("...tasks have finished");
     log::info!("joining threadpool...");
+    pool.join();
     drop(pool);
     log::info!("...threadpool has finished");
 
