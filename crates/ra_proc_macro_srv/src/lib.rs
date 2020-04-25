@@ -23,12 +23,14 @@ use proc_macro::bridge::client::TokenStream;
 use ra_proc_macro::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask};
 use std::{
     collections::{hash_map::Entry, HashMap},
+    fs::metadata,
     path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 #[derive(Default)]
 pub(crate) struct ProcMacroSrv {
-    expanders: HashMap<PathBuf, dylib::Expander>,
+    expanders: HashMap<(PathBuf, SystemTime), dylib::Expander>,
 }
 
 impl ProcMacroSrv {
@@ -48,7 +50,11 @@ impl ProcMacroSrv {
     }
 
     fn expander(&mut self, path: &Path) -> Result<&dylib::Expander, String> {
-        Ok(match self.expanders.entry(path.to_path_buf()) {
+        let time = metadata(path)
+            .and_then(|it| it.modified())
+            .map_err(|err| format!("Failed to file metadata for {}: {:?}", path.display(), err))?;
+
+        Ok(match self.expanders.entry((path.to_path_buf(), time)) {
             Entry::Vacant(v) => v.insert(dylib::Expander::new(path).map_err(|err| {
                 format!("Cannot create expander for {}: {:?}", path.display(), err)
             })?),
