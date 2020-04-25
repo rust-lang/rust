@@ -23,7 +23,7 @@ pub fn init() {
 
 pub fn init_from(spec: &str) {
     let filter = if spec.is_empty() { Filter::disabled() } else { Filter::from_spec(spec) };
-    set_filter(filter);
+    filter.install();
 }
 
 pub type Label = &'static str;
@@ -57,30 +57,10 @@ pub type Label = &'static str;
 /// ```
 pub fn profile(label: Label) -> Profiler {
     assert!(!label.is_empty());
-    if !PROFILING_ENABLED.load(Ordering::Relaxed) {
-        return Profiler { label: None, detail: None };
-    }
-
-    PROFILE_STACK.with(|stack| {
-        let mut stack = stack.borrow_mut();
-        if stack.starts.is_empty() {
-            if let Ok(f) = FILTER.try_read() {
-                if f.version > stack.filter_data.version {
-                    stack.filter_data = f.clone();
-                }
-            };
-        }
-        if stack.starts.len() > stack.filter_data.depth {
-            return Profiler { label: None, detail: None };
-        }
-        let allowed = &stack.filter_data.allowed;
-        if stack.starts.is_empty() && !allowed.is_empty() && !allowed.contains(label) {
-            return Profiler { label: None, detail: None };
-        }
-
-        stack.starts.push(Instant::now());
-        Profiler { label: Some(label), detail: None }
-    })
+    let enabled = PROFILING_ENABLED.load(Ordering::Relaxed)
+        && PROFILE_STACK.with(|stack| stack.borrow_mut().push(label));
+    let label = if enabled { Some(label) } else { None };
+    Profiler { label, detail: None }
 }
 
 pub struct Profiler {
@@ -97,36 +77,27 @@ impl Profiler {
     }
 }
 
-/// Set profiling filter. It specifies descriptions allowed to profile.
-/// This is helpful when call stack has too many nested profiling scopes.
-/// Additionally filter can specify maximum depth of profiling scopes nesting.
-///
-/// #Example
-/// ```
-/// use ra_prof::{set_filter, Filter};
-/// let f = Filter::from_spec("profile1|profile2@2");
-/// set_filter(f);
-/// ```
-fn set_filter(f: Filter) {
-    PROFILING_ENABLED.store(f.depth > 0, Ordering::SeqCst);
-    let set: HashSet<_> = f.allowed.iter().cloned().collect();
-    let mut old = FILTER.write().unwrap();
-    let filter_data = FilterData {
-        depth: f.depth,
-        allowed: set,
-        longer_than: f.longer_than,
-        version: old.version + 1,
-    };
-    *old = filter_data;
-}
+static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false);
+static FILTER: Lazy<RwLock<Filter>> = Lazy::new(Default::default);
+thread_local!(static PROFILE_STACK: RefCell<ProfileStack> = RefCell::new(ProfileStack::new()));
 
+#[derive(Default, Clone, Debug)]
 struct Filter {
     depth: usize,
-    allowed: Vec<String>,
+    allowed: HashSet<String>,
     longer_than: Duration,
+    version: usize,
 }
 
 impl Filter {
+    fn new(depth: usize, allowed: HashSet<String>, longer_than: Duration) -> Filter {
+        Filter { depth, allowed, longer_than, version: 0 }
+    }
+
+    fn disabled() -> Filter {
+        Filter::default()
+    }
+
     fn from_spec(mut spec: &str) -> Filter {
         let longer_than = if let Some(idx) = spec.rfind('>') {
             let longer_than = spec[idx + 1..].parse().expect("invalid profile longer_than");
@@ -144,23 +115,22 @@ impl Filter {
             999
         };
         let allowed =
-            if spec == "*" { Vec::new() } else { spec.split('|').map(String::from).collect() };
+            if spec == "*" { HashSet::new() } else { spec.split('|').map(String::from).collect() };
         Filter::new(depth, allowed, longer_than)
     }
 
-    pub fn disabled() -> Filter {
-        Filter::new(0, Vec::new(), Duration::new(0, 0))
-    }
-
-    pub fn new(depth: usize, allowed: Vec<String>, longer_than: Duration) -> Filter {
-        Filter { depth, allowed, longer_than }
+    fn install(mut self) {
+        PROFILING_ENABLED.store(self.depth > 0, Ordering::SeqCst);
+        let mut old = FILTER.write().unwrap();
+        self.version = old.version + 1;
+        *old = self;
     }
 }
 
 struct ProfileStack {
     starts: Vec<Instant>,
     messages: Vec<Message>,
-    filter_data: FilterData,
+    filter: Filter,
 }
 
 struct Message {
@@ -172,45 +142,54 @@ struct Message {
 
 impl ProfileStack {
     fn new() -> ProfileStack {
-        ProfileStack { starts: Vec::new(), messages: Vec::new(), filter_data: Default::default() }
+        ProfileStack { starts: Vec::new(), messages: Vec::new(), filter: Default::default() }
+    }
+
+    fn push(&mut self, label: Label) -> bool {
+        if self.starts.is_empty() {
+            if let Ok(f) = FILTER.try_read() {
+                if f.version > self.filter.version {
+                    self.filter = f.clone();
+                }
+            };
+        }
+        if self.starts.len() > self.filter.depth {
+            return false;
+        }
+        let allowed = &self.filter.allowed;
+        if self.starts.is_empty() && !allowed.is_empty() && !allowed.contains(label) {
+            return false;
+        }
+
+        self.starts.push(Instant::now());
+        true
+    }
+
+    pub fn pop(&mut self, label: Label, detail: Option<String>) {
+        let start = self.starts.pop().unwrap();
+        let duration = start.elapsed();
+        let level = self.starts.len();
+        self.messages.push(Message { level, duration, label, detail });
+        if level == 0 {
+            let stdout = stderr();
+            let longer_than = self.filter.longer_than;
+            // Convert to millis for comparison to avoid problems with rounding
+            // (otherwise we could print `0ms` despite user's `>0` filter when
+            // `duration` is just a few nanos).
+            if duration.as_millis() > longer_than.as_millis() {
+                print(&self.messages, longer_than, &mut stdout.lock());
+            }
+            self.messages.clear();
+        }
     }
 }
-
-#[derive(Default, Clone)]
-struct FilterData {
-    depth: usize,
-    version: usize,
-    allowed: HashSet<String>,
-    longer_than: Duration,
-}
-
-static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false);
-
-static FILTER: Lazy<RwLock<FilterData>> = Lazy::new(Default::default);
-
-thread_local!(static PROFILE_STACK: RefCell<ProfileStack> = RefCell::new(ProfileStack::new()));
 
 impl Drop for Profiler {
     fn drop(&mut self) {
         match self {
             Profiler { label: Some(label), detail } => {
                 PROFILE_STACK.with(|stack| {
-                    let mut stack = stack.borrow_mut();
-                    let start = stack.starts.pop().unwrap();
-                    let duration = start.elapsed();
-                    let level = stack.starts.len();
-                    stack.messages.push(Message { level, duration, label, detail: detail.take() });
-                    if level == 0 {
-                        let stdout = stderr();
-                        let longer_than = stack.filter_data.longer_than;
-                        // Convert to millis for comparison to avoid problems with rounding
-                        // (otherwise we could print `0ms` despite user's `>0` filter when
-                        // `duration` is just a few nanos).
-                        if duration.as_millis() > longer_than.as_millis() {
-                            print(&stack.messages, longer_than, &mut stdout.lock());
-                        }
-                        stack.messages.clear();
-                    }
+                    stack.borrow_mut().pop(label, detail.take());
                 });
             }
             Profiler { label: None, .. } => (),
