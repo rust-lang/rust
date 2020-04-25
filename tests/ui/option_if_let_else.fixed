@@ -5,10 +5,14 @@ fn bad1(string: Option<&str>) -> (bool, &str) {
     string.map_or((false, "hello"), |x| (true, x))
 }
 
-fn bad2(string: Option<&str>) -> Option<(bool, &str)> {
+fn else_if_option(string: Option<&str>) -> Option<(bool, &str)> {
     if string.is_none() {
         None
     } else { string.map_or(Some((false, "")), |x| Some((true, x))) }
+}
+
+fn unop_bad(string: &Option<&str>) -> usize {
+    (*string).map_or(0, |s| s.len())
 }
 
 fn longer_body(arg: Option<u32>) -> u32 {
@@ -48,7 +52,8 @@ fn main() {
     let optional = Some(5);
     let _ = optional.map_or(5, |x| x + 2);
     let _ = bad1(None);
-    let _ = bad2(None);
+    let _ = else_if_option(None);
+    let _ = unop_bad(&None);
     let _ = longer_body(None);
     test_map_or_else(None);
     let _ = negative_tests(None);

@@ -9,13 +9,21 @@ fn bad1(string: Option<&str>) -> (bool, &str) {
     }
 }
 
-fn bad2(string: Option<&str>) -> Option<(bool, &str)> {
+fn else_if_option(string: Option<&str>) -> Option<(bool, &str)> {
     if string.is_none() {
         None
     } else if let Some(x) = string {
         Some((true, x))
     } else {
         Some((false, ""))
+    }
+}
+
+fn unop_bad(string: &Option<&str>) -> usize {
+    if let Some(s) = *string {
+        s.len()
+    } else {
+        0
     }
 }
 
@@ -60,7 +68,8 @@ fn main() {
     let optional = Some(5);
     let _ = if let Some(x) = optional { x + 2 } else { 5 };
     let _ = bad1(None);
-    let _ = bad2(None);
+    let _ = else_if_option(None);
+    let _ = unop_bad(&None);
     let _ = longer_body(None);
     test_map_or_else(None);
     let _ = negative_tests(None);

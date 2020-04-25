@@ -175,7 +175,12 @@ fn detect_option_if_let_else<'a>(cx: &LateContext<'_, 'a>, expr: &'a Expr<'a>) -
             let capture_name = id.name.to_ident_string();
             let wrap_braces = utils::get_enclosing_block(cx, expr.hir_id).map_or(false, |parent| {
                 if_chain! {
-                    if let Some(Expr { kind: ExprKind::Match(condition, arms, MatchSource::IfDesugar{contains_else_clause: true}|MatchSource::IfLetDesugar{contains_else_clause: true}), .. } ) = parent.expr;
+                    if let Some(Expr { kind: ExprKind::Match(
+                                _,
+                                arms,
+                                MatchSource::IfDesugar{contains_else_clause: true}
+                                    | MatchSource::IfLetDesugar{contains_else_clause: true}),
+                                .. } ) = parent.expr;
                     if expr.hir_id == arms[1].body.hir_id;
                     then {
                         true
@@ -184,8 +189,19 @@ fn detect_option_if_let_else<'a>(cx: &LateContext<'_, 'a>, expr: &'a Expr<'a>) -
                     }
                 }
             });
+            let parens_around_option = match &let_body.kind {
+                ExprKind::Call(..)
+                        | ExprKind::MethodCall(..)
+                        | ExprKind::Loop(..)
+                        | ExprKind::Match(..)
+                        | ExprKind::Block(..)
+                        | ExprKind::Field(..)
+                        | ExprKind::Path(_)
+                    => false,
+                _ => true,
+            };
             Some(OptionIfLetElseOccurence {
-                option: format!("{}", Sugg::hir(cx, let_body, "..")),
+                option: format!("{}{}{}", if parens_around_option { "(" } else { "" }, Sugg::hir(cx, let_body, ".."), if parens_around_option { ")" } else { "" }),
                 method_sugg: format!("{}", method_sugg),
                 some_expr: format!("|{}| {}", capture_name, Sugg::hir(cx, some_body, "..")),
                 none_expr: format!("{}{}", if method_sugg == "map_or" { "" } else { "|| " }, Sugg::hir(cx, none_body, "..")),
@@ -209,7 +225,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OptionIfLetElse {
                 format!(
                     "{}{}.{}({}, {}){}",
                     if detection.wrap_braces { "{ " } else { "" },
-                    detection.option, detection.method_sugg, detection.none_expr, detection.some_expr,
+                    detection.option,
+                    detection.method_sugg,
+                    detection.none_expr,
+                    detection.some_expr,
                     if detection.wrap_braces { " }" } else { "" },
                 ),
                 Applicability::MachineApplicable,

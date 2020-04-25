@@ -24,6 +24,16 @@ LL | |     }
 error: use Option::map_or instead of an if let/else
   --> $DIR/option_if_let_else.rs:23:5
    |
+LL | /     if let Some(s) = *string {
+LL | |         s.len()
+LL | |     } else {
+LL | |         0
+LL | |     }
+   | |_____^ help: try: `(*string).map_or(0, |s| s.len())`
+
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:31:5
+   |
 LL | /     if let Some(x) = arg {
 LL | |         let y = x * x;
 LL | |         y * y
@@ -41,7 +51,7 @@ LL |     })
    |
 
 error: use Option::map_or_else instead of an if let/else
-  --> $DIR/option_if_let_else.rs:32:13
+  --> $DIR/option_if_let_else.rs:40:13
    |
 LL |       let _ = if let Some(x) = arg {
    |  _____________^
@@ -64,10 +74,10 @@ LL |     }, |x| x * x * x * x);
    |
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:61:13
+  --> $DIR/option_if_let_else.rs:69:13
    |
 LL |     let _ = if let Some(x) = optional { x + 2 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `optional.map_or(5, |x| x + 2)`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
