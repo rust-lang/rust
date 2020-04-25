@@ -73,18 +73,18 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br label %invertif.end
 
 ; CHECK: invertif.then:
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %"x'", i64 %n
-; CHECK-NEXT:   %[[loadit:.+]] = load double, double* %"arrayidx'ipg", align 8
+; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %"x'", i64 %n
+; CHECK-NEXT:   %[[loadit:.+]] = load double, double* %[[arrayidxipg]], align 8
 ; CHECK-NEXT:   %[[tostoreit:.+]] = fadd fast double %[[loadit]], %differeturn
-; CHECK-NEXT:   store double %[[tostoreit]], double* %"arrayidx'ipg", align 8
+; CHECK-NEXT:   store double %[[tostoreit]], double* %[[arrayidxipg]], align 8
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertif.end:  
 ; CHECK-NEXT:   %[[ivp1]] = phi i64 [ %[[ivp0m1]], %incinvertfor.body ], [ %iv, %if.end ]
-; CHECK-NEXT:   %"arrayidx4'ipg" = getelementptr inbounds double, double* %"x'", i64 %[[ivp1]]
-; CHECK-NEXT:   %[[loaditp:.+]] = load double, double* %"arrayidx4'ipg", align 8
+; CHECK-NEXT:   %[[arrayidx4ipg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[ivp1]]
+; CHECK-NEXT:   %[[loaditp:.+]] = load double, double* %[[arrayidx4ipg]], align 8
 ; CHECK-NEXT:   %[[tostoreitp:.+]] = fadd fast double %[[loaditp]], %differeturn
-; CHECK-NEXT:   store double %[[tostoreitp]], double* %"arrayidx4'ipg", align 8
+; CHECK-NEXT:   store double %[[tostoreitp]], double* %[[arrayidx4ipg]], align 8
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK-NEXT: }

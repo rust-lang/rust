@@ -70,7 +70,7 @@ std::map<Instruction*, bool> compute_uncacheable_load_map(GradientUtils* gutils,
   std::map<Instruction*, bool> can_modref_map;
   for (inst_iterator I = inst_begin(*gutils->oldFunc), E = inst_end(*gutils->oldFunc); I != E; ++I) {
     Instruction* inst = &*I;
-      // For each load instruction, determine if it is uncacheable.
+      // For each load instruction, determine if it is xuncacheable.
       if (auto op = dyn_cast<LoadInst>(inst)) {
 
         bool can_modref = false;
@@ -450,6 +450,20 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, Va
     if (auto op = dyn_cast<BinaryOperator>(user)) {
       if (op->getOpcode() == Instruction::FAdd || op->getOpcode() == Instruction::FSub) {
         continue;
+      }
+      if (op->getOpcode() == Instruction::FMul) {
+        bool needed = false;
+        if (op->getOperand(0) == inst && !gutils->isConstantValue(gutils->getNewFromOriginal(op->getOperand(1)))) needed = true;
+        if (op->getOperand(1) == inst && !gutils->isConstantValue(gutils->getNewFromOriginal(op->getOperand(0)))) needed = true;
+        //llvm::errs() << "needed " << *inst << " in mul " << *op << " - needed:" << needed << "\n";
+        if (!needed) continue;
+      }
+
+      if (op->getOpcode() == Instruction::FDiv) {
+        bool needed = false;
+        if (op->getOperand(1) == inst && !gutils->isConstantValue(gutils->getNewFromOriginal(op->getOperand(1)))) needed = true;
+        if (op->getOperand(1) == inst && !gutils->isConstantValue(gutils->getNewFromOriginal(op->getOperand(0)))) needed = true;
+        if (!needed) continue;
       }
     }
 

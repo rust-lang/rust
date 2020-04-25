@@ -447,29 +447,32 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       invertedPointers[arg] = li;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<GetElementPtrInst>(val)) {
-      if (arg->getParent() == &arg->getParent()->getParent()->getEntryBlock()) {
+      //if (arg->getParent() == &arg->getParent()->getParent()->getEntryBlock()) {
         IRBuilder<> bb(arg);
         SmallVector<Value*,4> invertargs;
         for(auto &a: arg->indices()) {
             auto b = lookupM(a, bb);
             invertargs.push_back(b);
         }
-        auto result = bb.CreateGEP(invertPointerM(arg->getPointerOperand(), bb), invertargs, arg->getName()+"'ipge");
+        auto result = bb.CreateGEP(invertPointerM(arg->getPointerOperand(), bb), invertargs, arg->getName()+"'ipg");
         if (auto gep = dyn_cast<GetElementPtrInst>(result))
             gep->setIsInBounds(arg->isInBounds());
         invertedPointers[arg] = result;
         return lookupM(invertedPointers[arg], BuilderM);
-      }
-
+      //}
+      /*
       SmallVector<Value*,4> invertargs;
       for(auto &a: arg->indices()) {
           auto b = lookupM(a, BuilderM);
           invertargs.push_back(b);
       }
-      auto result = BuilderM.CreateGEP(invertPointerM(arg->getPointerOperand(), BuilderM), invertargs, arg->getName()+"'ipg");
+
+      auto result = bb.CreateGEP(invertPointerM(arg->getPointerOperand(), BuilderM), invertargs, arg->getName()+"'ipg");
       if (auto gep = dyn_cast<GetElementPtrInst>(result))
         gep->setIsInBounds(arg->isInBounds());
-      return result;
+      invertedPointers[arg] = result;
+      return lookupM(invertedPointers[arg], BuilderM);
+      */
     } else if (auto inst = dyn_cast<AllocaInst>(val)) {
         IRBuilder<> bb(inst);
         AllocaInst* antialloca = bb.CreateAlloca(inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(), inst->getArraySize(), inst->getName()+"'ipa");

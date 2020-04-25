@@ -289,9 +289,9 @@ attributes #10 = { cold }
 ; CHECK-NEXT:   %cmp = icmp slt i32 %i, %bound
 ; CHECK-NEXT:   call void @llvm.assume(i1 %cmp)
 ; CHECK-NEXT:   %idxprom_unwrap = sext i32 %i to i64
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds float, float* %"data'", i64 %idxprom_unwrap
-; CHECK-NEXT:   %0 = load float, float* %"arrayidx'ipg", align 4
+; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds float, float* %"data'", i64 %idxprom_unwrap
+; CHECK-NEXT:   %0 = load float, float* %[[arrayidxipg]], align 4
 ; CHECK-NEXT:   %1 = fadd fast float %0, %differeturn
-; CHECK-NEXT:   store float %1, float* %"arrayidx'ipg", align 4
+; CHECK-NEXT:   store float %1, float* %[[arrayidxipg]], align 4
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

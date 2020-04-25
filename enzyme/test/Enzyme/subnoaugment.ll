@@ -47,9 +47,9 @@ attributes #3 = { readnone }
 
 ; CHECK: define internal {} @diffematvec(%Type* %evaluator.i.i, %Type* %"evaluator.i.i'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %"dims'ipge" = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
+; CHECK-NEXT:   %[[dimsipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
 ; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
-; CHECK-NEXT:   %call_augmented = call { {}, double } @augmented_total(double* nonnull %dims, double* nonnull %"dims'ipge")
+; CHECK-NEXT:   %call_augmented = call { {}, double } @augmented_total(double* nonnull %dims, double* nonnull %[[dimsipge]])
 ; CHECK-NEXT:   %call = extractvalue { {}, double } %call_augmented, 1
 ; CHECK-NEXT:   %flt = fptrunc double %call to float
 ; CHECK-NEXT:   %data = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 0
@@ -58,7 +58,7 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   %0 = load float, float* %[[dataipge:.+]], align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %[[dataipge:.+]], align 4
 ; CHECK-NEXT:   %1 = fpext float %0 to double
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffetotal(double* nonnull %dims, double* nonnull %"dims'ipge", double %1, {} undef)
+; CHECK-NEXT:   %[[unused:.+]] = call {} @diffetotal(double* nonnull %dims, double* nonnull %[[dimsipge]], double %1, {} undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

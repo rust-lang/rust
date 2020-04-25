@@ -813,9 +813,9 @@ attributes #11 = { cold }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %m_rows.i19 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 1
 ; CHECK-NEXT:   %a8 = load i64, i64* %m_rows.i19, align 8, !tbaa !2
-; CHECK-NEXT:   %"m_data.i17'ipge" = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %"W'", i64 0, i32 0, i32 0, i32 0
+; CHECK-NEXT:   %[[m_datai17ipge:.+]] = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %"W'", i64 0, i32 0, i32 0, i32 0
 ; CHECK-NEXT:   %m_data.i17 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 0
-; CHECK-NEXT:   %"a9'ipl" = load double*, double** %"m_data.i17'ipge", align 8
+; CHECK-NEXT:   %"a9'ipl" = load double*, double** %[[m_datai17ipge:.+]], align 8
 ; CHECK-NEXT:   %a9 = load double*, double** %m_data.i17, align 8, !tbaa !9
 ; CHECK-NEXT:   %subcall_augmented = call { { { {} }, i64 }, i64 } @augmented_sub(double* %a9, double* %"a9'ipl", i64 %a8) #9
 ; CHECK-NEXT:   %subcall = extractvalue { { { {} }, i64 }, i64 } %subcall_augmented, 1
@@ -824,7 +824,7 @@ attributes #11 = { cold }
 
 ; CHECK: one:                                              ; preds = %entry
 ; CHECK-NEXT:   store double 1.000000e+00, double* %a9, align 8
-; CHECK-NEXT:   %[[a9ipl_uw:.+]] = load double*, double** %"m_data.i17'ipge", align 8
+; CHECK-NEXT:   %[[a9ipl_uw:.+]] = load double*, double** %[[m_datai17ipge:.+]], align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[a9ipl_uw]], align 8
 ; CHECK-NEXT:   br label %invertentry
 

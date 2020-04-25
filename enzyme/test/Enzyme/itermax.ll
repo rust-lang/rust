@@ -112,10 +112,10 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[toselect:.+]] = load i1, i1* %[[cmpcache]]
 ; CHECK-NEXT:   %[[diffecond]] = select{{( fast)?}} i1 %[[toselect]], double %[[iforde]], double 0.000000e+00
 ; CHECK-NEXT:   %[[diffepre:.+]] = select{{( fast)?}} i1 %[[toselect]], double 0.000000e+00, double %[[iforde]]
-; CHECK-NEXT:   %"arrayidx2.phi.trans.insert'ipg" = getelementptr inbounds double, double* %"x'", i64 %[[iin]]
-; CHECK-NEXT:   %[[prear:.+]] = load double, double* %"arrayidx2.phi.trans.insert'ipg"
+; CHECK-NEXT:   %[[arrayidx2phitransinsertipg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[iin]]
+; CHECK-NEXT:   %[[prear:.+]] = load double, double* %[[arrayidx2phitransinsertipg]]
 ; CHECK-NEXT:   %[[arradd:.+]] = fadd fast double %[[prear]], %[[diffepre]]
-; CHECK-NEXT:   store double %[[arradd]], double* %"arrayidx2.phi.trans.insert'ipg"
+; CHECK-NEXT:   store double %[[arradd]], double* %[[arrayidx2phitransinsertipg]]
 ; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %[[isub]], 0
 ; CHECK-NEXT:   br i1 %[[lcmp]], label %[[thelabel2]], label %[[thelabel]] 
 ; CHECK-NEXT: }

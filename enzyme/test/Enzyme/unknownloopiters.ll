@@ -61,10 +61,10 @@ attributes #2 = { nounwind }
 
 ; CHECK: [[antiloop]]:
 ; CHECK-NEXT:   %[[antiiv:.+]] = phi i64 [ %[[antiivnext:.+]], %[[incantiloop:.+]] ], [ %[[iv]], %for.cond.i ]
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr inbounds double, double* %xp, i64 %[[antiiv]]
-; CHECK-NEXT:   %[[load:.+]] = load double, double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %[[arrayidxipgi:.+]] = getelementptr inbounds double, double* %xp, i64 %[[antiiv]]
+; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[arrayidxipgi]]
 ; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[load]], 1.000000e+00
-; CHECK-NEXT:   store double %[[fadd]], double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   store double %[[fadd]], double* %[[arrayidxipgi]]
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[antiiv]], 0
 ; CHECK-NEXT:   br i1 %[[cmp]], label %diffeunknowniters.exit, label %[[incantiloop]] 
 

@@ -147,10 +147,10 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[diffecond]] = select{{( fast)?}} i1 %[[reload]], double %"cond.i'de.0", double 0.000000e+00
 ; CHECK-NEXT:   %[[diffepre:.+]] = select{{( fast)?}} i1 %[[reload]], double 0.000000e+00, double %"cond.i'de.0"
 ; CHECK-NEXT:   %[[idx2:.+]] = add nuw i64 %[[antivar]], 1
-; CHECK-NEXT:   %"arrayidx9.phi.trans.insert'ipg" = getelementptr inbounds double, double* %"x'", i64 %[[idx2]]
-; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %"arrayidx9.phi.trans.insert'ipg"
+; CHECK-NEXT:   %[[arrayidx9phitransinsertipg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[idx2]]
+; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %[[arrayidx9phitransinsertipg]]
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded]], %[[diffepre]]
-; CHECK-NEXT:   store double %[[tostore]], double* %"arrayidx9.phi.trans.insert'ipg"
+; CHECK-NEXT:   store double %[[tostore]], double* %[[arrayidx9phitransinsertipg]]
 ; CHECK-NEXT:   %[[lcond:.+]] = icmp eq i64 %[[antivar]], 0
 ; CHECK-NEXT:   %[[decarry]] = fadd fast double 1.000000e+00, %[[diffecond]]
 ; CHECK-NEXT:   br i1 %[[lcond]], label %invertfor.body.preheader, label %incinvertfor.body.for.body_crit_edge

@@ -119,8 +119,8 @@ attributes #4 = { nounwind }
 ; CHECK: define internal {{(dso_local )?}}{} @diffeget(double** nocapture readonly %x, double** %"x'", i32 %i, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %idxprom = zext i32 %i to i64
-; CHECK-NEXT:   %"arrayidx'ipge" = getelementptr inbounds double*, double** %"x'", i64 %idxprom
-; CHECK-NEXT:   %"'ipl" = load double*, double** %"arrayidx'ipge", align 8
+; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double*, double** %"x'", i64 %idxprom
+; CHECK-NEXT:   %"'ipl" = load double*, double** %[[arrayidxipge]], align 8
 ; CHECK-NEXT:   %0 = load double, double* %"'ipl", align 8
 ; CHECK-NEXT:   %1 = fadd fast double %0, %differeturn
 ; CHECK-NEXT:   store double %1, double* %"'ipl", align 8
@@ -148,9 +148,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %"call'mi" to i64*
 ; CHECK-NEXT:   store i64 0, i64* %[[storeloc]], align 1
 ; CHECK-NEXT:   %[[bitcaster:.+]] = bitcast i8* %call to double*
+; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double*, double** %"arrayp'", i64 %[[iv]]
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double*, double** %arrayp, i64 %[[iv]]
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double*, double** %"arrayp'", i64 %[[iv]]
-; CHECK-NEXT:   %"'ipc" = bitcast double** %"arrayidx'ipg" to i8**
+; CHECK-NEXT:   %"'ipc" = bitcast double** %[[arrayidxipg]] to i8**
 ; CHECK-NEXT:   %[[bctwo:.+]] = bitcast double** %arrayidx to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %"'ipc", align 8
 ; CHECK-NEXT:   %[[geper:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache", i64 %[[iv]]

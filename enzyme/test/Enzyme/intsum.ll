@@ -62,10 +62,10 @@ declare double @__enzyme_autodiff(void (float*, float*)*, ...) #2
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ 4, %do.end ], [ %7, %incinvertdo.body ]
 ; CHECK-NEXT:   %1 = bitcast i32 %"intadd'de.0" to float
 ; CHECK-NEXT:   %2 = fadd fast float %"add'de.0", %1
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds float, float* %"array'", i64 %"iv'ac.0"
-; CHECK-NEXT:   %3 = load float, float* %"arrayidx'ipg"
+; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds float, float* %"array'", i64 %"iv'ac.0"
+; CHECK-NEXT:   %3 = load float, float* %[[arrayidxipg]]
 ; CHECK-NEXT:   %4 = fadd fast float %3, %2
-; CHECK-NEXT:   store float %4, float* %"arrayidx'ipg"
+; CHECK-NEXT:   store float %4, float* %[[arrayidxipg]]
 ; CHECK-NEXT:   %5 = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   %6 = bitcast float %2 to i32
 ; CHECK-NEXT:   br i1 %5, label %invertentry, label %incinvertdo.body

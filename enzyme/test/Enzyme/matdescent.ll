@@ -304,8 +304,8 @@ attributes #19 = { builtin nounwind }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body:                                   ; preds = %invertfor.body4
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %[[outipc:.+]], i64 %"iv'ac.0"
-; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg", align 8
+; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %[[outipc:.+]], i64 %"iv'ac.0"
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[arrayidxipg]], align 8
 ; CHECK-NEXT:   %0 = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   br i1 %0, label %invertentry, label %incinvertfor.body
 
@@ -323,14 +323,14 @@ attributes #19 = { builtin nounwind }
 ; CHECK-NEXT:   %arrayidx8_unwrap = getelementptr inbounds double, double* %vec, i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %a5_unwrap = load double, double* %arrayidx8_unwrap
 ; CHECK-NEXT:   %m1diffea4 = fmul fast double %[[add12de]], %a5_unwrap
-; CHECK-NEXT:   %"arrayidx8'ipg" = getelementptr inbounds double, double* %vec, i64 %"iv1'ac.0"
-; CHECK-NEXT:   %[[l8:.+]] = load double, double* %"arrayidx8'ipg", align 8
+; CHECK-NEXT:   %[[arrayidx8ipg:.+]] = getelementptr inbounds double, double* %vec, i64 %"iv1'ac.0"
+; CHECK-NEXT:   %[[l8:.+]] = load double, double* %[[arrayidx8ipg]], align 8
 ; CHECK-NEXT:   %[[addl8:.+]] = fadd fast double %[[l8]], %m0diffea5
-; CHECK-NEXT:   store double %[[addl8]], double* %"arrayidx8'ipg", align 8
-; CHECK-NEXT:   %"arrayidx6'ipg" = getelementptr inbounds double, double* %"mat'", i64 %a3_unwrap
-; CHECK-NEXT:   %[[l8:.+]] = load double, double* %"arrayidx6'ipg", align 8
+; CHECK-NEXT:   store double %[[addl8]], double* %[[arrayidx8ipg]], align 8
+; CHECK-NEXT:   %[[arrayidx6ipg:.+]] = getelementptr inbounds double, double* %"mat'", i64 %a3_unwrap
+; CHECK-NEXT:   %[[l8:.+]] = load double, double* %[[arrayidx6ipg]], align 8
 ; CHECK-NEXT:   %[[addl8:.+]] = fadd fast double %[[l8]], %m1diffea4
-; CHECK-NEXT:   store double %[[addl8]], double* %"arrayidx6'ipg", align 8
+; CHECK-NEXT:   store double %[[addl8]], double* %[[arrayidx6ipg]], align 8
 ; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %"iv1'ac.0", 0
 ; CHECK-NEXT:   br i1 %[[lcmp]], label %invertfor.body, label %incinvertfor.body4
 
@@ -344,9 +344,7 @@ attributes #19 = { builtin nounwind }
 ; CHECK-NEXT:   %[[outipc7:.+]] = bitcast i8* %"call'mi" to double*
 ; CHECK-NEXT:   %[[arrayidxipg6:.+]] = getelementptr inbounds double, double* %[[outipc7]], i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[lipg8:.+]] = load double, double* %[[arrayidxipg6]], align 8
-; TODO this extra gep shouldn't be here
-; CHECK-NEXT:   %[[arrayidxipg7:.+]] = getelementptr inbounds double, double* %[[outipc7]], i64 %"iv'ac.0"
-; CHECK-NEXT:   store double 0.000000e+00, double* %[[arrayidxipg7]], align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[arrayidxipg6]], align 8
 ; CHECK-NEXT:   %[[add12de]] = fadd fast double %"add12'de.1", %[[lipg8]]
 ; CHECK-NEXT:   br label %invertfor.body4
 
@@ -363,10 +361,10 @@ attributes #19 = { builtin nounwind }
 ; CHECK-NEXT:   %m1diffea6 = fmul fast double 1.000000e+00, %a6_unwrap
 ; CHECK-NEXT:   %[[da6:.+]] = fadd fast double %m0diffea6, %m1diffea6
 ; CHECK-NEXT:   %[[outipc13:.+]] = bitcast i8* %"call'mi" to double*
-; CHECK-NEXT:   %"arrayidx22'ipg" = getelementptr inbounds double, double* %[[outipc13]], i64 %"iv3'ac.0"
-; CHECK-NEXT:   %[[l22:.+]] = load double, double* %"arrayidx22'ipg", align 8
+; CHECK-NEXT:   %[[arrayidx22ipg:.+]] = getelementptr inbounds double, double* %[[outipc13]], i64 %"iv3'ac.0"
+; CHECK-NEXT:   %[[l22:.+]] = load double, double* %[[arrayidx22ipg]], align 8
 ; CHECK-NEXT:   %[[addl22:.+]] = fadd fast double %[[l22]], %[[da6]]
-; CHECK-NEXT:   store double %[[addl22]], double* %"arrayidx22'ipg", align 8
+; CHECK-NEXT:   store double %[[addl22]], double* %[[arrayidx22ipg]], align 8
 ; CHECK-NEXT:   %[[riv3cmp:.+]] = icmp eq i64 %"iv3'ac.0", 0
 ; CHECK-NEXT:   br i1 %[[riv3cmp]], label %mergeinvertfor.body_for.body20.preheader, label %incinvertfor.body20
 

@@ -108,9 +108,9 @@ attributes #4 = { nounwind }
 
 ; CHECK-NEXT:  %[[dstructncast]] = bitcast i8* %"call'mi.i" to %struct.n*
 ; CHECK-NEXT:  %[[thisbc]] = bitcast i8* %call.i to %struct.n*
+; CHECK-NEXT:  %[[nextipgi:.+]] = getelementptr inbounds i8, i8* %"call'mi.i", i64 8
 ; CHECK-NEXT:  %next.i = getelementptr inbounds i8, i8* %call.i, i64 8
-; CHECK-NEXT:  %"next'ipg.i" = getelementptr inbounds i8, i8* %"call'mi.i", i64 8
-; CHECK-NEXT:  %[[dstruct1:.+]] = bitcast i8* %"next'ipg.i" to %struct.n**
+; CHECK-NEXT:  %[[dstruct1:.+]] = bitcast i8* %[[nextipgi]] to %struct.n**
 ; CHECK-NEXT:  %[[fbc:.+]] = bitcast i8* %next.i to %struct.n**
 
 ; CHECK-NEXT:  store %struct.n* %[[structtostore]], %struct.n** %[[dstruct1]]
@@ -171,9 +171,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[bcalloc:.+]] = bitcast i8* %_realloccache to %struct.n**
 ; CHECK-NEXT:   %[[storest:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[bcalloc]], i64 %[[preidx]]
 ; CHECK-NEXT:   store %struct.n* %[[cur]], %struct.n** %[[storest]]
+; CHECK-NEXT:   %[[nextipg:.+]] = getelementptr inbounds %struct.n, %struct.n* %[[cur]], i64 0, i32 1
 ; CHECK-NEXT:   %next = getelementptr inbounds %struct.n, %struct.n* %val.08, i64 0, i32 1
-; CHECK-NEXT:   %"next'ipg" = getelementptr inbounds %struct.n, %struct.n* %[[cur]], i64 0, i32 1
-; CHECK-NEXT:   %"'ipl" = load %struct.n*, %struct.n** %"next'ipg", align 8
+; CHECK-NEXT:   %"'ipl" = load %struct.n*, %struct.n** %[[nextipg]], align 8
 ; CHECK-NEXT:   %[[loadst]] = load %struct.n*, %struct.n** %next, align 8, !tbaa !8
 ; CHECK-NEXT:   %cmp = icmp eq %struct.n* %[[loadst]], null
 ; CHECK-NEXT:   br i1 %cmp, label %[[antiloop:.+]], label %for.body
@@ -189,10 +189,10 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %incinvertfor.body ], [ %[[preidx]], %for.body ]
 ; CHECK-NEXT:   %[[structptr:.+]] = getelementptr inbounds %struct.n*, %struct.n** %[[bcalloc]], i64 %[[antivar]]
 ; CHECK-NEXT:   %[[struct:.+]] = load %struct.n*, %struct.n** %[[structptr]]
-; CHECK-NEXT:   %"value'ipg" = getelementptr inbounds %struct.n, %struct.n* %[[struct]], i64 0, i32 0
-; CHECK-NEXT:   %[[val0:.+]] = load double, double* %"value'ipg"
+; CHECK-NEXT:   %[[valueipg:.+]] = getelementptr inbounds %struct.n, %struct.n* %[[struct]], i64 0, i32 0
+; CHECK-NEXT:   %[[val0:.+]] = load double, double* %[[valueipg]]
 ; CHECK-NEXT:   %[[addval:.+]] = fadd fast double %[[val0]], %[[differet]]
-; CHECK-NEXT:   store double %[[addval]], double* %"value'ipg"
+; CHECK-NEXT:   store double %[[addval]], double* %[[valueipg]]
 ; CHECK-NEXT:   %[[cmpeq:.+]] = icmp eq i64 %[[antivar]], 0
 ; CHECK-NEXT:   br i1 %[[cmpeq]], label %invertfor.body.preheader, label %incinvertfor.body
 

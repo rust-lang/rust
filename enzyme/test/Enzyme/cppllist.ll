@@ -192,9 +192,9 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   store i8* %call.i, i8** %[[callgep]]
 ; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache.i", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
+; CHECK-NEXT:   %[[nextiipgi:.+]] = getelementptr inbounds i8, i8* %"call'mi.i", i64 8
 ; CHECK-NEXT:   %next.i.i = getelementptr inbounds i8, i8* %call.i, i64 8
-; CHECK-NEXT:   %"next.i'ipg.i" = getelementptr inbounds i8, i8* %"call'mi.i", i64 8
-; CHECK-NEXT:   %"'ipc1.i" = bitcast i8* %"next.i'ipg.i" to %class.node**
+; CHECK-NEXT:   %"'ipc1.i" = bitcast i8* %[[nextiipgi]] to %class.node**
 ; CHECK-NEXT:   %[[bctwo:.+]] = bitcast i8* %next.i.i to %class.node**
 ; CHECK-NEXT:   store %class.node* %[[nodevar]], %class.node** %"'ipc1.i"
 ; CHECK-NEXT:   store %class.node* %list.09.i, %class.node** %[[bctwo]], align 8, !tbaa !8
@@ -251,9 +251,9 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[reallocbc:.+]] = bitcast i8* %_realloccache to %class.node**
 ; CHECK-NEXT:   %[[geptostore:.+]] = getelementptr inbounds %class.node*, %class.node** %[[reallocbc]], i64 %[[preidx]]
 ; CHECK-NEXT:   store %class.node* %[[cur]], %class.node** %[[geptostore]]
+; CHECK-NEXT:   %[[nextipg:.+]] = getelementptr inbounds %class.node, %class.node* %[[cur]], i64 0, i32 1
 ; CHECK-NEXT:   %next = getelementptr inbounds %class.node, %class.node* %val.08, i64 0, i32 1
-; CHECK-NEXT:   %"next'ipg" = getelementptr inbounds %class.node, %class.node* %[[cur]], i64 0, i32 1
-; CHECK-NEXT:   %"'ipl" = load %class.node*, %class.node** %"next'ipg", align 8
+; CHECK-NEXT:   %"'ipl" = load %class.node*, %class.node** %[[nextipg]], align 8
 ; CHECK-NEXT:   %[[nextload:.+]] = load %class.node*, %class.node** %next, align 8, !tbaa !8
 ; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq %class.node* %[[nextload]], null
 ; CHECK-NEXT:   br i1 %[[lcmp]], label %[[antiloop:.+]], label %for.body
@@ -269,10 +269,10 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[subidx:.+]], %incinvertfor.body ], [ %[[preidx]], %for.body ]
 ; CHECK-NEXT:   %[[structptr:.+]] = getelementptr inbounds %class.node*, %class.node** %[[reallocbc]], i64 %[[antivar]]
 ; CHECK-NEXT:   %[[struct:.+]] = load %class.node*, %class.node** %[[structptr]]
-; CHECK-NEXT:   %"value'ipg" = getelementptr inbounds %class.node, %class.node* %[[struct]], i64 0, i32 0
-; CHECK-NEXT:   %[[val0:.+]] = load double, double* %"value'ipg"
+; CHECK-NEXT:   %[[valueipg:.+]] = getelementptr inbounds %class.node, %class.node* %[[struct]], i64 0, i32 0
+; CHECK-NEXT:   %[[val0:.+]] = load double, double* %[[valueipg]]
 ; CHECK-NEXT:   %[[addval:.+]] = fadd fast double %[[val0]], %[[differet]]
-; CHECK-NEXT:   store double %[[addval]], double* %"value'ipg"
+; CHECK-NEXT:   store double %[[addval]], double* %[[valueipg]]
 ; CHECK-NEXT:   %[[cmpne:.+]] = icmp eq i64 %[[antivar]], 0
 ; CHECK-NEXT:   br i1 %[[cmpne]], label %invertfor.body.preheader, label %incinvertfor.body
 

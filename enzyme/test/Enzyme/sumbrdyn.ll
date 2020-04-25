@@ -56,10 +56,10 @@ attributes #2 = { nounwind }
 
 ; CHECK: invertfor.body.i: 
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[iv]], %for.cond.cleanup.i ], [ %[[sub:.+]], %incinvertfor.body.i ]
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr inbounds double, double* %xp, i64 %[[antivar]]
-; CHECK-NEXT:   %[[load:.+]] = load double, double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   %[[arrayidxipgi:.+]] = getelementptr inbounds double, double* %xp, i64 %[[antivar]]
+; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[arrayidxipgi]]
 ; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[load]], 1.000000e+00
-; CHECK-NEXT:   store double %[[add]], double* %"arrayidx'ipg.i"
+; CHECK-NEXT:   store double %[[add]], double* %[[arrayidxipgi]]
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[antivar]], 0
 ; CHECK-NEXT:   br i1 %[[cmp]], label %diffesum.exit, label %incinvertfor.body.i
 

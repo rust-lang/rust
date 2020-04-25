@@ -53,13 +53,12 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[augsubf:.+]] = call { { {}, {}, double }, i1 } @augmented_subf(double* %x, double* %"x'")
-; CHECK-NEXT:   %[[augret:.+]] = extractvalue { { {}, {}, double }, i1 } %[[augsubf]], 1
+; CHECK-NEXT:   %[[augsubf:.+]] = call { { {}, {} }, i1 } @augmented_subf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[augret:.+]] = extractvalue { { {}, {} }, i1 } %[[augsubf]], 1
 ; CHECK-NEXT:   %sel = select i1 %[[augret]], double 2.000000e+00, double 3.000000e+00
 ; CHECK-NEXT:   store double %sel, double* %x, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'"
-; CHECK-NEXT:   %[[augcache:.+]] = extractvalue { { {}, {}, double }, i1 } %[[augsubf]], 0
-; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, {}, double } %[[augcache]])
+; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, {} } undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
@@ -83,25 +82,22 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   ret { {} } undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ { {}, {}, double }, i1 } @augmented_subf(double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{ { {}, {} }, i1 } @augmented_subf(double* nocapture %x, double* %"x'") 
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca { { {}, {}, double }, i1 }
-; CHECK-NEXT:   %1 = getelementptr { { {}, {}, double }, i1 }, { { {}, {}, double }, i1 }* %0, i32 0, i32 0
-; CHECK-NEXT:   %2 = load double, double* %x, align 8
-; CHECK-NEXT:   %3 = getelementptr { {}, {}, double }, { {}, {}, double }* %1, i32 0, i32 2
-; CHECK-NEXT:   store double %2, double* %3
-; CHECK-NEXT:   %mul = fmul fast double %2, 2.000000e+00
+; CHECK-NEXT:   %0 = alloca { { {}, {} }, i1 }
+; CHECK-NEXT:   %[[xload:.+]] = load double, double* %x, align 8
+; CHECK-NEXT:   %mul = fmul fast double %[[xload]], 2.000000e+00
 ; CHECK-NEXT:   store double %mul, double* %x, align 8
 ; CHECK-NEXT:   %[[augsubf:.+]] = call { {} } @augmented_omegasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[augmetasubf:.+]] = call { {}, i1 } @augmented_metasubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[metasubf:.+]] = extractvalue { {}, i1 } %[[augmetasubf]], 1
-; CHECK-NEXT:   %[[gep:.+]] = getelementptr { { {}, {}, double }, i1 }, { { {}, {}, double }, i1 }* %0, i32 0, i32 1
+; CHECK-NEXT:   %[[gep:.+]] = getelementptr { { {}, {} }, i1 }, { { {}, {} }, i1 }* %0, i32 0, i32 1
 ; CHECK-NEXT:   store i1 %[[metasubf]], i1* %[[gep]]
-; CHECK-NEXT:   %[[toret:.+]] = load { { {}, {}, double }, i1 }, { { {}, {}, double }, i1 }* %0
-; CHECK-NEXT:   ret { { {}, {}, double }, i1 } %[[toret]]
+; CHECK-NEXT:   %[[toret:.+]] = load { { {}, {} }, i1 }, { { {}, {} }, i1 }* %0
+; CHECK-NEXT:   ret { { {}, {} }, i1 } %[[toret]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* %"x'", { {}, {}, double } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* %"x'", { {}, {} } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call {} @diffemetasubf(double* %x, double* %"x'", {} undef)
 ; CHECK-NEXT:   %1 = call {} @diffeomegasubf(double* %x, double* %"x'", {} undef)

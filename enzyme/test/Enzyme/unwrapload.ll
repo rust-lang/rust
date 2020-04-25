@@ -160,10 +160,10 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   %"add'de.0" = phi double [ %[[add1p:.+]], %invertexit ], [ %[[dadd]], %invertloop2 ]
 ; CHECK-NEXT:   %"iv1'ac.0.in" = phi i64 [ %[[iv1p:.+]], %invertexit ], [ %"iv1'ac.0", %invertloop2 ]
 ; CHECK-NEXT:   %"iv1'ac.0" = add i64 %"iv1'ac.0.in", -1
-; CHECK-NEXT:   %"gepk3'ipg" = getelementptr double, double* %"data'", i64 %"iv1'ac.0"
-; CHECK-NEXT:   %[[linv:.+]] = load double, double* %"gepk3'ipg", align 8
+; CHECK-NEXT:   %[[gepk3ipg:.+]] = getelementptr double, double* %"data'", i64 %"iv1'ac.0"
+; CHECK-NEXT:   %[[linv:.+]] = load double, double* %[[gepk3ipg]], align 8
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[linv]], %"add'de.0"
-; CHECK-NEXT:   store double %[[tostore]], double* %"gepk3'ipg", align 8
+; CHECK-NEXT:   store double %[[tostore]], double* %[[gepk3ipg]], align 8
 ; CHECK-NEXT:   %[[eq:.+]] = icmp eq i64 %"iv1'ac.0", 0
 ; CHECK-NEXT:   %[[dadd]] = select{{( fast)?}} i1 %[[eq]], double 0.000000e+00, double %"add'de.0"
 ; CHECK-NEXT:   %[[fdadd:.+]] = fadd fast double %"res1'de.0", %"add'de.0"

@@ -112,9 +112,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %for.body5
 
 ; CHECK: for.cond.cleanup4:                                ; preds = %for.body5
+; CHECK-NEXT:   %[[nextipg:.+]] = getelementptr inbounds %struct.n, %struct.n* %[[valstruct]], i64 0, i32 1
 ; CHECK-NEXT:   %next = getelementptr inbounds %struct.n, %struct.n* %val.020, i64 0, i32 1
-; CHECK-NEXT:   %"next'ipg" = getelementptr inbounds %struct.n, %struct.n* %[[valstruct]], i64 0, i32 1
-; CHECK-NEXT:   %[[dstructload]] = load %struct.n*, %struct.n** %"next'ipg", align 8
+; CHECK-NEXT:   %[[dstructload]] = load %struct.n*, %struct.n** %[[nextipg]], align 8
 ; CHECK-NEXT:   %[[nextstruct]] = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
 ; CHECK-NEXT:   %[[mycmp:.+]] = icmp eq %struct.n* %[[nextstruct]], null
 ; CHECK-NEXT:   br i1 %[[mycmp]], label %[[invertforcondcleanup:.+]], label %for.cond1.preheader
@@ -149,10 +149,10 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[mantivar:.+]] = phi i64 [ %times, %[[invertforcondcleanup]] ], [ %[[idxsub:.+]], %incinvertfor.body5 ]
 ; //NOTE this should be LICM'd outside this loop (but LICM doesn't handle invariant group at the momeny :'( )
 ; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %[[toload]], align 8, !invariant.group
-; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %[[loadediv]], i64 %[[mantivar]]
-; CHECK-NEXT:   %[[arrayload:.+]] = load double, double* %"arrayidx'ipg"
+; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %[[loadediv]], i64 %[[mantivar]]
+; CHECK-NEXT:   %[[arrayload:.+]] = load double, double* %[[arrayidxipg]]
 ; CHECK-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %differeturn
-; CHECK-NEXT:   store double %[[arraytostore]], double* %"arrayidx'ipg"
+; CHECK-NEXT:   store double %[[arraytostore]], double* %[[arrayidxipg]]
 ; CHECK-NEXT:   %[[endcond:.+]] = icmp eq i64 %[[mantivar]], 0
 ; CHECK-NEXT:   br i1 %[[endcond]], label %invertfor.cond1.preheader, label %incinvertfor.body5
 
