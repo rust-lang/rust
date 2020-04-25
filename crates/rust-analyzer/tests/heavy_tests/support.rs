@@ -62,11 +62,7 @@ impl<'a> Project<'a> {
         static INIT: Once = Once::new();
         INIT.call_once(|| {
             env_logger::builder().is_test(true).try_init().unwrap();
-            ra_prof::set_filter(if crate::PROFILE.is_empty() {
-                ra_prof::Filter::disabled()
-            } else {
-                ra_prof::Filter::from_spec(&crate::PROFILE)
-            });
+            ra_prof::init_from(crate::PROFILE);
         });
 
         let mut paths = vec![];
