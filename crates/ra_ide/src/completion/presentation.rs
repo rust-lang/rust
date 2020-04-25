@@ -349,6 +349,14 @@ impl Builder {
         if ctx.use_item_syntax.is_some() || ctx.is_call {
             return self;
         }
+
+        // Don't add parentheses if the expected type is some function reference.
+        if let Some(ty) = ctx.expected_type_of(&ctx.token.parent()) {
+            if ty.is_fn() {
+                return self;
+            }
+        }
+
         let cap = match ctx.config.snippet_cap {
             Some(it) => it,
             None => return self,
@@ -742,6 +750,54 @@ mod tests {
                 lookup: "Some",
                 detail: "(T)",
                 trigger_call_info: true,
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn no_call_parens_if_fn_ptr_needed() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                fn somefn(with: u8, a: u8, lot: u8, of: u8, args: u8) {}
+
+                struct ManualVtable {
+                    method: fn(u8, u8, u8, u8, u8),
+                }
+
+                fn main() -> ManualVtable {
+                    ManualVtable {
+                        method: some<|>
+                    }
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "ManualVtable",
+                source_range: 295..299,
+                delete: 295..299,
+                insert: "ManualVtable",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "main",
+                source_range: 295..299,
+                delete: 295..299,
+                insert: "main",
+                kind: Function,
+                detail: "fn main() -> ManualVtable",
+            },
+            CompletionItem {
+                label: "somefn",
+                source_range: 295..299,
+                delete: 295..299,
+                insert: "somefn",
+                kind: Function,
+                detail: "fn somefn(with: u8, a: u8, lot: u8, of: u8, args: u8)",
             },
         ]
         "###
@@ -1179,7 +1235,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion_in_record_lit() {
-        covers!(test_struct_field_completion_in_func_call);
+        covers!(test_struct_field_completion_in_record_lit);
         assert_debug_snapshot!(
         do_reference_completion(
                 r"
