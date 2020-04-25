@@ -1845,7 +1845,7 @@ unsafe impl<T: Send> Send for IterMut<'_, T> {}
 unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
-unsafe impl<T: Send> Send for Cursor<'_, T> {}
+unsafe impl<T: Sync> Send for Cursor<'_, T> {}
 
 #[unstable(feature = "linked_list_cursors", issue = "58533")]
 unsafe impl<T: Sync> Sync for Cursor<'_, T> {}
