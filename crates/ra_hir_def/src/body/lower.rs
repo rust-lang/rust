@@ -141,6 +141,10 @@ impl ExprCollector<'_> {
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
         let syntax_ptr = AstPtr::new(&expr);
+        let attrs = self.expander.parse_attrs(&expr);
+        if !self.expander.is_cfg_enabled(&attrs) {
+            return self.missing_expr();
+        }
         match expr {
             ast::Expr::IfExpr(e) => {
                 let then_branch = self.collect_block_opt(e.then_branch());

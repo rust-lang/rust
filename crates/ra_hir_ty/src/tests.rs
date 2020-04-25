@@ -391,6 +391,38 @@ fn no_such_field_with_feature_flag_diagnostics_on_struct_lit() {
 }
 
 #[test]
+fn no_such_field_with_feature_flag_diagnostics_on_block_expr() {
+    let diagnostics = TestDB::with_files(
+        r#"
+        //- /lib.rs crate:foo cfg:feature=foo
+        struct S {
+            #[cfg(feature = "foo")]
+            foo: u32,
+            #[cfg(not(feature = "foo"))]
+            bar: u32,
+        }
+
+        impl S {
+            fn new(bar: u32) -> Self {
+                #[cfg(feature = "foo")]
+                {
+                Self { foo: bar }
+                }
+                #[cfg(not(feature = "foo"))]
+                {
+                Self { bar }
+                }
+            }
+        }
+        "#,
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r###""###);
+}
+
+#[test]
 fn no_such_field_with_feature_flag_diagnostics_on_struct_fields() {
     let diagnostics = TestDB::with_files(
         r#"
