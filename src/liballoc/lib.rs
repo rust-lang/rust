@@ -77,7 +77,6 @@
 #![feature(allocator_api)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
-#![feature(box_into_raw_non_null)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(cfg_sanitize)]
