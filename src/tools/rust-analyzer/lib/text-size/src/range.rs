@@ -157,6 +157,7 @@ impl TextRange {
     /// assert!(range.contains(start));
     /// assert!(!range.contains(end));
     /// ```
+    #[inline]
     pub fn contains(self, offset: TextSize) -> bool {
         self.start() <= offset && offset < self.end()
     }
@@ -175,6 +176,7 @@ impl TextRange {
     /// assert!(range.contains_inclusive(start));
     /// assert!(range.contains_inclusive(end));
     /// ```
+    #[inline]
     pub fn contains_inclusive(self, offset: TextSize) -> bool {
         self.start() <= offset && offset <= self.end()
     }
@@ -194,6 +196,7 @@ impl TextRange {
     /// assert!(larger.contains_range(larger));
     /// assert!(smaller.contains_range(smaller));
     /// ```
+    #[inline]
     pub fn contains_range(self, other: TextRange) -> bool {
         self.start() <= other.start() && other.end() <= self.end()
     }
@@ -213,6 +216,7 @@ impl TextRange {
     ///     Some(TextRange::new(5.into(), 10.into())),
     /// );
     /// ```
+    #[inline]
     pub fn intersect(self, other: TextRange) -> Option<TextRange> {
         let start = cmp::max(self.start(), other.start());
         let end = cmp::min(self.end(), other.end());
@@ -236,6 +240,7 @@ impl TextRange {
     ///     TextRange::new(0.into(), 20.into()),
     /// );
     /// ```
+    #[inline]
     pub fn cover(self, other: TextRange) -> TextRange {
         let start = cmp::min(self.start(), other.start());
         let end = cmp::max(self.end(), other.end());
@@ -253,6 +258,7 @@ impl TextRange {
     ///     TextRange::new(0.into(), 20.into()),
     /// )
     /// ```
+    #[inline]
     pub fn cover_offset(self, offset: TextSize) -> TextRange {
         self.cover(TextRange::empty(offset))
     }
