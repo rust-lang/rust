@@ -119,10 +119,7 @@ fn issue2965() {
     let mut values = HashSet::new();
     values.insert(1);
 
-    while let Some(..) = values.iter().next() {
-        // FIXME(flip1995): Linting this with the following line uncommented is a FP, see #1654
-        // values.remove(&1);
-    }
+    while let Some(..) = values.iter().next() {}
 }
 
 fn issue3670() {
@@ -134,6 +131,24 @@ fn issue3670() {
     }
 }
 
+fn issue1654() {
+    // should not lint if the iterator is generated on every iteration
+    use std::collections::HashSet;
+    let mut values = HashSet::new();
+    values.insert(1);
+
+    while let Some(..) = values.iter().next() {
+        values.remove(&1);
+    }
+
+    while let Some(..) = values.iter().map(|x| x + 1).next() {}
+
+    let chars = "Hello, World!".char_indices();
+    while let Some((i, ch)) = chars.clone().next() {
+        println!("{}: {}", i, ch);
+    }
+}
+
 fn main() {
     base();
     refutable();
@@ -141,4 +156,5 @@ fn main() {
     issue1121();
     issue2965();
     issue3670();
+    issue1654();
 }
