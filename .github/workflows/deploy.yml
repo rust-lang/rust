@@ -38,6 +38,12 @@ jobs:
     - name: Set beta to true
       if: github.ref == 'refs/heads/beta'
       run: echo "::set-env name=BETA::true"
+
+    - name: Use scripts and templates from master branch
+      run: |
+        git fetch --no-tags --prune --depth=1 origin master
+        git checkout origin/master -- .github/deploy.sh util/gh-pages/ util/*.py
+
     - name: Deploy
       run: |
         eval "$(ssh-agent -s)"
