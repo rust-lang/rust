@@ -262,7 +262,7 @@ fn main() {
     })
     .and_then(|result| result);
     let exit_code = match result {
-        Ok(_) => rustc_driver::EXIT_SUCCESS,
+        Ok(()) => rustc_driver::EXIT_SUCCESS,
         Err(_) => rustc_driver::EXIT_FAILURE,
     };
     std::process::exit(exit_code);
