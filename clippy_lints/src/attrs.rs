@@ -632,11 +632,11 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
         if attr.check_name(sym!(cfg));
         if let Some(list) = attr.meta_item_list();
         let mismatched = find_mismatched_target_os(&list);
-        if let Some((_, span)) = mismatched.iter().peekable().peek();
+        if !mismatched.is_empty();
         then {
             let mess = "operating system used in target family position";
 
-            span_lint_and_then(cx, MISMATCHED_TARGET_OS, *span, &mess, |diag| {
+            span_lint_and_then(cx, MISMATCHED_TARGET_OS, attr.span, &mess, |diag| {
                 // Avoid showing the unix suggestion multiple times in case
                 // we have more than one mismatch for unix-like systems
                 let mut unix_suggested = false;
