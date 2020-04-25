@@ -1854,7 +1854,7 @@ fn test_expand_bad_literal() {
 fn test_empty_comments() {
     parse_macro(
         r#"
-        macro_rules! one_arg_macro { ($fmt:expr) => (); }        
+        macro_rules! one_arg_macro { ($fmt:expr) => (); }
     "#,
     )
     .assert_expand_err(
