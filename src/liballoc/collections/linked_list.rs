@@ -972,7 +972,7 @@ unsafe impl<#[may_dangle] T> Drop for LinkedList<T> {
             fn drop(&mut self) {
                 // Continue the same loop we do below. This only runs when a destructor has
                 // panicked. If another one panics this will abort.
-                while let Some(_) = self.0.pop_front_node() {}
+                while self.0.pop_front_node().is_some() {}
             }
         }
 

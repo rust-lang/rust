@@ -625,8 +625,8 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                     | ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. })
                     | ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
                     ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
-                    ast::TyKind::Path(_, ref path) => path.segments.iter().any(|seg| {
-                        match seg.args.as_ref().map(|generic_arg| &**generic_arg) {
+                    ast::TyKind::Path(_, ref path) => {
+                        path.segments.iter().any(|seg| match seg.args.as_deref() {
                             None => false,
                             Some(&ast::GenericArgs::AngleBracketed(ref data)) => {
                                 data.args.iter().any(|arg| match arg {
@@ -647,8 +647,8 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                                 any_involves_impl_trait(data.inputs.iter())
                                     || ReplaceBodyWithLoop::should_ignore_fn(&data.output)
                             }
-                        }
-                    }),
+                        })
+                    }
                     _ => false,
                 }
             }
