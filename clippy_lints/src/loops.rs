@@ -566,6 +566,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
             ) = (pat, &match_expr.kind)
             {
                 let iter_expr = &method_args[0];
+
+                // Don't lint when the iterator is recreated on every iteration
+                if_chain! {
+                    if let ExprKind::MethodCall(..) | ExprKind::Call(..) = iter_expr.kind;
+                    if let Some(iter_def_id) = get_trait_def_id(cx, &paths::ITERATOR);
+                    if implements_trait(cx, cx.tables.expr_ty(iter_expr), iter_def_id, &[]);
+                    then {
+                        return;
+                    }
+                }
+
                 let lhs_constructor = last_path_segment(qpath);
                 if method_path.ident.name == sym!(next)
                     && match_trait_method(cx, match_expr, &paths::ITERATOR)
