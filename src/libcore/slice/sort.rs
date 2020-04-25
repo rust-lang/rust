@@ -131,6 +131,8 @@ where
     let mut i = 1;
 
     for _ in 0..MAX_STEPS {
+        // SAFETY: We already explicitly done the bound checking with `i<len`
+        // All our indexing following that is only in the range {0 <= index < len}
         unsafe {
             // Find the next pair of adjacent out-of-order elements.
             while i < len && !is_less(v.get_unchecked(i), v.get_unchecked(i - 1)) {
