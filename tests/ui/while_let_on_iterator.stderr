@@ -24,11 +24,5 @@ error: this loop could be written as a `for` loop
 LL |         while let Some(_) = y.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in y`
 
-error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:122:5
-   |
-LL |     while let Some(..) = values.iter().next() {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in values.iter()`
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
