@@ -276,11 +276,33 @@ Primary structures:
 TODO: how a crate transitions from the state "macros exist as written in source" to "all macros are expanded"
 
 Expansion Heirarchies and Syntax Context
-- Many AST nodes have some sort of syntax context, especially nodes from macros. The context consists of a chain of expansions leading to `ExpnId::root`. A non-macro-expanded node has syntax context 0 (`SyntaxContext::empty()`) which represents just the root node.
+- Many AST nodes have some sort of syntax context, especially nodes from macros.
+- When we ask what is the syntax context of a node, the answer actually differs by what we are trying to do. Thus, we don't just keep track of a single context. There are in fact 3 different types of context used for different things.
+- Each type of context is tracked by an "expansion heirarchy". As we expand macros, new macro calls or macro definitions may be generated, leading to some nesting. This nesting is where the heirarchies come from. Each heirarchy tracks some different aspect, though, as we will see.
 - There are 3 expansion heirarchies
     - They all start at ExpnId::root, which is its own parent
+    - The context of a node consists of a chain of expansions leading to `ExpnId::root`. A non-macro-expanded node has syntax context 0 (`SyntaxContext::empty()`) which represents just the root node.
+    - There are vectors in `HygieneData` that contain expansion info.
+        - There are entries here for both `SyntaxContext::empty()` and `ExpnId::root`, but they aren't used much.
 
+    1. Tracks expansion order: when a macro invocation is in the output of another macro.
+        ...
+            expn_id2
+                expn_id1
+        InternalExpnData::parent is the child->parent link. That is the expn_id1 points to expn_id2 points to ...
 
+        Ex:
+            macro_rules! foo { () => { println!(); } }
+            fn main() { foo!(); }
+
+            // Then AST nodes that are finally generated would have parent(expn_id_println) -> parent(expn_id_foo), right?
+
+    2. Tracks macro definitions: when we are expanding one macro another macro definition is revealed in its output.
+        ...
+            SyntaxContext2
+                SyntaxContext1
+        SyntaxContextData::parent is the child->parent link here.
+        SyntaxContext is the whole chain in this hierarchy, and SyntaxContextData::outer_expns are individual elements in the chain.
 
 
 
@@ -292,96 +314,19 @@ Expansion Heirarchies and Syntax Context
 ```txt
 
 
+Vadim Petrochenkov: Pretty common construction (at least it was, before refactorings) is SyntaxContext::empty().apply_mark(expn_id), which means a token produced by a built-in macro (which is defined in the root effectively).
 
-Vadim Petrochenkov: All expansion hyerarchies (there are several of them) start
-at ExpnId::root.
-
-Vadim Petrochenkov: Vectors in HygieneData has entries for both ctxt == 0 and
-expn_id == 0.
-
-Vadim Petrochenkov: I don't think anyone looks into them much though.
-
-Vadim Petrochenkov: Speaking of multiple hierarchies...
-
-Vadim Petrochenkov: One is parent (expn_id1) -> parent(expn_id2) -> ...
-
-Vadim Petrochenkov: This is the order in which macros are expanded.
-
-Vadim Petrochenkov: Well.
-
-Vadim Petrochenkov: When we are expanding one macro another macro is revealed
-in its output.
-
-Vadim Petrochenkov: That's the parent-child relation in this hierarchy.
-
-Vadim Petrochenkov: InternalExpnData::parent is the child->parent link.
-
-mark-i-m: So in the above chain expn_id1 is the child?
-
-Vadim Petrochenkov: Yes.
-
-Vadim Petrochenkov: The second one is parent (SyntaxContext1) ->
-parent(SyntaxContext2) -> ...
-
-Vadim Petrochenkov: This is about nested macro definitions.  When we are
-expanding one macro another macro definition is revealed in its output.
-
-Vadim Petrochenkov: SyntaxContextData::parent is the child->parent link here.
-
-Vadim Petrochenkov: So, SyntaxContext is the whole chain in this hierarchy, and
-outer_expns are individual elements in the chain.
-
-mark-i-m: So for example, suppose I have the following:
-
-macro_rules! foo { () => { println!(); } }
-
-fn main() { foo!(); }
-
-Then AST nodes that are finally generated would have parent(expn_id_println) ->
-parent(expn_id_foo), right?
-
-Vadim Petrochenkov: Pretty common construction (at least it was, before
-refactorings) is SyntaxContext::empty().apply_mark(expn_id), which means...
-
-    Vadim Petrochenkov:
-
-    Then AST nodes that are finally generated would have
-    parent(expn_id_println) -> parent(expn_id_foo), right?
-
-Yes.
-
-    mark-i-m:
-
-    and outer_expns are individual elements in the chain.
-
-Sorry, what is outer_expns?
-
-Vadim Petrochenkov: SyntaxContextData::outer_expn
-
-Vadim Petrochenkov: ...which means a token produced by a built-in macro (which
-is defined in the root effectively).
+Vadim Petrochenkov: Or a stable proc macro, which are always considered to be defined in the root because they are always cross-crate, and we don't have the cross-crate hygiene implemented, ha-ha.
 
 mark-i-m: Where does the expn_id come from?
 
-Vadim Petrochenkov: Or a stable proc macro, which are always considered to be
-defined in the root because they are always cross-crate, and we don't have the
-cross-crate hygiene implemented, ha-ha.
-
-    Vadim Petrochenkov:
-
-    Where does the expn_id come from?
-
 Vadim Petrochenkov: ID of the built-in macro call like line!().
 
-Vadim Petrochenkov: Assigned continuously from 0 to N as soon as we discover
-new macro calls.
+Vadim Petrochenkov: Assigned continuously from 0 to N as soon as we discover new macro calls.
 
-mark-i-m: Sorry, I didn't quite understand. Do you mean that only built-in
-macros receive continuous IDs?
+mark-i-m: Sorry, I didn't quite understand. Do you mean that only built-in macros receive continuous IDs?
 
-Vadim Petrochenkov: So, the second hierarchy has a catch - the context
-transplantation hack -
-https://github.com/rust-lang/rust/pull/51762#issuecomment-401400732.
+Vadim Petrochenkov: So, the second hierarchy has a catch - the context transplantation hack - https://github.com/rust-lang/rust/pull/51762#issuecomment-401400732.
 
     Vadim Petrochenkov:
 
@@ -389,9 +334,7 @@ https://github.com/rust-lang/rust/pull/51762#issuecomment-401400732.
 
 Vadim Petrochenkov: No, all macro calls receive ID.
 
-Vadim Petrochenkov: Built-ins have the typical pattern
-SyntaxContext::empty().apply_mark(expn_id) for syntax contexts produced by
-them.
+Vadim Petrochenkov: Built-ins have the typical pattern SyntaxContext::empty().apply_mark(expn_id) for syntax contexts produced by them.
 
 mark-i-m: I see, but this pattern is only used for built-ins, right?
 
@@ -407,23 +350,17 @@ Vadim Petrochenkov: but hierarchy 3 is root -> ident
 
 Vadim Petrochenkov: ExpnInfo::call_site is the child-parent link in this case.
 
-mark-i-m: When we expand, do we expand foo first or bar? Why is there a
-hierarchy 1 here? Is that foo expands first and it expands to something that
-contains bar!(ident)?
+mark-i-m: When we expand, do we expand foo first or bar? Why is there a hierarchy 1 here? Is that foo expands first and it expands to something that contains bar!(ident)?
 
 Vadim Petrochenkov: Ah, yes, let's assume both foo and bar are identity macros.
 
-Vadim Petrochenkov: Then foo!(bar!(ident)) -> expand -> bar!(ident) -> expand
--> ident
+Vadim Petrochenkov: Then foo!(bar!(ident)) -> expand -> bar!(ident) -> expand -> ident
 
-Vadim Petrochenkov: If bar were expanded first, that would be eager expansion -
-https://github.com/rust-lang/rfcs/pull/2320.
+Vadim Petrochenkov: If bar were expanded first, that would be eager expansion - https://github.com/rust-lang/rfcs/pull/2320.
 
-mark-i-m: And after we expand only foo! presumably whatever intermediate state
-has heirarchy 1 of root->foo->(bar_ident), right?
+mark-i-m: And after we expand only foo! presumably whatever intermediate state has heirarchy 1 of root->foo->(bar_ident), right?
 
-Vadim Petrochenkov: (We have it hacked into some built-in macros, but not
-generally.)
+Vadim Petrochenkov: (We have it hacked into some built-in macros, but not generally.)
 
     Vadim Petrochenkov:
 
@@ -431,23 +368,6 @@ generally.)
     heirarchy 1 of root->foo->(bar_ident), right?
 
 Vadim Petrochenkov: Yes.
-
-mark-i-m: One last question: are there more hierarchies?
-
-Vadim Petrochenkov: Not that I know of.  Three + the context transplantation
-hack is already more complex than I'd like.
-
-mark-i-m: Yes, one wonders what it would be like if one also had to think about
-eager expansion...
-
-mark-i-m: so last time, we talked about the 3 context heirarchies
-
-mark-i-m: Was there anything you wanted to add to that? If not, I think it
-would be good to get a big-picture... Given some piece of rust code, how do we
-get to the point where things are expanded and hygiene context is computed?
-
-mark-i-m: (I'm assuming that hygiene info is computed as we expand stuff, since
-I don't think you can discover it beforehand)
 
 Vadim Petrochenkov: Ok, let's move from hygiene to expansion.
 
