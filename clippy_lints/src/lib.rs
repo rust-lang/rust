@@ -249,7 +249,7 @@ mod macro_use;
 mod main_recursion;
 mod map_clone;
 mod map_unit_fn;
-mod match_vec_item;
+mod match_on_vec_items;
 mod matches;
 mod mem_discriminant;
 mod mem_forget;
@@ -630,7 +630,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &map_clone::MAP_CLONE,
         &map_unit_fn::OPTION_MAP_UNIT_FN,
         &map_unit_fn::RESULT_MAP_UNIT_FN,
-        &match_vec_item::MATCH_VEC_ITEM,
+        &match_on_vec_items::MATCH_ON_VEC_ITEMS,
         &matches::INFALLIBLE_DESTRUCTURING_MATCH,
         &matches::MATCH_AS_REF,
         &matches::MATCH_BOOL,
@@ -1062,7 +1062,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box future_not_send::FutureNotSend);
     store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
     store.register_late_pass(|| box if_let_mutex::IfLetMutex);
-    store.register_late_pass(|| box match_vec_item::MatchVecItem);
+    store.register_late_pass(|| box match_on_vec_items::MatchOnVecItems);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1280,7 +1280,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&map_clone::MAP_CLONE),
         LintId::of(&map_unit_fn::OPTION_MAP_UNIT_FN),
         LintId::of(&map_unit_fn::RESULT_MAP_UNIT_FN),
-        LintId::of(&match_vec_item::MATCH_VEC_ITEM),
+        LintId::of(&match_on_vec_items::MATCH_ON_VEC_ITEMS),
         LintId::of(&matches::INFALLIBLE_DESTRUCTURING_MATCH),
         LintId::of(&matches::MATCH_AS_REF),
         LintId::of(&matches::MATCH_BOOL),
@@ -1473,7 +1473,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::WHILE_LET_ON_ITERATOR),
         LintId::of(&main_recursion::MAIN_RECURSION),
         LintId::of(&map_clone::MAP_CLONE),
-        LintId::of(&match_vec_item::MATCH_VEC_ITEM),
+        LintId::of(&match_on_vec_items::MATCH_ON_VEC_ITEMS),
         LintId::of(&matches::INFALLIBLE_DESTRUCTURING_MATCH),
         LintId::of(&matches::MATCH_BOOL),
         LintId::of(&matches::MATCH_OVERLAPPING_ARM),

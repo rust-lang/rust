@@ -37,14 +37,14 @@ declare_clippy_lint! {
     ///     _ => {},
     /// }
     /// ```
-    pub MATCH_VEC_ITEM,
+    pub MATCH_ON_VEC_ITEMS,
     style,
-    "match vector by indexing can panic"
+    "matching on vector elements can panic"
 }
 
-declare_lint_pass!(MatchVecItem => [MATCH_VEC_ITEM]);
+declare_lint_pass!(MatchOnVecItems => [MATCH_ON_VEC_ITEMS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchVecItem {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchOnVecItems {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
             if !in_external_macro(cx.sess(), expr.span);
@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchVecItem {
                 let mut applicability = Applicability::MaybeIncorrect;
                 span_lint_and_sugg(
                     cx,
-                    MATCH_VEC_ITEM,
+                    MATCH_ON_VEC_ITEMS,
                     match_expr.span,
                     "indexing vector may panic. Consider using `get`",
                     "try this",

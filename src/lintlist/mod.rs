@@ -1145,6 +1145,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "matches",
     },
     Lint {
+        name: "match_on_vec_items",
+        group: "style",
+        desc: "matching on vector elements can panic",
+        deprecation: None,
+        module: "match_on_vec_items",
+    },
+    Lint {
         name: "match_overlapping_arm",
         group: "style",
         desc: "a `match` with overlapping arms",
@@ -1171,13 +1178,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "a match with a single binding instead of using `let` statement",
         deprecation: None,
         module: "matches",
-    },
-    Lint {
-        name: "match_vec_item",
-        group: "style",
-        desc: "match vector by indexing can panic",
-        deprecation: None,
-        module: "match_vec_item",
     },
     Lint {
         name: "match_wild_err_arm",

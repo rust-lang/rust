@@ -1,4 +1,4 @@
-#![warn(clippy::match_vec_item)]
+#![warn(clippy::match_on_vec_items)]
 
 fn main() {
     match_with_wildcard();
