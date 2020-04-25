@@ -35,6 +35,7 @@ pub(crate) struct DebugContext<'tcx> {
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
 
+    clif_types: FxHashMap<Type, UnitEntryId>,
     types: FxHashMap<Ty<'tcx>, UnitEntryId>,
 }
 
@@ -116,8 +117,43 @@ impl<'tcx> DebugContext<'tcx> {
             dwarf,
             unit_range_list: RangeList(Vec::new()),
 
+            clif_types: FxHashMap::default(),
             types: FxHashMap::default(),
         }
+    }
+
+    fn dwarf_ty_for_clif_ty(&mut self, ty: Type) -> UnitEntryId {
+        if let Some(type_id) = self.clif_types.get(&ty) {
+            return *type_id;
+        }
+
+        let new_entry = |dwarf: &mut DwarfUnit, tag| dwarf.unit.add(dwarf.unit.root(), tag);
+
+        let primitive = |dwarf: &mut DwarfUnit, ate| {
+            let type_id = new_entry(dwarf, gimli::DW_TAG_base_type);
+            let type_entry = dwarf.unit.get_mut(type_id);
+            type_entry.set(gimli::DW_AT_encoding, AttributeValue::Encoding(ate));
+            type_id
+        };
+
+        let type_id = if ty.is_bool() {
+            primitive(&mut self.dwarf, gimli::DW_ATE_boolean)
+        } else if ty.is_int() {
+            primitive(&mut self.dwarf, gimli::DW_ATE_address)
+        } else if ty.is_float() {
+            primitive(&mut self.dwarf, gimli::DW_ATE_float)
+        } else {
+            new_entry(&mut self.dwarf, gimli::DW_TAG_structure_type)
+        };
+
+        let type_entry = self.dwarf.unit.get_mut(type_id);
+        type_entry.set(gimli::DW_AT_name, AttributeValue::String(format!("{}", ty).replace('i', "u").into_bytes()));
+        type_entry.set(
+            gimli::DW_AT_byte_size,
+            AttributeValue::Udata(u64::from(ty.bytes())),
+        );
+
+        type_id
     }
 
     fn dwarf_ty(&mut self, ty: Ty<'tcx>) -> UnitEntryId {
@@ -234,6 +270,11 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
             .add(scope, gimli::DW_TAG_subprogram);
         let entry = debug_context.dwarf.unit.get_mut(entry_id);
         let name_id = debug_context.dwarf.strings.add(name);
+        // Gdb requires DW_AT_name. Otherwise the DW_TAG_subprogram is skipped.
+        entry.set(
+            gimli::DW_AT_name,
+            AttributeValue::StringRef(name_id),
+        );
         entry.set(
             gimli::DW_AT_linkage_name,
             AttributeValue::StringRef(name_id),
@@ -249,11 +290,6 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     }
 
     fn define_local(&mut self, name: String, ty: Ty<'tcx>) -> UnitEntryId {
-        let ty = self.debug_context.tcx.subst_and_normalize_erasing_regions(
-            self.instance.substs,
-            ty::ParamEnv::reveal_all(),
-            &ty,
-        );
         let dw_ty = self.debug_context.dwarf_ty(ty);
 
         let var_id = self
@@ -290,15 +326,53 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                     symbol: self.symbol,
                     addend: 0,
                 },
-                length: end as u64,
+                length: u64::from(end),
             });
+
+        let func_entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
+        // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.
+        func_entry.set(gimli::DW_AT_low_pc, AttributeValue::Address(Address::Symbol {
+            symbol: self.symbol,
+            addend: 0,
+        }));
+        // Using Udata for DW_AT_high_pc requires at least DWARF4
+        func_entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(end)));
+
+        // FIXME Remove once actual debuginfo for locals works.
+        for (i, (param, &val)) in context.func.signature.params.iter().zip(context.func.dfg.block_params(context.func.layout.entry_block().unwrap())).enumerate() {
+            use cranelift_codegen::ir::ArgumentPurpose;
+            let base_name = match param.purpose {
+                ArgumentPurpose::Normal => "arg",
+                ArgumentPurpose::StructReturn => "sret",
+                ArgumentPurpose::Link | ArgumentPurpose::FramePointer | ArgumentPurpose::CalleeSaved => continue,
+                ArgumentPurpose::VMContext | ArgumentPurpose::SignatureId | ArgumentPurpose::StackLimit => unreachable!(),
+            };
+            let name = format!("{}{}", base_name, i);
+
+            let dw_ty = self.debug_context.dwarf_ty_for_clif_ty(param.value_type);
+            let loc = Expression(
+                translate_loc(isa, context.func.locations[val], &context.func.stack_slots).unwrap(),
+            );
+
+            let arg_id = self.debug_context.dwarf.unit.add(self.entry_id, gimli::DW_TAG_formal_parameter);
+            let var_entry = self.debug_context.dwarf.unit.get_mut(arg_id);
+
+            var_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
+            var_entry.set(gimli::DW_AT_type, AttributeValue::ThisUnitEntryRef(dw_ty));
+            var_entry.set(gimli::DW_AT_location, AttributeValue::Exprloc(loc));
+        }
 
         // FIXME make it more reliable and implement scopes before re-enabling this.
         if false {
             let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
 
             for (local, _local_decl) in self.mir.local_decls.iter_enumerated() {
-                let var_id = self.define_local(format!("{:?}", local), &self.mir.local_decls[local].ty);
+                let ty = self.debug_context.tcx.subst_and_normalize_erasing_regions(
+                    self.instance.substs,
+                    ty::ParamEnv::reveal_all(),
+                    &self.mir.local_decls[local].ty,
+                );
+                let var_id = self.define_local(format!("{:?}", local), ty);
 
                 let location = place_location(
                     self,
