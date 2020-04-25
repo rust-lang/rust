@@ -7,6 +7,7 @@ use rustc_ast::ast::Ident;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -58,7 +59,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
             let closure_expr = remove_blocks(&closure_body.value);
             then {
                 match closure_body.params[0].pat.kind {
-                    hir::PatKind::Ref(ref inner, _) => if let hir::PatKind::Binding(
+                    hir::PatKind::Ref(ref inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated, .., name, None
                     ) = inner.kind {
                         if ident_eq(name, closure_expr) {
@@ -69,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
                                 if ident_eq(name, inner) {
-                                    if let ty::Ref(..) = cx.tables.expr_ty(inner).kind {
+                                    if let ty::Ref(.., Mutability::Not) = cx.tables.expr_ty(inner).kind {
                                         lint(cx, e.span, args[0].span, true);
                                     }
                                 }
