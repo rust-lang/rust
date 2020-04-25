@@ -199,6 +199,7 @@ impl Expander {
     }
 }
 
+#[cfg(windows)]
 fn copy_to_temp_dir(path: &Path) -> io::Result<PathBuf> {
     let mut to = std::env::temp_dir();
     let file_name = path.file_name().ok_or_else(|| {
@@ -211,4 +212,9 @@ fn copy_to_temp_dir(path: &Path) -> io::Result<PathBuf> {
     to.push(file_name);
     std::fs::copy(path, &to)?;
     Ok(to)
+}
+
+#[cfg(unix)]
+fn copy_to_temp_dir(path: &Path) -> io::Result<PathBuf> {
+    Ok(path.to_path_buf())
 }
