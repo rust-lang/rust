@@ -229,136 +229,69 @@ only within the macro (i.e. it should not be visible outside the macro).
 
 This section is about how that context is tracked.
 
-
 [code_dir]: https://github.com/rust-lang/rust/tree/master/src/librustc_expand/mbe
 [code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser
 [code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_rules
 [code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/fn.parse_tt.html
 [parsing]: ./the-parser.html
 
+## Notes from petrochenkov discussion
+
+Where to find the code:
+- librustc_span/hygiene.rs - structures related to hygiene and expansion that are kept in global data (can be accessed from any Ident without any context)
+- librustc_span/lib.rs - some secondary methods like macro backtrace using primary methods from hygiene.rs
+- librustc_builtin_macros - implementations of built-in macros (including macro attributes and derives) and some other early code generation facilities like injection of standard library imports or generation of test harness.
+- librustc_ast/config.rs - implementation of cfg/cfg_attr (they treated specially from other macros), should probably be moved into librustc_ast/ext.
+- librustc_ast/tokenstream.rs + librustc_ast/parse/token.rs - structures for compiler-side tokens, token trees, and token streams.
+- librustc_ast/ext - various expansion-related stuff
+- librustc_ast/ext/base.rs - basic structures used by expansion
+- librustc_ast/ext/expand.rs - some expansion structures and the bulk of expansion infrastructure code - collecting macro invocations, calling into resolve for them, calling their expanding functions, and integrating the results back into AST
+- librustc_ast/ext/placeholder.rs - the part of expand.rs responsible for "integrating the results back into AST" basicallly, "placeholder" is a temporary AST node replaced with macro expansion result nodes
+- librustc_ast/ext/builer.rs - helper functions for building AST for built-in macros in librustc_builtin_macros (and user-defined syntactic plugins previously), can probably be moved into librustc_builtin_macros these days
+- librustc_ast/ext/proc_macro.rs + librustc_ast/ext/proc_macro_server.rs - interfaces between the compiler and the stable proc_macro library, converting tokens and token streams between the two representations and sending them through C ABI
+- librustc_ast/ext/tt - implementation of macro_rules, turns macro_rules DSL into something with signature Fn(TokenStream) -> TokenStream that can eat and produce tokens, @mark-i-m knows more about this 
+- librustc_resolve/macros.rs - resolving macro paths, validating those resolutions, reporting various "not found"/"found, but it's unstable"/"expected x, found y" errors
+- librustc_middle/hir/map/def_collector.rs + librustc_resolve/build_reduced_graph.rs - integrate an AST fragment freshly expanded from a macro into various parent/child structures like module hierarchy or "definition paths"
+
+Primary structures:
+- HygieneData - global piece of data containing hygiene and expansion info that can be accessed from any Ident without any context 
+- ExpnId - ID of a macro call or desugaring (and also expansion of that call/desugaring, depending on context) 
+- ExpnInfo/InternalExpnData - a subset of properties from both macro definition and macro call available through global data
+- SyntaxContext - ID of a chain of nested macro definitions (identified by ExpnIds)
+- SyntaxContextData - data associated with the given SyntaxContext, mostly a cache for results of filtering that chain in different ways
+- Span - a code location + SyntaxContext 
+- Ident - interned string (Symbol) + Span, i.e. a string with attached hygiene data
+- TokenStream - a collection of TokenTrees 
+- TokenTree - a token (punctuation, identifier, or literal) or a delimited group (anything inside ()/[]/{})
+- SyntaxExtension - a lowered macro representation, contains its expander function transforming a tokenstream or AST into tokenstream or AST + some additional data like stability, or a list of unstable features allowed inside the macro.
+- SyntaxExtensionKind - expander functions may have several different signatures (take one token stream, or two, or a piece of AST, etc), this is an enum that lists them
+- ProcMacro/TTMacroExpander/AttrProcMacro/MultiItemModifier - traits representing the expander signatures (TODO: change and rename the signatures into something more consistent) 
+- Resolver - a trait used to break crate dependencies (so resolver services can be used in librustc_ast, despite librustc_resolve and pretty much everything else depending on librustc_ast)
+- ExtCtxt/ExpansionData - various intermediate data kept and used by expansion infra in the process of its work
+- AstFragment - a piece of AST that can be produced by a macro (may include multiple homogeneous AST nodes, like e.g. a list of items)
+- Annotatable - a piece of AST that can be an attribute target, almost same thing as AstFragment except for types and patterns that can be produced by macros but cannot be annotated with attributes (TODO: Merge into AstFragment) 
+- MacResult - a "polymorphic" AST fragment, something that can turn into a different AstFragment depending on its context (aka AstFragmentKind - item, or expression, or pattern etc.)
+- Invocation/InvocationKind - a structure describing a macro call, these structures are collected by the expansion infra (InvocationCollector), queued, resolved, expanded when resolved, etc.  
+
+TODO: how a crate transitions from the state "macros exist as written in source" to "all macros are expanded"
+
+Expansion Heirarchies and Syntax Context
+- Many AST nodes have some sort of syntax context, especially nodes from macros. The context consists of a chain of expansions leading to `ExpnId::root`. A non-macro-expanded node has syntax context 0 (`SyntaxContext::empty()`) which represents just the root node.
+- There are 3 expansion heirarchies
+    - They all start at ExpnId::root, which is its own parent
+
+
+
+
+
+
 
 # Discussion about hygiene
 
-The rest of this chapter is a dump of a discussion between `mark-i-m` and
-`petrochenkov` about Macro Expansion and Hygiene. I am pasting it here so that
-it never gets lost until we can make it into a proper chapter.
 
 ```txt
 
-Vadim Petrochenkov: Here's some preliminary data I prepared.
 
-Vadim Petrochenkov: Below I'll assume #62771 and #62086 has landed.
-
-Vadim Petrochenkov: Where to find the code: librustc_span/hygiene.rs -
-structures related to hygiene and expansion that are kept in global data (can
-be accessed from any Ident without any context) librustc_span/lib.rs - some
-secondary methods like macro backtrace using primary methods from hygiene.rs
-librustc_builtin_macros - implementations of built-in macros (including macro attributes
-and derives) and some other early code generation facilities like injection of
-standard library imports or generation of test harness.  librustc_ast/config.rs -
-implementation of cfg/cfg_attr (they treated specially from other macros),
-should probably be moved into librustc_ast/ext.  librustc_ast/tokenstream.rs +
-librustc_ast/parse/token.rs - structures for compiler-side tokens, token trees,
-and token streams.  librustc_ast/ext - various expansion-related stuff
-librustc_ast/ext/base.rs - basic structures used by expansion
-librustc_ast/ext/expand.rs - some expansion structures and the bulk of expansion
-infrastructure code - collecting macro invocations, calling into resolve for
-them, calling their expanding functions, and integrating the results back into
-AST librustc_ast/ext/placeholder.rs - the part of expand.rs responsible for
-"integrating the results back into AST" basicallly, "placeholder" is a
-temporary AST node replaced with macro expansion result nodes
-librustc_ast/ext/builer.rs - helper functions for building AST for built-in macros
-in librustc_builtin_macros (and user-defined syntactic plugins previously), can probably
-be moved into librustc_builtin_macros these days librustc_ast/ext/proc_macro.rs +
-librustc_ast/ext/proc_macro_server.rs - interfaces between the compiler and the
-stable proc_macro library, converting tokens and token streams between the two
-representations and sending them through C ABI librustc_ast/ext/tt -
-implementation of macro_rules, turns macro_rules DSL into something with
-signature Fn(TokenStream) -> TokenStream that can eat and produce tokens,
-@mark-i-m knows more about this librustc_resolve/macros.rs - resolving macro
-paths, validating those resolutions, reporting various "not found"/"found, but
-it's unstable"/"expected x, found y" errors librustc_middle/hir/map/def_collector.rs +
-librustc_resolve/build_reduced_graph.rs - integrate an AST fragment freshly
-expanded from a macro into various parent/child structures like module
-hierarchy or "definition paths"
-
-Primary structures: HygieneData - global piece of data containing hygiene and
-expansion info that can be accessed from any Ident without any context ExpnId -
-ID of a macro call or desugaring (and also expansion of that call/desugaring,
-depending on context) ExpnInfo/InternalExpnData - a subset of properties from
-both macro definition and macro call available through global data
-SyntaxContext - ID of a chain of nested macro definitions (identified by
-ExpnIds) SyntaxContextData - data associated with the given SyntaxContext,
-mostly a cache for results of filtering that chain in different ways Span - a
-code location + SyntaxContext Ident - interned string (Symbol) + Span, i.e. a
-string with attached hygiene data TokenStream - a collection of TokenTrees
-TokenTree - a token (punctuation, identifier, or literal) or a delimited group
-(anything inside ()/[]/{}) SyntaxExtension - a lowered macro representation,
-contains its expander function transforming a tokenstream or AST into
-tokenstream or AST + some additional data like stability, or a list of unstable
-features allowed inside the macro.  SyntaxExtensionKind - expander functions
-may have several different signatures (take one token stream, or two, or a
-piece of AST, etc), this is an enum that lists them
-ProcMacro/TTMacroExpander/AttrProcMacro/MultiItemModifier - traits representing
-the expander signatures (TODO: change and rename the signatures into something
-more consistent) trait Resolver - a trait used to break crate dependencies (so
-resolver services can be used in librustc_ast, despite librustc_resolve and pretty
-much everything else depending on librustc_ast) ExtCtxt/ExpansionData - various
-intermediate data kept and used by expansion infra in the process of its work
-AstFragment - a piece of AST that can be produced by a macro (may include
-multiple homogeneous AST nodes, like e.g. a list of items) Annotatable - a
-piece of AST that can be an attribute target, almost same thing as AstFragment
-except for types and patterns that can be produced by macros but cannot be
-annotated with attributes (TODO: Merge into AstFragment) trait MacResult - a
-"polymorphic" AST fragment, something that can turn into a different
-AstFragment depending on its context (aka AstFragmentKind - item, or
-expression, or pattern etc.) Invocation/InvocationKind - a structure describing
-a macro call, these structures are collected by the expansion infra
-(InvocationCollector), queued, resolved, expanded when resolved, etc.
-
-Primary algorithms / actions: TODO
-
-mark-i-m: Very useful :+1:
-
-mark-i-m: @Vadim Petrochenkov Zulip doesn't have an indication of typing, so
-I'm not sure if you are waiting for me or not
-
-Vadim Petrochenkov: The TODO part should be about how a crate transitions from
-the state "macros exist as written in source" to "all macros are expanded", but
-I didn't write it yet.
-
-Vadim Petrochenkov: (That should probably better happen off-line.)
-
-Vadim Petrochenkov: Now, if you have any questions?
-
-mark-i-m: Thanks :)
-
-mark-i-m: /me is still reading :P
-
-mark-i-m: Ok
-
-mark-i-m: So I guess my first question is about hygiene, since that remains the
-most mysterious to me... My understanding is that the parser outputs AST nodes,
-where each node has a Span
-
-mark-i-m: In the absence of macros and desugaring, what does the syntax context
-of an AST node look like?
-
-mark-i-m: @Vadim Petrochenkov
-
-Vadim Petrochenkov: Not each node, but many of them.  When a node is not
-macro-expanded, its context is 0.
-
-Vadim Petrochenkov: aka SyntaxContext::empty()
-
-Vadim Petrochenkov: it's a chain that consists of one expansion - expansion 0
-aka ExpnId::root.
-
-mark-i-m: Do all expansions start at root?
-
-Vadim Petrochenkov: Also, SyntaxContext:empty() is its own father.
-
-mark-i-m: Is this actually stored somewhere or is it a logical value?
 
 Vadim Petrochenkov: All expansion hyerarchies (there are several of them) start
 at ExpnId::root.
@@ -368,11 +301,7 @@ expn_id == 0.
 
 Vadim Petrochenkov: I don't think anyone looks into them much though.
 
-mark-i-m: Ok
-
 Vadim Petrochenkov: Speaking of multiple hierarchies...
-
-mark-i-m: Go ahead :)
 
 Vadim Petrochenkov: One is parent (expn_id1) -> parent(expn_id2) -> ...
 
@@ -429,8 +358,6 @@ Sorry, what is outer_expns?
 
 Vadim Petrochenkov: SyntaxContextData::outer_expn
 
-mark-i-m: Thanks :) Please continue
-
 Vadim Petrochenkov: ...which means a token produced by a built-in macro (which
 is defined in the root effectively).
 
@@ -470,8 +397,6 @@ mark-i-m: I see, but this pattern is only used for built-ins, right?
 
 Vadim Petrochenkov: And also all stable proc macros, see the comments above.
 
-mark-i-m: Got it
-
 Vadim Petrochenkov: The third hierarchy is call-site hierarchy.
 
 Vadim Petrochenkov: If foo!(bar!(ident)) expands into ident
@@ -507,30 +432,6 @@ generally.)
 
 Vadim Petrochenkov: Yes.
 
-mark-i-m: Got it :)
-
-mark-i-m: It looks like we have ~5 minutes left. This has been very helpful
-already, but I also have more questions. Shall we try to schedule another
-meeting in the future?
-
-Vadim Petrochenkov: Sure, why not.
-
-Vadim Petrochenkov: A thread for offline questions-answers would be good too.
-
-    mark-i-m:
-
-    A thread for offline questions-answers would be good too.
-
-I don't mind using this thread, since it already has a lot of info in it. We
-also plan to summarize the info from this thread into the rustc-dev-guide.
-
-    Sure, why not.
-
-Unfortunately, I'm unavailable for a few weeks. Would August 21-ish work for
-you (and @WG-learning )?
-
-mark-i-m: @Vadim Petrochenkov Thanks very much for your time and knowledge!
-
 mark-i-m: One last question: are there more hierarchies?
 
 Vadim Petrochenkov: Not that I know of.  Three + the context transplantation
@@ -539,36 +440,7 @@ hack is already more complex than I'd like.
 mark-i-m: Yes, one wonders what it would be like if one also had to think about
 eager expansion...
 
-Santiago Pastorino: sorry but I couldn't follow that much today, will read it
-when I have some time later
-
-Santiago Pastorino: btw https://github.com/rust-lang/rustc-dev-guide/issues/398
-
-mark-i-m: @Vadim Petrochenkov Would 7pm UTC on August 21 work for a followup?
-
-Vadim Petrochenkov: Tentatively yes.
-
-mark-i-m: @Vadim Petrochenkov @WG-learning Does this still work for everyone?
-
-Vadim Petrochenkov: August 21 is still ok.
-
-mark-i-m: @WG-learning @Vadim Petrochenkov We will start in ~30min
-
-Vadim Petrochenkov: Oh.  Thanks for the reminder, I forgot about this entirely.
-
-mark-i-m: Hello!
-
-Vadim Petrochenkov: (I'll be here in a couple of minutes.)
-
-Vadim Petrochenkov: Ok, I'm here.
-
-mark-i-m: Hi :)
-
-Vadim Petrochenkov: Hi.
-
 mark-i-m: so last time, we talked about the 3 context heirarchies
-
-Vadim Petrochenkov: Right.
 
 mark-i-m: Was there anything you wanted to add to that? If not, I think it
 would be good to get a big-picture... Given some piece of rust code, how do we
@@ -728,8 +600,6 @@ imports in that module.
 
 For macro and import names this happens during expansions and integrations.
 
-mark-i-m: Makes sense
-
 Vadim Petrochenkov: For all other names we certainly know whether a name is
 resolved successfully or not on the first attempt, because no new names can
 appear.
@@ -791,21 +661,4 @@ m!(foo);
 Vadim Petrochenkov: foo has context ROOT -> id(n) and bar has context ROOT ->
 id(m) -> id(n) after all the expansions.
 
-mark-i-m: Cool :)
-
-mark-i-m: It looks like we are out of time
-
-mark-i-m: Is there anything you wanted to add?
-
-mark-i-m: We can schedule another meeting if you would like
-
-Vadim Petrochenkov: Yep, 23.06 already.  No, I think this is an ok point to
-stop.
-
-mark-i-m: :+1:
-
-mark-i-m: Thanks @Vadim Petrochenkov ! This was very helpful
-
-Vadim Petrochenkov: Yeah, we can schedule another one.  So far it's been like 1
-hour of meetings per month? Certainly not a big burden.
 ```
