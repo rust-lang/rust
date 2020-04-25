@@ -1424,6 +1424,17 @@ function getSearchElement() {
             return tmp;
         }
 
+        function colorCode(s) {
+            var parts = s.split("`");
+            if (parts.length < 3) {
+                return s;
+            }
+            for (var it = 1; it < parts.length; it += 2) {
+                parts[it] = "<code>" + parts[it] + "</code>";
+            }
+            return parts.join("");
+        }
+
         function addTab(array, query, display) {
             var extraStyle = "";
             if (display === false) {
@@ -1458,7 +1469,7 @@ function getSearchElement() {
                               item.displayPath + "<span class=\"" + type + "\">" +
                               name + "</span></a></td><td>" +
                               "<a href=\"" + item.href + "\">" +
-                              "<span class=\"desc\">" + escape(item.desc) +
+                              "<span class=\"desc\">" + colorCode(escape(item.desc)) +
                               "&nbsp;</span></a></td></tr>";
                 });
                 output += "</table>";
