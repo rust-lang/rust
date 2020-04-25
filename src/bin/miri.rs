@@ -259,6 +259,11 @@ fn main() {
     rustc_driver::install_ice_hook();
     let result = rustc_driver::catch_fatal_errors(move || {
         rustc_driver::run_compiler(&rustc_args, &mut MiriCompilerCalls { miri_config }, None, None)
-    });
-    std::process::exit(result.is_err() as i32);
+    })
+    .and_then(|result| result);
+    let exit_code = match result {
+        Ok(_) => rustc_driver::EXIT_SUCCESS,
+        Err(_) => rustc_driver::EXIT_FAILURE,
+    };
+    std::process::exit(exit_code);
 }
