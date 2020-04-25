@@ -89,11 +89,10 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
             if cleaner.keep_item(for_) && trait_.def_id() == cx.tcx.lang_items().deref_trait() {
                 let target = items
                     .iter()
-                    .filter_map(|item| match item.inner {
+                    .find_map(|item| match item.inner {
                         TypedefItem(ref t, true) => Some(&t.type_),
                         _ => None,
                     })
-                    .next()
                     .expect("Deref impl without Target type");
 
                 if let Some(prim) = target.primitive_type() {

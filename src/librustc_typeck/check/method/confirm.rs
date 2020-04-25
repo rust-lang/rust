@@ -269,7 +269,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self.fcx
             .autoderef(self.span, self_ty)
             .include_raw_pointers()
-            .filter_map(|(ty, _)| match ty.kind {
+            .find_map(|(ty, _)| match ty.kind {
                 ty::Dynamic(ref data, ..) => Some(closure(
                     self,
                     ty,
@@ -279,7 +279,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 )),
                 _ => None,
             })
-            .next()
             .unwrap_or_else(|| {
                 span_bug!(
                     self.span,
@@ -579,20 +578,18 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         .predicates
                         .iter()
                         .zip(predicates.spans.iter())
-                        .filter_map(
+                        .find_map(
                             |(p, span)| if *p == obligation.predicate { Some(*span) } else { None },
                         )
-                        .next()
                         .unwrap_or(rustc_span::DUMMY_SP);
                     Some((trait_pred, span))
                 }
                 _ => None,
             })
-            .filter_map(|(trait_pred, span)| match trait_pred.skip_binder().self_ty().kind {
+            .find_map(|(trait_pred, span)| match trait_pred.skip_binder().self_ty().kind {
                 ty::Dynamic(..) => Some(span),
                 _ => None,
             })
-            .next()
     }
 
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick<'_>) {

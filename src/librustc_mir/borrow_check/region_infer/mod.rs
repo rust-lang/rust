@@ -1815,11 +1815,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             RegionElement::PlaceholderRegion(error_placeholder) => self
                 .definitions
                 .iter_enumerated()
-                .filter_map(|(r, definition)| match definition.origin {
+                .find_map(|(r, definition)| match definition.origin {
                     NLLRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
                     _ => None,
                 })
-                .next()
                 .unwrap(),
         }
     }

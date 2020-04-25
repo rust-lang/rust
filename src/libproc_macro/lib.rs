@@ -351,14 +351,14 @@ impl Span {
 
     /// Creates a new span with the same line/column information as `self` but
     /// that resolves symbols as though it were at `other`.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_resolved_at", since = "1.43.0")]
     pub fn resolved_at(&self, other: Span) -> Span {
         Span(self.0.resolved_at(other.0))
     }
 
     /// Creates a new span with the same name resolution behavior as `self` but
     /// with the line/column information of `other`.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_located_at", since = "1.43.0")]
     pub fn located_at(&self, other: Span) -> Span {
         other.resolved_at(*self)
     }

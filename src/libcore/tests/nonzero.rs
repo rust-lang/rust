@@ -141,3 +141,38 @@ fn test_from_str() {
         Some(IntErrorKind::Overflow)
     );
 }
+
+#[test]
+fn test_nonzero_bitor() {
+    let nz_alt = NonZeroU8::new(0b1010_1010).unwrap();
+    let nz_low = NonZeroU8::new(0b0000_1111).unwrap();
+
+    let both_nz: NonZeroU8 = nz_alt | nz_low;
+    assert_eq!(both_nz.get(), 0b1010_1111);
+
+    let rhs_int: NonZeroU8 = nz_low | 0b1100_0000u8;
+    assert_eq!(rhs_int.get(), 0b1100_1111);
+
+    let rhs_zero: NonZeroU8 = nz_alt | 0u8;
+    assert_eq!(rhs_zero.get(), 0b1010_1010);
+
+    let lhs_int: NonZeroU8 = 0b0110_0110u8 | nz_alt;
+    assert_eq!(lhs_int.get(), 0b1110_1110);
+
+    let lhs_zero: NonZeroU8 = 0u8 | nz_low;
+    assert_eq!(lhs_zero.get(), 0b0000_1111);
+}
+
+#[test]
+fn test_nonzero_bitor_assign() {
+    let mut target = NonZeroU8::new(0b1010_1010).unwrap();
+
+    target |= NonZeroU8::new(0b0000_1111).unwrap();
+    assert_eq!(target.get(), 0b1010_1111);
+
+    target |= 0b0001_0000;
+    assert_eq!(target.get(), 0b1011_1111);
+
+    target |= 0;
+    assert_eq!(target.get(), 0b1011_1111);
+}
