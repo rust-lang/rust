@@ -96,6 +96,9 @@ impl<T> Arena<T> {
     pub const fn new() -> Arena<T> {
         Arena { data: Vec::new() }
     }
+    pub fn clear(&mut self) {
+        self.data.clear();
+    }
 
     pub fn len(&self) -> usize {
         self.data.len()

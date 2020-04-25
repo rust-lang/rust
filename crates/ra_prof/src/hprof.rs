@@ -1,4 +1,5 @@
 //! Simple hierarchical profiler
+use once_cell::sync::Lazy;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashSet},
@@ -10,7 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use once_cell::sync::Lazy;
+use crate::tree::{Idx, Tree};
 
 /// Filtering syntax
 /// env RA_PROFILE=*             // dump everything
@@ -138,12 +139,12 @@ impl Filter {
 
 struct ProfileStack {
     starts: Vec<Instant>,
-    messages: Vec<Message>,
     filter: Filter,
+    messages: Tree<Message>,
 }
 
+#[derive(Default)]
 struct Message {
-    level: usize,
     duration: Duration,
     label: Label,
     detail: Option<String>,
@@ -151,7 +152,7 @@ struct Message {
 
 impl ProfileStack {
     fn new() -> ProfileStack {
-        ProfileStack { starts: Vec::new(), messages: Vec::new(), filter: Default::default() }
+        ProfileStack { starts: Vec::new(), messages: Tree::default(), filter: Default::default() }
     }
 
     fn push(&mut self, label: Label) -> bool {
@@ -171,6 +172,7 @@ impl ProfileStack {
         }
 
         self.starts.push(Instant::now());
+        self.messages.start();
         true
     }
 
@@ -178,7 +180,7 @@ impl ProfileStack {
         let start = self.starts.pop().unwrap();
         let duration = start.elapsed();
         let level = self.starts.len();
-        self.messages.push(Message { level, duration, label, detail });
+        self.messages.finish(Message { duration, label, detail });
         if level == 0 {
             let longer_than = self.filter.longer_than;
             // Convert to millis for comparison to avoid problems with rounding
@@ -186,7 +188,9 @@ impl ProfileStack {
             // `duration` is just a few nanos).
             if duration.as_millis() > longer_than.as_millis() {
                 let stderr = stderr();
-                print(&self.messages, longer_than, &mut stderr.lock());
+                if let Some(root) = self.messages.root() {
+                    print(&self.messages, root, 0, longer_than, &mut stderr.lock());
+                }
             }
             self.messages.clear();
             assert!(self.starts.is_empty())
@@ -194,50 +198,38 @@ impl ProfileStack {
     }
 }
 
-fn print(msgs: &[Message], longer_than: Duration, out: &mut impl Write) {
-    if msgs.is_empty() {
-        return;
-    }
-    let children_map = idx_to_children(msgs);
-    let root_idx = msgs.len() - 1;
-    print_for_idx(root_idx, &children_map, msgs, longer_than, out);
-}
-
-fn print_for_idx(
-    current_idx: usize,
-    children_map: &[Vec<usize>],
-    msgs: &[Message],
+fn print(
+    tree: &Tree<Message>,
+    curr: Idx<Message>,
+    level: u32,
     longer_than: Duration,
     out: &mut impl Write,
 ) {
-    let current = &msgs[current_idx];
-    let current_indent = "    ".repeat(current.level);
-    let detail = current.detail.as_ref().map(|it| format!(" @ {}", it)).unwrap_or_default();
+    let current_indent = "    ".repeat(level as usize);
+    let detail = tree[curr].detail.as_ref().map(|it| format!(" @ {}", it)).unwrap_or_default();
     writeln!(
         out,
         "{}{:5}ms - {}{}",
         current_indent,
-        current.duration.as_millis(),
-        current.label,
+        tree[curr].duration.as_millis(),
+        tree[curr].label,
         detail,
     )
     .expect("printing profiling info");
 
-    let longer_than_millis = longer_than.as_millis();
-    let children_indices = &children_map[current_idx];
     let mut accounted_for = Duration::default();
     let mut short_children = BTreeMap::new(); // Use `BTreeMap` to get deterministic output.
+    for child in tree.children(curr) {
+        accounted_for += tree[child].duration;
 
-    for child_idx in children_indices.iter() {
-        let child = &msgs[*child_idx];
-        if child.duration.as_millis() > longer_than_millis {
-            print_for_idx(*child_idx, children_map, msgs, longer_than, out);
+        if tree[child].duration.as_millis() > longer_than.as_millis() {
+            print(tree, child, level + 1, longer_than, out)
         } else {
-            let pair = short_children.entry(child.label).or_insert((Duration::default(), 0));
-            pair.0 += child.duration;
-            pair.1 += 1;
+            let (total_duration, cnt) =
+                short_children.entry(tree[child].label).or_insert((Duration::default(), 0));
+            *total_duration += tree[child].duration;
+            *cnt += 1;
         }
-        accounted_for += child.duration;
     }
 
     for (child_msg, (duration, count)) in short_children.iter() {
@@ -246,122 +238,9 @@ fn print_for_idx(
             .expect("printing profiling info");
     }
 
-    let unaccounted_millis = (current.duration - accounted_for).as_millis();
-    if !children_indices.is_empty()
-        && unaccounted_millis > 0
-        && unaccounted_millis > longer_than_millis
-    {
-        writeln!(out, "    {}{:5}ms - ???", current_indent, unaccounted_millis)
+    let unaccounted = tree[curr].duration - accounted_for;
+    if tree.children(curr).next().is_some() && unaccounted > longer_than {
+        writeln!(out, "    {}{:5}ms - ???", current_indent, unaccounted.as_millis())
             .expect("printing profiling info");
-    }
-}
-
-/// Returns a mapping from an index in the `msgs` to the vector with the indices of its children.
-///
-/// This assumes that the entries in `msgs` are in the order of when the calls to `profile` finish.
-/// In other words, a postorder of the call graph. In particular, the root is the last element of
-/// `msgs`.
-fn idx_to_children(msgs: &[Message]) -> Vec<Vec<usize>> {
-    // Initialize with the index of the root; `msgs` and `ancestors` should be never empty.
-    assert!(!msgs.is_empty());
-    let mut ancestors = vec![msgs.len() - 1];
-    let mut result: Vec<Vec<usize>> = vec![vec![]; msgs.len()];
-    for (idx, msg) in msgs[..msgs.len() - 1].iter().enumerate().rev() {
-        // We need to find the parent of the current message, i.e., the last ancestor that has a
-        // level lower than the current message.
-        while msgs[*ancestors.last().unwrap()].level >= msg.level {
-            ancestors.pop();
-        }
-        result[*ancestors.last().unwrap()].push(idx);
-        ancestors.push(idx);
-    }
-    // Note that above we visited all children from the last to the first one. Let's reverse vectors
-    // to get the more natural order where the first element is the first child.
-    for vec in result.iter_mut() {
-        vec.reverse();
-    }
-    result
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_basic_profile() {
-        let s = vec!["profile1".to_string(), "profile2".to_string()];
-        let f = Filter::new(2, s, Duration::new(0, 0));
-        set_filter(f);
-        profiling_function1();
-    }
-
-    fn profiling_function1() {
-        let _p = profile("profile1");
-        profiling_function2();
-    }
-
-    fn profiling_function2() {
-        let _p = profile("profile2");
-    }
-
-    #[test]
-    fn test_longer_than() {
-        let mut result = vec![];
-        let msgs = vec![
-            Message { level: 1, duration: Duration::from_nanos(3), label: "bar", detail: None },
-            Message { level: 1, duration: Duration::from_nanos(2), label: "bar", detail: None },
-            Message { level: 0, duration: Duration::from_millis(1), label: "foo", detail: None },
-        ];
-        print(&msgs, Duration::from_millis(0), &mut result);
-        // The calls to `bar` are so short that they'll be rounded to 0ms and should get collapsed
-        // when printing.
-        assert_eq!(
-            std::str::from_utf8(&result).unwrap(),
-            "    1ms - foo\n        0ms - bar (2 calls)\n"
-        );
-    }
-
-    #[test]
-    fn test_unaccounted_for_topmost() {
-        let mut result = vec![];
-        let msgs = vec![
-            Message { level: 1, duration: Duration::from_millis(2), label: "bar", detail: None },
-            Message { level: 0, duration: Duration::from_millis(5), label: "foo", detail: None },
-        ];
-        print(&msgs, Duration::from_millis(0), &mut result);
-        assert_eq!(
-            std::str::from_utf8(&result).unwrap().lines().collect::<Vec<_>>(),
-            vec![
-                "    5ms - foo",
-                "        2ms - bar",
-                "        3ms - ???",
-                // Dummy comment to improve formatting
-            ]
-        );
-    }
-
-    #[test]
-    fn test_unaccounted_for_multiple_levels() {
-        let mut result = vec![];
-        let msgs = vec![
-            Message { level: 2, duration: Duration::from_millis(3), label: "baz", detail: None },
-            Message { level: 1, duration: Duration::from_millis(5), label: "bar", detail: None },
-            Message { level: 2, duration: Duration::from_millis(2), label: "baz", detail: None },
-            Message { level: 1, duration: Duration::from_millis(4), label: "bar", detail: None },
-            Message { level: 0, duration: Duration::from_millis(9), label: "foo", detail: None },
-        ];
-        print(&msgs, Duration::from_millis(0), &mut result);
-        assert_eq!(
-            std::str::from_utf8(&result).unwrap().lines().collect::<Vec<_>>(),
-            vec![
-                "    9ms - foo",
-                "        5ms - bar",
-                "            3ms - baz",
-                "            2ms - ???",
-                "        4ms - bar",
-                "            2ms - baz",
-                "            2ms - ???",
-            ]
-        );
     }
 }

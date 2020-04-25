@@ -1139,6 +1139,7 @@ dependencies = [
  "jemalloc-ctl",
  "jemallocator",
  "once_cell",
+ "ra_arena",
 ]
 
 [[package]]

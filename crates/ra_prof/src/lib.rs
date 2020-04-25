@@ -4,6 +4,7 @@ mod memory_usage;
 #[cfg(feature = "cpu_profiler")]
 mod google_cpu_profiler;
 mod hprof;
+mod tree;
 
 use std::cell::RefCell;
 
