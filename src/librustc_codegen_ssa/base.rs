@@ -602,15 +602,16 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     let mut raw_dylib_imports = vec![];
     let native_libs = tcx.native_libraries(LOCAL_CRATE);
 
-    
     for lib in native_libs.iter() {
-        match lib.kind {
-            cstore::NativeLibraryKind::NativeRawDylib => {
-                if let (Some(dll_name), Some(def_id)) = (lib.name, lib.foreign_module) {
-                    let foreign_modules = tcx.foreign_modules(LOCAL_CRATE);
-                    for f_mod in foreign_modules {
-                        if f_mod.def_id == def_id {
-                            let items = f_mod.foreign_items.iter().map(|&def_id| {
+        if lib.kind == cstore::NativeLibraryKind::NativeRawDylib {
+            if let (Some(dll_name), Some(def_id)) = (lib.name, lib.foreign_module) {
+                let foreign_modules = tcx.foreign_modules(LOCAL_CRATE);
+                for f_mod in foreign_modules {
+                    if f_mod.def_id == def_id {
+                        let items = f_mod
+                            .foreign_items
+                            .iter()
+                            .map(|&def_id| {
                                 let fn_attrs = tcx.codegen_fn_attrs(def_id);
                                 if fn_attrs.link_name.is_some() {
                                     RawDylibImportName::Name(fn_attrs.link_name.unwrap())
@@ -620,21 +621,15 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                                     let name = tcx.item_name(def_id);
                                     RawDylibImportName::Name(name)
                                 }
-                            }).collect();
+                            })
+                            .collect();
 
-                            raw_dylib_imports.push(RawDylibImports {
-                                name: dll_name,
-                                items,
-                            });
-                        }
+                        raw_dylib_imports.push(RawDylibImports { name: dll_name, items });
                     }
-                } else {
-                    bug!(
-                        "not enough information to link raw dylib!",
-                    );
                 }
-            },
-            _ => {},
+            } else {
+                bug!("not enough information to link raw dylib!",);
+            }
         }
     }
 
@@ -644,11 +639,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         let mut idata_module = backend.new_metadata(tcx, &idata_cgu_name);
 
         tcx.sess.time("write_idata_sections", || {
-            backend.write_idata_sections(
-                tcx,
-                &raw_dylib_imports,
-                &mut idata_module,
-            );
+            backend.write_idata_sections(tcx, &raw_dylib_imports, &mut idata_module);
         });
 
         let idata_module = ModuleCodegen {
@@ -658,8 +649,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         };
         ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, idata_module);
     }
-
-
 
     // We sort the codegen units by size. This way we can schedule work for LLVM
     // a bit more efficiently.

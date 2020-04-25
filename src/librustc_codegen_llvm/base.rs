@@ -23,6 +23,7 @@ use crate::llvm;
 use crate::metadata;
 use crate::value::Value;
 
+use log::debug;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
@@ -36,7 +37,6 @@ use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
-use log::debug;
 
 use std::ffi::CString;
 use std::time::Instant;
@@ -80,23 +80,23 @@ pub fn write_idata_sections<'tcx>(
     _tcx: TyCtxt<'tcx>,
     raw_dylibs: &[RawDylibImports],
     llvm_module: &mut ModuleLlvm,
-){
+) {
     let (idata_llctx, idata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
-
 
     let idata_7 = SmallCStr::new(".idata$7");
     let idata_6 = SmallCStr::new(".idata$6");
 
     for raw_dylib in raw_dylibs {
-        debug!("linking raw dylib - {:?}", raw_dylib);
+        debug!("creating raw dylib idata secions - {:?}", raw_dylib);
 
         let name = CString::new(&*raw_dylib.name.as_str()).unwrap();
         let llname = common::bytes_in_context(idata_llctx, name.as_bytes());
 
-        let buf = CString::new("dll_name").unwrap();
+        let buf = format!("import.{}.dll_name", raw_dylib.name);
+        let buf = CString::new(buf).unwrap();
         unsafe {
             let llglobal = llvm::LLVMAddGlobal(idata_llmod, common::val_ty(llname), buf.as_ptr());
-            
+
             llvm::LLVMSetInitializer(llglobal, llname);
             llvm::LLVMSetGlobalConstant(&llglobal, 1);
             llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
@@ -115,27 +115,24 @@ pub fn write_idata_sections<'tcx>(
                         let llname = common::bytes_in_context(idata_llctx, &buf);
 
                         let global_name = format!("import.{}.fn.{}", raw_dylib.name, s);
-                        let global_name = CString::new(global_name.as_str()).unwrap();
+                        let global_name = CString::new(global_name).unwrap();
 
                         let llglobal = llvm::LLVMAddGlobal(
-                            idata_llmod, 
-                            common::val_ty(llname), 
-                            global_name.as_ptr()
+                            idata_llmod,
+                            common::val_ty(llname),
+                            global_name.as_ptr(),
                         );
-            
+
                         llvm::LLVMSetInitializer(llglobal, llname);
                         llvm::LLVMSetGlobalConstant(&llglobal, 1);
                         llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
                         llvm::LLVMSetSection(llglobal, idata_6.as_ptr());
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
         }
-
-
     }
-
 }
 
 pub struct ValueIter<'ll> {

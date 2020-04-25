@@ -95,7 +95,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         tcx: TyCtxt<'tcx>,
         raw_dylibs: &[RawDylibImports],
         module: &mut ModuleLlvm,
-    ){
+    ) {
         base::write_idata_sections(tcx, raw_dylibs, module)
     }
     fn codegen_allocator<'tcx>(
