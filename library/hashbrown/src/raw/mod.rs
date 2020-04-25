@@ -1045,16 +1045,11 @@ trait RawTableClone {
     unsafe fn clone_from_spec(&mut self, source: &Self, on_panic: impl FnMut(&mut Self));
 }
 impl<T: Clone> RawTableClone for RawTable<T> {
-    #[cfg(feature = "nightly")]
     #[cfg_attr(feature = "inline-more", inline)]
-    default unsafe fn clone_from_spec(&mut self, source: &Self, on_panic: impl FnMut(&mut Self)) {
-        self.clone_from_impl(source, on_panic);
-    }
-
-    #[cfg(not(feature = "nightly"))]
-    #[cfg_attr(feature = "inline-more", inline)]
-    unsafe fn clone_from_spec(&mut self, source: &Self, on_panic: impl FnMut(&mut Self)) {
-        self.clone_from_impl(source, on_panic);
+    default_fn! {
+        unsafe fn clone_from_spec(&mut self, source: &Self, on_panic: impl FnMut(&mut Self)) {
+            self.clone_from_impl(source, on_panic);
+        }
     }
 }
 #[cfg(feature = "nightly")]

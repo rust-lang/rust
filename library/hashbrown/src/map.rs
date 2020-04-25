@@ -206,32 +206,34 @@ impl<K: Clone, V: Clone, S: Clone> Clone for HashMap<K, V, S> {
         // want the table to have elements hashed with the wrong hash_builder.
         let hash_builder = source.hash_builder.clone();
 
-        #[cfg(not(feature = "nightly"))]
-        {
-            self.table.clone_from(&source.table);
+        // For backward-compatibility reasons we can't make the Clone impl
+        // depend on K: Hash + Eq and S: BuildHasher. However we can exploit
+        // this using specialization, which allows us to reuse the existing
+        // storage of the current HashMap to insert the cloned elements into.
+        trait HashClone<S> {
+            fn clone_from(&mut self, source: &Self, hash_builder: &S);
         }
-        #[cfg(feature = "nightly")]
-        {
-            trait HashClone<S> {
-                fn clone_from(&mut self, source: &Self, hash_builder: &S);
-            }
-            impl<K: Clone, V: Clone, S> HashClone<S> for HashMap<K, V, S> {
-                default fn clone_from(&mut self, source: &Self, _hash_builder: &S) {
+        impl<K: Clone, V: Clone, S> HashClone<S> for HashMap<K, V, S> {
+            #[cfg_attr(feature = "inline-more", inline)]
+            default_fn! {
+                fn clone_from(&mut self, source: &Self, _hash_builder: &S) {
                     self.table.clone_from(&source.table);
                 }
             }
-            impl<K: Clone, V: Clone, S> HashClone<S> for HashMap<K, V, S>
-            where
-                K: Eq + Hash,
-                S: BuildHasher,
-            {
-                fn clone_from(&mut self, source: &Self, hash_builder: &S) {
-                    self.table
-                        .clone_from_with_hasher(&source.table, |x| make_hash(hash_builder, &x.0));
-                }
-            }
-            HashClone::clone_from(self, source, &hash_builder);
         }
+        #[cfg(feature = "nightly")]
+        impl<K: Clone, V: Clone, S> HashClone<S> for HashMap<K, V, S>
+        where
+            K: Eq + Hash,
+            S: BuildHasher,
+        {
+            #[cfg_attr(feature = "inline-more", inline)]
+            fn clone_from(&mut self, source: &Self, hash_builder: &S) {
+                self.table
+                    .clone_from_with_hasher(&source.table, |x| make_hash(hash_builder, &x.0));
+            }
+        }
+        HashClone::clone_from(self, source, &hash_builder);
 
         // Update hash_builder only if we successfully cloned all elements.
         self.hash_builder = hash_builder;
