@@ -5,7 +5,7 @@ use ra_fmt::{leading_indent, reindent};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{self, find_covering_element, find_node_at_offset},
-    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextUnit,
+    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
     TokenAtOffset,
 };
 use ra_text_edit::TextEditBuilder;
@@ -178,7 +178,7 @@ impl<'a> AssistGroup<'a> {
 #[derive(Default)]
 pub(crate) struct ActionBuilder {
     edit: TextEditBuilder,
-    cursor_position: Option<TextUnit>,
+    cursor_position: Option<TextSize>,
     target: Option<TextRange>,
     file: AssistFile,
 }
@@ -211,12 +211,12 @@ impl ActionBuilder {
     }
 
     /// Append specified `text` at the given `offset`
-    pub(crate) fn insert(&mut self, offset: TextUnit, text: impl Into<String>) {
+    pub(crate) fn insert(&mut self, offset: TextSize, text: impl Into<String>) {
         self.edit.insert(offset, text.into())
     }
 
     /// Specify desired position of the cursor after the assist is applied.
-    pub(crate) fn set_cursor(&mut self, offset: TextUnit) {
+    pub(crate) fn set_cursor(&mut self, offset: TextSize) {
         self.cursor_position = Some(offset)
     }
 

@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, AstNode},
-    TextUnit, T,
+    TextSize, T,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -38,9 +38,9 @@ pub(crate) fn remove_dbg(ctx: AssistCtx) -> Option<Assist> {
         let offset_start = file_range
             .start()
             .checked_sub(macro_range.start())
-            .unwrap_or_else(|| TextUnit::from(0));
+            .unwrap_or_else(|| TextSize::from(0));
 
-        let dbg_size = TextUnit::of_str("dbg!(");
+        let dbg_size = TextSize::of("dbg!(");
 
         if offset_start > dbg_size {
             file_range.start() - dbg_size
@@ -53,7 +53,7 @@ pub(crate) fn remove_dbg(ctx: AssistCtx) -> Option<Assist> {
         let macro_args = macro_call.token_tree()?.syntax().clone();
 
         let text = macro_args.text();
-        let without_parens = TextUnit::of_char('(')..text.len() - TextUnit::of_char(')');
+        let without_parens = TextSize::of('(')..text.len() - TextSize::of(')');
         text.slice(without_parens).to_string()
     };
 

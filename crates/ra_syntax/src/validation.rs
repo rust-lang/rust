@@ -2,12 +2,14 @@
 
 mod block;
 
+use std::convert::TryFrom;
+
 use rustc_lexer::unescape;
 
 use crate::{
     ast, match_ast, AstNode, SyntaxError,
     SyntaxKind::{BYTE, BYTE_STRING, CHAR, CONST_DEF, FN_DEF, INT_NUMBER, STRING, TYPE_ALIAS_DEF},
-    SyntaxNode, SyntaxToken, TextUnit, T,
+    SyntaxNode, SyntaxToken, TextSize, T,
 };
 
 fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> &'static str {
@@ -112,7 +114,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
 
     // FIXME: lift this lambda refactor to `fn` (https://github.com/rust-analyzer/rust-analyzer/pull/2834#discussion_r366199205)
     let mut push_err = |prefix_len, (off, err): (usize, unescape::EscapeError)| {
-        let off = token.text_range().start() + TextUnit::from_usize(off + prefix_len);
+        let off = token.text_range().start() + TextSize::try_from(off + prefix_len).unwrap();
         acc.push(SyntaxError::new_at_offset(rustc_unescape_error_to_string(err), off));
     };
 

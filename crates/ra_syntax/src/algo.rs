@@ -11,7 +11,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxNodePtr,
-    SyntaxToken, TextRange, TextUnit,
+    SyntaxToken, TextRange, TextSize,
 };
 
 /// Returns ancestors of the node at the offset, sorted by length. This should
@@ -21,7 +21,7 @@ use crate::{
 /// t.parent().ancestors())`.
 pub fn ancestors_at_offset(
     node: &SyntaxNode,
-    offset: TextUnit,
+    offset: TextSize,
 ) -> impl Iterator<Item = SyntaxNode> {
     node.token_at_offset(offset)
         .map(|token| token.parent().ancestors())
@@ -37,7 +37,7 @@ pub fn ancestors_at_offset(
 /// ```
 ///
 /// then the shorter node will be silently preferred.
-pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<N> {
+pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextSize) -> Option<N> {
     ancestors_at_offset(syntax, offset).find_map(N::cast)
 }
 
@@ -180,7 +180,7 @@ fn _insert_children(
     position: InsertPosition<SyntaxElement>,
     to_insert: &mut dyn Iterator<Item = SyntaxElement>,
 ) -> SyntaxNode {
-    let mut delta = TextUnit::default();
+    let mut delta = TextSize::default();
     let to_insert = to_insert.map(|element| {
         delta += element.text_range().len();
         to_green_element(element)
@@ -347,7 +347,7 @@ fn with_children(
     parent: &SyntaxNode,
     new_children: Vec<NodeOrToken<rowan::GreenNode, rowan::GreenToken>>,
 ) -> SyntaxNode {
-    let len = new_children.iter().map(|it| it.text_len()).sum::<TextUnit>();
+    let len = new_children.iter().map(|it| it.text_len()).sum::<TextSize>();
     let new_node = rowan::GreenNode::new(rowan::SyntaxKind(parent.kind() as u16), new_children);
     let new_root_node = parent.replace_with(new_node);
     let new_root_node = SyntaxNode::new_root(new_root_node);
@@ -355,7 +355,7 @@ fn with_children(
     // FIXME: use a more elegant way to re-fetch the node (#1185), make
     // `range` private afterwards
     let mut ptr = SyntaxNodePtr::new(parent);
-    ptr.range = TextRange::offset_len(ptr.range.start(), len);
+    ptr.range = TextRange::at(ptr.range.start(), len);
     ptr.to_node(&new_root_node)
 }
 

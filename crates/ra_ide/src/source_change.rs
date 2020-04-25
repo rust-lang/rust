@@ -6,7 +6,7 @@
 use ra_db::RelativePathBuf;
 use ra_text_edit::TextEdit;
 
-use crate::{FileId, FilePosition, SourceRootId, TextUnit};
+use crate::{FileId, FilePosition, SourceRootId, TextSize};
 
 #[derive(Debug)]
 pub struct SourceChange {
@@ -104,7 +104,7 @@ pub enum FileSystemEdit {
 pub(crate) struct SingleFileChange {
     pub label: String,
     pub edit: TextEdit,
-    pub cursor_position: Option<TextUnit>,
+    pub cursor_position: Option<TextSize>,
 }
 
 impl SingleFileChange {

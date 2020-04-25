@@ -2,7 +2,7 @@ use ra_syntax::{
     ast::{self, AstNode},
     Direction, SmolStr,
     SyntaxKind::{IDENT, WHITESPACE},
-    TextRange, TextUnit,
+    TextRange, TextSize,
 };
 use stdx::SepBy;
 
@@ -60,7 +60,6 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
             .collect::<Vec<SmolStr>>();
         let has_more_derives = !new_attr_input.is_empty();
         let new_attr_input = new_attr_input.iter().sep_by(", ").surround_with("(", ")").to_string();
-        let new_attr_input_len = new_attr_input.len();
 
         let mut buf = String::new();
         buf.push_str("\n\nimpl ");
@@ -70,8 +69,9 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
         buf.push_str(" {\n");
 
         let cursor_delta = if has_more_derives {
+            let delta = input.syntax().text_range().len() - TextSize::of(&new_attr_input);
             edit.replace(input.syntax().text_range(), new_attr_input);
-            input.syntax().text_range().len() - TextUnit::from_usize(new_attr_input_len)
+            delta
         } else {
             let attr_range = attr.syntax().text_range();
             edit.delete(attr_range);
@@ -81,13 +81,13 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
                 .next_sibling_or_token()
                 .filter(|t| t.kind() == WHITESPACE)
                 .map(|t| t.text_range())
-                .unwrap_or_else(|| TextRange::from_to(TextUnit::from(0), TextUnit::from(0)));
+                .unwrap_or_else(|| TextRange::new(TextSize::from(0), TextSize::from(0)));
             edit.delete(line_break_range);
 
             attr_range.len() + line_break_range.len()
         };
 
-        edit.set_cursor(start_offset + TextUnit::of_str(&buf) - cursor_delta);
+        edit.set_cursor(start_offset + TextSize::of(&buf) - cursor_delta);
         buf.push_str("\n}");
         edit.insert(start_offset, buf);
     })

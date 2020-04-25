@@ -224,8 +224,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "Foo",
-                navigation_range: [8; 11),
-                node_range: [1; 26),
+                navigation_range: 8..11,
+                node_range: 1..26,
                 kind: STRUCT_DEF,
                 detail: None,
                 deprecated: false,
@@ -235,8 +235,8 @@ fn very_obsolete() {}
                     0,
                 ),
                 label: "x",
-                navigation_range: [18; 19),
-                node_range: [18; 24),
+                navigation_range: 18..19,
+                node_range: 18..24,
                 kind: RECORD_FIELD_DEF,
                 detail: Some(
                     "i32",
@@ -246,8 +246,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "m",
-                navigation_range: [32; 33),
-                node_range: [28; 158),
+                navigation_range: 32..33,
+                node_range: 28..158,
                 kind: MODULE,
                 detail: None,
                 deprecated: false,
@@ -257,8 +257,8 @@ fn very_obsolete() {}
                     2,
                 ),
                 label: "bar1",
-                navigation_range: [43; 47),
-                node_range: [40; 52),
+                navigation_range: 43..47,
+                node_range: 40..52,
                 kind: FN_DEF,
                 detail: Some(
                     "fn()",
@@ -270,8 +270,8 @@ fn very_obsolete() {}
                     2,
                 ),
                 label: "bar2",
-                navigation_range: [60; 64),
-                node_range: [57; 81),
+                navigation_range: 60..64,
+                node_range: 57..81,
                 kind: FN_DEF,
                 detail: Some(
                     "fn<T>(t: T) -> T",
@@ -283,8 +283,8 @@ fn very_obsolete() {}
                     2,
                 ),
                 label: "bar3",
-                navigation_range: [89; 93),
-                node_range: [86; 156),
+                navigation_range: 89..93,
+                node_range: 86..156,
                 kind: FN_DEF,
                 detail: Some(
                     "fn<A, B>(a: A, b: B) -> Vec< u32 >",
@@ -294,8 +294,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "E",
-                navigation_range: [165; 166),
-                node_range: [160; 180),
+                navigation_range: 165..166,
+                node_range: 160..180,
                 kind: ENUM_DEF,
                 detail: None,
                 deprecated: false,
@@ -305,8 +305,8 @@ fn very_obsolete() {}
                     6,
                 ),
                 label: "X",
-                navigation_range: [169; 170),
-                node_range: [169; 170),
+                navigation_range: 169..170,
+                node_range: 169..170,
                 kind: ENUM_VARIANT,
                 detail: None,
                 deprecated: false,
@@ -316,8 +316,8 @@ fn very_obsolete() {}
                     6,
                 ),
                 label: "Y",
-                navigation_range: [172; 173),
-                node_range: [172; 178),
+                navigation_range: 172..173,
+                node_range: 172..178,
                 kind: ENUM_VARIANT,
                 detail: None,
                 deprecated: false,
@@ -325,8 +325,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "T",
-                navigation_range: [186; 187),
-                node_range: [181; 193),
+                navigation_range: 186..187,
+                node_range: 181..193,
                 kind: TYPE_ALIAS_DEF,
                 detail: Some(
                     "()",
@@ -336,8 +336,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "S",
-                navigation_range: [201; 202),
-                node_range: [194; 213),
+                navigation_range: 201..202,
+                node_range: 194..213,
                 kind: STATIC_DEF,
                 detail: Some(
                     "i32",
@@ -347,8 +347,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "C",
-                navigation_range: [220; 221),
-                node_range: [214; 232),
+                navigation_range: 220..221,
+                node_range: 214..232,
                 kind: CONST_DEF,
                 detail: Some(
                     "i32",
@@ -358,8 +358,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "impl E",
-                navigation_range: [239; 240),
-                node_range: [234; 243),
+                navigation_range: 239..240,
+                node_range: 234..243,
                 kind: IMPL_DEF,
                 detail: None,
                 deprecated: false,
@@ -367,8 +367,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "impl fmt::Debug for E",
-                navigation_range: [265; 266),
-                node_range: [245; 269),
+                navigation_range: 265..266,
+                node_range: 245..269,
                 kind: IMPL_DEF,
                 detail: None,
                 deprecated: false,
@@ -376,8 +376,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "mc",
-                navigation_range: [284; 286),
-                node_range: [271; 303),
+                navigation_range: 284..286,
+                node_range: 271..303,
                 kind: MACRO_CALL,
                 detail: None,
                 deprecated: false,
@@ -385,8 +385,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "mcexp",
-                navigation_range: [334; 339),
-                node_range: [305; 356),
+                navigation_range: 334..339,
+                node_range: 305..356,
                 kind: MACRO_CALL,
                 detail: None,
                 deprecated: false,
@@ -394,8 +394,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "mcexp",
-                navigation_range: [387; 392),
-                node_range: [358; 409),
+                navigation_range: 387..392,
+                node_range: 358..409,
                 kind: MACRO_CALL,
                 detail: None,
                 deprecated: false,
@@ -403,8 +403,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "obsolete",
-                navigation_range: [428; 436),
-                node_range: [411; 441),
+                navigation_range: 428..436,
+                node_range: 411..441,
                 kind: FN_DEF,
                 detail: Some(
                     "fn()",
@@ -414,8 +414,8 @@ fn very_obsolete() {}
             StructureNode {
                 parent: None,
                 label: "very_obsolete",
-                navigation_range: [481; 494),
-                node_range: [443; 499),
+                navigation_range: 481..494,
+                node_range: 443..499,
                 kind: FN_DEF,
                 detail: Some(
                     "fn()",

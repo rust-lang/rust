@@ -52,7 +52,7 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
         .next_sibling_or_token()
         .and_then(|it| ast::Whitespace::cast(it.as_token()?.clone()))
     {
-        TextRange::from_to(
+        TextRange::new(
             let_stmt.syntax().text_range().start(),
             whitespace.syntax().text_range().end(),
         )

@@ -17,7 +17,7 @@ The things described are implemented in two places
 
 * Syntax trees are lossless, or full fidelity. All comments and whitespace are preserved.
 * Syntax trees are semantic-less. They describe *strictly* the structure of a sequence of characters, they don't have hygiene, name resolution or type information attached.
-* Syntax trees are simple value type. It is possible to create trees for a syntax without any external context. 
+* Syntax trees are simple value type. It is possible to create trees for a syntax without any external context.
 * Syntax trees have intuitive traversal API (parent, children, siblings, etc).
 * Parsing is lossless (even if the input is invalid, the tree produced by the parser represents it exactly).
 * Parsing is resilient (even if the input is invalid, parser tries to see as much syntax tree fragments in the input as it can).
@@ -34,12 +34,12 @@ The syntax tree consists of three layers:
 * SyntaxNodes (aka RedNode)
 * AST
 
-Of these, only GreenNodes store the actual data, the other two layers are (non-trivial) views into green tree. 
+Of these, only GreenNodes store the actual data, the other two layers are (non-trivial) views into green tree.
 Red-green terminology comes from Roslyn ([link](https://docs.microsoft.com/en-ie/archive/blogs/ericlippert/persistence-facades-and-roslyns-red-green-trees)) and gives the name to the `rowan` library. Green and syntax nodes are defined in rowan, ast is defined in rust-analyzer.
 
 Syntax trees are a semi-transient data structure.
 In general, frontend does not keep syntax trees for all files in memory.
-Instead, it *lowers* syntax trees to more compact and rigid representation, which is not full-fidelity, but which can be mapped back to a syntax tree if so desired. 
+Instead, it *lowers* syntax trees to more compact and rigid representation, which is not full-fidelity, but which can be mapped back to a syntax tree if so desired.
 
 
 ### GreenNode
@@ -64,7 +64,7 @@ struct Token {
 }
 ```
 
-All the difference bettwen the above sketch and the real implementation are strictly due to optimizations. 
+All the difference bettwen the above sketch and the real implementation are strictly due to optimizations.
 
 Points of note:
 * The tree is untyped. Each node has a "type tag", `SyntaxKind`.
@@ -73,7 +73,7 @@ Points of note:
 * Each token carries its full text.
 * The original text can be recovered by concatenating the texts of all tokens in order.
 * Accessing a child of particular type (for example, parameter list of a function) generarly involves linerary traversing the children, looking for a specific `kind`.
-* Modifying the tree is roughly `O(depth)`. 
+* Modifying the tree is roughly `O(depth)`.
   We don't make special efforts to guarantree that the depth is not liner, but, in practice, syntax trees are branchy and shallow.
 * If mandatory (grammar wise) node is missing from the input, it's just missing from the tree.
 * If an extra erroneous input is present, it is wrapped into a node with `ERROR` kind, and treated just like any other node.
@@ -82,29 +82,29 @@ Points of note:
 An input like `fn f() { 90 + 2 }` might be parsed as
 
 ```
-FN_DEF@[0; 17)
-  FN_KW@[0; 2) "fn"
-  WHITESPACE@[2; 3) " "
-  NAME@[3; 4)
-    IDENT@[3; 4) "f"
-  PARAM_LIST@[4; 6)
-    L_PAREN@[4; 5) "("
-    R_PAREN@[5; 6) ")"
-  WHITESPACE@[6; 7) " "
-  BLOCK_EXPR@[7; 17)
-    BLOCK@[7; 17)
-      L_CURLY@[7; 8) "{"
-      WHITESPACE@[8; 9) " "
-      BIN_EXPR@[9; 15)
-        LITERAL@[9; 11)
-          INT_NUMBER@[9; 11) "90"
-        WHITESPACE@[11; 12) " "
-        PLUS@[12; 13) "+"
-        WHITESPACE@[13; 14) " "
-        LITERAL@[14; 15)
-          INT_NUMBER@[14; 15) "2"
-      WHITESPACE@[15; 16) " "
-      R_CURLY@[16; 17) "}"
+FN_DEF@0..17
+  FN_KW@0..2 "fn"
+  WHITESPACE@2..3 " "
+  NAME@3..4
+    IDENT@3..4 "f"
+  PARAM_LIST@4..6
+    L_PAREN@4..5 "("
+    R_PAREN@5..6 ")"
+  WHITESPACE@6..7 " "
+  BLOCK_EXPR@7..17
+    BLOCK@7..17
+      L_CURLY@7..8 "{"
+      WHITESPACE@8..9 " "
+      BIN_EXPR@9..15
+        LITERAL@9..11
+          INT_NUMBER@9..11 "90"
+        WHITESPACE@11..12 " "
+        PLUS@12..13 "+"
+        WHITESPACE@13..14 " "
+        LITERAL@14..15
+          INT_NUMBER@14..15 "2"
+      WHITESPACE@15..16 " "
+      R_CURLY@16..17 "}"
 ```
 
 #### Optimizations
@@ -122,20 +122,20 @@ To reduce the amount of allocations, the GreenNode is a DST, which uses a single
 To more compactly store the children, we box *both* interior nodes and tokens, and represent
 `Either<Arc<Node>, Arc<Token>>` as a single pointer with a tag in the last bit.
 
-To avoid allocating EVERY SINGLE TOKEN on the heap, syntax trees use interning. 
+To avoid allocating EVERY SINGLE TOKEN on the heap, syntax trees use interning.
 Because the tree is fully imutable, it's valid to structuraly share subtrees.
-For example, in `1 + 1`, there will be a *single* token for `1` with ref count 2; the same goes for the ` ` whitespace token. 
-Interior nodes are shared as well (for example in `(1 + 1) * (1 + 1)`). 
+For example, in `1 + 1`, there will be a *single* token for `1` with ref count 2; the same goes for the ` ` whitespace token.
+Interior nodes are shared as well (for example in `(1 + 1) * (1 + 1)`).
 
-Note that, the result of the interning is an `Arc<Node>`. 
+Note that, the result of the interning is an `Arc<Node>`.
 That is, it's not an index into interning table, so you don't have to have the table around to do anything with the tree.
 Each tree is fully self-contained (although different trees might share parts).
-Currently, the interner is created per-file, but it will be easy to use a per-thread or per-some-contex one. 
+Currently, the interner is created per-file, but it will be easy to use a per-thread or per-some-contex one.
 
-We use a `TextUnit`, a newtyped `u32`, to store the length of the text.
+We use a `TextSize`, a newtyped `u32`, to store the length of the text.
 
-We currently use `SmolStr`, an small object optimized string to store text. 
-This was mostly relevant *before* we implmented tree interning, to avoid allocating common keywords and identifiers. We should switch to storing text data alongside the interned tokens. 
+We currently use `SmolStr`, an small object optimized string to store text.
+This was mostly relevant *before* we implmented tree interning, to avoid allocating common keywords and identifiers. We should switch to storing text data alongside the interned tokens.
 
 #### Alternative designs
 
@@ -153,9 +153,9 @@ struct Token {
 }
 ```
 
-The tree then contains only non-trivia tokens. 
+The tree then contains only non-trivia tokens.
 
-Another approach (from Dart) is to, in addition to a syntax tree, link all the tokens into a bidirectional link list. 
+Another approach (from Dart) is to, in addition to a syntax tree, link all the tokens into a bidirectional link list.
 That way, the tree again contains only non-trivia tokens.
 
 Explicit trivia nodes, like in `rowan`, are used by IntelliJ.
@@ -165,26 +165,26 @@ Explicit trivia nodes, like in `rowan`, are used by IntelliJ.
 As noted before, accesing a specific child in the node requires a linear traversal of the children (though we can skip tokens, beacuse the tag is encoded in the pointer itself).
 It is possible to recover O(1) access with another representation.
 We explicitly store optional and missing (required by the grammar, but not present) nodes.
-That is, we use `Option<Node>` for children. 
+That is, we use `Option<Node>` for children.
 We also remove trivia tokens from the tree.
-This way, each child kind genrerally occupies a fixed position in a parent, and we can use index access to fetch it. 
+This way, each child kind genrerally occupies a fixed position in a parent, and we can use index access to fetch it.
 The cost is that we now need to allocate space for all not-present optional nodes.
-So, `fn foo() {}` will have slots for visibility, unsafeness, attributes, abi and return type. 
+So, `fn foo() {}` will have slots for visibility, unsafeness, attributes, abi and return type.
 
 IntelliJ uses linear traversal.
 Roslyn and Swift do `O(1)` access.
 
 ##### Mutable Trees
 
-IntelliJ uses mutable trees. 
+IntelliJ uses mutable trees.
 Overall, it creates a lot of additional complexity.
 However, the API for *editing* syntax trees is nice.
 
 For example the assist to move generic bounds to where clause has this code:
 
 ```kotlin
- for typeBound in typeBounds { 
-     typeBound.typeParamBounds?.delete() 
+ for typeBound in typeBounds {
+     typeBound.typeParamBounds?.delete()
 }
 ```
 
@@ -195,7 +195,7 @@ Modeling this with immutable trees is possible, but annoying.
 A function green tree is not super-convenient to use.
 The biggest problem is acessing parents (there are no parent pointers!).
 But there are also "identify" issues.
-Let's say you want to write a code which builds a list of expressions in a file: `fn collect_exrepssions(file: GreenNode) -> HashSet<GreenNode>`. 
+Let's say you want to write a code which builds a list of expressions in a file: `fn collect_exrepssions(file: GreenNode) -> HashSet<GreenNode>`.
 For the input like
 
 ```rust
@@ -233,7 +233,7 @@ impl SyntaxNode {
         })
     }
     fn parent(&self) -> Option<SyntaxNode> {
-        self.parent.clone()    
+        self.parent.clone()
     }
     fn children(&self) -> impl Iterator<Item = SyntaxNode> {
         let mut offset = self.offset
@@ -251,8 +251,8 @@ impl SyntaxNode {
 
 impl PartialEq for SyntaxNode {
     fn eq(&self, other: &SyntaxNode) {
-        self.offset == other.offset 
-            && Arc::ptr_eq(&self.green, &other.green)        
+        self.offset == other.offset
+            && Arc::ptr_eq(&self.green, &other.green)
     }
 }
 ```
@@ -261,35 +261,35 @@ Points of note:
 
 * SyntaxNode remembers its parent node (and, transitively, the path to the root of the tree)
 * SyntaxNode knows its *absolute* text offset in the whole file
-* Equality is based on identity. Comparing nodes from different trees does not make sense. 
+* Equality is based on identity. Comparing nodes from different trees does not make sense.
 
 #### Optimization
 
-The reality is different though :-) 
+The reality is different though :-)
 Traversal of trees is a common operation, and it makes sense to optimize it.
 In particular, the above code allocates and does atomic operations during a traversal.
 
 To get rid of atomics, `rowan` uses non thread-safe `Rc`.
-This is OK because trees traversals mostly (always, in case of rust-analyzer) run on a single thread. If you need to send a `SyntaxNode` to another thread, you can send a pair of **root**`GreenNode` (which is thread safe) and a `Range<usize>`. 
-The other thread can restore the `SyntaxNode` by traversing from the root green node and looking for a node with specified range. 
+This is OK because trees traversals mostly (always, in case of rust-analyzer) run on a single thread. If you need to send a `SyntaxNode` to another thread, you can send a pair of **root**`GreenNode` (which is thread safe) and a `Range<usize>`.
+The other thread can restore the `SyntaxNode` by traversing from the root green node and looking for a node with specified range.
 You can also use the similar trick to store a `SyntaxNode`.
 That is, a data structure that holds a `(GreenNode, Range<usize>)` will be `Sync`.
-However rust-analyzer goes even further. 
+However rust-analyzer goes even further.
 It treats trees as semi-transient and instead of storing a `GreenNode`, it generally stores just the id of the file from which the tree originated: `(FileId, Range<usize>)`.
 The `SyntaxNode` is the restored by reparsing the file and traversing it from root.
 With this trick, rust-analyzer holds only a small amount of trees in memory at the same time, which reduces memory usage.
 
 Additionally, only the root `SyntaxNode` owns an `Arc` to the (root) `GreenNode`.
-All other `SyntaxNode`s point to corresponding `GreenNode`s with a raw pointer. 
-They also point to the parent (and, consequently, to the root) with an owning `Rc`, so this is sound. 
+All other `SyntaxNode`s point to corresponding `GreenNode`s with a raw pointer.
+They also point to the parent (and, consequently, to the root) with an owning `Rc`, so this is sound.
 In other words, one needs *one* arc bump when initiating a traversal.
 
-To get rid of allocations, `rowan` takes advantage of `SyntaxNode: !Sync` and uses a thread-local free list of `SyntaxNode`s. 
-In a typical traversal, you only directly hold a few `SyntaxNode`s at a time (and their ancesstors indirectly), so a free list proportional to the depth of the tree removes all allocations in a typical case. 
+To get rid of allocations, `rowan` takes advantage of `SyntaxNode: !Sync` and uses a thread-local free list of `SyntaxNode`s.
+In a typical traversal, you only directly hold a few `SyntaxNode`s at a time (and their ancesstors indirectly), so a free list proportional to the depth of the tree removes all allocations in a typical case.
 
 So, while traversal is not exactly incrementing a pointer, it's still prety cheep: tls + rc bump!
 
-Traversal also yields (cheap) owned nodes, which improves ergonomics quite a bit. 
+Traversal also yields (cheap) owned nodes, which improves ergonomics quite a bit.
 
 #### Alternative Designs
 
@@ -309,14 +309,14 @@ struct SyntaxData {
 ```
 
 This allows using true pointer equality for comparision of identities of `SyntaxNodes`.
-rust-analyzer used to have this design as well, but since we've switch to cursors. 
-The main problem with memoizing the red nodes is that it more than doubles the memory requirenments for fully realized syntax trees. 
+rust-analyzer used to have this design as well, but since we've switch to cursors.
+The main problem with memoizing the red nodes is that it more than doubles the memory requirenments for fully realized syntax trees.
 In contrast, cursors generally retain only a path to the root.
-C# combats increased memory usage by using weak references. 
+C# combats increased memory usage by using weak references.
 
 ### AST
 
-`GreenTree`s are untyped and homogeneous, because it makes accomodating error nodes, arbitrary whitespace and comments natural, and because it makes possible to write generic tree traversals. 
+`GreenTree`s are untyped and homogeneous, because it makes accomodating error nodes, arbitrary whitespace and comments natural, and because it makes possible to write generic tree traversals.
 However, when working with a specific node, like a function definition, one would want a strongly typed API.
 
 This is what is provided by the AST layer. AST nodes are transparent wrappers over untyped syntax nodes:
@@ -352,13 +352,13 @@ impl AstNode for FnDef {
 }
 
 impl FnDef {
-    pub fn param_list(&self) -> Option<ParamList> { 
+    pub fn param_list(&self) -> Option<ParamList> {
         self.syntax.children().find_map(ParamList::cast)
     }
-    pub fn ret_type(&self) -> Option<RetType> { 
+    pub fn ret_type(&self) -> Option<RetType> {
         self.syntax.children().find_map(RetType::cast)
     }
-    pub fn body(&self) -> Option<BlockExpr> { 
+    pub fn body(&self) -> Option<BlockExpr> {
         self.syntax.children().find_map(BlockExpr::cast)
     }
     // ...
@@ -409,14 +409,14 @@ Points of note:
 
 ##### Semantic Full AST
 
-In IntelliJ the AST layer (dubbed **P**rogram **S**tructure **I**nterface) can have semantics attached, and is usually backed by either syntax tree, indices, or metadata from compiled libraries. 
+In IntelliJ the AST layer (dubbed **P**rogram **S**tructure **I**nterface) can have semantics attached, and is usually backed by either syntax tree, indices, or metadata from compiled libraries.
 The backend for PSI can change dynamically.
 
 ### Syntax Tree Recap
 
-At its core, the syntax tree is a purely functional n-ary tree, which stores text at the leaf nodes and node "kinds" at all nodes. 
+At its core, the syntax tree is a purely functional n-ary tree, which stores text at the leaf nodes and node "kinds" at all nodes.
 A cursor layer is added on top, which gives owned, cheap to clone nodes with identity semantics, parent links and absolute offsets.
-An AST layer is added on top, which reifies each node `Kind` as a separate Rust type with the corresponding API. 
+An AST layer is added on top, which reifies each node `Kind` as a separate Rust type with the corresponding API.
 
 ## Parsing
 
@@ -432,17 +432,17 @@ impl GreenNodeBuilder {
 
     pub fn start_node(&mut self, kind: SyntaxKind) { ... }
     pub fn finish_node(&mut self) { ... }
-    
+
     pub fn finish(self) -> GreenNode { ... }
 }
 ```
 
-The parser, ultimatelly, needs to invoke the `GreenNodeBuilder`. 
+The parser, ultimatelly, needs to invoke the `GreenNodeBuilder`.
 There are two principal sources of inputs for the parser:
   * source text, which contains trivia tokens (whitespace and comments)
   * token trees from macros, which lack trivia
 
-Additionaly, input tokens do not correspond 1-to-1 with output tokens. 
+Additionaly, input tokens do not correspond 1-to-1 with output tokens.
 For example, two consequtive `>` tokens might be glued, by the parser, into a single `>>`.
 
 For these reasons, the parser crate defines a callback interfaces for both input tokens and output trees.
@@ -474,7 +474,7 @@ pub trait TreeSink {
 }
 
 pub fn parse(
-    token_source: &mut dyn TokenSource, 
+    token_source: &mut dyn TokenSource,
     tree_sink: &mut dyn TreeSink,
 ) { ... }
 ```
@@ -491,21 +491,21 @@ Syntax errors are not stored directly in the tree.
 The primary motivation for this is that syntax tree is not necessary produced by the parser, it may also be assembled manually from pieces (which happens all the time in refactorings).
 Instead, parser reports errors to an error sink, which stores them in a `Vec`.
 If possible, errors are not reported during parsing and are postponed for a separate validation step.
-For example, parser accepts visibility modifiers on trait methods, but then a separate tree traversal flags all such visibilites as erroneous. 
+For example, parser accepts visibility modifiers on trait methods, but then a separate tree traversal flags all such visibilites as erroneous.
 
 ### Macros
 
-The primary difficulty with macros is that individual tokens have identities, which need to be preserved in the syntax tree for hygiene purposes. 
+The primary difficulty with macros is that individual tokens have identities, which need to be preserved in the syntax tree for hygiene purposes.
 This is handled by the `TreeSink` layer.
 Specifically, `TreeSink` constructs the tree in lockstep with draining the original token stream.
-In the process, it records which tokens of the tree correspond to which tokens of the input, by using text ranges to identify syntax tokens. 
+In the process, it records which tokens of the tree correspond to which tokens of the input, by using text ranges to identify syntax tokens.
 The end result is that parsing an expanded code yields a syntax tree and a mapping of text-ranges of the tree to original tokens.
 
 To deal with precedence in cases like `$expr * 1`, we use special invisible parenthesis, which are explicitelly handled by the parser
 
 ### Whitespace & Comments
 
-Parser does not see whitespace nodes. 
+Parser does not see whitespace nodes.
 Instead, they are attached to the tree in the `TreeSink` layer.
 
 For example, in
@@ -521,7 +521,7 @@ the comment will be (heuristically) made a child of function node.
 
 Green trees are cheap to modify, so incremental reparse works by patching a previous tree, without maintaining any additional state.
 The reparse is based on heuristic: we try to contain a change to a single `{}` block, and reparse only this block.
-To do this, we maintain the invariant that, even for invalid code, curly braces are always paired correctly. 
+To do this, we maintain the invariant that, even for invalid code, curly braces are always paired correctly.
 
 In practice, incremental reparsing doesn't actually matter much for IDE use-cases, parsing from scratch seems to be fast enough.
 

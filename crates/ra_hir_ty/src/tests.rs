@@ -117,7 +117,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             let macro_prefix = if node.file_id != file_id.into() { "!" } else { "" };
             format_to!(
                 buf,
-                "{}{} '{}': {}\n",
+                "{}{:?} '{}': {}\n",
                 macro_prefix,
                 range,
                 ellipsize(text, 15),
@@ -134,7 +134,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                 let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
                 format_to!(
                     buf,
-                    "{}{}: expected {}, got {}\n",
+                    "{}{:?}: expected {}, got {}\n",
                     macro_prefix,
                     range,
                     mismatch.expected.display(&db),

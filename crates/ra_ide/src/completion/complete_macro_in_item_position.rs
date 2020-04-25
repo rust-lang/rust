@@ -42,8 +42,8 @@ mod tests {
         [
             CompletionItem {
                 label: "foo!(…)",
-                source_range: [46; 46),
-                delete: [46; 46),
+                source_range: 46..46,
+                delete: 46..46,
                 insert: "foo!($0)",
                 kind: Macro,
                 detail: "macro_rules! foo",
@@ -82,8 +82,8 @@ mod tests {
         [
             CompletionItem {
                 label: "vec![…]",
-                source_range: [280; 280),
-                delete: [280; 280),
+                source_range: 280..280,
+                delete: 280..280,
                 insert: "vec![$0]",
                 kind: Macro,
                 detail: "macro_rules! vec",
@@ -119,8 +119,8 @@ mod tests {
         [
             CompletionItem {
                 label: "foo! {…}",
-                source_range: [163; 163),
-                delete: [163; 163),
+                source_range: 163..163,
+                delete: 163..163,
                 insert: "foo! {$0}",
                 kind: Macro,
                 detail: "macro_rules! foo",
@@ -130,8 +130,8 @@ mod tests {
             },
             CompletionItem {
                 label: "main()",
-                source_range: [163; 163),
-                delete: [163; 163),
+                source_range: 163..163,
+                delete: 163..163,
                 insert: "main()$0",
                 kind: Function,
                 lookup: "main",

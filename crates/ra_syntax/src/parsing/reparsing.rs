@@ -19,7 +19,7 @@ use crate::{
     syntax_node::{GreenNode, GreenToken, NodeOrToken, SyntaxElement, SyntaxNode},
     SyntaxError,
     SyntaxKind::*,
-    TextRange, TextUnit, T,
+    TextRange, TextSize, T,
 };
 
 pub(crate) fn incremental_reparse(
@@ -176,7 +176,7 @@ fn merge_errors(
         if old_err_range.end() <= range_before_reparse.start() {
             res.push(old_err);
         } else if old_err_range.start() >= range_before_reparse.end() {
-            let inserted_len = TextUnit::of_str(&edit.insert);
+            let inserted_len = TextSize::of(&edit.insert);
             res.push(old_err.with_range((old_err_range + inserted_len) - edit.delete.len()));
             // Note: extra parens are intentional to prevent uint underflow, HWAB (here was a bug)
         }

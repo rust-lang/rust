@@ -55,7 +55,7 @@ pub use crate::{
     },
 };
 pub use ra_parser::{SyntaxKind, T};
-pub use rowan::{SmolStr, SyntaxText, TextRange, TextUnit, TokenAtOffset, WalkEvent};
+pub use rowan::{SmolStr, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.
@@ -266,7 +266,7 @@ fn api_walkthrough() {
     assert_eq!(expr_syntax.kind(), SyntaxKind::BIN_EXPR);
 
     // And text range:
-    assert_eq!(expr_syntax.text_range(), TextRange::from_to(32.into(), 37.into()));
+    assert_eq!(expr_syntax.text_range(), TextRange::new(32.into(), 37.into()));
 
     // You can get node's text as a `SyntaxText` object, which will traverse the
     // tree collecting token's text:

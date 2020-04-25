@@ -28,7 +28,7 @@ pub(crate) fn invert_if(ctx: AssistCtx) -> Option<Assist> {
     let if_keyword = ctx.find_token_at_offset(T![if])?;
     let expr = ast::IfExpr::cast(if_keyword.parent())?;
     let if_range = if_keyword.text_range();
-    let cursor_in_range = ctx.frange.range.is_subrange(&if_range);
+    let cursor_in_range = if_range.contains_range(ctx.frange.range);
     if !cursor_in_range {
         return None;
     }

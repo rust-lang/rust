@@ -23,7 +23,7 @@ use ra_ide::{
     SearchScope,
 };
 use ra_prof::profile;
-use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
+use ra_syntax::{AstNode, SyntaxKind, TextRange, TextSize};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
@@ -97,7 +97,7 @@ pub fn handle_selection_range(
         .map(|position| {
             let mut ranges = Vec::new();
             {
-                let mut range = TextRange::from_to(position, position);
+                let mut range = TextRange::new(position, position);
                 loop {
                     ranges.push(range);
                     let frange = FileRange { file_id, range };
@@ -184,11 +184,11 @@ pub fn handle_on_type_formatting(
 
     // in `ra_ide`, the `on_type` invariant is that
     // `text.char_at(position) == typed_char`.
-    position.offset -= TextUnit::of_char('.');
+    position.offset -= TextSize::of('.');
     let char_typed = params.ch.chars().next().unwrap_or('\0');
     assert!({
         let text = world.analysis().file_text(position.file_id)?;
-        text[position.offset.to_usize()..].starts_with(char_typed)
+        text[usize::from(position.offset)..].starts_with(char_typed)
     });
 
     // We have an assist that inserts ` ` after typing `->` in `fn foo() ->{`,
@@ -403,7 +403,7 @@ pub fn handle_completion(
                 let syntax = source_file.syntax();
                 let text = syntax.text();
                 if let Some(next_char) = text.char_at(position.offset) {
-                    let diff = TextUnit::of_char(next_char) + TextUnit::of_char(':');
+                    let diff = TextSize::of(next_char) + TextSize::of(':');
                     let prev_char = position.offset - diff;
                     if text.char_at(prev_char) != Some(':') {
                         res = true;
@@ -592,7 +592,7 @@ pub fn handle_formatting(
     let crate_ids = world.analysis().crate_for(file_id)?;
 
     let file_line_index = world.analysis().file_line_index(file_id)?;
-    let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
+    let end_position = TextSize::of(file.as_str()).conv_with(&file_line_index);
 
     let mut rustfmt = match &world.config.rustfmt {
         RustfmtConfig::Rustfmt { extra_args } => {
@@ -698,7 +698,7 @@ pub fn handle_code_action(
     let fixes_from_diagnostics = diagnostics
         .into_iter()
         .filter_map(|d| Some((d.range, d.fix?)))
-        .filter(|(diag_range, _fix)| diag_range.intersection(&range).is_some())
+        .filter(|(diag_range, _fix)| diag_range.intersect(range).is_some())
         .map(|(_range, fix)| fix);
 
     for source_edit in fixes_from_diagnostics {
@@ -723,7 +723,7 @@ pub fn handle_code_action(
 
     for fix in world.check_fixes.get(&file_id).into_iter().flatten() {
         let fix_range = fix.range.conv_with(&line_index);
-        if fix_range.intersection(&range).is_none() {
+        if fix_range.intersect(range).is_none() {
             continue;
         }
         res.push(fix.action.clone());
@@ -1107,7 +1107,7 @@ pub fn handle_semantic_tokens(
         let (token_index, modifier_bitset) = highlight_range.highlight.conv();
         for mut range in line_index.lines(highlight_range.range) {
             if text[range].ends_with('\n') {
-                range = TextRange::from_to(range.start(), range.end() - TextUnit::of_char('\n'));
+                range = TextRange::new(range.start(), range.end() - TextSize::of('\n'));
             }
             let range = range.conv_with(&line_index);
             builder.push(range, token_index, modifier_bitset);

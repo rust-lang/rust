@@ -1,14 +1,14 @@
-//! `LineIndex` maps flat `TextUnit` offsets into `(Line, Column)`
+//! `LineIndex` maps flat `TextSize` offsets into `(Line, Column)`
 //! representation.
 use std::iter;
 
-use ra_syntax::{TextRange, TextUnit};
+use ra_syntax::{TextRange, TextSize};
 use rustc_hash::FxHashMap;
 use superslice::Ext;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineIndex {
-    pub(crate) newlines: Vec<TextUnit>,
+    pub(crate) newlines: Vec<TextSize>,
     pub(crate) utf16_lines: FxHashMap<u32, Vec<Utf16Char>>,
 }
 
@@ -22,12 +22,12 @@ pub struct LineCol {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) struct Utf16Char {
-    pub(crate) start: TextUnit,
-    pub(crate) end: TextUnit,
+    pub(crate) start: TextSize,
+    pub(crate) end: TextSize,
 }
 
 impl Utf16Char {
-    fn len(&self) -> TextUnit {
+    fn len(&self) -> TextSize {
         self.end - self.start
     }
 }
@@ -42,7 +42,8 @@ impl LineIndex {
         let mut curr_col = 0.into();
         let mut line = 0;
         for c in text.chars() {
-            curr_row += TextUnit::of_char(c);
+            let c_len = TextSize::of(c);
+            curr_row += c_len;
             if c == '\n' {
                 newlines.push(curr_row);
 
@@ -58,12 +59,11 @@ impl LineIndex {
                 continue;
             }
 
-            let char_len = TextUnit::of_char(c);
-            if char_len > TextUnit::from_usize(1) {
-                utf16_chars.push(Utf16Char { start: curr_col, end: curr_col + char_len });
+            if !c.is_ascii() {
+                utf16_chars.push(Utf16Char { start: curr_col, end: curr_col + c_len });
             }
 
-            curr_col += char_len;
+            curr_col += c_len;
         }
 
         // Save any utf-16 characters seen in the last line
@@ -74,7 +74,7 @@ impl LineIndex {
         LineIndex { newlines, utf16_lines }
     }
 
-    pub fn line_col(&self, offset: TextUnit) -> LineCol {
+    pub fn line_col(&self, offset: TextSize) -> LineCol {
         let line = self.newlines.upper_bound(&offset) - 1;
         let line_start_offset = self.newlines[line];
         let col = offset - line_start_offset;
@@ -82,7 +82,7 @@ impl LineIndex {
         LineCol { line: line as u32, col_utf16: self.utf8_to_utf16_col(line as u32, col) as u32 }
     }
 
-    pub fn offset(&self, line_col: LineCol) -> TextUnit {
+    pub fn offset(&self, line_col: LineCol) -> TextSize {
         //FIXME: return Result
         let col = self.utf16_to_utf8_col(line_col.line, line_col.col_utf16);
         self.newlines[line_col.line as usize] + col
@@ -97,35 +97,31 @@ impl LineIndex {
 
         all.clone()
             .zip(all.skip(1))
-            .map(|(lo, hi)| TextRange::from_to(lo, hi))
+            .map(|(lo, hi)| TextRange::new(lo, hi))
             .filter(|it| !it.is_empty())
     }
 
-    fn utf8_to_utf16_col(&self, line: u32, col: TextUnit) -> usize {
+    fn utf8_to_utf16_col(&self, line: u32, col: TextSize) -> usize {
+        let mut res: usize = col.into();
         if let Some(utf16_chars) = self.utf16_lines.get(&line) {
-            let mut correction = 0;
             for c in utf16_chars {
-                if col >= c.end {
-                    correction += c.len().to_usize() - 1;
+                if c.end <= col {
+                    res -= usize::from(c.len()) - 1;
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
                     break;
                 }
             }
-
-            col.to_usize() - correction
-        } else {
-            col.to_usize()
         }
+        res
     }
 
-    fn utf16_to_utf8_col(&self, line: u32, col: u32) -> TextUnit {
-        let mut col: TextUnit = col.into();
+    fn utf16_to_utf8_col(&self, line: u32, mut col: u32) -> TextSize {
         if let Some(utf16_chars) = self.utf16_lines.get(&line) {
             for c in utf16_chars {
-                if col >= c.start {
-                    col += c.len() - TextUnit::from_usize(1);
+                if col >= u32::from(c.start) {
+                    col += u32::from(c.len()) - 1;
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
@@ -134,12 +130,12 @@ impl LineIndex {
             }
         }
 
-        col
+        col.into()
     }
 }
 
 #[cfg(test)]
-mod test_line_index {
+mod tests {
     use super::*;
 
     #[test]
@@ -200,10 +196,10 @@ const C: char = 'メ';
         assert_eq!(col_index.utf8_to_utf16_col(1, 22.into()), 20);
 
         // UTF-16 to UTF-8, no changes
-        assert_eq!(col_index.utf16_to_utf8_col(1, 15), TextUnit::from(15));
+        assert_eq!(col_index.utf16_to_utf8_col(1, 15), TextSize::from(15));
 
         // UTF-16 to UTF-8
-        assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextUnit::from(21));
+        assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextSize::from(21));
     }
 
     #[test]
@@ -228,18 +224,18 @@ const C: char = \"メ メ\";
         assert!(col_index.utf8_to_utf16_col(2, 15.into()) == 15);
 
         // UTF-16 to UTF-8
-        assert_eq!(col_index.utf16_to_utf8_col(1, 15), TextUnit::from_usize(15));
+        assert_eq!(col_index.utf16_to_utf8_col(1, 15), TextSize::from(15));
 
-        assert_eq!(col_index.utf16_to_utf8_col(1, 18), TextUnit::from_usize(20));
-        assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextUnit::from_usize(23));
+        assert_eq!(col_index.utf16_to_utf8_col(1, 18), TextSize::from(20));
+        assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextSize::from(23));
 
-        assert_eq!(col_index.utf16_to_utf8_col(2, 15), TextUnit::from_usize(15));
+        assert_eq!(col_index.utf16_to_utf8_col(2, 15), TextSize::from(15));
     }
 
     #[test]
     fn test_splitlines() {
         fn r(lo: u32, hi: u32) -> TextRange {
-            TextRange::from_to(lo.into(), hi.into())
+            TextRange::new(lo.into(), hi.into())
         }
 
         let text = "a\nbb\nccc\n";

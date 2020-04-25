@@ -130,7 +130,7 @@ pub fn analysis_stats(
             let original_file = src.file_id.original_file(db);
             let path = db.file_relative_path(original_file);
             let syntax_range = src.value.syntax().text_range();
-            format_to!(msg, " ({:?} {})", path, syntax_range);
+            format_to!(msg, " ({:?} {:?})", path, syntax_range);
         }
         if verbosity.is_spammy() {
             bar.println(msg.to_string());

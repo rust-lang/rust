@@ -126,7 +126,7 @@ impl FnCallNode {
                     ast::CallExpr(it) => Some(FnCallNode::CallExpr(it)),
                     ast::MethodCallExpr(it) => {
                         let arg_list = it.arg_list()?;
-                        if !syntax.text_range().is_subrange(&arg_list.syntax().text_range()) {
+                        if !arg_list.syntax().text_range().contains_range(syntax.text_range()) {
                             return None;
                         }
                         Some(FnCallNode::MethodCallExpr(it))

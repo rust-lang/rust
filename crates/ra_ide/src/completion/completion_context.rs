@@ -7,7 +7,7 @@ use ra_syntax::{
     algo::{find_covering_element, find_node_at_offset},
     ast, AstNode,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextUnit,
+    SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 use ra_text_edit::AtomTextEdit;
 
@@ -20,7 +20,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) sema: Semantics<'a, RootDatabase>,
     pub(super) db: &'a RootDatabase,
     pub(super) config: &'a CompletionConfig,
-    pub(super) offset: TextUnit,
+    pub(super) offset: TextSize,
     /// The token before the cursor, in the original file.
     pub(super) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
@@ -167,7 +167,7 @@ impl<'a> CompletionContext<'a> {
         match self.token.kind() {
             // workaroud when completion is triggered by trigger characters.
             IDENT => self.original_token.text_range(),
-            _ => TextRange::offset_len(self.offset, 0.into()),
+            _ => TextRange::empty(self.offset),
         }
     }
 
@@ -190,7 +190,7 @@ impl<'a> CompletionContext<'a> {
         &mut self,
         original_file: &SyntaxNode,
         file_with_fake_ident: SyntaxNode,
-        offset: TextUnit,
+        offset: TextSize,
     ) {
         // First, let's try to complete a reference to some declaration.
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&file_with_fake_ident, offset) {
@@ -224,7 +224,8 @@ impl<'a> CompletionContext<'a> {
                 }
                 if let Some(let_stmt) = bind_pat.syntax().ancestors().find_map(ast::LetStmt::cast) {
                     if let Some(pat) = let_stmt.pat() {
-                        if bind_pat.syntax().text_range().is_subrange(&pat.syntax().text_range()) {
+                        if pat.syntax().text_range().contains_range(bind_pat.syntax().text_range())
+                        {
                             self.is_pat_binding_or_const = false;
                         }
                     }
@@ -246,7 +247,7 @@ impl<'a> CompletionContext<'a> {
         &mut self,
         original_file: &SyntaxNode,
         name_ref: ast::NameRef,
-        offset: TextUnit,
+        offset: TextSize,
     ) {
         self.name_ref_syntax =
             find_node_at_offset(&original_file, name_ref.syntax().text_range().start());

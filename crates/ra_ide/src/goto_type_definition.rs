@@ -68,7 +68,7 @@ mod tests {
                 f<|>
             }
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
         );
     }
 
@@ -83,7 +83,7 @@ mod tests {
                 f<|>
             }
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
         );
     }
 
@@ -102,7 +102,7 @@ mod tests {
                 }
             }
             ",
-            "Foo STRUCT_DEF FileId(1) [52; 65) [59; 62)",
+            "Foo STRUCT_DEF FileId(1) 52..65 59..62",
         );
     }
 
@@ -114,7 +114,7 @@ mod tests {
             struct Foo;
             fn foo(<|>f: Foo) {}
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
         );
     }
 
@@ -130,7 +130,7 @@ mod tests {
                 bar.<|>0;
             }
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
         );
     }
 }

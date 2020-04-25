@@ -141,7 +141,7 @@ fn add_function_impl(
     } else {
         CompletionItemKind::Function
     };
-    let range = TextRange::from_to(fn_def_node.text_range().start(), ctx.source_range().end());
+    let range = TextRange::new(fn_def_node.text_range().start(), ctx.source_range().end());
 
     match ctx.config.snippet_cap {
         Some(cap) => {
@@ -167,7 +167,7 @@ fn add_type_alias_impl(
 
     let snippet = format!("type {} = ", alias_name);
 
-    let range = TextRange::from_to(type_def_node.text_range().start(), ctx.source_range().end());
+    let range = TextRange::new(type_def_node.text_range().start(), ctx.source_range().end());
 
     CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
         .text_edit(TextEdit::replace(range, snippet))
@@ -188,8 +188,7 @@ fn add_const_impl(
     if let Some(const_name) = const_name {
         let snippet = make_const_compl_syntax(&const_.source(ctx.db).value);
 
-        let range =
-            TextRange::from_to(const_def_node.text_range().start(), ctx.source_range().end());
+        let range = TextRange::new(const_def_node.text_range().start(), ctx.source_range().end());
 
         CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
             .text_edit(TextEdit::replace(range, snippet))
@@ -216,7 +215,7 @@ fn make_const_compl_syntax(const_: &ast::ConstDef) -> String {
         .map_or(const_end, |f| f.text_range().start());
 
     let len = end - start;
-    let range = TextRange::from_to(0.into(), len);
+    let range = TextRange::new(0.into(), len);
 
     let syntax = const_.syntax().text().slice(range).to_string();
 
@@ -254,24 +253,24 @@ mod tests {
         [
             CompletionItem {
                 label: "const TEST_CONST: u16 = ",
-                source_range: [209; 210),
-                delete: [209; 210),
+                source_range: 209..210,
+                delete: 209..210,
                 insert: "const TEST_CONST: u16 = ",
                 kind: Const,
                 lookup: "TEST_CONST",
             },
             CompletionItem {
                 label: "fn test()",
-                source_range: [209; 210),
-                delete: [209; 210),
+                source_range: 209..210,
+                delete: 209..210,
                 insert: "fn test() {\n    $0\n}",
                 kind: Function,
                 lookup: "test",
             },
             CompletionItem {
                 label: "type TestType = ",
-                source_range: [209; 210),
-                delete: [209; 210),
+                source_range: 209..210,
+                delete: 209..210,
                 insert: "type TestType = ",
                 kind: TypeAlias,
                 lookup: "TestType",
@@ -320,8 +319,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn test()",
-                source_range: [139; 140),
-                delete: [139; 140),
+                source_range: 139..140,
+                delete: 139..140,
                 insert: "fn test() {\n    $0\n}",
                 kind: Function,
                 lookup: "test",
@@ -349,8 +348,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: [141; 142),
-                delete: [138; 142),
+                source_range: 141..142,
+                delete: 138..142,
                 insert: "fn foo() {\n    $0\n}",
                 kind: Function,
                 lookup: "foo",
@@ -381,8 +380,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo_bar()",
-                source_range: [200; 201),
-                delete: [197; 201),
+                source_range: 200..201,
+                delete: 197..201,
                 insert: "fn foo_bar() {\n    $0\n}",
                 kind: Function,
                 lookup: "foo_bar",
@@ -432,8 +431,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: [144; 145),
-                delete: [141; 145),
+                source_range: 144..145,
+                delete: 141..145,
                 insert: "fn foo<T>() {\n    $0\n}",
                 kind: Function,
                 lookup: "foo",
@@ -461,8 +460,8 @@ mod tests {
         [
             CompletionItem {
                 label: "fn foo()",
-                source_range: [166; 167),
-                delete: [163; 167),
+                source_range: 166..167,
+                delete: 163..167,
                 insert: "fn foo<T>()\nwhere T: Into<String> {\n    $0\n}",
                 kind: Function,
                 lookup: "foo",
@@ -488,8 +487,8 @@ mod tests {
         [
             CompletionItem {
                 label: "type SomeType = ",
-                source_range: [124; 125),
-                delete: [119; 125),
+                source_range: 124..125,
+                delete: 119..125,
                 insert: "type SomeType = ",
                 kind: TypeAlias,
                 lookup: "SomeType",
@@ -515,8 +514,8 @@ mod tests {
         [
             CompletionItem {
                 label: "const SOME_CONST: u16 = ",
-                source_range: [133; 134),
-                delete: [127; 134),
+                source_range: 133..134,
+                delete: 127..134,
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
                 lookup: "SOME_CONST",
@@ -542,8 +541,8 @@ mod tests {
         [
             CompletionItem {
                 label: "const SOME_CONST: u16 = ",
-                source_range: [138; 139),
-                delete: [132; 139),
+                source_range: 138..139,
+                delete: 132..139,
                 insert: "const SOME_CONST: u16 = ",
                 kind: Const,
                 lookup: "SOME_CONST",

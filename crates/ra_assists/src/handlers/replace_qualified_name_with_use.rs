@@ -43,7 +43,7 @@ pub(crate) fn replace_qualified_name_with_use(ctx: AssistCtx) -> Option<Assist> 
             if let Some(last) = path.segment() {
                 // Here we are assuming the assist will provide a correct use statement
                 // so we can delete the path qualifier
-                edit.delete(TextRange::from_to(
+                edit.delete(TextRange::new(
                     path.syntax().text_range().start(),
                     last.syntax().text_range().start(),
                 ));

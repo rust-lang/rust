@@ -4,7 +4,7 @@ use ra_syntax::{
         BLOCK_EXPR, BREAK_EXPR, COMMENT, LAMBDA_EXPR, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR,
         WHITESPACE,
     },
-    SyntaxNode, TextUnit,
+    SyntaxNode, TextSize,
 };
 use stdx::format_to;
 use test_utils::tested_by;
@@ -47,10 +47,10 @@ pub(crate) fn introduce_variable(ctx: AssistCtx) -> Option<Assist> {
 
         let cursor_offset = if wrap_in_block {
             buf.push_str("{ let var_name = ");
-            TextUnit::of_str("{ let ")
+            TextSize::of("{ let ")
         } else {
             buf.push_str("let var_name = ");
-            TextUnit::of_str("let ")
+            TextSize::of("let ")
         };
         format_to!(buf, "{}", expr.syntax());
         let full_stmt = ast::ExprStmt::cast(anchor_stmt.clone());

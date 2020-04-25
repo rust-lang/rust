@@ -1,7 +1,7 @@
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner},
     SyntaxKind::{COMMENT, WHITESPACE},
-    TextUnit,
+    TextSize,
 };
 
 use crate::{Assist, AssistCtx, AssistId};
@@ -37,9 +37,9 @@ pub(crate) fn add_derive(ctx: AssistCtx) -> Option<Assist> {
         let offset = match derive_attr {
             None => {
                 edit.insert(node_start, "#[derive()]\n");
-                node_start + TextUnit::of_str("#[derive(")
+                node_start + TextSize::of("#[derive(")
             }
-            Some(tt) => tt.syntax().text_range().end() - TextUnit::of_char(')'),
+            Some(tt) => tt.syntax().text_range().end() - TextSize::of(')'),
         };
         edit.target(nominal.syntax().text_range());
         edit.set_cursor(offset)
@@ -47,7 +47,7 @@ pub(crate) fn add_derive(ctx: AssistCtx) -> Option<Assist> {
 }
 
 // Insert `derive` after doc comments.
-fn derive_insertion_offset(nominal: &ast::NominalDef) -> Option<TextUnit> {
+fn derive_insertion_offset(nominal: &ast::NominalDef) -> Option<TextSize> {
     let non_ws_child = nominal
         .syntax()
         .children_with_tokens()

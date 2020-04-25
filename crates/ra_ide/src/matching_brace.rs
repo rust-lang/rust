@@ -1,8 +1,8 @@
 //! FIXME: write short doc here
 
-use ra_syntax::{ast::AstNode, SourceFile, SyntaxKind, TextUnit, T};
+use ra_syntax::{ast::AstNode, SourceFile, SyntaxKind, TextSize, T};
 
-pub fn matching_brace(file: &SourceFile, offset: TextUnit) -> Option<TextUnit> {
+pub fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<TextSize> {
     const BRACES: &[SyntaxKind] =
         &[T!['{'], T!['}'], T!['['], T![']'], T!['('], T![')'], T![<], T![>]];
     let (brace_node, brace_idx) = file

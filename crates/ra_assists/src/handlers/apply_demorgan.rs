@@ -26,7 +26,7 @@ pub(crate) fn apply_demorgan(ctx: AssistCtx) -> Option<Assist> {
     let op = expr.op_kind()?;
     let op_range = expr.op_token()?.text_range();
     let opposite_op = opposite_logic_op(op)?;
-    let cursor_in_range = ctx.frange.range.is_subrange(&op_range);
+    let cursor_in_range = op_range.contains_range(ctx.frange.range);
     if !cursor_in_range {
         return None;
     }

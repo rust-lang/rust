@@ -140,7 +140,7 @@ mod tests {
             struct Foo;
             enum E { X(Foo<|>) }
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
             "struct Foo;|Foo",
         );
     }
@@ -153,7 +153,7 @@ mod tests {
             struct Foo;
             enum E { X(<|>Foo) }
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
             "struct Foo;|Foo",
         );
     }
@@ -174,7 +174,7 @@ mod tests {
             //- /b.rs
             struct Foo;
             ",
-            "Foo STRUCT_DEF FileId(2) [0; 11) [7; 10)",
+            "Foo STRUCT_DEF FileId(2) 0..11 7..10",
             "struct Foo;|Foo",
         );
     }
@@ -189,7 +189,7 @@ mod tests {
             //- /foo.rs
             // empty
             ",
-            "foo SOURCE_FILE FileId(2) [0; 10)",
+            "foo SOURCE_FILE FileId(2) 0..10",
             "// empty\n\n",
         );
 
@@ -201,7 +201,7 @@ mod tests {
             //- /foo/mod.rs
             // empty
             ",
-            "foo SOURCE_FILE FileId(2) [0; 10)",
+            "foo SOURCE_FILE FileId(2) 0..10",
             "// empty\n\n",
         );
     }
@@ -218,7 +218,7 @@ mod tests {
                 <|>foo!();
             }
             ",
-            "foo MACRO_CALL FileId(1) [0; 33) [13; 16)",
+            "foo MACRO_CALL FileId(1) 0..33 13..16",
             "macro_rules! foo { () => { () } }|foo",
         );
     }
@@ -238,7 +238,7 @@ mod tests {
             #[macro_export]
             macro_rules! foo { () => { () } }
             ",
-            "foo MACRO_CALL FileId(2) [0; 49) [29; 32)",
+            "foo MACRO_CALL FileId(2) 0..49 29..32",
             "#[macro_export]\nmacro_rules! foo { () => { () } }|foo",
         );
     }
@@ -254,7 +254,7 @@ mod tests {
             #[macro_export]
             macro_rules! foo { () => { () } }
             ",
-            "foo MACRO_CALL FileId(2) [0; 49) [29; 32)",
+            "foo MACRO_CALL FileId(2) 0..49 29..32",
             "#[macro_export]\nmacro_rules! foo { () => { () } }|foo",
         );
     }
@@ -274,7 +274,7 @@ mod tests {
                <|>foo();
             }
             ",
-            "foo FN_DEF FileId(1) [64; 80) [75; 78)",
+            "foo FN_DEF FileId(1) 64..80 75..78",
             "define_fn!(foo);|foo",
         );
     }
@@ -294,7 +294,7 @@ mod tests {
                <|>foo();
             }
             ",
-            "foo FN_DEF FileId(1) [51; 64) [51; 64)",
+            "foo FN_DEF FileId(1) 51..64 51..64",
             "define_fn!();|define_fn!();",
         );
     }
@@ -312,7 +312,7 @@ mod tests {
                 }
             }
             ",
-            "foo MACRO_CALL FileId(1) [0; 28) [13; 16)",
+            "foo MACRO_CALL FileId(1) 0..28 13..16",
             "macro_rules! foo {() => {0}}|foo",
         );
     }
@@ -330,7 +330,7 @@ mod tests {
                 }
             }
             ",
-            "foo MACRO_CALL FileId(1) [0; 28) [13; 16)",
+            "foo MACRO_CALL FileId(1) 0..28 13..16",
             "macro_rules! foo {() => {0}}|foo",
         );
     }
@@ -350,7 +350,7 @@ mod tests {
                 foo.frobnicate<|>();
             }
             ",
-            "frobnicate FN_DEF FileId(1) [27; 51) [30; 40)",
+            "frobnicate FN_DEF FileId(1) 27..51 30..40",
             "fn frobnicate(&self) { }|frobnicate",
         );
     }
@@ -369,7 +369,7 @@ mod tests {
                 foo.spam<|>;
             }
             ",
-            "spam RECORD_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+            "spam RECORD_FIELD_DEF FileId(1) 17..26 17..21",
             "spam: u32|spam",
         );
     }
@@ -390,7 +390,7 @@ mod tests {
                 }
             }
             ",
-            "spam RECORD_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+            "spam RECORD_FIELD_DEF FileId(1) 17..26 17..21",
             "spam: u32|spam",
         );
     }
@@ -409,7 +409,7 @@ mod tests {
                 let Foo { spam<|>: _, } = foo
             }
             ",
-            "spam RECORD_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+            "spam RECORD_FIELD_DEF FileId(1) 17..26 17..21",
             "spam: u32|spam",
         );
     }
@@ -426,7 +426,7 @@ mod tests {
                 Foo { spam<|>: m!() }
             }
             ",
-            "spam RECORD_FIELD_DEF FileId(1) [45; 54) [45; 49)",
+            "spam RECORD_FIELD_DEF FileId(1) 45..54 45..49",
             "spam: u32|spam",
         );
     }
@@ -443,7 +443,7 @@ mod tests {
                 foo.<|>0;
             }
             ",
-            "TUPLE_FIELD_DEF FileId(1) [11; 14)",
+            "TUPLE_FIELD_DEF FileId(1) 11..14",
             "u32",
         );
     }
@@ -462,7 +462,7 @@ mod tests {
                 Foo::frobnicate<|>();
             }
             ",
-            "frobnicate FN_DEF FileId(1) [27; 46) [30; 40)",
+            "frobnicate FN_DEF FileId(1) 27..46 30..40",
             "fn frobnicate() { }|frobnicate",
         );
     }
@@ -480,7 +480,7 @@ mod tests {
                 Foo::frobnicate<|>();
             }
             ",
-            "frobnicate FN_DEF FileId(1) [16; 32) [19; 29)",
+            "frobnicate FN_DEF FileId(1) 16..32 19..29",
             "fn frobnicate();|frobnicate",
         );
     }
@@ -500,7 +500,7 @@ mod tests {
                 Foo::frobnicate<|>();
             }
             ",
-            "frobnicate FN_DEF FileId(1) [30; 46) [33; 43)",
+            "frobnicate FN_DEF FileId(1) 30..46 33..43",
             "fn frobnicate();|frobnicate",
         );
     }
@@ -517,7 +517,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_DEF FileId(1) [12; 73)",
+            "impl IMPL_DEF FileId(1) 12..73",
             "impl Foo {...}",
         );
 
@@ -531,7 +531,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_DEF FileId(1) [12; 73)",
+            "impl IMPL_DEF FileId(1) 12..73",
             "impl Foo {...}",
         );
 
@@ -545,7 +545,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_DEF FileId(1) [15; 75)",
+            "impl IMPL_DEF FileId(1) 15..75",
             "impl Foo {...}",
         );
 
@@ -558,7 +558,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_DEF FileId(1) [15; 62)",
+            "impl IMPL_DEF FileId(1) 15..62",
             "impl Foo {...}",
         );
     }
@@ -578,7 +578,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_DEF FileId(1) [49; 115)",
+            "impl IMPL_DEF FileId(1) 49..115",
             "impl Make for Foo {...}",
         );
 
@@ -595,7 +595,7 @@ mod tests {
                 }
             }
             ",
-            "impl IMPL_DEF FileId(1) [49; 115)",
+            "impl IMPL_DEF FileId(1) 49..115",
             "impl Make for Foo {...}",
         );
     }
@@ -607,7 +607,7 @@ mod tests {
             //- /lib.rs
             struct Foo<|> { value: u32 }
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 25) [7; 10)",
+            "Foo STRUCT_DEF FileId(1) 0..25 7..10",
             "struct Foo { value: u32 }|Foo",
         );
 
@@ -618,7 +618,7 @@ mod tests {
                 field<|>: string,
             }
             "#,
-            "field RECORD_FIELD_DEF FileId(1) [17; 30) [17; 22)",
+            "field RECORD_FIELD_DEF FileId(1) 17..30 17..22",
             "field: string|field",
         );
 
@@ -627,7 +627,7 @@ mod tests {
             //- /lib.rs
             fn foo_test<|>() { }
             ",
-            "foo_test FN_DEF FileId(1) [0; 17) [3; 11)",
+            "foo_test FN_DEF FileId(1) 0..17 3..11",
             "fn foo_test() { }|foo_test",
         );
 
@@ -638,7 +638,7 @@ mod tests {
                 Variant,
             }
             ",
-            "Foo ENUM_DEF FileId(1) [0; 25) [5; 8)",
+            "Foo ENUM_DEF FileId(1) 0..25 5..8",
             "enum Foo {...}|Foo",
         );
 
@@ -651,7 +651,7 @@ mod tests {
                 Variant3,
             }
             ",
-            "Variant2 ENUM_VARIANT FileId(1) [29; 37) [29; 37)",
+            "Variant2 ENUM_VARIANT FileId(1) 29..37 29..37",
             "Variant2|Variant2",
         );
 
@@ -660,7 +660,7 @@ mod tests {
             //- /lib.rs
             static INNER<|>: &str = "";
             "#,
-            "INNER STATIC_DEF FileId(1) [0; 24) [7; 12)",
+            "INNER STATIC_DEF FileId(1) 0..24 7..12",
             "static INNER: &str = \"\";|INNER",
         );
 
@@ -669,7 +669,7 @@ mod tests {
             //- /lib.rs
             const INNER<|>: &str = "";
             "#,
-            "INNER CONST_DEF FileId(1) [0; 23) [6; 11)",
+            "INNER CONST_DEF FileId(1) 0..23 6..11",
             "const INNER: &str = \"\";|INNER",
         );
 
@@ -678,7 +678,7 @@ mod tests {
             //- /lib.rs
             type Thing<|> = Option<()>;
             "#,
-            "Thing TYPE_ALIAS_DEF FileId(1) [0; 24) [5; 10)",
+            "Thing TYPE_ALIAS_DEF FileId(1) 0..24 5..10",
             "type Thing = Option<()>;|Thing",
         );
 
@@ -687,7 +687,7 @@ mod tests {
             //- /lib.rs
             trait Foo<|> { }
             "#,
-            "Foo TRAIT_DEF FileId(1) [0; 13) [6; 9)",
+            "Foo TRAIT_DEF FileId(1) 0..13 6..9",
             "trait Foo { }|Foo",
         );
 
@@ -696,7 +696,7 @@ mod tests {
             //- /lib.rs
             mod bar<|> { }
             "#,
-            "bar MODULE FileId(1) [0; 11) [4; 7)",
+            "bar MODULE FileId(1) 0..11 4..7",
             "mod bar { }|bar",
         );
     }
@@ -717,7 +717,7 @@ mod tests {
             }
             mod confuse_index { fn foo(); }
             ",
-            "foo FN_DEF FileId(1) [52; 63) [55; 58)",
+            "foo FN_DEF FileId(1) 52..63 55..58",
             "fn foo() {}|foo",
         );
     }
@@ -746,7 +746,7 @@ mod tests {
                 format!(\"{}\", fo<|>o())
             }
             ",
-            "foo FN_DEF FileId(1) [398; 415) [401; 404)",
+            "foo FN_DEF FileId(1) 398..415 401..404",
             "fn foo() -> i8 {}|foo",
         );
     }
@@ -760,7 +760,7 @@ mod tests {
                 t: <|>T,
             }
             ",
-            "T TYPE_PARAM FileId(1) [11; 12)",
+            "T TYPE_PARAM FileId(1) 11..12",
             "T",
         );
     }
@@ -782,7 +782,7 @@ mod tests {
                 });
             }
             ",
-            "x BIND_PAT FileId(1) [69; 70)",
+            "x BIND_PAT FileId(1) 69..70",
             "x",
         );
 
@@ -801,7 +801,7 @@ mod tests {
                 });
             }
             ",
-            "y BIND_PAT FileId(1) [98; 99)",
+            "y BIND_PAT FileId(1) 98..99",
             "y",
         );
     }
@@ -818,7 +818,7 @@ mod tests {
                 }
             }
             ",
-            "x BIND_PAT FileId(1) [39; 40)",
+            "x BIND_PAT FileId(1) 39..40",
             "x",
         );
     }
@@ -833,7 +833,7 @@ mod tests {
                 <|>foo!();
             }
             ",
-            "foo MACRO_CALL FileId(1) [15; 48) [28; 31)",
+            "foo MACRO_CALL FileId(1) 15..48 28..31",
             "macro_rules! foo { () => { () } }|foo",
         );
     }
@@ -850,7 +850,7 @@ mod tests {
                 Foo { x<|> };
             }
             ",
-            "x BIND_PAT FileId(1) [42; 43)",
+            "x BIND_PAT FileId(1) 42..43",
             "x",
         )
     }

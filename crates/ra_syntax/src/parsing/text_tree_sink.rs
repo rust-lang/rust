@@ -9,7 +9,7 @@ use crate::{
     syntax_node::GreenNode,
     SmolStr, SyntaxError,
     SyntaxKind::{self, *},
-    SyntaxTreeBuilder, TextRange, TextUnit,
+    SyntaxTreeBuilder, TextRange, TextSize,
 };
 
 /// Bridges the parser with our specific syntax tree representation.
@@ -18,7 +18,7 @@ use crate::{
 pub(crate) struct TextTreeSink<'a> {
     text: &'a str,
     tokens: &'a [Token],
-    text_pos: TextUnit,
+    text_pos: TextSize,
     token_pos: usize,
     state: State,
     inner: SyntaxTreeBuilder,
@@ -42,7 +42,7 @@ impl<'a> TreeSink for TextTreeSink<'a> {
         let len = self.tokens[self.token_pos..self.token_pos + n_tokens]
             .iter()
             .map(|it| it.len)
-            .sum::<TextUnit>();
+            .sum::<TextSize>();
         self.do_token(kind, len, n_tokens);
     }
 
@@ -62,12 +62,12 @@ impl<'a> TreeSink for TextTreeSink<'a> {
             self.tokens[self.token_pos..].iter().take_while(|it| it.kind.is_trivia()).count();
         let leading_trivias = &self.tokens[self.token_pos..self.token_pos + n_trivias];
         let mut trivia_end =
-            self.text_pos + leading_trivias.iter().map(|it| it.len).sum::<TextUnit>();
+            self.text_pos + leading_trivias.iter().map(|it| it.len).sum::<TextSize>();
 
         let n_attached_trivias = {
             let leading_trivias = leading_trivias.iter().rev().map(|it| {
                 let next_end = trivia_end - it.len;
-                let range = TextRange::from_to(next_end, trivia_end);
+                let range = TextRange::new(next_end, trivia_end);
                 trivia_end = next_end;
                 (it.kind, &self.text[range])
             });
@@ -132,8 +132,8 @@ impl<'a> TextTreeSink<'a> {
         }
     }
 
-    fn do_token(&mut self, kind: SyntaxKind, len: TextUnit, n_tokens: usize) {
-        let range = TextRange::offset_len(self.text_pos, len);
+    fn do_token(&mut self, kind: SyntaxKind, len: TextSize, n_tokens: usize) {
+        let range = TextRange::at(self.text_pos, len);
         let text: SmolStr = self.text[range].into();
         self.text_pos += len;
         self.token_pos += n_tokens;

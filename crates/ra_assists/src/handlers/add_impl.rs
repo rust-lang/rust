@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, AstNode, NameOwner, TypeParamsOwner},
-    TextUnit,
+    TextSize,
 };
 use stdx::{format_to, SepBy};
 
@@ -51,7 +51,7 @@ pub(crate) fn add_impl(ctx: AssistCtx) -> Option<Assist> {
             format_to!(buf, "<{}>", generic_params)
         }
         buf.push_str(" {\n");
-        edit.set_cursor(start_offset + TextUnit::of_str(&buf));
+        edit.set_cursor(start_offset + TextSize::of(&buf));
         buf.push_str("\n}");
         edit.insert(start_offset, buf);
     })

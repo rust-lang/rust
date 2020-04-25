@@ -1,20 +1,22 @@
 //! Code actions can specify desirable final position of the cursor.
 //!
-//! The position is specified as a `TextUnit` in the final file. We need to send
+//! The position is specified as a `TextSize` in the final file. We need to send
 //! it in `(Line, Column)` coordinate though. However, we only have a LineIndex
 //! for a file pre-edit!
 //!
 //! Code in this module applies this "to (Line, Column) after edit"
 //! transformation.
 
-use ra_syntax::{TextRange, TextUnit};
+use std::convert::TryInto;
+
+use ra_syntax::{TextRange, TextSize};
 use ra_text_edit::{AtomTextEdit, TextEdit};
 
 use crate::line_index::{LineCol, LineIndex, Utf16Char};
 
 pub fn translate_offset_with_edit(
     line_index: &LineIndex,
-    offset: TextUnit,
+    offset: TextSize,
     text_edit: &TextEdit,
 ) -> LineCol {
     let mut state = Edits::from_text_edit(&text_edit);
@@ -84,7 +86,7 @@ pub fn translate_offset_with_edit(
 
 #[derive(Debug, Clone)]
 enum Step {
-    Newline(TextUnit),
+    Newline(TextSize),
     Utf16Char(TextRange),
 }
 
@@ -92,7 +94,7 @@ enum Step {
 struct LineIndexStepIter<'a> {
     line_index: &'a LineIndex,
     next_newline_idx: usize,
-    utf16_chars: Option<(TextUnit, std::slice::Iter<'a, Utf16Char>)>,
+    utf16_chars: Option<(TextSize, std::slice::Iter<'a, Utf16Char>)>,
 }
 
 impl LineIndexStepIter<'_> {
@@ -111,7 +113,7 @@ impl Iterator for LineIndexStepIter<'_> {
             .as_mut()
             .and_then(|(newline, x)| {
                 let x = x.next()?;
-                Some(Step::Utf16Char(TextRange::from_to(*newline + x.start, *newline + x.end)))
+                Some(Step::Utf16Char(TextRange::new(*newline + x.start, *newline + x.end)))
             })
             .or_else(|| {
                 let next_newline = *self.line_index.newlines.get(self.next_newline_idx)?;
@@ -129,7 +131,7 @@ impl Iterator for LineIndexStepIter<'_> {
 #[derive(Debug)]
 struct OffsetStepIter<'a> {
     text: &'a str,
-    offset: TextUnit,
+    offset: TextSize,
 }
 
 impl Iterator for OffsetStepIter<'_> {
@@ -139,16 +141,17 @@ impl Iterator for OffsetStepIter<'_> {
             .text
             .char_indices()
             .filter_map(|(i, c)| {
+                let i: TextSize = i.try_into().unwrap();
+                let char_len = TextSize::of(c);
                 if c == '\n' {
-                    let next_offset = self.offset + TextUnit::from_usize(i + 1);
+                    let next_offset = self.offset + i + char_len;
                     let next = Step::Newline(next_offset);
                     Some((next, next_offset))
                 } else {
-                    let char_len = TextUnit::of_char(c);
-                    if char_len > TextUnit::from_usize(1) {
-                        let start = self.offset + TextUnit::from_usize(i);
+                    if !c.is_ascii() {
+                        let start = self.offset + i;
                         let end = start + char_len;
-                        let next = Step::Utf16Char(TextRange::from_to(start, end));
+                        let next = Step::Utf16Char(TextRange::new(start, end));
                         let next_offset = end;
                         Some((next, next_offset))
                     } else {
@@ -157,7 +160,7 @@ impl Iterator for OffsetStepIter<'_> {
                 }
             })
             .next()?;
-        let next_idx = (next_offset - self.offset).to_usize();
+        let next_idx: usize = (next_offset - self.offset).into();
         self.text = &self.text[next_idx..];
         self.offset = next_offset;
         Some(next)
@@ -195,7 +198,7 @@ impl<'a> Edits<'a> {
         match self.edits.split_first() {
             Some((next, rest)) => {
                 let delete = self.translate_range(next.delete);
-                let diff = next.insert.len() as i64 - next.delete.len().to_usize() as i64;
+                let diff = next.insert.len() as i64 - usize::from(next.delete.len()) as i64;
                 self.current = Some(TranslatedEdit { delete, insert: &next.insert, diff });
                 self.edits = rest;
             }
@@ -244,15 +247,15 @@ impl<'a> Edits<'a> {
         } else {
             let start = self.translate(range.start());
             let end = self.translate(range.end());
-            TextRange::from_to(start, end)
+            TextRange::new(start, end)
         }
     }
 
-    fn translate(&self, x: TextUnit) -> TextUnit {
+    fn translate(&self, x: TextSize) -> TextSize {
         if self.acc_diff == 0 {
             x
         } else {
-            TextUnit::from((x.to_usize() as i64 + self.acc_diff) as u32)
+            TextSize::from((usize::from(x) as i64 + self.acc_diff) as u32)
         }
     }
 
@@ -271,29 +274,29 @@ impl<'a> Edits<'a> {
 #[derive(Debug)]
 struct RunningLineCol {
     line: u32,
-    last_newline: TextUnit,
-    col_adjust: TextUnit,
+    last_newline: TextSize,
+    col_adjust: TextSize,
 }
 
 impl RunningLineCol {
     fn new() -> RunningLineCol {
-        RunningLineCol { line: 0, last_newline: TextUnit::from(0), col_adjust: TextUnit::from(0) }
+        RunningLineCol { line: 0, last_newline: TextSize::from(0), col_adjust: TextSize::from(0) }
     }
 
-    fn to_line_col(&self, offset: TextUnit) -> LineCol {
+    fn to_line_col(&self, offset: TextSize) -> LineCol {
         LineCol {
             line: self.line,
             col_utf16: ((offset - self.last_newline) - self.col_adjust).into(),
         }
     }
 
-    fn add_line(&mut self, newline: TextUnit) {
+    fn add_line(&mut self, newline: TextSize) {
         self.line += 1;
         self.last_newline = newline;
-        self.col_adjust = TextUnit::from(0);
+        self.col_adjust = TextSize::from(0);
     }
 
     fn adjust_col(&mut self, range: TextRange) {
-        self.col_adjust += range.len() - TextUnit::from(1);
+        self.col_adjust += range.len() - TextSize::from(1);
     }
 }

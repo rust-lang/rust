@@ -60,7 +60,7 @@ use ra_ide_db::{
     symbol_index::{self, FileSymbol},
     LineIndexDatabase,
 };
-use ra_syntax::{SourceFile, TextRange, TextUnit};
+use ra_syntax::{SourceFile, TextRange, TextSize};
 
 use crate::display::ToNav;
 
@@ -265,7 +265,7 @@ impl Analysis {
 
     /// Returns position of the matching brace (all types of braces are
     /// supported).
-    pub fn matching_brace(&self, position: FilePosition) -> Cancelable<Option<TextUnit>> {
+    pub fn matching_brace(&self, position: FilePosition) -> Cancelable<Option<TextSize>> {
         self.with_db(|db| {
             let parse = db.parse(position.file_id);
             let file = parse.tree();

@@ -2,7 +2,7 @@
 
 use ra_syntax::{
     ast::{self, AstNode},
-    TextRange, TextUnit,
+    TextRange, TextSize,
 };
 use ra_text_edit::TextEdit;
 
@@ -115,7 +115,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 fn get_receiver_text(receiver: &ast::Expr, receiver_is_ambiguous_float_literal: bool) -> String {
     if receiver_is_ambiguous_float_literal {
         let text = receiver.syntax().text();
-        let without_dot = ..text.len() - TextUnit::of_char('.');
+        let without_dot = ..text.len() - TextSize::of('.');
         text.slice(without_dot).to_string()
     } else {
         receiver.to_string()
@@ -143,7 +143,7 @@ fn postfix_snippet(
     let edit = {
         let receiver_syntax = receiver.syntax();
         let receiver_range = ctx.sema.original_range(receiver_syntax).range;
-        let delete_range = TextRange::from_to(receiver_range.start(), ctx.source_range().end());
+        let delete_range = TextRange::new(receiver_range.start(), ctx.source_range().end());
         TextEdit::replace(delete_range, snippet.to_string())
     };
     CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label)
@@ -176,57 +176,57 @@ mod tests {
         [
             CompletionItem {
                 label: "box",
-                source_range: [89; 89),
-                delete: [85; 89),
+                source_range: 89..89,
+                delete: 85..89,
                 insert: "Box::new(bar)",
                 detail: "Box::new(expr)",
             },
             CompletionItem {
                 label: "dbg",
-                source_range: [89; 89),
-                delete: [85; 89),
+                source_range: 89..89,
+                delete: 85..89,
                 insert: "dbg!(bar)",
                 detail: "dbg!(expr)",
             },
             CompletionItem {
                 label: "if",
-                source_range: [89; 89),
-                delete: [85; 89),
+                source_range: 89..89,
+                delete: 85..89,
                 insert: "if bar {$0}",
                 detail: "if expr {}",
             },
             CompletionItem {
                 label: "match",
-                source_range: [89; 89),
-                delete: [85; 89),
+                source_range: 89..89,
+                delete: 85..89,
                 insert: "match bar {\n    ${1:_} => {$0\\},\n}",
                 detail: "match expr {}",
             },
             CompletionItem {
                 label: "not",
-                source_range: [89; 89),
-                delete: [85; 89),
+                source_range: 89..89,
+                delete: 85..89,
                 insert: "!bar",
                 detail: "!expr",
             },
             CompletionItem {
                 label: "ref",
-                source_range: [89; 89),
-                delete: [85; 89),
+                source_range: 89..89,
+                delete: 85..89,
                 insert: "&bar",
                 detail: "&expr",
             },
             CompletionItem {
                 label: "refm",
-                source_range: [89; 89),
-                delete: [85; 89),
+                source_range: 89..89,
+                delete: 85..89,
                 insert: "&mut bar",
                 detail: "&mut expr",
             },
             CompletionItem {
                 label: "while",
-                source_range: [89; 89),
-                delete: [85; 89),
+                source_range: 89..89,
+                delete: 85..89,
                 insert: "while bar {\n$0\n}",
                 detail: "while expr {}",
             },
@@ -250,43 +250,43 @@ mod tests {
         [
             CompletionItem {
                 label: "box",
-                source_range: [91; 91),
-                delete: [87; 91),
+                source_range: 91..91,
+                delete: 87..91,
                 insert: "Box::new(bar)",
                 detail: "Box::new(expr)",
             },
             CompletionItem {
                 label: "dbg",
-                source_range: [91; 91),
-                delete: [87; 91),
+                source_range: 91..91,
+                delete: 87..91,
                 insert: "dbg!(bar)",
                 detail: "dbg!(expr)",
             },
             CompletionItem {
                 label: "match",
-                source_range: [91; 91),
-                delete: [87; 91),
+                source_range: 91..91,
+                delete: 87..91,
                 insert: "match bar {\n    ${1:_} => {$0\\},\n}",
                 detail: "match expr {}",
             },
             CompletionItem {
                 label: "not",
-                source_range: [91; 91),
-                delete: [87; 91),
+                source_range: 91..91,
+                delete: 87..91,
                 insert: "!bar",
                 detail: "!expr",
             },
             CompletionItem {
                 label: "ref",
-                source_range: [91; 91),
-                delete: [87; 91),
+                source_range: 91..91,
+                delete: 87..91,
                 insert: "&bar",
                 detail: "&expr",
             },
             CompletionItem {
                 label: "refm",
-                source_range: [91; 91),
-                delete: [87; 91),
+                source_range: 91..91,
+                delete: 87..91,
                 insert: "&mut bar",
                 detail: "&mut expr",
             },
@@ -309,43 +309,43 @@ mod tests {
         [
             CompletionItem {
                 label: "box",
-                source_range: [52; 52),
-                delete: [49; 52),
+                source_range: 52..52,
+                delete: 49..52,
                 insert: "Box::new(42)",
                 detail: "Box::new(expr)",
             },
             CompletionItem {
                 label: "dbg",
-                source_range: [52; 52),
-                delete: [49; 52),
+                source_range: 52..52,
+                delete: 49..52,
                 insert: "dbg!(42)",
                 detail: "dbg!(expr)",
             },
             CompletionItem {
                 label: "match",
-                source_range: [52; 52),
-                delete: [49; 52),
+                source_range: 52..52,
+                delete: 49..52,
                 insert: "match 42 {\n    ${1:_} => {$0\\},\n}",
                 detail: "match expr {}",
             },
             CompletionItem {
                 label: "not",
-                source_range: [52; 52),
-                delete: [49; 52),
+                source_range: 52..52,
+                delete: 49..52,
                 insert: "!42",
                 detail: "!expr",
             },
             CompletionItem {
                 label: "ref",
-                source_range: [52; 52),
-                delete: [49; 52),
+                source_range: 52..52,
+                delete: 49..52,
                 insert: "&42",
                 detail: "&expr",
             },
             CompletionItem {
                 label: "refm",
-                source_range: [52; 52),
-                delete: [49; 52),
+                source_range: 52..52,
+                delete: 49..52,
                 insert: "&mut 42",
                 detail: "&mut expr",
             },
@@ -370,43 +370,43 @@ mod tests {
         [
             CompletionItem {
                 label: "box",
-                source_range: [149; 150),
-                delete: [145; 150),
+                source_range: 149..150,
+                delete: 145..150,
                 insert: "Box::new(bar)",
                 detail: "Box::new(expr)",
             },
             CompletionItem {
                 label: "dbg",
-                source_range: [149; 150),
-                delete: [145; 150),
+                source_range: 149..150,
+                delete: 145..150,
                 insert: "dbg!(bar)",
                 detail: "dbg!(expr)",
             },
             CompletionItem {
                 label: "match",
-                source_range: [149; 150),
-                delete: [145; 150),
+                source_range: 149..150,
+                delete: 145..150,
                 insert: "match bar {\n    ${1:_} => {$0\\},\n}",
                 detail: "match expr {}",
             },
             CompletionItem {
                 label: "not",
-                source_range: [149; 150),
-                delete: [145; 150),
+                source_range: 149..150,
+                delete: 145..150,
                 insert: "!bar",
                 detail: "!expr",
             },
             CompletionItem {
                 label: "ref",
-                source_range: [149; 150),
-                delete: [145; 150),
+                source_range: 149..150,
+                delete: 145..150,
                 insert: "&bar",
                 detail: "&expr",
             },
             CompletionItem {
                 label: "refm",
-                source_range: [149; 150),
-                delete: [145; 150),
+                source_range: 149..150,
+                delete: 145..150,
                 insert: "&mut bar",
                 detail: "&mut expr",
             },
@@ -429,43 +429,43 @@ mod tests {
         [
             CompletionItem {
                 label: "box",
-                source_range: [56; 56),
-                delete: [49; 56),
+                source_range: 56..56,
+                delete: 49..56,
                 insert: "Box::new(&&&&42)",
                 detail: "Box::new(expr)",
             },
             CompletionItem {
                 label: "dbg",
-                source_range: [56; 56),
-                delete: [49; 56),
+                source_range: 56..56,
+                delete: 49..56,
                 insert: "dbg!(&&&&42)",
                 detail: "dbg!(expr)",
             },
             CompletionItem {
                 label: "match",
-                source_range: [56; 56),
-                delete: [49; 56),
+                source_range: 56..56,
+                delete: 49..56,
                 insert: "match &&&&42 {\n    ${1:_} => {$0\\},\n}",
                 detail: "match expr {}",
             },
             CompletionItem {
                 label: "not",
-                source_range: [56; 56),
-                delete: [53; 56),
+                source_range: 56..56,
+                delete: 53..56,
                 insert: "!42",
                 detail: "!expr",
             },
             CompletionItem {
                 label: "ref",
-                source_range: [56; 56),
-                delete: [53; 56),
+                source_range: 56..56,
+                delete: 53..56,
                 insert: "&42",
                 detail: "&expr",
             },
             CompletionItem {
                 label: "refm",
-                source_range: [56; 56),
-                delete: [53; 56),
+                source_range: 56..56,
+                delete: 53..56,
                 insert: "&mut 42",
                 detail: "&mut expr",
             },

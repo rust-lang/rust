@@ -22,7 +22,7 @@ use ra_db::{impl_intern_key, salsa, CrateId, FileId};
 use ra_syntax::{
     algo,
     ast::{self, AstNode},
-    SyntaxNode, SyntaxToken, TextUnit,
+    SyntaxNode, SyntaxToken, TextSize,
 };
 
 use crate::ast_id_map::FileAstId;
@@ -348,7 +348,7 @@ impl<N: AstNode> AstId<N> {
 ///
 /// * `InFile<SyntaxNode>` -- syntax node in a file
 /// * `InFile<ast::FnDef>` -- ast node in a file
-/// * `InFile<TextUnit>` -- offset in a file
+/// * `InFile<TextSize>` -- offset in a file
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct InFile<T> {
     pub file_id: HirFileId,

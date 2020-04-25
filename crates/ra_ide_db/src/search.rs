@@ -4,13 +4,13 @@
 //! get a super-set of matches. Then, we we confirm each match using precise
 //! name resolution.
 
-use std::mem;
+use std::{convert::TryInto, mem};
 
 use hir::{DefWithBody, HasSource, Module, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
 use ra_db::{FileId, FileRange, SourceDatabaseExt};
 use ra_prof::profile;
-use ra_syntax::{ast, match_ast, AstNode, TextRange, TextUnit};
+use ra_syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
@@ -85,7 +85,7 @@ impl SearchScope {
             match (r1, r2) {
                 (None, r) | (r, None) => Some(r),
                 (Some(r1), Some(r2)) => {
-                    let r = r1.intersection(&r2)?;
+                    let r = r1.intersect(r2)?;
                     Some(Some(r))
                 }
             }
@@ -201,13 +201,13 @@ impl Definition {
         for (file_id, search_range) in search_scope {
             let text = db.file_text(file_id);
             let search_range =
-                search_range.unwrap_or(TextRange::offset_len(0.into(), TextUnit::of_str(&text)));
+                search_range.unwrap_or(TextRange::up_to(TextSize::of(text.as_str())));
 
             let sema = Semantics::new(db);
             let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
 
             for (idx, _) in text.match_indices(pat) {
-                let offset = TextUnit::from_usize(idx);
+                let offset: TextSize = idx.try_into().unwrap();
                 if !search_range.contains_inclusive(offset) {
                     tested_by!(search_filters_by_range; force);
                     continue;

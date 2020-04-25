@@ -275,7 +275,7 @@ mod tests {
             ",
         );
         let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(hover.range, TextRange::from_to(95.into(), 100.into()));
+        assert_eq!(hover.range, TextRange::new(95.into(), 100.into()));
         assert_eq!(trim_markup_opt(hover.info.first()), Some("u32"));
     }
 
