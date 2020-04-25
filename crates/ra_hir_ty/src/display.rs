@@ -6,28 +6,42 @@ use crate::{
     db::HirDatabase, utils::generics, ApplicationTy, CallableDef, FnSig, GenericPredicate,
     Obligation, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
-use hir_def::{generics::TypeParamProvenance, AdtId, AssocContainerId, Lookup};
+use hir_def::{
+    find_path, generics::TypeParamProvenance, item_scope::ItemInNs, AdtId, AssocContainerId,
+    Lookup, ModuleId,
+};
 use hir_expand::name::Name;
 
-pub struct HirFormatter<'a, 'b> {
+pub struct HirFormatter<'a> {
     pub db: &'a dyn HirDatabase,
-    fmt: &'a mut fmt::Formatter<'b>,
+    fmt: &'a mut dyn fmt::Write,
     buf: String,
     curr_size: usize,
     pub(crate) max_size: Option<usize>,
     omit_verbose_types: bool,
+    display_target: DisplayTarget,
 }
 
 pub trait HirDisplay {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result;
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError>;
 
+    /// Returns a `Display`able type that is human-readable.
+    /// Use this for showing types to the user (e.g. diagnostics)
     fn display<'a>(&'a self, db: &'a dyn HirDatabase) -> HirDisplayWrapper<'a, Self>
     where
         Self: Sized,
     {
-        HirDisplayWrapper(db, self, None, false)
+        HirDisplayWrapper {
+            db,
+            t: self,
+            max_size: None,
+            omit_verbose_types: false,
+            display_target: DisplayTarget::Diagnostics,
+        }
     }
 
+    /// Returns a `Display`able type that is human-readable and tries to be succinct.
+    /// Use this for showing types to the user where space is constrained (e.g. doc popups)
     fn display_truncated<'a>(
         &'a self,
         db: &'a dyn HirDatabase,
@@ -36,16 +50,46 @@ pub trait HirDisplay {
     where
         Self: Sized,
     {
-        HirDisplayWrapper(db, self, max_size, true)
+        HirDisplayWrapper {
+            db,
+            t: self,
+            max_size,
+            omit_verbose_types: true,
+            display_target: DisplayTarget::Diagnostics,
+        }
+    }
+
+    /// Returns a String representation of `self` that can be inserted into the given module.
+    /// Use this when generating code (e.g. assists)
+    fn display_source_code<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+        module_id: ModuleId,
+    ) -> Result<String, DisplaySourceCodeError> {
+        let mut result = String::new();
+        match self.hir_fmt(&mut HirFormatter {
+            db,
+            fmt: &mut result,
+            buf: String::with_capacity(20),
+            curr_size: 0,
+            max_size: None,
+            omit_verbose_types: false,
+            display_target: DisplayTarget::SourceCode { module_id },
+        }) {
+            Ok(()) => {}
+            Err(HirDisplayError::FmtError) => panic!("Writing to String can't fail!"),
+            Err(HirDisplayError::DisplaySourceCodeError(e)) => return Err(e),
+        };
+        Ok(result)
     }
 }
 
-impl<'a, 'b> HirFormatter<'a, 'b> {
+impl<'a> HirFormatter<'a> {
     pub fn write_joined<T: HirDisplay>(
         &mut self,
         iter: impl IntoIterator<Item = T>,
         sep: &str,
-    ) -> fmt::Result {
+    ) -> Result<(), HirDisplayError> {
         let mut first = true;
         for e in iter {
             if !first {
@@ -58,14 +102,14 @@ impl<'a, 'b> HirFormatter<'a, 'b> {
     }
 
     /// This allows using the `write!` macro directly with a `HirFormatter`.
-    pub fn write_fmt(&mut self, args: fmt::Arguments) -> fmt::Result {
+    pub fn write_fmt(&mut self, args: fmt::Arguments) -> Result<(), HirDisplayError> {
         // We write to a buffer first to track output size
         self.buf.clear();
         fmt::write(&mut self.buf, args)?;
         self.curr_size += self.buf.len();
 
         // Then we write to the internal formatter from the buffer
-        self.fmt.write_str(&self.buf)
+        self.fmt.write_str(&self.buf).map_err(HirDisplayError::from)
     }
 
     pub fn should_truncate(&self) -> bool {
@@ -81,34 +125,76 @@ impl<'a, 'b> HirFormatter<'a, 'b> {
     }
 }
 
-pub struct HirDisplayWrapper<'a, T>(&'a dyn HirDatabase, &'a T, Option<usize>, bool);
+#[derive(Clone, Copy)]
+enum DisplayTarget {
+    /// Display types for inlays, doc popups, autocompletion, etc...
+    /// Showing `{unknown}` or not qualifying paths is fine here.
+    /// There's no reason for this to fail.
+    Diagnostics,
+    /// Display types for inserting them in source files.
+    /// The generated code should compile, so paths need to be qualified.
+    SourceCode { module_id: ModuleId },
+}
+
+#[derive(Debug)]
+pub enum DisplaySourceCodeError {
+    PathNotFound,
+}
+
+pub enum HirDisplayError {
+    /// Errors that can occur when generating source code
+    DisplaySourceCodeError(DisplaySourceCodeError),
+    /// `FmtError` is required to be compatible with std::fmt::Display
+    FmtError,
+}
+impl From<fmt::Error> for HirDisplayError {
+    fn from(_: fmt::Error) -> Self {
+        Self::FmtError
+    }
+}
+
+pub struct HirDisplayWrapper<'a, T> {
+    db: &'a dyn HirDatabase,
+    t: &'a T,
+    max_size: Option<usize>,
+    omit_verbose_types: bool,
+    display_target: DisplayTarget,
+}
 
 impl<'a, T> fmt::Display for HirDisplayWrapper<'a, T>
 where
     T: HirDisplay,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.1.hir_fmt(&mut HirFormatter {
-            db: self.0,
+        match self.t.hir_fmt(&mut HirFormatter {
+            db: self.db,
             fmt: f,
             buf: String::with_capacity(20),
             curr_size: 0,
-            max_size: self.2,
-            omit_verbose_types: self.3,
-        })
+            max_size: self.max_size,
+            omit_verbose_types: self.omit_verbose_types,
+            display_target: self.display_target,
+        }) {
+            Ok(()) => Ok(()),
+            Err(HirDisplayError::FmtError) => Err(fmt::Error),
+            Err(HirDisplayError::DisplaySourceCodeError(_)) => {
+                // This should never happen
+                panic!("HirDisplay failed when calling Display::fmt!")
+            }
+        }
     }
 }
 
 const TYPE_HINT_TRUNCATION: &str = "…";
 
 impl HirDisplay for &Ty {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         HirDisplay::hir_fmt(*self, f)
     }
 }
 
 impl HirDisplay for ApplicationTy {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -191,12 +277,30 @@ impl HirDisplay for ApplicationTy {
                 }
             }
             TypeCtor::Adt(def_id) => {
-                let name = match def_id {
-                    AdtId::StructId(it) => f.db.struct_data(it).name.clone(),
-                    AdtId::UnionId(it) => f.db.union_data(it).name.clone(),
-                    AdtId::EnumId(it) => f.db.enum_data(it).name.clone(),
-                };
-                write!(f, "{}", name)?;
+                match f.display_target {
+                    DisplayTarget::Diagnostics => {
+                        let name = match def_id {
+                            AdtId::StructId(it) => f.db.struct_data(it).name.clone(),
+                            AdtId::UnionId(it) => f.db.union_data(it).name.clone(),
+                            AdtId::EnumId(it) => f.db.enum_data(it).name.clone(),
+                        };
+                        write!(f, "{}", name)?;
+                    }
+                    DisplayTarget::SourceCode { module_id } => {
+                        if let Some(path) = find_path::find_path(
+                            f.db.upcast(),
+                            ItemInNs::Types(def_id.into()),
+                            module_id,
+                        ) {
+                            write!(f, "{}", path)?;
+                        } else {
+                            return Err(HirDisplayError::DisplaySourceCodeError(
+                                DisplaySourceCodeError::PathNotFound,
+                            ));
+                        }
+                    }
+                }
+
                 if self.parameters.len() > 0 {
                     let mut non_default_parameters = Vec::with_capacity(self.parameters.len());
                     let parameters_to_write = if f.omit_verbose_types() {
@@ -269,7 +373,7 @@ impl HirDisplay for ApplicationTy {
 }
 
 impl HirDisplay for ProjectionTy {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -287,7 +391,7 @@ impl HirDisplay for ProjectionTy {
 }
 
 impl HirDisplay for Ty {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -332,7 +436,7 @@ impl HirDisplay for Ty {
 fn write_bounds_like_dyn_trait(
     predicates: &[GenericPredicate],
     f: &mut HirFormatter,
-) -> fmt::Result {
+) -> Result<(), HirDisplayError> {
     // Note: This code is written to produce nice results (i.e.
     // corresponding to surface Rust) for types that can occur in
     // actual Rust. It will have weird results if the predicates
@@ -394,7 +498,7 @@ fn write_bounds_like_dyn_trait(
 }
 
 impl TraitRef {
-    fn hir_fmt_ext(&self, f: &mut HirFormatter, use_as: bool) -> fmt::Result {
+    fn hir_fmt_ext(&self, f: &mut HirFormatter, use_as: bool) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -416,19 +520,19 @@ impl TraitRef {
 }
 
 impl HirDisplay for TraitRef {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         self.hir_fmt_ext(f, false)
     }
 }
 
 impl HirDisplay for &GenericPredicate {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         HirDisplay::hir_fmt(*self, f)
     }
 }
 
 impl HirDisplay for GenericPredicate {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
@@ -452,15 +556,15 @@ impl HirDisplay for GenericPredicate {
 }
 
 impl HirDisplay for Obligation {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> fmt::Result {
-        match self {
-            Obligation::Trait(tr) => write!(f, "Implements({})", tr.display(f.db)),
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        Ok(match self {
+            Obligation::Trait(tr) => write!(f, "Implements({})", tr.display(f.db))?,
             Obligation::Projection(proj) => write!(
                 f,
                 "Normalize({} => {})",
                 proj.projection_ty.display(f.db),
                 proj.ty.display(f.db)
-            ),
-        }
+            )?,
+        })
     }
 }
