@@ -69,6 +69,7 @@ pub enum RustfmtConfig {
 pub struct ClientCapsConfig {
     pub location_link: bool,
     pub line_folding_only: bool,
+    pub hierarchical_symbols: bool,
 }
 
 impl Default for Config {
@@ -214,6 +215,11 @@ impl Config {
         }
         if let Some(value) = caps.folding_range.as_ref().and_then(|it| it.line_folding_only) {
             self.client_caps.line_folding_only = value
+        }
+        if let Some(value) =
+            caps.document_symbol.as_ref().and_then(|it| it.hierarchical_document_symbol_support)
+        {
+            self.client_caps.hierarchical_symbols = value
         }
         self.completion.allow_snippets(false);
         if let Some(completion) = &caps.completion {
