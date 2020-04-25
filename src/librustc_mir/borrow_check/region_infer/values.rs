@@ -89,7 +89,7 @@ impl RegionValueElements {
             // If this is a basic block head, then the predecessors are
             // the terminators of other basic blocks
             stack.extend(
-                body.predecessors_for(block)
+                body.predecessors()[block]
                     .iter()
                     .map(|&pred_bb| body.terminator_loc(pred_bb))
                     .map(|pred_loc| self.point_from_location(pred_loc)),
