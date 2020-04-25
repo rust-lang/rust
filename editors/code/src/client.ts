@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { CallHierarchyFeature } from 'vscode-languageclient/lib/callHierarchy.proposed';
 import { SemanticTokensFeature, DocumentSemanticsTokensSignature } from 'vscode-languageclient/lib/semanticTokens.proposed';
 
-export async function createClient(serverPath: string, cwd: string): Promise<lc.LanguageClient> {
+export function createClient(serverPath: string, cwd: string): lc.LanguageClient {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
     // It might be a good idea to test if the uri points to a file.
