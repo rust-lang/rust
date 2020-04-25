@@ -1134,7 +1134,7 @@ fn check_for_loop_range<'a, 'tcx>(
                         |diag| {
                             multispan_sugg(
                                 diag,
-                                "consider using an iterator".to_string(),
+                                "consider using an iterator",
                                 vec![
                                     (pat.span, format!("({}, <item>)", ident.name)),
                                     (
@@ -1163,7 +1163,7 @@ fn check_for_loop_range<'a, 'tcx>(
                         |diag| {
                             multispan_sugg(
                                 diag,
-                                "consider using an iterator".to_string(),
+                                "consider using an iterator",
                                 vec![(pat.span, "<item>".to_string()), (arg.span, repl)],
                             );
                         },
