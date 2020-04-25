@@ -53,7 +53,6 @@ pub fn main() {
     assert_eq!(TypeId::of::<A>(), other2::foo::<A>());
     assert_eq!(TypeId::of::<A>(), other1::foo::<A>());
     assert_eq!(other2::foo::<A>(), other1::foo::<A>());
-    assert_eq!(other1::id_J(), other2::id_J());
 
     // sanity test of TypeId
     let (a, b, c) = (TypeId::of::<usize>(), TypeId::of::<&'static str>(),
