@@ -14,7 +14,8 @@ use rustc_session::{build_session, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::SourceFileHashAlgorithm;
-use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelocModel, RelroLevel};
+use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy};
+use rustc_target::spec::{RelocModel, RelroLevel, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::PathBuf;
@@ -567,7 +568,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(symbol_mangling_version, SymbolManglingVersion::V0);
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
-    tracked!(tls_model, Some(String::from("tls model")));
+    tracked!(tls_model, Some(TlsModel::GeneralDynamic));
     tracked!(treat_err_as_bug, Some(1));
     tracked!(unleash_the_miri_inside_of_you, true);
     tracked!(verify_llvm_ir, true);

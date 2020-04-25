@@ -1,4 +1,4 @@
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOptions};
+use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel};
 use std::collections::BTreeMap;
 
 pub fn options() -> TargetOptions {
@@ -138,7 +138,7 @@ pub fn options() -> TargetOptions {
         // `has_elf_tls`) and we need to get it to work by specifying
         // `local-exec` as that's all that's implemented in LLVM today for wasm.
         has_elf_tls: true,
-        tls_model: "local-exec".to_string(),
+        tls_model: TlsModel::LocalExec,
 
         // gdb scripts don't work on wasm blobs
         emit_debug_gdb_scripts: false,

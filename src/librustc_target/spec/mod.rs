@@ -305,6 +305,42 @@ impl ToJson for RelocModel {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum TlsModel {
+    GeneralDynamic,
+    LocalDynamic,
+    InitialExec,
+    LocalExec,
+}
+
+impl FromStr for TlsModel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<TlsModel, ()> {
+        Ok(match s {
+            // Note the difference "general" vs "global" difference. The model name is "general",
+            // but the user-facing option name is "global" for consistency with other compilers.
+            "global-dynamic" => TlsModel::GeneralDynamic,
+            "local-dynamic" => TlsModel::LocalDynamic,
+            "initial-exec" => TlsModel::InitialExec,
+            "local-exec" => TlsModel::LocalExec,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl ToJson for TlsModel {
+    fn to_json(&self) -> Json {
+        match *self {
+            TlsModel::GeneralDynamic => "global-dynamic",
+            TlsModel::LocalDynamic => "local-dynamic",
+            TlsModel::InitialExec => "initial-exec",
+            TlsModel::LocalExec => "local-exec",
+        }
+        .to_json()
+    }
+}
+
 pub enum LoadTargetError {
     BuiltinTargetNotFound(String),
     Other(String),
@@ -660,7 +696,7 @@ pub struct TargetOptions {
     pub code_model: Option<String>,
     /// TLS model to use. Options are "global-dynamic" (default), "local-dynamic", "initial-exec"
     /// and "local-exec". This is similar to the -ftls-model option in GCC/Clang.
-    pub tls_model: String,
+    pub tls_model: TlsModel,
     /// Do not emit code that uses the "red zone", if the ABI has one. Defaults to false.
     pub disable_redzone: bool,
     /// Eliminate frame pointers from stack frames if possible. Defaults to true.
@@ -863,7 +899,7 @@ impl Default for TargetOptions {
             executables: false,
             relocation_model: RelocModel::Pic,
             code_model: None,
-            tls_model: "global-dynamic".to_string(),
+            tls_model: TlsModel::GeneralDynamic,
             disable_redzone: false,
             eliminate_frame_pointer: true,
             function_sections: true,
@@ -1060,6 +1096,18 @@ impl Target {
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, TlsModel) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match s.parse::<TlsModel>() {
+                        Ok(tls_model) => base.options.$key_name = tls_model,
+                        _ => return Some(Err(format!("'{}' is not a valid TLS model. \
+                                                      Run `rustc --print tls-models` to \
+                                                      see the list of supported values.", s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, PanicStrategy) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1200,7 +1248,7 @@ impl Target {
         key!(executables, bool);
         key!(relocation_model, RelocModel)?;
         key!(code_model, optional);
-        key!(tls_model);
+        key!(tls_model, TlsModel)?;
         key!(disable_redzone, bool);
         key!(eliminate_frame_pointer, bool);
         key!(function_sections, bool);
