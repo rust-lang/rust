@@ -3,6 +3,8 @@
 #![warn(clippy::mismatched_target_os)]
 #![allow(unused)]
 
+// unix
+
 #[cfg(target_os = "linux")]
 fn linux() {}
 
@@ -27,6 +29,45 @@ fn ios() {}
 #[cfg(target_os = "android")]
 fn android() {}
 
+#[cfg(target_os = "emscripten")]
+fn emscripten() {}
+
+#[cfg(target_os = "fuchsia")]
+fn fuchsia() {}
+
+#[cfg(target_os = "haiku")]
+fn haiku() {}
+
+#[cfg(target_os = "illumos")]
+fn illumos() {}
+
+#[cfg(target_os = "l4re")]
+fn l4re() {}
+
+#[cfg(target_os = "redox")]
+fn redox() {}
+
+#[cfg(target_os = "solaris")]
+fn solaris() {}
+
+#[cfg(target_os = "vxworks")]
+fn vxworks() {}
+
+// non-unix
+
+#[cfg(target_os = "cloudabi")]
+fn cloudabi() {}
+
+#[cfg(target_os = "hermit")]
+fn hermit() {}
+
+#[cfg(target_os = "wasi")]
+fn wasi() {}
+
+#[cfg(target_os = "none")]
+fn none() {}
+
+// list with conditions
 #[cfg(all(not(any(windows, target_os = "linux")), target_os = "freebsd"))]
 fn list() {}
 

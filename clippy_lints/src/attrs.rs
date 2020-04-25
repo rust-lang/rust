@@ -20,29 +20,27 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 use semver::Version;
 
-// NOTE: windows is excluded from the list because it's also a valid target family.
-static OPERATING_SYSTEMS: &[&str] = &[
+static UNIX_SYSTEMS: &[&str] = &[
     "android",
-    "cloudabi",
     "dragonfly",
     "emscripten",
     "freebsd",
     "fuchsia",
     "haiku",
-    "hermit",
     "illumos",
     "ios",
     "l4re",
     "linux",
     "macos",
     "netbsd",
-    "none",
     "openbsd",
     "redox",
     "solaris",
     "vxworks",
-    "wasi",
 ];
+
+// NOTE: windows is excluded from the list because it's also a valid target family.
+static NON_UNIX_SYSTEMS: &[&str] = &["cloudabi", "hermit", "none", "wasi"];
 
 declare_clippy_lint! {
     /// **What it does:** Checks for items annotated with `#[inline(always)]`,
@@ -592,8 +590,21 @@ fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute) {
 }
 
 fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
+    fn find_os(name: &str) -> Option<&'static str> {
+        UNIX_SYSTEMS
+            .iter()
+            .chain(NON_UNIX_SYSTEMS.iter())
+            .find(|&&os| os == name)
+            .copied()
+    }
+
+    fn is_unix(name: &str) -> bool {
+        UNIX_SYSTEMS.iter().any(|&os| os == name)
+    }
+
     fn find_mismatched_target_os(items: &[NestedMetaItem]) -> Vec<(&str, Span)> {
         let mut mismatched = Vec::new();
+
         for item in items {
             if let NestedMetaItem::MetaItem(meta) = item {
                 match &meta.kind {
@@ -601,9 +612,10 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                         mismatched.extend(find_mismatched_target_os(&list));
                     },
                     MetaItemKind::Word => {
-                        if let Some(ident) = meta.ident() {
-                            let name = &*ident.name.as_str();
-                            if let Some(os) = OPERATING_SYSTEMS.iter().find(|&&os| os == name) {
+                        if_chain! {
+                            if let Some(ident) = meta.ident();
+                            if let Some(os) = find_os(&*ident.name.as_str());
+                            then {
                                 mismatched.push((os, ident.span));
                             }
                         }
@@ -612,23 +624,33 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                 }
             }
         }
+
         mismatched
     }
 
     if_chain! {
         if attr.check_name(sym!(cfg));
         if let Some(list) = attr.meta_item_list();
+        let mismatched = find_mismatched_target_os(&list);
+        if let Some((_, span)) = mismatched.iter().peekable().peek();
         then {
-            let mismatched = find_mismatched_target_os(&list);
-            for (os, span) in mismatched {
-                let mess = format!("`{}` is not a valid target family", os);
-                let sugg = format!("target_os = \"{}\"", os);
+            let mess = "operating system used in target family position";
 
-                span_lint_and_then(cx, MISMATCHED_TARGET_OS, span, &mess, |diag| {
+            span_lint_and_then(cx, MISMATCHED_TARGET_OS, *span, &mess, |diag| {
+                // Avoid showing the unix suggestion multiple times in case
+                // we have more than one mismatch for unix-like systems
+                let mut unix_suggested = false;
+
+                for (os, span) in mismatched {
+                    let sugg = format!("target_os = \"{}\"", os);
                     diag.span_suggestion(span, "try", sugg, Applicability::MaybeIncorrect);
-                    diag.help("Did you mean `unix`?");
-                });
-            }
+
+                    if !unix_suggested && is_unix(os) {
+                        diag.help("Did you mean `unix`?");
+                        unix_suggested = true;
+                    }
+                }
+            });
         }
     }
 }
