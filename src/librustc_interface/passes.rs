@@ -109,7 +109,8 @@ pub fn configure_and_expand(
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
     let crate_name = crate_name.to_string();
-    let (result, resolver) = BoxedResolver::new(static move || {
+    let (result, resolver) = BoxedResolver::new(static move |mut action| {
+        let _ = action;
         let sess = &*sess;
         let resolver_arenas = Resolver::arenas();
         let res = configure_and_expand_inner(
@@ -126,11 +127,11 @@ pub fn configure_and_expand(
                 panic!()
             }
             Ok((krate, resolver)) => {
-                yield BoxedResolver::initial_yield(Ok(krate));
+                action = yield BoxedResolver::initial_yield(Ok(krate));
                 resolver
             }
         };
-        box_region_allow_access!(for(), (&mut Resolver<'_>), (&mut resolver));
+        box_region_allow_access!(for(), (&mut Resolver<'_>), (&mut resolver), action);
         resolver.into_outputs()
     });
     result.map(|k| (k, resolver))
