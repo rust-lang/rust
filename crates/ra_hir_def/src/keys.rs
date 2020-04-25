@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     dyn_map::{DynMap, Policy},
-    ConstId, EnumId, EnumVariantId, FunctionId, ImplId, StaticId, StructFieldId, StructId, TraitId,
+    ConstId, EnumId, EnumVariantId, FieldId, FunctionId, ImplId, StaticId, StructId, TraitId,
     TypeAliasId, TypeParamId, UnionId,
 };
 
@@ -25,8 +25,8 @@ pub const UNION: Key<ast::UnionDef, UnionId> = Key::new();
 pub const ENUM: Key<ast::EnumDef, EnumId> = Key::new();
 
 pub const ENUM_VARIANT: Key<ast::EnumVariant, EnumVariantId> = Key::new();
-pub const TUPLE_FIELD: Key<ast::TupleFieldDef, StructFieldId> = Key::new();
-pub const RECORD_FIELD: Key<ast::RecordFieldDef, StructFieldId> = Key::new();
+pub const TUPLE_FIELD: Key<ast::TupleFieldDef, FieldId> = Key::new();
+pub const RECORD_FIELD: Key<ast::RecordFieldDef, FieldId> = Key::new();
 pub const TYPE_PARAM: Key<ast::TypeParam, TypeParamId> = Key::new();
 
 pub const MACRO: Key<ast::MacroCall, MacroDefId> = Key::new();

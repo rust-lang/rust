@@ -51,12 +51,12 @@ fn source_edit_from_reference(reference: Reference, new_name: &str) -> SourceFil
     let mut replacement_text = String::new();
     let file_id = reference.file_range.file_id;
     let range = match reference.kind {
-        ReferenceKind::StructFieldShorthandForField => {
+        ReferenceKind::FieldShorthandForField => {
             replacement_text.push_str(new_name);
             replacement_text.push_str(": ");
             TextRange::new(reference.file_range.range.start(), reference.file_range.range.start())
         }
-        ReferenceKind::StructFieldShorthandForLocal => {
+        ReferenceKind::FieldShorthandForLocal => {
             replacement_text.push_str(": ");
             replacement_text.push_str(new_name);
             TextRange::new(reference.file_range.range.end(), reference.file_range.range.end())

@@ -422,7 +422,7 @@ fn highlight_element(
 fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
     match def {
         Definition::Macro(_) => HighlightTag::Macro,
-        Definition::StructField(_) => HighlightTag::Field,
+        Definition::Field(_) => HighlightTag::Field,
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
             hir::ModuleDef::Function(_) => HighlightTag::Function,

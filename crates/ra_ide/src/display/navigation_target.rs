@@ -189,7 +189,7 @@ impl TryToNav for Definition {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         match self {
             Definition::Macro(it) => Some(it.to_nav(db)),
-            Definition::StructField(it) => Some(it.to_nav(db)),
+            Definition::Field(it) => Some(it.to_nav(db)),
             Definition::ModuleDef(it) => it.try_to_nav(db),
             Definition::SelfType(it) => Some(it.to_nav(db)),
             Definition::Local(it) => Some(it.to_nav(db)),
@@ -286,7 +286,7 @@ impl ToNav for hir::ImplDef {
     }
 }
 
-impl ToNav for hir::StructField {
+impl ToNav for hir::Field {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
 

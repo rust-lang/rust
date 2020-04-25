@@ -6,8 +6,8 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, Name, PathResolution, Semantics,
-    StructField, TypeParam, Visibility,
+    Field, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, Name, PathResolution,
+    Semantics, TypeParam, Visibility,
 };
 use ra_prof::profile;
 use ra_syntax::{
@@ -22,7 +22,7 @@ use crate::RootDatabase;
 #[derive(Debug, PartialEq, Eq)]
 pub enum Definition {
     Macro(MacroDef),
-    StructField(StructField),
+    Field(Field),
     ModuleDef(ModuleDef),
     SelfType(ImplDef),
     Local(Local),
@@ -33,7 +33,7 @@ impl Definition {
     pub fn module(&self, db: &RootDatabase) -> Option<Module> {
         match self {
             Definition::Macro(it) => it.module(db),
-            Definition::StructField(it) => Some(it.parent_def(db).module(db)),
+            Definition::Field(it) => Some(it.parent_def(db).module(db)),
             Definition::ModuleDef(it) => it.module(db),
             Definition::SelfType(it) => Some(it.module(db)),
             Definition::Local(it) => Some(it.module(db)),
@@ -46,7 +46,7 @@ impl Definition {
 
         match self {
             Definition::Macro(_) => None,
-            Definition::StructField(sf) => Some(sf.visibility(db)),
+            Definition::Field(sf) => Some(sf.visibility(db)),
             Definition::ModuleDef(def) => module?.visibility_of(db, def),
             Definition::SelfType(_) => None,
             Definition::Local(_) => None,
@@ -57,7 +57,7 @@ impl Definition {
     pub fn name(&self, db: &RootDatabase) -> Option<Name> {
         let name = match self {
             Definition::Macro(it) => it.name(db)?,
-            Definition::StructField(it) => it.name(db),
+            Definition::Field(it) => it.name(db),
             Definition::ModuleDef(def) => match def {
                 hir::ModuleDef::Module(it) => it.name(db)?,
                 hir::ModuleDef::Function(it) => it.name(db),
@@ -124,8 +124,8 @@ fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Opti
                 Some(Definition::Local(local))
             },
             ast::RecordFieldDef(it) => {
-                let field: hir::StructField = sema.to_def(&it)?;
-                Some(Definition::StructField(field))
+                let field: hir::Field = sema.to_def(&it)?;
+                Some(Definition::Field(field))
             },
             ast::Module(it) => {
                 let def = sema.to_def(&it)?;
@@ -213,7 +213,7 @@ pub fn classify_name_ref(
     if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
         tested_by!(goto_def_for_fields; force);
         if let Some(field) = sema.resolve_field(&field_expr) {
-            return Some(NameRefClass::Definition(Definition::StructField(field)));
+            return Some(NameRefClass::Definition(Definition::Field(field)));
         }
     }
 
@@ -221,7 +221,7 @@ pub fn classify_name_ref(
         tested_by!(goto_def_for_record_fields; force);
         tested_by!(goto_def_for_field_init_shorthand; force);
         if let Some((field, local)) = sema.resolve_record_field(&record_field) {
-            let field = Definition::StructField(field);
+            let field = Definition::Field(field);
             let res = match local {
                 None => NameRefClass::Definition(field),
                 Some(local) => NameRefClass::FieldShorthand { field, local },
@@ -233,7 +233,7 @@ pub fn classify_name_ref(
     if let Some(record_field_pat) = ast::RecordFieldPat::cast(parent.clone()) {
         tested_by!(goto_def_for_record_field_pats; force);
         if let Some(field) = sema.resolve_record_field_pat(&record_field_pat) {
-            let field = Definition::StructField(field);
+            let field = Definition::Field(field);
             return Some(NameRefClass::Definition(field));
         }
     }

@@ -12,8 +12,8 @@ use crate::{
     item_scope::ItemScope,
     keys,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, ImplId, Lookup, ModuleDefId,
-    ModuleId, StructFieldId, TraitId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, FieldId, ImplId, Lookup, ModuleDefId,
+    ModuleId, TraitId, VariantId,
 };
 
 pub trait ChildBySource {
@@ -140,7 +140,7 @@ impl ChildBySource for VariantId {
         let arena_map = self.child_source(db);
         let arena_map = arena_map.as_ref();
         for (local_id, source) in arena_map.value.iter() {
-            let id = StructFieldId { parent: *self, local_id };
+            let id = FieldId { parent: *self, local_id };
             match source {
                 Either::Left(source) => {
                     res[keys::TUPLE_FIELD].insert(arena_map.with_value(source.clone()), id)

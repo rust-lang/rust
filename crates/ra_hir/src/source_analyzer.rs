@@ -14,7 +14,7 @@ use hir_def::{
     },
     expr::{ExprId, Pat, PatId},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
-    AsMacroCall, DefWithBodyId, LocalStructFieldId, StructFieldId, VariantId,
+    AsMacroCall, DefWithBodyId, FieldId, LocalFieldId, VariantId,
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
@@ -27,8 +27,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::HirDatabase, semantics::PathResolution, Adt, Const, EnumVariant, Function, Local, MacroDef,
-    ModPath, ModuleDef, Path, PathKind, Static, Struct, StructField, Trait, Type, TypeAlias,
+    db::HirDatabase, semantics::PathResolution, Adt, Const, EnumVariant, Field, Function, Local,
+    MacroDef, ModPath, ModuleDef, Path, PathKind, Static, Struct, Trait, Type, TypeAlias,
     TypeParam,
 };
 use ra_db::CrateId;
@@ -140,7 +140,7 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         field: &ast::FieldExpr,
-    ) -> Option<StructField> {
+    ) -> Option<Field> {
         let expr_id = self.expr_id(db, &field.clone().into())?;
         self.infer.as_ref()?.field_resolution(expr_id).map(|it| it.into())
     }
@@ -149,7 +149,7 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         field: &ast::RecordField,
-    ) -> Option<(StructField, Option<Local>)> {
+    ) -> Option<(Field, Option<Local>)> {
         let expr = field.expr()?;
         let expr_id = self.expr_id(db, &expr)?;
         let local = if field.name_ref().is_some() {
@@ -172,7 +172,7 @@ impl SourceAnalyzer {
         &self,
         _db: &dyn HirDatabase,
         field: &ast::RecordFieldPat,
-    ) -> Option<StructField> {
+    ) -> Option<Field> {
         let pat_id = self.pat_id(&field.pat()?)?;
         let struct_field = self.infer.as_ref()?.record_field_pat_resolution(pat_id)?;
         Some(struct_field.into())
@@ -232,7 +232,7 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         literal: &ast::RecordLit,
-    ) -> Option<Vec<(StructField, Type)>> {
+    ) -> Option<Vec<(Field, Type)>> {
         let krate = self.resolver.krate()?;
         let body = self.body.as_ref()?;
         let infer = self.infer.as_ref()?;
@@ -253,7 +253,7 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         pattern: &ast::RecordPat,
-    ) -> Option<Vec<(StructField, Type)>> {
+    ) -> Option<Vec<(Field, Type)>> {
         let krate = self.resolver.krate()?;
         let body = self.body.as_ref()?;
         let infer = self.infer.as_ref()?;
@@ -276,14 +276,14 @@ impl SourceAnalyzer {
         krate: CrateId,
         substs: &Substs,
         variant: VariantId,
-        missing_fields: Vec<LocalStructFieldId>,
-    ) -> Vec<(StructField, Type)> {
+        missing_fields: Vec<LocalFieldId>,
+    ) -> Vec<(Field, Type)> {
         let field_types = db.field_types(variant);
 
         missing_fields
             .into_iter()
             .map(|local_id| {
-                let field = StructFieldId { parent: variant, local_id };
+                let field = FieldId { parent: variant, local_id };
                 let ty = field_types[local_id].clone().subst(substs);
                 (field.into(), Type::new_with_resolver_inner(db, krate, &self.resolver, ty))
             })

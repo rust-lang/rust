@@ -13,8 +13,8 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     type_ref::{Mutability, TypeRef},
     AdtId, AssocContainerId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule,
-    ImplId, LocalEnumVariantId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId,
-    StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
+    ImplId, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId, TypeParamId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -294,9 +294,9 @@ impl Module {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StructField {
+pub struct Field {
     pub(crate) parent: VariantDef,
-    pub(crate) id: LocalStructFieldId,
+    pub(crate) id: LocalFieldId,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -305,7 +305,7 @@ pub enum FieldSource {
     Pos(ast::TupleFieldDef),
 }
 
-impl StructField {
+impl Field {
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
         self.parent.variant_data(db).fields()[self.id].name.clone()
     }
@@ -331,7 +331,7 @@ impl StructField {
     }
 }
 
-impl HasVisibility for StructField {
+impl HasVisibility for Field {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         let variant_data = self.parent.variant_data(db);
         let visibility = &variant_data.fields()[self.id].visibility;
@@ -358,12 +358,12 @@ impl Struct {
         db.struct_data(self.id).name.clone()
     }
 
-    pub fn fields(self, db: &dyn HirDatabase) -> Vec<StructField> {
+    pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
         db.struct_data(self.id)
             .variant_data
             .fields()
             .iter()
-            .map(|(id, _)| StructField { parent: self.into(), id })
+            .map(|(id, _)| Field { parent: self.into(), id })
             .collect()
     }
 
@@ -394,12 +394,12 @@ impl Union {
         Type::from_def(db, self.id.lookup(db.upcast()).container.module(db.upcast()).krate, self.id)
     }
 
-    pub fn fields(self, db: &dyn HirDatabase) -> Vec<StructField> {
+    pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
         db.union_data(self.id)
             .variant_data
             .fields()
             .iter()
-            .map(|(id, _)| StructField { parent: self.into(), id })
+            .map(|(id, _)| Field { parent: self.into(), id })
             .collect()
     }
 
@@ -457,11 +457,11 @@ impl EnumVariant {
         db.enum_data(self.parent.id).variants[self.id].name.clone()
     }
 
-    pub fn fields(self, db: &dyn HirDatabase) -> Vec<StructField> {
+    pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
         self.variant_data(db)
             .fields()
             .iter()
-            .map(|(id, _)| StructField { parent: self.into(), id })
+            .map(|(id, _)| Field { parent: self.into(), id })
             .collect()
     }
 
@@ -527,7 +527,7 @@ pub enum VariantDef {
 impl_froms!(VariantDef: Struct, Union, EnumVariant);
 
 impl VariantDef {
-    pub fn fields(self, db: &dyn HirDatabase) -> Vec<StructField> {
+    pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
         match self {
             VariantDef::Struct(it) => it.fields(db),
             VariantDef::Union(it) => it.fields(db),
@@ -1148,7 +1148,7 @@ impl Type {
         }
     }
 
-    pub fn fields(&self, db: &dyn HirDatabase) -> Vec<(StructField, Type)> {
+    pub fn fields(&self, db: &dyn HirDatabase) -> Vec<(Field, Type)> {
         if let Ty::Apply(a_ty) = &self.ty.value {
             if let TypeCtor::Adt(AdtId::StructId(s)) = a_ty.ctor {
                 let var_def = s.into();
@@ -1156,7 +1156,7 @@ impl Type {
                     .field_types(var_def)
                     .iter()
                     .map(|(local_id, ty)| {
-                        let def = StructField { parent: var_def.into(), id: local_id };
+                        let def = Field { parent: var_def.into(), id: local_id };
                         let ty = ty.clone().subst(&a_ty.parameters);
                         (def, self.derived(ty))
                     })
@@ -1352,7 +1352,7 @@ impl ScopeDef {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AttrDef {
     Module(Module),
-    StructField(StructField),
+    Field(Field),
     Adt(Adt),
     Function(Function),
     EnumVariant(EnumVariant),
@@ -1365,7 +1365,7 @@ pub enum AttrDef {
 
 impl_froms!(
     AttrDef: Module,
-    StructField,
+    Field,
     Adt(Struct, Enum, Union),
     EnumVariant,
     Static,
