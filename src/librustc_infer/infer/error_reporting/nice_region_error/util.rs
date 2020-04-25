@@ -58,37 +58,33 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
         let poly_fn_sig = self.tcx().fn_sig(id);
         let fn_sig = self.tcx().liberate_late_bound_regions(id, &poly_fn_sig);
-        body.params
-            .iter()
-            .enumerate()
-            .filter_map(|(index, param)| {
-                // May return None; sometimes the tables are not yet populated.
-                let ty = fn_sig.inputs()[index];
-                let mut found_anon_region = false;
-                let new_param_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
-                    if *r == *anon_region {
-                        found_anon_region = true;
-                        replace_region
-                    } else {
-                        r
-                    }
-                });
-                if found_anon_region {
-                    let ty_hir_id = fn_decl.inputs[index].hir_id;
-                    let param_ty_span = hir.span(ty_hir_id);
-                    let is_first = index == 0;
-                    Some(AnonymousParamInfo {
-                        param,
-                        param_ty: new_param_ty,
-                        param_ty_span,
-                        bound_region,
-                        is_first,
-                    })
+        body.params.iter().enumerate().find_map(|(index, param)| {
+            // May return None; sometimes the tables are not yet populated.
+            let ty = fn_sig.inputs()[index];
+            let mut found_anon_region = false;
+            let new_param_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
+                if *r == *anon_region {
+                    found_anon_region = true;
+                    replace_region
                 } else {
-                    None
+                    r
                 }
-            })
-            .next()
+            });
+            if found_anon_region {
+                let ty_hir_id = fn_decl.inputs[index].hir_id;
+                let param_ty_span = hir.span(ty_hir_id);
+                let is_first = index == 0;
+                Some(AnonymousParamInfo {
+                    param,
+                    param_ty: new_param_ty,
+                    param_ty_span,
+                    bound_region,
+                    is_first,
+                })
+            } else {
+                None
+            }
+        })
     }
 
     // Here, we check for the case where the anonymous region

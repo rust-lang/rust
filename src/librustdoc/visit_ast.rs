@@ -164,28 +164,23 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         body: hir::BodyId,
     ) {
         debug!("visiting fn");
-        let macro_kind = item
-            .attrs
-            .iter()
-            .filter_map(|a| {
-                if a.check_name(sym::proc_macro) {
-                    Some(MacroKind::Bang)
-                } else if a.check_name(sym::proc_macro_derive) {
-                    Some(MacroKind::Derive)
-                } else if a.check_name(sym::proc_macro_attribute) {
-                    Some(MacroKind::Attr)
-                } else {
-                    None
-                }
-            })
-            .next();
+        let macro_kind = item.attrs.iter().find_map(|a| {
+            if a.check_name(sym::proc_macro) {
+                Some(MacroKind::Bang)
+            } else if a.check_name(sym::proc_macro_derive) {
+                Some(MacroKind::Derive)
+            } else if a.check_name(sym::proc_macro_attribute) {
+                Some(MacroKind::Attr)
+            } else {
+                None
+            }
+        });
         match macro_kind {
             Some(kind) => {
                 let name = if kind == MacroKind::Derive {
                     item.attrs
                         .lists(sym::proc_macro_derive)
-                        .filter_map(|mi| mi.ident())
-                        .next()
+                        .find_map(|mi| mi.ident())
                         .expect("proc-macro derives require a name")
                         .name
                 } else {

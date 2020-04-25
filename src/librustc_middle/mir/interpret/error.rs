@@ -179,8 +179,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
                     .stacktrace
                     .iter()
                     .rev()
-                    .filter_map(|frame| frame.lint_root)
-                    .next()
+                    .find_map(|frame| frame.lint_root)
                     .unwrap_or(lint_root);
                 tcx.struct_span_lint_hir(
                     rustc_session::lint::builtin::CONST_ERR,
