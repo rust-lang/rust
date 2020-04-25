@@ -119,7 +119,12 @@ pub struct ModuleConfig {
 }
 
 impl ModuleConfig {
-    fn new(kind: ModuleKind, sess: &Session, no_builtins: bool) -> ModuleConfig {
+    fn new(
+        kind: ModuleKind,
+        sess: &Session,
+        no_builtins: bool,
+        is_compiler_builtins: bool,
+    ) -> ModuleConfig {
         // If it's a regular module, use `$regular`, otherwise use `$other`.
         // `$regular` and `$other` are evaluated lazily.
         macro_rules! if_regular {
@@ -160,7 +165,10 @@ impl ModuleConfig {
             passes: if_regular!(
                 {
                     let mut passes = sess.opts.cg.passes.clone();
-                    if sess.opts.debugging_opts.profile {
+                    // compiler_builtins overrides the codegen-units settings,
+                    // which is incompatible with -Zprofile which requires that
+                    // only a single codegen unit is used per crate.
+                    if sess.opts.debugging_opts.profile && !is_compiler_builtins {
                         passes.push("insert-gcov-profiling".to_owned());
                     }
                     passes
@@ -406,6 +414,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
     let no_builtins = attr::contains_name(&tcx.hir().krate().item.attrs, sym::no_builtins);
+    let is_compiler_builtins =
+        attr::contains_name(&tcx.hir().krate().item.attrs, sym::compiler_builtins);
     let subsystem =
         attr::first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
     let windows_subsystem = subsystem.map(|subsystem| {
@@ -422,9 +432,12 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let linker_info = LinkerInfo::new(tcx);
     let crate_info = CrateInfo::new(tcx);
 
-    let regular_config = ModuleConfig::new(ModuleKind::Regular, sess, no_builtins);
-    let metadata_config = ModuleConfig::new(ModuleKind::Metadata, sess, no_builtins);
-    let allocator_config = ModuleConfig::new(ModuleKind::Allocator, sess, no_builtins);
+    let regular_config =
+        ModuleConfig::new(ModuleKind::Regular, sess, no_builtins, is_compiler_builtins);
+    let metadata_config =
+        ModuleConfig::new(ModuleKind::Metadata, sess, no_builtins, is_compiler_builtins);
+    let allocator_config =
+        ModuleConfig::new(ModuleKind::Allocator, sess, no_builtins, is_compiler_builtins);
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (codegen_worker_send, codegen_worker_receive) = channel();
