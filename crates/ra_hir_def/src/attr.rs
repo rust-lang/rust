@@ -43,7 +43,7 @@ impl Attrs {
                 };
                 Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
             }
-            AttrDefId::StructFieldId(it) => {
+            AttrDefId::FieldId(it) => {
                 let src = it.parent.child_source(db);
                 match &src.value[it.local_id] {
                     Either::Left(_tuple) => Attrs::default(),

@@ -23,8 +23,8 @@ use crate::{
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    AssocItem, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef, Name,
-    Origin, Path, ScopeDef, StructField, Trait, Type, TypeParam,
+    AssocItem, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef,
+    Name, Origin, Path, ScopeDef, Trait, Type, TypeParam,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -184,18 +184,15 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.analyze(call.syntax()).resolve_method_call(self.db, call)
     }
 
-    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<StructField> {
+    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {
         self.analyze(field.syntax()).resolve_field(self.db, field)
     }
 
-    pub fn resolve_record_field(
-        &self,
-        field: &ast::RecordField,
-    ) -> Option<(StructField, Option<Local>)> {
+    pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<(Field, Option<Local>)> {
         self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 
-    pub fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<StructField> {
+    pub fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<Field> {
         self.analyze(field.syntax()).resolve_record_field_pat(self.db, field)
     }
 
@@ -216,19 +213,13 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     // FIXME: use this instead?
     // pub fn resolve_name_ref(&self, name_ref: &ast::NameRef) -> Option<???>;
 
-    pub fn record_literal_missing_fields(
-        &self,
-        literal: &ast::RecordLit,
-    ) -> Vec<(StructField, Type)> {
+    pub fn record_literal_missing_fields(&self, literal: &ast::RecordLit) -> Vec<(Field, Type)> {
         self.analyze(literal.syntax())
             .record_literal_missing_fields(self.db, literal)
             .unwrap_or_default()
     }
 
-    pub fn record_pattern_missing_fields(
-        &self,
-        pattern: &ast::RecordPat,
-    ) -> Vec<(StructField, Type)> {
+    pub fn record_pattern_missing_fields(&self, pattern: &ast::RecordPat) -> Vec<(Field, Type)> {
         self.analyze(pattern.syntax())
             .record_pattern_missing_fields(self.db, pattern)
             .unwrap_or_default()
@@ -359,8 +350,8 @@ to_def_impls![
     (crate::Const, ast::ConstDef, const_to_def),
     (crate::Static, ast::StaticDef, static_to_def),
     (crate::Function, ast::FnDef, fn_to_def),
-    (crate::StructField, ast::RecordFieldDef, record_field_to_def),
-    (crate::StructField, ast::TupleFieldDef, tuple_field_to_def),
+    (crate::Field, ast::RecordFieldDef, record_field_to_def),
+    (crate::Field, ast::TupleFieldDef, tuple_field_to_def),
     (crate::EnumVariant, ast::EnumVariant, enum_variant_to_def),
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
     (crate::MacroDef, ast::MacroCall, macro_call_to_def), // this one is dubious, not all calls are macros

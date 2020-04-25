@@ -7,7 +7,7 @@ use hir_def::{
     expr::{BindingAnnotation, Pat, PatId, RecordFieldPat},
     path::Path,
     type_ref::Mutability,
-    StructFieldId,
+    FieldId,
 };
 use hir_expand::name::Name;
 use test_utils::tested_by;
@@ -69,7 +69,7 @@ impl<'a> InferenceContext<'a> {
         for subpat in subpats {
             let matching_field = var_data.as_ref().and_then(|it| it.field(&subpat.name));
             if let Some(local_id) = matching_field {
-                let field_def = StructFieldId { parent: def.unwrap(), local_id };
+                let field_def = FieldId { parent: def.unwrap(), local_id };
                 self.result.record_field_pat_resolutions.insert(subpat.pat, field_def);
             }
 

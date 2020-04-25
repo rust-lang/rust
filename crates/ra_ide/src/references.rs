@@ -144,7 +144,7 @@ fn find_name(
 
 fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Option<ReferenceAccess> {
     match def {
-        Definition::Local(_) | Definition::StructField(_) => {}
+        Definition::Local(_) | Definition::Field(_) => {}
         _ => return None,
     };
 

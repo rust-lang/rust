@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use hir_def::{
-    db::DefDatabase, DefWithBodyId, GenericDefId, ImplId, LocalStructFieldId, TraitId, TypeParamId,
+    db::DefDatabase, DefWithBodyId, GenericDefId, ImplId, LocalFieldId, TraitId, TypeParamId,
     VariantId,
 };
 use ra_arena::map::ArenaMap;
@@ -43,7 +43,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;
 
     #[salsa::invoke(crate::lower::field_types_query)]
-    fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalStructFieldId, Binders<Ty>>>;
+    fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
 
     #[salsa::invoke(crate::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDef) -> PolyFnSig;

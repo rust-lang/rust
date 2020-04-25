@@ -43,7 +43,7 @@ impl Documentation {
                 let src = def_map[module.local_id].declaration_source(db)?;
                 docs_from_ast(&src.value)
             }
-            AttrDefId::StructFieldId(it) => {
+            AttrDefId::FieldId(it) => {
                 let src = it.parent.child_source(db);
                 match &src.value[it.local_id] {
                     Either::Left(_tuple) => None,

@@ -28,8 +28,8 @@ pub struct Reference {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReferenceKind {
-    StructFieldShorthandForField,
-    StructFieldShorthandForLocal,
+    FieldShorthandForField,
+    FieldShorthandForLocal,
     StructLiteral,
     Other,
 }
@@ -242,14 +242,14 @@ impl Definition {
                     }
                     Some(NameRefClass::FieldShorthand { local, field }) => {
                         match self {
-                            Definition::StructField(_) if &field == self => refs.push(Reference {
+                            Definition::Field(_) if &field == self => refs.push(Reference {
                                 file_range: sema.original_range(name_ref.syntax()),
-                                kind: ReferenceKind::StructFieldShorthandForField,
+                                kind: ReferenceKind::FieldShorthandForField,
                                 access: reference_access(&field, &name_ref),
                             }),
                             Definition::Local(l) if &local == l => refs.push(Reference {
                                 file_range: sema.original_range(name_ref.syntax()),
-                                kind: ReferenceKind::StructFieldShorthandForLocal,
+                                kind: ReferenceKind::FieldShorthandForLocal,
                                 access: reference_access(&Definition::Local(local), &name_ref),
                             }),
 
@@ -267,7 +267,7 @@ impl Definition {
 fn reference_access(def: &Definition, name_ref: &ast::NameRef) -> Option<ReferenceAccess> {
     // Only Locals and Fields have accesses for now.
     match def {
-        Definition::Local(_) | Definition::StructField(_) => {}
+        Definition::Local(_) | Definition::Field(_) => {}
         _ => return None,
     };
 

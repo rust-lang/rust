@@ -133,12 +133,12 @@ pub struct EnumVariantId {
 pub type LocalEnumVariantId = Idx<adt::EnumVariantData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StructFieldId {
+pub struct FieldId {
     pub parent: VariantId,
-    pub local_id: LocalStructFieldId,
+    pub local_id: LocalFieldId,
 }
 
-pub type LocalStructFieldId = Idx<adt::StructFieldData>;
+pub type LocalFieldId = Idx<adt::FieldData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
@@ -299,7 +299,7 @@ impl From<AssocItemId> for GenericDefId {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AttrDefId {
     ModuleId(ModuleId),
-    StructFieldId(StructFieldId),
+    FieldId(FieldId),
     AdtId(AdtId),
     FunctionId(FunctionId),
     EnumVariantId(EnumVariantId),
@@ -313,7 +313,7 @@ pub enum AttrDefId {
 
 impl_froms!(
     AttrDefId: ModuleId,
-    StructFieldId,
+    FieldId,
     AdtId(StructId, EnumId, UnionId),
     EnumVariantId,
     StaticId,

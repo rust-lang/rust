@@ -8,7 +8,7 @@ use hir_def::{
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
-    AdtId, AssocContainerId, Lookup, StructFieldId,
+    AdtId, AssocContainerId, FieldId, Lookup,
 };
 use hir_expand::name::Name;
 use ra_syntax::ast::RangeOp;
@@ -216,9 +216,7 @@ impl<'a> InferenceContext<'a> {
                 for (field_idx, field) in fields.iter().enumerate() {
                     let field_def =
                         variant_data.as_ref().and_then(|it| match it.field(&field.name) {
-                            Some(local_id) => {
-                                Some(StructFieldId { parent: def_id.unwrap(), local_id })
-                            }
+                            Some(local_id) => Some(FieldId { parent: def_id.unwrap(), local_id }),
                             None => {
                                 self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                     expr: tgt_expr,
@@ -257,7 +255,7 @@ impl<'a> InferenceContext<'a> {
                             .and_then(|idx| a_ty.parameters.0.get(idx).cloned()),
                         TypeCtor::Adt(AdtId::StructId(s)) => {
                             self.db.struct_data(s).variant_data.field(name).map(|local_id| {
-                                let field = StructFieldId { parent: s.into(), local_id };
+                                let field = FieldId { parent: s.into(), local_id };
                                 self.write_field_resolution(tgt_expr, field);
                                 self.db.field_types(s.into())[field.local_id]
                                     .clone()

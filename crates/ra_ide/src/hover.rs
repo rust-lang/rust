@@ -76,7 +76,7 @@ fn hover_text(
 
 fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> {
     match def {
-        Definition::StructField(f) => Some(f.parent_def(db).name(db)),
+        Definition::Field(f) => Some(f.parent_def(db).name(db)),
         Definition::Local(l) => l.parent(db).name(db),
         Definition::ModuleDef(md) => match md {
             ModuleDef::Function(f) => match f.as_assoc_item(db)?.container(db) {
@@ -116,7 +116,7 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
             let src = it.source(db);
             hover_text(src.value.doc_comment_text(), Some(macro_label(&src.value)), mod_path)
         }
-        Definition::StructField(it) => {
+        Definition::Field(it) => {
             let src = it.source(db);
             match src.value {
                 FieldSource::Named(it) => {

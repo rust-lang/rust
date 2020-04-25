@@ -5,8 +5,8 @@ use hir_def::{
     dyn_map::DynMap,
     expr::PatId,
     keys::{self, Key},
-    ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, ModuleId,
-    StaticId, StructFieldId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
+    ConstId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId, GenericDefId, ImplId,
+    ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefKind};
 use ra_db::FileId;
@@ -97,13 +97,13 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn record_field_to_def(
         &mut self,
         src: InFile<ast::RecordFieldDef>,
-    ) -> Option<StructFieldId> {
+    ) -> Option<FieldId> {
         self.to_def(src, keys::RECORD_FIELD)
     }
     pub(super) fn tuple_field_to_def(
         &mut self,
         src: InFile<ast::TupleFieldDef>,
-    ) -> Option<StructFieldId> {
+    ) -> Option<FieldId> {
         self.to_def(src, keys::TUPLE_FIELD)
     }
     pub(super) fn enum_variant_to_def(

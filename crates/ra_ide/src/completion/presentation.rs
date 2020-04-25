@@ -15,12 +15,7 @@ use crate::{
 };
 
 impl Completions {
-    pub(crate) fn add_field(
-        &mut self,
-        ctx: &CompletionContext,
-        field: hir::StructField,
-        ty: &Type,
-    ) {
+    pub(crate) fn add_field(&mut self, ctx: &CompletionContext, field: hir::Field, ty: &Type) {
         let is_deprecated = is_deprecated(field, ctx.db);
         let ty = ty.display(ctx.db).to_string();
         let name = field.name(ctx.db);

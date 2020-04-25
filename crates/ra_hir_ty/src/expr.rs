@@ -24,7 +24,7 @@ pub use hir_def::{
         ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
         MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement, UnaryOp,
     },
-    LocalStructFieldId, VariantId,
+    LocalFieldId, VariantId,
 };
 
 pub struct ExprValidator<'a, 'b: 'a> {
@@ -83,7 +83,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         id: ExprId,
         db: &dyn HirDatabase,
         variant_def: VariantId,
-        missed_fields: Vec<LocalStructFieldId>,
+        missed_fields: Vec<LocalFieldId>,
     ) {
         // XXX: only look at source_map if we do have missing fields
         let (_, source_map) = db.body_with_source_map(self.func.into());
@@ -112,7 +112,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         id: PatId,
         db: &dyn HirDatabase,
         variant_def: VariantId,
-        missed_fields: Vec<LocalStructFieldId>,
+        missed_fields: Vec<LocalFieldId>,
     ) {
         // XXX: only look at source_map if we do have missing fields
         let (_, source_map) = db.body_with_source_map(self.func.into());
@@ -256,7 +256,7 @@ pub fn record_literal_missing_fields(
     infer: &InferenceResult,
     id: ExprId,
     expr: &Expr,
-) -> Option<(VariantId, Vec<LocalStructFieldId>, /*exhaustive*/ bool)> {
+) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
     let (fields, exhausitve) = match expr {
         Expr::RecordLit { path: _, fields, spread } => (fields, spread.is_none()),
         _ => return None,
@@ -270,7 +270,7 @@ pub fn record_literal_missing_fields(
     let variant_data = variant_data(db.upcast(), variant_def);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
-    let missed_fields: Vec<LocalStructFieldId> = variant_data
+    let missed_fields: Vec<LocalFieldId> = variant_data
         .fields()
         .iter()
         .filter_map(|(f, d)| if specified_fields.contains(&d.name) { None } else { Some(f) })
@@ -286,7 +286,7 @@ pub fn record_pattern_missing_fields(
     infer: &InferenceResult,
     id: PatId,
     pat: &Pat,
-) -> Option<(VariantId, Vec<LocalStructFieldId>, /*exhaustive*/ bool)> {
+) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
     let (fields, exhaustive) = match pat {
         Pat::Record { path: _, args, ellipsis } => (args, !ellipsis),
         _ => return None,
@@ -300,7 +300,7 @@ pub fn record_pattern_missing_fields(
     let variant_data = variant_data(db.upcast(), variant_def);
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
-    let missed_fields: Vec<LocalStructFieldId> = variant_data
+    let missed_fields: Vec<LocalFieldId> = variant_data
         .fields()
         .iter()
         .filter_map(|(f, d)| if specified_fields.contains(&d.name) { None } else { Some(f) })

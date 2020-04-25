@@ -14,7 +14,7 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 use crate::{
     body::CfgExpander, db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace,
     type_ref::TypeRef, visibility::RawVisibility, EnumId, HasModule, LocalEnumVariantId,
-    LocalStructFieldId, Lookup, ModuleId, StructId, UnionId, VariantId,
+    LocalFieldId, Lookup, ModuleId, StructId, UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -38,14 +38,14 @@ pub struct EnumVariantData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariantData {
-    Record(Arena<StructFieldData>),
-    Tuple(Arena<StructFieldData>),
+    Record(Arena<FieldData>),
+    Tuple(Arena<FieldData>),
     Unit,
 }
 
 /// A single field of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StructFieldData {
+pub struct FieldData {
     pub name: Name,
     pub type_ref: TypeRef,
     pub visibility: RawVisibility,
@@ -133,15 +133,15 @@ impl VariantData {
         }
     }
 
-    pub fn fields(&self) -> &Arena<StructFieldData> {
-        const EMPTY: &Arena<StructFieldData> = &Arena::new();
+    pub fn fields(&self) -> &Arena<FieldData> {
+        const EMPTY: &Arena<FieldData> = &Arena::new();
         match &self {
             VariantData::Record(fields) | VariantData::Tuple(fields) => fields,
             _ => EMPTY,
         }
     }
 
-    pub fn field(&self, name: &Name) -> Option<LocalStructFieldId> {
+    pub fn field(&self, name: &Name) -> Option<LocalFieldId> {
         self.fields().iter().find_map(|(id, data)| if &data.name == name { Some(id) } else { None })
     }
 
@@ -155,7 +155,7 @@ impl VariantData {
 }
 
 impl HasChildSource for VariantId {
-    type ChildId = LocalStructFieldId;
+    type ChildId = LocalFieldId;
     type Value = Either<ast::TupleFieldDef, ast::RecordFieldDef>;
 
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
@@ -195,7 +195,7 @@ pub enum StructKind {
 fn lower_struct(
     db: &dyn DefDatabase,
     expander: &mut CfgExpander,
-    trace: &mut Trace<StructFieldData, Either<ast::TupleFieldDef, ast::RecordFieldDef>>,
+    trace: &mut Trace<FieldData, Either<ast::TupleFieldDef, ast::RecordFieldDef>>,
     ast: &InFile<ast::StructKind>,
 ) -> StructKind {
     match &ast.value {
@@ -208,7 +208,7 @@ fn lower_struct(
 
                 trace.alloc(
                     || Either::Left(fd.clone()),
-                    || StructFieldData {
+                    || FieldData {
                         name: Name::new_tuple_field(i),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
@@ -226,7 +226,7 @@ fn lower_struct(
 
                 trace.alloc(
                     || Either::Right(fd.clone()),
-                    || StructFieldData {
+                    || FieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
                         type_ref: TypeRef::from_ast_opt(fd.ascribed_type()),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),

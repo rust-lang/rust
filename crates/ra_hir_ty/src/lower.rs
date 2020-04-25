@@ -18,8 +18,8 @@ use hir_def::{
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
     AdtId, AssocContainerId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule,
-    ImplId, LocalStructFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
-    UnionId, VariantId,
+    ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
+    VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::CrateId;
@@ -682,7 +682,7 @@ pub fn callable_item_sig(db: &dyn HirDatabase, def: CallableDef) -> PolyFnSig {
 pub(crate) fn field_types_query(
     db: &dyn HirDatabase,
     variant_id: VariantId,
-) -> Arc<ArenaMap<LocalStructFieldId, Binders<Ty>>> {
+) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>> {
     let var_data = variant_data(db.upcast(), variant_id);
     let (resolver, def): (_, GenericDefId) = match variant_id {
         VariantId::StructId(it) => (it.resolver(db.upcast()), it.into()),

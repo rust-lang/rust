@@ -4,13 +4,13 @@
 //! are splitting the hir.
 
 use hir_def::{
-    expr::PatId, AdtId, AssocItemId, AttrDefId, DefWithBodyId, EnumVariantId, GenericDefId,
-    ModuleDefId, StructFieldId, VariantId,
+    expr::PatId, AdtId, AssocItemId, AttrDefId, DefWithBodyId, EnumVariantId, FieldId,
+    GenericDefId, ModuleDefId, VariantId,
 };
 
 use crate::{
-    code_model::ItemInNs, Adt, AssocItem, AttrDef, DefWithBody, EnumVariant, GenericDef, Local,
-    MacroDef, ModuleDef, StructField, VariantDef,
+    code_model::ItemInNs, Adt, AssocItem, AttrDef, DefWithBody, EnumVariant, Field, GenericDef,
+    Local, MacroDef, ModuleDef, VariantDef,
 };
 
 macro_rules! from_id {
@@ -184,15 +184,15 @@ impl From<VariantDef> for VariantId {
     }
 }
 
-impl From<StructField> for StructFieldId {
-    fn from(def: StructField) -> Self {
-        StructFieldId { parent: def.parent.into(), local_id: def.id }
+impl From<Field> for FieldId {
+    fn from(def: Field) -> Self {
+        FieldId { parent: def.parent.into(), local_id: def.id }
     }
 }
 
-impl From<StructFieldId> for StructField {
-    fn from(def: StructFieldId) -> Self {
-        StructField { parent: def.parent.into(), id: def.local_id }
+impl From<FieldId> for Field {
+    fn from(def: FieldId) -> Self {
+        Field { parent: def.parent.into(), id: def.local_id }
     }
 }
 
@@ -200,7 +200,7 @@ impl From<AttrDef> for AttrDefId {
     fn from(def: AttrDef) -> Self {
         match def {
             AttrDef::Module(it) => AttrDefId::ModuleId(it.id),
-            AttrDef::StructField(it) => AttrDefId::StructFieldId(it.into()),
+            AttrDef::Field(it) => AttrDefId::FieldId(it.into()),
             AttrDef::Adt(it) => AttrDefId::AdtId(it.into()),
             AttrDef::Function(it) => AttrDefId::FunctionId(it.id),
             AttrDef::EnumVariant(it) => AttrDefId::EnumVariantId(it.into()),

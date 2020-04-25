@@ -9,8 +9,8 @@ use hir_def::{
 use ra_syntax::ast;
 
 use crate::{
-    db::HirDatabase, Const, Enum, EnumVariant, FieldSource, Function, ImplDef, MacroDef, Module,
-    Static, Struct, StructField, Trait, TypeAlias, TypeParam, Union,
+    db::HirDatabase, Const, Enum, EnumVariant, Field, FieldSource, Function, ImplDef, MacroDef,
+    Module, Static, Struct, Trait, TypeAlias, TypeParam, Union,
 };
 
 pub use hir_expand::InFile;
@@ -37,7 +37,7 @@ impl Module {
     }
 }
 
-impl HasSource for StructField {
+impl HasSource for Field {
     type Ast = FieldSource;
     fn source(self, db: &dyn HirDatabase) -> InFile<FieldSource> {
         let var = VariantId::from(self.parent);
