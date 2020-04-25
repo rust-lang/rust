@@ -1,8 +1,8 @@
 error: this loop could be written as a `for` loop
-  --> $DIR/issue_2356.rs:15:29
+  --> $DIR/issue_2356.rs:15:9
    |
 LL |         while let Some(e) = it.next() {
-   |                             ^^^^^^^^^ help: try: `for e in it { .. }`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for e in it`
    |
 note: the lint level is defined here
   --> $DIR/issue_2356.rs:1:9
