@@ -248,13 +248,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
 
+        let alloc = self.memory.get_raw(ptr.alloc_id)?;
+
         match mplace.layout.abi {
             Abi::Scalar(..) => {
-                let scalar = self.memory.get_raw(ptr.alloc_id)?.read_scalar(
-                    self,
-                    ptr,
-                    mplace.layout.size,
-                )?;
+                let scalar = alloc.read_scalar(self, ptr, mplace.layout.size)?;
                 Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }))
             }
             Abi::ScalarPair(ref a, ref b) => {
@@ -267,8 +265,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let b_offset = a_size.align_to(b.align(self).abi);
                 assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
                 let b_ptr = ptr.offset(b_offset, self)?;
-                let a_val = self.memory.get_raw(ptr.alloc_id)?.read_scalar(self, a_ptr, a_size)?;
-                let b_val = self.memory.get_raw(ptr.alloc_id)?.read_scalar(self, b_ptr, b_size)?;
+                let a_val = alloc.read_scalar(self, a_ptr, a_size)?;
+                let b_val = alloc.read_scalar(self, b_ptr, b_size)?;
                 Ok(Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout }))
             }
             _ => Ok(None),
