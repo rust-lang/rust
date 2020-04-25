@@ -400,7 +400,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
                 // We can still be zero-sized in this branch, in which case we have to
                 // return `None`.
-                if size.bytes() == 0 { None } else { Some(ptr) }
+                if size.bytes() == 0 {
+                    // We may be reading from a static.
+                    // In order to ensure that `static FOO: Type = FOO;` causes a cycle error
+                    // instead of magically pulling *any* ZST value from the ether, we need to
+                    // actually access the referenced allocation. The caller is likely
+                    // to short-circuit on `None`, so we trigger the access here to
+                    // make sure it happens.
+                    self.get_raw(ptr.alloc_id)?;
+                    None
+                } else {
+                    Some(ptr)
+                }
             }
         })
     }
