@@ -1,6 +1,6 @@
 //! Slice sorting
 //!
-//! This module contains an sort algorithm based on Orson Peters' pattern-defeating quicksort,
+//! This module contains a sorting algorithm based on Orson Peters' pattern-defeating quicksort,
 //! published at: https://github.com/orlp/pdqsort
 //!
 //! Unstable sorting is compatible with libcore because it doesn't allocate memory, unlike our
@@ -32,6 +32,20 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
+    // SAFETY: The unsafe operations below involves indexing without a bound check (`get_unchecked` and `get_unchecked_mut`)
+    // and copying memory (`ptr::copy_nonoverlapping`).
+    //
+    // a. Indexing:
+    //  1. We checked the size of the array to >=2.
+    //  2. All the indexing that we will do is always between {0 <= index < len} at most.
+    //
+    // b. Memory copying
+    //  1. We are obtaining pointers to references which are guaranteed to be valid.
+    //  2. They cannot overlap because we obtain pointers to difference indices of the slice.
+    //     Namely, `i` and `i-1`.
+    //  3. FIXME: Guarantees that the elements are properly aligned?
+    //
+    // See comments below for further detail.
     unsafe {
         // If the first two elements are out-of-order...
         if len >= 2 && is_less(v.get_unchecked(1), v.get_unchecked(0)) {
