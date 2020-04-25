@@ -120,7 +120,7 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
     let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None {
         let debug = DebugContext::new(
             tcx,
-            module.target_config().pointer_type().bytes() as u8,
+            module.isa(),
         );
         Some(debug)
     } else {
