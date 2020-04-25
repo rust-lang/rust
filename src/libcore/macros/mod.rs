@@ -1,27 +1,3 @@
-#[cfg(bootstrap)]
-#[doc(include = "panic.md")]
-#[macro_export]
-#[allow_internal_unstable(core_panic, track_caller)]
-#[stable(feature = "core", since = "1.6.0")]
-macro_rules! panic {
-    () => (
-        $crate::panic!("explicit panic")
-    );
-    ($msg:expr) => (
-        $crate::panicking::panic($msg)
-    );
-    ($msg:expr,) => (
-        $crate::panic!($msg)
-    );
-    ($fmt:expr, $($arg:tt)+) => (
-        $crate::panicking::panic_fmt(
-            $crate::format_args!($fmt, $($arg)+),
-            $crate::panic::Location::caller(),
-        )
-    );
-}
-
-#[cfg(not(bootstrap))]
 #[doc(include = "panic.md")]
 #[macro_export]
 #[allow_internal_unstable(core_panic, track_caller)]
@@ -1341,25 +1317,6 @@ pub(crate) mod builtin {
     /// Read the [unstable book] for the usage.
     ///
     /// [unstable book]: ../unstable-book/library-features/asm.html
-    #[cfg(bootstrap)]
-    #[unstable(
-        feature = "llvm_asm",
-        issue = "70173",
-        reason = "inline assembly is not stable enough for use and is subject to change"
-    )]
-    #[macro_export]
-    #[allow_internal_unstable(asm)]
-    macro_rules! llvm_asm {
-        // Redirect to asm! for stage0
-        ($($arg:tt)*) => { $crate::asm!($($arg)*) }
-    }
-
-    /// Inline assembly.
-    ///
-    /// Read the [unstable book] for the usage.
-    ///
-    /// [unstable book]: ../unstable-book/library-features/asm.html
-    #[cfg(not(bootstrap))]
     #[unstable(
         feature = "llvm_asm",
         issue = "70173",
@@ -1460,7 +1417,6 @@ pub(crate) mod builtin {
     }
 
     /// Keeps the item it's applied to if the passed path is accessible, and removes it otherwise.
-    #[cfg(not(bootstrap))]
     #[unstable(
         feature = "cfg_accessible",
         issue = "64797",

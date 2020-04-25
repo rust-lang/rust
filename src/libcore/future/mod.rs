@@ -2,7 +2,6 @@
 
 //! Asynchronous values.
 
-#[cfg(not(bootstrap))]
 use crate::{
     ops::{Generator, GeneratorState},
     pin::Pin,
@@ -24,16 +23,13 @@ pub use self::future::Future;
 /// It also simplifies the HIR lowering of `.await`.
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
-#[cfg(not(bootstrap))]
 #[derive(Debug, Copy, Clone)]
 pub struct ResumeTy(NonNull<Context<'static>>);
 
 #[unstable(feature = "gen_future", issue = "50547")]
-#[cfg(not(bootstrap))]
 unsafe impl Send for ResumeTy {}
 
 #[unstable(feature = "gen_future", issue = "50547")]
-#[cfg(not(bootstrap))]
 unsafe impl Sync for ResumeTy {}
 
 /// Wrap a generator in a future.
@@ -43,7 +39,6 @@ unsafe impl Sync for ResumeTy {}
 // This is `const` to avoid extra errors after we recover from `const async fn`
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
-#[cfg(not(bootstrap))]
 #[inline]
 pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
 where
@@ -75,7 +70,6 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
-#[cfg(not(bootstrap))]
 #[inline]
 pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
     &mut *cx.0.as_ptr().cast()

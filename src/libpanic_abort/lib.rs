@@ -106,15 +106,6 @@ pub mod personalities {
         1 // `ExceptionContinueSearch`
     }
 
-    // Similar to above, this corresponds to the `eh_unwind_resume` lang item
-    // that's only used on Windows currently.
-    //
-    // Note that we don't execute landing pads, so this is never called, so it's
-    // body is empty.
-    #[rustc_std_internal_symbol]
-    #[cfg(all(bootstrap, target_os = "windows", target_env = "gnu"))]
-    pub extern "C" fn rust_eh_unwind_resume() {}
-
     // These two are called by our startup objects on i686-pc-windows-gnu, but
     // they don't need to do anything so the bodies are nops.
     #[rustc_std_internal_symbol]

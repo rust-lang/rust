@@ -45,7 +45,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     use winapi::um::winbase::SEM_NOGPFAULTERRORBOX;
 
     lazy_static! {
-        static ref LOCK: Mutex<()> = { Mutex::new(()) };
+        static ref LOCK: Mutex<()> = Mutex::new(());
     }
     // Error mode is a global variable, so lock it so only one thread will change it
     let _lock = LOCK.lock().unwrap();

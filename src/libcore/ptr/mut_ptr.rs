@@ -894,7 +894,6 @@ impl<T: ?Sized> *mut T {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[lang = "mut_slice_ptr"]
 impl<T> *mut [T] {
     /// Returns the length of a raw slice.
