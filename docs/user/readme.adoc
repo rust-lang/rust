@@ -121,7 +121,7 @@ $ curl -L https://github.com/rust-analyzer/rust-analyzer/releases/latest/downloa
 $ chmod +x ~/.local/bin/rust-analyzer
 ----
 
-Ensure `~/cargo/bin` is listed in the `$PATH` variable.
+Ensure `~/.local/bin` is listed in the `$PATH` variable.
 
 Alternatively, you can install it from source using the following command:
 
