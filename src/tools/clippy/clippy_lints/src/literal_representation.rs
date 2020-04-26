@@ -176,7 +176,7 @@ declare_lint_pass!(LiteralDigitGrouping => [
 
 impl EarlyLintPass for LiteralDigitGrouping {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), expr.span.into()) {
             return;
         }
 
@@ -350,7 +350,7 @@ impl_lint_pass!(DecimalLiteralRepresentation => [DECIMAL_LITERAL_REPRESENTATION]
 
 impl EarlyLintPass for DecimalLiteralRepresentation {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), expr.span.into()) {
             return;
         }
 

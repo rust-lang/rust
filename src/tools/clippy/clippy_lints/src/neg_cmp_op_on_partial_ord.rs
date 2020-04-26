@@ -49,7 +49,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
 
-            if !in_external_macro(cx.sess(), expr.span);
+            if !in_external_macro(cx.sess(), expr.span.into());
             if let ExprKind::Unary(UnOp::UnNot, ref inner) = expr.kind;
             if let ExprKind::Binary(ref op, ref left, _) = inner.kind;
             if let BinOpKind::Le | BinOpKind::Ge | BinOpKind::Lt | BinOpKind::Gt = op.node;

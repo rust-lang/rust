@@ -528,7 +528,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
                                 && arms[1].guard.is_none()
                                 && is_simple_break_expr(&arms[1].body)
                             {
-                                if in_external_macro(cx.sess(), expr.span) {
+                                if in_external_macro(cx.sess(), expr.span.into()) {
                                     return;
                                 }
 

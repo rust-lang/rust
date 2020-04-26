@@ -12,7 +12,7 @@ use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
+use rustc_span::{MultiSpanId, Span, SpanSnippetError, DUMMY_SP};
 
 use log::{debug, trace};
 
@@ -41,7 +41,7 @@ pub enum Error {
 }
 
 impl Error {
-    fn span_err(self, sp: impl Into<MultiSpan>, handler: &Handler) -> DiagnosticBuilder<'_> {
+    fn span_err(self, sp: impl Into<MultiSpanId>, handler: &Handler) -> DiagnosticBuilder<'_> {
         match self {
             Error::UselessDocComment => {
                 let mut err = struct_span_err!(
@@ -106,7 +106,7 @@ crate enum ConsumeClosingDelim {
 }
 
 impl<'a> Parser<'a> {
-    pub(super) fn span_fatal_err<S: Into<MultiSpan>>(
+    pub(super) fn span_fatal_err<S: Into<MultiSpanId>>(
         &self,
         sp: S,
         err: Error,
@@ -114,11 +114,11 @@ impl<'a> Parser<'a> {
         err.span_err(sp, self.diagnostic())
     }
 
-    pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_span_err<S: Into<MultiSpanId>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
     }
 
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
+    pub fn span_bug<S: Into<MultiSpanId>>(&self, sp: S, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 

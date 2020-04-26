@@ -3,7 +3,7 @@
 use rustc_errors::{Applicability, CodeSuggestion, DiagnosticBuilder, Substitution, SubstitutionPart, SuggestionStyle};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
-use rustc_span::source_map::{MultiSpan, Span};
+use rustc_span::source_map::{MultiSpanId, Span};
 use std::env;
 
 fn docs_link(diag: &mut DiagnosticBuilder<'_>, lint: &'static Lint) {
@@ -36,7 +36,7 @@ fn docs_link(diag: &mut DiagnosticBuilder<'_>, lint: &'static Lint) {
 /// 17 |     std::mem::forget(seven);
 ///    |     ^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
-pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: &str) {
+pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpanId>, msg: &str) {
     cx.struct_span_lint(lint, sp, |diag| {
         let mut diag = diag.build(msg);
         docs_link(&mut diag, lint);
@@ -206,7 +206,7 @@ where
         substitutions: vec![Substitution {
             parts: sugg
                 .into_iter()
-                .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                .map(|(span, snippet)| SubstitutionPart { snippet, span: span.into() })
                 .collect(),
         }],
         msg: help_msg,

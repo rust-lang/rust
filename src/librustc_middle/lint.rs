@@ -8,8 +8,8 @@ use rustc_hir::HirId;
 use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
-use rustc_span::{Span, Symbol};
+use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpanId};
+use rustc_span::{Span, SpanId, Symbol};
 
 /// How a lint level was set.
 #[derive(Clone, Copy, PartialEq, Eq, HashStable)]
@@ -194,7 +194,7 @@ pub fn struct_lint_level<'s, 'd>(
     lint: &'static Lint,
     level: Level,
     src: LintSource,
-    span: Option<MultiSpan>,
+    span: Option<MultiSpanId>,
     decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>) + 'd,
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
@@ -204,7 +204,7 @@ pub fn struct_lint_level<'s, 'd>(
         lint: &'static Lint,
         level: Level,
         src: LintSource,
-        span: Option<MultiSpan>,
+        span: Option<MultiSpanId>,
         decorate: Box<dyn for<'b> FnOnce(LintDiagnosticBuilder<'b>) + 'd>,
     ) {
         let mut err = match (level, span) {
@@ -336,7 +336,11 @@ pub fn struct_lint_level<'s, 'd>(
 ///
 /// This is used to test whether a lint should not even begin to figure out whether it should
 /// be reported on the current node.
-pub fn in_external_macro(sess: &Session, span: Span) -> bool {
+pub fn in_external_macro(sess: &Session, span: SpanId) -> bool {
+    let span = match span {
+        SpanId::Span(span) => span,
+        SpanId::DefId(def_id) => crate::ty::tls::with(|tcx| tcx.def_span(def_id)),
+    };
     let expn_data = span.ctxt().outer_expn_data();
     match expn_data.kind {
         ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,

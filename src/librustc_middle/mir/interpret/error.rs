@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::definitions::DefPathData;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
-use rustc_span::{def_id::DefId, Pos, Span};
+use rustc_span::{def_id::DefId, Pos, Span, SpanId};
 use rustc_target::abi::{Align, Size};
 use std::{any::Any, backtrace::Backtrace, fmt, mem};
 
@@ -86,7 +86,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
         tcx: TyCtxtAt<'tcx>,
         message: &str,
         lint_root: hir::HirId,
-        span: Option<Span>,
+        span: Option<impl Into<SpanId>>,
     ) -> ErrorHandled {
         self.struct_generic(
             tcx,
@@ -94,6 +94,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
             |mut lint: DiagnosticBuilder<'_>| {
                 // Apply the span.
                 if let Some(span) = span {
+                    let span = span.into();
                     let primary_spans = lint.span.primary_spans().to_vec();
                     // point at the actual error as the primary span
                     lint.replace_span_with(span);

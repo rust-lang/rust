@@ -150,7 +150,7 @@ impl Return {
     fn emit_return_lint(cx: &EarlyContext<'_>, ret_span: Span, inner_span: Option<Span>, replacement: RetReplacement) {
         match inner_span {
             Some(inner_span) => {
-                if in_external_macro(cx.sess(), inner_span) || inner_span.from_expansion() {
+                if in_external_macro(cx.sess(), inner_span.into()) || inner_span.from_expansion() {
                     return;
                 }
 
@@ -204,9 +204,9 @@ impl Return {
             if let ast::PatKind::Ident(_, ident, _) = local.pat.kind;
             if let ast::ExprKind::Path(_, ref path) = retexpr.kind;
             if match_path_ast(path, &[&*ident.name.as_str()]);
-            if !in_external_macro(cx.sess(), initexpr.span);
-            if !in_external_macro(cx.sess(), retexpr.span);
-            if !in_external_macro(cx.sess(), local.span);
+            if !in_external_macro(cx.sess(), initexpr.span.into());
+            if !in_external_macro(cx.sess(), retexpr.span.into());
+            if !in_external_macro(cx.sess(), local.span.into());
             if !in_macro(local.span);
             then {
                 span_lint_and_then(

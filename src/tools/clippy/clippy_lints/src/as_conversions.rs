@@ -40,7 +40,7 @@ declare_lint_pass!(AsConversions => [AS_CONVERSIONS]);
 
 impl EarlyLintPass for AsConversions {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), expr.span.into()) {
             return;
         }
 

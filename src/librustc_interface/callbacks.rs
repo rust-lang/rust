@@ -9,7 +9,7 @@
 //! The functions in this file should fall back to the default set in their
 //! origin crate when the `TyCtxt` is not present in TLS.
 
-use rustc_errors::{Diagnostic, TRACK_DIAGNOSTICS};
+use rustc_errors::{Diagnostic, RealDiagnostic, TRACK_DIAGNOSTICS};
 use rustc_middle::ty::tls;
 use std::fmt;
 
@@ -28,16 +28,24 @@ fn span_debug(span: rustc_span::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result
 /// This is a callback from librustc_ast as it cannot access the implicit state
 /// in librustc_middle otherwise. It is used to when diagnostic messages are
 /// emitted and stores them in the current query, if there is one.
-fn track_diagnostic(diagnostic: Diagnostic) -> Diagnostic {
+fn track_diagnostic(diagnostic: Diagnostic) -> RealDiagnostic {
     tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
             if let Some(ref diagnostics) = icx.diagnostics {
                 let mut diagnostics = diagnostics.lock();
                 diagnostics.extend(Some(diagnostic.clone()));
             }
+            diagnostic.map_span(|s| match s {
+                rustc_span::SpanId::Span(s) => s,
+                rustc_span::SpanId::DefId(d) => icx.tcx.def_span(d),
+            })
+        } else {
+            diagnostic.map_span(|s| match s {
+                rustc_span::SpanId::Span(s) => s,
+                rustc_span::SpanId::DefId(_) => panic!("Virtual spans require a TyCtxt."),
+            })
         }
-    });
-    diagnostic
+    })
 }
 
 /// This is a callback from librustc_hir as it cannot access the implicit state

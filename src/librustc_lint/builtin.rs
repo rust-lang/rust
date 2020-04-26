@@ -1133,7 +1133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
         // The parameters must not have bounds
         for param in type_alias_generics.params.iter() {
             let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-            let suggestion = spans
+            let suggestion: Vec<_> = spans
                 .iter()
                 .map(|sp| {
                     let start = param.span.between(*sp); // Include the `:` in `T: Bound`.

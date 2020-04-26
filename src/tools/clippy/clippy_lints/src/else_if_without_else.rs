@@ -50,7 +50,7 @@ declare_lint_pass!(ElseIfWithoutElse => [ELSE_IF_WITHOUT_ELSE]);
 
 impl EarlyLintPass for ElseIfWithoutElse {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, mut item: &Expr) {
-        if in_external_macro(cx.sess(), item.span) {
+        if in_external_macro(cx.sess(), item.span.into()) {
             return;
         }
 

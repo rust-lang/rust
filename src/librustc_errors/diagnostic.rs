@@ -5,18 +5,18 @@ use crate::Level;
 use crate::Substitution;
 use crate::SubstitutionPart;
 use crate::SuggestionStyle;
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{Multi, SpanLike};
 use std::fmt;
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
-pub struct Diagnostic {
+pub struct Diagnostic<Span> {
     pub level: Level,
     pub message: Vec<(String, Style)>,
     pub code: Option<DiagnosticId>,
-    pub span: MultiSpan,
-    pub children: Vec<SubDiagnostic>,
-    pub suggestions: Vec<CodeSuggestion>,
+    pub span: Multi<Span>,
+    pub children: Vec<SubDiagnostic<Span>>,
+    pub suggestions: Vec<CodeSuggestion<Span>>,
 
     /// This is not used for highlighting or rendering any error message.  Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics.  By default, it is the primary span of
@@ -32,11 +32,11 @@ pub enum DiagnosticId {
 
 /// For example a note attached to an error.
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
-pub struct SubDiagnostic {
+pub struct SubDiagnostic<Span> {
     pub level: Level,
     pub message: Vec<(String, Style)>,
-    pub span: MultiSpan,
-    pub render_span: Option<MultiSpan>,
+    pub span: Multi<Span>,
+    pub render_span: Option<Multi<Span>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -86,7 +86,7 @@ impl StringPart {
     }
 }
 
-impl Diagnostic {
+impl<Span: SpanLike> Diagnostic<Span> {
     pub fn new(level: Level, message: &str) -> Self {
         Diagnostic::new_with_code(level, None, message)
     }
@@ -96,10 +96,10 @@ impl Diagnostic {
             level,
             message: vec![(message.to_owned(), Style::NoStyle)],
             code,
-            span: MultiSpan::new(),
+            span: Multi::new(),
             children: vec![],
             suggestions: vec![],
-            sort_span: DUMMY_SP,
+            sort_span: Span::default(),
         }
     }
 
@@ -135,17 +135,18 @@ impl Diagnostic {
     /// all, and you just supplied a `Span` to create the diagnostic,
     /// then the snippet will just include that `Span`, which is
     /// called the primary span.
-    pub fn span_label<T: Into<String>>(&mut self, span: Span, label: T) -> &mut Self {
-        self.span.push_span_label(span, label.into());
+    pub fn span_label<T: Into<String>>(&mut self, span: impl Into<Span>, label: T) -> &mut Self {
+        self.span.push_span_label(span.into(), label.into());
         self
     }
 
-    pub fn replace_span_with(&mut self, after: Span) -> &mut Self {
+    pub fn replace_span_with(&mut self, after: impl Into<Span>) -> &mut Self {
+        let after = after.into();
         let before = self.span.clone();
-        self.set_span(after);
+        self.set_span(after.clone());
         for span_label in before.span_labels() {
             if let Some(label) = span_label.label {
-                self.span_label(after, label);
+                self.span_label(after.clone(), label);
             }
         }
         self
@@ -230,39 +231,39 @@ impl Diagnostic {
     }
 
     pub fn note(&mut self, msg: &str) -> &mut Self {
-        self.sub(Level::Note, msg, MultiSpan::new(), None);
+        self.sub(Level::Note, msg, Multi::new(), None);
         self
     }
 
     pub fn highlighted_note(&mut self, msg: Vec<(String, Style)>) -> &mut Self {
-        self.sub_with_highlights(Level::Note, msg, MultiSpan::new(), None);
+        self.sub_with_highlights(Level::Note, msg, Multi::new(), None);
         self
     }
 
     /// Prints the span with a note above it.
-    pub fn span_note<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    pub fn span_note<S: Into<Multi<Span>>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, sp.into(), None);
         self
     }
 
     pub fn warn(&mut self, msg: &str) -> &mut Self {
-        self.sub(Level::Warning, msg, MultiSpan::new(), None);
+        self.sub(Level::Warning, msg, Multi::new(), None);
         self
     }
 
     /// Prints the span with a warn above it.
-    pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    pub fn span_warn<S: Into<Multi<Span>>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, sp.into(), None);
         self
     }
 
     pub fn help(&mut self, msg: &str) -> &mut Self {
-        self.sub(Level::Help, msg, MultiSpan::new(), None);
+        self.sub(Level::Help, msg, Multi::new(), None);
         self
     }
 
     /// Prints the span with some help above it.
-    pub fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    pub fn span_help<S: Into<Multi<Span>>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, sp.into(), None);
         self
     }
@@ -270,14 +271,14 @@ impl Diagnostic {
     pub fn multipart_suggestion(
         &mut self,
         msg: &str,
-        suggestion: Vec<(Span, String)>,
+        suggestion: impl IntoIterator<Item = (impl Into<Span>, String)>,
         applicability: Applicability,
     ) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: suggestion
                     .into_iter()
-                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                    .map(|(span, snippet)| SubstitutionPart { snippet, span: span.into() })
                     .collect(),
             }],
             msg: msg.to_owned(),
@@ -296,14 +297,14 @@ impl Diagnostic {
     pub fn tool_only_multipart_suggestion(
         &mut self,
         msg: &str,
-        suggestion: Vec<(Span, String)>,
+        suggestion: impl IntoIterator<Item = (impl Into<Span>, String)>,
         applicability: Applicability,
     ) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: suggestion
                     .into_iter()
-                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                    .map(|(span, snippet)| SubstitutionPart { snippet, span: span.into() })
                     .collect(),
             }],
             msg: msg.to_owned(),
@@ -393,7 +394,9 @@ impl Diagnostic {
     ) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: suggestions
-                .map(|snippet| Substitution { parts: vec![SubstitutionPart { snippet, span: sp }] })
+                .map(|snippet| Substitution {
+                    parts: vec![SubstitutionPart { snippet, span: sp.clone() }],
+                })
                 .collect(),
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
@@ -467,7 +470,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
+    pub fn set_span<S: Into<Multi<Span>>>(&mut self, sp: S) -> &mut Self {
         self.span = sp.into();
         if let Some(span) = self.span.primary_span() {
             self.sort_span = span;
@@ -504,7 +507,7 @@ impl Diagnostic {
 
     /// Used by a lint. Copies over all details *but* the "main
     /// message".
-    pub fn copy_details_not_message(&mut self, from: &Diagnostic) {
+    pub fn copy_details_not_message(&mut self, from: &Diagnostic<Span>) {
         self.span = from.span.clone();
         self.code = from.code.clone();
         self.children.extend(from.children.iter().cloned())
@@ -516,13 +519,13 @@ impl Diagnostic {
         &mut self,
         level: Level,
         message: &str,
-        span: MultiSpan,
-        render_span: Option<MultiSpan>,
+        span: impl Into<Multi<Span>>,
+        render_span: Option<Multi<Span>>,
     ) {
         let sub = SubDiagnostic {
             level,
             message: vec![(message.to_owned(), Style::NoStyle)],
-            span,
+            span: span.into(),
             render_span,
         };
         self.children.push(sub);
@@ -534,20 +537,45 @@ impl Diagnostic {
         &mut self,
         level: Level,
         message: Vec<(String, Style)>,
-        span: MultiSpan,
-        render_span: Option<MultiSpan>,
+        span: Multi<Span>,
+        render_span: Option<Multi<Span>>,
     ) {
         let sub = SubDiagnostic { level, message, span, render_span };
         self.children.push(sub);
     }
 }
 
-impl SubDiagnostic {
+impl<Span> SubDiagnostic<Span> {
     pub fn message(&self) -> String {
         self.message.iter().map(|i| i.0.as_str()).collect::<String>()
     }
 
     pub fn styled_message(&self) -> &Vec<(String, Style)> {
         &self.message
+    }
+}
+
+impl<S: Clone> Diagnostic<S> {
+    pub fn map_span<S2>(self, f: impl Fn(S) -> S2) -> Diagnostic<S2> {
+        Diagnostic {
+            level: self.level,
+            message: self.message,
+            code: self.code,
+            span: self.span.map_span(&f),
+            children: self.children.into_iter().map(|c| c.map_span(&f)).collect(),
+            suggestions: self.suggestions.into_iter().map(|s| s.map_span(&f)).collect(),
+            sort_span: f(self.sort_span),
+        }
+    }
+}
+
+impl<S: Clone> SubDiagnostic<S> {
+    pub fn map_span<S2>(self, f: impl Fn(S) -> S2) -> SubDiagnostic<S2> {
+        SubDiagnostic {
+            level: self.level,
+            message: self.message,
+            span: self.span.map_span(&f),
+            render_span: self.render_span.map(|ms| ms.map_span(f)),
+        }
     }
 }

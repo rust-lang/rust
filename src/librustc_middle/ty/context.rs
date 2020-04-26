@@ -57,7 +57,7 @@ use rustc_macros::HashStable;
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Session;
-use rustc_span::source_map::MultiSpan;
+use rustc_span::source_map::MultiSpanId;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
@@ -2562,7 +2562,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         hir_id: HirId,
-        span: impl Into<MultiSpan>,
+        span: impl Into<MultiSpanId>,
         decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);

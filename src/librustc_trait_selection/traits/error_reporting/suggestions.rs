@@ -16,7 +16,7 @@ use rustc_middle::ty::{
     TyCtxt, TypeFoldable, WithConstness,
 };
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{MultiSpanId, Span, DUMMY_SP};
 use std::fmt;
 
 use super::InferCtxtPrivExt;
@@ -1448,7 +1448,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ));
 
             let original_span = err.span.primary_span().unwrap();
-            let mut span = MultiSpan::from_span(original_span);
+            let mut span = MultiSpanId::from_span(original_span);
 
             let message = outer_generator
                 .and_then(|generator_did| {
@@ -1483,10 +1483,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         if let Some(await_span) = from_awaited_ty {
             // The type causing this obligation is one being awaited at await_span.
-            let mut span = MultiSpan::from_span(await_span);
+            let mut span = MultiSpanId::from_span(await_span);
 
             span.push_span_label(
-                await_span,
+                await_span.into(),
                 format!("await occurs here on type `{}`, which {}", target_ty, trait_explanation),
             );
 
@@ -1503,21 +1503,21 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 "note_obligation_cause_for_async_await generator_interior_types: {:#?}",
                 tables.generator_interior_types
             );
-            let mut span = MultiSpan::from_span(yield_span);
+            let mut span = MultiSpanId::from_span(yield_span);
             span.push_span_label(
-                yield_span,
+                yield_span.into(),
                 format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
             );
 
             span.push_span_label(
-                target_span,
+                target_span.into(),
                 format!("has type `{}` which {}", target_ty, trait_explanation),
             );
 
             // If available, use the scope span to annotate the drop location.
             if let Some(scope_span) = scope_span {
                 span.push_span_label(
-                    source_map.end_point(*scope_span),
+                    source_map.end_point(*scope_span).into(),
                     format!("`{}` is later dropped here", snippet),
                 );
             }

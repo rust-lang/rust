@@ -801,10 +801,10 @@ impl<Span: SpanLike> Multi<Span> {
 }
 
 impl<S> Multi<S> {
-    pub fn map_span<S2>(&self, f: impl Fn(&S) -> S2) -> Multi<S2> {
+    pub fn map_span<S2>(self, f: impl Fn(S) -> S2) -> Multi<S2> {
         Multi {
-            primary_spans: self.primary_spans.iter().map(&f).collect(),
-            span_labels: self.span_labels.iter().map(|(s, l)| (f(s), l.clone())).collect(),
+            primary_spans: self.primary_spans.into_iter().map(&f).collect(),
+            span_labels: self.span_labels.into_iter().map(|(s, l)| (f(s), l.clone())).collect(),
         }
     }
 }
@@ -823,7 +823,7 @@ impl From<Span> for MultiSpanId {
 
 impl From<MultiSpan> for MultiSpanId {
     fn from(ms: MultiSpan) -> MultiSpanId {
-        ms.map_span(|s| SpanId::Span(*s))
+        ms.map_span(SpanId::Span)
     }
 }
 

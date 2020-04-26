@@ -49,7 +49,7 @@ declare_lint_pass!(IfNotElse => [IF_NOT_ELSE]);
 
 impl EarlyLintPass for IfNotElse {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {
-        if in_external_macro(cx.sess(), item.span) {
+        if in_external_macro(cx.sess(), item.span.into()) {
             return;
         }
         if let ExprKind::If(ref cond, _, Some(ref els)) = item.kind {

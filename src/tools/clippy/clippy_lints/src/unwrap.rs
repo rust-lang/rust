@@ -140,7 +140,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // Shouldn't lint when `expr` is in macro.
-        if in_external_macro(self.cx.tcx.sess, expr.span) {
+        if in_external_macro(self.cx.tcx.sess, expr.span.into()) {
             return;
         }
         if let Some((cond, then, els)) = if_block(&expr) {

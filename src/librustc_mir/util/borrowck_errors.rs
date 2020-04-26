@@ -1,6 +1,6 @@
 use rustc_errors::{struct_span_err, DiagnosticBuilder, DiagnosticId};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{MultiSpan, Span};
+use rustc_span::{MultiSpanId, Span};
 
 impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
     crate fn cannot_move_when_borrowed(&self, span: Span, desc: &str) -> DiagnosticBuilder<'cx> {
@@ -461,7 +461,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         struct_span_err!(self, span, E0716, "temporary value dropped while borrowed",)
     }
 
-    fn struct_span_err_with_code<S: Into<MultiSpan>>(
+    fn struct_span_err_with_code<S: Into<MultiSpanId>>(
         &self,
         sp: S,
         msg: &str,

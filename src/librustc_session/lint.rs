@@ -3,7 +3,7 @@ use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_span::edition::Edition;
-use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
+use rustc_span::{sym, symbol::Ident, MultiSpanId, Span, Symbol};
 
 pub mod builtin;
 
@@ -199,7 +199,7 @@ pub enum BuiltinLintDiagnostics {
 #[derive(PartialEq)]
 pub struct BufferedEarlyLint {
     /// The span of code that we are linting on.
-    pub span: MultiSpan,
+    pub span: MultiSpanId,
 
     /// The lint message.
     pub msg: String,
@@ -232,7 +232,7 @@ impl LintBuffer {
         &mut self,
         lint: &'static Lint,
         node_id: NodeId,
-        span: MultiSpan,
+        span: MultiSpanId,
         msg: &str,
         diagnostic: BuiltinLintDiagnostics,
     ) {
@@ -249,7 +249,7 @@ impl LintBuffer {
         &mut self,
         lint: &'static Lint,
         id: NodeId,
-        sp: impl Into<MultiSpan>,
+        sp: impl Into<MultiSpanId>,
         msg: &str,
     ) {
         self.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
@@ -259,7 +259,7 @@ impl LintBuffer {
         &mut self,
         lint: &'static Lint,
         id: NodeId,
-        sp: impl Into<MultiSpan>,
+        sp: impl Into<MultiSpanId>,
         msg: &str,
         diagnostic: BuiltinLintDiagnostics,
     ) {

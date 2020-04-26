@@ -159,7 +159,7 @@ fn check_trait_method_impl_decl<'a, 'tcx>(
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
-        if in_external_macro(cx.sess(), item.span) {
+        if in_external_macro(cx.sess(), item.span.into()) {
             return;
         }
         if_chain! {

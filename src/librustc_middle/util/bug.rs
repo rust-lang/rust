@@ -1,7 +1,7 @@
 // These functions are used by macro expansion for bug! and span_bug!
 
 use crate::ty::{tls, TyCtxt};
-use rustc_span::{MultiSpan, Span};
+use rustc_span::{MultiSpanId, Span};
 use std::fmt;
 
 #[cold]
@@ -14,7 +14,7 @@ pub fn bug_fmt(file: &'static str, line: u32, args: fmt::Arguments<'_>) -> ! {
 
 #[cold]
 #[inline(never)]
-pub fn span_bug_fmt<S: Into<MultiSpan>>(
+pub fn span_bug_fmt<S: Into<MultiSpanId>>(
     file: &'static str,
     line: u32,
     span: S,
@@ -23,7 +23,7 @@ pub fn span_bug_fmt<S: Into<MultiSpan>>(
     opt_span_bug_fmt(file, line, Some(span), args);
 }
 
-fn opt_span_bug_fmt<S: Into<MultiSpan>>(
+fn opt_span_bug_fmt<S: Into<MultiSpanId>>(
     file: &'static str,
     line: u32,
     span: Option<S>,

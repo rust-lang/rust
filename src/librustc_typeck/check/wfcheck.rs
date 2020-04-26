@@ -241,7 +241,8 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
         if tcx.object_safety_violations(trait_def_id).is_empty() {
             return;
         }
-        let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
+        let sugg: Vec<_> =
+            trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
         tcx.sess
             .struct_span_err(
                 trait_should_be_self,

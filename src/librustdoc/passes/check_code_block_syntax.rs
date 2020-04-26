@@ -1,6 +1,6 @@
 use rustc_ast::token;
 use rustc_data_structures::sync::{Lock, Lrc};
-use rustc_errors::{emitter::Emitter, Applicability, Diagnostic, Handler};
+use rustc_errors::{emitter::Emitter, Applicability, Handler, RealDiagnostic};
 use rustc_parse::lexer::StringReader as Lexer;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -130,7 +130,7 @@ struct BufferEmitter {
 }
 
 impl Emitter for BufferEmitter {
-    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: &RealDiagnostic) {
         self.messages.borrow_mut().push(format!("error from rustc: {}", diag.message[0].0));
     }
 

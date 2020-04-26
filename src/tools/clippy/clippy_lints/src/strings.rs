@@ -80,7 +80,7 @@ declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), e.span) {
+        if in_external_macro(cx.sess(), e.span.into()) {
             return;
         }
 

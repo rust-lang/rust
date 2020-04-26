@@ -31,7 +31,7 @@ const LINT_MSG: &str = "transmuting a known null pointer into a reference.";
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), expr.span.into()) {
             return;
         }
 

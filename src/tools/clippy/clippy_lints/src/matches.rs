@@ -364,7 +364,7 @@ impl_lint_pass!(Matches => [
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), expr.span.into()) {
             return;
         }
         if let ExprKind::Match(ref ex, ref arms, MatchSource::Normal) = expr.kind {
@@ -389,7 +389,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 
     fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>) {
         if_chain! {
-            if !in_external_macro(cx.sess(), local.span);
+            if !in_external_macro(cx.sess(), local.span.into());
             if !in_macro(local.span);
             if let Some(ref expr) = local.init;
             if let ExprKind::Match(ref target, ref arms, MatchSource::Normal) = expr.kind;
@@ -425,7 +425,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
         if_chain! {
-            if !in_external_macro(cx.sess(), pat.span);
+            if !in_external_macro(cx.sess(), pat.span.into());
             if !in_macro(pat.span);
             if let PatKind::Struct(ref qpath, fields, true) = pat.kind;
             if let QPath::Resolved(_, ref path) = qpath;

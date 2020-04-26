@@ -96,7 +96,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Shadow {
         _: Span,
         _: HirId,
     ) {
-        if in_external_macro(cx.sess(), body.value.span) {
+        if in_external_macro(cx.sess(), body.value.span.into()) {
             return;
         }
         check_fn(cx, decl, body);
@@ -129,7 +129,7 @@ fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block<'_>, bin
 }
 
 fn check_local<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>, bindings: &mut Vec<(Name, Span)>) {
-    if in_external_macro(cx.sess(), local.span) {
+    if in_external_macro(cx.sess(), local.span.into()) {
         return;
     }
     if higher::is_from_for_desugar(local) {
@@ -317,7 +317,7 @@ fn lint_shadow<'a, 'tcx>(
 }
 
 fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, bindings: &mut Vec<(Name, Span)>) {
-    if in_external_macro(cx.sess(), expr.span) {
+    if in_external_macro(cx.sess(), expr.span.into()) {
         return;
     }
     match expr.kind {

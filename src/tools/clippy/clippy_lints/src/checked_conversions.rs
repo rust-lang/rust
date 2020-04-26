@@ -44,7 +44,7 @@ declare_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, item: &Expr<'_>) {
         let result = if_chain! {
-            if !in_external_macro(cx.sess(), item.span);
+            if !in_external_macro(cx.sess(), item.span.into());
             if let ExprKind::Binary(op, ref left, ref right) = &item.kind;
 
             then {

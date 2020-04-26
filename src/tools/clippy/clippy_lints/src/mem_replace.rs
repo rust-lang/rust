@@ -170,7 +170,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, src: &Expr<'_>, expr_span
 fn check_replace_with_default(cx: &LateContext<'_, '_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if let ExprKind::Call(ref repl_func, _) = src.kind {
         if_chain! {
-            if !in_external_macro(cx.tcx.sess, expr_span);
+            if !in_external_macro(cx.tcx.sess, expr_span.into());
             if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
             if let Some(repl_def_id) = cx.tables.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
             if match_def_path(cx, repl_def_id, &paths::DEFAULT_TRAIT_METHOD);

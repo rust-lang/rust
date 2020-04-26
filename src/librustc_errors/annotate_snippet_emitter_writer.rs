@@ -7,13 +7,13 @@
 
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
-use crate::{CodeSuggestion, Diagnostic, DiagnosticId, Emitter, Level, SubDiagnostic};
+use crate::{CodeSuggestion, DiagnosticId, Emitter, Level, RealDiagnostic, RealSubDiagnostic};
 use annotate_snippets::display_list::DisplayList;
 use annotate_snippets::formatter::DisplayListFormatter;
 use annotate_snippets::snippet::*;
 use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{Loc, MultiSpan, SourceFile};
+use rustc_span::{Loc, MultiSpan, SourceFile, Span};
 
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitterWriter {
@@ -28,7 +28,7 @@ pub struct AnnotateSnippetEmitterWriter {
 
 impl Emitter for AnnotateSnippetEmitterWriter {
     /// The entry point for the diagnostics generation
-    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: &RealDiagnostic) {
         let mut children = diag.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&diag);
 
@@ -68,9 +68,9 @@ struct DiagnosticConverter<'a> {
     code: Option<DiagnosticId>,
     msp: MultiSpan,
     #[allow(dead_code)]
-    children: &'a [SubDiagnostic],
+    children: &'a [RealSubDiagnostic],
     #[allow(dead_code)]
-    suggestions: &'a [CodeSuggestion],
+    suggestions: &'a [CodeSuggestion<Span>],
 }
 
 impl<'a> DiagnosticConverter<'a> {
@@ -191,8 +191,8 @@ impl AnnotateSnippetEmitterWriter {
         message: String,
         code: &Option<DiagnosticId>,
         msp: &MultiSpan,
-        children: &[SubDiagnostic],
-        suggestions: &[CodeSuggestion],
+        children: &[RealSubDiagnostic],
+        suggestions: &[CodeSuggestion<Span>],
     ) {
         let converter = DiagnosticConverter {
             source_map: self.source_map.clone(),

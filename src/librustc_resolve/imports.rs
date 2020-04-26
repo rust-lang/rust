@@ -1414,7 +1414,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                 .to_owned();
                             let error_id = (
                                 DiagnosticMessageId::ErrorId(0), // no code?!
-                                Some(binding.span),
+                                Some(binding.span.into()),
                                 msg.clone(),
                             );
                             let fresh =

@@ -12,7 +12,9 @@ use rustc_query_system::query::{CycleError, QueryJobId, QueryJobInfo};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, Handler, Level};
+use rustc_errors::{
+    struct_span_err, Diagnostic, DiagnosticBuilder, Handler, Level, RealDiagnostic,
+};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
@@ -144,7 +146,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         } else {
                             break;
                         };
-                    let mut diag = Diagnostic::new(
+                    let mut diag = RealDiagnostic::new(
                         Level::FailureNote,
                         &format!(
                             "#{} [{}] {}",

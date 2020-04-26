@@ -14,7 +14,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
 use crate::{Applicability, DiagnosticId};
-use crate::{CodeSuggestion, SubDiagnostic};
+use crate::{CodeSuggestion, RealDiagnostic, RealSubDiagnostic};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_span::hygiene::ExpnData;
@@ -98,7 +98,7 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, diag: &crate::Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: &RealDiagnostic) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
@@ -220,7 +220,7 @@ struct ArtifactNotification<'a> {
 }
 
 impl Diagnostic {
-    fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
+    fn from_errors_diagnostic(diag: &crate::RealDiagnostic, je: &JsonEmitter) -> Diagnostic {
         let sugg = diag.suggestions.iter().map(|sugg| Diagnostic {
             message: sugg.msg.clone(),
             code: None,
@@ -268,7 +268,7 @@ impl Diagnostic {
         }
     }
 
-    fn from_sub_diagnostic(diag: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
+    fn from_sub_diagnostic(diag: &RealSubDiagnostic, je: &JsonEmitter) -> Diagnostic {
         Diagnostic {
             message: diag.message(),
             code: None,
@@ -354,7 +354,7 @@ impl DiagnosticSpan {
             .collect()
     }
 
-    fn from_suggestion(suggestion: &CodeSuggestion, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
+    fn from_suggestion(suggestion: &CodeSuggestion<Span>, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
         suggestion
             .substitutions
             .iter()

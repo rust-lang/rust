@@ -318,7 +318,7 @@ impl<'a, 'tcx> Functions {
     }
 
     fn check_line_number(self, cx: &LateContext<'_, '_>, span: Span, body: &'tcx hir::Body<'_>) {
-        if in_external_macro(cx.sess(), span) {
+        if in_external_macro(cx.sess(), span.into()) {
             return;
         }
 
@@ -407,7 +407,7 @@ fn check_needless_must_use(
     fn_header_span: Span,
     attr: &Attribute,
 ) {
-    if in_external_macro(cx.sess(), item_span) {
+    if in_external_macro(cx.sess(), item_span.into()) {
         return;
     }
     if returns_unit(decl) {
@@ -448,7 +448,7 @@ fn check_must_use_candidate<'a, 'tcx>(
 ) {
     if has_mutable_arg(cx, body)
         || mutates_static(cx, body)
-        || in_external_macro(cx.sess(), item_span)
+        || in_external_macro(cx.sess(), item_span.into())
         || returns_unit(decl)
         || !cx.access_levels.is_exported(item_id)
         || is_must_use_ty(cx, return_ty(cx, item_id))

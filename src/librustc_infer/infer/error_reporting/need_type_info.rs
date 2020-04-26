@@ -505,7 +505,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .span
             .span_labels()
             .iter()
-            .any(|span_label| span_label.label.is_some() && span_label.span == span)
+            .any(|span_label| span_label.label.is_some() && span_label.span == span.into())
             && local_visitor.found_arg_pattern.is_none()
         {
             // Avoid multiple labels pointing at `span`.

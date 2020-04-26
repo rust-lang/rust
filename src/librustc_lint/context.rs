@@ -34,7 +34,7 @@ use rustc_middle::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
 use rustc_session::lint::{add_elided_lifetime_in_path_suggestion, BuiltinLintDiagnostics};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
-use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{symbol::Symbol, MultiSpanId, Span, DUMMY_SP};
 use rustc_target::abi::LayoutOf;
 
 use std::slice;
@@ -477,7 +477,7 @@ pub trait LintContext: Sized {
     fn lookup_with_diagnostics(
         &self,
         lint: &'static Lint,
-        span: Option<impl Into<MultiSpan>>,
+        span: Option<impl Into<MultiSpanId>>,
         decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
         diagnostic: BuiltinLintDiagnostics,
     ) {
@@ -576,16 +576,16 @@ pub trait LintContext: Sized {
         });
     }
 
-    // FIXME: These methods should not take an Into<MultiSpan> -- instead, callers should need to
+    // FIXME: These methods should not take an Into<MultiSpanId> -- instead, callers should need to
     // set the span in their `decorate` function (preferably using set_span).
-    fn lookup<S: Into<MultiSpan>>(
+    fn lookup<S: Into<MultiSpanId>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
         decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
     );
 
-    fn struct_span_lint<S: Into<MultiSpan>>(
+    fn struct_span_lint<S: Into<MultiSpanId>>(
         &self,
         lint: &'static Lint,
         span: S,
@@ -629,7 +629,7 @@ impl LintContext for LateContext<'_, '_> {
         &*self.lint_store
     }
 
-    fn lookup<S: Into<MultiSpan>>(
+    fn lookup<S: Into<MultiSpanId>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,
@@ -656,7 +656,7 @@ impl LintContext for EarlyContext<'_> {
         &*self.lint_store
     }
 
-    fn lookup<S: Into<MultiSpan>>(
+    fn lookup<S: Into<MultiSpanId>>(
         &self,
         lint: &'static Lint,
         span: Option<S>,

@@ -8,7 +8,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::{BytePos, MultiSpan, Span};
+use rustc_span::source_map::{BytePos, MultiSpanId, Span};
 use rustc_span::Pos;
 use std::ops::Range;
 use url::Url;
@@ -156,7 +156,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
                 if !(is_entrypoint_fn(cx, cx.tcx.hir().local_def_id(item.hir_id).to_def_id())
-                    || in_external_macro(cx.tcx.sess, item.span))
+                    || in_external_macro(cx.tcx.sess, item.span.into()))
                 {
                     lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id));
                 }
@@ -180,7 +180,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'_>) {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
-            if !in_external_macro(cx.tcx.sess, item.span) {
+            if !in_external_macro(cx.tcx.sess, item.span.into()) {
                 lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, None);
             }
         }
@@ -188,7 +188,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem<'_>) {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
-        if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
+        if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span.into()) {
             return;
         }
         if let hir::ImplItemKind::Fn(ref sig, body_id) = item.kind {
@@ -200,7 +200,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
 fn lint_for_missing_headers<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     hir_id: hir::HirId,
-    span: impl Into<MultiSpan> + Copy,
+    span: impl Into<MultiSpanId> + Copy,
     sig: &hir::FnSig<'_>,
     headers: DocHeaders,
     body_id: Option<hir::BodyId>,

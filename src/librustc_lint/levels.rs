@@ -17,7 +17,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{builtin, Level, Lint};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::source_map::MultiSpan;
+use rustc_span::source_map::MultiSpanId;
 use rustc_span::symbol::{sym, Symbol};
 
 use std::cmp;
@@ -398,7 +398,7 @@ impl<'s> LintLevelsBuilder<'s> {
     pub fn struct_lint(
         &self,
         lint: &'static Lint,
-        span: Option<MultiSpan>,
+        span: Option<MultiSpanId>,
         decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
     ) {
         let (level, src) = self.lint_level(lint);

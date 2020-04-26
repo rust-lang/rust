@@ -11,7 +11,7 @@ use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{MultiSpan, Span, Symbol};
+use rustc_span::{MultiSpanId, Span, Symbol};
 
 use std::path::PathBuf;
 use std::str;
@@ -79,7 +79,7 @@ impl SymbolGallery {
 pub fn feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
-    span: impl Into<MultiSpan>,
+    span: impl Into<MultiSpanId>,
     explain: &str,
 ) -> DiagnosticBuilder<'a> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
@@ -92,7 +92,7 @@ pub fn feature_err<'a>(
 pub fn feature_err_issue<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
-    span: impl Into<MultiSpan>,
+    span: impl Into<MultiSpanId>,
     issue: GateIssue,
     explain: &str,
 ) -> DiagnosticBuilder<'a> {
@@ -177,7 +177,7 @@ impl ParseSess {
     pub fn buffer_lint(
         &self,
         lint: &'static Lint,
-        span: impl Into<MultiSpan>,
+        span: impl Into<MultiSpanId>,
         node_id: NodeId,
         msg: &str,
     ) {
@@ -195,7 +195,7 @@ impl ParseSess {
     pub fn buffer_lint_with_diagnostic(
         &self,
         lint: &'static Lint,
-        span: impl Into<MultiSpan>,
+        span: impl Into<MultiSpanId>,
         node_id: NodeId,
         msg: &str,
         diagnostic: BuiltinLintDiagnostics,

@@ -205,7 +205,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::If(_, then, Some(else_)) = &expr.kind;
         if is_block(else_) || is_if(else_);
         if !differing_macro_contexts(then.span, else_.span);
-        if !then.span.from_expansion() && !in_external_macro(cx.sess, expr.span);
+        if !then.span.from_expansion() && !in_external_macro(cx.sess, expr.span.into());
 
         // workaround for rust-lang/rust#43081
         if expr.span.lo().0 != 0 && expr.span.hi().0 != 0;

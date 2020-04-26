@@ -48,7 +48,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        if in_external_macro(self.cx.sess(), expr.span) {
+        if in_external_macro(self.cx.sess(), expr.span.into()) {
             return;
         }
 

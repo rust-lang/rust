@@ -604,7 +604,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Local(ref local) = stmt.kind {
             if is_unit(cx.tables.pat_ty(&local.pat)) {
-                if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
+                if in_external_macro(cx.sess(), stmt.span.into()) || local.pat.span.from_expansion() {
                     return;
                 }
                 if higher::is_from_for_desugar(local) {
@@ -1349,7 +1349,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
                 match lit.node {
                     LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
                     _ => {
-                        if cast_from.kind == cast_to.kind && !in_external_macro(cx.sess(), expr.span) {
+                        if cast_from.kind == cast_to.kind && !in_external_macro(cx.sess(), expr.span.into()) {
                             span_lint(
                                 cx,
                                 UNNECESSARY_CAST,
@@ -1363,7 +1363,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
                     },
                 }
             }
-            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
+            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span.into()) {
                 lint_numeric_casts(cx, expr, ex, cast_from, cast_to);
             }
 
@@ -2290,7 +2290,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                     vis.visit_ty(ty);
 
                     for target in &vis.found {
-                        if in_external_macro(cx.sess(), generics.span) {
+                        if in_external_macro(cx.sess(), generics.span.into()) {
                             continue;
                         }
                         let generics_suggestion_span = generics.span.substitute_dummy({

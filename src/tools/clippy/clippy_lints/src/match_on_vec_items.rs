@@ -47,7 +47,7 @@ declare_lint_pass!(MatchOnVecItems => [MATCH_ON_VEC_ITEMS]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchOnVecItems {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
-            if !in_external_macro(cx.sess(), expr.span);
+            if !in_external_macro(cx.sess(), expr.span.into());
             if let ExprKind::Match(ref match_expr, _, MatchSource::Normal) = expr.kind;
             if let Some(idx_expr) = is_vec_indexing(cx, match_expr);
             if let ExprKind::Index(vec, idx) = idx_expr.kind;

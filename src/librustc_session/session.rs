@@ -21,7 +21,9 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{self, FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
+use rustc_span::source_map::{
+    self, FileLoader, MultiSpanId, RealFileLoader, SourceMap, Span, SpanId,
+};
 use rustc_span::{SourceFileHashAlgorithm, Symbol};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target, TargetTriple, TlsModel};
 
@@ -73,7 +75,7 @@ pub struct Session {
     /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
-    pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
+    pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<SpanId>, String)>>,
     pub crate_types: Once<Vec<CrateType>>,
     /// The `crate_disambiguator` is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
@@ -238,10 +240,14 @@ impl Session {
         *self.crate_disambiguator.get()
     }
 
-    pub fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_warn<S: Into<MultiSpanId>>(
+        &self,
+        sp: S,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_warn(sp, msg)
     }
-    pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
+    pub fn struct_span_warn_with_code<S: Into<MultiSpanId>>(
         &self,
         sp: S,
         msg: &str,
@@ -252,10 +258,10 @@ impl Session {
     pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_warn(msg)
     }
-    pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_err<S: Into<MultiSpanId>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_err(sp, msg)
     }
-    pub fn struct_span_err_with_code<S: Into<MultiSpan>>(
+    pub fn struct_span_err_with_code<S: Into<MultiSpanId>>(
         &self,
         sp: S,
         msg: &str,
@@ -270,10 +276,14 @@ impl Session {
     pub fn struct_err_with_code(&self, msg: &str, code: DiagnosticId) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_err_with_code(msg, code)
     }
-    pub fn struct_span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_fatal<S: Into<MultiSpanId>>(
+        &self,
+        sp: S,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
-    pub fn struct_span_fatal_with_code<S: Into<MultiSpan>>(
+    pub fn struct_span_fatal_with_code<S: Into<MultiSpanId>>(
         &self,
         sp: S,
         msg: &str,
@@ -285,10 +295,10 @@ impl Session {
         self.diagnostic().struct_fatal(msg)
     }
 
-    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
+    pub fn span_fatal<S: Into<MultiSpanId>>(&self, sp: S, msg: &str) -> ! {
         self.diagnostic().span_fatal(sp, msg).raise()
     }
-    pub fn span_fatal_with_code<S: Into<MultiSpan>>(
+    pub fn span_fatal_with_code<S: Into<MultiSpanId>>(
         &self,
         sp: S,
         msg: &str,
@@ -299,17 +309,17 @@ impl Session {
     pub fn fatal(&self, msg: &str) -> ! {
         self.diagnostic().fatal(msg).raise()
     }
-    pub fn span_err_or_warn<S: Into<MultiSpan>>(&self, is_warning: bool, sp: S, msg: &str) {
+    pub fn span_err_or_warn<S: Into<MultiSpanId>>(&self, is_warning: bool, sp: S, msg: &str) {
         if is_warning {
             self.span_warn(sp, msg);
         } else {
             self.span_err(sp, msg);
         }
     }
-    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn span_err<S: Into<MultiSpanId>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_err(sp, msg)
     }
-    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
+    pub fn span_err_with_code<S: Into<MultiSpanId>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.diagnostic().span_err_with_code(sp, &msg, code)
     }
     pub fn err(&self, msg: &str) {
@@ -345,29 +355,29 @@ impl Session {
         let errors = self.err_count() - old_count;
         if errors == 0 { Ok(result) } else { Err(ErrorReported) }
     }
-    pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn span_warn<S: Into<MultiSpanId>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_warn(sp, msg)
     }
-    pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
+    pub fn span_warn_with_code<S: Into<MultiSpanId>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.diagnostic().span_warn_with_code(sp, msg, code)
     }
     pub fn warn(&self, msg: &str) {
         self.diagnostic().warn(msg)
     }
-    pub fn opt_span_warn<S: Into<MultiSpan>>(&self, opt_sp: Option<S>, msg: &str) {
+    pub fn opt_span_warn<S: Into<MultiSpanId>>(&self, opt_sp: Option<S>, msg: &str) {
         match opt_sp {
             Some(sp) => self.span_warn(sp, msg),
             None => self.warn(msg),
         }
     }
     /// Delay a span_bug() call until abort_if_errors()
-    pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn delay_span_bug<S: Into<MultiSpanId>>(&self, sp: S, msg: &str) {
         self.diagnostic().delay_span_bug(sp, msg)
     }
     pub fn note_without_error(&self, msg: &str) {
         self.diagnostic().note_without_error(msg)
     }
-    pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn span_note_without_error<S: Into<MultiSpanId>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_note_without_error(sp, msg)
     }
 
@@ -383,7 +393,7 @@ impl Session {
         method: DiagnosticBuilderMethod,
         msg_id: DiagnosticMessageId,
         message: &str,
-        span_maybe: Option<Span>,
+        span_maybe: Option<SpanId>,
     ) {
         let id_span_message = (msg_id, span_maybe, message.to_owned());
         let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
@@ -413,7 +423,7 @@ impl Session {
         &'a self,
         diag_builder: &'b mut DiagnosticBuilder<'a>,
         msg_id: DiagnosticMessageId,
-        span: Span,
+        span: impl Into<SpanId>,
         message: &str,
     ) {
         self.diag_once(
@@ -421,7 +431,7 @@ impl Session {
             DiagnosticBuilderMethod::SpanNote,
             msg_id,
             message,
-            Some(span),
+            Some(span.into()),
         );
     }
 
@@ -438,7 +448,7 @@ impl Session {
         &'a self,
         diag_builder: &'b mut DiagnosticBuilder<'a>,
         msg_id: DiagnosticMessageId,
-        span: Span,
+        span: impl Into<SpanId>,
         message: &str,
         suggestion: String,
     ) {
@@ -447,7 +457,7 @@ impl Session {
             DiagnosticBuilderMethod::SpanSuggestion(suggestion),
             msg_id,
             message,
-            Some(span),
+            Some(span.into()),
         );
     }
 

@@ -68,7 +68,7 @@ const SYNC_GUARD_PATHS: [&[&str]; 3] = [
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnderscore {
     fn check_local(&mut self, cx: &LateContext<'_, '_>, local: &Local<'_>) {
-        if in_external_macro(cx.tcx.sess, local.span) {
+        if in_external_macro(cx.tcx.sess, local.span.into()) {
             return;
         }
 

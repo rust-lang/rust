@@ -15,7 +15,8 @@ use rustc_span::{MultiSpan, SourceFile, Span};
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
 use crate::{
-    pluralize, CodeSuggestion, Diagnostic, DiagnosticId, Level, SubDiagnostic, SuggestionStyle,
+    pluralize, CodeSuggestion, DiagnosticId, Level, RealDiagnostic, RealSubDiagnostic,
+    SuggestionStyle,
 };
 
 use log::*;
@@ -181,7 +182,7 @@ const ANONYMIZED_LINE_NUM: &str = "LL";
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
-    fn emit_diagnostic(&mut self, diag: &Diagnostic);
+    fn emit_diagnostic(&mut self, diag: &RealDiagnostic);
 
     /// Emit a notification that an artifact has been output.
     /// This is currently only supported for the JSON format,
@@ -207,8 +208,8 @@ pub trait Emitter {
     ///   we return the original `primary_span` and the original suggestions.
     fn primary_span_formatted<'a>(
         &mut self,
-        diag: &'a Diagnostic,
-    ) -> (MultiSpan, &'a [CodeSuggestion]) {
+        diag: &'a RealDiagnostic,
+    ) -> (MultiSpan, &'a [CodeSuggestion<Span>]) {
         let mut primary_span = diag.span.clone();
         if let Some((sugg, rest)) = diag.suggestions.split_first() {
             if rest.is_empty() &&
@@ -276,7 +277,7 @@ pub trait Emitter {
         &self,
         source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
+        children: &mut Vec<RealSubDiagnostic>,
         level: &Level,
         backtrace: bool,
     ) {
@@ -314,7 +315,7 @@ pub trait Emitter {
                     macro_kind.descr(),
                 );
 
-                children.push(SubDiagnostic {
+                children.push(RealSubDiagnostic {
                     level: Level::Note,
                     message: vec![(msg, Style::NoStyle)],
                     span: MultiSpan::new(),
@@ -327,7 +328,7 @@ pub trait Emitter {
     fn render_multispans_macro_backtrace(
         &self,
         span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
+        children: &mut Vec<RealSubDiagnostic>,
         backtrace: bool,
     ) {
         for span in iter::once(span).chain(children.iter_mut().map(|child| &mut child.span)) {
@@ -417,7 +418,7 @@ pub trait Emitter {
         &self,
         source_map: &Option<Lrc<SourceMap>>,
         span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
+        children: &mut Vec<RealSubDiagnostic>,
     ) {
         debug!("fix_multispans_in_extern_macros: before: span={:?} children={:?}", span, children);
         for span in iter::once(&mut *span).chain(children.iter_mut().map(|child| &mut child.span)) {
@@ -468,7 +469,7 @@ impl Emitter for EmitterWriter {
         self.sm.as_ref()
     }
 
-    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: &RealDiagnostic) {
         let mut children = diag.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&diag);
         debug!("emit_diagnostic: suggestions={:?}", suggestions);
@@ -503,7 +504,7 @@ impl Emitter for SilentEmitter {
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         None
     }
-    fn emit_diagnostic(&mut self, _: &Diagnostic) {}
+    fn emit_diagnostic(&mut self, _: &RealDiagnostic) {}
 }
 
 /// Maximum number of lines we will print for each error; arbitrary.
@@ -1120,7 +1121,7 @@ impl EmitterWriter {
         max
     }
 
-    fn get_max_line_num(&mut self, span: &MultiSpan, children: &[SubDiagnostic]) -> usize {
+    fn get_max_line_num(&mut self, span: &MultiSpan, children: &[RealSubDiagnostic]) -> usize {
         let primary = self.get_multispan_max_line_num(span);
         children
             .iter()
@@ -1522,7 +1523,7 @@ impl EmitterWriter {
 
     fn emit_suggestion_default(
         &mut self,
-        suggestion: &CodeSuggestion,
+        suggestion: &CodeSuggestion<Span>,
         level: &Level,
         max_line_num_len: usize,
     ) -> io::Result<()> {
@@ -1685,8 +1686,8 @@ impl EmitterWriter {
         message: &[(String, Style)],
         code: &Option<DiagnosticId>,
         span: &MultiSpan,
-        children: &[SubDiagnostic],
-        suggestions: &[CodeSuggestion],
+        children: &[RealSubDiagnostic],
+        suggestions: &[CodeSuggestion<Span>],
     ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()

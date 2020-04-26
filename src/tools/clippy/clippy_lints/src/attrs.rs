@@ -288,7 +288,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                 let skip_unused_imports = item.attrs.iter().any(|attr| attr.check_name(sym!(macro_use)));
 
                 for attr in item.attrs {
-                    if in_external_macro(cx.sess(), attr.span) {
+                    if in_external_macro(cx.sess(), attr.span.into()) {
                         return;
                     }
                     if let Some(lint_list) = &attr.meta_item_list() {

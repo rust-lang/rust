@@ -1570,7 +1570,7 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: &rustc_errors::RealDiagnostic) {
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msg: diag.message(),
             code: diag.code.clone(),
