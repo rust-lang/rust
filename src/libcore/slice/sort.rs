@@ -435,15 +435,17 @@ where
         // Find the first pair of out-of-order elements.
         let mut l = 0;
         let mut r = v.len();
+
+        // SAFETY: The unsafety below involves indexing an array.
+        // For the first one: we already do the bound checking here with `l<r`.
+        // For the secondn one: the minimum value for `l` is 0 and the maximum value for `r` is `v.len().`
         unsafe {
             // Find the first element greater than or equal to the pivot.
-            // SAFETY: We already do the bound checking here with `l<r`.
             while l < r && is_less(v.get_unchecked(l), pivot) {
                 l += 1;
             }
 
             // Find the last element smaller that the pivot.
-            // SAFETY: The minimum value for `l` is 0 and the maximum value for `r` is `v.len().`
             while l < r && !is_less(v.get_unchecked(r - 1), pivot) {
                 r -= 1;
             }
@@ -477,6 +479,7 @@ where
 
     // Read the pivot into a stack-allocated variable for efficiency. If a following comparison
     // operation panics, the pivot will be automatically written back into the slice.
+    // SAFETY: The pointer here is valid because it is obtained from a reference to a slice.
     let mut tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
     let _pivot_guard = CopyOnDrop { src: &mut *tmp, dest: pivot };
     let pivot = &*tmp;
@@ -485,15 +488,16 @@ where
     let mut l = 0;
     let mut r = v.len();
     loop {
+        // SAFETY: The unsafety below involves indexing an array.
+        // For the first one: we already do the bound checking here with `l<r`.
+        // For the second one: the minimum value for `l` is 0 and the maximum value for `r` is `v.len().`
         unsafe {
             // Find the first element greater than the pivot.
-            // SAFETY: We already do the bound checking here with `l<r`
             while l < r && !is_less(pivot, v.get_unchecked(l)) {
                 l += 1;
             }
 
             // Find the last element equal to the pivot.
-            // SAFETY: The minimum value for `l` is 0 and the maximum value for `r` is `v.len().`
             while l < r && is_less(pivot, v.get_unchecked(r - 1)) {
                 r -= 1;
             }
