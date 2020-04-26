@@ -197,7 +197,7 @@ impl<'a> Iterator for Parser<'a> {
                         Some(String(self.string(pos + 1)))
                     } else {
                         let arg = self.argument();
-                        if let Some(end) = self.must_consume('}') {
+                        if let Some(end) = self.consume_close_brace() {
                             let start = self.to_span_index(pos);
                             let end = self.to_span_index(end + 1);
                             self.arg_places.push(start.to(end));
@@ -248,24 +248,6 @@ impl<'a> Parser<'a> {
             last_opening_brace: None,
             append_newline,
         }
-    }
-
-    /// Notifies of an error. The message doesn't actually need to be of type
-    /// String, but I think it does when this eventually uses conditions so it
-    /// might as well start using it now.
-    fn err<S1: Into<string::String>, S2: Into<string::String>>(
-        &mut self,
-        description: S1,
-        label: S2,
-        span: InnerSpan,
-    ) {
-        self.errors.push(ParseError {
-            description: description.into(),
-            note: None,
-            label: label.into(),
-            span,
-            secondary_label: None,
-        });
     }
 
     /// Notifies of an error. The message doesn't actually need to be of type
@@ -329,30 +311,22 @@ impl<'a> Parser<'a> {
         InnerOffset(raw + pos + 1)
     }
 
-    /// Forces consumption of the specified character. If the character is not
-    /// found, an error is emitted.
-    fn must_consume(&mut self, c: char) -> Option<usize> {
-        self.ws();
-
+    /// Consume the final `}` in a format specifier. If it is not found, an error is emitted.
+    fn consume_close_brace(&mut self) -> Option<usize> {
         if let Some(&(pos, maybe)) = self.cur.peek() {
-            if c == maybe {
+            if maybe == '}' {
                 self.cur.next();
                 Some(pos)
             } else {
                 let pos = self.to_span_index(pos);
                 let description = format!("expected `'}}'`, found `{:?}`", maybe);
                 let label = "expected `}`".to_owned();
-                let (note, secondary_label) = if c == '}' {
-                    (
-                        Some(
-                            "if you intended to print `{`, you can escape it using `{{`".to_owned(),
-                        ),
-                        self.last_opening_brace
-                            .map(|sp| ("because of this opening brace".to_owned(), sp)),
-                    )
-                } else {
-                    (None, None)
-                };
+                let note = Some(
+                        "if you intended to print `{`, you can escape it using `{{`".to_owned(),
+                );
+                let secondary_label =
+                    self.last_opening_brace
+                        .map(|sp| ("because of this opening brace".to_owned(), sp));
                 self.errors.push(ParseError {
                     description,
                     note,
@@ -363,33 +337,22 @@ impl<'a> Parser<'a> {
                 None
             }
         } else {
-            let description = format!("expected `{:?}` but string was terminated", c);
+            let description = "expected `}` but string was terminated".to_owned();
             // point at closing `"`
             let pos = self.input.len() - if self.append_newline { 1 } else { 0 };
             let pos = self.to_span_index(pos);
-            if c == '}' {
-                let label = format!("expected `{:?}`", c);
-                let (note, secondary_label) = if c == '}' {
-                    (
-                        Some(
-                            "if you intended to print `{`, you can escape it using `{{`".to_owned(),
-                        ),
-                        self.last_opening_brace
-                            .map(|sp| ("because of this opening brace".to_owned(), sp)),
-                    )
-                } else {
-                    (None, None)
-                };
-                self.errors.push(ParseError {
-                    description,
-                    note,
-                    label,
-                    span: pos.to(pos),
-                    secondary_label,
-                });
-            } else {
-                self.err(description, format!("expected `{:?}`", c), pos.to(pos));
-            }
+            let label = "expected `}`".to_owned();
+            let note =
+                Some("if you intended to print `{`, you can escape it using `{{`".to_owned());
+            let secondary_label =
+                self.last_opening_brace.map(|sp| ("because of this opening brace".to_owned(), sp));
+            self.errors.push(ParseError {
+                description,
+                note,
+                label,
+                span: pos.to(pos),
+                secondary_label,
+            });
             None
         }
     }
