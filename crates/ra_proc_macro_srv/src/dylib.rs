@@ -109,24 +109,19 @@ impl ProcMacroLibraryLibloading {
     }
 }
 
-type ProcMacroLibraryImpl = ProcMacroLibraryLibloading;
-
 pub struct Expander {
-    inner: ProcMacroLibraryImpl,
+    inner: ProcMacroLibraryLibloading,
 }
 
 impl Expander {
-    pub fn new(lib: &Path) -> Result<Expander, String> {
+    pub fn new(lib: &Path) -> io::Result<Expander> {
         // Some libraries for dynamic loading require canonicalized path even when it is
         // already absolute
-        let lib = lib
-            .canonicalize()
-            .unwrap_or_else(|err| panic!("Cannot canonicalize {}: {:?}", lib.display(), err));
+        let lib = lib.canonicalize()?;
 
-        // Copy the dylib to temp directory to prevent locking in Windows
-        let lib = copy_to_temp_dir(&lib).map_err(|e| e.to_string())?;
+        let lib = ensure_file_with_lock_free_access(&lib)?;
 
-        let library = ProcMacroLibraryImpl::open(&lib).map_err(|e| e.to_string())?;
+        let library = ProcMacroLibraryLibloading::open(&lib)?;
 
         Ok(Expander { inner: library })
     }
@@ -199,8 +194,9 @@ impl Expander {
     }
 }
 
+/// Copy the dylib to temp directory to prevent locking in Windows
 #[cfg(windows)]
-fn copy_to_temp_dir(path: &Path) -> io::Result<PathBuf> {
+fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
     let mut to = std::env::temp_dir();
     let file_name = path.file_name().ok_or_else(|| {
         io::Error::new(
@@ -215,6 +211,6 @@ fn copy_to_temp_dir(path: &Path) -> io::Result<PathBuf> {
 }
 
 #[cfg(unix)]
-fn copy_to_temp_dir(path: &Path) -> io::Result<PathBuf> {
+fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
     Ok(path.to_path_buf())
 }
