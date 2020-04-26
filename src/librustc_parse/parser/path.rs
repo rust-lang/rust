@@ -456,8 +456,10 @@ impl<'a> Parser<'a> {
                 }
             })
             .is_some();
-        // This will be true when a trait object type `Foo +` has been parsed.
-        let was_op = self.prev_token.kind == token::BinOp(token::Plus);
+        // This will be true when a trait object type `Foo +` or a path which was a `const fn` with
+        // type params has been parsed.
+        let was_op =
+            matches!(self.prev_token.kind, token::BinOp(token::Plus | token::Shr) | token::Gt);
         if !is_op && !was_op {
             // We perform these checks and early return to avoid taking a snapshot unnecessarily.
             return Err(err);

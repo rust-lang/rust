@@ -27,4 +27,27 @@ fn e() {
 fn f() {
     foo::<100 - BAR>(); // ok
 }
+fn g() {
+    foo::<bar<i32>()>(); //~ ERROR expected one of
+}
+fn h() {
+    foo::<bar::<i32>()>(); //~ ERROR expected one of
+}
+fn i() {
+    foo::<bar::<i32>() + BAR>(); //~ ERROR expected one of
+}
+fn j() {
+    foo::<bar::<i32>() - BAR>(); //~ ERROR expected one of
+}
+fn k() {
+    foo::<BAR - bar::<i32>()>(); //~ ERROR expected one of
+}
+fn l() {
+    foo::<BAR - bar::<i32>()>(); //~ ERROR expected one of
+}
+
+const fn bar<const C: usize>() -> usize {
+    C
+}
+
 fn main() {}

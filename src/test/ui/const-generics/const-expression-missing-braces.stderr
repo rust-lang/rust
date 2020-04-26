@@ -31,6 +31,72 @@ help: to write a `const` expression, surround it with braces for it to be unambi
 LL |     foo::<{ BAR - BAR }>();
    |           ^           ^
 
+error: expected one of `,` or `>`, found `(`
+  --> $DIR/const-expression-missing-braces.rs:31:19
+   |
+LL |     foo::<bar<i32>()>();
+   |                   ^ expected one of `,` or `>`
+   |
+help: to write a `const` expression, surround it with braces for it to be unambiguous
+   |
+LL |     foo::<{ bar<i32>() }>();
+   |           ^            ^
+
+error: expected one of `,` or `>`, found `(`
+  --> $DIR/const-expression-missing-braces.rs:34:21
+   |
+LL |     foo::<bar::<i32>()>();
+   |                     ^ expected one of `,` or `>`
+   |
+help: to write a `const` expression, surround it with braces for it to be unambiguous
+   |
+LL |     foo::<{ bar::<i32>() }>();
+   |           ^              ^
+
+error: expected one of `,` or `>`, found `(`
+  --> $DIR/const-expression-missing-braces.rs:37:21
+   |
+LL |     foo::<bar::<i32>() + BAR>();
+   |                     ^ expected one of `,` or `>`
+   |
+help: to write a `const` expression, surround it with braces for it to be unambiguous
+   |
+LL |     foo::<{ bar::<i32>() + BAR }>();
+   |           ^                    ^
+
+error: expected one of `,` or `>`, found `(`
+  --> $DIR/const-expression-missing-braces.rs:40:21
+   |
+LL |     foo::<bar::<i32>() - BAR>();
+   |                     ^ expected one of `,` or `>`
+   |
+help: to write a `const` expression, surround it with braces for it to be unambiguous
+   |
+LL |     foo::<{ bar::<i32>() - BAR }>();
+   |           ^                    ^
+
+error: expected one of `,` or `>`, found `-`
+  --> $DIR/const-expression-missing-braces.rs:43:15
+   |
+LL |     foo::<BAR - bar::<i32>()>();
+   |               ^ expected one of `,` or `>`
+   |
+help: to write a `const` expression, surround it with braces for it to be unambiguous
+   |
+LL |     foo::<{ BAR - bar::<i32>() }>();
+   |           ^                    ^
+
+error: expected one of `,` or `>`, found `-`
+  --> $DIR/const-expression-missing-braces.rs:46:15
+   |
+LL |     foo::<BAR - bar::<i32>()>();
+   |               ^ expected one of `,` or `>`
+   |
+help: to write a `const` expression, surround it with braces for it to be unambiguous
+   |
+LL |     foo::<{ BAR - bar::<i32>() }>();
+   |           ^                    ^
+
 error: likely `const` expression parsed as trait bounds
   --> $DIR/const-expression-missing-braces.rs:13:11
    |
@@ -42,5 +108,5 @@ help: if you meant to write a `const` expression, surround the expression with b
 LL |     foo::<{ BAR + BAR }>();
    |           ^           ^
 
-error: aborting due to 4 previous errors
+error: aborting due to 10 previous errors
 
