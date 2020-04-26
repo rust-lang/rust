@@ -239,6 +239,51 @@ impl Ord for Span {
     }
 }
 
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
+pub enum SpanId {
+    Span(Span),
+    DefId(DefId),
+}
+
+impl Default for SpanId {
+    fn default() -> SpanId {
+        SpanId::Span(DUMMY_SP)
+    }
+}
+
+impl From<Span> for SpanId {
+    fn from(span: Span) -> SpanId {
+        SpanId::Span(span)
+    }
+}
+
+impl SpanId {
+    pub fn is_dummy(self) -> bool {
+        match self {
+            SpanId::Span(sp) => sp.is_dummy(),
+            _ => false,
+        }
+    }
+}
+
+pub trait SpanLike:
+    Copy + Clone + std::fmt::Debug + Hash + PartialEq + Eq + PartialOrd + Ord + Default
+{
+    fn is_dummy(&self) -> bool;
+}
+
+impl SpanLike for Span {
+    fn is_dummy(&self) -> bool {
+        Span::is_dummy(*self)
+    }
+}
+
+impl SpanLike for SpanId {
+    fn is_dummy(&self) -> bool {
+        SpanId::is_dummy(*self)
+    }
+}
+
 /// A collection of spans. Spans have two orthogonal attributes:
 ///
 /// - They can be *primary spans*. In this case they are the locus of
@@ -246,10 +291,13 @@ impl Ord for Span {
 /// - They can have a *label*. In this case, the label is written next
 ///   to the mark in the snippet when we render.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub struct MultiSpan {
+pub struct Multi<Span> {
     primary_spans: Vec<Span>,
     span_labels: Vec<(Span, String)>,
 }
+
+pub type MultiSpan = Multi<Span>;
+pub type MultiSpanId = Multi<SpanId>;
 
 impl Span {
     #[inline]
@@ -592,7 +640,7 @@ impl Span {
 }
 
 #[derive(Clone, Debug)]
-pub struct SpanLabel {
+pub struct Labelled<Span> {
     /// The span we are going to include in the final snippet.
     pub span: Span,
 
@@ -603,6 +651,9 @@ pub struct SpanLabel {
     /// What label should we attach to this span (if any)?
     pub label: Option<String>,
 }
+
+pub type SpanLabel = Labelled<Span>;
+pub type SpanIdLabel = Labelled<SpanId>;
 
 impl Default for Span {
     fn default() -> Self {
@@ -651,19 +702,19 @@ impl fmt::Debug for SpanData {
     }
 }
 
-impl MultiSpan {
+impl<Span: SpanLike> Multi<Span> {
     #[inline]
-    pub fn new() -> MultiSpan {
-        MultiSpan { primary_spans: vec![], span_labels: vec![] }
+    pub fn new() -> Self {
+        Self { primary_spans: vec![], span_labels: vec![] }
     }
 
-    pub fn from_span(primary_span: Span) -> MultiSpan {
-        MultiSpan { primary_spans: vec![primary_span], span_labels: vec![] }
+    pub fn from_span(primary_span: impl Into<Span>) -> Self {
+        Self { primary_spans: vec![primary_span.into()], span_labels: vec![] }
     }
 
-    pub fn from_spans(mut vec: Vec<Span>) -> MultiSpan {
+    pub fn from_spans(mut vec: Vec<Span>) -> Self {
         vec.sort();
-        MultiSpan { primary_spans: vec, span_labels: vec![] }
+        Self { primary_spans: vec, span_labels: vec![] }
     }
 
     pub fn push_span_label(&mut self, span: Span, label: String) {
@@ -720,22 +771,23 @@ impl MultiSpan {
     /// span `P`, if there is at least one label with span `P`, we return
     /// those labels (marked as primary). But otherwise we return
     /// `SpanLabel` instances with empty labels.
-    pub fn span_labels(&self) -> Vec<SpanLabel> {
-        let is_primary = |span| self.primary_spans.contains(&span);
+    pub fn span_labels(&self) -> Vec<Labelled<Span>> {
+        let is_primary = |span| self.primary_spans.contains(span);
 
         let mut span_labels = self
             .span_labels
             .iter()
-            .map(|&(span, ref label)| SpanLabel {
-                span,
+            .map(|(span, label)| Labelled {
+                span: span.clone(),
                 is_primary: is_primary(span),
                 label: Some(label.clone()),
             })
             .collect::<Vec<_>>();
 
-        for &span in &self.primary_spans {
-            if !span_labels.iter().any(|sl| sl.span == span) {
-                span_labels.push(SpanLabel { span, is_primary: true, label: None });
+        for span in &self.primary_spans {
+            if !span_labels.iter().any(|sl| &sl.span == span) {
+                let span = span.clone();
+                span_labels.push(Labelled { span, is_primary: true, label: None });
             }
         }
 
@@ -748,15 +800,42 @@ impl MultiSpan {
     }
 }
 
-impl From<Span> for MultiSpan {
-    fn from(span: Span) -> MultiSpan {
-        MultiSpan::from_span(span)
+impl<S> Multi<S> {
+    pub fn map_span<S2>(&self, f: impl Fn(&S) -> S2) -> Multi<S2> {
+        Multi {
+            primary_spans: self.primary_spans.iter().map(&f).collect(),
+            span_labels: self.span_labels.iter().map(|(s, l)| (f(s), l.clone())).collect(),
+        }
     }
 }
 
-impl From<Vec<Span>> for MultiSpan {
-    fn from(spans: Vec<Span>) -> MultiSpan {
-        MultiSpan::from_spans(spans)
+impl<Span: SpanLike> From<Span> for Multi<Span> {
+    fn from(span: Span) -> Multi<Span> {
+        Multi::from_span(span)
+    }
+}
+
+impl From<Span> for MultiSpanId {
+    fn from(span: Span) -> MultiSpanId {
+        Multi::from_span(span)
+    }
+}
+
+impl From<MultiSpan> for MultiSpanId {
+    fn from(ms: MultiSpan) -> MultiSpanId {
+        ms.map_span(|s| SpanId::Span(*s))
+    }
+}
+
+impl<Span: SpanLike> From<Vec<Span>> for Multi<Span> {
+    fn from(spans: Vec<Span>) -> Multi<Span> {
+        Multi::from_spans(spans)
+    }
+}
+
+impl From<Vec<Span>> for MultiSpanId {
+    fn from(spans: Vec<Span>) -> MultiSpanId {
+        Multi::from_spans(spans).into()
     }
 }
 
