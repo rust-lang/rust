@@ -2460,14 +2460,13 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
         if_chain! {
             if let ExprKind::Call(ref fun, ref args) = e.kind;
             if let ExprKind::Path(QPath::TypeRelative(ref ty, ref method)) = fun.kind;
+            if let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind;
             then {
                 if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {
                     return;
                 }
 
-                let ty = hir_ty_to_ty(self.cx.tcx, ty);
-
-                if is_type_diagnostic_item(self.cx, ty, sym!(hashmap_type)) {
+                if match_path(ty_path, &paths::HASHMAP) {
                     if method.ident.name == sym!(new) {
                         self.suggestions
                             .insert(e.span, "HashMap::default()".to_string());
@@ -2480,7 +2479,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                             ),
                         );
                     }
-                } else if is_type_diagnostic_item(self.cx, ty, sym!(hashset_type)) {
+                } else if match_path(ty_path, &paths::HASHSET) {
                     if method.ident.name == sym!(new) {
                         self.suggestions
                             .insert(e.span, "HashSet::default()".to_string());
