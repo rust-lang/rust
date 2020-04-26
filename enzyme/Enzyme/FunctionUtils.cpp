@@ -37,6 +37,9 @@
 #include "llvm/Analysis/MemoryDependenceAnalysis.h"
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
+
+#include "llvm/Analysis/TypeBasedAliasAnalysis.h"
+
 #if LLVM_VERSION_MAJOR > 6
 #include "llvm/Analysis/PhiValues.h"
 #endif
@@ -216,6 +219,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
 #endif
                         );
    AA.addAAResult(*baa);//(cache_AA[F]));
+   AA.addAAResult(*(new TypeBasedAAResult()));
    return cache[F];
  }
  Function *NewF = Function::Create(F->getFunctionType(), F->getLinkage(), "preprocess_" + F->getName(), F->getParent());
@@ -349,6 +353,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  //cache_AA[F] = baa;
  //llvm::errs() << " basicAA(f=" << F->getName() << ")=" << baa << "\n";
  AA.addAAResult(*baa);
+ AA.addAAResult(*(new TypeBasedAAResult()));
  //for(auto &a : AA.AAs) {
  //   llvm::errs() << "&AA: " << &AA << " added baa &a: " << a.get() << "\n";
  //}

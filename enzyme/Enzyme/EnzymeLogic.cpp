@@ -62,6 +62,103 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
             "enzyme_nonmarkedglobals_inactiveloads", cl::init(true), cl::Hidden,
             cl::desc("Consider loads of nonmarked globals to be inactive"));
 
+
+bool is_load_uncacheable(LoadInst& li, AAResults& AA, GradientUtils* gutils, TargetLibraryInfo& TLI,
+    const std::map<Argument*, bool>& uncacheable_args) {
+
+  bool can_modref = false;
+  // Find the underlying object for the pointer operand of the load instruction.
+  auto obj = GetUnderlyingObject(li.getPointerOperand(), gutils->oldFunc->getParent()->getDataLayout(), 100);
+
+  //llvm::errs() << "underlying object for load " << li << " is " << *obj << "\n";
+  // If the pointer operand is from an argument to the function, we need to check if the argument
+  //   received from the caller is uncacheable.
+  if (auto arg = dyn_cast<Argument>(obj)) {
+    auto found = uncacheable_args.find(arg);
+      if (found == uncacheable_args.end()) {
+          llvm::errs() << "uncacheable_args:\n";
+          for(auto& pair : uncacheable_args) {
+              llvm::errs() << " + " << *pair.first << ": " << pair.second << " of func " << pair.first->getParent()->getName() << "\n";
+          }
+          llvm::errs() << "could not find " << *arg << " of func " << arg->getParent()->getName() << " in args_map\n";
+      }
+    assert(found != uncacheable_args.end());
+    if (found->second) {
+      //llvm::errs() << "OP is uncacheable arg: " << li << "\n";
+      can_modref = true;
+    }
+    //llvm::errs() << " + argument (can_modref=" << can_modref << ") " << li << " object: " << *obj << " arg: " << *arg << "e\n";
+    //TODO this case (alloca goes out of scope/allocation is freed and we dont force it to continue needs to be forcibly cached)
+  } else {
+    // NOTE(TFK): In the case where the underlying object for the pointer operand is from a Load or Call we need
+    //  to check if we need to cache. Likely, we need to play it safe in this case and cache.
+    // NOTE(TFK): The logic below is an attempt at a conservative handling of the case mentioned above, but it
+    //   needs to be verified.
+
+    // Pointer operands originating from call instructions that are not malloc/free are conservatively considered uncacheable.
+    if (auto obj_op = dyn_cast<CallInst>(obj)) {
+      Function* called = obj_op->getCalledFunction();
+      if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
+        if (castinst->isCast()) {
+          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+            if (isAllocationFunction(*fn, TLI) || isDeallocationFunction(*fn, TLI)) {
+              called = fn;
+            }
+          }
+        }
+      }
+      if (called && isCertainMallocOrFree(called)) {
+        //llvm::errs() << "OP is certain malloc or free: " << *op << "\n";
+      } else {
+        //llvm::errs() << "OP is a non malloc/free call so we need to cache " << *op << "\n";
+        can_modref = true;
+      }
+    } else if (auto sli = dyn_cast<LoadInst>(obj)) {
+      // If obj is from a load instruction conservatively consider it uncacheable if that load itself cannot be cached
+      //llvm::errs() << "OP is from a load, needing to cache " << *op << "\n";
+      can_modref = is_load_uncacheable(*sli, AA, gutils, TLI, uncacheable_args);
+    } else {
+      // In absence of more information, assume that the underlying object for pointer operand is uncacheable in caller.
+      //llvm::errs() << "OP is an unknown instruction, needing to cache " << *op << "\n";
+      can_modref = true;
+    }
+  }
+
+  for (inst_iterator I2 = inst_begin(*gutils->oldFunc), E2 = inst_end(*gutils->oldFunc); I2 != E2; ++I2) {
+      Instruction* inst2 = &*I2;
+      assert(li.getParent()->getParent() == inst2->getParent()->getParent());
+      if (&li == inst2) continue;
+      if (!gutils->OrigDT.dominates(inst2, &li)) {
+
+        // Don't consider modref from malloc/free as a need to cache
+        if (auto obj_op = dyn_cast<CallInst>(inst2)) {
+          Function* called = obj_op->getCalledFunction();
+          if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
+            if (castinst->isCast()) {
+              if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                if (isAllocationFunction(*fn, TLI) || isDeallocationFunction(*fn, TLI)) {
+                  called = fn;
+                }
+              }
+            }
+          }
+          if (called && isCertainMallocOrFree(called)) {
+            continue;
+          }
+        }
+
+        if (llvm::isModSet(AA.getModRefInfo(inst2, MemoryLocation::get(&li)))) {
+          can_modref = true;
+          llvm::errs() << li << " needs to be cached due to: " << *inst2 << "\n";
+          break;
+        }
+      }
+  }
+  //llvm::errs() << "F - " << li << " can_modref" << can_modref << "\n";
+  return can_modref;
+
+}
+
 // Computes a map of LoadInst -> boolean for a function indicating whether that load is "uncacheable".
 //   A load is considered "uncacheable" if the data at the loaded memory location can be modified after
 //   the load instruction.
@@ -70,98 +167,11 @@ std::map<Instruction*, bool> compute_uncacheable_load_map(GradientUtils* gutils,
   std::map<Instruction*, bool> can_modref_map;
   for (inst_iterator I = inst_begin(*gutils->oldFunc), E = inst_end(*gutils->oldFunc); I != E; ++I) {
     Instruction* inst = &*I;
-      // For each load instruction, determine if it is xuncacheable.
+      // For each load instruction, determine if it is uncacheable.
       if (auto op = dyn_cast<LoadInst>(inst)) {
 
-        bool can_modref = false;
-        // Find the underlying object for the pointer operand of the load instruction.
-        auto obj = GetUnderlyingObject(op->getPointerOperand(), gutils->oldFunc->getParent()->getDataLayout(), 100);
 
-        //llvm::errs() << "underlying object for load " << *op << " is " << *obj << "\n";
-        // If the pointer operand is from an argument to the function, we need to check if the argument
-        //   received from the caller is uncacheable.
-        if (auto arg = dyn_cast<Argument>(obj)) {
-          auto found = uncacheable_args.find(arg);
-            if (found == uncacheable_args.end()) {
-                llvm::errs() << "uncacheable_args:\n";
-                for(auto& pair : uncacheable_args) {
-                    llvm::errs() << " + " << *pair.first << ": " << pair.second << " of func " << pair.first->getParent()->getName() << "\n";
-                }
-                llvm::errs() << "could not find " << *arg << " of func " << arg->getParent()->getName() << " in args_map\n";
-            }
-          assert(found != uncacheable_args.end());
-          if (found->second) {
-            //llvm::errs() << "OP is uncacheable arg: " << *op << "\n";
-            can_modref = true;
-          }
-          //llvm::errs() << " + argument (can_modref=" << can_modref << ") " << *op << " object: " << *obj << " arg: " << *arg << "e\n";
-          //TODO this case (alloca goes out of scope/allocation is freed and we dont force it to continue needs to be forcibly cached)
-        } else {
-          // NOTE(TFK): In the case where the underlying object for the pointer operand is from a Load or Call we need
-          //  to check if we need to cache. Likely, we need to play it safe in this case and cache.
-          // NOTE(TFK): The logic below is an attempt at a conservative handling of the case mentioned above, but it
-          //   needs to be verified.
-
-          // Pointer operands originating from call instructions that are not malloc/free are conservatively considered uncacheable.
-          if (auto obj_op = dyn_cast<CallInst>(obj)) {
-            Function* called = obj_op->getCalledFunction();
-            if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
-              if (castinst->isCast()) {
-                if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                  if (isAllocationFunction(*fn, TLI) || isDeallocationFunction(*fn, TLI)) {
-                    called = fn;
-                  }
-                }
-              }
-            }
-            if (called && isCertainMallocOrFree(called)) {
-              //llvm::errs() << "OP is certain malloc or free: " << *op << "\n";
-            } else {
-              //llvm::errs() << "OP is a non malloc/free call so we need to cache " << *op << "\n";
-              can_modref = true;
-            }
-          } else if (isa<LoadInst>(obj)) {
-            // If obj is from a load instruction conservatively consider it uncacheable.
-            //llvm::errs() << "OP is from a load, needing to cache " << *op << "\n";
-            can_modref = true;
-          } else {
-            // In absence of more information, assume that the underlying object for pointer operand is uncacheable in caller.
-            //llvm::errs() << "OP is an unknown instruction, needing to cache " << *op << "\n";
-            can_modref = true;
-          }
-        }
-
-        for (inst_iterator I2 = inst_begin(*gutils->oldFunc), E2 = inst_end(*gutils->oldFunc); I2 != E2; ++I2) {
-            Instruction* inst2 = &*I2;
-            assert(inst->getParent()->getParent() == inst2->getParent()->getParent());
-            if (inst == inst2) continue;
-            if (!gutils->OrigDT.dominates(inst2, inst)) {
-
-              // Don't consider modref from malloc/free as a need to cache
-              if (auto obj_op = dyn_cast<CallInst>(inst2)) {
-                Function* called = obj_op->getCalledFunction();
-                if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
-                  if (castinst->isCast()) {
-                    if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                      if (isAllocationFunction(*fn, TLI) || isDeallocationFunction(*fn, TLI)) {
-                        called = fn;
-                      }
-                    }
-                  }
-                }
-                if (called && isCertainMallocOrFree(called)) {
-                  continue;
-                }
-              }
-
-              if (llvm::isModSet(AA.getModRefInfo(inst2, MemoryLocation::get(op)))) {
-                can_modref = true;
-                //llvm::errs() << *inst << " needs to be cached due to: " << *inst2 << "\n";
-                break;
-              }
-            }
-        }
-        can_modref_map[inst] = can_modref;
+        can_modref_map[inst] = is_load_uncacheable(*op, AA, gutils, TLI, uncacheable_args);
       }
   }
   return can_modref_map;
@@ -185,7 +195,10 @@ std::map<Argument*, bool> compute_uncacheable_args_for_one_callsite(CallInst* ca
                                        100);
       //llvm::errs() << "ocs underlying object for callsite " << *callsite_op << " idx: " << i << " is " << *obj << "\n";
       // If underlying object is an Argument, check parent volatility status.
-      if (auto arg = dyn_cast<Argument>(obj)) {
+      if (isa<UndefValue>(obj)) {
+        init_safe = true;
+        //llvm::errs() << " + ocs undef (safe=" << init_safe << ") " << *callsite_op << " object: " << *obj << "\n";
+      } else if (auto arg = dyn_cast<Argument>(obj)) {
         auto found = parent_uncacheable_args.find(arg);
         if (found == parent_uncacheable_args.end()) {
             llvm::errs() << "parent_uncacheable_args:\n";
@@ -198,7 +211,7 @@ std::map<Argument*, bool> compute_uncacheable_args_for_one_callsite(CallInst* ca
         if (found->second) {
           init_safe = false;
         }
-        //llvm::errs() << " + ocs argument (safe=" << init_safe << ") " << *callsite_op << " object: " << *obj << " arg: " << *arg << "e\n";
+        //llvm::errs() << " + ocs argument (safe=" << init_safe << ") " << *callsite_op << " object: " << *obj << " arg: " << *arg << "å\n";
       } else {
         // Pointer operands originating from call instructions that are not malloc/free are conservatively considered uncacheable.
         if (auto obj_op = dyn_cast<CallInst>(obj)) {

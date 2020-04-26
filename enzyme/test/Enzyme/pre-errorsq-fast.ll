@@ -1,7 +1,7 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
 
-; NOTE THAT IN THIS VERSION THERE IS NO NEED TO CACHE (todo)
 ; XFAIL: *
+; NOTE THAT IN THIS VERSION THERE IS NO NEED TO CACHE (todo)
 
 source_filename = "/mnt/Data/git/Enzyme/enzyme/test/Integration/eigensumsqdyn.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -9,15 +9,15 @@ target triple = "x86_64-unknown-linux-gnu"
 
 declare double @__enzyme_autodiff(...)
 
-define i32 @caller(double* %A, double* %Ap, i64* %B, i64* %Bp) {
-  %call = call double (...) @__enzyme_autodiff(i8* bitcast (double (double*, i64*)* @matvec to i8*), double* %A, double* %Ap, i64* %B)
+define i32 @caller(double* %A, double* %Ap, double* %O, double* %Op, i64* %B, i64* %Bp) {
+  %call = call double (...) @__enzyme_autodiff(i8* bitcast (double (double*, double*, i64*)* @matvec to i8*), double* %A, double* %Ap, double* %O, double* %Op, i64* %B)
   ret i32 0
 }
 
 ; Function Attrs: noinline nounwind uwtable
-define internal double @matvec(double* %place, i64* %m_rows) {
+define internal double @matvec(double* noalias %place, double* noalias %out, i64* %m_rows) {
 entry:
-  call void @subfn(double* %place, i64* nonnull %m_rows)
+  call void @subfn(double* %place, double* %out, i64* nonnull %m_rows)
   %r1 = load double, double* %place, align 8, !tbaa !2
   %c2 = load i64, i64* %m_rows, align 8, !tbaa !6
   %cmp64.i.i = icmp sgt i64 %c2, 1
@@ -34,7 +34,7 @@ exit:                                             ; preds = %for.body.i.i, %entr
   ret double %res.0.lcssa.i.i
 }
 
-define linkonce_odr dso_local void @subfn(double* %place, i64* %m_rows) {
+define linkonce_odr dso_local void @subfn(double* %place, double* %out, i64* %m_rows) {
 entry:
   %rows = load i64, i64* %m_rows, align 8
   br label %for1
@@ -56,7 +56,7 @@ for2:                                             ; preds = %for2, %for1
   br i1 %cond2, label %end2, label %for2
 
 end2:                                             ; preds = %for2
-  %tostore = getelementptr inbounds double, double* %place, i64 %i
+  %tostore = getelementptr inbounds double, double* %out, i64 %i
   store double %add, double* %tostore, align 8, !tbaa !2
   %cond1 = icmp eq i64 %nexti, 4
   br i1 %cond1, label %exit, label %for1
