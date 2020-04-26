@@ -76,15 +76,52 @@ pub fn write_compressed_metadata<'tcx>(
     }
 }
 
+fn new_global<'ll>(
+    name: &[&str],
+    llmod: &'ll llvm::Module,
+    llvalue: &'ll llvm::Value,
+    linkage: llvm::Linkage,
+    section: &str,
+) -> &'ll llvm::Value {
+    let name = CString::new(name.join(".")).unwrap();
+    let section = SmallCStr::new(section);
+
+    unsafe {
+        let llglobal = llvm::LLVMAddGlobal(llmod, common::val_ty(llvalue), name.as_ptr());
+
+        llvm::LLVMSetInitializer(llglobal, llvalue);
+        llvm::LLVMRustSetLinkage(llglobal, linkage);
+        llvm::LLVMSetSection(llglobal, section.as_ptr());
+
+        llglobal
+    }
+}
+
 pub fn write_idata_sections<'tcx>(
     _tcx: TyCtxt<'tcx>,
     raw_dylibs: &[RawDylibImports],
     llvm_module: &mut ModuleLlvm,
 ) {
     let (idata_llctx, idata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
+    let llint32 = unsafe { llvm::LLVMInt32TypeInContext(idata_llctx) };
+    let llbyte_ptr = unsafe { llvm::LLVMPointerType(llvm::LLVMInt8TypeInContext(idata_llctx), 0) };
 
-    let idata_7 = SmallCStr::new(".idata$7");
-    let idata_6 = SmallCStr::new(".idata$6");
+    // import directory table types
+    let lldir_ty = unsafe {
+        let llint32 = llvm::LLVMInt32TypeInContext(idata_llctx);
+        let lldir_ty_name = SmallCStr::new(".win32.image_import_desc");
+        let lldir_ty = llvm::LLVMStructCreateNamed(idata_llctx, lldir_ty_name.as_ptr());
+        llvm::LLVMStructSetBody(
+            lldir_ty,
+            [llbyte_ptr, llint32, llint32, llbyte_ptr, llbyte_ptr].as_ptr(),
+            5,
+            0,
+        );
+
+        lldir_ty
+    };
+
+    let mut dir_entries = vec![];
 
     for raw_dylib in raw_dylibs {
         debug!("creating raw dylib idata secions - {:?}", raw_dylib);
@@ -92,46 +129,108 @@ pub fn write_idata_sections<'tcx>(
         let name = CString::new(&*raw_dylib.name.as_str()).unwrap();
         let llname = common::bytes_in_context(idata_llctx, name.as_bytes());
 
-        let buf = format!("import.{}.dll_name", raw_dylib.name);
-        let buf = CString::new(buf).unwrap();
+        let lldll_name = new_global(
+            &["import", &*raw_dylib.name.as_str(), "dll_name"],
+            idata_llmod,
+            llname,
+            llvm::Linkage::PrivateLinkage,
+            "idata$7",
+        );
+
         unsafe {
-            let llglobal = llvm::LLVMAddGlobal(idata_llmod, common::val_ty(llname), buf.as_ptr());
+            llvm::LLVMSetGlobalConstant(&lldll_name, 1);
 
-            llvm::LLVMSetInitializer(llglobal, llname);
-            llvm::LLVMSetGlobalConstant(&llglobal, 1);
-            llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
-            llvm::LLVMSetSection(llglobal, idata_7.as_ptr());
+            let mut lookup_table = raw_dylib
+                .items
+                .iter()
+                .map(|item| {
+                    match item {
+                        RawDylibImportName::Name(s) => {
+                            let mut buf = vec![0, 0];
+                            buf.extend(s.as_str().as_bytes());
 
-            for item in &raw_dylib.items {
-                match item {
-                    RawDylibImportName::Name(s) => {
-                        let mut buf = vec![0, 0];
-                        buf.extend(s.as_str().as_bytes());
+                            if buf.len() % 2 == 1 {
+                                buf.push(0);
+                            }
 
-                        if buf.len() % 2 == 1 {
-                            buf.push(0);
+                            let llname = common::bytes_in_context(idata_llctx, &buf);
+
+                            let llglobal = new_global(
+                                &["import", &*raw_dylib.name.as_str(), "fn", &*s.as_str()],
+                                idata_llmod,
+                                llname,
+                                llvm::Linkage::PrivateLinkage,
+                                "idata$6",
+                            );
+
+                            llvm::LLVMSetGlobalConstant(&llglobal, 1);
+                            llvm::LLVMConstPointerCast(llglobal, llbyte_ptr)
                         }
+                        RawDylibImportName::Ordinal(o) => {
+                            //FIXME: support 32-bit targets
+                            let o = *o as u64 | 0x8000_0000_0000_0000;
+                            let llint64 = llvm::LLVMInt64TypeInContext(idata_llctx);
+                            let llordinal = llvm::LLVMConstInt(llint64, o, 0);
 
-                        let llname = common::bytes_in_context(idata_llctx, &buf);
-
-                        let global_name = format!("import.{}.fn.{}", raw_dylib.name, s);
-                        let global_name = CString::new(global_name).unwrap();
-
-                        let llglobal = llvm::LLVMAddGlobal(
-                            idata_llmod,
-                            common::val_ty(llname),
-                            global_name.as_ptr(),
-                        );
-
-                        llvm::LLVMSetInitializer(llglobal, llname);
-                        llvm::LLVMSetGlobalConstant(&llglobal, 1);
-                        llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
-                        llvm::LLVMSetSection(llglobal, idata_6.as_ptr());
+                            llvm::LLVMConstIntToPtr(llordinal, llbyte_ptr)
+                        }
                     }
-                    _ => {}
-                }
-            }
+                })
+                .collect::<Vec<_>>();
+
+            lookup_table.push(llvm::LLVMConstNull(llbyte_ptr));
+            let lltable =
+                llvm::LLVMConstArray(llbyte_ptr, lookup_table.as_ptr(), lookup_table.len() as u32);
+
+            //import lookup table
+            let ll_lookup_table = new_global(
+                &["import", &*raw_dylib.name.as_str(), "desc"],
+                idata_llmod,
+                lltable,
+                llvm::Linkage::PrivateLinkage,
+                "idata$4",
+            );
+
+            //import address table - filled in at runtime
+            let ll_addr_table = new_global(
+                &["import", &*raw_dylib.name.as_str(), "ptr"],
+                idata_llmod,
+                lltable,
+                llvm::Linkage::PrivateLinkage,
+                "idata$3",
+            );
+
+            let llzero = llvm::LLVMConstInt(llint32, 0, 0);
+            let lldir_entry = llvm::LLVMConstStructInContext(
+                idata_llctx,
+                [
+                    llvm::LLVMConstPointerCast(ll_lookup_table, llbyte_ptr),
+                    llzero,
+                    llzero,
+                    llvm::LLVMConstPointerCast(lldll_name, llbyte_ptr),
+                    llvm::LLVMConstPointerCast(ll_addr_table, llbyte_ptr),
+                ]
+                .as_ptr(),
+                5,
+                0,
+            );
+
+            dir_entries.push(lldir_entry);
         }
+    }
+    unsafe {
+        dir_entries.push(llvm::LLVMConstNull(lldir_ty));
+        let lldir_table =
+            llvm::LLVMConstArray(lldir_ty, dir_entries.as_ptr(), dir_entries.len() as u32);
+
+        let lldir_table = new_global(
+            &[".dllimport"],
+            idata_llmod,
+            lldir_table,
+            llvm::Linkage::AppendingLinkage,
+            "idata$2",
+        );
+        llvm::LLVMSetGlobalConstant(&lldir_table, 1);
     }
 }
 
