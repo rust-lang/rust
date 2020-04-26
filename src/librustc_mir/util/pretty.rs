@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
-use std::fmt::{Debug, Display};
 use std::fmt::Write as _;
+use std::fmt::{Debug, Display};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
