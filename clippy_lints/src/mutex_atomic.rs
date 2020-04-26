@@ -2,7 +2,7 @@
 //!
 //! This lint is **warn** by default
 
-use crate::utils::{match_type, paths, span_lint};
+use crate::utils::{is_type_diagnostic_item, span_lint};
 use rustc_ast::ast;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
@@ -58,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Mutex {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
         let ty = cx.tables.expr_ty(expr);
         if let ty::Adt(_, subst) = ty.kind {
-            if match_type(cx, ty, &paths::MUTEX) {
+            if is_type_diagnostic_item(cx, ty, sym!(mutex_type)) {
                 let mutex_param = subst.type_at(0);
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
                     let msg = format!(

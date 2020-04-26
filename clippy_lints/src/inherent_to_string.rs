@@ -4,8 +4,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::{
-    get_trait_def_id, implements_trait, match_type, paths, return_ty, span_lint_and_help, trait_ref_of_method,
-    walk_ptrs_ty,
+    get_trait_def_id, implements_trait, is_type_diagnostic_item, paths, return_ty, span_lint_and_help,
+    trait_ref_of_method, walk_ptrs_ty,
 };
 
 declare_clippy_lint! {
@@ -107,7 +107,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InherentToString {
             if decl.inputs.len() == 1;
 
             // Check if return type is String
-            if match_type(cx, return_ty(cx, impl_item.hir_id), &paths::STRING);
+            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(string_type));
 
             // Filters instances of to_string which are required by a trait
             if trait_ref_of_method(cx, impl_item.hir_id).is_none();

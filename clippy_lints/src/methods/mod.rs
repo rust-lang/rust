@@ -1756,7 +1756,7 @@ fn lint_expect_fun_call(
                         && {
                             let arg_type = cx.tables.expr_ty(&call_args[0]);
                             let base_type = walk_ptrs_ty(arg_type);
-                            base_type.kind == ty::Str || match_type(cx, base_type, &paths::STRING)
+                            base_type.kind == ty::Str || is_type_diagnostic_item(cx, base_type, sym!(string_type))
                         }
                     {
                         &call_args[0]
@@ -1774,7 +1774,7 @@ fn lint_expect_fun_call(
     // converted to string.
     fn requires_to_string(cx: &LateContext<'_, '_>, arg: &hir::Expr<'_>) -> bool {
         let arg_ty = cx.tables.expr_ty(arg);
-        if match_type(cx, arg_ty, &paths::STRING) {
+        if is_type_diagnostic_item(cx, arg_ty, sym!(string_type)) {
             return false;
         }
         if let ty::Ref(_, ty, ..) = arg_ty.kind {
@@ -2054,7 +2054,7 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hi
         let self_ty = walk_ptrs_ty(cx.tables.expr_ty(target));
         let ref_str = if self_ty.kind == ty::Str {
             ""
-        } else if match_type(cx, self_ty, &paths::STRING) {
+        } else if is_type_diagnostic_item(cx, self_ty, sym!(string_type)) {
             "&"
         } else {
             return;
@@ -2080,7 +2080,7 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hi
 
 fn lint_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
-    if match_type(cx, obj_ty, &paths::STRING) {
+    if is_type_diagnostic_item(cx, obj_ty, sym!(string_type)) {
         lint_string_extend(cx, expr, args);
     }
 }
@@ -2242,7 +2242,7 @@ fn lint_iter_nth<'a, 'tcx>(
         "slice"
     } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(&iter_args[0]), sym!(vec_type)) {
         "Vec"
-    } else if match_type(cx, cx.tables.expr_ty(&iter_args[0]), &paths::VEC_DEQUE) {
+    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(&iter_args[0]), sym!(vecdeque_type)) {
         "VecDeque"
     } else {
         let nth_args = nth_and_iter_args[0];
@@ -2301,10 +2301,10 @@ fn lint_get_unwrap<'a, 'tcx>(
     } else if is_type_diagnostic_item(cx, expr_ty, sym!(vec_type)) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "Vec"
-    } else if match_type(cx, expr_ty, &paths::VEC_DEQUE) {
+    } else if is_type_diagnostic_item(cx, expr_ty, sym!(vecdeque_type)) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "VecDeque"
-    } else if !is_mut && match_type(cx, expr_ty, &paths::HASHMAP) {
+    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym!(hashmap_type)) {
         needs_ref = true;
         "HashMap"
     } else if !is_mut && match_type(cx, expr_ty, &paths::BTREEMAP) {
@@ -2510,7 +2510,7 @@ fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<
     }
 
     // lint if caller of `.map().flatten()` is an Option
-    if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
+    if is_type_diagnostic_item(cx, cx.tables.expr_ty(&map_args[0]), sym!(option_type)) {
         let msg = "called `map(..).flatten()` on an `Option`. \
                     This is more succinctly expressed by calling `.and_then(..)`";
         let self_snippet = snippet(cx, map_args[0].span, "..");
@@ -2678,7 +2678,7 @@ fn lint_option_and_then_some(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg
     const NO_OP_MSG: &str = "using `Option.and_then(Some)`, which is a no-op";
 
     let ty = cx.tables.expr_ty(&args[0]);
-    if !match_type(cx, ty, &paths::OPTION) {
+    if !is_type_diagnostic_item(cx, ty, sym!(option_type)) {
         return;
     }
 
@@ -3282,7 +3282,7 @@ fn lint_option_as_ref_deref<'a, 'tcx>(
     let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
 
     let option_ty = cx.tables.expr_ty(&as_ref_args[0]);
-    if !match_type(cx, option_ty, &paths::OPTION) {
+    if !is_type_diagnostic_item(cx, option_ty, sym!(option_type)) {
         return;
     }
 

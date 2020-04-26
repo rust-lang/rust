@@ -816,7 +816,7 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
         _ => false,
     };
 
-    is_slice || is_type_diagnostic_item(cx, ty, sym!(vec_type)) || match_type(cx, ty, &paths::VEC_DEQUE)
+    is_slice || is_type_diagnostic_item(cx, ty, sym!(vec_type)) || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
 }
 
 fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -> Option<FixedOffsetVar> {
@@ -1569,7 +1569,7 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
                 _ => arg,
             };
 
-            if match_type(cx, ty, &paths::HASHMAP) || match_type(cx, ty, &paths::BTREEMAP) {
+            if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) || match_type(cx, ty, &paths::BTREEMAP) {
                 span_lint_and_then(
                     cx,
                     FOR_KV_MAP,
@@ -1971,9 +1971,9 @@ fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr<'_>) -> bool {
     is_iterable_array(ty, cx) ||
     is_type_diagnostic_item(cx, ty, sym!(vec_type)) ||
     match_type(cx, ty, &paths::LINKED_LIST) ||
-    match_type(cx, ty, &paths::HASHMAP) ||
-    match_type(cx, ty, &paths::HASHSET) ||
-    match_type(cx, ty, &paths::VEC_DEQUE) ||
+    is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) ||
+    is_type_diagnostic_item(cx, ty, sym!(hashset_type)) ||
+    is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
     match_type(cx, ty, &paths::BINARY_HEAP) ||
     match_type(cx, ty, &paths::BTREEMAP) ||
     match_type(cx, ty, &paths::BTREESET)
@@ -2480,9 +2480,9 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'a, '
         then {
             let ty = cx.tables.node_type(ty.hir_id);
             if is_type_diagnostic_item(cx, ty, sym!(vec_type)) ||
-                match_type(cx, ty, &paths::VEC_DEQUE) ||
+                is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
                 match_type(cx, ty, &paths::BTREEMAP) ||
-                match_type(cx, ty, &paths::HASHMAP) {
+                is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) {
                 if method.ident.name == sym!(len) {
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_sugg(

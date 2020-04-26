@@ -29,10 +29,10 @@ use rustc_typeck::hir_ty_to_ty;
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, last_path_segment, match_def_path,
-    match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral, qpath_res, same_tys, sext, snippet,
-    snippet_opt, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help,
-    span_lint_and_sugg, span_lint_and_then, unsext,
+    clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, is_type_diagnostic_item,
+    last_path_segment, match_def_path, match_path, method_chain_args, multispan_sugg, numeric_literal::NumericLiteral,
+    qpath_res, same_tys, sext, snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -2352,14 +2352,14 @@ impl<'tcx> ImplicitHasherType<'tcx> {
 
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
 
-            if match_path(path, &paths::HASHMAP) && params_len == 2 {
+            if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) && params_len == 2 {
                 Some(ImplicitHasherType::HashMap(
                     hir_ty.span,
                     ty,
                     snippet(cx, params[0].span, "K"),
                     snippet(cx, params[1].span, "V"),
                 ))
-            } else if match_path(path, &paths::HASHSET) && params_len == 1 {
+            } else if is_type_diagnostic_item(cx, ty, sym!(hashset_type)) && params_len == 1 {
                 Some(ImplicitHasherType::HashSet(
                     hir_ty.span,
                     ty,
@@ -2460,7 +2460,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
         if_chain! {
             if let ExprKind::Call(ref fun, ref args) = e.kind;
             if let ExprKind::Path(QPath::TypeRelative(ref ty, ref method)) = fun.kind;
-            if let TyKind::Path(QPath::Resolved(None, ref ty_path)) = ty.kind;
+            if let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind;
             then {
                 if !same_tys(self.cx, self.target.ty(), self.body.expr_ty(e)) {
                     return;

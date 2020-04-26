@@ -1,7 +1,7 @@
 use crate::utils::paths;
 use crate::utils::{
-    is_expn_of, last_path_segment, match_def_path, match_function_call, match_type, snippet, span_lint_and_then,
-    walk_ptrs_ty,
+    is_expn_of, is_type_diagnostic_item, last_path_segment, match_def_path, match_function_call, snippet,
+    span_lint_and_then, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
@@ -91,7 +91,7 @@ fn on_argumentv1_new<'a, 'tcx>(
         if pats.len() == 1;
         then {
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pats[0]));
-            if ty.kind != rustc_middle::ty::Str && !match_type(cx, ty, &paths::STRING) {
+            if ty.kind != rustc_middle::ty::Str && !is_type_diagnostic_item(cx, ty, sym!(string_type)) {
                 return None;
             }
             if let ExprKind::Lit(ref lit) = format_args.kind {

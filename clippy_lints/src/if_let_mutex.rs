@@ -1,4 +1,4 @@
-use crate::utils::{match_type, paths, span_lint_and_help, SpanlessEq};
+use crate::utils::{is_type_diagnostic_item, span_lint_and_help, SpanlessEq};
 use if_chain::if_chain;
 use rustc_hir::intravisit::{self as visit, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, ExprKind, MatchSource};
@@ -150,7 +150,7 @@ fn is_mutex_lock_call<'a>(cx: &LateContext<'a, '_>, expr: &'a Expr<'_>) -> Optio
         if let ExprKind::MethodCall(path, _span, args) = &expr.kind;
         if path.ident.to_string() == "lock";
         let ty = cx.tables.expr_ty(&args[0]);
-        if match_type(cx, ty, &paths::MUTEX);
+        if is_type_diagnostic_item(cx, ty, sym!(mutex_type));
         then {
             Some(&args[0])
         } else {

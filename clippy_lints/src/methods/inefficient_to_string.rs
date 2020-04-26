@@ -1,5 +1,7 @@
 use super::INEFFICIENT_TO_STRING;
-use crate::utils::{match_def_path, paths, snippet_with_applicability, span_lint_and_then, walk_ptrs_ty_depth};
+use crate::utils::{
+    is_type_diagnostic_item, match_def_path, paths, snippet_with_applicability, span_lint_and_then, walk_ptrs_ty_depth,
+};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -44,12 +46,17 @@ pub fn lint<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>, arg: &hir::E
 /// Returns whether `ty` specializes `ToString`.
 /// Currently, these are `str`, `String`, and `Cow<'_, str>`.
 fn specializes_tostring(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
-    match ty.kind {
-        ty::Str => true,
-        ty::Adt(adt, substs) => {
-            match_def_path(cx, adt.did, &paths::STRING)
-                || (match_def_path(cx, adt.did, &paths::COW) && substs.type_at(1).is_str())
-        },
-        _ => false,
+    if let ty::Str = ty.kind {
+        return true;
+    }
+
+    if is_type_diagnostic_item(cx, ty, sym!(string_type)) {
+        return true;
+    }
+
+    if let ty::Adt(adt, substs) = ty.kind {
+        match_def_path(cx, adt.did, &paths::COW) && substs.type_at(1).is_str()
+    } else {
+        false
     }
 }

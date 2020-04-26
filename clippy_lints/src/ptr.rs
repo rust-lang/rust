@@ -197,7 +197,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_
                         },
                     );
                 }
-            } else if match_type(cx, ty, &paths::STRING) {
+            } else if is_type_diagnostic_item(cx, ty, sym!(string_type)) {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                     span_lint_and_then(
                         cx,

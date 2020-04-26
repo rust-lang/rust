@@ -1,7 +1,7 @@
 use crate::utils::ptr::get_spans;
 use crate::utils::{
-    get_trait_def_id, implements_trait, is_copy, is_self, is_type_diagnostic_item, match_type, multispan_sugg, paths,
-    snippet, snippet_opt, span_lint_and_then,
+    get_trait_def_id, implements_trait, is_copy, is_self, is_type_diagnostic_item, multispan_sugg, paths, snippet,
+    snippet_opt, span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
@@ -254,7 +254,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             }
                         }
 
-                        if match_type(cx, ty, &paths::STRING) {
+                        if is_type_diagnostic_item(cx, ty, sym!(string_type)) {
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                                 diag.span_suggestion(
