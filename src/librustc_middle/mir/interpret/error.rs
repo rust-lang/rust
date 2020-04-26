@@ -361,7 +361,7 @@ pub enum UndefinedBehaviorInfo {
     InvalidUndefBytes(Option<Pointer>),
     /// Working with a local that is not currently live.
     DeadLocal,
-    /// Data size is not equal to target size
+    /// Data size is not equal to target size.
     ScalarSizeMismatch {
         target_size: u64,
         data_size: u64,
