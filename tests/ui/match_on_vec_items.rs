@@ -1,14 +1,5 @@
 #![warn(clippy::match_on_vec_items)]
 
-fn main() {
-    match_with_wildcard();
-    match_without_wildcard();
-    match_wildcard_and_action();
-    match_vec_ref();
-    match_with_get();
-    match_with_array();
-}
-
 fn match_with_wildcard() {
     let arr = vec![0, 1, 2, 3];
     let range = 1..3;
@@ -127,4 +118,13 @@ fn match_with_array() {
         [1, 2] => println!("1 2"),
         _ => {},
     }
+}
+
+fn main() {
+    match_with_wildcard();
+    match_without_wildcard();
+    match_wildcard_and_action();
+    match_vec_ref();
+    match_with_get();
+    match_with_array();
 }

@@ -1,4 +1,4 @@
-use crate::utils::{is_type_diagnostic_item, snippet_with_applicability, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{is_type_diagnostic_item, snippet, span_lint_and_sugg, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource};
@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub MATCH_ON_VEC_ITEMS,
-    style,
+    correctness,
     "matching on vector elements can panic"
 }
 
@@ -53,19 +53,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchOnVecItems {
             if let ExprKind::Index(vec, idx) = idx_expr.kind;
 
             then {
-                let mut applicability = Applicability::MaybeIncorrect;
+                // FIXME: could be improved to suggest surrounding every pattern with Some(_),
+                // but only when `or_patterns` are stabilized.
                 span_lint_and_sugg(
                     cx,
                     MATCH_ON_VEC_ITEMS,
                     match_expr.span,
-                    "indexing vector may panic. Consider using `get`",
+                    "indexing into a vector may panic",
                     "try this",
                     format!(
                         "{}.get({})",
-                        snippet_with_applicability(cx, vec.span, "..", &mut applicability),
-                        snippet_with_applicability(cx, idx.span, "..", &mut applicability)
+                        snippet(cx, vec.span, ".."),
+                        snippet(cx, idx.span, "..")
                     ),
-                    applicability
+                    Applicability::MaybeIncorrect
                 );
             }
         }
