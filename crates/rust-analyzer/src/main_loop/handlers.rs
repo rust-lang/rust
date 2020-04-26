@@ -19,8 +19,7 @@ use lsp_types::{
     TextEdit, Url, WorkspaceEdit,
 };
 use ra_ide::{
-    Assist, AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
-    SearchScope,
+    Assist, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
 };
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextSize};
@@ -702,15 +701,9 @@ fn create_single_code_action(assist: Assist, world: &WorldSnapshot) -> Result<Co
         arguments: Some(vec![arg]),
     };
 
-    let kind = match assist.id {
-        AssistId("introduce_variable") => Some("refactor.extract.variable".to_string()),
-        AssistId("add_custom_impl") => Some("refactor.rewrite.add_custom_impl".to_string()),
-        _ => None,
-    };
-
     Ok(CodeAction {
         title,
-        kind,
+        kind: Some("refactor".to_owned()),
         diagnostics: None,
         edit: None,
         command: Some(command),
