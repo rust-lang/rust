@@ -591,7 +591,7 @@ impl<'a> CrateLoader<'a> {
 
         // Make sure the path contains a / or the linker will search for it.
         let path = env::current_dir().unwrap().join(path);
-        let lib = match DynamicLibrary::open(Some(&path)) {
+        let lib = match DynamicLibrary::open(&path) {
             Ok(lib) => lib,
             Err(err) => self.sess.span_fatal(span, &err),
         };
