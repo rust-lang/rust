@@ -23,7 +23,7 @@ https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/readme.adoc
 
 == Installation
 
-In theory, one should be able to just install the server binary and have it automatically work with any editor.
+In theory, one should be able to just install the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>> and have it automatically work with any editor.
 We are not there yet, so some editor specific setup is required.
 
 Additionally, rust-analyzer needs the sources of the standard library.
@@ -108,15 +108,26 @@ Here are some useful self-diagnostic commands:
 * To log all LSP requests, add `"rust-analyzer.trace.server": "verbose"` to the settings and look for `Server Trace` in the panel.
 * To enable client-side logging, add `"rust-analyzer.trace.extension": true` to the settings and open the `Console` tab of VS Code developer tools.
 
-=== Language Server Binary
+=== rust-analyzer Language Server Binary
 
 Other editors generally require the `rust-analyzer` binary to be in `$PATH`.
 You can download the pre-built binary from the https://github.com/rust-analyzer/rust-analyzer/releases[releases] page. Typically, you then need to rename the binary for your platform, e.g. `rust-analyzer-mac` if you're on Mac OS, to `rust-analzyer` and make it executable in addition to moving it into a directory in your `$PATH`.
+
+On Linux to install the `rust-analyzer` binary into `~/.local/bin`, this commands could be used
+
+[source,bash]
+----
+$ curl -L https://github.com/rust-analyzer/rust-analyzer/releases/latest/download/rust-analyzer-linux -o ~/.local/bin/rust-analyzer
+$ chmod +x ~/.local/bin/rust-analyzer
+----
+
+Ensure `~/.local/bin` is listed in the `$PATH` variable.
 
 Alternatively, you can install it from source using the following command:
 
 [source,bash]
 ----
+$ git clone https://github.com/rust-analyzer/rust-analyzer.git && cd rust-analyzer
 $ cargo xtask install --server
 ----
 
@@ -139,14 +150,18 @@ $ yay -S rust-analyzer-bin
 
 === Emacs
 
-Emacs support is maintained https://github.com/emacs-lsp/lsp-mode/blob/master/lsp-rust.el[upstream].
+Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
-1. Install the most recent version of `emacs-lsp` package by following the instructions https://github.com/emacs-lsp/lsp-mode[here].
+Emacs support is maintained as part of the https://github.com/emacs-lsp/lsp-mode[Emacs-LSP] package in https://github.com/emacs-lsp/lsp-mode/blob/master/lsp-rust.el[lsp-rust.el].
+
+1. Install the most recent version of `emacs-lsp` package by following the https://github.com/emacs-lsp/lsp-mode[Emacs-LSP instructions].
 2. Set `lsp-rust-server` to `'rust-analyzer`.
 3. Run `lsp` in a Rust buffer.
 4. (Optionally) bind commands like `lsp-rust-analyzer-join-lines`, `lsp-extend-selection` and `lsp-rust-analyzer-expand-macro` to keys.
 
 === Vim
+
+Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
 The are several LSP client implementations for vim:
 
@@ -205,7 +220,7 @@ Once `neovim/nvim-lsp` is installed, use `+lua require'nvim_lsp'.rust_analyzer.s
 
 === Sublime Text 3
 
-Prerequisites: You have installed the <<language-server-binary,`rust-analyzer` binary>>.
+Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
 You also need the `LSP` package. To install it:
 
@@ -218,7 +233,7 @@ Finally, with your Rust project open, in the command palette, run `LSP: Enable L
 
 If it worked, you should see "rust-analzyer, Line X, Column Y" on the left side of the bottom bar, and after waiting a bit, functionality like tooltips on hovering over variables should become available.
 
-If you get an error saying `No such file or directory: 'rust-analyzer'`, see the <<language-server-binary,section on installing the language server binary>>.
+If you get an error saying `No such file or directory: 'rust-analyzer'`, see the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>> section on installing the language server binary.
 
 == Usage
 
