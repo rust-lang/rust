@@ -326,10 +326,10 @@ pub fn handle_workspace_symbol(
 
 pub fn handle_goto_definition(
     world: WorldSnapshot,
-    params: req::TextDocumentPositionParams,
+    params: req::GotoDefinitionParams,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
     let _p = profile("handle_goto_definition");
-    let position = params.try_conv_with(&world)?;
+    let position = params.text_document_position_params.try_conv_with(&world)?;
     let nav_info = match world.analysis().goto_definition(position)? {
         None => return Ok(None),
         Some(it) => it,
@@ -340,10 +340,10 @@ pub fn handle_goto_definition(
 
 pub fn handle_goto_implementation(
     world: WorldSnapshot,
-    params: req::TextDocumentPositionParams,
+    params: req::GotoImplementationParams,
 ) -> Result<Option<req::GotoImplementationResponse>> {
     let _p = profile("handle_goto_implementation");
-    let position = params.try_conv_with(&world)?;
+    let position = params.text_document_position_params.try_conv_with(&world)?;
     let nav_info = match world.analysis().goto_implementation(position)? {
         None => return Ok(None),
         Some(it) => it,
@@ -354,10 +354,10 @@ pub fn handle_goto_implementation(
 
 pub fn handle_goto_type_definition(
     world: WorldSnapshot,
-    params: req::TextDocumentPositionParams,
+    params: req::GotoTypeDefinitionParams,
 ) -> Result<Option<req::GotoTypeDefinitionResponse>> {
     let _p = profile("handle_goto_type_definition");
-    let position = params.try_conv_with(&world)?;
+    let position = params.text_document_position_params.try_conv_with(&world)?;
     let nav_info = match world.analysis().goto_type_definition(position)? {
         None => return Ok(None),
         Some(it) => it,
@@ -487,10 +487,10 @@ pub fn handle_folding_range(
 
 pub fn handle_signature_help(
     world: WorldSnapshot,
-    params: req::TextDocumentPositionParams,
+    params: req::SignatureHelpParams,
 ) -> Result<Option<req::SignatureHelp>> {
     let _p = profile("handle_signature_help");
-    let position = params.try_conv_with(&world)?;
+    let position = params.text_document_position_params.try_conv_with(&world)?;
     if let Some(call_info) = world.analysis().call_info(position)? {
         let concise = !world.config.call_info_full;
         let mut active_parameter = call_info.active_parameter.map(|it| it as i64);
@@ -509,12 +509,9 @@ pub fn handle_signature_help(
     }
 }
 
-pub fn handle_hover(
-    world: WorldSnapshot,
-    params: req::TextDocumentPositionParams,
-) -> Result<Option<Hover>> {
+pub fn handle_hover(world: WorldSnapshot, params: req::HoverParams) -> Result<Option<Hover>> {
     let _p = profile("handle_hover");
-    let position = params.try_conv_with(&world)?;
+    let position = params.text_document_position_params.try_conv_with(&world)?;
     let info = match world.analysis().hover(position)? {
         None => return Ok(None),
         Some(info) => info,
@@ -878,8 +875,14 @@ pub fn handle_code_lens(
             .map(|it| {
                 let range = it.node_range.conv_with(&line_index);
                 let pos = range.start;
-                let lens_params =
-                    req::TextDocumentPositionParams::new(params.text_document.clone(), pos);
+                let lens_params = req::GotoImplementationParams {
+                    text_document_position_params: req::TextDocumentPositionParams::new(
+                        params.text_document.clone(),
+                        pos,
+                    ),
+                    work_done_progress_params: Default::default(),
+                    partial_result_params: Default::default(),
+                };
                 CodeLens {
                     range,
                     command: None,
@@ -894,7 +897,7 @@ pub fn handle_code_lens(
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum CodeLensResolveData {
-    Impls(req::TextDocumentPositionParams),
+    Impls(req::GotoImplementationParams),
 }
 
 pub fn handle_code_lens_resolve(world: WorldSnapshot, code_lens: CodeLens) -> Result<CodeLens> {
@@ -927,7 +930,7 @@ pub fn handle_code_lens_resolve(world: WorldSnapshot, code_lens: CodeLens) -> Re
                 title,
                 command: "rust-analyzer.showReferences".into(),
                 arguments: Some(vec![
-                    to_value(&lens_params.text_document.uri).unwrap(),
+                    to_value(&lens_params.text_document_position_params.text_document.uri).unwrap(),
                     to_value(code_lens.range.start).unwrap(),
                     to_value(locations).unwrap(),
                 ]),
@@ -944,16 +947,16 @@ pub fn handle_code_lens_resolve(world: WorldSnapshot, code_lens: CodeLens) -> Re
 
 pub fn handle_document_highlight(
     world: WorldSnapshot,
-    params: req::TextDocumentPositionParams,
+    params: req::DocumentHighlightParams,
 ) -> Result<Option<Vec<DocumentHighlight>>> {
     let _p = profile("handle_document_highlight");
-    let file_id = params.text_document.try_conv_with(&world)?;
+    let file_id = params.text_document_position_params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id)?;
 
-    let refs = match world
-        .analysis()
-        .find_all_refs(params.try_conv_with(&world)?, Some(SearchScope::single_file(file_id)))?
-    {
+    let refs = match world.analysis().find_all_refs(
+        params.text_document_position_params.try_conv_with(&world)?,
+        Some(SearchScope::single_file(file_id)),
+    )? {
         None => return Ok(None),
         Some(refs) => refs,
     };

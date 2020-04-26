@@ -149,7 +149,7 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
             detail: self.detail().map(|it| it.to_string()),
             filter_text: Some(self.lookup().to_string()),
             kind: self.kind().map(|it| it.conv()),
-            text_edit: Some(text_edit),
+            text_edit: Some(text_edit.into()),
             additional_text_edits: Some(additional_text_edits),
             documentation: self.documentation().map(|it| it.conv()),
             deprecated: Some(self.deprecated()),
