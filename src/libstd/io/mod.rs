@@ -256,6 +256,7 @@
 //! [`Read::read`]: trait.Read.html#tymethod.read
 //! [`Result`]: ../result/enum.Result.html
 //! [`.unwrap()`]: ../result/enum.Result.html#method.unwrap
+// ignore-tidy-filelength
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
