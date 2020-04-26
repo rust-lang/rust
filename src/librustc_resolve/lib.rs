@@ -2213,25 +2213,28 @@ impl<'a> Resolver<'a> {
                     } else {
                         let mut msg =
                             format!("could not find `{}` in `{}`", ident, path[i - 1].ident);
-                        if ns == TypeNS {
-                            if let FindBindingResult::Binding(Ok(_)) =
-                                find_binding_in_ns(self, ValueNS)
+                        if ns == TypeNS || ns == ValueNS {
+                            let ns_to_try = if ns == TypeNS { ValueNS } else { TypeNS };
+                            if let FindBindingResult::Binding(Ok(binding)) =
+                                find_binding_in_ns(self, ns_to_try)
                             {
-                                msg = format!(
-                                    "`{}` in `{}` is a concrete value, not a module or Struct you specified",
-                                    ident,
-                                    path[i - 1].ident
-                                );
-                            };
-                        } else if ns == ValueNS {
-                            if let FindBindingResult::Binding(Ok(_)) =
-                                find_binding_in_ns(self, TypeNS)
-                            {
-                                msg = format!(
-                                    "`{}` in `{}` is a type, not a concrete value you specified",
-                                    ident,
-                                    path[i - 1].ident
-                                );
+                                let mut found = |what| {
+                                    msg = format!(
+                                        "expected {}, found {} `{}` in `{}`",
+                                        ns.descr(),
+                                        what,
+                                        ident,
+                                        path[i - 1].ident
+                                    )
+                                };
+                                if binding.module().is_some() {
+                                    found("module")
+                                } else {
+                                    match binding.res() {
+                                        def::Res::<NodeId>::Def(kind, id) => found(kind.descr(id)),
+                                        _ => found(ns_to_try.descr()),
+                                    }
+                                }
                             };
                         }
                         (msg, None)
