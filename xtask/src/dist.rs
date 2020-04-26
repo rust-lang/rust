@@ -50,21 +50,19 @@ fn dist_server(nightly: bool) -> Result<()> {
     if cfg!(target_os = "linux") {
         std::env::set_var("CC", "clang");
         run!(
-            "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release
-             --target x86_64-unknown-linux-musl
-            "
+            "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release"
             // We'd want to add, but that requires setting the right linker somehow
             // --features=jemalloc
         )?;
         if !nightly {
-            run!("strip ./target/x86_64-unknown-linux-musl/release/rust-analyzer")?;
+            run!("strip ./target/release/rust-analyzer")?;
         }
     } else {
         run!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release")?;
     }
 
     let (src, dst) = if cfg!(target_os = "linux") {
-        ("./target/x86_64-unknown-linux-musl/release/rust-analyzer", "./dist/rust-analyzer-linux")
+        ("./target/release/rust-analyzer", "./dist/rust-analyzer-linux")
     } else if cfg!(target_os = "windows") {
         ("./target/release/rust-analyzer.exe", "./dist/rust-analyzer-windows.exe")
     } else if cfg!(target_os = "macos") {
