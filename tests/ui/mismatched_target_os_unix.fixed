@@ -3,8 +3,6 @@
 #![warn(clippy::mismatched_target_os)]
 #![allow(unused)]
 
-// unix
-
 #[cfg(target_os = "linux")]
 fn linux() {}
 
@@ -38,6 +36,12 @@ fn fuchsia() {}
 #[cfg(target_os = "haiku")]
 fn haiku() {}
 
+#[cfg(target_os = "illumos")]
+fn illumos() {}
+
+#[cfg(target_os = "l4re")]
+fn l4re() {}
+
 #[cfg(target_os = "redox")]
 fn redox() {}
 
@@ -47,30 +51,12 @@ fn solaris() {}
 #[cfg(target_os = "vxworks")]
 fn vxworks() {}
 
-// non-unix
-
-#[cfg(target_os = "cloudabi")]
-fn cloudabi() {}
-
-#[cfg(target_os = "hermit")]
-fn hermit() {}
-
-#[cfg(target_os = "wasi")]
-fn wasi() {}
-
-#[cfg(target_os = "none")]
-fn none() {}
-
 // list with conditions
-#[cfg(all(not(any(windows, target_os = "linux")), target_os = "freebsd"))]
+#[cfg(all(not(any(target_os = "solaris", target_os = "linux")), target_os = "freebsd"))]
 fn list() {}
-
-// windows is a valid target family, should be ignored
-#[cfg(windows)]
-fn windows() {}
 
 // correct use, should be ignored
 #[cfg(target_os = "freebsd")]
-fn freebsd() {}
+fn correct() {}
 
 fn main() {}

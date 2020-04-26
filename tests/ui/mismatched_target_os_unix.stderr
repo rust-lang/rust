@@ -1,5 +1,5 @@
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:8:1
+  --> $DIR/mismatched_target_os_unix.rs:6:1
    |
 LL | #[cfg(linux)]
    | ^^^^^^-----^^
@@ -10,7 +10,7 @@ LL | #[cfg(linux)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:11:1
+  --> $DIR/mismatched_target_os_unix.rs:9:1
    |
 LL | #[cfg(freebsd)]
    | ^^^^^^-------^^
@@ -20,7 +20,7 @@ LL | #[cfg(freebsd)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:14:1
+  --> $DIR/mismatched_target_os_unix.rs:12:1
    |
 LL | #[cfg(dragonfly)]
    | ^^^^^^---------^^
@@ -30,7 +30,7 @@ LL | #[cfg(dragonfly)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:17:1
+  --> $DIR/mismatched_target_os_unix.rs:15:1
    |
 LL | #[cfg(openbsd)]
    | ^^^^^^-------^^
@@ -40,7 +40,7 @@ LL | #[cfg(openbsd)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:20:1
+  --> $DIR/mismatched_target_os_unix.rs:18:1
    |
 LL | #[cfg(netbsd)]
    | ^^^^^^------^^
@@ -50,7 +50,7 @@ LL | #[cfg(netbsd)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:23:1
+  --> $DIR/mismatched_target_os_unix.rs:21:1
    |
 LL | #[cfg(macos)]
    | ^^^^^^-----^^
@@ -60,7 +60,7 @@ LL | #[cfg(macos)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:26:1
+  --> $DIR/mismatched_target_os_unix.rs:24:1
    |
 LL | #[cfg(ios)]
    | ^^^^^^---^^
@@ -70,7 +70,7 @@ LL | #[cfg(ios)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:29:1
+  --> $DIR/mismatched_target_os_unix.rs:27:1
    |
 LL | #[cfg(android)]
    | ^^^^^^-------^^
@@ -80,7 +80,7 @@ LL | #[cfg(android)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:32:1
+  --> $DIR/mismatched_target_os_unix.rs:30:1
    |
 LL | #[cfg(emscripten)]
    | ^^^^^^----------^^
@@ -90,7 +90,7 @@ LL | #[cfg(emscripten)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:35:1
+  --> $DIR/mismatched_target_os_unix.rs:33:1
    |
 LL | #[cfg(fuchsia)]
    | ^^^^^^-------^^
@@ -100,7 +100,7 @@ LL | #[cfg(fuchsia)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:38:1
+  --> $DIR/mismatched_target_os_unix.rs:36:1
    |
 LL | #[cfg(haiku)]
    | ^^^^^^-----^^
@@ -110,7 +110,27 @@ LL | #[cfg(haiku)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:41:1
+  --> $DIR/mismatched_target_os_unix.rs:39:1
+   |
+LL | #[cfg(illumos)]
+   | ^^^^^^-------^^
+   |       |
+   |       help: try: `target_os = "illumos"`
+   |
+   = help: Did you mean `unix`?
+
+error: operating system used in target family position
+  --> $DIR/mismatched_target_os_unix.rs:42:1
+   |
+LL | #[cfg(l4re)]
+   | ^^^^^^----^^
+   |       |
+   |       help: try: `target_os = "l4re"`
+   |
+   = help: Did you mean `unix`?
+
+error: operating system used in target family position
+  --> $DIR/mismatched_target_os_unix.rs:45:1
    |
 LL | #[cfg(redox)]
    | ^^^^^^-----^^
@@ -120,7 +140,7 @@ LL | #[cfg(redox)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:44:1
+  --> $DIR/mismatched_target_os_unix.rs:48:1
    |
 LL | #[cfg(solaris)]
    | ^^^^^^-------^^
@@ -130,7 +150,7 @@ LL | #[cfg(solaris)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:47:1
+  --> $DIR/mismatched_target_os_unix.rs:51:1
    |
 LL | #[cfg(vxworks)]
    | ^^^^^^-------^^
@@ -140,52 +160,24 @@ LL | #[cfg(vxworks)]
    = help: Did you mean `unix`?
 
 error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:52:1
+  --> $DIR/mismatched_target_os_unix.rs:55:1
    |
-LL | #[cfg(cloudabi)]
-   | ^^^^^^--------^^
-   |       |
-   |       help: try: `target_os = "cloudabi"`
-
-error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:55:1
-   |
-LL | #[cfg(hermit)]
-   | ^^^^^^------^^
-   |       |
-   |       help: try: `target_os = "hermit"`
-
-error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:58:1
-   |
-LL | #[cfg(wasi)]
-   | ^^^^^^----^^
-   |       |
-   |       help: try: `target_os = "wasi"`
-
-error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:61:1
-   |
-LL | #[cfg(none)]
-   | ^^^^^^----^^
-   |       |
-   |       help: try: `target_os = "none"`
-
-error: operating system used in target family position
-  --> $DIR/mismatched_target_os.rs:65:1
-   |
-LL | #[cfg(all(not(any(windows, linux)), freebsd))]
+LL | #[cfg(all(not(any(solaris, linux)), freebsd))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: Did you mean `unix`?
 help: try
    |
-LL | #[cfg(all(not(any(windows, target_os = "linux")), freebsd))]
+LL | #[cfg(all(not(any(target_os = "solaris", linux)), freebsd))]
+   |                   ^^^^^^^^^^^^^^^^^^^^^
+help: try
+   |
+LL | #[cfg(all(not(any(solaris, target_os = "linux")), freebsd))]
    |                            ^^^^^^^^^^^^^^^^^^^
 help: try
    |
-LL | #[cfg(all(not(any(windows, linux)), target_os = "freebsd"))]
+LL | #[cfg(all(not(any(solaris, linux)), target_os = "freebsd"))]
    |                                     ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: aborting due to 17 previous errors
 
