@@ -30,19 +30,19 @@ fn main() -> () {
 }
 
 alloc0 (static: FOO, size: 8, align: 4) {
-    ╾alloc21+0╼ 03 00 00 00                         │ ╾──╼....
+    ╾alloc21+0x0 (4 ptr bytes)╼ 03 00 00 00                         │ ╾──╼....
 }
 
 alloc21 (size: 48, align: 4) {
-    0x00 │ 00 00 00 00 __ __ __ __ ╾alloc4+0─╼ 00 00 00 00 │ ....░░░░╾──╼....
-    0x10 │ 00 00 00 00 __ __ __ __ ╾alloc9+0─╼ 02 00 00 00 │ ....░░░░╾──╼....
-    0x20 │ 01 00 00 00 2a 00 00 00 ╾alloc19+0╼ 03 00 00 00 │ ....*...╾──╼....
+    0x00 │ 00 00 00 00 __ __ __ __ ╾alloc4+0x0 (4 ptr bytes)╼ 00 00 00 00 │ ....░░░░╾──╼....
+    0x10 │ 00 00 00 00 __ __ __ __ ╾alloc9+0x0 (4 ptr bytes)╼ 02 00 00 00 │ ....░░░░╾──╼....
+    0x20 │ 01 00 00 00 2a 00 00 00 ╾alloc19+0x0 (4 ptr bytes)╼ 03 00 00 00 │ ....*...╾──╼....
 }
 
 alloc4 (size: 0, align: 4) {}
 
 alloc9 (size: 8, align: 4) {
-    ╾alloc7+0─╼ ╾alloc8+0─╼                         │ ╾──╼╾──╼
+    ╾alloc7+0x0 (4 ptr bytes)╼ ╾alloc8+0x0 (4 ptr bytes)╼                         │ ╾──╼╾──╼
 }
 
 alloc7 (size: 1, align: 1) {
@@ -54,7 +54,7 @@ alloc8 (size: 1, align: 1) {
 }
 
 alloc19 (size: 12, align: 4) {
-    ╾alloc15+3╼ ╾alloc16+0╼ ╾alloc18+2╼             │ ╾──╼╾──╼╾──╼
+    ╾alloc15+0x3 (4 ptr bytes)╼ ╾alloc16+0x0 (4 ptr bytes)╼ ╾alloc18+0x2 (4 ptr bytes)╼             │ ╾──╼╾──╼╾──╼
 }
 
 alloc15 (size: 4, align: 1) {
