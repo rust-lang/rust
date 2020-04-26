@@ -48,6 +48,7 @@ pub fn add_configuration(
 
     cfg.extend(codegen_backend.target_features(sess).into_iter().map(|feat| (tf, Some(feat))));
 
+    // FIXME: The predicate is currently set even if the target doesn't support `crt-static`.
     if sess.crt_static_feature(None) {
         cfg.insert((tf, Some(Symbol::intern("crt-static"))));
     }

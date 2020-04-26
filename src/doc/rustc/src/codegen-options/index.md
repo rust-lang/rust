@@ -402,12 +402,35 @@ machine. Each target has a default base CPU.
 
 ## target-feature
 
-Individual targets will support different features; this flag lets you control
-enabling or disabling a feature. Each feature should be prefixed with a `+` to
-enable it or `-` to disable it. Separate multiple features with commas.
+This option controls either CPU instruction set extensions that can be used during code generation,
+or static linking.
 
-To see the valid options and an example of use, run `rustc --print
-target-features`.
+In both cases `-C target-feature=+x` enables feature `x` and `-C target-feature=-x` disables it.
+
+Multiple features can be specified by separating them with commas - `-C target-feature=+x,-y`.
+
+For each supported feature `x` `target_feature = "x"` becomes a `cfg` predicate usable early during
+compilation.  
+Code configured with `cfg(target_feature = "x")` is kept if the feature `x` is enabled,
+and removed otherwise.
+
+If the enabled feature is not supported for the current target, the behavior is unspecified.
+<!-- There are multiple bugs here
+  - Unknown CPU features go straight to LLVM and appear as LLVM warnings.
+  - At configure time `crt-static` predicate is set even if the target doesn't support `crt-static`.
+  - At link time `crt-static` is sometimes ignored
+    if the target doesn't support it and sometimes not.
+-->
+
+To see the valid features and an example of use, run `rustc --print target-features`.
+
+#### CPU instruction set extensions
+
+Target features for CPU instruction set extensions can enable or disable
+architecture-dependent CPU features, like `+neon` or `-sse`.
+
+Each target and [`target-cpu`](#target-cpu) has a default set of enabled
+features.
 
 Using this flag is unsafe and might result in [undefined runtime
 behavior](../targets/known-issues.md).
@@ -416,11 +439,53 @@ See also the [`target_feature`
 attribute](../../reference/attributes/codegen.md#the-target_feature-attribute)
 for controlling features per-function.
 
-This also supports the feature `+crt-static` and `-crt-static` to control
-[static C runtime linkage](../../reference/linkage.html#static-and-dynamic-c-runtimes).
+#### Static linking
 
-Each target and [`target-cpu`](#target-cpu) has a default set of enabled
-features.
+Target feature `crt-static` can be used to enable or disable static linking,
+with the default depending on the current target.  
+`-C target-feature=+crt-static` is similar to `-static` in other compilers,
+standard C library in particular is linked statically in this case.
+
+The exact meaning of `+crt-static` depends heavily
+on the current target and the produced crate type.
+
+- ELF-based executables.  
+If the target supports statically linked executables,
+then the linker will be instructed (`-static`) to produce one.  
+The executable will be self-contained,
+will contain code from all the used libraries, including `libc`, inside it,
+and will be able to run without a dynamic loader (no `INTERP` header).  
+
+    If the target doesn't support both position-independent and statically linked executables,
+then `-C target-feature=+crt-static` "wins" over `-C relocation-model=pic`,
+and the linker is instructed (`-static`) to produce a statically linked
+but not position-independent executable.
+
+- ELF-based shared libraries.  
+If the target supports statically linked shared libraries,
+then the linker will be instructed (`-shared -static`) to produce one.
+The shared library will contain code from all the used libraries, including `libc`, inside it.
+This option is not widely supported or used.
+
+- PE-based executables (Windows).  
+The produced executable will contain code from all the user-level libraries, including
+[C Run-Time Libraries (CRT)](https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features),
+but may still link dynamically to system libraries like `kernel32.dll`.
+
+- PE-based shared libraries (Windows).  
+The produced shared library will contain code from all the user-level libraries, including
+[C Run-Time Libraries (CRT)](https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features),
+but may still link dynamically to system libraries like `kernel32.dll`.
+
+*WARNING!* If some libraries (native or Rust crates) in the dependency tree exist only in the
+dynamic variant they may be linked dynamically breaking the self-contained-ness property,
+re-adding the `INTERP` header for ELF executables, and possibly working incorrectly due to mismatch
+between dynamically linked libraries and injected startup objects specific to static linking.  
+A request to turn this case into an error is tracked in
+[issue #39998](https://github.com/rust-lang/rust/issues/39998).
+
+An alternative description of this feature can be found in the
+[reference](../../reference/linkage.html#static-and-dynamic-c-runtimes).
 
 ## bitcode-in-rlib
 
