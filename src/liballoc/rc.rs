@@ -1436,6 +1436,29 @@ impl<T: ?Sized> fmt::Pointer for Rc<T> {
     }
 }
 
+#[stable(feature = "rc_fn", since = "1.45.0")]
+impl<A, F: Fn<A> + ?Sized> FnOnce<A> for Rc<F> {
+    type Output = <F as FnOnce<A>>::Output;
+
+    extern "rust-call" fn call_once(self, args: A) -> Self::Output {
+        <F as Fn<A>>::call(&*self, args)
+    }
+}
+
+#[stable(feature = "rc_fn", since = "1.45.0")]
+impl<A, F: Fn<A> + ?Sized> FnMut<A> for Rc<F> {
+    extern "rust-call" fn call_mut(&mut self, args: A) -> Self::Output {
+        <F as Fn<A>>::call(self, args)
+    }
+}
+
+#[stable(feature = "rc_fn", since = "1.45.0")]
+impl<A, F: Fn<A> + ?Sized> Fn<A> for Rc<F> {
+    extern "rust-call" fn call(&self, args: A) -> Self::Output {
+        <F as Fn<A>>::call(self, args)
+    }
+}
+
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Rc<T> {
     fn from(t: T) -> Self {

@@ -2066,6 +2066,29 @@ impl<T: ?Sized + Hash> Hash for Arc<T> {
     }
 }
 
+#[stable(feature = "rc_fn", since = "1.45.0")]
+impl<A, F: Fn<A> + ?Sized> FnOnce<A> for Arc<F> {
+    type Output = <F as FnOnce<A>>::Output;
+
+    extern "rust-call" fn call_once(self, args: A) -> Self::Output {
+        <F as Fn<A>>::call(&*self, args)
+    }
+}
+
+#[stable(feature = "rc_fn", since = "1.45.0")]
+impl<A, F: Fn<A> + ?Sized> FnMut<A> for Arc<F> {
+    extern "rust-call" fn call_mut(&mut self, args: A) -> Self::Output {
+        <F as Fn<A>>::call(self, args)
+    }
+}
+
+#[stable(feature = "rc_fn", since = "1.45.0")]
+impl<A, F: Fn<A> + ?Sized> Fn<A> for Arc<F> {
+    extern "rust-call" fn call(&self, args: A) -> Self::Output {
+        <F as Fn<A>>::call(self, args)
+    }
+}
+
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Arc<T> {
     fn from(t: T) -> Self {
