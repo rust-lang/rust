@@ -5,7 +5,7 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
-use rustc_span::DUMMY_SP;
+use rustc_span::DUMMY_SPID;
 use rustc_trait_selection::traits;
 
 use super::ConstCx;
@@ -78,7 +78,7 @@ impl Qualif for HasMutInterior {
     }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP)
+        !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SPID)
     }
 
     fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {

@@ -12,7 +12,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::DUMMY_SP;
+use rustc_span::DUMMY_SPID;
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, Conv, FnAbi, PassMode, Reg, RegKind,
 };
@@ -535,7 +535,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
 
                 let pointee = tcx.normalize_erasing_regions(param_env, pointee);
-                if pointee.is_sized(tcx.at(DUMMY_SP), param_env) {
+                if pointee.is_sized(tcx.at(DUMMY_SPID), param_env) {
                     return Ok(tcx.intern_layout(Layout::scalar(self, data_ptr)));
                 }
 
@@ -798,7 +798,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         let param_env = tcx.param_env(def.did);
                         let last_field = def.variants[v].fields.last().unwrap();
                         let always_sized =
-                            tcx.type_of(last_field.did).is_sized(tcx.at(DUMMY_SP), param_env);
+                            tcx.type_of(last_field.did).is_sized(tcx.at(DUMMY_SPID), param_env);
                         if !always_sized {
                             StructKind::MaybeUnsized
                         } else {
@@ -2160,7 +2160,7 @@ where
 
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 let tcx = cx.tcx();
-                let is_freeze = ty.is_freeze(tcx, cx.param_env(), DUMMY_SP);
+                let is_freeze = ty.is_freeze(tcx, cx.param_env(), DUMMY_SPID);
                 let kind = match mt {
                     hir::Mutability::Not => {
                         if is_freeze {

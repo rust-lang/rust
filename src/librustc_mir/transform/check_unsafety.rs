@@ -271,7 +271,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                             if !elem_ty.is_copy_modulo_regions(
                                 self.tcx,
                                 self.param_env,
-                                self.source_info.span,
+                                self.source_info.span.into(),
                             ) {
                                 self.require_unsafe(
                                     "assignment to non-`Copy` union field",
@@ -419,7 +419,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                             } else if !place.ty(self.body, self.tcx).ty.is_freeze(
                                 self.tcx,
                                 self.param_env,
-                                self.source_info.span,
+                                self.source_info.span.into(),
                             ) {
                                 (
                                     "borrow of layout constrained field with interior \

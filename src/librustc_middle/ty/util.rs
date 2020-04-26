@@ -18,7 +18,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
-use rustc_span::Span;
+use rustc_span::{Span, SpanId};
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use smallvec::SmallVec;
 use std::{cmp, fmt};
@@ -683,7 +683,7 @@ impl<'tcx> ty::TyS<'tcx> {
         &'tcx self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        span: Span,
+        span: SpanId,
     ) -> bool {
         tcx.at(span).is_copy_raw(param_env.and(self))
     }
@@ -709,7 +709,7 @@ impl<'tcx> ty::TyS<'tcx> {
         &'tcx self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        span: Span,
+        span: SpanId,
     ) -> bool {
         self.is_trivially_freeze() || tcx.at(span).is_freeze_raw(param_env.and(self))
     }

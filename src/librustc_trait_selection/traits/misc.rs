@@ -52,7 +52,7 @@ pub fn can_type_implement_copy(
                 let ctx = traits::FulfillmentContext::new();
                 match traits::fully_normalize(&infcx, ctx, cause, param_env, &ty) {
                     Ok(ty) => {
-                        if !infcx.type_is_copy_modulo_regions(param_env, ty, span) {
+                        if !infcx.type_is_copy_modulo_regions(param_env, ty, span.into()) {
                             infringing.push(field);
                         }
                     }

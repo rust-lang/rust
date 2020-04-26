@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, fold::BottomUpFolder, query::TyCtxtAt, subst::SubstsRef, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{source_map::DUMMY_SP, SpanId};
+use rustc_span::{SpanId, DUMMY_SP, DUMMY_SPID};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
@@ -392,7 +392,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(*self.tcx, self.param_env, DUMMY_SP)
+        ty.is_freeze(*self.tcx, self.param_env, DUMMY_SPID)
     }
 
     pub fn load_mir(
@@ -948,7 +948,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     mir::ClearCrossCrate::Clear => None,
                 }
             });
-            let span = source_info.map_or(DUMMY_SP, |source_info| source_info.span);
+            let span = source_info.map_or(DUMMY_SP, |source_info| source_info.span).into();
 
             frames.push(FrameInfo { span, instance: frame.instance, lint_root });
         }

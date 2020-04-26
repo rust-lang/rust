@@ -45,7 +45,7 @@ use rustc_middle::ty::{self, layout::IntegerExt, subst::GenericArg, Binder, Ty, 
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::symbol::{self, kw, Symbol};
-use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Pos, Span, DUMMY_SP, DUMMY_SPID};
 use rustc_target::abi::Integer;
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -914,7 +914,7 @@ pub fn type_is_unsafe_function<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx
 }
 
 pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_copy_modulo_regions(cx.tcx, cx.param_env, DUMMY_SP)
+    ty.is_copy_modulo_regions(cx.tcx, cx.param_env, DUMMY_SPID)
 }
 
 /// Checks if an expression is constructing a tuple-like enum variant or struct

@@ -5,7 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::DUMMY_SP;
+use rustc_span::DUMMY_SPID;
 
 type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
 
@@ -71,7 +71,7 @@ where
                 // Not having a `Span` isn't great. But there's hopefully some other
                 // recursion limit error as well.
                 tcx.sess.span_err(
-                    DUMMY_SP,
+                    DUMMY_SPID,
                     &format!("overflow while checking whether `{}` requires drop", self.query_ty),
                 );
                 return Some(Err(AlwaysRequiresDrop));
@@ -91,7 +91,7 @@ where
 
             for component in components {
                 match component.kind {
-                    _ if component.is_copy_modulo_regions(tcx, self.param_env, DUMMY_SP) => (),
+                    _ if component.is_copy_modulo_regions(tcx, self.param_env, DUMMY_SPID) => (),
 
                     ty::Closure(_, substs) => {
                         for upvar_ty in substs.as_closure().upvar_tys() {

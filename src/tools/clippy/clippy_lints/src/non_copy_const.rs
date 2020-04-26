@@ -10,7 +10,7 @@ use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{Ty, TypeFlags};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{InnerSpan, Span, DUMMY_SP};
+use rustc_span::{InnerSpan, Span, DUMMY_SPID};
 use rustc_typeck::hir_ty_to_ty;
 
 use crate::utils::{in_constant, is_copy, qpath_res, span_lint_and_then};
@@ -110,7 +110,7 @@ impl Source {
 }
 
 fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, source: Source) {
-    if ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP) || is_copy(cx, ty) {
+    if ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SPID) || is_copy(cx, ty) {
         // An `UnsafeCell` is `!Copy`, and an `UnsafeCell` is also the only type which
         // is `!Freeze`, thus if our type is `Copy` we can be sure it must be `Freeze`
         // as well.

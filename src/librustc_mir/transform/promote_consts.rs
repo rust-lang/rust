@@ -22,7 +22,7 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, List, TyCtxt, TypeFoldable};
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SPID};
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::spec::abi::Abi;
@@ -330,7 +330,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                     Place::ty_from(place.local, proj_base, self.body, self.tcx)
                                         .projection_ty(self.tcx, elem)
                                         .ty;
-                                if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
+                                if ty.is_freeze(self.tcx, self.param_env, DUMMY_SPID) {
                                     has_mut_interior = false;
                                     break;
                                 }
@@ -653,7 +653,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                         let ty = Place::ty_from(place.local, proj_base, self.body, self.tcx)
                             .projection_ty(self.tcx, elem)
                             .ty;
-                        if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
+                        if ty.is_freeze(self.tcx, self.param_env, DUMMY_SPID) {
                             has_mut_interior = false;
                             break;
                         }

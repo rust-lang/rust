@@ -306,7 +306,7 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
     let param_env = tcx.param_env(def_id);
 
     let mut builder = CloneShimBuilder::new(tcx, def_id, self_ty);
-    let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env, builder.span);
+    let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env, builder.span.into());
 
     let dest = Place::return_place();
     let src = tcx.mk_place_deref(Place::from(Local::new(1 + 0)));

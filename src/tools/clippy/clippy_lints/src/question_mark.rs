@@ -137,7 +137,7 @@ impl QuestionMark {
     fn moves_by_default(cx: &LateContext<'_, '_>, expression: &Expr<'_>) -> bool {
         let expr_ty = cx.tables.expr_ty(expression);
 
-        !expr_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, expression.span)
+        !expr_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, expression.span.into())
     }
 
     fn is_option(cx: &LateContext<'_, '_>, expression: &Expr<'_>) -> bool {
