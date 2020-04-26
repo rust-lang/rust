@@ -425,8 +425,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
     /// but not reading from them anymore.
-    fn remove_const(&mut self, local: Local) {
-        self.ecx.frame_mut().locals[local] =
+    fn remove_const(ecx: &mut InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>, local: Local) {
+        ecx.frame_mut().locals[local] =
             LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
     }
 
@@ -913,7 +913,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     {
                         trace!("can't propagate into {:?}", local);
                         if local != RETURN_PLACE {
-                            self.remove_const(local);
+                            Self::remove_const(&mut self.ecx, local);
                         }
                     }
                 }
@@ -952,7 +952,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         // doesn't use the invalid value
                         match cond {
                             Operand::Move(ref place) | Operand::Copy(ref place) => {
-                                self.remove_const(place.local);
+                                Self::remove_const(&mut self.ecx, place.local);
                             }
                             Operand::Constant(_) => {}
                         }
@@ -1064,7 +1064,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 "removing local {:?} from const-prop, since it's restricted to just its own block.",
                 local
             );
-            self.remove_const(local);
+            Self::remove_const(&mut self.ecx, local);
         }
         // Before moving on to the next block, we must forget all restricted locals, because we
         // have already removed them from the `const` pool
