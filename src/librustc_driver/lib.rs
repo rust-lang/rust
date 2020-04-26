@@ -618,15 +618,15 @@ impl RustcDefaultCalls {
     ) -> Compilation {
         let r = matches.opt_strs("Z");
         if r.iter().any(|s| *s == "ls") {
-            match input {
-                &Input::File(ref ifile) => {
+            match *input {
+                Input::File(ref ifile) => {
                     let path = &(*ifile);
                     let mut v = Vec::new();
                     locator::list_file_metadata(&sess.target.target, path, metadata_loader, &mut v)
                         .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }
-                &Input::Str { .. } => {
+                Input::Str { .. } => {
                     early_error(ErrorOutputType::default(), "cannot list metadata for stdin");
                 }
             }

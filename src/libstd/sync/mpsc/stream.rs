@@ -329,7 +329,7 @@ impl<T> Packet<T> {
             );
             cnt != DISCONNECTED && cnt != steals
         } {
-            while let Some(_) = self.queue.pop() {
+            while self.queue.pop().is_some() {
                 steals += 1;
             }
         }

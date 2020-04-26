@@ -1269,7 +1269,7 @@ impl<'a, T: Ord> Drop for DrainSorted<'a, T> {
 
         impl<'r, 'a, T: Ord> Drop for DropGuard<'r, 'a, T> {
             fn drop(&mut self) {
-                while let Some(_) = self.0.inner.pop() {}
+                while self.0.inner.pop().is_some() {}
             }
         }
 

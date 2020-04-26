@@ -292,7 +292,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let of_fld = Field::new(1);
 
             let tcx = self.hir.tcx();
-            let val = tcx.mk_place_field(result_value.clone(), val_fld, ty);
+            let val = tcx.mk_place_field(result_value, val_fld, ty);
             let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
             let err = AssertKind::Overflow(op);
