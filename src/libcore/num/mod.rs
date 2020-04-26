@@ -111,7 +111,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 }
             }
 
-            #[stable(feature = "nonzero_bitor", since = "1.43.0")]
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
             impl BitOr for $Ty {
                 type Output = Self;
                 #[inline]
@@ -122,7 +122,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 }
             }
 
-            #[stable(feature = "nonzero_bitor", since = "1.43.0")]
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
             impl BitOr<$Int> for $Ty {
                 type Output = Self;
                 #[inline]
@@ -134,7 +134,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 }
             }
 
-            #[stable(feature = "nonzero_bitor", since = "1.43.0")]
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
             impl BitOr<$Ty> for $Int {
                 type Output = $Ty;
                 #[inline]
@@ -146,7 +146,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 }
             }
 
-            #[stable(feature = "nonzero_bitor", since = "1.43.0")]
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
             impl BitOrAssign for $Ty {
                 #[inline]
                 fn bitor_assign(&mut self, rhs: Self) {
@@ -154,7 +154,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 }
             }
 
-            #[stable(feature = "nonzero_bitor", since = "1.43.0")]
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
             impl BitOrAssign<$Int> for $Ty {
                 #[inline]
                 fn bitor_assign(&mut self, rhs: $Int) {
