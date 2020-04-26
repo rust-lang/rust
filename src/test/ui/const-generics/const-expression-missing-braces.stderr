@@ -1,19 +1,46 @@
-error: expected one of `!`, `(`, `,`, `>`, `?`, `for`, lifetime, or path, found `3`
-  --> $DIR/const-expression-missing-braces.rs:8:17
+error: expected one of `,` or `>`, found `3`
+  --> $DIR/const-expression-missing-braces.rs:9:17
    |
-LL |     foo::<bar + 3>();
-   |                 ^ expected one of 8 possible tokens
+LL |     foo::<BAR + 3>();
+   |                 ^ expected one of `,` or `>`
+   |
+help: to write a `const` expression, surround it with braces for it to be unambiguous
+   |
+LL |     foo::<{ BAR + 3 }>();
+   |           ^         ^
+
+error: expected one of `,` or `>`, found `-`
+  --> $DIR/const-expression-missing-braces.rs:20:15
+   |
+LL |     foo::<BAR - 3>();
+   |               ^ expected one of `,` or `>`
+   |
+help: to write a `const` expression, surround it with braces for it to be unambiguous
+   |
+LL |     foo::<{ BAR - 3 }>();
+   |           ^         ^
+
+error: expected one of `,` or `>`, found `-`
+  --> $DIR/const-expression-missing-braces.rs:24:15
+   |
+LL |     foo::<BAR - BAR>();
+   |               ^ expected one of `,` or `>`
+   |
+help: to write a `const` expression, surround it with braces for it to be unambiguous
+   |
+LL |     foo::<{ BAR - BAR }>();
+   |           ^           ^
 
 error: likely `const` expression parsed as trait bounds
   --> $DIR/const-expression-missing-braces.rs:13:11
    |
-LL |     foo::<bar + bar>();
+LL |     foo::<BAR + BAR>();
    |           ^^^^^^^^^ parsed as trait bounds but traits weren't found
    |
 help: if you meant to write a `const` expression, surround the expression with braces
    |
-LL |     foo::<{ bar + bar }>();
+LL |     foo::<{ BAR + BAR }>();
    |           ^           ^
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 

@@ -6,7 +6,8 @@ use rustc_ast::ast::{AnonConst, AssocTyConstraint, AssocTyConstraintKind, BlockC
 use rustc_ast::ast::{Ident, Path, PathSegment, QSelf};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
-use rustc_errors::{pluralize, Applicability, PResult};
+use rustc_ast::util::parser::AssocOp;
+use rustc_errors::{pluralize, Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
 
@@ -392,10 +393,108 @@ impl<'a> Parser<'a> {
         while let Some(arg) = self.parse_angle_arg()? {
             args.push(arg);
             if !self.eat(&token::Comma) {
+                if self.token.kind.should_end_const_arg() {
+                    // We will correctly parse a closing `>`, exit.
+                } else {
+                    // Try to recover from possible `const` arg without braces.
+                    let arg = args.pop().unwrap();
+                    // FIXME: for some reason using `unexpected` or `expected_one_of_not_found` has
+                    // adverse side-effects to subsequent errors and seems to advance the parser.
+                    // We are causing this error here exclusively in case that a `const` expression
+                    // could be recovered from the current parser state, even if followed by more
+                    // arguments after a comma.
+                    let mut err = self.struct_span_err(
+                        self.token.span,
+                        &format!(
+                            "expected one of `,` or `>`, found {}",
+                            super::token_descr(&self.token)
+                        ),
+                    );
+                    err.span_label(self.token.span, "expected one of `,` or `>`");
+                    match self.recover_const_arg(arg.span(), err) {
+                        Ok(arg) => {
+                            args.push(AngleBracketedArg::Arg(arg));
+                            if self.eat(&token::Comma) {
+                                continue;
+                            }
+                        }
+                        Err(mut err) => {
+                            args.push(arg);
+                            // We will emit a more generic error later.
+                            err.delay_as_bug();
+                        }
+                    }
+                }
                 break;
             }
         }
         Ok(args)
+    }
+
+    /// Try to recover from possible `const` arg without braces.
+    ///
+    /// When encountering code like `foo::< bar + 3 >` or `foo::< bar - baz >` we suggest
+    /// `foo::<{ bar + 3 }>` and `foo::<{ bar - baz }>` respectively. We only provide a suggestion
+    /// when we have a high degree of certainty that the resulting expression would be well formed.
+    pub fn recover_const_arg(
+        &mut self,
+        start: Span,
+        mut err: DiagnosticBuilder<'a>,
+    ) -> PResult<'a, GenericArg> {
+        let is_op = AssocOp::from_token(&self.token)
+            .and_then(|op| {
+                if let AssocOp::Greater
+                | AssocOp::Less
+                | AssocOp::ShiftRight
+                | AssocOp::GreaterEqual
+                | AssocOp::Assign // Don't recover from `foo::<bar = baz>`
+                | AssocOp::AssignOp(_) = op
+                {
+                    None
+                } else {
+                    Some(op)
+                }
+            })
+            .is_some();
+        // This will be true when a trait object type `Foo +` has been parsed.
+        let was_op = self.prev_token.kind == token::BinOp(token::Plus);
+        if !is_op && !was_op {
+            // We perform these checks and early return to avoid taking a snapshot unnecessarily.
+            return Err(err);
+        }
+        let snapshot = self.clone();
+        if is_op {
+            self.bump();
+        }
+        match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
+            Ok(expr) => {
+                if token::Comma == self.token.kind || self.token.kind.should_end_const_arg() {
+                    // Avoid the following output by checking that we consumed a full const arg:
+                    // help: to write a `const` expression, surround it with braces for it to
+                    //       be unambiguous
+                    //    |
+                    // LL |     let sr: Vec<{ (u32, _, _) = vec![] };
+                    //    |                 ^                      ^
+                    err.multipart_suggestion(
+                        "to write a `const` expression, surround it with braces for it to be \
+                        unambiguous",
+                        vec![
+                            (start.shrink_to_lo(), "{ ".to_string()),
+                            (expr.span.shrink_to_hi(), " }".to_string()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                    let value = self.mk_expr_err(start.to(expr.span));
+                    err.emit();
+                    return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
+                }
+            }
+            Err(mut err) => {
+                err.cancel();
+            }
+        }
+        *self = snapshot;
+        Err(err)
     }
 
     /// Parses a single argument in the angle arguments `<...>` of a path segment.
@@ -474,6 +573,7 @@ impl<'a> Parser<'a> {
     /// Parse a generic argument in a path segment.
     /// This does not include constraints, e.g., `Item = u8`, which is handled in `parse_angle_arg`.
     fn parse_generic_arg(&mut self) -> PResult<'a, Option<GenericArg>> {
+        let start = self.token.span;
         let arg = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
             // Parse lifetime argument.
             GenericArg::Lifetime(self.expect_lifetime())
@@ -502,7 +602,13 @@ impl<'a> Parser<'a> {
             GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
         } else if self.check_type() {
             // Parse type argument.
-            GenericArg::Type(self.parse_ty()?)
+            match self.parse_ty() {
+                Ok(ty) => GenericArg::Type(ty),
+                Err(err) => {
+                    // Try to recover from possible `const` arg without braces.
+                    return self.recover_const_arg(start, err).map(Some);
+                }
+            }
         } else {
             return Ok(None);
         };

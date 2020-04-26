@@ -228,6 +228,15 @@ pub enum AngleBracketedArg {
     Constraint(AssocTyConstraint),
 }
 
+impl AngleBracketedArg {
+    pub fn span(&self) -> Span {
+        match self {
+            AngleBracketedArg::Arg(arg) => arg.span(),
+            AngleBracketedArg::Constraint(constraint) => constraint.span,
+        }
+    }
+}
+
 impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
     fn into(self) -> Option<P<GenericArgs>> {
         Some(P(GenericArgs::AngleBracketed(self)))

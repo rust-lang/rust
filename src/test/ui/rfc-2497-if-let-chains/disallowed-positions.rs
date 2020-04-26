@@ -232,7 +232,7 @@ fn inside_const_generic_arguments() {
     // In the cases above we have `ExprKind::Block` to help us out.
     // Below however, we would not have a block and so an implementation might go
     // from visiting expressions to types without banning `let` expressions down the tree.
-    // The parser admits non-IDENT expressions in const generic arguments and is caught by the 
+    // The parser admits non-IDENT expressions in const generic arguments and is caught by the
     // test below.
     if A::<
         true && let 1 = 1 //~ ERROR `let` expressions are not supported here

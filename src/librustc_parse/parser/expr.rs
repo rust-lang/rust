@@ -329,12 +329,18 @@ impl<'a> Parser<'a> {
     /// The method does not advance the current token.
     ///
     /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
-    fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
+    crate fn check_assoc_op(&self) -> Option<Spanned<AssocOp>> {
         let (op, span) = match (AssocOp::from_token(&self.token), self.token.ident()) {
-            // When parsing const expressions, stop parsing when encountering `<` and `>`.
-            (Some(AssocOp::ShiftRight), _) | (Some(AssocOp::Greater), _)
-                if self.restrictions.contains(Restrictions::CONST_EXPR) =>
-            {
+            // When parsing const expressions, stop parsing when encountering `>`.
+            (
+                Some(
+                    AssocOp::ShiftRight
+                    | AssocOp::Greater
+                    | AssocOp::GreaterEqual
+                    | AssocOp::AssignOp(token::BinOpToken::Shr),
+                ),
+                _,
+            ) if self.restrictions.contains(Restrictions::CONST_EXPR) => {
                 return None;
             }
             (Some(op), _) => (op, self.token.span),

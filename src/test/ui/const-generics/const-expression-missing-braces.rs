@@ -3,19 +3,28 @@
 
 fn foo<const C: usize>() {}
 
+const BAR: usize = 42;
+
 fn a() {
-    let bar = 3;
-    foo::<bar + 3>();
-    //~^ ERROR expected one of `!`, `(`, `,`, `>`, `?`, `for`, lifetime, or path, found `3`
+    foo::<BAR + 3>();
+    //~^ ERROR expected one of
 }
 fn b() {
-    let bar = 3;
-    foo::<bar + bar>();
+    foo::<BAR + BAR>();
     //~^ ERROR likely `const` expression parsed as trait bounds
 }
 fn c() {
-    let bar = 3;
     foo::<3 + 3>(); // ok
 }
-
+fn d() {
+    foo::<BAR - 3>();
+    //~^ ERROR expected one of
+}
+fn e() {
+    foo::<BAR - BAR>();
+    //~^ ERROR expected one of
+}
+fn f() {
+    foo::<100 - BAR>(); // ok
+}
 fn main() {}
