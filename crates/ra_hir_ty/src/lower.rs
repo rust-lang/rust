@@ -28,11 +28,11 @@ use crate::{
     db::HirDatabase,
     primitive::{FloatTy, IntTy},
     utils::{
-        all_super_traits, associated_type_by_name_including_super_traits, generics, make_mut_slice,
-        variant_data,
+        all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
+        make_mut_slice, variant_data,
     },
     Binders, BoundVar, DebruijnIndex, FnSig, GenericPredicate, PolyFnSig, ProjectionPredicate,
-    ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
+    ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
 };
 
 #[derive(Debug)]
@@ -256,7 +256,7 @@ impl Ty {
         if remaining_segments.len() == 1 {
             // resolve unselected assoc types
             let segment = remaining_segments.first().unwrap();
-            (Ty::select_associated_type(ctx, ty, res, segment), None)
+            (Ty::select_associated_type(ctx, res, segment), None)
         } else if remaining_segments.len() > 1 {
             // FIXME report error (ambiguous associated type)
             (Ty::Unknown, None)
@@ -380,21 +380,20 @@ impl Ty {
 
     fn select_associated_type(
         ctx: &TyLoweringContext<'_>,
-        self_ty: Ty,
         res: Option<TypeNs>,
         segment: PathSegment<'_>,
     ) -> Ty {
         let traits_from_env: Vec<_> = match res {
             Some(TypeNs::SelfType(impl_id)) => match ctx.db.impl_trait(impl_id) {
                 None => return Ty::Unknown,
-                Some(trait_ref) => vec![trait_ref.value.trait_],
+                Some(trait_ref) => vec![trait_ref.value],
             },
             Some(TypeNs::GenericParam(param_id)) => {
                 let predicates = ctx.db.generic_predicates_for_param(param_id);
                 let mut traits_: Vec<_> = predicates
                     .iter()
                     .filter_map(|pred| match &pred.value {
-                        GenericPredicate::Implemented(tr) => Some(tr.trait_),
+                        GenericPredicate::Implemented(tr) => Some(tr.clone()),
                         _ => None,
                     })
                     .collect();
@@ -404,20 +403,37 @@ impl Ty {
                     if generics.params.types[param_id.local_id].provenance
                         == TypeParamProvenance::TraitSelf
                     {
-                        traits_.push(trait_id);
+                        let trait_ref = TraitRef {
+                            trait_: trait_id,
+                            substs: Substs::bound_vars(&generics, DebruijnIndex::INNERMOST),
+                        };
+                        traits_.push(trait_ref);
                     }
                 }
                 traits_
             }
             _ => return Ty::Unknown,
         };
-        let traits = traits_from_env.into_iter().flat_map(|t| all_super_traits(ctx.db.upcast(), t));
+        let traits = traits_from_env.into_iter().flat_map(|t| all_super_trait_refs(ctx.db, t));
         for t in traits {
-            if let Some(associated_ty) = ctx.db.trait_data(t).associated_type_by_name(&segment.name)
+            if let Some(associated_ty) =
+                ctx.db.trait_data(t.trait_).associated_type_by_name(&segment.name)
             {
-                let substs =
-                    Substs::build_for_def(ctx.db, t).push(self_ty).fill_with_unknown().build();
-                // FIXME handle type parameters on the segment
+                let substs = match ctx.type_param_mode {
+                    TypeParamLoweringMode::Placeholder => {
+                        // if we're lowering to placeholders, we have to put
+                        // them in now
+                        let s = Substs::type_params(
+                            ctx.db,
+                            ctx.resolver
+                                .generic_def()
+                                .expect("there should be generics if there's a generic param"),
+                        );
+                        t.substs.subst_bound_vars(&s)
+                    }
+                    TypeParamLoweringMode::Variable => t.substs,
+                };
+                // FIXME handle (forbid) type parameters on the segment
                 return Ty::Projection(ProjectionTy { associated_ty, parameters: substs });
             }
         }

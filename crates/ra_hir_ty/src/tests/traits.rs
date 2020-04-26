@@ -1898,6 +1898,36 @@ fn test() {
 }
 
 #[test]
+fn unselected_projection_chalk_fold() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Interner {}
+trait Fold<I: Interner, TI = I> {
+    type Result;
+}
+
+struct Ty<I: Interner> {}
+impl<I: Interner, TI: Interner> Fold<I, TI> for Ty<I> {
+    type Result = Ty<TI>;
+}
+
+fn fold<I: Interner, T>(interner: &I, t: T) -> T::Result
+where
+    T: Fold<I, I>,
+{
+    loop {}
+}
+
+fn foo<I: Interner>(interner: &I, t: Ty<I>) {
+    fold(interner, t)<|>;
+}
+"#,
+    );
+    assert_eq!(t, "Ty<I>");
+}
+
+#[test]
 fn trait_impl_self_ty() {
     let t = type_at(
         r#"

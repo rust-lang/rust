@@ -487,6 +487,18 @@ impl<T> Binders<T> {
     pub fn new(num_binders: usize, value: T) -> Self {
         Self { num_binders, value }
     }
+
+    pub fn as_ref(&self) -> Binders<&T> {
+        Binders { num_binders: self.num_binders, value: &self.value }
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Binders<U> {
+        Binders { num_binders: self.num_binders, value: f(self.value) }
+    }
+
+    pub fn filter_map<U>(self, f: impl FnOnce(T) -> Option<U>) -> Option<Binders<U>> {
+        Some(Binders { num_binders: self.num_binders, value: f(self.value)? })
+    }
 }
 
 impl<T: Clone> Binders<&T> {
