@@ -94,8 +94,7 @@ $ git clone https://github.com/rust-analyzer/rust-analyzer.git && cd rust-analyz
 $ cargo xtask install
 ----
 
-You'll need Cargo, xtask, nodejs and npm for this.
-Cargo-xtask can be found at https://github.com/matklad/cargo-xtask
+You'll need Cargo, nodejs and npm for this.
 
 Note that installing via `xtask install` does not work for VS Code Remote, instead you'll need to install the `.vsix` manually.
 
@@ -129,8 +128,6 @@ Alternatively, you can install it from source using the following command:
 $ git clone https://github.com/rust-analyzer/rust-analyzer.git && cd rust-analyzer
 $ cargo xtask install --server
 ----
-
-Cargo-xtask can be found at https://github.com/matklad/cargo-xtask
 
 If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue]. On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
 
