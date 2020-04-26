@@ -1031,24 +1031,20 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 // We try to, before exiting.
                 for opr in args {
                     // We see if the operand can be evaluated, and if so, we continue.
-                    if let Some(op_ty) = self.eval_operand(&opr, source_info) {
-                        // We must also ask if it *should* be evaluated.
-                        if self.should_const_prop(op_ty) {
-                            if let interpret::Operand::Immediate(immediate) = *op_ty {
-                                // Only Immediate from here on
-                                // FIXME(felix91gr): The code only works for Immediate. Investigate
-                                // if it could be made to work for Indirect as well.
-                                if let interpret::Immediate::Scalar(scalar_mu) = immediate {
-                                    // FIXME(felix91gr): This only works for Scalar
-                                    // Could probably be expanded for Scalar Tuples (inside the Immediate)
-                                    if let ScalarMaybeUndef::Scalar(scalar) = scalar_mu {
-                                        let operand_type = opr.ty(&self.local_decls, self.tcx);
-                                        *opr = self.operand_from_scalar(
-                                            scalar,
-                                            operand_type,
-                                            source_info.span,
-                                        );
-                                    }
+                    if let Some(l) = opr.place().and_then(|p| p.as_local()) {
+                        if let Some(value) = self.get_const(l) {
+                            if self.should_const_prop(value) {
+                                if let interpret::Operand::Immediate(
+                                    interpret::Immediate::Scalar(
+                                        interpret::ScalarMaybeUndef::Scalar(scalar),
+                                    ),
+                                ) = *value
+                                {
+                                    *opr = self.operand_from_scalar(
+                                        scalar,
+                                        value.layout.ty,
+                                        source_info.span,
+                                    );
                                 }
                             }
                         }
