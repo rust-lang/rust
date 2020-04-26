@@ -110,9 +110,8 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         sess: &Session,
         optlvl: OptLevel,
-        find_features: bool,
     ) -> Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync> {
-        back::write::target_machine_factory(sess, optlvl, find_features)
+        back::write::target_machine_factory(sess, optlvl)
     }
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
         llvm_util::target_cpu(sess)
@@ -201,7 +200,9 @@ impl CodegenBackend for LlvmCodegenBackend {
         match req {
             PrintRequest::RelocationModels => {
                 println!("Available relocation models:");
-                for &(name, _) in back::write::RELOC_MODEL_ARGS.iter() {
+                for name in
+                    &["static", "pic", "dynamic-no-pic", "ropi", "rwpi", "ropi-rwpi", "default"]
+                {
                     println!("    {}", name);
                 }
                 println!();
@@ -351,7 +352,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, false) }
+            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx) }
         }
     }
 
@@ -359,11 +360,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm {
-                llmod_raw,
-                llcx,
-                tm: create_informational_target_machine(&tcx.sess, false),
-            }
+            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess) }
         }
     }
 

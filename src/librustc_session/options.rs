@@ -6,7 +6,7 @@ use crate::search_paths::SearchPath;
 use crate::utils::NativeLibraryKind;
 
 use rustc_target::spec::TargetTriple;
-use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
+use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelocModel, RelroLevel};
 
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
@@ -265,14 +265,13 @@ macro_rules! options {
         pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
         pub const parse_symbol_mangling_version: &str = "either `legacy` or `v0` (RFC 2603)";
         pub const parse_src_file_hash: &str = "either `md5` or `sha1`";
+        pub const parse_relocation_model: &str =
+            "one of supported relocation models (`rustc --print relocation-models`)";
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath,
-            SymbolManglingVersion, CFGuard, SourceFileHashAlgorithm};
-        use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
-        use std::path::PathBuf;
+        use super::*;
         use std::str::FromStr;
 
         // Sometimes different options need to build a common structure.
@@ -598,6 +597,15 @@ macro_rules! options {
             true
         }
 
+        fn parse_relocation_model(slot: &mut Option<RelocModel>, v: Option<&str>) -> bool {
+            match v.and_then(|s| RelocModel::from_str(s).ok()) {
+                Some(relocation_model) => *slot = Some(relocation_model),
+                None if v == Some("default") => *slot = None,
+                _ => return false,
+            }
+            true
+        }
+
         fn parse_symbol_mangling_version(
             slot: &mut SymbolManglingVersion,
             v: Option<&str>,
@@ -697,8 +705,9 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "compile the program with profiling instrumentation"),
     profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "use the given `.profdata` file for profile-guided optimization"),
-    relocation_model: Option<String> = (None, parse_opt_string, [TRACKED],
-        "choose the relocation model to use (`rustc --print relocation-models` for details)"),
+    relocation_model: Option<RelocModel> = (None, parse_relocation_model, [TRACKED],
+        "control generation of position-independent code (PIC) \
+        (`rustc --print relocation-models` for details)"),
     remark: Passes = (Passes::Some(Vec::new()), parse_passes, [UNTRACKED],
         "print remarks for these optimization passes (space separated, or \"all\")"),
     rpath: bool = (false, parse_bool, [UNTRACKED],

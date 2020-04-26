@@ -7,7 +7,7 @@ use crate::back::profiling::{
 use crate::base;
 use crate::common;
 use crate::consts;
-use crate::context::{get_reloc_model, is_pie_binary};
+use crate::context::all_outputs_are_pic_executables;
 use crate::llvm::{self, DiagnosticInfo, PassManager, SMDiagnostic};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -25,6 +25,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, Sanitizer, SwitchWithOptPath};
 use rustc_session::Session;
+use rustc_target::spec::RelocModel;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
 use std::ffi::CString;
@@ -34,16 +35,6 @@ use std::path::{Path, PathBuf};
 use std::slice;
 use std::str;
 use std::sync::Arc;
-
-pub const RELOC_MODEL_ARGS: [(&str, llvm::RelocMode); 7] = [
-    ("pic", llvm::RelocMode::PIC),
-    ("static", llvm::RelocMode::Static),
-    ("default", llvm::RelocMode::Default),
-    ("dynamic-no-pic", llvm::RelocMode::DynamicNoPic),
-    ("ropi", llvm::RelocMode::ROPI),
-    ("rwpi", llvm::RelocMode::RWPI),
-    ("ropi-rwpi", llvm::RelocMode::ROPI_RWPI),
-];
 
 pub const CODE_GEN_MODEL_ARGS: &[(&str, llvm::CodeModel)] = &[
     ("small", llvm::CodeModel::Small),
@@ -84,19 +75,13 @@ pub fn write_output_file(
     }
 }
 
-pub fn create_informational_target_machine(
-    sess: &Session,
-    find_features: bool,
-) -> &'static mut llvm::TargetMachine {
-    target_machine_factory(sess, config::OptLevel::No, find_features)()
+pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm::TargetMachine {
+    target_machine_factory(sess, config::OptLevel::No)()
         .unwrap_or_else(|err| llvm_err(sess.diagnostic(), &err).raise())
 }
 
-pub fn create_target_machine(
-    tcx: TyCtxt<'_>,
-    find_features: bool,
-) -> &'static mut llvm::TargetMachine {
-    target_machine_factory(&tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE), find_features)()
+pub fn create_target_machine(tcx: TyCtxt<'_>) -> &'static mut llvm::TargetMachine {
+    target_machine_factory(&tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE))()
         .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), &err).raise())
 }
 
@@ -126,15 +111,22 @@ fn to_pass_builder_opt_level(cfg: config::OptLevel) -> llvm::PassBuilderOptLevel
     }
 }
 
-// If find_features is true this won't access `sess.crate_types` by assuming
-// that `is_pie_binary` is false. When we discover LLVM target features
-// `sess.crate_types` is uninitialized so we cannot access it.
+fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocModel {
+    match relocation_model {
+        RelocModel::Static => llvm::RelocModel::Static,
+        RelocModel::Pic => llvm::RelocModel::PIC,
+        RelocModel::DynamicNoPic => llvm::RelocModel::DynamicNoPic,
+        RelocModel::Ropi => llvm::RelocModel::ROPI,
+        RelocModel::Rwpi => llvm::RelocModel::RWPI,
+        RelocModel::RopiRwpi => llvm::RelocModel::ROPI_RWPI,
+    }
+}
+
 pub fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
-    find_features: bool,
 ) -> Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync> {
-    let reloc_model = get_reloc_model(sess);
+    let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
     let use_softfp = sess.opts.cg.soft_float;
@@ -175,7 +167,7 @@ pub fn target_machine_factory(
     let features = features.join(",");
     let features = CString::new(features).unwrap();
     let abi = SmallCStr::new(&sess.target.target.options.llvm_abiname);
-    let is_pie_binary = !find_features && is_pie_binary(sess);
+    let pic_is_pie = all_outputs_are_pic_executables(sess);
     let trap_unreachable = sess.target.target.options.trap_unreachable;
     let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
 
@@ -192,7 +184,7 @@ pub fn target_machine_factory(
                 reloc_model,
                 opt_level,
                 use_softfp,
-                is_pie_binary,
+                pic_is_pie,
                 ffunction_sections,
                 fdata_sections,
                 trap_unreachable,

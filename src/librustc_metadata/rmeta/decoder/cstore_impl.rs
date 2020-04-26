@@ -431,7 +431,7 @@ impl CStore {
                 ident,
                 id: ast::DUMMY_NODE_ID,
                 span,
-                attrs: attrs.iter().cloned().collect(),
+                attrs: attrs.to_vec(),
                 kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
                 vis: source_map::respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 tokens: None,

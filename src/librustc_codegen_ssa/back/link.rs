@@ -12,7 +12,7 @@ use rustc_session::search_paths::PathKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelroLevel};
+use rustc_target::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, RelroLevel};
 
 use super::archive::ArchiveBuilder;
 use super::command::Command;
@@ -1352,7 +1352,7 @@ fn add_position_independent_executable_args(
     if sess.target.target.options.position_independent_executables {
         let attr_link_args = &*codegen_results.crate_info.link_args;
         let mut user_defined_link_args = sess.opts.cg.link_args.iter().chain(attr_link_args);
-        if is_pic(sess)
+        if sess.relocation_model() == RelocModel::Pic
             && !sess.crt_static(Some(crate_type))
             && !user_defined_link_args.any(|x| x == "-static")
         {
@@ -1991,13 +1991,4 @@ fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
         }
         config::Lto::No | config::Lto::ThinLocal => false,
     }
-}
-
-fn is_pic(sess: &Session) -> bool {
-    let reloc_model_arg = match sess.opts.cg.relocation_model {
-        Some(ref s) => &s[..],
-        None => &sess.target.target.options.relocation_model[..],
-    };
-
-    reloc_model_arg == "pic"
 }

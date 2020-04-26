@@ -110,14 +110,10 @@ pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Se
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64);
-    // If find_features is true this won't access `sess.crate_types` by assuming
-    // that `is_pie_binary` is false. When we discover LLVM target features
-    // `sess.crate_types` is uninitialized so we cannot access it.
     fn target_machine_factory(
         &self,
         sess: &Session,
         opt_level: config::OptLevel,
-        find_features: bool,
     ) -> Arc<dyn Fn() -> Result<Self::TargetMachine, String> + Send + Sync>;
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str;
 }
