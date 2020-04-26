@@ -250,6 +250,7 @@ where
     let mut offsets_l = [MaybeUninit::<u8>::uninit(); BLOCK];
 
     // The current block on the right side (from `r.sub(block_r)` to `r`).
+    // SAFETY: The documentation for .add() specifically mention that `vec.as_ptr().add(vec.len())` is always safe`
     let mut r = unsafe { l.add(v.len()) };
     let mut block_r = BLOCK;
     let mut start_r = ptr::null_mut();
@@ -435,12 +436,14 @@ where
         let mut l = 0;
         let mut r = v.len();
         unsafe {
-            // Find the first element greater then or equal to the pivot.
+            // Find the first element greater than or equal to the pivot.
+            // SAFETY: We already do the bound checking here with `l<r`.
             while l < r && is_less(v.get_unchecked(l), pivot) {
                 l += 1;
             }
 
             // Find the last element smaller that the pivot.
+            // SAFETY: The minimum value for `l` is 0 and the maximum value for `r` is `v.len().`
             while l < r && !is_less(v.get_unchecked(r - 1), pivot) {
                 r -= 1;
             }
@@ -483,12 +486,14 @@ where
     let mut r = v.len();
     loop {
         unsafe {
-            // Find the first element greater that the pivot.
+            // Find the first element greater than the pivot.
+            // SAFETY: We already do the bound checking here with `l<r`
             while l < r && !is_less(pivot, v.get_unchecked(l)) {
                 l += 1;
             }
 
             // Find the last element equal to the pivot.
+            // SAFETY: The minimum value for `l` is 0 and the maximum value for `r` is `v.len().`
             while l < r && is_less(pivot, v.get_unchecked(r - 1)) {
                 r -= 1;
             }
