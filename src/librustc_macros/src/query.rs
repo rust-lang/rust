@@ -496,7 +496,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                             force_query::<crate::ty::query::queries::#name<'_>, _>(
                                 $tcx,
                                 key,
-                                DUMMY_SP,
+                                DUMMY_SPID,
                                 *$dep_node
                             );
                             return true;

@@ -170,7 +170,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     };
     let sig = tcx.fn_sig(def_id).subst(tcx, substs);
     let sig = tcx.erase_late_bound_regions(&sig);
-    let span = tcx.def_span(def_id);
+    let span = tcx.real_def_span(def_id);
 
     let source_info = SourceInfo::outermost(span);
 
@@ -344,7 +344,7 @@ impl CloneShimBuilder<'tcx> {
         let substs = tcx.mk_substs_trait(self_ty, &[]);
         let sig = tcx.fn_sig(def_id).subst(tcx, substs);
         let sig = tcx.erase_late_bound_regions(&sig);
-        let span = tcx.def_span(def_id);
+        let span = tcx.real_def_span(def_id);
 
         CloneShimBuilder {
             tcx,
@@ -673,7 +673,7 @@ fn build_call_shim<'tcx>(
         sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
     }
 
-    let span = tcx.def_span(def_id);
+    let span = tcx.real_def_span(def_id);
 
     debug!("build_call_shim: sig={:?}", sig);
 

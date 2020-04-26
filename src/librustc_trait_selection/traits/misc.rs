@@ -47,7 +47,7 @@ pub fn can_type_implement_copy(
                 if ty.references_error() {
                     continue;
                 }
-                let span = tcx.def_span(field.did);
+                let span = tcx.real_def_span(field.did);
                 let cause = ObligationCause { span, ..ObligationCause::dummy() };
                 let ctx = traits::FulfillmentContext::new();
                 match traits::fully_normalize(&infcx, ctx, cause, param_env, &ty) {

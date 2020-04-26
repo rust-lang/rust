@@ -5,7 +5,9 @@ LL | / const FOO: *const u32 = {
 LL | |     let x = 42;
 LL | |     &x
 LL | | };
-   | |__^ encountered dangling pointer in final constant
+   | |  ^ encountered dangling pointer in final constant
+   | |__|
+   | 
    |
    = note: `#[deny(const_err)]` on by default
 

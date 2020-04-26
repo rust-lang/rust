@@ -289,7 +289,7 @@ crate fn adt_dtorck_constraint(
     def_id: DefId,
 ) -> Result<DtorckConstraint<'_>, NoSolution> {
     let def = tcx.adt_def(def_id);
-    let span = tcx.def_span(def_id);
+    let span = tcx.real_def_span(def_id);
     debug!("dtorck_constraint: {:?}", def);
 
     if def.is_phantom_data() {

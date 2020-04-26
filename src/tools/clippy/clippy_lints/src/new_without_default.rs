@@ -227,7 +227,7 @@ fn can_derive_default<'t, 'c>(ty: Ty<'t>, cx: &LateContext<'c, 't>, default_trai
                     return None;
                 }
             }
-            Some(cx.tcx.def_span(adt_def.did))
+            Some(cx.tcx.real_def_span(adt_def.did))
         },
         _ => None,
     }

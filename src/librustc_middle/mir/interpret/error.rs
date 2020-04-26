@@ -36,7 +36,7 @@ pub type ConstEvalResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 
 #[derive(Debug)]
 pub struct ConstEvalErr<'tcx> {
-    pub span: Span,
+    pub span: SpanId,
     pub error: crate::mir::interpret::InterpError<'tcx>,
     pub stacktrace: Vec<FrameInfo<'tcx>>,
 }

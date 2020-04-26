@@ -811,7 +811,7 @@ fn compare_synthetic_generics<'tcx>(
         if impl_synthetic != trait_synthetic {
             let impl_hir_id = tcx.hir().as_local_hir_id(impl_def_id.expect_local());
             let impl_span = tcx.hir().span(impl_hir_id);
-            let trait_span = tcx.def_span(trait_def_id);
+            let trait_span = tcx.real_def_span(trait_def_id);
             let mut err = struct_span_err!(
                 tcx.sess,
                 impl_span,

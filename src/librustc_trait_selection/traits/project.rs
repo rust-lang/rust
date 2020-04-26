@@ -423,7 +423,7 @@ pub fn normalize_projection_type<'a, 'b, 'tcx>(
         let def_id = projection_ty.item_def_id;
         let ty_var = selcx.infcx().next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::NormalizeProjectionType,
-            span: tcx.def_span(def_id),
+            span: tcx.real_def_span(def_id),
         });
         let projection = ty::Binder::dummy(ty::ProjectionPredicate { projection_ty, ty: ty_var });
         let obligation =
@@ -756,7 +756,7 @@ fn normalize_to_error<'a, 'tcx>(
     let def_id = projection_ty.item_def_id;
     let new_value = selcx.infcx().next_ty_var(TypeVariableOrigin {
         kind: TypeVariableOriginKind::NormalizeProjectionType,
-        span: tcx.def_span(def_id),
+        span: tcx.real_def_span(def_id),
     });
     Normalized { value: new_value, obligations: vec![trait_obligation] }
 }

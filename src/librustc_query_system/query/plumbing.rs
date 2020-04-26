@@ -17,8 +17,7 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, FatalError};
-use rustc_span::source_map::DUMMY_SP;
-use rustc_span::Span;
+use rustc_span::{SpanId, DUMMY_SPID};
 use std::collections::hash_map::Entry;
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -173,7 +172,7 @@ where
     fn try_start<'a, 'b>(
         tcx: CTX,
         state: &'b QueryState<CTX, C>,
-        span: Span,
+        span: SpanId,
         key: &C::Key,
         mut lookup: QueryLookup<'a, CTX, C::Key, C::Sharded>,
         query: &QueryVtable<CTX, C::Key, C::Value>,
@@ -325,7 +324,7 @@ where
 #[derive(Clone)]
 pub struct CycleError<Q> {
     /// The query and related span that uses the cycle.
-    pub usage: Option<(Span, Q)>,
+    pub usage: Option<(SpanId, Q)>,
     pub cycle: Vec<QueryInfo<Q>>,
 }
 
@@ -387,7 +386,7 @@ where
 fn try_execute_query<CTX, C>(
     tcx: CTX,
     state: &QueryState<CTX, C>,
-    span: Span,
+    span: SpanId,
     key: C::Key,
     lookup: QueryLookup<'_, CTX, C::Key, C::Sharded>,
     query: &QueryVtable<CTX, C::Key, C::Value>,
@@ -618,7 +617,7 @@ where
 fn get_query_impl<CTX, C>(
     tcx: CTX,
     state: &QueryState<CTX, C>,
-    span: Span,
+    span: SpanId,
     key: C::Key,
     query: &QueryVtable<CTX, C::Key, C::Value>,
 ) -> C::Stored
@@ -659,7 +658,7 @@ fn ensure_query_impl<CTX, C>(
     CTX: QueryContext,
 {
     if query.eval_always {
-        let _ = get_query_impl(tcx, state, DUMMY_SP, key, query);
+        let _ = get_query_impl(tcx, state, DUMMY_SPID, key, query);
         return;
     }
 
@@ -676,7 +675,7 @@ fn ensure_query_impl<CTX, C>(
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
-            let _ = get_query_impl(tcx, state, DUMMY_SP, key, query);
+            let _ = get_query_impl(tcx, state, DUMMY_SPID, key, query);
         }
         Some((_, dep_node_index)) => {
             tcx.profiler().query_cache_hit(dep_node_index.into());
@@ -689,7 +688,7 @@ fn force_query_impl<CTX, C>(
     tcx: CTX,
     state: &QueryState<CTX, C>,
     key: C::Key,
-    span: Span,
+    span: SpanId,
     dep_node: DepNode<CTX::DepKind>,
     query: &QueryVtable<CTX, C::Key, C::Value>,
 ) where
@@ -720,7 +719,7 @@ fn force_query_impl<CTX, C>(
 }
 
 #[inline(always)]
-pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key) -> Q::Stored
+pub fn get_query<Q, CTX>(tcx: CTX, span: SpanId, key: Q::Key) -> Q::Stored
 where
     Q: QueryDescription<CTX>,
     Q::Key: crate::dep_graph::DepNodeParams<CTX>,
@@ -742,7 +741,7 @@ where
 }
 
 #[inline(always)]
-pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: Span, dep_node: DepNode<CTX::DepKind>)
+pub fn force_query<Q, CTX>(tcx: CTX, key: Q::Key, span: SpanId, dep_node: DepNode<CTX::DepKind>)
 where
     Q: QueryDescription<CTX>,
     Q::Key: crate::dep_graph::DepNodeParams<CTX>,

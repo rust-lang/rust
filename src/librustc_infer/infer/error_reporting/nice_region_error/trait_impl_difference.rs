@@ -6,7 +6,7 @@ use crate::infer::{Subtype, ValuePairs};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
 use rustc_errors::ErrorReported;
 use rustc_middle::ty::Ty;
-use rustc_span::Span;
+use rustc_span::{Span, SpanId};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the `impl` doesn't conform to the `trait`.
@@ -47,7 +47,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         None
     }
 
-    fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>, impl_sp: Span) {
+    fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>, impl_sp: SpanId) {
         let mut err = self
             .tcx()
             .sess

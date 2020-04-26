@@ -1977,7 +1977,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                                         if span.is_none() {
                                             // Point to this field, should be helpful for figuring
                                             // out where the source of the error is.
-                                            let span = tcx.def_span(field.did);
+                                            let span = tcx.real_def_span(field.did);
                                             write!(
                                                 &mut msg,
                                                 " (in this {} field)",

@@ -622,7 +622,7 @@ impl EncodeContext<'tcx> {
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
         record!(self.tables.visibility[def_id] <-
             ty::Visibility::from_hir(enum_vis, enum_id, self.tcx));
-        record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
+        record!(self.tables.span[def_id] <- self.tcx.real_def_span(def_id));
         record!(self.tables.attributes[def_id] <- &self.tcx.get_attrs(def_id)[..]);
         record!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
             assert!(f.did.is_local());
@@ -671,7 +671,7 @@ impl EncodeContext<'tcx> {
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
         record!(self.tables.visibility[def_id] <- ctor_vis);
-        record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
+        record!(self.tables.span[def_id] <- self.tcx.real_def_span(def_id));
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
@@ -706,7 +706,7 @@ impl EncodeContext<'tcx> {
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
         record!(self.tables.visibility[def_id] <- ty::Visibility::from_hir(vis, id, self.tcx));
-        record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
+        record!(self.tables.span[def_id] <- self.tcx.real_def_span(def_id));
         record!(self.tables.attributes[def_id] <- attrs);
         record!(self.tables.children[def_id] <- md.item_ids.iter().map(|item_id| {
             tcx.hir().local_def_id(item_id.id).local_def_index
@@ -733,7 +733,7 @@ impl EncodeContext<'tcx> {
 
         record!(self.tables.kind[def_id] <- EntryKind::Field);
         record!(self.tables.visibility[def_id] <- field.vis);
-        record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
+        record!(self.tables.span[def_id] <- self.tcx.real_def_span(def_id));
         record!(self.tables.attributes[def_id] <- variant_data.fields()[field_index].attrs);
         self.encode_ident_span(def_id, field.ident);
         self.encode_stability(def_id);
@@ -774,7 +774,7 @@ impl EncodeContext<'tcx> {
 
         record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr));
         record!(self.tables.visibility[def_id] <- ctor_vis);
-        record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
+        record!(self.tables.span[def_id] <- self.tcx.real_def_span(def_id));
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
@@ -1301,7 +1301,7 @@ impl EncodeContext<'tcx> {
     fn encode_info_for_generic_param(&mut self, def_id: DefId, kind: EntryKind, encode_type: bool) {
         record!(self.tables.kind[def_id] <- kind);
         record!(self.tables.visibility[def_id] <- ty::Visibility::Public);
-        record!(self.tables.span[def_id] <- self.tcx.def_span(def_id));
+        record!(self.tables.span[def_id] <- self.tcx.real_def_span(def_id));
         if encode_type {
             self.encode_item_type(def_id);
         }
@@ -1326,7 +1326,7 @@ impl EncodeContext<'tcx> {
             _ => bug!("closure that is neither generator nor closure"),
         });
         record!(self.tables.visibility[def_id.to_def_id()] <- ty::Visibility::Public);
-        record!(self.tables.span[def_id.to_def_id()] <- self.tcx.def_span(def_id));
+        record!(self.tables.span[def_id.to_def_id()] <- self.tcx.real_def_span(def_id));
         record!(self.tables.attributes[def_id.to_def_id()] <- &self.tcx.get_attrs(def_id.to_def_id())[..]);
         self.encode_item_type(def_id.to_def_id());
         if let ty::Closure(def_id, substs) = ty.kind {
@@ -1346,7 +1346,7 @@ impl EncodeContext<'tcx> {
 
         record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::Const(qualifs, const_data));
         record!(self.tables.visibility[def_id.to_def_id()] <- ty::Visibility::Public);
-        record!(self.tables.span[def_id.to_def_id()] <- self.tcx.def_span(def_id));
+        record!(self.tables.span[def_id.to_def_id()] <- self.tcx.real_def_span(def_id));
         self.encode_item_type(def_id.to_def_id());
         self.encode_generics(def_id.to_def_id());
         self.encode_explicit_predicates(def_id.to_def_id());

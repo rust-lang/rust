@@ -1634,11 +1634,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             GenericParamDefKind::Type { .. } => self
                 .next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::SubstitutionPlaceholder,
-                    span: self.tcx.def_span(def_id),
+                    span: self.tcx.real_def_span(def_id),
                 })
                 .into(),
             GenericParamDefKind::Const { .. } => {
-                let span = self.tcx.def_span(def_id);
+                let span = self.tcx.real_def_span(def_id);
                 let origin = ConstVariableOrigin {
                     kind: ConstVariableOriginKind::SubstitutionPlaceholder,
                     span,

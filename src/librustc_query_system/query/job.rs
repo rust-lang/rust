@@ -3,7 +3,7 @@ use crate::query::plumbing::CycleError;
 use crate::query::QueryContext;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 use std::convert::TryFrom;
 use std::marker::PhantomData;
@@ -18,7 +18,7 @@ use {
     rustc_data_structures::sync::Lrc,
     rustc_data_structures::{jobserver, OnDrop},
     rustc_rayon_core as rayon_core,
-    rustc_span::DUMMY_SP,
+    rustc_span::DUMMY_SPID,
     std::iter::FromIterator,
     std::{mem, process},
 };
@@ -27,7 +27,7 @@ use {
 #[derive(Clone, Debug)]
 pub struct QueryInfo<Q> {
     /// The span corresponding to the reason for which this query was required.
-    pub span: Span,
+    pub span: SpanId,
     pub query: Q,
 }
 
@@ -60,7 +60,7 @@ impl<K: DepKind> QueryJobId<K> {
     }
 
     #[cfg(parallel_compiler)]
-    fn span<CTX: QueryContext<DepKind = K>>(self, map: &QueryMap<CTX>) -> Span {
+    fn span<CTX: QueryContext<DepKind = K>>(self, map: &QueryMap<CTX>) -> SpanId {
         map.get(&self).unwrap().job.span
     }
 
@@ -89,7 +89,7 @@ pub struct QueryJob<CTX: QueryContext> {
     pub id: QueryShardJobId,
 
     /// The span corresponding to the reason for which this query was required.
-    pub span: Span,
+    pub span: SpanId,
 
     /// The parent query job which created this job and is implicitly waiting on it.
     pub parent: Option<QueryJobId<CTX::DepKind>>,
@@ -103,7 +103,11 @@ pub struct QueryJob<CTX: QueryContext> {
 
 impl<CTX: QueryContext> QueryJob<CTX> {
     /// Creates a new query job.
-    pub fn new(id: QueryShardJobId, span: Span, parent: Option<QueryJobId<CTX::DepKind>>) -> Self {
+    pub fn new(
+        id: QueryShardJobId,
+        span: SpanId,
+        parent: Option<QueryJobId<CTX::DepKind>>,
+    ) -> Self {
         QueryJob {
             id,
             span,
@@ -150,7 +154,7 @@ pub(super) struct QueryLatch<CTX: QueryContext> {
 
 #[cfg(not(parallel_compiler))]
 impl<CTX: QueryContext> QueryLatch<CTX> {
-    pub(super) fn find_cycle_in_stack(&self, tcx: CTX, span: Span) -> CycleError<CTX::Query> {
+    pub(super) fn find_cycle_in_stack(&self, tcx: CTX, span: SpanId) -> CycleError<CTX::Query> {
         let query_map = tcx.try_collect_active_jobs().unwrap();
 
         // Get the current executing query (waiter) and find the waitee amongst its parents
@@ -189,7 +193,7 @@ impl<CTX: QueryContext> QueryLatch<CTX> {
 struct QueryWaiter<CTX: QueryContext> {
     query: Option<QueryJobId<CTX::DepKind>>,
     condvar: Condvar,
-    span: Span,
+    span: SpanId,
     cycle: Lock<Option<CycleError<CTX::Query>>>,
 }
 
@@ -225,7 +229,7 @@ impl<CTX: QueryContext> QueryLatch<CTX> {
 #[cfg(parallel_compiler)]
 impl<CTX: QueryContext> QueryLatch<CTX> {
     /// Awaits for the query job to complete.
-    pub(super) fn wait_on(&self, tcx: CTX, span: Span) -> Result<(), CycleError<CTX::Query>> {
+    pub(super) fn wait_on(&self, tcx: CTX, span: SpanId) -> Result<(), CycleError<CTX::Query>> {
         let query = tcx.current_query_job();
         let waiter =
             Lrc::new(QueryWaiter { query, span, cycle: Lock::new(None), condvar: Condvar::new() });
@@ -306,7 +310,7 @@ fn visit_waiters<CTX: QueryContext, F>(
     mut visit: F,
 ) -> Option<Option<Waiter<CTX::DepKind>>>
 where
-    F: FnMut(Span, QueryJobId<CTX::DepKind>) -> Option<Option<Waiter<CTX::DepKind>>>,
+    F: FnMut(SpanId, QueryJobId<CTX::DepKind>) -> Option<Option<Waiter<CTX::DepKind>>>,
 {
     // Visit the parent query which is a non-resumable waiter since it's on the same stack
     if let Some(parent) = query.parent(query_map) {
@@ -338,8 +342,8 @@ where
 fn cycle_check<CTX: QueryContext>(
     query_map: &QueryMap<CTX>,
     query: QueryJobId<CTX::DepKind>,
-    span: Span,
-    stack: &mut Vec<(Span, QueryJobId<CTX::DepKind>)>,
+    span: SpanId,
+    stack: &mut Vec<(SpanId, QueryJobId<CTX::DepKind>)>,
     visited: &mut FxHashSet<QueryJobId<CTX::DepKind>>,
 ) -> Option<Option<Waiter<CTX::DepKind>>> {
     if !visited.insert(query) {
@@ -402,7 +406,7 @@ fn connected_to_root<CTX: QueryContext>(
 fn pick_query<'a, CTX, T, F>(query_map: &QueryMap<CTX>, tcx: CTX, queries: &'a [T], f: F) -> &'a T
 where
     CTX: QueryContext,
-    F: Fn(&T) -> (Span, QueryJobId<CTX::DepKind>),
+    F: Fn(&T) -> (SpanId, QueryJobId<CTX::DepKind>),
 {
     // Deterministically pick an entry point
     // FIXME: Sort this instead
@@ -416,7 +420,7 @@ where
             // Prefer entry points which have valid spans for nicer error messages
             // We add an integer to the tuple ensuring that entry points
             // with valid spans are picked first
-            let span_cmp = if span == DUMMY_SP { 1 } else { 0 };
+            let span_cmp = if span == DUMMY_SPID { 1 } else { 0 };
             (span_cmp, stable_hasher.finish::<u64>())
         })
         .unwrap()
@@ -438,7 +442,7 @@ fn remove_cycle<CTX: QueryContext>(
     let mut stack = Vec::new();
     // Look for a cycle starting with the last query in `jobs`
     if let Some(waiter) =
-        cycle_check(query_map, jobs.pop().unwrap(), DUMMY_SP, &mut stack, &mut visited)
+        cycle_check(query_map, jobs.pop().unwrap(), DUMMY_SPID, &mut stack, &mut visited)
     {
         // The stack is a vector of pairs of spans and queries; reverse it so that
         // the earlier entries require later entries
@@ -485,7 +489,7 @@ fn remove_cycle<CTX: QueryContext>(
                     }
                 }
             })
-            .collect::<Vec<(Span, QueryJobId<CTX::DepKind>, Option<(Span, QueryJobId<CTX::DepKind>)>)>>();
+            .collect::<Vec<(SpanId, QueryJobId<CTX::DepKind>, Option<(SpanId, QueryJobId<CTX::DepKind>)>)>>();
 
         // Deterministically pick an entry point
         let (_, entry_point, usage) = pick_query(query_map, tcx, &entry_points, |e| (e.0, e.1));

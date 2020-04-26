@@ -82,7 +82,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 
         let named_type = tcx.type_of(self_type_did);
 
-        let drop_impl_span = tcx.def_span(drop_impl_did);
+        let drop_impl_span = tcx.real_def_span(drop_impl_did);
         let fresh_impl_substs =
             infcx.fresh_substs_for_item(drop_impl_span, drop_impl_did.to_def_id());
         let fresh_impl_self_ty = drop_impl_ty.subst(tcx, fresh_impl_substs);

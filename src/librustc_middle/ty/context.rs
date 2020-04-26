@@ -59,7 +59,7 @@ use rustc_session::lint::{Level, Lint};
 use rustc_session::Session;
 use rustc_span::source_map::MultiSpanId;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, SpanId};
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 
@@ -1223,6 +1223,17 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn features(self) -> &'tcx rustc_feature::Features {
         self.features_query(LOCAL_CRATE)
+    }
+
+    pub fn def_span(self, id: impl ty::query::IntoQueryParam<rustc_span::def_id::DefId>) -> SpanId {
+        SpanId::DefId(id.into_query_param())
+    }
+
+    pub fn reify_span(self, sp: SpanId) -> Span {
+        match sp {
+            SpanId::Span(sp) => sp,
+            SpanId::DefId(id) => self.real_def_span(id),
+        }
     }
 
     pub fn def_key(self, id: DefId) -> rustc_hir::definitions::DefKey {

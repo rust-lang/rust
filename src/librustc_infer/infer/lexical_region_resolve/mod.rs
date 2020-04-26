@@ -664,7 +664,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 .iter()
                 .map(|&choice_region| var_data.normalize(self.tcx(), choice_region));
             if !choice_regions.clone().any(|choice_region| member_region == choice_region) {
-                let span = self.tcx().def_span(member_constraint.opaque_type_def_id);
+                let span = self.tcx().real_def_span(member_constraint.opaque_type_def_id);
                 errors.push(RegionResolutionError::MemberConstraintFailure {
                     span,
                     hidden_ty: member_constraint.hidden_ty,

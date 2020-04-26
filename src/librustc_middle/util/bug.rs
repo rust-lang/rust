@@ -45,7 +45,7 @@ fn opt_span_bug_fmt<S: Into<MultiSpanId>>(
 /// interactions with the query system and incremental.
 pub fn trigger_delay_span_bug(tcx: TyCtxt<'_>, key: rustc_hir::def_id::DefId) {
     tcx.sess.delay_span_bug(
-        tcx.def_span(key),
+        tcx.real_def_span(key),
         "delayed span bug triggered by #[rustc_error(delay_span_bug_from_inside_query)]",
     );
 }

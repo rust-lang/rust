@@ -340,7 +340,7 @@ fn def_id_visibility<'tcx>(
         None => {
             let vis = tcx.visibility(def_id);
             let descr = if vis == ty::Visibility::Public { "public" } else { "private" };
-            (vis, tcx.def_span(def_id), descr)
+            (vis, tcx.real_def_span(def_id), descr)
         }
     }
 }

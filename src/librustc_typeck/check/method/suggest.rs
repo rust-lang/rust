@@ -195,7 +195,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .tcx
                             .sess
                             .source_map()
-                            .guess_head_span(self.tcx.def_span(item.def_id));
+                            .guess_head_span(self.tcx.real_def_span(item.def_id));
                         let idx = if sources.len() > 1 {
                             let msg = &format!(
                                 "candidate #{} is defined in the trait `{}`",
@@ -568,7 +568,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut restrict_type_params = false;
                 if !unsatisfied_predicates.is_empty() {
                     let def_span = |def_id| {
-                        self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id))
+                        self.tcx.sess.source_map().guess_head_span(self.tcx.real_def_span(def_id))
                     };
                     let mut type_params = FxHashMap::default();
                     let mut bound_spans = vec![];

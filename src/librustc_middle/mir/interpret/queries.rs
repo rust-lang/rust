@@ -4,7 +4,7 @@ use crate::mir;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
@@ -37,7 +37,7 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
         promoted: Option<mir::Promoted>,
-        span: Option<Span>,
+        span: Option<SpanId>,
     ) -> ConstEvalResult<'tcx> {
         match ty::Instance::resolve(self, param_env, def_id, substs) {
             Ok(Some(instance)) => {
@@ -53,7 +53,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_env: ty::ParamEnv<'tcx>,
         instance: ty::Instance<'tcx>,
-        span: Option<Span>,
+        span: Option<SpanId>,
     ) -> ConstEvalResult<'tcx> {
         self.const_eval_global_id(param_env, GlobalId { instance, promoted: None }, span)
     }
@@ -63,7 +63,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         param_env: ty::ParamEnv<'tcx>,
         cid: GlobalId<'tcx>,
-        span: Option<Span>,
+        span: Option<SpanId>,
     ) -> ConstEvalResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.

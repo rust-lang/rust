@@ -1651,7 +1651,7 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
         // prove that the trait applies to the types that were
         // used, and adding the predicate into this list ensures
         // that this is done.
-        let span = tcx.sess.source_map().guess_head_span(tcx.def_span(def_id));
+        let span = tcx.sess.source_map().guess_head_span(tcx.real_def_span(def_id));
         result.predicates =
             tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
                 ty::TraitRef::identity(tcx, def_id).without_const().to_predicate(),
@@ -1728,7 +1728,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                         opaque_ty,
                         bounds,
                         SizedByDefault::Yes,
-                        tcx.def_span(def_id),
+                        tcx.real_def_span(def_id),
                     );
 
                     predicates.extend(bounds.predicates(tcx, opaque_ty));
@@ -1776,7 +1776,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                             opaque_ty,
                             bounds,
                             SizedByDefault::Yes,
-                            tcx.def_span(def_id),
+                            tcx.real_def_span(def_id),
                         );
 
                         bounds.predicates(tcx, opaque_ty)
@@ -1830,7 +1830,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     if let Some(trait_ref) = is_default_impl_trait {
         predicates.push((
             trait_ref.to_poly_trait_ref().without_const().to_predicate(),
-            tcx.def_span(def_id),
+            tcx.real_def_span(def_id),
         ));
     }
 

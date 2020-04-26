@@ -52,7 +52,7 @@ use rustc_target::spec::PanicStrategy;
 use rustc_ast::ast;
 use rustc_attr as attr;
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{Span, SpanId, DUMMY_SP, DUMMY_SPID};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::Deref;
@@ -215,4 +215,4 @@ mod sealed {
     }
 }
 
-use sealed::IntoQueryParam;
+pub(crate) use sealed::IntoQueryParam;

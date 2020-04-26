@@ -407,7 +407,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let opaque_type_generics = tcx.generics_of(def_id);
 
-        let span = tcx.def_span(def_id);
+        let span = tcx.real_def_span(def_id);
 
         // If there are required region bounds, we can use them.
         if opaque_defn.has_required_region_bounds {
@@ -566,7 +566,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             return false;
         }
 
-        let span = self.tcx.def_span(opaque_type_def_id);
+        let span = self.tcx.real_def_span(opaque_type_def_id);
 
         // Without a feature-gate, we only generate member-constraints for async-await.
         let context_name = match opaque_defn.origin {
@@ -836,7 +836,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     unexpected_hidden_region_diagnostic(
                         self.tcx,
                         None,
-                        self.tcx.def_span(self.opaque_type_def_id),
+                        self.tcx.real_def_span(self.opaque_type_def_id),
                         hidden_ty,
                         r,
                     )
@@ -1121,7 +1121,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             debug!("instantiate_opaque_types: returning concrete ty {:?}", opaque_defn.concrete_ty);
             return opaque_defn.concrete_ty;
         }
-        let span = tcx.def_span(def_id);
+        let span = tcx.real_def_span(def_id);
         debug!("fold_opaque_ty {:?} {:?}", self.value_span, span);
         let ty_var = infcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });

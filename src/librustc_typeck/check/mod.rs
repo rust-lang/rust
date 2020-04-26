@@ -2771,7 +2771,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                         if data.skip_binder().self_ty().is_param(index) =>
                     {
                         // HACK(eddyb) should get the original `Span`.
-                        let span = tcx.def_span(def_id);
+                        let span = tcx.real_def_span(def_id);
                         Some((predicate, span))
                     }
                     _ => None,
@@ -3369,7 +3369,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // self.out.extend(obligations);
 
             let cause = traits::ObligationCause::new(
-                self.tcx.def_span(const_def_id.to_def_id()),
+                self.tcx.real_def_span(const_def_id.to_def_id()),
                 self.body_id,
                 traits::MiscObligation,
             );

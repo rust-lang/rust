@@ -16,7 +16,7 @@ use rustc_errors::{
     struct_span_err, Diagnostic, DiagnosticBuilder, Handler, Level, RealDiagnostic,
 };
 use rustc_span::def_id::DefId;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 impl QueryContext for TyCtxt<'tcx> {
     type Query = Query<'tcx>;
@@ -86,7 +86,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> DiagnosticBuilder<'tcx> {
         assert!(!stack.is_empty());
 
-        let fix_span = |span: Span, query: &Query<'tcx>| {
+        let fix_span = |span: SpanId, query: &Query<'tcx>| {
             self.sess.source_map().guess_head_span(query.default_span(self, span))
         };
 
@@ -155,8 +155,8 @@ impl<'tcx> TyCtxt<'tcx> {
                             query_info.info.query.describe(icx.tcx)
                         ),
                     );
-                    diag.span =
-                        icx.tcx.sess.source_map().guess_head_span(query_info.info.span).into();
+                    let info_span = icx.tcx.reify_span(query_info.info.span);
+                    diag.span = icx.tcx.sess.source_map().guess_head_span(info_span).into();
                     handler.force_print_diagnostic(diag);
 
                     current_query = query_info.job.parent;
@@ -296,18 +296,28 @@ macro_rules! define_queries_inner {
             }
 
             // FIXME(eddyb) Get more valid `Span`s on queries.
-            pub fn default_span(&self, tcx: TyCtxt<$tcx>, span: Span) -> Span {
+            pub fn default_span(&self, tcx: TyCtxt<$tcx>, span: SpanId) -> Span {
+                if let SpanId::Span(span) = span {
+                    if !span.is_dummy() {
+                        return span;
+                    }
+                }
+
+                // The `def_span` query is used to calculate `default_span`,
+                // so exit to avoid infinite recursion.
+                if let Query::real_def_span(..) = *self {
+                    return DUMMY_SP;
+                }
+
+                let span = tcx.reify_span(span);
                 if !span.is_dummy() {
                     return span;
                 }
-                // The `def_span` query is used to calculate `default_span`,
-                // so exit to avoid infinite recursion.
-                if let Query::def_span(..) = *self {
-                    return span
-                }
-                match *self {
+
+                let spid = match *self {
                     $(Query::$name(key) => key.default_span(tcx),)*
-                }
+                };
+                tcx.reify_span(spid)
             }
         }
 
@@ -395,7 +405,7 @@ macro_rules! define_queries_inner {
         #[derive(Copy, Clone)]
         pub struct TyCtxtAt<'tcx> {
             pub tcx: TyCtxt<'tcx>,
-            pub span: Span,
+            pub span: SpanId,
         }
 
         impl Deref for TyCtxtAt<'tcx> {
@@ -419,10 +429,10 @@ macro_rules! define_queries_inner {
             /// Returns a transparent wrapper for `TyCtxt` which uses
             /// `span` as the location of queries performed through it.
             #[inline(always)]
-            pub fn at(self, span: Span) -> TyCtxtAt<$tcx> {
+            pub fn at(self, span: impl Into<SpanId>) -> TyCtxtAt<$tcx> {
                 TyCtxtAt {
                     tcx: self,
-                    span
+                    span: span.into(),
                 }
             }
 

@@ -87,7 +87,7 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
 impl Clean<ExternalCrate> for CrateNum {
     fn clean(&self, cx: &DocContext<'_>) -> ExternalCrate {
         let root = DefId { krate: *self, index: CRATE_DEF_INDEX };
-        let krate_span = cx.tcx.def_span(root);
+        let krate_span = cx.tcx.real_def_span(root);
         let krate_src = cx.sess().source_map().span_to_filename(krate_span);
 
         // Collect all inner modules which are tagged as implementations of
@@ -1325,7 +1325,7 @@ impl Clean<Item> for ty::AssocItem {
             deprecation: get_deprecation(cx, self.def_id),
             def_id: self.def_id,
             attrs: inline::load_attrs(cx, self.def_id).clean(cx),
-            source: cx.tcx.def_span(self.def_id).clean(cx),
+            source: cx.tcx.real_def_span(self.def_id).clean(cx),
             inner,
         }
     }
@@ -1352,7 +1352,7 @@ impl Clean<Type> for hir::Ty<'_> {
                     Err(_) => cx
                         .sess()
                         .source_map()
-                        .span_to_snippet(cx.tcx.def_span(def_id))
+                        .span_to_snippet(cx.tcx.real_def_span(def_id))
                         .unwrap_or_else(|_| "_".to_string()),
                 };
                 Array(box ty.clean(cx), length)
@@ -1948,6 +1948,12 @@ impl Clean<Span> for rustc_span::Span {
             hicol: hi.col.to_usize(),
             original: *self,
         }
+    }
+}
+
+impl Clean<Span> for rustc_span::SpanId {
+    fn clean(&self, cx: &DocContext<'_>) -> Span {
+        cx.tcx.reify_span(*self).clean(cx)
     }
 }
 

@@ -618,7 +618,7 @@ rustc_queries! {
         }
 
         query def_kind(_: DefId) -> DefKind {}
-        query def_span(_: DefId) -> Span {
+        query real_def_span(_: DefId) -> Span {
             // FIXME(mw): DefSpans are not really inputs since they are derived from
             // HIR. But at the moment HIR hashing still contains some hacks that allow
             // to make type debuginfo to be source location independent. Declaring

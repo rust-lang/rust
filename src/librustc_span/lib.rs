@@ -245,6 +245,8 @@ pub enum SpanId {
     DefId(DefId),
 }
 
+pub const DUMMY_SPID: SpanId = SpanId::Span(DUMMY_SP);
+
 impl Default for SpanId {
     fn default() -> SpanId {
         SpanId::Span(DUMMY_SP)

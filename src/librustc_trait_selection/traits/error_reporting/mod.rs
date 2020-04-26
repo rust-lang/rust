@@ -381,7 +381,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err.note(s.as_str());
                         }
                         if let Some(ref s) = enclosing_scope {
-                            let enclosing_scope_span = tcx.def_span(
+                            let enclosing_scope_span = tcx.real_def_span(
                                 tcx.hir()
                                     .opt_local_def_id(obligation.cause.body_id)
                                     .unwrap_or_else(|| {
@@ -1295,8 +1295,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     Some(t) => Some(t),
                     None => {
                         let ty = parent_trait_ref.skip_binder().self_ty();
-                        let span =
-                            TyCategory::from_ty(ty).map(|(_, def_id)| self.tcx.def_span(def_id));
+                        let span = TyCategory::from_ty(ty)
+                            .map(|(_, def_id)| self.tcx.real_def_span(def_id));
                         Some((ty.to_string(), span))
                     }
                 }
@@ -1331,7 +1331,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             .collect();
         for trait_with_same_path in traits_with_same_path {
             if let Some(impl_def_id) = get_trait_impl(*trait_with_same_path) {
-                let impl_span = self.tcx.def_span(impl_def_id);
+                let impl_span = self.tcx.real_def_span(impl_def_id);
                 err.span_help(impl_span, "trait impl with same name found");
                 let trait_crate = self.tcx.crate_name(trait_with_same_path.krate);
                 let crate_msg = format!(

@@ -381,11 +381,11 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     (ty::Param(expected), ty::Param(found)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        let e_span = self.def_span(generics.type_param(expected, self).def_id);
+                        let e_span = self.real_def_span(generics.type_param(expected, self).def_id);
                         if !sp.contains(e_span) {
                             db.span_label(e_span, "expected type parameter");
                         }
-                        let f_span = self.def_span(generics.type_param(found, self).def_id);
+                        let f_span = self.real_def_span(generics.type_param(found, self).def_id);
                         if !sp.contains(f_span) {
                             db.span_label(f_span, "found type parameter");
                         }
@@ -404,7 +404,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     (ty::Param(p), ty::Projection(proj)) | (ty::Projection(proj), ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        let p_span = self.real_def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
                             db.span_label(p_span, "this type parameter");
                         }
@@ -446,7 +446,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     (ty::Param(p), ty::Dynamic(..) | ty::Opaque(..))
                     | (ty::Dynamic(..) | ty::Opaque(..), ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        let p_span = self.real_def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
                             db.span_label(p_span, "this type parameter");
                         }
@@ -486,7 +486,7 @@ impl<T> Trait<T> for X {
                     }
                     (ty::Param(p), _) | (_, ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
-                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        let p_span = self.real_def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
                             db.span_label(p_span, "this type parameter");
                         }
@@ -696,7 +696,7 @@ impl<T> Trait<T> for X {
             // a return type. This can occur when dealing with `TryStream` (#71035).
             if self.constrain_associated_type_structured_suggestion(
                 db,
-                self.def_span(def_id),
+                self.real_def_span(def_id),
                 &assoc,
                 values.found,
                 &msg,
@@ -766,7 +766,7 @@ fn foo(&self) -> Self::T { String::new() }
                         if item_def_id == proj_ty_item_def_id =>
                     {
                         Some((
-                            self.sess.source_map().guess_head_span(self.def_span(item.def_id)),
+                            self.sess.source_map().guess_head_span(self.real_def_span(item.def_id)),
                             format!("consider calling `{}`", self.def_path_str(item.def_id)),
                         ))
                     }

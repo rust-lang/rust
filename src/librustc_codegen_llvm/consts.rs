@@ -260,7 +260,7 @@ impl CodegenCx<'ll, 'tcx> {
             debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
 
             let attrs = self.tcx.codegen_fn_attrs(def_id);
-            let span = self.tcx.def_span(def_id);
+            let span = self.tcx.real_def_span(def_id);
             let g = check_and_apply_linkage(&self, &attrs, ty, sym, span);
 
             // Thread-local statics in some other crate need to *always* be linked

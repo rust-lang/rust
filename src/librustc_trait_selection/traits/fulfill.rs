@@ -514,7 +514,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     def_id,
                     substs,
                     None,
-                    Some(obligation.cause.span),
+                    Some(obligation.cause.span.into()),
                 ) {
                     Ok(_) => ProcessResult::Changed(vec![]),
                     Err(err) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err))),

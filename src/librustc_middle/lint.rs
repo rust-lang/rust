@@ -339,7 +339,7 @@ pub fn struct_lint_level<'s, 'd>(
 pub fn in_external_macro(sess: &Session, span: SpanId) -> bool {
     let span = match span {
         SpanId::Span(span) => span,
-        SpanId::DefId(def_id) => crate::ty::tls::with(|tcx| tcx.def_span(def_id)),
+        SpanId::DefId(def_id) => crate::ty::tls::with(|tcx| tcx.real_def_span(def_id)),
     };
     let expn_data = span.ctxt().outer_expn_data();
     match expn_data.kind {

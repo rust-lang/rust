@@ -225,7 +225,7 @@ fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssociatedItems<'_> {
     ty::AssociatedItems::new(items)
 }
 
-fn def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
+fn real_def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
     tcx.hir().span_if_local(def_id).unwrap()
 }
 
@@ -274,7 +274,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         .map_or(hir::CRATE_HIR_ID, |id| {
             tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
         });
-    let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
+    let cause = traits::ObligationCause::misc(tcx.real_def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
 }
 
@@ -376,7 +376,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         associated_item_def_ids,
         associated_items,
         adt_sized_constraint,
-        def_span,
+        real_def_span,
         param_env,
         trait_of_item,
         crate_disambiguator,

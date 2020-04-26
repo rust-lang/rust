@@ -45,7 +45,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, EntryFnType};
 use rustc_session::Session;
-use rustc_span::Span;
+use rustc_span::SpanId;
 use rustc_symbol_mangling::test as symbol_names_test;
 use rustc_target::abi::{Abi, Align, LayoutOf, Scalar, VariantIdx};
 
@@ -414,7 +414,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
-        sp: Span,
+        sp: SpanId,
         rust_main: Bx::Value,
         rust_main_def_id: LocalDefId,
         use_start_lang_item: bool,

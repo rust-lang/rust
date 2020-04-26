@@ -419,7 +419,7 @@ fn check_type_defn<'tcx, F>(
                     InternalSubsts::identity_for_item(fcx.tcx, discr_def_id.to_def_id());
 
                 let cause = traits::ObligationCause::new(
-                    fcx.tcx.def_span(discr_def_id),
+                    fcx.tcx.real_def_span(discr_def_id),
                     fcx.body_id,
                     traits::MiscObligation,
                 );
@@ -699,7 +699,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                 if !ty.needs_subst() {
                     fcx.register_wf_obligation(
                         ty,
-                        fcx.tcx.def_span(param.def_id),
+                        fcx.tcx.real_def_span(param.def_id),
                         ObligationCauseCode::MiscObligation,
                     );
                 }

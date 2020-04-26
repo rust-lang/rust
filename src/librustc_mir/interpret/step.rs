@@ -76,7 +76,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
-        self.set_span(stmt.source_info.span);
+        self.set_span(stmt.source_info.span.into());
 
         use rustc_middle::mir::StatementKind::*;
 
@@ -273,7 +273,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
-        self.set_span(terminator.source_info.span);
+        self.set_span(terminator.source_info.span.into());
 
         self.eval_terminator(terminator)?;
         if !self.stack().is_empty() {

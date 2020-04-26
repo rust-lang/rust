@@ -5,7 +5,9 @@ LL | / const FOO: &() = {
 LL | |     let y = ();
 LL | |     unsafe { Foo { y: &y }.long_live_the_unit }
 LL | | };
-   | |__^ encountered dangling pointer in final constant
+   | |  ^ encountered dangling pointer in final constant
+   | |__|
+   | 
    |
    = note: `#[deny(const_err)]` on by default
 

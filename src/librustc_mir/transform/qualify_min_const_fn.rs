@@ -51,7 +51,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
 
                             let generics = tcx.generics_of(current);
                             let def = generics.type_param(p, tcx);
-                            let span = tcx.def_span(def.def_id);
+                            let span = tcx.real_def_span(def.def_id);
                             return Err((
                                 span,
                                 "trait bounds other than `Sized` \

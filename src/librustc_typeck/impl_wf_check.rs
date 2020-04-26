@@ -160,7 +160,7 @@ fn enforce_impl_params_are_constrained(
                 if !input_parameters.contains(&cgp::Parameter::from(param_ty)) {
                     report_unused_parameter(
                         tcx,
-                        tcx.def_span(param.def_id),
+                        tcx.real_def_span(param.def_id),
                         "type",
                         &param_ty.to_string(),
                     );
@@ -173,7 +173,7 @@ fn enforce_impl_params_are_constrained(
                 {
                     report_unused_parameter(
                         tcx,
-                        tcx.def_span(param.def_id),
+                        tcx.real_def_span(param.def_id),
                         "lifetime",
                         &param.name.to_string(),
                     );
@@ -184,7 +184,7 @@ fn enforce_impl_params_are_constrained(
                 if !input_parameters.contains(&cgp::Parameter::from(param_ct)) {
                     report_unused_parameter(
                         tcx,
-                        tcx.def_span(param.def_id),
+                        tcx.real_def_span(param.def_id),
                         "const",
                         &param_ct.to_string(),
                     );

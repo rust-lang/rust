@@ -77,7 +77,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
                     // (struct/enum/union) there will be outlive
                     // requirements for adt_def.
                     let field_ty = self.tcx.type_of(field_def.did);
-                    let field_span = self.tcx.def_span(field_def.did);
+                    let field_span = self.tcx.real_def_span(field_def.did);
                     insert_required_predicates_to_be_wf(
                         self.tcx,
                         field_ty,

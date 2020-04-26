@@ -1467,7 +1467,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
                 if let Some((kind, def_id)) = TyCategory::from_ty(t) {
-                    let span = self.tcx.def_span(def_id);
+                    let span = self.tcx.real_def_span(def_id);
                     // Avoid cluttering the output when the "found" and error span overlap:
                     //
                     // error[E0308]: mismatched types
@@ -1543,7 +1543,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             self.tcx
                                 .sess
                                 .source_map()
-                                .mk_substr_filename(self.tcx.def_span(*def_id)),
+                                .mk_substr_filename(self.tcx.real_def_span(*def_id)),
                         ),
                         (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
                         (false, _) => "".to_string(),

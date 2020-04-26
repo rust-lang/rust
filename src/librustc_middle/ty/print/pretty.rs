@@ -895,7 +895,7 @@ pub trait PrettyPrinter<'tcx>:
                         }
                         _ => {
                             if did.is_local() {
-                                let span = self.tcx().def_span(did);
+                                let span = self.tcx().real_def_span(did);
                                 if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
                                 {
                                     p!(write("{}", snip))
@@ -1347,7 +1347,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 // pretty printing some span information. This should
                 // only occur very early in the compiler pipeline.
                 let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
-                let span = self.tcx.def_span(def_id);
+                let span = self.tcx.real_def_span(def_id);
 
                 self = self.print_def_path(parent_def_id, &[])?;
 

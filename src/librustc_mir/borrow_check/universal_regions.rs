@@ -457,7 +457,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             if self.infcx.tcx.fn_sig(def_id).c_variadic() {
                 let va_list_did = self.infcx.tcx.require_lang_item(
                     lang_items::VaListTypeLangItem,
-                    Some(self.infcx.tcx.def_span(self.mir_def_id)),
+                    Some(self.infcx.tcx.real_def_span(self.mir_def_id)),
                 );
                 let region = self
                     .infcx

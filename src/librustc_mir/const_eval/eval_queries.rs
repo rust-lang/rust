@@ -180,7 +180,8 @@ fn validate_and_turn_into_const<'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
-    let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env, is_static);
+    let ecx =
+        mk_eval_cx(tcx, tcx.real_def_span(key.value.instance.def_id()), key.param_env, is_static);
     let val = (|| {
         let mplace = ecx.raw_const_to_mplace(constant)?;
 

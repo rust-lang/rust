@@ -444,7 +444,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                 );
 
                 // FIXME(oli-obk): trace the actual span from inference to improve errors.
-                let span = self.tcx.def_span(def_id);
+                let span = self.tcx.real_def_span(def_id);
 
                 // HACK(eddyb) this check shouldn't be needed, as `wfcheck`
                 // performs the same checks, in theory, but I've kept it here

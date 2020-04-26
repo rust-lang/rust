@@ -604,7 +604,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     diag.help(&format!("consider replacing `{}` with `{}`", fr_name, static_str));
                 } else {
                     // Otherwise, we should suggest adding a constraint on the return type.
-                    let span = self.infcx.tcx.def_span(*did);
+                    let span = self.infcx.tcx.real_def_span(*did);
                     if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
                         let suggestable_fr_name = if fr_name.was_named() {
                             fr_name.to_string()

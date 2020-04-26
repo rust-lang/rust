@@ -35,10 +35,10 @@ fn track_diagnostic(diagnostic: Diagnostic) -> RealDiagnostic {
                 let mut diagnostics = diagnostics.lock();
                 diagnostics.extend(Some(diagnostic.clone()));
             }
-            diagnostic.map_span(|s| match s {
-                rustc_span::SpanId::Span(s) => s,
-                rustc_span::SpanId::DefId(d) => icx.tcx.def_span(d),
-            })
+
+            // Ignore dependencies when reifying spans.
+            let icx = tls::ImplicitCtxt { task_deps: None, ..icx.clone() };
+            tls::enter_context(&icx, |icx| diagnostic.map_span(|s| icx.tcx.reify_span(s)))
         } else {
             diagnostic.map_span(|s| match s {
                 rustc_span::SpanId::Span(s) => s,

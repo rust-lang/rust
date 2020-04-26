@@ -33,7 +33,7 @@ use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
 use rustc_session::config::BorrowckMode;
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{Span, SpanId};
 
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::BTreeMap;
@@ -1579,7 +1579,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
         promoted: Option<mir::Promoted>,
-        span: Option<Span>,
+        span: Option<SpanId>,
     ) -> ConstEvalResult<'tcx> {
         let mut original_values = OriginalQueryValues::default();
         let canonical = self.canonicalize_query(&(param_env, substs), &mut original_values);
