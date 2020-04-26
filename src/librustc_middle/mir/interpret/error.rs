@@ -362,7 +362,7 @@ pub enum UndefinedBehaviorInfo {
     /// Working with a local that is not currently live.
     DeadLocal,
     /// Data size is not equal to target size
-    ArgumentSizeMismatch {
+    ScalarSizeMismatch {
         target_size: u64,
         data_size: u64,
     },
@@ -427,9 +427,9 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 "using uninitialized data, but this operation requires initialized memory"
             ),
             DeadLocal => write!(f, "accessing a dead local variable"),
-            ArgumentSizeMismatch { target_size, data_size } => write!(
+            ScalarSizeMismatch { target_size, data_size } => write!(
                 f,
-                "argument size mismatch: expected {} bytes but got {} bytes instead",
+                "scalar size mismatch: expected {} bytes but got {} bytes instead",
                 target_size, data_size
             ),
         }

@@ -394,9 +394,9 @@ impl<'tcx, Tag> Scalar<Tag> {
         match self {
             Scalar::Raw { data, size } => {
                 if target_size.bytes() != u64::from(size) {
-                    throw_ub!(ArgumentSizeMismatch {
+                    throw_ub!(ScalarSizeMismatch {
                         target_size: target_size.bytes(),
-                        data_size: u64::from(size)
+                        data_size: u64::from(size),
                     });
                 }
                 Scalar::check_data(data, size);
