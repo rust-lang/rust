@@ -5,7 +5,7 @@ use ra_db::SourceDatabase;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{find_covering_element, find_node_at_offset},
-    ast, AstNode,
+    ast, match_ast, AstNode,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
@@ -26,6 +26,7 @@ pub(crate) struct CompletionContext<'a> {
     /// The token before the cursor, in the macro-expanded file.
     pub(super) token: SyntaxToken,
     pub(super) krate: Option<hir::Crate>,
+    pub(super) expected_type: Option<Type>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
     pub(super) function_syntax: Option<ast::FnDef>,
     pub(super) use_item_syntax: Option<ast::UseItem>,
@@ -93,6 +94,7 @@ impl<'a> CompletionContext<'a> {
             token,
             offset: position.offset,
             krate,
+            expected_type: None,
             name_ref_syntax: None,
             function_syntax: None,
             use_item_syntax: None,
@@ -175,23 +177,30 @@ impl<'a> CompletionContext<'a> {
         self.sema.scope_at_offset(&self.token.parent(), self.offset)
     }
 
-    pub(crate) fn expected_type_of(&self, node: &SyntaxNode) -> Option<Type> {
-        for ancestor in node.ancestors() {
-            if let Some(pat) = ast::Pat::cast(ancestor.clone()) {
-                return self.sema.type_of_pat(&pat);
-            } else if let Some(expr) = ast::Expr::cast(ancestor) {
-                return self.sema.type_of_expr(&expr);
-            }
-        }
-        None
-    }
-
     fn fill(
         &mut self,
         original_file: &SyntaxNode,
         file_with_fake_ident: SyntaxNode,
         offset: TextSize,
     ) {
+        // FIXME: this is wrong in at least two cases:
+        //  * when there's no token `foo(<|>)`
+        //  * when there is a token, but it happens to have type of it's own
+        self.expected_type = self
+            .token
+            .ancestors()
+            .find_map(|node| {
+                let ty = match_ast! {
+                    match node {
+                        ast::Pat(it) => self.sema.type_of_pat(&it),
+                        ast::Expr(it) => self.sema.type_of_expr(&it),
+                        _ => return None,
+                    }
+                };
+                Some(ty)
+            })
+            .flatten();
+
         // First, let's try to complete a reference to some declaration.
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&file_with_fake_ident, offset) {
             // Special case, `trait T { fn foo(i_am_a_name_ref) {} }`.

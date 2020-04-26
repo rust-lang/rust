@@ -351,7 +351,7 @@ impl Builder {
         }
 
         // Don't add parentheses if the expected type is some function reference.
-        if let Some(ty) = ctx.expected_type_of(&ctx.token.parent()) {
+        if let Some(ty) = &ctx.expected_type {
             if ty.is_fn() {
                 return self;
             }

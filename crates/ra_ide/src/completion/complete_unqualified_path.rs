@@ -4,7 +4,7 @@ use hir::ScopeDef;
 use test_utils::tested_by;
 
 use crate::completion::{CompletionContext, Completions};
-use hir::{Adt, ModuleDef};
+use hir::{Adt, ModuleDef, Type};
 use ra_syntax::AstNode;
 
 pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
@@ -15,7 +15,9 @@ pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
 
-    complete_enum_variants(acc, ctx);
+    if let Some(ty) = &ctx.expected_type {
+        complete_enum_variants(acc, ctx, ty);
+    }
 
     if ctx.is_pat_binding_or_const {
         return;
@@ -34,26 +36,24 @@ pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     });
 }
 
-fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext) {
-    if let Some(ty) = ctx.expected_type_of(&ctx.token.parent()) {
-        if let Some(Adt::Enum(enum_data)) = ty.as_adt() {
-            let variants = enum_data.variants(ctx.db);
+fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &Type) {
+    if let Some(Adt::Enum(enum_data)) = ty.as_adt() {
+        let variants = enum_data.variants(ctx.db);
 
-            let module = if let Some(module) = ctx.scope().module() {
-                // Compute path from the completion site if available.
-                module
-            } else {
-                // Otherwise fall back to the enum's definition site.
-                enum_data.module(ctx.db)
-            };
+        let module = if let Some(module) = ctx.scope().module() {
+            // Compute path from the completion site if available.
+            module
+        } else {
+            // Otherwise fall back to the enum's definition site.
+            enum_data.module(ctx.db)
+        };
 
-            for variant in variants {
-                if let Some(path) = module.find_use_path(ctx.db, ModuleDef::from(variant)) {
-                    // Variants with trivial paths are already added by the existing completion logic,
-                    // so we should avoid adding these twice
-                    if path.segments.len() > 1 {
-                        acc.add_enum_variant(ctx, variant, Some(path.to_string()));
-                    }
+        for variant in variants {
+            if let Some(path) = module.find_use_path(ctx.db, ModuleDef::from(variant)) {
+                // Variants with trivial paths are already added by the existing completion logic,
+                // so we should avoid adding these twice
+                if path.segments.len() > 1 {
+                    acc.add_enum_variant(ctx, variant, Some(path.to_string()));
                 }
             }
         }
