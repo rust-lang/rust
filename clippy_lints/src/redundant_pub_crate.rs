@@ -45,11 +45,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPubCrate {
             if !cx.access_levels.is_exported(item.hir_id) {
                 if let Some(false) = self.is_exported.last() {
                     let span = item.span.with_hi(item.ident.span.hi());
+                    let def_id = cx.tcx.hir().local_def_id(item.hir_id);
+                    let descr = cx.tcx.def_kind(def_id).descr(def_id.to_def_id());
                     span_lint_and_then(
                         cx,
                         REDUNDANT_PUB_CRATE,
                         span,
-                        &format!("pub(crate) {} inside private module", item.kind.descr()),
+                        &format!("pub(crate) {} inside private module", descr),
                         |diag| {
                             diag.span_suggestion(
                                 item.vis.span,
