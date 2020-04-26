@@ -1,5 +1,6 @@
 //! Implements threads.
 
+use std::convert::TryInto;
 use std::cell::RefCell;
 use std::convert::TryFrom;
 use std::num::NonZeroU32;
@@ -33,6 +34,12 @@ pub struct ThreadId(usize);
 
 /// The main thread. When it terminates, the whole application terminates.
 const MAIN_THREAD: ThreadId = ThreadId(0);
+
+impl ThreadId {
+    pub fn to_u128(self) -> u128 {
+        self.0.try_into().unwrap()
+    }
+}
 
 impl Idx for ThreadId {
     fn new(idx: usize) -> Self {

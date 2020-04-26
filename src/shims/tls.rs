@@ -20,7 +20,6 @@ pub type TlsKey = u128;
 pub struct TlsEntry<'tcx> {
     /// The data for this key. None is used to represent NULL.
     /// (We normalize this early to avoid having to do a NULL-ptr-test each time we access the data.)
-    /// Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
     data: BTreeMap<ThreadId, Scalar<Tag>>,
     dtor: Option<ty::Instance<'tcx>>,
 }
@@ -89,7 +88,7 @@ impl<'tcx> TlsData<'tcx> {
     ) -> InterpResult<'tcx, Scalar<Tag>> {
         match self.keys.get(&key) {
             Some(TlsEntry { data, .. }) => {
-                let value = data.get(&thread_id).cloned();
+                let value = data.get(&thread_id).copied();
                 trace!("TLS key {} for thread {:?} loaded: {:?}", key, thread_id, value);
                 Ok(value.unwrap_or_else(|| Scalar::null_ptr(cx).into()))
             }
@@ -99,7 +98,10 @@ impl<'tcx> TlsData<'tcx> {
 
     pub fn store_tls(
         &mut self,
-         key: TlsKey, thread_id: ThreadId, new_data: Option<Scalar<Tag>>) -> InterpResult<'tcx> {
+        key: TlsKey,
+        thread_id: ThreadId,
+        new_data: Option<Scalar<Tag>>
+    ) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(TlsEntry { data, .. }) => {
                 match new_data {
