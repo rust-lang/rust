@@ -8,7 +8,6 @@ use goblin::{mach::Mach, Object};
 use libloading::Library;
 use memmap::Mmap;
 use ra_proc_macro::ProcMacroKind;
-
 use std::io;
 
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
@@ -197,7 +196,10 @@ impl Expander {
 /// Copy the dylib to temp directory to prevent locking in Windows
 #[cfg(windows)]
 fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
+    use std::{ffi::OsString, time::SystemTime};
+
     let mut to = std::env::temp_dir();
+
     let file_name = path.file_name().ok_or_else(|| {
         io::Error::new(
             io::ErrorKind::InvalidInput,
@@ -205,8 +207,14 @@ fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
         )
     })?;
 
-    to.push(file_name);
-    std::fs::copy(path, &to)?;
+    // generate a time deps unique number
+    let t = SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("Time went backwards");
+
+    let mut unique_name = OsString::from(t.as_millis().to_string());
+    unique_name.push(file_name);
+
+    to.push(unique_name);
+    std::fs::copy(path, &to).unwrap();
     Ok(to)
 }
 
