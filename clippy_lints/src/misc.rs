@@ -9,6 +9,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{ExpnKind, Span};
 
 use crate::consts::{constant, Constant};
@@ -399,8 +400,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             },
             _ => {},
         }
-        if in_attributes_expansion(expr) {
-            // Don't lint things expanded by #[derive(...)], etc
+        if in_attributes_expansion(expr) || expr.span.is_desugaring(DesugaringKind::Await) {
+            // Don't lint things expanded by #[derive(...)], etc or `await` desugaring
             return;
         }
         let binding = match expr.kind {

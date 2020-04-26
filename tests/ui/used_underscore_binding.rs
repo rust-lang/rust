@@ -1,3 +1,4 @@
+// edition:2018
 // aux-build:proc_macro_derive.rs
 
 #![feature(rustc_private)]
@@ -86,6 +87,12 @@ fn non_variables() {
     let f = _fn_test;
     f();
 }
+// Tests that we do not lint if the binding comes from await desugaring.
+// See issue 5360.
+async fn await_desugaring() {
+    async fn foo() {}
+    foo().await;
+}
 
 fn main() {
     let foo = 0u32;
@@ -99,4 +106,5 @@ fn main() {
     let _ = unused_underscore_complex(foo);
     let _ = multiple_underscores(foo);
     non_variables();
+    await_desugaring();
 }
