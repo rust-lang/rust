@@ -445,8 +445,7 @@ pub struct SanitizerOptions {
 /// LLVMRelocMode
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum RelocMode {
-    Default,
+pub enum RelocModel {
     Static,
     PIC,
     DynamicNoPic,
@@ -1946,7 +1945,7 @@ extern "C" {
         Features: *const c_char,
         Abi: *const c_char,
         Model: CodeModel,
-        Reloc: RelocMode,
+        Reloc: RelocModel,
         Level: CodeGenOptLevel,
         UseSoftFP: bool,
         PositionIndependentExecutable: bool,

@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -40,7 +40,7 @@ pub fn target() -> TargetResult {
 
             // Similarly, one almost always never wants to use relocatable
             // code because of the extra costs it involves.
-            relocation_model: "static".to_string(),
+            relocation_model: RelocModel::Static,
 
             // Right now we invoke an external assembler and this isn't
             // compatible with multiple codegen units, and plus we probably

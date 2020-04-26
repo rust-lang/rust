@@ -1,4 +1,5 @@
-use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
+use crate::spec::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -21,7 +22,7 @@ pub fn target() -> TargetResult {
             features: "+m,+a,+c".to_string(),
             executables: true,
             panic_strategy: PanicStrategy::Abort,
-            relocation_model: "static".to_string(),
+            relocation_model: RelocModel::Static,
             emit_debug_gdb_scripts: false,
             abi_blacklist: super::riscv_base::abi_blacklist(),
             eliminate_frame_pointer: false,

@@ -1311,10 +1311,6 @@ fn collect_print_requests(
         prints.push(PrintRequest::TargetFeatures);
         cg.target_feature = String::new();
     }
-    if cg.relocation_model.as_ref().map_or(false, |s| s == "help") {
-        prints.push(PrintRequest::RelocationModels);
-        cg.relocation_model = None;
-    }
     if cg.code_model.as_ref().map_or(false, |s| s == "help") {
         prints.push(PrintRequest::CodeModels);
         cg.code_model = None;
@@ -2005,7 +2001,7 @@ crate mod dep_tracking {
     use crate::utils::NativeLibraryKind;
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
-    use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
+    use rustc_target::spec::{MergeFunctions, PanicStrategy, RelocModel, RelroLevel, TargetTriple};
     use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
     use std::hash::Hash;
@@ -2053,6 +2049,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
     impl_dep_tracking_hash_via_hash!(Option<Vec<String>>);
     impl_dep_tracking_hash_via_hash!(Option<MergeFunctions>);
+    impl_dep_tracking_hash_via_hash!(Option<RelocModel>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
