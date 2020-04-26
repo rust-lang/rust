@@ -393,7 +393,12 @@ impl<'tcx, Tag> Scalar<Tag> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(target_size.bytes(), u64::from(size));
+                if target_size.bytes() != u64::from(size) {
+                    throw_ub!(ScalarSizeMismatch {
+                        target_size: target_size.bytes(),
+                        data_size: u64::from(size),
+                    });
+                }
                 Scalar::check_data(data, size);
                 Ok(data)
             }
