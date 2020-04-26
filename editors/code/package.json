@@ -237,6 +237,14 @@
                     "default": false,
                     "markdownDescription": "Run `cargo check` on startup to get the correct value for package OUT_DIRs"
                 },
+                "rust-analyzer.cargo.rustc.defaultTarget": {
+                    "type": [
+                        "null",
+                        "string"
+                    ],
+                    "default": null,
+                    "description": "Specify the default target"
+                },
                 "rust-analyzer.rustfmt.extraArgs": {
                     "type": "array",
                     "items": {
