@@ -87,24 +87,15 @@ fn foo() {
             }
           },
           {
-            "args": [
-              "check",
-              "--all"
-            ],
+            "args": ["check", "--workspace"],
             "extraArgs": [],
             "bin": "cargo",
             "env": {},
             "cwd": null,
-            "label": "cargo check --all",
+            "label": "cargo check --workspace",
             "range": {
-              "end": {
-                "character": 0,
-                "line": 0
-              },
-              "start": {
-                "character": 0,
-                "line": 0
-              }
+              "end": { "character": 0, "line": 0 },
+              "start": { "character": 0, "line": 0 }
             }
           }
         ]),
@@ -145,42 +136,42 @@ fn main() {}
     server.request::<Runnables>(
         RunnablesParams { text_document: server.doc_id("foo/tests/spam.rs"), position: None },
         json!([
-          {
-            "args": [ "test", "--package", "foo", "--test", "spam" ],
-            "extraArgs": [ "test_eggs", "--exact", "--nocapture" ],
-            "bin": "cargo",
-            "env": { "RUST_BACKTRACE": "short" },
-            "label": "test test_eggs",
-            "range": {
-              "end": { "character": 17, "line": 1 },
-              "start": { "character": 0, "line": 0 }
-            },
-            "cwd": server.path().join("foo")
-          },
-          {
-            "args": [
-              "check",
-              "--package",
-              "foo",
-              "--test",
-              "spam"
-            ],
-            "extraArgs": [],
-            "bin": "cargo",
-            "env": {},
-            "cwd": server.path().join("foo"),
-            "label": "cargo check -p foo",
-            "range": {
-              "end": {
-                "character": 0,
-                "line": 0
+            {
+              "args": [ "test", "--package", "foo", "--test", "spam" ],
+              "extraArgs": [ "test_eggs", "--exact", "--nocapture" ],
+              "bin": "cargo",
+              "env": { "RUST_BACKTRACE": "short" },
+              "label": "test test_eggs",
+              "range": {
+                "end": { "character": 17, "line": 1 },
+                "start": { "character": 0, "line": 0 }
               },
-              "start": {
-                "character": 0,
-                "line": 0
-              }
+              "cwd": server.path().join("foo")
+            },
+            {
+              "args": [ "check", "--package", "foo", "--test", "spam" ],
+              "extraArgs": [],
+              "bin": "cargo",
+              "env": {},
+              "label": "cargo check -p foo",
+              "range": {
+                "end": { "character": 0, "line": 0 },
+                "start": { "character": 0, "line": 0 }
+              },
+              "cwd": server.path().join("foo")
+            },
+            {
+              "args": [ "test", "--package", "foo", "--test", "spam" ],
+              "extraArgs": [],
+              "bin": "cargo",
+              "env": {},
+              "label": "cargo test -p foo",
+              "range": {
+                "end": { "character": 0, "line": 0 },
+                "start": { "character": 0, "line": 0 }
+              },
+              "cwd": server.path().join("foo")
             }
-          }
         ]),
     );
 }

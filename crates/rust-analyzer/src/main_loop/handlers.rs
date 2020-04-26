@@ -393,28 +393,37 @@ pub fn handle_runnables(
         }
         res.push(to_lsp_runnable(&world, file_id, runnable)?);
     }
-    let mut check_args = vec!["check".to_string()];
-    let label;
+    // Add `cargo check` and `cargo test` for the whole package
     match CargoTargetSpec::for_file(&world, file_id)? {
         Some(spec) => {
-            label = format!("cargo check -p {}", spec.package);
-            spec.push_to(&mut check_args);
+            for &cmd in ["check", "test"].iter() {
+                res.push(req::Runnable {
+                    range: Default::default(),
+                    label: format!("cargo {} -p {}", cmd, spec.package),
+                    bin: "cargo".to_string(),
+                    args: {
+                        let mut args = vec![cmd.to_string()];
+                        spec.clone().push_to(&mut args);
+                        args
+                    },
+                    extra_args: Vec::new(),
+                    env: FxHashMap::default(),
+                    cwd: workspace_root.map(|root| root.to_owned()),
+                })
+            }
         }
         None => {
-            label = "cargo check --all".to_string();
-            check_args.push("--all".to_string())
+            res.push(req::Runnable {
+                range: Default::default(),
+                label: "cargo check --workspace".to_string(),
+                bin: "cargo".to_string(),
+                args: vec!["check".to_string(), "--workspace".to_string()],
+                extra_args: Vec::new(),
+                env: FxHashMap::default(),
+                cwd: workspace_root.map(|root| root.to_owned()),
+            });
         }
     }
-    // Always add `cargo check`.
-    res.push(req::Runnable {
-        range: Default::default(),
-        label,
-        bin: "cargo".to_string(),
-        args: check_args,
-        extra_args: Vec::new(),
-        env: FxHashMap::default(),
-        cwd: workspace_root.map(|root| root.to_owned()),
-    });
     Ok(res)
 }
 

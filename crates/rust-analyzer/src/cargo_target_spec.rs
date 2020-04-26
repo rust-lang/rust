@@ -9,6 +9,7 @@ use crate::{world::WorldSnapshot, Result};
 ///
 /// We use it to cook up the set of cli args we need to pass to Cargo to
 /// build/test/run the target.
+#[derive(Clone)]
 pub(crate) struct CargoTargetSpec {
     pub(crate) package: String,
     pub(crate) target: String,
