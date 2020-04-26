@@ -771,10 +771,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::RawPtr(mt) => (false, mt),
             _ => return self.unify_and(a, b, identity),
         };
+        coerce_mutbls(mt_a.mutbl, mutbl_b)?;
 
         // Check that the types which they point at are compatible.
         let a_unsafe = self.tcx.mk_ptr(ty::TypeAndMut { mutbl: mutbl_b, ty: mt_a.ty });
-        coerce_mutbls(mt_a.mutbl, mutbl_b)?;
         // Although references and unsafe ptrs have the same
         // representation, we still register an Adjust::DerefRef so that
         // regionck knows that the region for `a` must be valid here.
