@@ -94,10 +94,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             }
             Err(_) => {
                 let item_span = tcx.def_span(self_type_did);
-                let self_descr = tcx
-                    .def_kind(self_type_did)
-                    .map(|kind| kind.descr(self_type_did))
-                    .unwrap_or("type");
+                let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
                 struct_span_err!(
                     tcx.sess,
                     drop_impl_span,
@@ -244,10 +241,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 
         if !assumptions_in_impl_context.iter().any(predicate_matches_closure) {
             let item_span = tcx.hir().span(self_type_hir_id);
-            let self_descr = tcx
-                .def_kind(self_type_did)
-                .map(|kind| kind.descr(self_type_did.to_def_id()))
-                .unwrap_or("type");
+            let self_descr = tcx.def_kind(self_type_did).descr(self_type_did.to_def_id());
             struct_span_err!(
                 tcx.sess,
                 *predicate_sp,

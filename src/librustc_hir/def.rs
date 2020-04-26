@@ -77,6 +77,18 @@ pub enum DefKind {
 
     // Macro namespace
     Macro(MacroKind),
+
+    // Not namespaced (or they are, but we don't treat them so)
+    ExternCrate,
+    Use,
+    ForeignMod,
+    AnonConst,
+    Field,
+    LifetimeParam,
+    GlobalAsm,
+    Impl,
+    Closure,
+    Generator,
 }
 
 impl DefKind {
@@ -113,6 +125,16 @@ impl DefKind {
             DefKind::TyParam => "type parameter",
             DefKind::ConstParam => "const parameter",
             DefKind::Macro(macro_kind) => macro_kind.descr(),
+            DefKind::LifetimeParam => "lifetime parameter",
+            DefKind::Use => "import",
+            DefKind::ForeignMod => "foreign module",
+            DefKind::AnonConst => "constant expression",
+            DefKind::Field => "field",
+            DefKind::Impl => "implementation",
+            DefKind::Closure => "closure",
+            DefKind::Generator => "generator",
+            DefKind::ExternCrate => "extern crate",
+            DefKind::GlobalAsm => "global assembly block",
         }
     }
 
@@ -124,7 +146,10 @@ impl DefKind {
             | DefKind::AssocOpaqueTy
             | DefKind::AssocFn
             | DefKind::Enum
-            | DefKind::OpaqueTy => "an",
+            | DefKind::OpaqueTy
+            | DefKind::Impl
+            | DefKind::Use
+            | DefKind::ExternCrate => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),
             _ => "a",
         }
@@ -155,6 +180,18 @@ impl DefKind {
             | DefKind::AssocConst => ns == Namespace::ValueNS,
 
             DefKind::Macro(..) => ns == Namespace::MacroNS,
+
+            // Not namespaced.
+            DefKind::AnonConst
+            | DefKind::Field
+            | DefKind::LifetimeParam
+            | DefKind::ExternCrate
+            | DefKind::Closure
+            | DefKind::Generator
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::GlobalAsm
+            | DefKind::Impl => false,
         }
     }
 }
