@@ -33,7 +33,7 @@ impl SelfTrait for Bad {
     fn nested(_p1: Box<Self>, _p2: (&u8, &Self)) {}
 
     fn vals(_: Self) -> Self {
-        Self::default()
+        Bad::default()
     }
 }
 
@@ -47,7 +47,7 @@ impl Mul for Bad {
 
 impl Clone for Bad {
     fn clone(&self) -> Self {
-        Self
+        Bad
     }
 }
 

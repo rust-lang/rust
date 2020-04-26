@@ -61,12 +61,6 @@ LL |     fn vals(_: Bad) -> Bad {
    |                        ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self_trait.rs:36:9
-   |
-LL |         Bad::default()
-   |         ^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
   --> $DIR/use_self_trait.rs:41:19
    |
 LL |     type Output = Bad;
@@ -84,11 +78,5 @@ error: unnecessary structure name repetition
 LL |     fn mul(self, rhs: Bad) -> Bad {
    |                               ^^^ help: use the applicable keyword: `Self`
 
-error: unnecessary structure name repetition
-  --> $DIR/use_self_trait.rs:50:9
-   |
-LL |         Bad
-   |         ^^^ help: use the applicable keyword: `Self`
-
-error: aborting due to 15 previous errors
+error: aborting due to 13 previous errors
 
