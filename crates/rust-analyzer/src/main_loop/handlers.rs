@@ -812,6 +812,22 @@ pub fn handle_code_action(
         }
     }
 
+    // If the client only supports commands then filter the list
+    // and remove and actions that depend on edits.
+    if !world.config.client_caps.code_action_literals {
+        res = res
+            .into_iter()
+            .filter_map(|it| match it {
+                cmd @ lsp_types::CodeActionOrCommand::Command(_) => Some(cmd),
+                lsp_types::CodeActionOrCommand::CodeAction(action) => match action.command {
+                    Some(cmd) if action.edit.is_none() => {
+                        Some(lsp_types::CodeActionOrCommand::Command(cmd))
+                    }
+                    _ => None,
+                },
+            })
+            .collect();
+    }
     Ok(Some(res))
 }
 
