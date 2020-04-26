@@ -14,6 +14,8 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 
+use crate::{db::HirDatabase, GenericPredicate, TraitRef};
+
 fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
     // returning the iterator directly doesn't easily work because of
@@ -41,6 +43,28 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
         .collect()
 }
 
+fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<TraitRef> {
+    // returning the iterator directly doesn't easily work because of
+    // lifetime problems, but since there usually shouldn't be more than a
+    // few direct traits this should be fine (we could even use some kind of
+    // SmallVec if performance is a concern)
+    let generic_params = db.generic_params(trait_ref.trait_.into());
+    let trait_self = match generic_params.find_trait_self_param() {
+        Some(p) => TypeParamId { parent: trait_ref.trait_.into(), local_id: p },
+        None => return Vec::new(),
+    };
+    db.generic_predicates_for_param(trait_self)
+        .iter()
+        .filter_map(|pred| {
+            pred.as_ref().filter_map(|pred| match pred {
+                GenericPredicate::Implemented(tr) => Some(tr.clone()),
+                _ => None,
+            })
+        })
+        .map(|pred| pred.subst(&trait_ref.substs))
+        .collect()
+}
+
 /// Returns an iterator over the whole super trait hierarchy (including the
 /// trait itself).
 pub(super) fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
@@ -54,6 +78,30 @@ pub(super) fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<Tra
         // enough that this doesn't matter
         for tt in direct_super_traits(db, t) {
             if !result.contains(&tt) {
+                result.push(tt);
+            }
+        }
+        i += 1;
+    }
+    result
+}
+
+/// Given a trait ref (`Self: Trait`), builds all the implied trait refs for
+/// super traits. The original trait ref will be included. So the difference to
+/// `all_super_traits` is that we keep track of type parameters; for example if
+/// we have `Self: Trait<u32, i32>` and `Trait<T, U>: OtherTrait<U>` we'll get
+/// `Self: OtherTrait<i32>`.
+pub(super) fn all_super_trait_refs(db: &dyn HirDatabase, trait_ref: TraitRef) -> Vec<TraitRef> {
+    // we need to take care a bit here to avoid infinite loops in case of cycles
+    // (i.e. if we have `trait A: B; trait B: A;`)
+    let mut result = vec![trait_ref];
+    let mut i = 0;
+    while i < result.len() {
+        let t = &result[i];
+        // yeah this is quadratic, but trait hierarchies should be flat
+        // enough that this doesn't matter
+        for tt in direct_super_trait_refs(db, t) {
+            if !result.iter().any(|tr| tr.trait_ == tt.trait_) {
                 result.push(tt);
             }
         }
