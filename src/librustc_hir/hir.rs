@@ -1601,7 +1601,7 @@ pub enum ExprKind<'hir> {
 ///
 /// To resolve the path to a `DefId`, call [`qpath_res`].
 ///
-/// [`qpath_res`]: ../ty/struct.TypeckTables.html#method.qpath_res
+/// [`qpath_res`]: ../rustc_middle/ty/struct.TypeckTables.html#method.qpath_res
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum QPath<'hir> {
     /// Path to a definition, optionally "fully-qualified" with a `Self`
