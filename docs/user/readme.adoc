@@ -113,13 +113,15 @@ Here are some useful self-diagnostic commands:
 Other editors generally require the `rust-analyzer` binary to be in `$PATH`.
 You can download the pre-built binary from the https://github.com/rust-analyzer/rust-analyzer/releases[releases] page. Typically, you then need to rename the binary for your platform, e.g. `rust-analyzer-mac` if you're on Mac OS, to `rust-analzyer` and make it executable in addition to moving it into a directory in your `$PATH`.
 
-On Linux to install the `rust-analyzer` binary into `~/.cargo/bin` which usually is already added to `$PATH`, this commands could be used
+On Linux to install the `rust-analyzer` binary into `~/.local/bin`, this commands could be used
 
 [source,bash]
 ----
-$ curl -L https://github.com/rust-analyzer/rust-analyzer/releases/latest/download/rust-analyzer-linux -o ~/.cargo/bin/rust-analyzer
-$ chmod +x ~/.cargo/bin/rust-analyzer
+$ curl -L https://github.com/rust-analyzer/rust-analyzer/releases/latest/download/rust-analyzer-linux -o ~/.local/bin/rust-analyzer
+$ chmod +x ~/.local/bin/rust-analyzer
 ----
+
+Ensure `~/cargo/bin` is listed in the `$PATH` variable.
 
 Alternatively, you can install it from source using the following command:
 
