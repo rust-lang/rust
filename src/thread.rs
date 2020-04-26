@@ -61,7 +61,8 @@ impl ThreadId {
     }
 }
 
-/// An identifier of a set of blocked threads.
+/// An identifier of a set of blocked threads. 0 is used to indicate the absence
+/// of a blockset identifier and, therefore, is not a valid identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct BlockSetId(NonZeroU32);
 
@@ -116,8 +117,8 @@ pub struct Thread<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> Thread<'mir, 'tcx> {
-    /// Check if the thread terminated. If yes, change the state to terminated
-    /// and return `true`.
+    /// Check if the thread is done executing (no more stack frames). If yes,
+    /// change the state to terminated and return `true`.
     fn check_terminated(&mut self) -> bool {
         if self.state == ThreadState::Enabled {
             if self.stack.is_empty() {
@@ -174,6 +175,7 @@ impl<'mir, 'tcx> Default for ThreadManager<'mir, 'tcx> {
         let mut threads = IndexVec::new();
         // Create the main thread and add it to the list of threads.
         let mut main_thread = Thread::default();
+        // The main thread can *not* be joined on.
         main_thread.join_status = ThreadJoinStatus::Detached;
         threads.push(main_thread);
         Self {
@@ -282,7 +284,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             self.threads
                 .iter()
                 .all(|thread| thread.state != ThreadState::BlockedOnJoin(joined_thread_id)),
-            "a joinable thread has threads waiting for its termination"
+            "a joinable thread already has threads waiting for its termination"
         );
         // Mark the joined thread as being joined so that we detect if other
         // threads try to join it.
@@ -349,7 +351,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// The currently implemented scheduling policy is the one that is commonly
     /// used in stateless model checkers such as Loom: run the active thread as
     /// long as we can and switch only when we have to (the active thread was
-    /// blocked, terminated, or was explicitly asked to be preempted).
+    /// blocked, terminated, or has explicitly asked to be preempted).
     fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         if self.threads[self.active_thread].check_terminated() {
             // Check if we need to unblock any threads.
