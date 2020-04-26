@@ -33,8 +33,9 @@ pub struct TlsData<'tcx> {
     /// pthreads-style thread-local storage.
     keys: BTreeMap<TlsKey, TlsEntry<'tcx>>,
 
-    /// A single global per thread dtor (that's how things work on macOS) with a data argument.
-    global_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar<Tag>)>,
+    /// A single per thread destructor of the thread local storage (that's how
+    /// things work on macOS) with a data argument.
+    thread_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar<Tag>)>,
 
     /// Whether we are in the "destruct" phase, during which some operations are UB.
     dtors_running: HashSet<ThreadId>,
@@ -48,7 +49,7 @@ impl<'tcx> Default for TlsData<'tcx> {
         TlsData {
             next_key: 1, // start with 1 as we must not use 0 on Windows
             keys: Default::default(),
-            global_dtors: Default::default(),
+            thread_dtors: Default::default(),
             dtors_running: Default::default(),
             last_dtor_key: Default::default(),
         }
@@ -117,16 +118,16 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    /// Set global dtor for the given thread. This function is used to implement
-    /// `_tlv_atexit` shim on MacOS.
+    /// Set the thread wide destructor of the thread local storage for the given
+    /// thread. This function is used to implement `_tlv_atexit` shim on MacOS.
     ///
-    /// Global destructors are available only on MacOS and (potentially
-    /// confusingly) they seem to be still per thread as can be guessed from the
-    /// following comment in the [`_tlv_atexit`
+    /// Thread wide dtors are available only on MacOS. There is one destructor
+    /// per thread as can be guessed from the following comment in the
+    /// [`_tlv_atexit`
     /// implementation](https://github.com/opensource-apple/dyld/blob/195030646877261f0c8c7ad8b001f52d6a26f514/src/threadLocalVariables.c#L389):
     ///
     ///     // NOTE: this does not need locks because it only operates on current thread data
-    pub fn set_thread_global_dtor(
+    pub fn set_thread_dtor(
         &mut self,
         thread: ThreadId,
         dtor: ty::Instance<'tcx>,
@@ -134,10 +135,10 @@ impl<'tcx> TlsData<'tcx> {
     ) -> InterpResult<'tcx> {
         if self.dtors_running.contains(&thread) {
             // UB, according to libstd docs.
-            throw_ub_format!("setting global destructor while destructors are already running");
+            throw_ub_format!("setting thread's local storage destructor while destructors are already running");
         }
-        if self.global_dtors.insert(thread, (dtor, data)).is_some() {
-            throw_unsup_format!("setting more than one global destructor for the same thread is not supported");
+        if self.thread_dtors.insert(thread, (dtor, data)).is_some() {
+            throw_unsup_format!("setting more than one thread local storage destructor for the same thread is not supported");
         }
         Ok(())
     }
@@ -223,15 +224,15 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    /// Schedule the MacOS global dtor to be executed.
+    /// Schedule the MacOS thread destructor of the thread local storage to be
+    /// executed.
     ///
     /// Note: It is safe to call this function also on other Unixes.
-    fn schedule_macos_global_tls_dtors(&mut self) -> InterpResult<'tcx> {
+    fn schedule_macos_tls_dtor(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let thread_id = this.get_active_thread()?;
-        // The macOS global dtor runs "before any TLS slots get freed", so do that first.
-        if let Some((instance, data)) = this.machine.tls.global_dtors.remove(&thread_id) {
-            trace!("Running global dtor {:?} on {:?} at {:?}", instance, data, thread_id);
+        if let Some((instance, data)) = this.machine.tls.thread_dtors.remove(&thread_id) {
+            trace!("Running macos dtor {:?} on {:?} at {:?}", instance, data, thread_id);
 
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
             this.call_function(
@@ -306,7 +307,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         } else {
             this.machine.tls.dtors_running.insert(active_thread);
-            this.schedule_macos_global_tls_dtors()?;
+            // The macOS thread wide destructor runs "before any TLS slots get
+            // freed", so do that first.
+            this.schedule_macos_tls_dtor()?;
             this.schedule_pthread_tls_dtors()?;
         }
 
