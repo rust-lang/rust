@@ -119,15 +119,31 @@ pub struct Pointer<Tag = (), Id = AllocId> {
 
 static_assert_size!(Pointer, 16);
 
-impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Pointer<Tag, Id> {
+impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Display for Pointer<Tag, Id> {
     default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}+0x{:x}[{:?}]", self.alloc_id, self.offset.bytes(), self.tag)
+        if f.alternate() {
+            write!(f, "{:#?}+0x{:x}[{:?}]", self.alloc_id, self.offset.bytes(), self.tag)
+        } else {
+            write!(f, "{:?}+0x{:x}[{:?}]", self.alloc_id, self.offset.bytes(), self.tag)
+        }
     }
 }
 // Specialization for no tag
-impl<Id: fmt::Debug> fmt::Debug for Pointer<(), Id> {
+impl<Id: fmt::Debug> fmt::Display for Pointer<(), Id> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}+0x{:x}", self.alloc_id, self.offset.bytes())
+        if f.alternate() {
+            write!(f, "{:#?}+0x{:x}", self.alloc_id, self.offset.bytes())
+        } else {
+            write!(f, "{:?}+0x{:x}", self.alloc_id, self.offset.bytes())
+        }
+    }
+}
+
+// We also want the `Debug` output to be readable as it is used by `derive(Debug)` for
+// all the Miri types.
+impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Pointer<Tag, Id> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, fmt)
     }
 }
 

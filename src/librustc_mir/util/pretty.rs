@@ -726,6 +726,10 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
             let relocation_width = |bytes| bytes * 3;
             let ptr = Pointer::new_with_tag(target_id, offset, tag);
             let mut target = format!("{:?}", ptr);
+            if target.len() > relocation_width(ptr_size.bytes_usize() - 1) {
+                // This is too long, try to save some space.
+                target = format!("{:#?}", ptr);
+            }
             if ((i - line_start) + ptr_size).bytes_usize() > BYTES_PER_LINE {
                 // This branch handles the situation where a relocation starts in the current line
                 // but ends in the next one.
