@@ -2,10 +2,10 @@
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
-use std::collections::HashSet;
 
 use log::trace;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty;
 use rustc_target::abi::{Size, HasDataLayout};
 
@@ -24,6 +24,12 @@ pub struct TlsEntry<'tcx> {
     dtor: Option<ty::Instance<'tcx>>,
 }
 
+#[derive(Clone, Debug)]
+struct RunningDtorsState {
+    /// The last TlsKey used to retrieve a TLS destructor.
+    last_dtor_key: Option<TlsKey>,
+}
+
 #[derive(Debug)]
 pub struct TlsData<'tcx> {
     /// The Key to use for the next thread-local allocation.
@@ -36,11 +42,10 @@ pub struct TlsData<'tcx> {
     /// things work on macOS) with a data argument.
     thread_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar<Tag>)>,
 
-    /// Whether we are in the "destruct" phase, during which some operations are UB.
-    dtors_running: HashSet<ThreadId>,
-
-    /// The last TlsKey used to retrieve a TLS destructor.
-    last_dtor_key: BTreeMap<ThreadId, TlsKey>,
+    /// State for currently running TLS dtors. If this map contains a key for a
+    /// specific thread, it means that we are in the "destruct" phase, during
+    /// which some operations are UB.
+    dtors_running: FxHashMap<ThreadId, RunningDtorsState>,
 }
 
 impl<'tcx> Default for TlsData<'tcx> {
@@ -50,7 +55,6 @@ impl<'tcx> Default for TlsData<'tcx> {
             keys: Default::default(),
             thread_dtors: Default::default(),
             dtors_running: Default::default(),
-            last_dtor_key: Default::default(),
         }
     }
 }
@@ -135,7 +139,7 @@ impl<'tcx> TlsData<'tcx> {
         dtor: ty::Instance<'tcx>,
         data: Scalar<Tag>
     ) -> InterpResult<'tcx> {
-        if self.dtors_running.contains(&thread) {
+        if self.dtors_running.contains_key(&thread) {
             // UB, according to libstd docs.
             throw_ub_format!("setting thread's local storage destructor while destructors are already running");
         }
@@ -192,6 +196,21 @@ impl<'tcx> TlsData<'tcx> {
         }
         None
     }
+
+    /// Set that dtors are running for `thread`. It is guaranteed not to change
+    /// the existing values stored in `dtors_running` for this thread. Returns
+    /// `true` if dtors for `thread` are already running.
+    fn set_dtors_running_for_thread(&mut self, thread: ThreadId) -> bool {
+        if self.dtors_running.contains_key(&thread) {
+            true
+        } else {
+            self.dtors_running.insert(
+                thread,
+                RunningDtorsState { last_dtor_key: None }
+            );
+            false
+        }
+    }
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -203,7 +222,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread()?;
         assert_eq!(this.get_total_thread_count()?, 1, "concurrency on Windows not supported");
-        this.machine.tls.dtors_running.insert(active_thread);
         // Windows has a special magic linker section that is run on certain events.
         // Instead of searching for that section and supporting arbitrary hooks in there
         // (that would be basically https://github.com/rust-lang/miri/issues/450),
@@ -260,7 +278,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         assert!(this.has_terminated(active_thread)?, "running TLS dtors for non-terminated thread");
         // Fetch next dtor after `key`.
-        let last_key = this.machine.tls.last_dtor_key.get(&active_thread).cloned();
+        let last_key = this.machine.tls.dtors_running[&active_thread].last_dtor_key.clone();
         let dtor = match this.machine.tls.fetch_tls_dtor(last_key, active_thread) {
             dtor @ Some(_) => dtor,
             // We ran each dtor once, start over from the beginning.
@@ -269,7 +287,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         };
         if let Some((instance, ptr, key)) = dtor {
-            this.machine.tls.last_dtor_key.insert(active_thread, key);
+            this.machine.tls.dtors_running.get_mut(&active_thread).unwrap().last_dtor_key = Some(key);
             trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
             assert!(!this.is_null(ptr).unwrap(), "data can't be NULL when dtor is called!");
 
@@ -284,7 +302,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.enable_thread(active_thread)?;
             return Ok(());
         }
-        this.machine.tls.last_dtor_key.remove(&active_thread);
+        this.machine.tls.dtors_running.get_mut(&active_thread).unwrap().last_dtor_key = None;
 
         Ok(())
     }
@@ -305,12 +323,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let active_thread = this.get_active_thread()?;
 
         if this.tcx.sess.target.target.target_os == "windows" {
-            if !this.machine.tls.dtors_running.contains(&active_thread) {
-                this.machine.tls.dtors_running.insert(active_thread);
+            if !this.machine.tls.set_dtors_running_for_thread(active_thread) {
                 this.schedule_windows_tls_dtors()?;
             }
         } else {
-            this.machine.tls.dtors_running.insert(active_thread);
+            this.machine.tls.set_dtors_running_for_thread(active_thread);
             // The macOS thread wide destructor runs "before any TLS slots get
             // freed", so do that first.
             this.schedule_macos_tls_dtor()?;
