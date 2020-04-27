@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::convert::TryFrom;
 use std::convert::TryInto;
-use std::num::NonZeroU32;
+use std::num::{NonZeroU32, TryFromIntError};
 
 use log::trace;
 
@@ -45,20 +45,22 @@ impl Idx for ThreadId {
     fn new(idx: usize) -> Self {
         ThreadId(u32::try_from(idx).unwrap())
     }
+
     fn index(self) -> usize {
         usize::try_from(self.0).unwrap()
     }
 }
 
-impl From<u64> for ThreadId {
-    fn from(id: u64) -> Self {
-        Self(u32::try_from(id).unwrap())
+impl TryFrom<u64> for ThreadId {
+    type Error = TryFromIntError;
+    fn try_from(id: u64) -> Result<Self, Self::Error> {
+        u32::try_from(id).map(|id_u32| Self(id_u32))
     }
 }
 
 impl From<u32> for ThreadId {
     fn from(id: u32) -> Self {
-        Self(u32::try_from(id).unwrap())
+        Self(id)
     }
 }
 

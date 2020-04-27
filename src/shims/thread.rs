@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use crate::*;
 use rustc_target::abi::LayoutOf;
 
@@ -63,7 +65,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         let thread_id = this.read_scalar(thread)?.to_machine_usize(this)?;
-        this.join_thread(thread_id.into())?;
+        this.join_thread(thread_id.try_into().expect("thread ID should fit in u32"))?;
 
         Ok(0)
     }
@@ -72,7 +74,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let thread_id = this.read_scalar(thread)?.to_machine_usize(this)?;
-        this.detach_thread(thread_id.into())?;
+        this.detach_thread(thread_id.try_into().expect("thread ID should fit in u32"))?;
 
         Ok(0)
     }
