@@ -92,14 +92,14 @@ pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers { mir_borrowck, ..*providers };
 }
 
-fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> &BorrowCheckResult<'_> {
+fn mir_borrowck(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &BorrowCheckResult<'_> {
     let (input_body, promoted) = tcx.mir_validated(def_id);
-    debug!("run query mir_borrowck: {}", tcx.def_path_str(def_id));
+    debug!("run query mir_borrowck: {}", tcx.def_path_str(def_id.to_def_id()));
 
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
         let input_body: &Body<'_> = &input_body.borrow();
         let promoted: &IndexVec<_, _> = &promoted.borrow();
-        do_mir_borrowck(&infcx, input_body, promoted, def_id.expect_local())
+        do_mir_borrowck(&infcx, input_body, promoted, def_id)
     });
     debug!("mir_borrowck done");
 
@@ -1268,7 +1268,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 match **aggregate_kind {
                     AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) => {
                         let BorrowCheckResult { used_mut_upvars, .. } =
-                            self.infcx.tcx.mir_borrowck(def_id);
+                            self.infcx.tcx.mir_borrowck(def_id.expect_local());
                         debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
                         for field in used_mut_upvars {
                             self.propagate_closure_used_mut_upvar(&operands[field.index()]);

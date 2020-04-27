@@ -156,7 +156,7 @@ rustc_queries! {
         /// Set of all the `DefId`s in this crate that have MIR associated with
         /// them. This includes all the body owners, but also things like struct
         /// constructors.
-        query mir_keys(_: CrateNum) -> &'tcx DefIdSet {
+        query mir_keys(_: CrateNum) -> &'tcx FxHashSet<LocalDefId> {
             desc { "getting a list of all mir_keys" }
         }
 
@@ -170,7 +170,7 @@ rustc_queries! {
 
         /// Fetch the MIR for a given `DefId` right after it's built - this includes
         /// unreachable code.
-        query mir_built(_: DefId) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_built(_: LocalDefId) -> &'tcx Steal<mir::Body<'tcx>> {
             desc { "building MIR for" }
         }
 
@@ -182,12 +182,13 @@ rustc_queries! {
             no_hash
         }
 
-        query mir_validated(_: DefId) ->
+        query mir_validated(key: LocalDefId) ->
             (
                 &'tcx Steal<mir::Body<'tcx>>,
                 &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
             ) {
             no_hash
+            desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
         }
 
         /// MIR after our optimization passes have run. This is MIR that is ready
@@ -275,9 +276,9 @@ rustc_queries! {
 
         /// To avoid cycles within the predicates of a single item we compute
         /// per-type-parameter predicates for resolving `T::AssocTy`.
-        query type_param_predicates(key: (DefId, DefId)) -> ty::GenericPredicates<'tcx> {
+        query type_param_predicates(key: (DefId, LocalDefId)) -> ty::GenericPredicates<'tcx> {
             desc { |tcx| "computing the bounds for type parameter `{}`", {
-                let id = tcx.hir().as_local_hir_id(key.1.expect_local());
+                let id = tcx.hir().as_local_hir_id(key.1);
                 tcx.hir().ty_param_name(id)
             }}
         }
@@ -389,9 +390,9 @@ rustc_queries! {
 
     TypeChecking {
         /// The result of unsafety-checking this `DefId`.
-        query unsafety_check_result(key: DefId) -> mir::UnsafetyCheckResult {
-            desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }
-            cache_on_disk_if { key.is_local() }
+        query unsafety_check_result(key: LocalDefId) -> mir::UnsafetyCheckResult {
+            desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
         }
 
         /// HACK: when evaluated, this reports a "unsafe derive on repr(packed)" error
@@ -402,8 +403,8 @@ rustc_queries! {
     }
 
     Other {
-        query lint_mod(key: DefId) -> () {
-            desc { |tcx| "linting {}", describe_as_module(key, tcx) }
+        query lint_mod(key: LocalDefId) -> () {
+            desc { |tcx| "linting {}", describe_as_module(key.to_def_id(), tcx) }
         }
 
         /// Checks the attributes in the module.
@@ -429,8 +430,8 @@ rustc_queries! {
             desc { |tcx| "checking item types in {}", describe_as_module(key, tcx) }
         }
 
-        query check_mod_privacy(key: DefId) -> () {
-            desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
+        query check_mod_privacy(key: LocalDefId) -> () {
+            desc { |tcx| "checking privacy in {}", describe_as_module(key.to_def_id(), tcx) }
         }
 
         query check_mod_intrinsics(key: DefId) -> () {
@@ -459,12 +460,13 @@ rustc_queries! {
             desc { "type-checking all item bodies" }
         }
 
-        query typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
-            desc { |tcx| "type-checking `{}`", tcx.def_path_str(key) }
-            cache_on_disk_if { key.is_local() }
+        query typeck_tables_of(key: LocalDefId) -> &'tcx ty::TypeckTables<'tcx> {
+            desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
         }
-        query diagnostic_only_typeck_tables_of(key: DefId) -> &'tcx ty::TypeckTables<'tcx> {
-            cache_on_disk_if { key.is_local() }
+        query diagnostic_only_typeck_tables_of(key: LocalDefId) -> &'tcx ty::TypeckTables<'tcx> {
+            desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
             load_cached(tcx, id) {
                 let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
                     .queries.on_disk_cache
@@ -476,8 +478,9 @@ rustc_queries! {
     }
 
     Other {
-        query used_trait_imports(key: DefId) -> &'tcx DefIdSet {
-            cache_on_disk_if { key.is_local() }
+        query used_trait_imports(key: LocalDefId) -> &'tcx DefIdSet {
+            desc { |tcx| "used_trait_imports `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
         }
     }
 
@@ -492,12 +495,11 @@ rustc_queries! {
     BorrowChecking {
         /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
-        query mir_borrowck(key: DefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
-            desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
+        query mir_borrowck(key: LocalDefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
+            desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if(tcx, opt_result) {
-                key.is_local()
-                    && (tcx.is_closure(key)
-                        || opt_result.map_or(false, |r| !r.concrete_opaque_types.is_empty()))
+                tcx.is_closure(key.to_def_id())
+                    || opt_result.map_or(false, |r| !r.concrete_opaque_types.is_empty())
             }
         }
     }
@@ -802,9 +804,15 @@ rustc_queries! {
     TypeChecking {
         query impl_defaultness(_: DefId) -> hir::Defaultness {}
 
-        query check_item_well_formed(_: DefId) -> () {}
-        query check_trait_item_well_formed(_: DefId) -> () {}
-        query check_impl_item_well_formed(_: DefId) -> () {}
+        query check_item_well_formed(key: LocalDefId) -> () {
+            desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
+        query check_trait_item_well_formed(key: LocalDefId) -> () {
+            desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
+        query check_impl_item_well_formed(key: LocalDefId) -> () {
+            desc { |tcx| "processing `{}`", tcx.def_path_str(key.to_def_id()) }
+        }
     }
 
     Linking {
@@ -878,7 +886,7 @@ rustc_queries! {
 
         /// Identifies the entry-point (e.g., the `main` function) for a given
         /// crate, returning `None` if there is no entry point (such as for library crates).
-        query entry_fn(_: CrateNum) -> Option<(DefId, EntryFnType)> {
+        query entry_fn(_: CrateNum) -> Option<(LocalDefId, EntryFnType)> {
             desc { "looking up the entry function of a crate" }
         }
         query plugin_registrar_fn(_: CrateNum) -> Option<DefId> {
@@ -1028,17 +1036,19 @@ rustc_queries! {
         query upvars(_: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
             eval_always
         }
-        query maybe_unused_trait_import(_: DefId) -> bool {
+        query maybe_unused_trait_import(def_id: LocalDefId) -> bool {
             eval_always
+            desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
         }
         query maybe_unused_extern_crates(_: CrateNum)
             -> &'tcx [(DefId, Span)] {
             eval_always
             desc { "looking up all possibly unused extern crates" }
         }
-        query names_imported_by_glob_use(_: DefId)
+        query names_imported_by_glob_use(def_id: LocalDefId)
             -> &'tcx FxHashSet<ast::Name> {
             eval_always
+            desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
         }
 
         query stability_index(_: CrateNum) -> &'tcx stability::Index<'tcx> {

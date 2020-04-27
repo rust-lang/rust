@@ -107,7 +107,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     where
         F: FnOnce(&mut Self),
     {
-        let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id).to_def_id();
+        let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id);
 
         let tables = if self.tcx.has_typeck_tables(item_def_id) {
             self.tcx.typeck_tables_of(item_def_id)
@@ -1183,7 +1183,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
                 // Make a comma-separated list of names of imported modules.
                 let def_id = self.tcx.hir().local_def_id_from_node_id(id);
-                let names = self.tcx.names_imported_by_glob_use(def_id.to_def_id());
+                let names = self.tcx.names_imported_by_glob_use(def_id);
                 let names: Vec<_> = names.iter().map(|n| n.to_string()).collect();
 
                 // Otherwise it's a span with wrong macro expansion info, which

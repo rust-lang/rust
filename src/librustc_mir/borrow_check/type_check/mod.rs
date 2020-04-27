@@ -9,7 +9,7 @@ use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
@@ -1232,7 +1232,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = infcx.tcx;
         let param_env = self.param_env;
         let body = self.body;
-        let concrete_opaque_types = &tcx.typeck_tables_of(anon_owner_def_id).concrete_opaque_types;
+        let concrete_opaque_types =
+            &tcx.typeck_tables_of(anon_owner_def_id.expect_local()).concrete_opaque_types;
         let mut opaque_type_values = Vec::new();
 
         debug!("eq_opaque_type_and_type: mir_def_id={:?}", self.mir_def_id);
@@ -2568,7 +2569,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // clauses on the struct.
             AggregateKind::Closure(def_id, substs)
             | AggregateKind::Generator(def_id, substs, _) => {
-                self.prove_closure_bounds(tcx, *def_id, substs, location)
+                self.prove_closure_bounds(tcx, def_id.expect_local(), substs, location)
             }
 
             AggregateKind::Array(_) | AggregateKind::Tuple => ty::InstantiatedPredicates::empty(),
@@ -2583,14 +2584,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn prove_closure_bounds(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        def_id: DefId,
+        def_id: LocalDefId,
         substs: SubstsRef<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(ref closure_region_requirements) = tcx.mir_borrowck(def_id).closure_requirements
         {
             let closure_constraints = QueryRegionConstraints {
-                outlives: closure_region_requirements.apply_requirements(tcx, def_id, substs),
+                outlives: closure_region_requirements.apply_requirements(
+                    tcx,
+                    def_id.to_def_id(),
+                    substs,
+                ),
 
                 // Presently, closures never propagate member
                 // constraints to their parents -- they are enforced

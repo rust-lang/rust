@@ -1,8 +1,9 @@
 use crate::{shim, util};
 use required_consts::RequiredConstsVisitor;
 use rustc_ast::ast;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
@@ -54,24 +55,24 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    tcx.mir_keys(def_id.krate).contains(&def_id)
+    tcx.mir_keys(def_id.krate).contains(&def_id.expect_local())
 }
 
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
-fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
+fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &FxHashSet<LocalDefId> {
     assert_eq!(krate, LOCAL_CRATE);
 
-    let mut set = DefIdSet::default();
+    let mut set = FxHashSet::default();
 
     // All body-owners have MIR associated with them.
-    set.extend(tcx.body_owners().map(LocalDefId::to_def_id));
+    set.extend(tcx.body_owners());
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
     struct GatherCtors<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
-        set: &'a mut DefIdSet,
+        set: &'a mut FxHashSet<LocalDefId>,
     }
     impl<'a, 'tcx> Visitor<'tcx> for GatherCtors<'a, 'tcx> {
         fn visit_variant_data(
@@ -83,7 +84,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
             _: Span,
         ) {
             if let hir::VariantData::Tuple(_, hir_id) = *v {
-                self.set.insert(self.tcx.hir().local_def_id(hir_id).to_def_id());
+                self.set.insert(self.tcx.hir().local_def_id(hir_id));
             }
             intravisit::walk_struct_def(self, v)
         }
@@ -211,17 +212,21 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
 }
 
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
+    let def_id = def_id.expect_local();
+
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut body = tcx.mir_built(def_id).steal();
 
-    util::dump_mir(tcx, None, "mir_map", &0, MirSource::item(def_id), &body, |_, _| Ok(()));
+    util::dump_mir(tcx, None, "mir_map", &0, MirSource::item(def_id.to_def_id()), &body, |_, _| {
+        Ok(())
+    });
 
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(def_id),
+        InstanceDef::Item(def_id.to_def_id()),
         None,
         MirPhase::Const,
         &[&[
@@ -235,13 +240,13 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
 
 fn mir_validated(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
 ) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
-    let _ = tcx.mir_const_qualif(def_id);
+    let _ = tcx.mir_const_qualif(def_id.to_def_id());
 
-    let mut body = tcx.mir_const(def_id).steal();
+    let mut body = tcx.mir_const(def_id.to_def_id()).steal();
 
     let mut required_consts = Vec::new();
     let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
@@ -254,7 +259,7 @@ fn mir_validated(
     run_passes(
         tcx,
         &mut body,
-        InstanceDef::Item(def_id),
+        InstanceDef::Item(def_id.to_def_id()),
         None,
         MirPhase::Validated,
         &[&[
@@ -271,7 +276,7 @@ fn mir_validated(
 fn run_optimization_passes<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
     promoted: Option<Promoted>,
 ) {
     let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
@@ -344,7 +349,7 @@ fn run_optimization_passes<'tcx>(
     run_passes(
         tcx,
         body,
-        InstanceDef::Item(def_id),
+        InstanceDef::Item(def_id.to_def_id()),
         promoted,
         MirPhase::Optimized,
         &[
@@ -364,6 +369,8 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
         return shim::build_adt_ctor(tcx, def_id);
     }
 
+    let def_id = def_id.expect_local();
+
     // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
     tcx.ensure().mir_borrowck(def_id);
@@ -381,6 +388,8 @@ fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, Body<'_>>
     if tcx.is_constructor(def_id) {
         return tcx.intern_promoted(IndexVec::new());
     }
+
+    let def_id = def_id.expect_local();
 
     tcx.ensure().mir_borrowck(def_id);
     let (_, promoted) = tcx.mir_validated(def_id);

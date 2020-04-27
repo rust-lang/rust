@@ -56,7 +56,7 @@ mod unused;
 
 use rustc_ast::ast;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
@@ -90,12 +90,8 @@ pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers { lint_mod, ..*providers };
 }
 
-fn lint_mod(tcx: TyCtxt<'_>, module_def_id: DefId) {
-    late::late_lint_mod(
-        tcx,
-        module_def_id.expect_local(),
-        BuiltinCombinedModuleLateLintPass::new(),
-    );
+fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+    late::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
 macro_rules! pre_expansion_lint_passes {
