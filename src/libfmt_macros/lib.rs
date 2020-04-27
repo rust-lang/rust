@@ -357,17 +357,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Consumes all whitespace characters until the first non-whitespace character
-    fn ws(&mut self) {
-        while let Some(&(_, c)) = self.cur.peek() {
-            if c.is_whitespace() {
-                self.cur.next();
-            } else {
-                break;
-            }
-        }
-    }
-
     /// Parses all of a string which is to be considered a "raw literal" in a
     /// format string. This is everything outside of the braces.
     fn string(&mut self, start: usize) -> &'a str {
