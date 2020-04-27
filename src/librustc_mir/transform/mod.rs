@@ -143,7 +143,7 @@ pub fn run_passes(
     instance: InstanceDef<'tcx>,
     promoted: Option<Promoted>,
     mir_phase: MirPhase,
-    passes: &[&dyn MirPass<'tcx>],
+    passes: &[&[&dyn MirPass<'tcx>]],
 ) {
     let phase_index = mir_phase.phase_index();
 
@@ -171,8 +171,10 @@ pub fn run_passes(
         index += 1;
     };
 
-    for pass in passes {
-        run_pass(*pass);
+    for pass_group in passes {
+        for pass in *pass_group {
+            run_pass(*pass);
+        }
     }
 
     body.phase = mir_phase;
@@ -222,11 +224,11 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
         InstanceDef::Item(def_id),
         None,
         MirPhase::Const,
-        &[
+        &[&[
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck,
-        ],
+        ]],
     );
     tcx.alloc_steal_mir(body)
 }
@@ -255,11 +257,11 @@ fn mir_validated(
         InstanceDef::Item(def_id),
         None,
         MirPhase::Validated,
-        &[
+        &[&[
             // What we need to run borrowck etc.
             &promote_pass,
             &simplify::SimplifyCfg::new("qualify-consts"),
-        ],
+        ]],
     );
 
     let promoted = promote_pass.promoted_fragments.into_inner();
@@ -272,6 +274,73 @@ fn run_optimization_passes<'tcx>(
     def_id: DefId,
     promoted: Option<Promoted>,
 ) {
+    let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
+        // Remove all things only needed by analysis
+        &no_landing_pads::NoLandingPads::new(tcx),
+        &simplify_branches::SimplifyBranches::new("initial"),
+        &remove_noop_landing_pads::RemoveNoopLandingPads,
+        &cleanup_post_borrowck::CleanupNonCodegenStatements,
+        &simplify::SimplifyCfg::new("early-opt"),
+        // These next passes must be executed together
+        &add_call_guards::CriticalCallEdges,
+        &elaborate_drops::ElaborateDrops,
+        &no_landing_pads::NoLandingPads::new(tcx),
+        // AddMovesForPackedDrops needs to run after drop
+        // elaboration.
+        &add_moves_for_packed_drops::AddMovesForPackedDrops,
+        // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
+        // but before optimizations begin.
+        &add_retag::AddRetag,
+        &simplify::SimplifyCfg::new("elaborate-drops"),
+        // No lifetime analysis based on borrowing can be done from here on out.
+    ];
+
+    let optimizations: &[&dyn MirPass<'tcx>] = &[
+        &unreachable_prop::UnreachablePropagation,
+        &uninhabited_enum_branching::UninhabitedEnumBranching,
+        &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
+        &inline::Inline,
+        // Lowering generator control-flow and variables has to happen before we do anything else
+        // to them. We do this inside the "optimizations" block so that it can benefit from
+        // optimizations that run before, that might be harder to do on the state machine than MIR
+        // with async primitives.
+        &generator::StateTransform,
+        &instcombine::InstCombine,
+        &const_prop::ConstProp,
+        &simplify_branches::SimplifyBranches::new("after-const-prop"),
+        // Run deaggregation here because:
+        //   1. Some codegen backends require it
+        //   2. It creates additional possibilities for some MIR optimizations to trigger
+        // FIXME(#70073): Why is this done here and not in `post_borrowck_cleanup`?
+        &deaggregator::Deaggregator,
+        &copy_prop::CopyPropagation,
+        &simplify_branches::SimplifyBranches::new("after-copy-prop"),
+        &remove_noop_landing_pads::RemoveNoopLandingPads,
+        &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),
+        &simplify_try::SimplifyArmIdentity,
+        &simplify_try::SimplifyBranchSame,
+        &simplify::SimplifyCfg::new("final"),
+        &simplify::SimplifyLocals,
+    ];
+
+    let no_optimizations: &[&dyn MirPass<'tcx>] = &[
+        // Even if we don't do optimizations, we still have to lower generators for codegen.
+        &generator::StateTransform,
+        // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
+        &const_prop::ConstProp,
+        // Even if we don't do optimizations, still run deaggregation because some backends assume
+        // that deaggregation always occurs.
+        &deaggregator::Deaggregator,
+    ];
+
+    let pre_codegen_cleanup: &[&dyn MirPass<'tcx>] = &[
+        &add_call_guards::CriticalCallEdges,
+        // Dump the end result for testing and debugging purposes.
+        &dump_mir::Marker("PreCodegen"),
+    ];
+
+    let mir_opt_level = tcx.sess.opts.debugging_opts.mir_opt_level;
+
     run_passes(
         tcx,
         body,
@@ -279,47 +348,9 @@ fn run_optimization_passes<'tcx>(
         promoted,
         MirPhase::Optimized,
         &[
-            // Remove all things only needed by analysis
-            &no_landing_pads::NoLandingPads::new(tcx),
-            &simplify_branches::SimplifyBranches::new("initial"),
-            &remove_noop_landing_pads::RemoveNoopLandingPads,
-            &cleanup_post_borrowck::CleanupNonCodegenStatements,
-            &simplify::SimplifyCfg::new("early-opt"),
-            // These next passes must be executed together
-            &add_call_guards::CriticalCallEdges,
-            &elaborate_drops::ElaborateDrops,
-            &no_landing_pads::NoLandingPads::new(tcx),
-            // AddMovesForPackedDrops needs to run after drop
-            // elaboration.
-            &add_moves_for_packed_drops::AddMovesForPackedDrops,
-            // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
-            // but before optimizations begin.
-            &add_retag::AddRetag,
-            &simplify::SimplifyCfg::new("elaborate-drops"),
-            // No lifetime analysis based on borrowing can be done from here on out.
-
-            // Optimizations begin.
-            &unreachable_prop::UnreachablePropagation,
-            &uninhabited_enum_branching::UninhabitedEnumBranching,
-            &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
-            &inline::Inline,
-            // Lowering generator control-flow and variables
-            // has to happen before we do anything else to them.
-            &generator::StateTransform,
-            &instcombine::InstCombine,
-            &const_prop::ConstProp,
-            &simplify_branches::SimplifyBranches::new("after-const-prop"),
-            &deaggregator::Deaggregator,
-            &copy_prop::CopyPropagation,
-            &simplify_branches::SimplifyBranches::new("after-copy-prop"),
-            &remove_noop_landing_pads::RemoveNoopLandingPads,
-            &simplify::SimplifyCfg::new("after-remove-noop-landing-pads"),
-            &simplify_try::SimplifyArmIdentity,
-            &simplify_try::SimplifyBranchSame,
-            &simplify::SimplifyCfg::new("final"),
-            &simplify::SimplifyLocals,
-            &add_call_guards::CriticalCallEdges,
-            &dump_mir::Marker("PreCodegen"),
+            post_borrowck_cleanup,
+            if mir_opt_level > 0 { optimizations } else { no_optimizations },
+            pre_codegen_cleanup,
         ],
     );
 }
