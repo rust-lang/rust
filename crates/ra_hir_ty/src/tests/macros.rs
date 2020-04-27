@@ -622,14 +622,14 @@ fn main() {
 fn infer_derive_clone_simple() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 #[derive(Clone)]
 struct S;
 fn test() {
     S.clone()<|>;
 }
 
-//- /lib.rs crate:std
+//- /lib.rs crate:core
 #[prelude_import]
 use clone::*;
 mod clone {
@@ -643,10 +643,35 @@ mod clone {
 }
 
 #[test]
+fn infer_derive_clone_in_core() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /lib.rs crate:core
+#[prelude_import]
+use clone::*;
+mod clone {
+    trait Clone {
+        fn clone(&self) -> Self;
+    }
+}
+#[derive(Clone)]
+pub struct S;
+
+//- /main.rs crate:main deps:core
+use core::S;
+fn test() {
+    S.clone()<|>;
+}
+"#,
+    );
+    assert_eq!("S", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_derive_clone_with_params() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 #[derive(Clone)]
 struct S;
 #[derive(Clone)]
@@ -656,7 +681,7 @@ fn test() {
     (Wrapper(S).clone(), Wrapper(NonClone).clone())<|>;
 }
 
-//- /lib.rs crate:std
+//- /lib.rs crate:core
 #[prelude_import]
 use clone::*;
 mod clone {

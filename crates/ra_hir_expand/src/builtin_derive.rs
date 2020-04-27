@@ -9,7 +9,7 @@ use ra_syntax::{
 };
 
 use crate::db::AstDatabase;
-use crate::{name, quote, LazyMacroId, MacroDefId, MacroDefKind};
+use crate::{name, quote, LazyMacroId, MacroCallId, MacroDefId, MacroDefKind};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {
@@ -153,76 +153,113 @@ fn expand_simple_derive(
     Ok(expanded)
 }
 
+fn find_builtin_crate(db: &dyn AstDatabase, id: LazyMacroId) -> tt::TokenTree {
+    // FIXME: make hygiene works for builtin derive macro
+    // such that $crate can be used here.
+
+    let m: MacroCallId = id.into();
+    let file_id = m.as_file().original_file(db);
+    let cg = db.crate_graph();
+    let krates = db.relevant_crates(file_id);
+    let krate = match krates.get(0) {
+        Some(krate) => krate,
+        None => {
+            let tt = quote! { core };
+            return tt.token_trees[0].clone();
+        }
+    };
+
+    // XXX
+    //  All crates except core itself should have a dependency on core,
+    //  We detect `core` by seeing whether it doesn't have such a dependency.
+    let tt = if cg[*krate].dependencies.iter().any(|dep| dep.name == "core") {
+        quote! { core }
+    } else {
+        quote! { crate }
+    };
+
+    tt.token_trees[0].clone()
+}
+
 fn copy_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    expand_simple_derive(tt, quote! { std::marker::Copy })
+    let krate = find_builtin_crate(db, id);
+    expand_simple_derive(tt, quote! { #krate::marker::Copy })
 }
 
 fn clone_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    expand_simple_derive(tt, quote! { std::clone::Clone })
+    let krate = find_builtin_crate(db, id);
+    expand_simple_derive(tt, quote! { #krate::clone::Clone })
 }
 
 fn default_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    expand_simple_derive(tt, quote! { std::default::Default })
+    let krate = find_builtin_crate(db, id);
+    expand_simple_derive(tt, quote! { #krate::default::Default })
 }
 
 fn debug_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    expand_simple_derive(tt, quote! { std::fmt::Debug })
+    let krate = find_builtin_crate(db, id);
+    expand_simple_derive(tt, quote! { #krate::fmt::Debug })
 }
 
 fn hash_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    expand_simple_derive(tt, quote! { std::hash::Hash })
+    let krate = find_builtin_crate(db, id);
+    expand_simple_derive(tt, quote! { #krate::hash::Hash })
 }
 
 fn eq_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    expand_simple_derive(tt, quote! { std::cmp::Eq })
+    let krate = find_builtin_crate(db, id);
+    expand_simple_derive(tt, quote! { #krate::cmp::Eq })
 }
 
 fn partial_eq_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    expand_simple_derive(tt, quote! { std::cmp::PartialEq })
+    let krate = find_builtin_crate(db, id);
+    expand_simple_derive(tt, quote! { #krate::cmp::PartialEq })
 }
 
 fn ord_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    expand_simple_derive(tt, quote! { std::cmp::Ord })
+    let krate = find_builtin_crate(db, id);
+    expand_simple_derive(tt, quote! { #krate::cmp::Ord })
 }
 
 fn partial_ord_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    expand_simple_derive(tt, quote! { std::cmp::PartialOrd })
+    let krate = find_builtin_crate(db, id);
+    expand_simple_derive(tt, quote! { #krate::cmp::PartialOrd })
 }
 
 #[cfg(test)]
@@ -234,8 +271,18 @@ mod tests {
 
     fn expand_builtin_derive(s: &str, name: Name) -> String {
         let def = find_builtin_derive(&name).unwrap();
+        let fixture = format!(
+            r#"//- /main.rs crate:main deps:core
+<|>
+{}
+//- /lib.rs crate:core
+// empty
+"#,
+            s
+        );
 
-        let (db, file_id) = TestDB::with_single_file(&s);
+        let (db, file_pos) = TestDB::with_position(&fixture);
+        let file_id = file_pos.file_id;
         let parsed = db.parse(file_id);
         let items: Vec<_> =
             parsed.syntax_node().descendants().filter_map(ast::ModuleItem::cast).collect();
@@ -264,7 +311,7 @@ mod tests {
             known::Copy,
         );
 
-        assert_eq!(expanded, "impl< >std::marker::CopyforFoo< >{}");
+        assert_eq!(expanded, "impl< >core::marker::CopyforFoo< >{}");
     }
 
     #[test]
@@ -279,7 +326,7 @@ mod tests {
 
         assert_eq!(
             expanded,
-            "impl<T0:std::marker::Copy,T1:std::marker::Copy>std::marker::CopyforFoo<T0,T1>{}"
+            "impl<T0:core::marker::Copy,T1:core::marker::Copy>core::marker::CopyforFoo<T0,T1>{}"
         );
     }
 
@@ -297,7 +344,7 @@ mod tests {
 
         assert_eq!(
             expanded,
-            "impl<T0:std::marker::Copy,T1:std::marker::Copy>std::marker::CopyforFoo<T0,T1>{}"
+            "impl<T0:core::marker::Copy,T1:core::marker::Copy>core::marker::CopyforFoo<T0,T1>{}"
         );
     }
 
@@ -313,7 +360,7 @@ mod tests {
 
         assert_eq!(
             expanded,
-            "impl<T0:std::clone::Clone,T1:std::clone::Clone>std::clone::CloneforFoo<T0,T1>{}"
+            "impl<T0:core::clone::Clone,T1:core::clone::Clone>core::clone::CloneforFoo<T0,T1>{}"
         );
     }
 }
