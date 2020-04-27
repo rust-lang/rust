@@ -20,7 +20,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 
 use log::debug;
-use std::env;
 use std::fs;
 use std::io;
 
@@ -64,9 +63,6 @@ pub trait FileLoader {
     /// Query the existence of a file.
     fn file_exists(&self, path: &Path) -> bool;
 
-    /// Returns an absolute path to a file, if possible.
-    fn abs_path(&self, path: &Path) -> Option<PathBuf>;
-
     /// Read the contents of an UTF-8 file into memory.
     fn read_file(&self, path: &Path) -> io::Result<String>;
 }
@@ -77,14 +73,6 @@ pub struct RealFileLoader;
 impl FileLoader for RealFileLoader {
     fn file_exists(&self, path: &Path) -> bool {
         fs::metadata(path).is_ok()
-    }
-
-    fn abs_path(&self, path: &Path) -> Option<PathBuf> {
-        if path.is_absolute() {
-            Some(path.to_path_buf())
-        } else {
-            env::current_dir().ok().map(|cwd| cwd.join(path))
-        }
     }
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
