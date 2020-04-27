@@ -182,7 +182,7 @@ replace their current content.
 The message that accompanies them should be understandable in the following
 contexts:
 
-- shown as an independent sug-diagnostic (this is the default output)
+- shown as an independent sub-diagnostic (this is the default output)
 - shown as a label pointing at the affected span (this is done automatically if
 the some heuristics for verbosity are met)
 - shown as a `help` sub-diagnostic with no content (used for cases where the
