@@ -84,6 +84,8 @@ pub trait InferCtxtExt<'tcx> {
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     );
 
+    fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span>;
+
     fn suggest_impl_trait(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -759,6 +761,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span> {
+        let hir = self.tcx.hir();
+        let parent_node = hir.get_parent_node(obligation.cause.body_id);
+        let sig = match hir.find(parent_node) {
+            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. })) => sig,
+            _ => return None,
+        };
+
+        if let hir::FnRetTy::Return(ret_ty) = sig.decl.output { Some(ret_ty.span) } else { None }
     }
 
     /// If all conditions are met to identify a returned `dyn Trait`, suggest using `impl Trait` if
