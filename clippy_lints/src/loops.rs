@@ -828,6 +828,16 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
     is_slice || is_type_diagnostic_item(cx, ty, sym!(vec_type)) || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
 }
 
+fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
+    if_chain! {
+        if let ExprKind::MethodCall(method, _, args) = expr.kind;
+        if method.ident.name == sym!(clone);
+        if args.len() == 1;
+        if let Some(arg) = args.get(0);
+        then { arg } else { expr }
+    }
+}
+
 fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -> Option<FixedOffsetVar> {
     fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr<'_>, var: HirId) -> Option<String> {
         match &e.kind {
@@ -875,24 +885,6 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, v
     }
 }
 
-fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &Expr<'_>,
-    var: HirId,
-) -> Option<FixedOffsetVar> {
-    if_chain! {
-        if let ExprKind::MethodCall(method, _, args) = expr.kind;
-        if method.ident.name == sym!(clone);
-        if args.len() == 1;
-        if let Some(arg) = args.get(0);
-        then {
-            get_fixed_offset_var(cx, arg, var)
-        } else {
-            get_fixed_offset_var(cx, expr, var)
-        }
-    }
-}
-
 fn get_indexed_assignments<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     body: &Expr<'_>,
@@ -906,7 +898,7 @@ fn get_indexed_assignments<'a, 'tcx>(
         if let ExprKind::Assign(lhs, rhs, _) = e.kind {
             match (
                 get_fixed_offset_var(cx, lhs, var),
-                fetch_cloned_fixed_offset_var(cx, rhs, var),
+                get_fixed_offset_var(cx, fetch_cloned_expr(rhs), var),
             ) {
                 (Some(offset_left), Some(offset_right)) => {
                     // Source and destination must be different
