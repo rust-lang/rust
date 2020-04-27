@@ -960,8 +960,8 @@ fn detect_manual_memcpy<'a, 'tcx>(
             let print_sum = |arg1: &Offset, arg2: &Offset| -> String {
                 match (&arg1.value[..], arg1.negate, &arg2.value[..], arg2.negate) {
                     ("0", _, "0", _) => "".into(),
-                    ("0", _, x, false) | (x, false, "0", false) => x.into(),
-                    ("0", _, x, true) | (x, false, "0", true) => format!("-{}", x),
+                    ("0", _, x, false) | (x, false, "0", _) => x.into(),
+                    ("0", _, x, true) => format!("-{}", x),
                     (x, false, y, false) => format!("({} + {})", x, y),
                     (x, false, y, true) => {
                         if x == y {
