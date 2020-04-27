@@ -10,7 +10,6 @@ use crate::utils::{
 };
 use crate::utils::{is_type_diagnostic_item, qpath_res, same_tys, sext, sugg};
 use if_chain::if_chain;
-use itertools::Itertools;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -885,52 +884,39 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, v
     }
 }
 
-fn get_indexed_assignments<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    body: &Expr<'_>,
-    var: HirId,
-) -> Vec<(FixedOffsetVar, FixedOffsetVar)> {
-    fn get_assignment<'a, 'tcx>(
-        cx: &LateContext<'a, 'tcx>,
-        e: &Expr<'_>,
-        var: HirId,
-    ) -> Option<(FixedOffsetVar, FixedOffsetVar)> {
+fn get_assignments<'a, 'tcx>(
+    body: &'tcx Expr<'tcx>,
+) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> {
+    fn get_assignment<'a, 'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
         if let ExprKind::Assign(lhs, rhs, _) = e.kind {
-            match (
-                get_fixed_offset_var(cx, lhs, var),
-                get_fixed_offset_var(cx, fetch_cloned_expr(rhs), var),
-            ) {
-                (Some(offset_left), Some(offset_right)) => {
-                    // Source and destination must be different
-                    if offset_left.var_name == offset_right.var_name {
-                        None
-                    } else {
-                        Some((offset_left, offset_right))
-                    }
-                },
-                _ => None,
-            }
+            Some((lhs, rhs))
         } else {
             None
         }
     }
 
+    // This is one of few ways to return different iterators
+    // derived from: https://stackoverflow.com/questions/29760668/conditionally-iterate-over-one-of-several-possible-iterators/52064434#52064434
+    let mut iter_a = None;
+    let mut iter_b = None;
+
     if let ExprKind::Block(b, _) = body.kind {
         let Block { stmts, expr, .. } = *b;
 
-        stmts
+        iter_a = stmts
             .iter()
             .filter_map(|stmt| match stmt.kind {
                 StmtKind::Local(..) | StmtKind::Item(..) => None,
                 StmtKind::Expr(e) | StmtKind::Semi(e) => Some(e),
             })
             .chain(expr.into_iter())
-            .map(|op| get_assignment(cx, op, var))
-            .collect::<Option<Vec<_>>>()
-            .unwrap_or_default()
+            .map(get_assignment)
+            .into()
     } else {
-        get_assignment(cx, body, var).into_iter().collect()
+        iter_b = Some(get_assignment(body))
     }
+
+    iter_a.into_iter().flatten().chain(iter_b.into_iter())
 }
 
 /// Checks for for loops that sequentially copy items from one slice-like
@@ -1003,30 +989,48 @@ fn detect_manual_memcpy<'a, 'tcx>(
 
             // The only statements in the for loops can be indexed assignments from
             // indexed retrievals.
-            let manual_copies = get_indexed_assignments(cx, body, canonical_id);
+            let big_sugg = get_assignments(body)
+                .map(|o| {
+                    o.and_then(|(lhs, rhs)| {
+                        let rhs = fetch_cloned_expr(rhs);
+                        if_chain! {
+                            if let Some(offset_left) = get_fixed_offset_var(cx, lhs, canonical_id);
+                            if let Some(offset_right) = get_fixed_offset_var(cx, rhs, canonical_id);
 
-            let big_sugg = manual_copies
-                .into_iter()
-                .map(|(dst_var, src_var)| {
-                    let start_str = snippet(cx, start.span, "").to_string();
-                    let dst_offset = print_offset(&start_str, &dst_var.offset);
-                    let dst_limit = print_limit(end, dst_var.offset, &dst_var.var_name);
-                    let src_offset = print_offset(&start_str, &src_var.offset);
-                    let src_limit = print_limit(end, src_var.offset, &src_var.var_name);
-                    let dst = if dst_offset == "" && dst_limit == "" {
-                        dst_var.var_name
-                    } else {
-                        format!("{}[{}..{}]", dst_var.var_name, dst_offset, dst_limit)
-                    };
-
-                    format!(
-                        "{}.clone_from_slice(&{}[{}..{}])",
-                        dst, src_var.var_name, src_offset, src_limit
-                    )
+                            // Source and destination must be different
+                            if offset_left.var_name != offset_right.var_name;
+                            then {
+                                Some((offset_left, offset_right))
+                            } else {
+                                return None
+                            }
+                        }
+                    })
                 })
-                .join("\n    ");
+                .map(|o| {
+                    o.map(|(dst_var, src_var)| {
+                        let start_str = snippet(cx, start.span, "").to_string();
+                        let dst_offset = print_offset(&start_str, &dst_var.offset);
+                        let dst_limit = print_limit(end, dst_var.offset, &dst_var.var_name);
+                        let src_offset = print_offset(&start_str, &src_var.offset);
+                        let src_limit = print_limit(end, src_var.offset, &src_var.var_name);
+                        let dst = if dst_offset == "" && dst_limit == "" {
+                            dst_var.var_name
+                        } else {
+                            format!("{}[{}..{}]", dst_var.var_name, dst_offset, dst_limit)
+                        };
 
-            if !big_sugg.is_empty() {
+                        format!(
+                            "{}.clone_from_slice(&{}[{}..{}])",
+                            dst, src_var.var_name, src_offset, src_limit
+                        )
+                    })
+                })
+                .collect::<Option<Vec<_>>>()
+                .filter(|v| !v.is_empty())
+                .map(|v| v.join("\n    "));
+
+            if let Some(big_sugg) = big_sugg {
                 span_lint_and_sugg(
                     cx,
                     MANUAL_MEMCPY,
