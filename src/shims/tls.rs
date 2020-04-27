@@ -211,6 +211,14 @@ impl<'tcx> TlsData<'tcx> {
             false
         }
     }
+
+    /// Delete all TLS entries for the given thread. This function should be
+    /// called after all TLS destructors have already finished.
+    fn delete_all_thread_tls(&mut self, thread_id: ThreadId) {
+        for TlsEntry { data, .. } in self.keys.values_mut() {
+            data.remove(&thread_id);
+        }
+    }
 }
 
 impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -271,8 +279,9 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    /// Schedule a pthread TLS destructor.
-    fn schedule_pthread_tls_dtors(&mut self) -> InterpResult<'tcx> {
+    /// Schedule a pthread TLS destructor. Returns `true` if found
+    /// a destructor to schedule, and `false` otherwise.
+    fn schedule_pthread_tls_dtors(&mut self) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread()?;
 
@@ -300,11 +309,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             )?;
 
             this.enable_thread(active_thread)?;
-            return Ok(());
+            return Ok(true);
         }
         this.machine.tls.dtors_running.get_mut(&active_thread).unwrap().last_dtor_key = None;
 
-        Ok(())
+        Ok(false)
     }
 }
 
@@ -322,16 +331,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread()?;
 
-        if this.tcx.sess.target.target.target_os == "windows" {
+        let finished = if this.tcx.sess.target.target.target_os == "windows" {
             if !this.machine.tls.set_dtors_running_for_thread(active_thread) {
                 this.schedule_windows_tls_dtors()?;
             }
+            true
         } else {
             this.machine.tls.set_dtors_running_for_thread(active_thread);
             // The macOS thread wide destructor runs "before any TLS slots get
             // freed", so do that first.
             this.schedule_macos_tls_dtor()?;
-            this.schedule_pthread_tls_dtors()?;
+            this.schedule_pthread_tls_dtors()?
+        };
+
+        if finished {
+            this.machine.tls.delete_all_thread_tls(active_thread);
         }
 
         Ok(())
