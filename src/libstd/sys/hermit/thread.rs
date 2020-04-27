@@ -16,7 +16,7 @@ pub struct Thread {
 unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
-pub const DEFAULT_MIN_STACK_SIZE: usize = 1_048_576;
+pub const DEFAULT_MIN_STACK_SIZE: usize = 1 << 20;
 
 impl Thread {
     pub unsafe fn new_with_coreid(
