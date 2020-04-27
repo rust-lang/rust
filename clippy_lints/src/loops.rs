@@ -775,10 +775,9 @@ fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -
         if let QPath::Resolved(None, path) = qpath;
         if path.segments.len() == 1;
         if let Res::Local(local_id) = qpath_res(cx, qpath, expr.hir_id);
-        // our variable!
-        if local_id == var;
         then {
-            true
+            // our variable!
+            local_id == var
         } else {
             false
         }
@@ -870,10 +869,8 @@ fn get_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, idx: &Expr<'_>, var: HirId) 
     }
 }
 
-fn get_assignments<'a, 'tcx>(
-    body: &'tcx Expr<'tcx>,
-) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> {
-    fn get_assignment<'a, 'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
+fn get_assignments<'tcx>(body: &'tcx Expr<'tcx>) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> {
+    fn get_assignment<'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
         if let ExprKind::Assign(lhs, rhs, _) = e.kind {
             Some((lhs, rhs))
         } else {
