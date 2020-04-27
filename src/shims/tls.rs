@@ -181,8 +181,8 @@ impl<'tcx> TlsData<'tcx> {
         {
             match data.entry(thread_id) {
                 Entry::Occupied(entry) => {
-                    let data_scalar = entry.remove();
                     if let Some(dtor) = dtor {
+                        let data_scalar = entry.remove();
                         let ret = Some((*dtor, data_scalar, key));
                         return ret;
                     }
