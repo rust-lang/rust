@@ -55,6 +55,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         if !this.is_null(this.read_scalar(retval)?.not_undef()?)? {
+            // FIXME: implement reading the thread function's return place.
             throw_unsup_format!("Miri supports pthread_join only with retval==NULL");
         }
 
