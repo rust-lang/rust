@@ -1384,13 +1384,12 @@ pub fn is_trait_impl_item(cx: &LateContext<'_, '_>, hir_id: HirId) -> bool {
 /// ```
 pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_, '_>, did: DefId) -> bool {
     use rustc_trait_selection::traits;
-    let predicates = cx
-        .tcx
-        .predicates_of(did)
-        .predicates
-        .iter()
-        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None })
-        .collect();
+    let predicates =
+        cx.tcx
+            .predicates_of(did)
+            .predicates
+            .iter()
+            .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
     !traits::normalize_and_test_predicates(
         cx.tcx,
         traits::elaborate_predicates(cx.tcx, predicates)
