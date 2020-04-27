@@ -213,7 +213,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let thread_callback = this.memory.get_fn(thread_callback.not_undef()?)?.as_instance()?;
 
         // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
-        let reason = this.eval_path_scalar(&["std", "sys", "windows", "c", "DLL_PROCESS_DETACH"])?;
+        let reason = this.eval_path_scalar(&["std", "sys", "windows", "c", "DLL_THREAD_DETACH"])?;
         let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
         this.call_function(
             thread_callback,
