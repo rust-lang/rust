@@ -115,7 +115,19 @@ pub fn report_error<'tcx, 'mir>(
 
     e.print_backtrace();
     let msg = e.to_string();
-    report_msg(ecx, &format!("{}: {}", title, msg), msg, helps, true)
+    report_msg(ecx, &format!("{}: {}", title, msg), msg, helps, true);
+
+    // Extra output to help debug specific issues.
+    if let UndefinedBehavior(UndefinedBehaviorInfo::InvalidUndefBytes(Some(ptr))) = e.kind {
+        eprintln!(
+            "Uninitialized read occurred at offset 0x{:x} into this allocation:",
+            ptr.offset.bytes(),
+        );
+        ecx.memory.dump_alloc(ptr.alloc_id);
+        eprintln!();
+    }
+
+    None
 }
 
 /// Report an error or note (depending on the `error` argument) at the current frame's current statement.
@@ -126,7 +138,7 @@ fn report_msg<'tcx, 'mir>(
     span_msg: String,
     mut helps: Vec<String>,
     error: bool,
-) -> Option<i64> {
+) {
     let span = if let Some(frame) = ecx.machine.stack.last() {
         frame.current_source_info().unwrap().span
     } else {
@@ -167,8 +179,6 @@ fn report_msg<'tcx, 'mir>(
             trace!("    local {}: {:?}", i, local.value);
         }
     }
-    // Let the reported error determine the return code.
-    return None;
 }
 
 thread_local! {
