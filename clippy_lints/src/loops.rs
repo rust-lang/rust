@@ -772,8 +772,8 @@ fn check_for_loop<'a, 'tcx>(
 
 fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -> bool {
     if_chain! {
-        if let ExprKind::Path(ref qpath) = expr.kind;
-        if let QPath::Resolved(None, ref path) = *qpath;
+        if let ExprKind::Path(qpath) = &expr.kind;
+        if let QPath::Resolved(None, path) = qpath;
         if path.segments.len() == 1;
         if let Res::Local(local_id) = qpath_res(cx, qpath, expr.hir_id);
         // our variable!
@@ -821,8 +821,8 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
 
 fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -> Option<FixedOffsetVar> {
     fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr<'_>, var: HirId) -> Option<String> {
-        match e.kind {
-            ExprKind::Lit(ref l) => match l.node {
+        match &e.kind {
+            ExprKind::Lit(l) => match l.node {
                 ast::LitKind::Int(x, _ty) => Some(x.to_string()),
                 _ => None,
             },
@@ -831,14 +831,14 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, v
         }
     }
 
-    if let ExprKind::Index(ref seqexpr, ref idx) = expr.kind {
+    if let ExprKind::Index(seqexpr, idx) = expr.kind {
         let ty = cx.tables.expr_ty(seqexpr);
         if !is_slice_like(cx, ty) {
             return None;
         }
 
         let offset = match idx.kind {
-            ExprKind::Binary(op, ref lhs, ref rhs) => match op.node {
+            ExprKind::Binary(op, lhs, rhs) => match op.node {
                 BinOpKind::Add => {
                     let offset_opt = if same_var(cx, lhs, var) {
                         extract_offset(cx, rhs, var)
@@ -878,7 +878,7 @@ fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
     var: HirId,
 ) -> Option<FixedOffsetVar> {
     if_chain! {
-        if let ExprKind::MethodCall(ref method, _, ref args) = expr.kind;
+        if let ExprKind::MethodCall(method, _, args) = expr.kind;
         if method.ident.name == sym!(clone);
         if args.len() == 1;
         if let Some(arg) = args.get(0);
@@ -900,7 +900,7 @@ fn get_indexed_assignments<'a, 'tcx>(
         e: &Expr<'_>,
         var: HirId,
     ) -> Option<(FixedOffsetVar, FixedOffsetVar)> {
-        if let ExprKind::Assign(ref lhs, ref rhs, _) = e.kind {
+        if let ExprKind::Assign(lhs, rhs, _) = e.kind {
             match (
                 get_fixed_offset_var(cx, lhs, var),
                 fetch_cloned_fixed_offset_var(cx, rhs, var),
@@ -920,16 +920,14 @@ fn get_indexed_assignments<'a, 'tcx>(
         }
     }
 
-    if let ExprKind::Block(ref b, _) = body.kind {
-        let Block {
-            ref stmts, ref expr, ..
-        } = **b;
+    if let ExprKind::Block(b, _) = body.kind {
+        let Block { stmts, expr, .. } = *b;
 
         stmts
             .iter()
             .map(|stmt| match stmt.kind {
                 StmtKind::Local(..) | StmtKind::Item(..) => None,
-                StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => Some(get_assignment(cx, e, var)),
+                StmtKind::Expr(e) | StmtKind::Semi(e) => Some(get_assignment(cx, e, var)),
             })
             .chain(expr.as_ref().into_iter().map(|e| Some(get_assignment(cx, &*e, var))))
             .filter_map(|op| op)
@@ -992,7 +990,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
 
             let print_limit = |end: &Expr<'_>, offset: Offset, var_name: &str| {
                 if_chain! {
-                    if let ExprKind::MethodCall(ref method, _, ref len_args) = end.kind;
+                    if let ExprKind::MethodCall(method, _, len_args) = end.kind;
                     if method.ident.name == sym!(len);
                     if len_args.len() == 1;
                     if let Some(arg) = len_args.get(0);
