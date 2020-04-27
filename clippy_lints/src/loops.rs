@@ -959,7 +959,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
         if let PatKind::Binding(_, canonical_id, _, _) = pat.kind {
             let print_sum = |arg1: &Offset, arg2: &Offset| -> String {
                 match (&arg1.value[..], arg1.negate, &arg2.value[..], arg2.negate) {
-                    ("0", _, "0", _) => "".into(),
+                    ("0", _, "0", _) => "0".into(),
                     ("0", _, x, false) | (x, false, "0", _) => x.into(),
                     ("0", _, x, true) => format!("-{}", x),
                     (x, false, y, false) => format!("({} + {})", x, y),
@@ -978,6 +978,15 @@ fn detect_manual_memcpy<'a, 'tcx>(
                         }
                     },
                     (x, true, y, true) => format!("-({} + {})", x, y),
+                }
+            };
+
+            let print_offset = |start_str: &Offset, inline_offset: &Offset| -> String {
+                let offset = print_sum(start_str, inline_offset);
+                if offset.as_str() == "0" {
+                    "".into()
+                } else {
+                    offset
                 }
             };
 
@@ -1020,9 +1029,9 @@ fn detect_manual_memcpy<'a, 'tcx>(
                 .into_iter()
                 .map(|(dst_var, src_var)| {
                     let start_str = Offset::positive(snippet(cx, start.span, "").to_string());
-                    let dst_offset = print_sum(&start_str, &dst_var.offset);
+                    let dst_offset = print_offset(&start_str, &dst_var.offset);
                     let dst_limit = print_limit(end, dst_var.offset, &dst_var.var_name);
-                    let src_offset = print_sum(&start_str, &src_var.offset);
+                    let src_offset = print_offset(&start_str, &src_var.offset);
                     let src_limit = print_limit(end, src_var.offset, &src_var.var_name);
                     let dst = if dst_offset == "" && dst_limit == "" {
                         dst_var.var_name
