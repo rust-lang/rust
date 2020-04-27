@@ -80,7 +80,8 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
 // bytes 8-11: when count > 0, id of the owner thread as a u32
 // bytes 12-15 or 16-19 (depending on platform): mutex kind, as an i32
 // (the kind has to be at its offset for compatibility with static initializer macros)
-// bytes 20-23: when count > 0, id of the blockset in which the blocked threads are waiting.
+// bytes 20-23: when count > 0, id of the blockset in which the blocked threads
+// are waiting or 0 if blockset is not yet assigned.
 
 const PTHREAD_MUTEX_T_MIN_SIZE: u64 = 24;
 
@@ -170,9 +171,9 @@ fn mutex_get_or_create_blockset<'mir, 'tcx: 'mir>(
 // bytes 4-7: reader count, as a u32
 // bytes 8-11: writer count, as a u32
 // bytes 12-15: when writer or reader count > 0, id of the blockset in which the
-// blocked writers are waiting.
+// blocked writers are waiting or 0 if blockset is not yet assigned.
 // bytes 16-20: when writer count > 0, id of the blockset in which the blocked
-// readers are waiting.
+// readers are waiting or 0 if blockset is not yet assigned.
 
 const PTHREAD_RWLOCK_T_MIN_SIZE: u64 = 20;
 
@@ -342,8 +343,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Ok(0)
         } else {
             // The mutex is locked. Let's check by whom.
-            let owner_thread: ThreadId =
-                mutex_get_owner(this, mutex_op)?.not_undef()?.to_u32()?.into();
+            let owner_thread: ThreadId = mutex_get_owner(this, mutex_op)?.to_u32()?.into();
             if owner_thread != active_thread {
                 // Block the active thread.
                 let blockset = mutex_get_or_create_blockset(this, mutex_op)?;
@@ -425,6 +425,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 mutex_set_owner(this, mutex_op, new_owner.to_u32_scalar())?;
             } else {
                 // No thread is waiting on this mutex.
+                mutex_set_owner(this, mutex_op, Scalar::from_u32(0))?;
                 mutex_set_locked_count(this, mutex_op, Scalar::from_u32(0))?;
             }
             Ok(0)
@@ -550,10 +551,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Ok(0)
         } else if writers != 0 {
             let reader_blockset = rwlock_get_or_create_reader_blockset(this, rwlock_op)?;
-            rwlock_set_writers(this, rwlock_op, Scalar::from_u32(0))?;
+            // We are prioritizing writers here against the readers. As a
+            // result, not only readers can starve writers, but also writers can
+            // starve readers.
             if let Some(_writer) = this.unblock_some_thread(writer_blockset)? {
                 rwlock_set_writers(this, rwlock_op, Scalar::from_u32(1))?;
             } else {
+                rwlock_set_writers(this, rwlock_op, Scalar::from_u32(0))?;
                 let mut readers = 0;
                 while let Some(_reader) = this.unblock_some_thread(reader_blockset)? {
                     readers += 1;

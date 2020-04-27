@@ -1,8 +1,8 @@
 //! Implements threads.
 
-use std::convert::TryInto;
 use std::cell::RefCell;
 use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::num::NonZeroU32;
 
 use log::trace;
