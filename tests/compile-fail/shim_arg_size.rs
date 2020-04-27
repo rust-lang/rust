@@ -1,8 +1,5 @@
 #![feature(rustc_private)]
 
-extern crate libc;
-
-// error-pattern: scalar size mismatch
 fn main() {
     extern "C" {
         // Use the wrong type(ie. not the pointer width) for the `size`
@@ -15,7 +12,6 @@ fn main() {
     }
 
     unsafe {
-        let p1 = malloc(42);
-        libc::free(p1);
+        let _p1 = malloc(42); //~ ERROR Undefined Behavior: scalar size mismatch
     };
 }
