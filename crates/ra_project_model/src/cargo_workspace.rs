@@ -62,8 +62,8 @@ pub struct CargoConfig {
     /// Runs cargo check on launch to figure out the correct values of OUT_DIR
     pub load_out_dirs_from_check: bool,
 
-    /// rustc config
-    pub rustc: RustcConfig,
+    /// rustc target
+    pub default_target: Option<String>,
 }
 
 impl Default for CargoConfig {
@@ -73,7 +73,7 @@ impl Default for CargoConfig {
             all_features: true,
             features: Vec::new(),
             load_out_dirs_from_check: false,
-            rustc: RustcConfig { default_target: None },
+            default_target: None,
         }
     }
 }
@@ -169,7 +169,7 @@ impl CargoWorkspace {
         if let Some(parent) = cargo_toml.parent() {
             meta.current_dir(parent);
         }
-        if let Some(target) = cargo_features.rustc.default_target.as_ref() {
+        if let Some(target) = cargo_features.default_target.as_ref() {
             meta.other_options(&[String::from("--filter-platform"), target.clone()]);
         }
         let meta = meta.exec().with_context(|| {
