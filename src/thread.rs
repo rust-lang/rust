@@ -358,6 +358,9 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// long as we can and switch only when we have to (the active thread was
     /// blocked, terminated, or has explicitly asked to be preempted).
     fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
+        // Check whether the thread has **just** terminated (`check_terminated`
+        // checks whether the thread has popped all its stack and if yes, sets
+        // the thread state to terminated.)
         if self.threads[self.active_thread].check_terminated() {
             // Check if we need to unblock any threads.
             for (i, thread) in self.threads.iter_enumerated_mut() {

@@ -32,6 +32,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let func_arg = this.read_immediate(arg)?;
 
+        // Note: the returned value is currently ignored (see the FIXME in
+        // pthread_join below) because the Rust standard library does not use
+        // it.
         let ret_place =
             this.allocate(this.layout_of(this.tcx.types.usize)?, MiriMemoryKind::Machine.into());
 
