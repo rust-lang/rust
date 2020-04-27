@@ -4,8 +4,8 @@ fn Test::X(_1: usize) -> Test {
     let mut _0: Test;                    // return place in scope 0 at $DIR/unusual-item-types.rs:16:5: 16:13
 
     bb0: {
-        ((_0 as X).0: usize) = move _1;  // bb0[0]: scope 0 at $DIR/unusual-item-types.rs:16:5: 16:13
-        discriminant(_0) = 0;            // bb0[1]: scope 0 at $DIR/unusual-item-types.rs:16:5: 16:13
-        return;                          // bb0[2]: scope 0 at $DIR/unusual-item-types.rs:16:5: 16:13
+        ((_0 as X).0: usize) = move _1;  // scope 0 at $DIR/unusual-item-types.rs:16:5: 16:13
+        discriminant(_0) = 0;            // scope 0 at $DIR/unusual-item-types.rs:16:5: 16:13
+        return;                          // scope 0 at $DIR/unusual-item-types.rs:16:5: 16:13
     }
 }

@@ -29,7 +29,7 @@ fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i
     }
 
     bb0: {
-        _0 = move _1;                    // bb0[0]: scope 1 at $DIR/simplify_try.rs:7:5: 7:10
-        return;                          // bb0[1]: scope 0 at $DIR/simplify_try.rs:8:2: 8:2
+        _0 = move _1;                    // scope 1 at $DIR/simplify_try.rs:7:5: 7:10
+        return;                          // scope 0 at $DIR/simplify_try.rs:8:2: 8:2
     }
 }

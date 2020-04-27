@@ -10,38 +10,34 @@
       let mut _5: i32;                     // in scope 0 at $DIR/deaggregator_test_enum_2.rs:13:16: 13:17
   
       bb0: {
-          StorageLive(_3);                 // bb0[0]: scope 0 at $DIR/deaggregator_test_enum_2.rs:10:8: 10:9
-          _3 = _1;                         // bb0[1]: scope 0 at $DIR/deaggregator_test_enum_2.rs:10:8: 10:9
-          switchInt(_3) -> [false: bb1, otherwise: bb2]; // bb0[2]: scope 0 at $DIR/deaggregator_test_enum_2.rs:10:5: 14:6
+          StorageLive(_3);                 // scope 0 at $DIR/deaggregator_test_enum_2.rs:10:8: 10:9
+          _3 = _1;                         // scope 0 at $DIR/deaggregator_test_enum_2.rs:10:8: 10:9
+          switchInt(_3) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/deaggregator_test_enum_2.rs:10:5: 14:6
       }
   
       bb1: {
-          StorageLive(_5);                 // bb1[0]: scope 0 at $DIR/deaggregator_test_enum_2.rs:13:16: 13:17
-          _5 = _2;                         // bb1[1]: scope 0 at $DIR/deaggregator_test_enum_2.rs:13:16: 13:17
--         _0 = Foo::B(move _5);            // bb1[2]: scope 0 at $DIR/deaggregator_test_enum_2.rs:13:9: 13:18
--         StorageDead(_5);                 // bb1[3]: scope 0 at $DIR/deaggregator_test_enum_2.rs:13:17: 13:18
--         goto -> bb3;                     // bb1[4]: scope 0 at $DIR/deaggregator_test_enum_2.rs:10:5: 14:6
-+         ((_0 as B).0: i32) = move _5;    // bb1[2]: scope 0 at $DIR/deaggregator_test_enum_2.rs:13:9: 13:18
-+         discriminant(_0) = 1;            // bb1[3]: scope 0 at $DIR/deaggregator_test_enum_2.rs:13:9: 13:18
-+         StorageDead(_5);                 // bb1[4]: scope 0 at $DIR/deaggregator_test_enum_2.rs:13:17: 13:18
-+         goto -> bb3;                     // bb1[5]: scope 0 at $DIR/deaggregator_test_enum_2.rs:10:5: 14:6
+          StorageLive(_5);                 // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:16: 13:17
+          _5 = _2;                         // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:16: 13:17
+-         _0 = Foo::B(move _5);            // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:9: 13:18
++         ((_0 as B).0: i32) = move _5;    // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:9: 13:18
++         discriminant(_0) = 1;            // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:9: 13:18
+          StorageDead(_5);                 // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:17: 13:18
+          goto -> bb3;                     // scope 0 at $DIR/deaggregator_test_enum_2.rs:10:5: 14:6
       }
   
       bb2: {
-          StorageLive(_4);                 // bb2[0]: scope 0 at $DIR/deaggregator_test_enum_2.rs:11:16: 11:17
-          _4 = _2;                         // bb2[1]: scope 0 at $DIR/deaggregator_test_enum_2.rs:11:16: 11:17
--         _0 = Foo::A(move _4);            // bb2[2]: scope 0 at $DIR/deaggregator_test_enum_2.rs:11:9: 11:18
--         StorageDead(_4);                 // bb2[3]: scope 0 at $DIR/deaggregator_test_enum_2.rs:11:17: 11:18
--         goto -> bb3;                     // bb2[4]: scope 0 at $DIR/deaggregator_test_enum_2.rs:10:5: 14:6
-+         ((_0 as A).0: i32) = move _4;    // bb2[2]: scope 0 at $DIR/deaggregator_test_enum_2.rs:11:9: 11:18
-+         discriminant(_0) = 0;            // bb2[3]: scope 0 at $DIR/deaggregator_test_enum_2.rs:11:9: 11:18
-+         StorageDead(_4);                 // bb2[4]: scope 0 at $DIR/deaggregator_test_enum_2.rs:11:17: 11:18
-+         goto -> bb3;                     // bb2[5]: scope 0 at $DIR/deaggregator_test_enum_2.rs:10:5: 14:6
+          StorageLive(_4);                 // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:16: 11:17
+          _4 = _2;                         // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:16: 11:17
+-         _0 = Foo::A(move _4);            // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:9: 11:18
++         ((_0 as A).0: i32) = move _4;    // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:9: 11:18
++         discriminant(_0) = 0;            // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:9: 11:18
+          StorageDead(_4);                 // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:17: 11:18
+          goto -> bb3;                     // scope 0 at $DIR/deaggregator_test_enum_2.rs:10:5: 14:6
       }
   
       bb3: {
-          StorageDead(_3);                 // bb3[0]: scope 0 at $DIR/deaggregator_test_enum_2.rs:15:1: 15:2
-          return;                          // bb3[1]: scope 0 at $DIR/deaggregator_test_enum_2.rs:15:2: 15:2
+          StorageDead(_3);                 // scope 0 at $DIR/deaggregator_test_enum_2.rs:15:1: 15:2
+          return;                          // scope 0 at $DIR/deaggregator_test_enum_2.rs:15:2: 15:2
       }
   }
   

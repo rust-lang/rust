@@ -305,9 +305,9 @@ where
         let indented_body = format!("{0}{0}{1:?};", INDENT, statement);
         writeln!(
             w,
-            "{:A$} // {:?}: {}",
+            "{:A$} // {}{}",
             indented_body,
-            current_location,
+            if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
             comment(tcx, statement.source_info),
             A = ALIGN,
         )?;
@@ -326,9 +326,9 @@ where
     let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
     writeln!(
         w,
-        "{:A$} // {:?}: {}",
+        "{:A$} // {}{}",
         indented_terminator,
-        current_location,
+        if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
         comment(tcx, data.terminator().source_info),
         A = ALIGN,
     )?;
@@ -455,7 +455,7 @@ fn write_scope_tree(
         )?;
     }
 
-    // Local variable types (including the user's name in a comment).
+    // Local variable types.
     for (local, local_decl) in body.local_decls.iter_enumerated() {
         if (1..body.arg_count + 1).contains(&local.index()) {
             // Skip over argument locals, they're printed in the signature.

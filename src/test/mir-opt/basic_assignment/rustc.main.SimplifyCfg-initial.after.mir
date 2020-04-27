@@ -26,71 +26,71 @@ fn main() -> () {
     }
 
     bb0: {
-        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
-        _1 = const false;                // bb0[1]: scope 0 at $DIR/basic_assignment.rs:11:20: 11:25
+        StorageLive(_1);                 // scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
+        _1 = const false;                // scope 0 at $DIR/basic_assignment.rs:11:20: 11:25
                                          // ty::Const
                                          // + ty: bool
                                          // + val: Value(Scalar(0x00))
                                          // mir::Constant
                                          // + span: $DIR/basic_assignment.rs:11:20: 11:25
                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-        FakeRead(ForLet, _1);            // bb0[2]: scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
-        StorageLive(_2);                 // bb0[3]: scope 1 at $DIR/basic_assignment.rs:12:9: 12:17
-        StorageLive(_3);                 // bb0[4]: scope 2 at $DIR/basic_assignment.rs:16:16: 16:24
-        _3 = _1;                         // bb0[5]: scope 2 at $DIR/basic_assignment.rs:16:16: 16:24
-        _2 = move _3;                    // bb0[6]: scope 2 at $DIR/basic_assignment.rs:16:5: 16:24
-        StorageDead(_3);                 // bb0[7]: scope 2 at $DIR/basic_assignment.rs:16:23: 16:24
-        StorageLive(_4);                 // bb0[8]: scope 2 at $DIR/basic_assignment.rs:18:9: 18:15
-        _4 = std::option::Option::<std::boxed::Box<u32>>::None; // bb0[9]: scope 2 at $DIR/basic_assignment.rs:18:36: 18:40
-        FakeRead(ForLet, _4);            // bb0[10]: scope 2 at $DIR/basic_assignment.rs:18:9: 18:15
-        AscribeUserType(_4, o, UserTypeProjection { base: UserType(1), projs: [] }); // bb0[11]: scope 2 at $DIR/basic_assignment.rs:18:17: 18:33
-        StorageLive(_5);                 // bb0[12]: scope 3 at $DIR/basic_assignment.rs:19:9: 19:15
-        StorageLive(_6);                 // bb0[13]: scope 4 at $DIR/basic_assignment.rs:23:14: 23:20
-        _6 = move _4;                    // bb0[14]: scope 4 at $DIR/basic_assignment.rs:23:14: 23:20
-        replace(_5 <- move _6) -> [return: bb2, unwind: bb5]; // bb0[15]: scope 4 at $DIR/basic_assignment.rs:23:5: 23:11
+        FakeRead(ForLet, _1);            // scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
+        StorageLive(_2);                 // scope 1 at $DIR/basic_assignment.rs:12:9: 12:17
+        StorageLive(_3);                 // scope 2 at $DIR/basic_assignment.rs:16:16: 16:24
+        _3 = _1;                         // scope 2 at $DIR/basic_assignment.rs:16:16: 16:24
+        _2 = move _3;                    // scope 2 at $DIR/basic_assignment.rs:16:5: 16:24
+        StorageDead(_3);                 // scope 2 at $DIR/basic_assignment.rs:16:23: 16:24
+        StorageLive(_4);                 // scope 2 at $DIR/basic_assignment.rs:18:9: 18:15
+        _4 = std::option::Option::<std::boxed::Box<u32>>::None; // scope 2 at $DIR/basic_assignment.rs:18:36: 18:40
+        FakeRead(ForLet, _4);            // scope 2 at $DIR/basic_assignment.rs:18:9: 18:15
+        AscribeUserType(_4, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 2 at $DIR/basic_assignment.rs:18:17: 18:33
+        StorageLive(_5);                 // scope 3 at $DIR/basic_assignment.rs:19:9: 19:15
+        StorageLive(_6);                 // scope 4 at $DIR/basic_assignment.rs:23:14: 23:20
+        _6 = move _4;                    // scope 4 at $DIR/basic_assignment.rs:23:14: 23:20
+        replace(_5 <- move _6) -> [return: bb2, unwind: bb5]; // scope 4 at $DIR/basic_assignment.rs:23:5: 23:11
     }
 
     bb1 (cleanup): {
-        resume;                          // bb1[0]: scope 0 at $DIR/basic_assignment.rs:10:1: 24:2
+        resume;                          // scope 0 at $DIR/basic_assignment.rs:10:1: 24:2
     }
 
     bb2: {
-        drop(_6) -> [return: bb6, unwind: bb4]; // bb2[0]: scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
+        drop(_6) -> [return: bb6, unwind: bb4]; // scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
     }
 
     bb3 (cleanup): {
-        drop(_4) -> bb1;                 // bb3[0]: scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
+        drop(_4) -> bb1;                 // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
     bb4 (cleanup): {
-        drop(_5) -> bb3;                 // bb4[0]: scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
+        drop(_5) -> bb3;                 // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
     bb5 (cleanup): {
-        drop(_6) -> bb4;                 // bb5[0]: scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
+        drop(_6) -> bb4;                 // scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
     }
 
     bb6: {
-        StorageDead(_6);                 // bb6[0]: scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
-        _0 = const ();                   // bb6[1]: scope 0 at $DIR/basic_assignment.rs:10:11: 24:2
+        StorageDead(_6);                 // scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
+        _0 = const ();                   // scope 0 at $DIR/basic_assignment.rs:10:11: 24:2
                                          // ty::Const
                                          // + ty: ()
                                          // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/basic_assignment.rs:10:11: 24:2
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-        drop(_5) -> [return: bb7, unwind: bb3]; // bb6[2]: scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
+        drop(_5) -> [return: bb7, unwind: bb3]; // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
     bb7: {
-        StorageDead(_5);                 // bb7[0]: scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
-        drop(_4) -> [return: bb8, unwind: bb1]; // bb7[1]: scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
+        StorageDead(_5);                 // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
+        drop(_4) -> [return: bb8, unwind: bb1]; // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
     bb8: {
-        StorageDead(_4);                 // bb8[0]: scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
-        StorageDead(_2);                 // bb8[1]: scope 1 at $DIR/basic_assignment.rs:24:1: 24:2
-        StorageDead(_1);                 // bb8[2]: scope 0 at $DIR/basic_assignment.rs:24:1: 24:2
-        return;                          // bb8[3]: scope 0 at $DIR/basic_assignment.rs:24:2: 24:2
+        StorageDead(_4);                 // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
+        StorageDead(_2);                 // scope 1 at $DIR/basic_assignment.rs:24:1: 24:2
+        StorageDead(_1);                 // scope 0 at $DIR/basic_assignment.rs:24:1: 24:2
+        return;                          // scope 0 at $DIR/basic_assignment.rs:24:2: 24:2
     }
 }

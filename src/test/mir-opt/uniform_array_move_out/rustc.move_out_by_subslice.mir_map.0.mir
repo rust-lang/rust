@@ -16,102 +16,102 @@ fn move_out_by_subslice() -> () {
     }
 
     bb0: {
-        StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/uniform_array_move_out.rs:11:9: 11:10
-        StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
-        StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
-        _3 = Box(i32);                   // bb0[3]: scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
-        (*_3) = const 1i32;              // bb0[4]: scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
+        StorageLive(_1);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:9: 11:10
+        StorageLive(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
+        StorageLive(_3);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
+        _3 = Box(i32);                   // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
+        (*_3) = const 1i32;              // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000001))
                                          // mir::Constant
                                          // + span: $DIR/uniform_array_move_out.rs:11:18: 11:19
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
-        _2 = move _3;                    // bb0[5]: scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
-        drop(_3) -> [return: bb4, unwind: bb2]; // bb0[6]: scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
+        _2 = move _3;                    // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
+        drop(_3) -> [return: bb4, unwind: bb2]; // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
     }
 
     bb1 (cleanup): {
-        resume;                          // bb1[0]: scope 0 at $DIR/uniform_array_move_out.rs:10:1: 13:2
+        resume;                          // scope 0 at $DIR/uniform_array_move_out.rs:10:1: 13:2
     }
 
     bb2 (cleanup): {
-        drop(_2) -> bb1;                 // bb2[0]: scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
+        drop(_2) -> bb1;                 // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
     }
 
     bb3 (cleanup): {
-        drop(_3) -> bb2;                 // bb3[0]: scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
+        drop(_3) -> bb2;                 // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
     }
 
     bb4: {
-        StorageDead(_3);                 // bb4[0]: scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
-        StorageLive(_4);                 // bb4[1]: scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
-        StorageLive(_5);                 // bb4[2]: scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
-        _5 = Box(i32);                   // bb4[3]: scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
-        (*_5) = const 2i32;              // bb4[4]: scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
+        StorageDead(_3);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
+        StorageLive(_4);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
+        StorageLive(_5);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
+        _5 = Box(i32);                   // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
+        (*_5) = const 2i32;              // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000002))
                                          // mir::Constant
                                          // + span: $DIR/uniform_array_move_out.rs:11:25: 11:26
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
-        _4 = move _5;                    // bb4[5]: scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
-        drop(_5) -> [return: bb7, unwind: bb5]; // bb4[6]: scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
+        _4 = move _5;                    // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
+        drop(_5) -> [return: bb7, unwind: bb5]; // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
     }
 
     bb5 (cleanup): {
-        drop(_4) -> bb2;                 // bb5[0]: scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
+        drop(_4) -> bb2;                 // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
     }
 
     bb6 (cleanup): {
-        drop(_5) -> bb5;                 // bb6[0]: scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
+        drop(_5) -> bb5;                 // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
     }
 
     bb7: {
-        StorageDead(_5);                 // bb7[0]: scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
-        _1 = [move _2, move _4];         // bb7[1]: scope 0 at $DIR/uniform_array_move_out.rs:11:13: 11:27
-        drop(_4) -> [return: bb8, unwind: bb2]; // bb7[2]: scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
+        StorageDead(_5);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
+        _1 = [move _2, move _4];         // scope 0 at $DIR/uniform_array_move_out.rs:11:13: 11:27
+        drop(_4) -> [return: bb8, unwind: bb2]; // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
     }
 
     bb8: {
-        StorageDead(_4);                 // bb8[0]: scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
-        drop(_2) -> [return: bb9, unwind: bb1]; // bb8[1]: scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
+        StorageDead(_4);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
+        drop(_2) -> [return: bb9, unwind: bb1]; // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
     }
 
     bb9: {
-        StorageDead(_2);                 // bb9[0]: scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
-        FakeRead(ForLet, _1);            // bb9[1]: scope 0 at $DIR/uniform_array_move_out.rs:11:9: 11:10
-        StorageLive(_6);                 // bb9[2]: scope 1 at $DIR/uniform_array_move_out.rs:12:10: 12:17
-        _6 = move _1[0..2];              // bb9[3]: scope 1 at $DIR/uniform_array_move_out.rs:12:10: 12:17
-        _0 = const ();                   // bb9[4]: scope 0 at $DIR/uniform_array_move_out.rs:10:27: 13:2
+        StorageDead(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
+        FakeRead(ForLet, _1);            // scope 0 at $DIR/uniform_array_move_out.rs:11:9: 11:10
+        StorageLive(_6);                 // scope 1 at $DIR/uniform_array_move_out.rs:12:10: 12:17
+        _6 = move _1[0..2];              // scope 1 at $DIR/uniform_array_move_out.rs:12:10: 12:17
+        _0 = const ();                   // scope 0 at $DIR/uniform_array_move_out.rs:10:27: 13:2
                                          // ty::Const
                                          // + ty: ()
                                          // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/uniform_array_move_out.rs:10:27: 13:2
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-        drop(_6) -> [return: bb12, unwind: bb10]; // bb9[5]: scope 1 at $DIR/uniform_array_move_out.rs:13:1: 13:2
+        drop(_6) -> [return: bb12, unwind: bb10]; // scope 1 at $DIR/uniform_array_move_out.rs:13:1: 13:2
     }
 
     bb10 (cleanup): {
-        drop(_1) -> bb1;                 // bb10[0]: scope 0 at $DIR/uniform_array_move_out.rs:13:1: 13:2
+        drop(_1) -> bb1;                 // scope 0 at $DIR/uniform_array_move_out.rs:13:1: 13:2
     }
 
     bb11 (cleanup): {
-        drop(_6) -> bb10;                // bb11[0]: scope 1 at $DIR/uniform_array_move_out.rs:13:1: 13:2
+        drop(_6) -> bb10;                // scope 1 at $DIR/uniform_array_move_out.rs:13:1: 13:2
     }
 
     bb12: {
-        StorageDead(_6);                 // bb12[0]: scope 1 at $DIR/uniform_array_move_out.rs:13:1: 13:2
-        drop(_1) -> [return: bb13, unwind: bb1]; // bb12[1]: scope 0 at $DIR/uniform_array_move_out.rs:13:1: 13:2
+        StorageDead(_6);                 // scope 1 at $DIR/uniform_array_move_out.rs:13:1: 13:2
+        drop(_1) -> [return: bb13, unwind: bb1]; // scope 0 at $DIR/uniform_array_move_out.rs:13:1: 13:2
     }
 
     bb13: {
-        StorageDead(_1);                 // bb13[0]: scope 0 at $DIR/uniform_array_move_out.rs:13:1: 13:2
-        goto -> bb14;                    // bb13[1]: scope 0 at $DIR/uniform_array_move_out.rs:13:2: 13:2
+        StorageDead(_1);                 // scope 0 at $DIR/uniform_array_move_out.rs:13:1: 13:2
+        goto -> bb14;                    // scope 0 at $DIR/uniform_array_move_out.rs:13:2: 13:2
     }
 
     bb14: {
-        return;                          // bb14[0]: scope 0 at $DIR/uniform_array_move_out.rs:13:2: 13:2
+        return;                          // scope 0 at $DIR/uniform_array_move_out.rs:13:2: 13:2
     }
 }

@@ -6,8 +6,8 @@
       let mut _1: (u32, bool);             // in scope 0 at $DIR/return_place.rs:6:5: 6:10
   
       bb0: {
--         _1 = CheckedAdd(const 2u32, const 2u32); // bb0[0]: scope 0 at $DIR/return_place.rs:6:5: 6:10
-+         _1 = (const 4u32, const false);  // bb0[0]: scope 0 at $DIR/return_place.rs:6:5: 6:10
+-         _1 = CheckedAdd(const 2u32, const 2u32); // scope 0 at $DIR/return_place.rs:6:5: 6:10
++         _1 = (const 4u32, const false);  // scope 0 at $DIR/return_place.rs:6:5: 6:10
                                            // ty::Const
                                            // + ty: u32
 -                                          // + val: Value(Scalar(0x00000002))
@@ -25,10 +25,10 @@
                                            // mir::Constant
 -                                          // + span: $DIR/return_place.rs:6:9: 6:10
 -                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
--         assert(!move (_1.1: bool), "attempt to add with overflow") -> bb1; // bb0[1]: scope 0 at $DIR/return_place.rs:6:5: 6:10
+-         assert(!move (_1.1: bool), "attempt to add with overflow") -> bb1; // scope 0 at $DIR/return_place.rs:6:5: 6:10
 +                                          // + span: $DIR/return_place.rs:6:5: 6:10
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-+         assert(!const false, "attempt to add with overflow") -> bb1; // bb0[1]: scope 0 at $DIR/return_place.rs:6:5: 6:10
++         assert(!const false, "attempt to add with overflow") -> bb1; // scope 0 at $DIR/return_place.rs:6:5: 6:10
 +                                          // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x00))
@@ -38,15 +38,15 @@
       }
   
       bb1: {
--         _0 = move (_1.0: u32);           // bb1[0]: scope 0 at $DIR/return_place.rs:6:5: 6:10
-+         _0 = const 4u32;                 // bb1[0]: scope 0 at $DIR/return_place.rs:6:5: 6:10
+-         _0 = move (_1.0: u32);           // scope 0 at $DIR/return_place.rs:6:5: 6:10
++         _0 = const 4u32;                 // scope 0 at $DIR/return_place.rs:6:5: 6:10
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000004))
 +                                          // mir::Constant
 +                                          // + span: $DIR/return_place.rs:6:5: 6:10
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000004)) }
-          return;                          // bb1[1]: scope 0 at $DIR/return_place.rs:7:2: 7:2
+          return;                          // scope 0 at $DIR/return_place.rs:7:2: 7:2
       }
   }
   

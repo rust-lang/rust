@@ -13,93 +13,93 @@ fn main() -> () {
     }
 
     bb0: {
-        goto -> bb1;                     // bb0[0]: scope 0 at $DIR/issue-49232.rs:6:5: 14:6
+        goto -> bb1;                     // scope 0 at $DIR/issue-49232.rs:6:5: 14:6
     }
 
     bb1: {
-        falseUnwind -> [real: bb3, cleanup: bb4]; // bb1[0]: scope 0 at $DIR/issue-49232.rs:6:5: 14:6
+        falseUnwind -> [real: bb3, cleanup: bb4]; // scope 0 at $DIR/issue-49232.rs:6:5: 14:6
     }
 
     bb2: {
-        goto -> bb14;                    // bb2[0]: scope 0 at $DIR/issue-49232.rs:15:2: 15:2
+        goto -> bb14;                    // scope 0 at $DIR/issue-49232.rs:15:2: 15:2
     }
 
     bb3: {
-        StorageLive(_2);                 // bb3[0]: scope 0 at $DIR/issue-49232.rs:7:13: 7:19
-        StorageLive(_3);                 // bb3[1]: scope 0 at $DIR/issue-49232.rs:8:19: 8:23
-        _3 = const true;                 // bb3[2]: scope 0 at $DIR/issue-49232.rs:8:19: 8:23
+        StorageLive(_2);                 // scope 0 at $DIR/issue-49232.rs:7:13: 7:19
+        StorageLive(_3);                 // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
+        _3 = const true;                 // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
                                          // ty::Const
                                          // + ty: bool
                                          // + val: Value(Scalar(0x01))
                                          // mir::Constant
                                          // + span: $DIR/issue-49232.rs:8:19: 8:23
                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
-        FakeRead(ForMatchedPlace, _3);   // bb3[3]: scope 0 at $DIR/issue-49232.rs:8:19: 8:23
-        switchInt(_3) -> [false: bb5, otherwise: bb6]; // bb3[4]: scope 0 at $DIR/issue-49232.rs:9:17: 9:22
+        FakeRead(ForMatchedPlace, _3);   // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
+        switchInt(_3) -> [false: bb5, otherwise: bb6]; // scope 0 at $DIR/issue-49232.rs:9:17: 9:22
     }
 
     bb4 (cleanup): {
-        resume;                          // bb4[0]: scope 0 at $DIR/issue-49232.rs:5:1: 15:2
+        resume;                          // scope 0 at $DIR/issue-49232.rs:5:1: 15:2
     }
 
     bb5: {
-        falseEdges -> [real: bb7, imaginary: bb6]; // bb5[0]: scope 0 at $DIR/issue-49232.rs:9:17: 9:22
+        falseEdges -> [real: bb7, imaginary: bb6]; // scope 0 at $DIR/issue-49232.rs:9:17: 9:22
     }
 
     bb6: {
-        _0 = const ();                   // bb6[0]: scope 0 at $DIR/issue-49232.rs:10:25: 10:30
+        _0 = const ();                   // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
                                          // ty::Const
                                          // + ty: ()
                                          // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/issue-49232.rs:10:25: 10:30
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-        goto -> bb8;                     // bb6[1]: scope 0 at $DIR/issue-49232.rs:10:25: 10:30
+        goto -> bb8;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
     }
 
     bb7: {
-        _2 = const 4i32;                 // bb7[0]: scope 0 at $DIR/issue-49232.rs:9:26: 9:27
+        _2 = const 4i32;                 // scope 0 at $DIR/issue-49232.rs:9:26: 9:27
                                          // ty::Const
                                          // + ty: i32
                                          // + val: Value(Scalar(0x00000004))
                                          // mir::Constant
                                          // + span: $DIR/issue-49232.rs:9:26: 9:27
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000004)) }
-        goto -> bb12;                    // bb7[1]: scope 0 at $DIR/issue-49232.rs:8:13: 11:14
+        goto -> bb12;                    // scope 0 at $DIR/issue-49232.rs:8:13: 11:14
     }
 
     bb8: {
-        StorageDead(_3);                 // bb8[0]: scope 0 at $DIR/issue-49232.rs:12:10: 12:11
-        goto -> bb9;                     // bb8[1]: scope 0 at $DIR/issue-49232.rs:10:25: 10:30
+        StorageDead(_3);                 // scope 0 at $DIR/issue-49232.rs:12:10: 12:11
+        goto -> bb9;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
     }
 
     bb9: {
-        StorageDead(_2);                 // bb9[0]: scope 0 at $DIR/issue-49232.rs:14:5: 14:6
-        goto -> bb2;                     // bb9[1]: scope 0 at $DIR/issue-49232.rs:10:25: 10:30
+        StorageDead(_2);                 // scope 0 at $DIR/issue-49232.rs:14:5: 14:6
+        goto -> bb2;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
     }
 
     bb10: {
-        _4 = const ();                   // bb10[0]: scope 0 at $DIR/issue-49232.rs:10:25: 10:30
+        _4 = const ();                   // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
                                          // ty::Const
                                          // + ty: ()
                                          // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/issue-49232.rs:10:25: 10:30
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-        unreachable;                     // bb10[1]: scope 0 at $DIR/issue-49232.rs:10:25: 10:30
+        unreachable;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
     }
 
     bb11: {
-        goto -> bb12;                    // bb11[0]: scope 0 at $DIR/issue-49232.rs:8:13: 11:14
+        goto -> bb12;                    // scope 0 at $DIR/issue-49232.rs:8:13: 11:14
     }
 
     bb12: {
-        FakeRead(ForLet, _2);            // bb12[0]: scope 0 at $DIR/issue-49232.rs:7:13: 7:19
-        StorageDead(_3);                 // bb12[1]: scope 0 at $DIR/issue-49232.rs:12:10: 12:11
-        StorageLive(_5);                 // bb12[2]: scope 1 at $DIR/issue-49232.rs:13:9: 13:22
-        StorageLive(_6);                 // bb12[3]: scope 1 at $DIR/issue-49232.rs:13:14: 13:21
-        _6 = &_2;                        // bb12[4]: scope 1 at $DIR/issue-49232.rs:13:14: 13:21
-        _5 = const std::mem::drop::<&i32>(move _6) -> [return: bb13, unwind: bb4]; // bb12[5]: scope 1 at $DIR/issue-49232.rs:13:9: 13:22
+        FakeRead(ForLet, _2);            // scope 0 at $DIR/issue-49232.rs:7:13: 7:19
+        StorageDead(_3);                 // scope 0 at $DIR/issue-49232.rs:12:10: 12:11
+        StorageLive(_5);                 // scope 1 at $DIR/issue-49232.rs:13:9: 13:22
+        StorageLive(_6);                 // scope 1 at $DIR/issue-49232.rs:13:14: 13:21
+        _6 = &_2;                        // scope 1 at $DIR/issue-49232.rs:13:14: 13:21
+        _5 = const std::mem::drop::<&i32>(move _6) -> [return: bb13, unwind: bb4]; // scope 1 at $DIR/issue-49232.rs:13:9: 13:22
                                          // ty::Const
                                          // + ty: fn(&i32) {std::mem::drop::<&i32>}
                                          // + val: Value(Scalar(<ZST>))
@@ -109,20 +109,20 @@ fn main() -> () {
     }
 
     bb13: {
-        StorageDead(_6);                 // bb13[0]: scope 1 at $DIR/issue-49232.rs:13:21: 13:22
-        StorageDead(_5);                 // bb13[1]: scope 1 at $DIR/issue-49232.rs:13:22: 13:23
-        _1 = const ();                   // bb13[2]: scope 0 at $DIR/issue-49232.rs:6:10: 14:6
+        StorageDead(_6);                 // scope 1 at $DIR/issue-49232.rs:13:21: 13:22
+        StorageDead(_5);                 // scope 1 at $DIR/issue-49232.rs:13:22: 13:23
+        _1 = const ();                   // scope 0 at $DIR/issue-49232.rs:6:10: 14:6
                                          // ty::Const
                                          // + ty: ()
                                          // + val: Value(Scalar(<ZST>))
                                          // mir::Constant
                                          // + span: $DIR/issue-49232.rs:6:10: 14:6
                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-        StorageDead(_2);                 // bb13[3]: scope 0 at $DIR/issue-49232.rs:14:5: 14:6
-        goto -> bb1;                     // bb13[4]: scope 0 at $DIR/issue-49232.rs:6:5: 14:6
+        StorageDead(_2);                 // scope 0 at $DIR/issue-49232.rs:14:5: 14:6
+        goto -> bb1;                     // scope 0 at $DIR/issue-49232.rs:6:5: 14:6
     }
 
     bb14: {
-        return;                          // bb14[0]: scope 0 at $DIR/issue-49232.rs:15:2: 15:2
+        return;                          // scope 0 at $DIR/issue-49232.rs:15:2: 15:2
     }
 }

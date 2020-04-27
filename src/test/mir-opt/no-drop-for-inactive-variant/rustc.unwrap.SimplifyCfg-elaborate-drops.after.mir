@@ -13,17 +13,17 @@ fn unwrap(_1: std::option::Option<T>) -> T {
     }
 
     bb0: {
-        _2 = discriminant(_1);           // bb0[0]: scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
-        switchInt(move _2) -> [0isize: bb2, 1isize: bb4, otherwise: bb3]; // bb0[1]: scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
+        _2 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
+        switchInt(move _2) -> [0isize: bb2, 1isize: bb4, otherwise: bb3]; // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
     }
 
     bb1 (cleanup): {
-        resume;                          // bb1[0]: scope 0 at $DIR/no-drop-for-inactive-variant.rs:7:1: 12:2
+        resume;                          // scope 0 at $DIR/no-drop-for-inactive-variant.rs:7:1: 12:2
     }
 
     bb2: {
-        StorageLive(_4);                 // bb2[0]: scope 0 at $SRC_DIR/libstd/macros.rs:LL:COL
-        const std::rt::begin_panic::<&str>(const "explicit panic") -> bb5; // bb2[1]: scope 0 at $SRC_DIR/libstd/macros.rs:LL:COL
+        StorageLive(_4);                 // scope 0 at $SRC_DIR/libstd/macros.rs:LL:COL
+        const std::rt::begin_panic::<&str>(const "explicit panic") -> bb5; // scope 0 at $SRC_DIR/libstd/macros.rs:LL:COL
                                          // ty::Const
                                          // + ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}
                                          // + val: Value(Scalar(<ZST>))
@@ -39,19 +39,19 @@ fn unwrap(_1: std::option::Option<T>) -> T {
     }
 
     bb3: {
-        unreachable;                     // bb3[0]: scope 0 at $DIR/no-drop-for-inactive-variant.rs:8:11: 8:14
+        unreachable;                     // scope 0 at $DIR/no-drop-for-inactive-variant.rs:8:11: 8:14
     }
 
     bb4: {
-        StorageLive(_3);                 // bb4[0]: scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:14: 9:15
-        _3 = move ((_1 as Some).0: T);   // bb4[1]: scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:14: 9:15
-        _0 = move _3;                    // bb4[2]: scope 1 at $DIR/no-drop-for-inactive-variant.rs:9:20: 9:21
-        StorageDead(_3);                 // bb4[3]: scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:21: 9:22
-        _5 = discriminant(_1);           // bb4[4]: scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
-        return;                          // bb4[5]: scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:2: 12:2
+        StorageLive(_3);                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:14: 9:15
+        _3 = move ((_1 as Some).0: T);   // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:14: 9:15
+        _0 = move _3;                    // scope 1 at $DIR/no-drop-for-inactive-variant.rs:9:20: 9:21
+        StorageDead(_3);                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:21: 9:22
+        _5 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
+        return;                          // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:2: 12:2
     }
 
     bb5 (cleanup): {
-        drop(_1) -> bb1;                 // bb5[0]: scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
+        drop(_1) -> bb1;                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
     }
 }

@@ -13,13 +13,13 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
-          StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
--         StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
--         StorageLive(_4);                 // bb0[3]: scope 0 at $DIR/const-promotion-extern-static.rs:13:32: 13:45
--         StorageLive(_5);                 // bb0[4]: scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
--         _5 = const {alloc2+0x0: &i32};   // bb0[5]: scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
-+         _6 = const FOO::promoted[0];     // bb0[2]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
+          StorageLive(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
+          StorageLive(_2);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
+-         StorageLive(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
+-         StorageLive(_4);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:32: 13:45
+-         StorageLive(_5);                 // scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
+-         _5 = const {alloc2+0x0: &i32};   // scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
++         _6 = const FOO::promoted[0];     // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
                                            // ty::Const
 -                                          // + ty: &i32
 -                                          // + val: Value(Scalar(alloc2+0x0))
@@ -28,16 +28,14 @@
                                            // mir::Constant
 -                                          // + span: $DIR/const-promotion-extern-static.rs:13:42: 13:43
 -                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc2+0x0)) }
--         _4 = &(*_5);                     // bb0[6]: scope 1 at $DIR/const-promotion-extern-static.rs:13:41: 13:43
--         _3 = [move _4];                  // bb0[7]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
--         _2 = &_3;                        // bb0[8]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
--         _1 = move _2 as &[&i32] (Pointer(Unsize)); // bb0[9]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
--         _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1]; // bb0[10]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
+-         _4 = &(*_5);                     // scope 1 at $DIR/const-promotion-extern-static.rs:13:41: 13:43
+-         _3 = [move _4];                  // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
+-         _2 = &_3;                        // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
 +                                          // + span: $DIR/const-promotion-extern-static.rs:13:31: 13:46
 +                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(DefId(0:7 ~ const_promotion_extern_static[317d]::FOO[0]), [], Some(promoted[0])) }
-+         _2 = &(*_6);                     // bb0[3]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
-+         _1 = move _2 as &[&i32] (Pointer(Unsize)); // bb0[4]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
-+         _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1]; // bb0[5]: scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
++         _2 = &(*_6);                     // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
+          _1 = move _2 as &[&i32] (Pointer(Unsize)); // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
+          _0 = const core::slice::<impl [&i32]>::as_ptr(move _1) -> [return: bb2, unwind: bb1]; // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
                                            // ty::Const
                                            // + ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}
                                            // + val: Value(Scalar(<ZST>))
@@ -47,14 +45,13 @@
       }
   
       bb1 (cleanup): {
-          resume;                          // bb1[0]: scope 0 at $DIR/const-promotion-extern-static.rs:13:1: 13:56
+          resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:13:1: 13:56
       }
   
       bb2: {
--         StorageDead(_5);                 // bb2[0]: scope 0 at $DIR/const-promotion-extern-static.rs:13:54: 13:55
--         StorageDead(_3);                 // bb2[1]: scope 0 at $DIR/const-promotion-extern-static.rs:13:54: 13:55
--         return;                          // bb2[2]: scope 0 at $DIR/const-promotion-extern-static.rs:13:1: 13:56
-+         return;                          // bb2[0]: scope 0 at $DIR/const-promotion-extern-static.rs:13:1: 13:56
+-         StorageDead(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:54: 13:55
+-         StorageDead(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:54: 13:55
+          return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:13:1: 13:56
       }
   }
 - 

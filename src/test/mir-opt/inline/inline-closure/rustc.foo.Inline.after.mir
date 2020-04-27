@@ -20,8 +20,8 @@ fn foo(_1: T, _2: i32) -> i32 {
     }
 
     bb0: {
-        StorageLive(_3);                 // bb0[0]: scope 0 at $DIR/inline-closure.rs:11:9: 11:10
-        _3 = [closure@foo::<T>::{{closure}}#0]; // bb0[1]: scope 0 at $DIR/inline-closure.rs:11:13: 11:24
+        StorageLive(_3);                 // scope 0 at $DIR/inline-closure.rs:11:9: 11:10
+        _3 = [closure@foo::<T>::{{closure}}#0]; // scope 0 at $DIR/inline-closure.rs:11:13: 11:24
                                          // closure
                                          // + def_id: DefId(0:6 ~ inline_closure[317d]::foo[0]::{{closure}}[0])
                                          // + substs: [
@@ -30,22 +30,22 @@ fn foo(_1: T, _2: i32) -> i32 {
                                          //     extern "rust-call" fn((i32, i32)) -> i32,
                                          //     (),
                                          // ]
-        StorageLive(_4);                 // bb0[2]: scope 1 at $DIR/inline-closure.rs:12:5: 12:6
-        _4 = &_3;                        // bb0[3]: scope 1 at $DIR/inline-closure.rs:12:5: 12:6
-        StorageLive(_5);                 // bb0[4]: scope 1 at $DIR/inline-closure.rs:12:5: 12:12
-        StorageLive(_6);                 // bb0[5]: scope 1 at $DIR/inline-closure.rs:12:7: 12:8
-        _6 = _2;                         // bb0[6]: scope 1 at $DIR/inline-closure.rs:12:7: 12:8
-        StorageLive(_7);                 // bb0[7]: scope 1 at $DIR/inline-closure.rs:12:10: 12:11
-        _7 = _2;                         // bb0[8]: scope 1 at $DIR/inline-closure.rs:12:10: 12:11
-        _5 = (move _6, move _7);         // bb0[9]: scope 1 at $DIR/inline-closure.rs:12:5: 12:12
-        _8 = move (_5.0: i32);           // bb0[10]: scope 1 at $DIR/inline-closure.rs:12:5: 12:12
-        _9 = move (_5.1: i32);           // bb0[11]: scope 1 at $DIR/inline-closure.rs:12:5: 12:12
-        _0 = _8;                         // bb0[12]: scope 2 at $DIR/inline-closure.rs:11:22: 11:24
-        StorageDead(_7);                 // bb0[13]: scope 1 at $DIR/inline-closure.rs:12:11: 12:12
-        StorageDead(_6);                 // bb0[14]: scope 1 at $DIR/inline-closure.rs:12:11: 12:12
-        StorageDead(_5);                 // bb0[15]: scope 1 at $DIR/inline-closure.rs:12:11: 12:12
-        StorageDead(_4);                 // bb0[16]: scope 1 at $DIR/inline-closure.rs:12:11: 12:12
-        StorageDead(_3);                 // bb0[17]: scope 0 at $DIR/inline-closure.rs:13:1: 13:2
-        return;                          // bb0[18]: scope 0 at $DIR/inline-closure.rs:13:2: 13:2
+        StorageLive(_4);                 // scope 1 at $DIR/inline-closure.rs:12:5: 12:6
+        _4 = &_3;                        // scope 1 at $DIR/inline-closure.rs:12:5: 12:6
+        StorageLive(_5);                 // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
+        StorageLive(_6);                 // scope 1 at $DIR/inline-closure.rs:12:7: 12:8
+        _6 = _2;                         // scope 1 at $DIR/inline-closure.rs:12:7: 12:8
+        StorageLive(_7);                 // scope 1 at $DIR/inline-closure.rs:12:10: 12:11
+        _7 = _2;                         // scope 1 at $DIR/inline-closure.rs:12:10: 12:11
+        _5 = (move _6, move _7);         // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
+        _8 = move (_5.0: i32);           // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
+        _9 = move (_5.1: i32);           // scope 1 at $DIR/inline-closure.rs:12:5: 12:12
+        _0 = _8;                         // scope 2 at $DIR/inline-closure.rs:11:22: 11:24
+        StorageDead(_7);                 // scope 1 at $DIR/inline-closure.rs:12:11: 12:12
+        StorageDead(_6);                 // scope 1 at $DIR/inline-closure.rs:12:11: 12:12
+        StorageDead(_5);                 // scope 1 at $DIR/inline-closure.rs:12:11: 12:12
+        StorageDead(_4);                 // scope 1 at $DIR/inline-closure.rs:12:11: 12:12
+        StorageDead(_3);                 // scope 0 at $DIR/inline-closure.rs:13:1: 13:2
+        return;                          // scope 0 at $DIR/inline-closure.rs:13:2: 13:2
     }
 }

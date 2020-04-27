@@ -5,7 +5,7 @@
     let mut _1: (usize, bool);           // in scope 0 at $DIR/issue-41697.rs:18:19: 18:22
 
     bb0: {
-        _1 = CheckedAdd(const 1usize, const 1usize); // bb0[0]: scope 0 at $DIR/issue-41697.rs:18:19: 18:22
+        _1 = CheckedAdd(const 1usize, const 1usize); // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
                                          // ty::Const
                                          // + ty: usize
                                          // + val: Value(Scalar(0x00000001))
@@ -18,15 +18,15 @@
                                          // mir::Constant
                                          // + span: $DIR/issue-41697.rs:18:21: 18:22
                                          // + literal: Const { ty: usize, val: Value(Scalar(0x00000001)) }
-        assert(!move (_1.1: bool), "attempt to add with overflow") -> [success: bb2, unwind: bb1]; // bb0[1]: scope 0 at $DIR/issue-41697.rs:18:19: 18:22
+        assert(!move (_1.1: bool), "attempt to add with overflow") -> [success: bb2, unwind: bb1]; // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
     }
 
     bb1 (cleanup): {
-        resume;                          // bb1[0]: scope 0 at $DIR/issue-41697.rs:18:19: 18:22
+        resume;                          // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
     }
 
     bb2: {
-        _0 = move (_1.0: usize);         // bb2[0]: scope 0 at $DIR/issue-41697.rs:18:19: 18:22
-        return;                          // bb2[1]: scope 0 at $DIR/issue-41697.rs:18:19: 18:22
+        _0 = move (_1.0: usize);         // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
+        return;                          // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
     }
 }

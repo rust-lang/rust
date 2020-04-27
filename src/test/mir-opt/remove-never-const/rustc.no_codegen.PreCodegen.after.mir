@@ -6,6 +6,6 @@ fn no_codegen() -> () {
     }
 
     bb0: {
-        unreachable;                     // bb0[0]: scope 0 at $DIR/remove-never-const.rs:20:13: 20:33
+        unreachable;                     // scope 0 at $DIR/remove-never-const.rs:20:13: 20:33
     }
 }

@@ -18,8 +18,8 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/unreachable.rs:9:23: 9:30
-          _1 = const empty() -> bb1;       // bb0[1]: scope 0 at $DIR/unreachable.rs:9:23: 9:30
+          StorageLive(_1);                 // scope 0 at $DIR/unreachable.rs:9:23: 9:30
+          _1 = const empty() -> bb1;       // scope 0 at $DIR/unreachable.rs:9:23: 9:30
                                            // ty::Const
                                            // + ty: fn() -> std::option::Option<Empty> {empty}
                                            // + val: Value(Scalar(<ZST>))
@@ -29,80 +29,80 @@
       }
   
       bb1: {
-          _2 = discriminant(_1);           // bb1[0]: scope 0 at $DIR/unreachable.rs:9:12: 9:20
--         switchInt(move _2) -> [1isize: bb3, otherwise: bb2]; // bb1[1]: scope 0 at $DIR/unreachable.rs:9:12: 9:20
-+         goto -> bb2;                     // bb1[1]: scope 0 at $DIR/unreachable.rs:9:12: 9:20
+          _2 = discriminant(_1);           // scope 0 at $DIR/unreachable.rs:9:12: 9:20
+-         switchInt(move _2) -> [1isize: bb3, otherwise: bb2]; // scope 0 at $DIR/unreachable.rs:9:12: 9:20
++         goto -> bb2;                     // scope 0 at $DIR/unreachable.rs:9:12: 9:20
       }
   
       bb2: {
-          _0 = const ();                   // bb2[0]: scope 0 at $DIR/unreachable.rs:9:5: 19:6
+          _0 = const ();                   // scope 0 at $DIR/unreachable.rs:9:5: 19:6
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/unreachable.rs:9:5: 19:6
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          StorageDead(_1);                 // bb2[1]: scope 0 at $DIR/unreachable.rs:20:1: 20:2
-          return;                          // bb2[2]: scope 0 at $DIR/unreachable.rs:20:2: 20:2
+          StorageDead(_1);                 // scope 0 at $DIR/unreachable.rs:20:1: 20:2
+          return;                          // scope 0 at $DIR/unreachable.rs:20:2: 20:2
 -     }
 - 
 -     bb3: {
--         StorageLive(_3);                 // bb3[0]: scope 0 at $DIR/unreachable.rs:9:17: 9:19
--         _3 = move ((_1 as Some).0: Empty); // bb3[1]: scope 0 at $DIR/unreachable.rs:9:17: 9:19
--         StorageLive(_4);                 // bb3[2]: scope 1 at $DIR/unreachable.rs:10:13: 10:19
--         StorageLive(_5);                 // bb3[3]: scope 2 at $DIR/unreachable.rs:12:9: 16:10
--         StorageLive(_6);                 // bb3[4]: scope 2 at $DIR/unreachable.rs:12:12: 12:16
--         _6 = const true;                 // bb3[5]: scope 2 at $DIR/unreachable.rs:12:12: 12:16
+-         StorageLive(_3);                 // scope 0 at $DIR/unreachable.rs:9:17: 9:19
+-         _3 = move ((_1 as Some).0: Empty); // scope 0 at $DIR/unreachable.rs:9:17: 9:19
+-         StorageLive(_4);                 // scope 1 at $DIR/unreachable.rs:10:13: 10:19
+-         StorageLive(_5);                 // scope 2 at $DIR/unreachable.rs:12:9: 16:10
+-         StorageLive(_6);                 // scope 2 at $DIR/unreachable.rs:12:12: 12:16
+-         _6 = const true;                 // scope 2 at $DIR/unreachable.rs:12:12: 12:16
 -                                          // ty::Const
 -                                          // + ty: bool
 -                                          // + val: Value(Scalar(0x01))
 -                                          // mir::Constant
 -                                          // + span: $DIR/unreachable.rs:12:12: 12:16
 -                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
--         switchInt(_6) -> [false: bb4, otherwise: bb5]; // bb3[6]: scope 2 at $DIR/unreachable.rs:12:9: 16:10
+-         switchInt(_6) -> [false: bb4, otherwise: bb5]; // scope 2 at $DIR/unreachable.rs:12:9: 16:10
 -     }
 - 
 -     bb4: {
--         _4 = const 42i32;                // bb4[0]: scope 2 at $DIR/unreachable.rs:15:13: 15:20
+-         _4 = const 42i32;                // scope 2 at $DIR/unreachable.rs:15:13: 15:20
 -                                          // ty::Const
 -                                          // + ty: i32
 -                                          // + val: Value(Scalar(0x0000002a))
 -                                          // mir::Constant
 -                                          // + span: $DIR/unreachable.rs:15:18: 15:20
 -                                          // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
--         _5 = const ();                   // bb4[1]: scope 2 at $DIR/unreachable.rs:14:16: 16:10
+-         _5 = const ();                   // scope 2 at $DIR/unreachable.rs:14:16: 16:10
 -                                          // ty::Const
 -                                          // + ty: ()
 -                                          // + val: Value(Scalar(<ZST>))
 -                                          // mir::Constant
 -                                          // + span: $DIR/unreachable.rs:14:16: 16:10
 -                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
--         goto -> bb6;                     // bb4[2]: scope 2 at $DIR/unreachable.rs:12:9: 16:10
+-         goto -> bb6;                     // scope 2 at $DIR/unreachable.rs:12:9: 16:10
 -     }
 - 
 -     bb5: {
--         _4 = const 21i32;                // bb5[0]: scope 2 at $DIR/unreachable.rs:13:13: 13:20
+-         _4 = const 21i32;                // scope 2 at $DIR/unreachable.rs:13:13: 13:20
 -                                          // ty::Const
 -                                          // + ty: i32
 -                                          // + val: Value(Scalar(0x00000015))
 -                                          // mir::Constant
 -                                          // + span: $DIR/unreachable.rs:13:18: 13:20
 -                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000015)) }
--         _5 = const ();                   // bb5[1]: scope 2 at $DIR/unreachable.rs:12:17: 14:10
+-         _5 = const ();                   // scope 2 at $DIR/unreachable.rs:12:17: 14:10
 -                                          // ty::Const
 -                                          // + ty: ()
 -                                          // + val: Value(Scalar(<ZST>))
 -                                          // mir::Constant
 -                                          // + span: $DIR/unreachable.rs:12:17: 14:10
 -                                          // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
--         goto -> bb6;                     // bb5[2]: scope 2 at $DIR/unreachable.rs:12:9: 16:10
+-         goto -> bb6;                     // scope 2 at $DIR/unreachable.rs:12:9: 16:10
 -     }
 - 
 -     bb6: {
--         StorageDead(_6);                 // bb6[0]: scope 2 at $DIR/unreachable.rs:16:9: 16:10
--         StorageDead(_5);                 // bb6[1]: scope 2 at $DIR/unreachable.rs:16:9: 16:10
--         StorageLive(_7);                 // bb6[2]: scope 2 at $DIR/unreachable.rs:18:9: 18:21
--         unreachable;                     // bb6[3]: scope 2 at $DIR/unreachable.rs:18:15: 18:17
+-         StorageDead(_6);                 // scope 2 at $DIR/unreachable.rs:16:9: 16:10
+-         StorageDead(_5);                 // scope 2 at $DIR/unreachable.rs:16:9: 16:10
+-         StorageLive(_7);                 // scope 2 at $DIR/unreachable.rs:18:9: 18:21
+-         unreachable;                     // scope 2 at $DIR/unreachable.rs:18:15: 18:17
       }
   }
   

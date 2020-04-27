@@ -10,9 +10,9 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/checked_add.rs:5:9: 5:10
--         _2 = CheckedAdd(const 1u32, const 1u32); // bb0[1]: scope 0 at $DIR/checked_add.rs:5:18: 5:23
-+         _2 = (const 2u32, const false);  // bb0[1]: scope 0 at $DIR/checked_add.rs:5:18: 5:23
+          StorageLive(_1);                 // scope 0 at $DIR/checked_add.rs:5:9: 5:10
+-         _2 = CheckedAdd(const 1u32, const 1u32); // scope 0 at $DIR/checked_add.rs:5:18: 5:23
++         _2 = (const 2u32, const false);  // scope 0 at $DIR/checked_add.rs:5:18: 5:23
                                            // ty::Const
                                            // + ty: u32
 -                                          // + val: Value(Scalar(0x00000001))
@@ -30,10 +30,10 @@
                                            // mir::Constant
 -                                          // + span: $DIR/checked_add.rs:5:22: 5:23
 -                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000001)) }
--         assert(!move (_2.1: bool), "attempt to add with overflow") -> bb1; // bb0[2]: scope 0 at $DIR/checked_add.rs:5:18: 5:23
+-         assert(!move (_2.1: bool), "attempt to add with overflow") -> bb1; // scope 0 at $DIR/checked_add.rs:5:18: 5:23
 +                                          // + span: $DIR/checked_add.rs:5:18: 5:23
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-+         assert(!const false, "attempt to add with overflow") -> bb1; // bb0[2]: scope 0 at $DIR/checked_add.rs:5:18: 5:23
++         assert(!const false, "attempt to add with overflow") -> bb1; // scope 0 at $DIR/checked_add.rs:5:18: 5:23
 +                                          // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x00))
@@ -43,23 +43,23 @@
       }
   
       bb1: {
--         _1 = move (_2.0: u32);           // bb1[0]: scope 0 at $DIR/checked_add.rs:5:18: 5:23
-+         _1 = const 2u32;                 // bb1[0]: scope 0 at $DIR/checked_add.rs:5:18: 5:23
+-         _1 = move (_2.0: u32);           // scope 0 at $DIR/checked_add.rs:5:18: 5:23
++         _1 = const 2u32;                 // scope 0 at $DIR/checked_add.rs:5:18: 5:23
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000002))
 +                                          // mir::Constant
 +                                          // + span: $DIR/checked_add.rs:5:18: 5:23
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
-          _0 = const ();                   // bb1[1]: scope 0 at $DIR/checked_add.rs:4:11: 6:2
+          _0 = const ();                   // scope 0 at $DIR/checked_add.rs:4:11: 6:2
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/checked_add.rs:4:11: 6:2
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          StorageDead(_1);                 // bb1[2]: scope 0 at $DIR/checked_add.rs:6:1: 6:2
-          return;                          // bb1[3]: scope 0 at $DIR/checked_add.rs:6:2: 6:2
+          StorageDead(_1);                 // scope 0 at $DIR/checked_add.rs:6:1: 6:2
+          return;                          // scope 0 at $DIR/checked_add.rs:6:2: 6:2
       }
   }
   

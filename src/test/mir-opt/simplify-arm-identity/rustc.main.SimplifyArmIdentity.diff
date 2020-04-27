@@ -18,54 +18,54 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/simplify-arm-identity.rs:17:9: 17:10
-          ((_1 as Foo).0: u8) = const 0u8; // bb0[1]: scope 0 at $DIR/simplify-arm-identity.rs:17:18: 17:29
+          StorageLive(_1);                 // scope 0 at $DIR/simplify-arm-identity.rs:17:9: 17:10
+          ((_1 as Foo).0: u8) = const 0u8; // scope 0 at $DIR/simplify-arm-identity.rs:17:18: 17:29
                                            // ty::Const
                                            // + ty: u8
                                            // + val: Value(Scalar(0x00))
                                            // mir::Constant
                                            // + span: $DIR/simplify-arm-identity.rs:17:27: 17:28
                                            // + literal: Const { ty: u8, val: Value(Scalar(0x00)) }
-          discriminant(_1) = 0;            // bb0[2]: scope 0 at $DIR/simplify-arm-identity.rs:17:18: 17:29
-          StorageLive(_2);                 // bb0[3]: scope 1 at $DIR/simplify-arm-identity.rs:18:18: 21:6
-          _3 = discriminant(_1);           // bb0[4]: scope 1 at $DIR/simplify-arm-identity.rs:19:9: 19:20
-          switchInt(move _3) -> [0isize: bb3, 1isize: bb1, otherwise: bb2]; // bb0[5]: scope 1 at $DIR/simplify-arm-identity.rs:19:9: 19:20
+          discriminant(_1) = 0;            // scope 0 at $DIR/simplify-arm-identity.rs:17:18: 17:29
+          StorageLive(_2);                 // scope 1 at $DIR/simplify-arm-identity.rs:18:18: 21:6
+          _3 = discriminant(_1);           // scope 1 at $DIR/simplify-arm-identity.rs:19:9: 19:20
+          switchInt(move _3) -> [0isize: bb3, 1isize: bb1, otherwise: bb2]; // scope 1 at $DIR/simplify-arm-identity.rs:19:9: 19:20
       }
   
       bb1: {
-          ((_2 as Foo).0: u8) = const 0u8; // bb1[0]: scope 1 at $DIR/simplify-arm-identity.rs:20:21: 20:32
+          ((_2 as Foo).0: u8) = const 0u8; // scope 1 at $DIR/simplify-arm-identity.rs:20:21: 20:32
                                            // ty::Const
                                            // + ty: u8
                                            // + val: Value(Scalar(0x00))
                                            // mir::Constant
                                            // + span: $DIR/simplify-arm-identity.rs:20:30: 20:31
                                            // + literal: Const { ty: u8, val: Value(Scalar(0x00)) }
-          discriminant(_2) = 0;            // bb1[1]: scope 1 at $DIR/simplify-arm-identity.rs:20:21: 20:32
-          goto -> bb4;                     // bb1[2]: scope 1 at $DIR/simplify-arm-identity.rs:18:18: 21:6
+          discriminant(_2) = 0;            // scope 1 at $DIR/simplify-arm-identity.rs:20:21: 20:32
+          goto -> bb4;                     // scope 1 at $DIR/simplify-arm-identity.rs:18:18: 21:6
       }
   
       bb2: {
-          unreachable;                     // bb2[0]: scope 1 at $DIR/simplify-arm-identity.rs:18:24: 18:25
+          unreachable;                     // scope 1 at $DIR/simplify-arm-identity.rs:18:24: 18:25
       }
   
       bb3: {
-          _4 = ((_1 as Foo).0: u8);        // bb3[0]: scope 1 at $DIR/simplify-arm-identity.rs:19:18: 19:19
-          ((_2 as Foo).0: u8) = move _4;   // bb3[1]: scope 3 at $DIR/simplify-arm-identity.rs:19:24: 19:35
-          discriminant(_2) = 0;            // bb3[2]: scope 3 at $DIR/simplify-arm-identity.rs:19:24: 19:35
-          goto -> bb4;                     // bb3[3]: scope 1 at $DIR/simplify-arm-identity.rs:18:18: 21:6
+          _4 = ((_1 as Foo).0: u8);        // scope 1 at $DIR/simplify-arm-identity.rs:19:18: 19:19
+          ((_2 as Foo).0: u8) = move _4;   // scope 3 at $DIR/simplify-arm-identity.rs:19:24: 19:35
+          discriminant(_2) = 0;            // scope 3 at $DIR/simplify-arm-identity.rs:19:24: 19:35
+          goto -> bb4;                     // scope 1 at $DIR/simplify-arm-identity.rs:18:18: 21:6
       }
   
       bb4: {
-          StorageDead(_2);                 // bb4[0]: scope 1 at $DIR/simplify-arm-identity.rs:21:6: 21:7
-          _0 = const ();                   // bb4[1]: scope 0 at $DIR/simplify-arm-identity.rs:16:11: 22:2
+          StorageDead(_2);                 // scope 1 at $DIR/simplify-arm-identity.rs:21:6: 21:7
+          _0 = const ();                   // scope 0 at $DIR/simplify-arm-identity.rs:16:11: 22:2
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/simplify-arm-identity.rs:16:11: 22:2
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          StorageDead(_1);                 // bb4[2]: scope 0 at $DIR/simplify-arm-identity.rs:22:1: 22:2
-          return;                          // bb4[3]: scope 0 at $DIR/simplify-arm-identity.rs:22:2: 22:2
+          StorageDead(_1);                 // scope 0 at $DIR/simplify-arm-identity.rs:22:1: 22:2
+          return;                          // scope 0 at $DIR/simplify-arm-identity.rs:22:2: 22:2
       }
   }
   
