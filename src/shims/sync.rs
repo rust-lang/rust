@@ -158,7 +158,7 @@ fn mutex_get_or_create_blockset<'mir, 'tcx: 'mir>(
         mutex_set_blockset(ecx, mutex_op, blockset.to_u32_scalar())?;
         Ok(blockset)
     } else {
-        Ok(blockset.into())
+        Ok(BlockSetId::new(blockset))
     }
 }
 
@@ -233,7 +233,7 @@ fn rwlock_get_or_create_writer_blockset<'mir, 'tcx: 'mir>(
         rwlock_set_writer_blockset(ecx, rwlock_op, blockset.to_u32_scalar())?;
         Ok(blockset)
     } else {
-        Ok(blockset.into())
+        Ok(BlockSetId::new(blockset))
     }
 }
 
@@ -264,7 +264,7 @@ fn rwlock_get_or_create_reader_blockset<'mir, 'tcx: 'mir>(
         rwlock_set_reader_blockset(ecx, rwlock_op, blockset.to_u32_scalar())?;
         Ok(blockset)
     } else {
-        Ok(blockset.into())
+        Ok(BlockSetId::new(blockset))
     }
 }
 

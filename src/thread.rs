@@ -30,7 +30,7 @@ pub enum SchedulingAction {
 
 /// A thread identifier.
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct ThreadId(usize);
+pub struct ThreadId(u32);
 
 /// The main thread. When it terminates, the whole application terminates.
 const MAIN_THREAD: ThreadId = ThreadId(0);
@@ -43,22 +43,22 @@ impl ThreadId {
 
 impl Idx for ThreadId {
     fn new(idx: usize) -> Self {
-        ThreadId(idx)
+        ThreadId(u32::try_from(idx).unwrap())
     }
     fn index(self) -> usize {
-        self.0
+        usize::try_from(self.0).unwrap()
     }
 }
 
 impl From<u64> for ThreadId {
     fn from(id: u64) -> Self {
-        Self(usize::try_from(id).unwrap())
+        Self(u32::try_from(id).unwrap())
     }
 }
 
 impl From<u32> for ThreadId {
     fn from(id: u32) -> Self {
-        Self(usize::try_from(id).unwrap())
+        Self(u32::try_from(id).unwrap())
     }
 }
 
@@ -73,13 +73,11 @@ impl ThreadId {
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct BlockSetId(NonZeroU32);
 
-impl From<u32> for BlockSetId {
-    fn from(id: u32) -> Self {
+impl BlockSetId {
+    /// Panics if `id` is 0.
+    pub fn new(id: u32) -> Self {
         Self(NonZeroU32::new(id).expect("0 is not a valid blockset id"))
     }
-}
-
-impl BlockSetId {
     pub fn to_u32_scalar<'tcx>(&self) -> Scalar<Tag> {
         Scalar::from_u32(self.0.get())
     }
@@ -325,7 +323,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// Allocate a new blockset id.
     fn create_blockset(&mut self) -> BlockSetId {
         self.blockset_counter = self.blockset_counter.checked_add(1).unwrap();
-        self.blockset_counter.into()
+        BlockSetId::new(self.blockset_counter)
     }
 
     /// Block the currently active thread and put it into the given blockset.
