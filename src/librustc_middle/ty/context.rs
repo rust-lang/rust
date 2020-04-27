@@ -33,7 +33,7 @@ use crate::ty::{ConstVid, FloatVar, FloatVid, IntVar, IntVid, TyVar, TyVid};
 use crate::ty::{ExistentialPredicate, InferTy, ParamTy, PolyFnSig, Predicate, ProjectionTy};
 use crate::ty::{InferConst, ParamConst};
 use crate::ty::{List, TyKind, TyS};
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;

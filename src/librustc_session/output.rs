@@ -1,7 +1,7 @@
 //! Related to out filenames of compilation (e.g. save analysis, binaries).
 use crate::config::{self, Input, OutputFilenames, OutputType};
 use crate::Session;
-use rustc_ast::{ast, attr};
+use rustc_ast::{self as ast, attr};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use std::path::{Path, PathBuf};

@@ -1,5 +1,5 @@
 use crate::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_ast::ast::{Block, StmtKind};
+use rustc_ast::{Block, StmtKind};
 use rustc_errors::Applicability;
 use rustc_span::Span;
 

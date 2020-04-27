@@ -2,8 +2,8 @@ use crate::rmeta::table::FixedSizeEncoding;
 use crate::rmeta::*;
 
 use log::{debug, trace};
-use rustc_ast::ast::{self, Ident};
 use rustc_ast::attr;
+use rustc_ast::{self as ast, Ident};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;

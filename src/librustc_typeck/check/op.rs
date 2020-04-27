@@ -2,7 +2,7 @@
 
 use super::method::MethodCallee;
 use super::{FnCtxt, Needs};
-use rustc_ast::ast::Ident;
+use rustc_ast::Ident;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};

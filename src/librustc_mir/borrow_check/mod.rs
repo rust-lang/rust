@@ -1,6 +1,6 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-use rustc_ast::ast::Name;
+use rustc_ast::Name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};

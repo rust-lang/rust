@@ -2,7 +2,7 @@
 
 use super::{find_by_name, mark_used};
 
-use rustc_ast::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem};
+use rustc_ast::{self as ast, Attribute, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, Handler};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};

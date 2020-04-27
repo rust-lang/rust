@@ -8,7 +8,7 @@ pub use crate::def_id::DefPathHash;
 use crate::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::hir;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::crate_disambiguator::CrateDisambiguator;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;

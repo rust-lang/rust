@@ -1,7 +1,7 @@
 use decoder::Metadata;
 use table::{Table, TableBuilder};
 
-use rustc_ast::ast::{self, MacroDef};
+use rustc_ast::{self as ast, MacroDef};
 use rustc_attr as attr;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;

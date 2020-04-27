@@ -12,7 +12,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::ptr;
 
-use rustc_ast::ast::Mutability;
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::ty::{self, query::TyCtxtAt, Instance, ParamEnv};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};

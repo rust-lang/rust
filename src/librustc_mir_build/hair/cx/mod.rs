@@ -1,11 +1,11 @@
-//! This module contains the fcuntaiontliy to convert from the wacky tcx data
+//! This module contains the functionality to convert from the wacky tcx data
 //! structures into the HAIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::*;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;

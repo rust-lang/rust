@@ -17,13 +17,13 @@ pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
 
-use rustc_ast::ast::{self, FloatTy, Ident, IntTy, Name, NodeId, UintTy};
-use rustc_ast::ast::{Crate, CRATE_NODE_ID};
-use rustc_ast::ast::{ItemKind, Path};
 use rustc_ast::attr;
 use rustc_ast::node_id::{NodeMap, NodeSet};
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
+use rustc_ast::{self as ast, FloatTy, Ident, IntTy, Name, NodeId, UintTy};
+use rustc_ast::{Crate, CRATE_NODE_ID};
+use rustc_ast::{ItemKind, Path};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;

@@ -4,7 +4,7 @@ use crate::creader::CrateMetadataRef;
 use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::{self as ast, Ident};
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;

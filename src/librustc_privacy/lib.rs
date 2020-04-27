@@ -4,7 +4,7 @@
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
 
-use rustc_ast::ast::Ident;
+use rustc_ast::Ident;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;

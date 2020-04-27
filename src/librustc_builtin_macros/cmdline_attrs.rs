@@ -1,8 +1,8 @@
 //! Attributes injected into the crate root from command line using `-Z crate-attr`.
 
-use rustc_ast::ast::{self, AttrItem, AttrStyle};
 use rustc_ast::attr::mk_attr;
 use rustc_ast::token;
+use rustc_ast::{self as ast, AttrItem, AttrStyle};
 use rustc_session::parse::ParseSess;
 use rustc_span::FileName;
 

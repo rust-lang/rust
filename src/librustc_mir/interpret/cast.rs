@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use super::{FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_ast::ast::FloatTy;
+use rustc_ast::FloatTy;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCast;

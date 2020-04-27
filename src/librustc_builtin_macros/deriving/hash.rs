@@ -2,8 +2,8 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{self, path_std, pathvec_std};
 
-use rustc_ast::ast::{Expr, MetaItem, Mutability};
 use rustc_ast::ptr::P;
+use rustc_ast::{Expr, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;

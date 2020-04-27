@@ -4,7 +4,7 @@ use crate::locator::{CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
 use rustc_ast::expand::allocator::{global_allocator_spans, AllocatorKind};
-use rustc_ast::{ast, attr};
+use rustc_ast::{self as ast, attr};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;

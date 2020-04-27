@@ -1,4 +1,4 @@
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_expand::base::{self, DummyResult};
 use rustc_span::symbol::Symbol;

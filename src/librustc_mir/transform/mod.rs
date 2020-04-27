@@ -1,6 +1,6 @@
 use crate::{shim, util};
 use required_consts::RequiredConstsVisitor;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};

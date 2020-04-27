@@ -16,7 +16,7 @@ use crate::ty::{
 };
 use crate::ty::{List, ParamEnv, ParamEnvAnd, TyS};
 use polonius_engine::Atom;
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::{self as ast, Ident};
 use rustc_data_structures::captures::Captures;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;

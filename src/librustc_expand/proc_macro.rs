@@ -1,9 +1,9 @@
 use crate::base::{self, *};
 use crate::proc_macro_server;
 
-use rustc_ast::ast::{self, ItemKind, MetaItemKind, NestedMetaItem};
 use rustc_ast::token;
 use rustc_ast::tokenstream::{self, TokenStream};
+use rustc_ast::{self as ast, ItemKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, ErrorReported};
 use rustc_span::symbol::sym;

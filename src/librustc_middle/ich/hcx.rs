@@ -2,7 +2,7 @@ use crate::ich;
 use crate::middle::cstore::CrateStore;
 use crate::ty::{fast_reject, TyCtxt};
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;

@@ -12,7 +12,7 @@
 //! for the `Code` associated with a particular NodeId.
 
 use crate::hir::map::Map;
-use rustc_ast::ast::{Attribute, Ident};
+use rustc_ast::{Attribute, Ident};
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Expr, FnDecl, Node};

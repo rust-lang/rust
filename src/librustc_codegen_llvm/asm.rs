@@ -138,7 +138,7 @@ fn inline_asm_call(
     output: &'ll llvm::Type,
     volatile: bool,
     alignstack: bool,
-    dia: ::rustc_ast::ast::LlvmAsmDialect,
+    dia: ::rustc_ast::LlvmAsmDialect,
 ) -> Option<&'ll Value> {
     let volatile = if volatile { llvm::True } else { llvm::False };
     let alignstack = if alignstack { llvm::True } else { llvm::False };

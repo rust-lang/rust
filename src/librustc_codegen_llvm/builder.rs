@@ -303,8 +303,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value) {
-        use rustc_ast::ast::IntTy::*;
-        use rustc_ast::ast::UintTy::*;
+        use rustc_ast::IntTy::*;
+        use rustc_ast::UintTy::*;
         use rustc_middle::ty::{Int, Uint};
 
         let new_kind = match ty.kind {

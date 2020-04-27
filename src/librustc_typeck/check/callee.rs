@@ -3,7 +3,7 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
 use crate::type_error_struct;
 
-use rustc_ast::ast::Ident;
+use rustc_ast::Ident;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::Res;

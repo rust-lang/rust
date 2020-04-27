@@ -3,8 +3,8 @@
 // interface.
 //
 
-use rustc_ast::ast::{self, GenericArg, Ident};
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{self as ast, GenericArg, Ident};
 use rustc_expand::base::{self, *};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;

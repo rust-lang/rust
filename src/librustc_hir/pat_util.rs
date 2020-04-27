@@ -1,7 +1,7 @@
 use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::DefId;
 use crate::hir::{self, HirId, PatKind};
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_span::Span;
 
 use std::iter::{Enumerate, ExactSizeIterator};

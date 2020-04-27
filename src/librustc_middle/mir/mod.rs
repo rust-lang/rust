@@ -18,8 +18,8 @@ use rustc_hir::{self, GeneratorKind};
 use rustc_target::abi::VariantIdx;
 
 use polonius_engine::Atom;
-pub use rustc_ast::ast::Mutability;
-use rustc_ast::ast::Name;
+pub use rustc_ast::Mutability;
+use rustc_ast::Name;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};

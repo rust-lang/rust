@@ -1,4 +1,4 @@
-use rustc_ast::ast::MetaItem;
+use rustc_ast::MetaItem;
 use rustc_expand::base::ExtCtxt;
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;

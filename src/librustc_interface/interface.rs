@@ -1,8 +1,8 @@
 pub use crate::passes::BoxedResolver;
 use crate::util;
 
-use rustc_ast::ast::{self, MetaItemKind};
 use rustc_ast::token;
+use rustc_ast::{self as ast, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;

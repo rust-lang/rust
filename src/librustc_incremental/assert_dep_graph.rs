@@ -34,7 +34,7 @@
 //! ```
 
 use graphviz as dot;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
 use rustc_hir as hir;

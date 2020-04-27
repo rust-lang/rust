@@ -17,7 +17,7 @@ use crate::llvm::debuginfo::{
 };
 use crate::value::Value;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::*;

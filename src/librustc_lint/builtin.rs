@@ -21,10 +21,10 @@
 //! `late_lint_methods!` invocation in `lib.rs`.
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_ast::ast::{self, Expr};
 use rustc_ast::attr::{self, HasAttrs};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
+use rustc_ast::{self as ast, Expr};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -1852,7 +1852,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
         /// Test if this constant is all-0.
         fn is_zero(expr: &hir::Expr<'_>) -> bool {
             use hir::ExprKind::*;
-            use rustc_ast::ast::LitKind::*;
+            use rustc_ast::LitKind::*;
             match &expr.kind {
                 Lit(lit) => {
                     if let Int(i, _) = lit.node {

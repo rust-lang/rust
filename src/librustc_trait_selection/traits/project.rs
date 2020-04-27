@@ -17,7 +17,7 @@ use super::{VtableClosureData, VtableFnPointerData, VtableGeneratorData, VtableI
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt;
-use rustc_ast::ast::Ident;
+use rustc_ast::Ident;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};

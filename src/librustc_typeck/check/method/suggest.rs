@@ -2,7 +2,7 @@
 //! found or is otherwise invalid.
 
 use crate::check::FnCtxt;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::util::lev_distance;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
