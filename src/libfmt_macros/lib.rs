@@ -321,12 +321,11 @@ impl<'a> Parser<'a> {
                 let pos = self.to_span_index(pos);
                 let description = format!("expected `'}}'`, found `{:?}`", maybe);
                 let label = "expected `}`".to_owned();
-                let note = Some(
-                        "if you intended to print `{`, you can escape it using `{{`".to_owned(),
-                );
-                let secondary_label =
-                    self.last_opening_brace
-                        .map(|sp| ("because of this opening brace".to_owned(), sp));
+                let note =
+                    Some("if you intended to print `{`, you can escape it using `{{`".to_owned());
+                let secondary_label = self
+                    .last_opening_brace
+                    .map(|sp| ("because of this opening brace".to_owned(), sp));
                 self.errors.push(ParseError {
                     description,
                     note,
