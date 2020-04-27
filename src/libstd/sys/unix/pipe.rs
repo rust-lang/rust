@@ -64,12 +64,22 @@ impl AnonPipe {
         self.0.read_vectored(bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
     }
 
     pub fn fd(&self) -> &FileDesc {

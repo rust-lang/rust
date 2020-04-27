@@ -180,6 +180,11 @@ impl Read for Repeat {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -233,6 +238,11 @@ impl Write for Sink {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let total_len = bufs.iter().map(|b| b.len()).sum();
         Ok(total_len)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 
     #[inline]

@@ -182,12 +182,22 @@ impl AnonPipe {
         self.inner.read_vectored(bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
     }
 }
 

@@ -226,6 +226,11 @@ impl Socket {
         self.0.read_vectored(bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+
     fn recv_from_with_flags(
         &self,
         buf: &mut [u8],
@@ -261,6 +266,11 @@ impl Socket {
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {

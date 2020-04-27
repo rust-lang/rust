@@ -20,6 +20,11 @@ impl io::Read for Stdin {
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         ManuallyDrop::new(FileDesc::new(libc::STDIN_FILENO)).read_vectored(bufs)
     }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        true
+    }
 }
 
 impl Stdout {
@@ -35,6 +40,11 @@ impl io::Write for Stdout {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         ManuallyDrop::new(FileDesc::new(libc::STDOUT_FILENO)).write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -55,6 +65,11 @@ impl io::Write for Stderr {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         ManuallyDrop::new(FileDesc::new(libc::STDERR_FILENO)).write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 
     fn flush(&mut self) -> io::Result<()> {
