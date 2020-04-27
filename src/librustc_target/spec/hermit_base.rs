@@ -1,4 +1,5 @@
-use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, PanicStrategy};
+use crate::spec::{RelocModel, TargetOptions, TlsModel};
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
@@ -17,7 +18,7 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         relocation_model: RelocModel::Static,
         target_family: None,
-        tls_model: "initial-exec".to_string(),
+        tls_model: TlsModel::InitialExec,
         ..Default::default()
     }
 }

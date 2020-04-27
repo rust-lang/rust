@@ -21,7 +21,7 @@ use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::{HasDataLayout, LayoutOf, PointeeInfo, Size, TargetDataLayout, VariantIdx};
-use rustc_target::spec::{HasTargetSpec, RelocModel, Target};
+use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
@@ -87,19 +87,12 @@ pub struct CodegenCx<'ll, 'tcx> {
     local_gen_sym_counter: Cell<usize>,
 }
 
-fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
-    let tls_model_arg = match sess.opts.debugging_opts.tls_model {
-        Some(ref s) => &s[..],
-        None => &sess.target.target.options.tls_model[..],
-    };
-
-    match crate::back::write::TLS_MODEL_ARGS.iter().find(|&&arg| arg.0 == tls_model_arg) {
-        Some(x) => x.1,
-        _ => {
-            sess.err(&format!("{:?} is not a valid TLS model", tls_model_arg));
-            sess.abort_if_errors();
-            bug!();
-        }
+fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
+    match tls_model {
+        TlsModel::GeneralDynamic => llvm::ThreadLocalMode::GeneralDynamic,
+        TlsModel::LocalDynamic => llvm::ThreadLocalMode::LocalDynamic,
+        TlsModel::InitialExec => llvm::ThreadLocalMode::InitialExec,
+        TlsModel::LocalExec => llvm::ThreadLocalMode::LocalExec,
     }
 }
 
@@ -267,7 +260,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let check_overflow = tcx.sess.overflow_checks();
 
-        let tls_model = get_tls_model(&tcx.sess);
+        let tls_model = to_llvm_tls_model(tcx.sess.tls_model());
 
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 

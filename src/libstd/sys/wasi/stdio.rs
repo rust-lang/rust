@@ -19,6 +19,11 @@ impl Stdin {
         ManuallyDrop::new(unsafe { WasiFd::from_raw(self.as_raw_fd()) }).read(data)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        true
+    }
+
     pub fn as_raw_fd(&self) -> u32 {
         0
     }
@@ -35,6 +40,11 @@ impl Stdout {
 
     pub fn write_vectored(&self, data: &[IoSlice<'_>]) -> io::Result<usize> {
         ManuallyDrop::new(unsafe { WasiFd::from_raw(self.as_raw_fd()) }).write(data)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        true
     }
 
     pub fn flush(&self) -> io::Result<()> {
@@ -57,6 +67,11 @@ impl Stderr {
 
     pub fn write_vectored(&self, data: &[IoSlice<'_>]) -> io::Result<usize> {
         ManuallyDrop::new(unsafe { WasiFd::from_raw(self.as_raw_fd()) }).write(data)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        true
     }
 
     pub fn flush(&self) -> io::Result<()> {

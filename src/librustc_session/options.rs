@@ -6,7 +6,8 @@ use crate::search_paths::SearchPath;
 use crate::utils::NativeLibraryKind;
 
 use rustc_target::spec::TargetTriple;
-use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelocModel, RelroLevel};
+use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy};
+use rustc_target::spec::{RelocModel, RelroLevel, TlsModel};
 
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
@@ -267,6 +268,8 @@ macro_rules! options {
         pub const parse_src_file_hash: &str = "either `md5` or `sha1`";
         pub const parse_relocation_model: &str =
             "one of supported relocation models (`rustc --print relocation-models`)";
+        pub const parse_tls_model: &str =
+            "one of supported TLS models (`rustc --print tls-models`)";
     }
 
     #[allow(dead_code)]
@@ -601,6 +604,14 @@ macro_rules! options {
             match v.and_then(|s| RelocModel::from_str(s).ok()) {
                 Some(relocation_model) => *slot = Some(relocation_model),
                 None if v == Some("default") => *slot = None,
+                _ => return false,
+            }
+            true
+        }
+
+        fn parse_tls_model(slot: &mut Option<TlsModel>, v: Option<&str>) -> bool {
+            match v.and_then(|s| TlsModel::from_str(s).ok()) {
+                Some(tls_model) => *slot = Some(tls_model),
                 _ => return false,
             }
             true
@@ -977,7 +988,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "measure time of each LLVM pass (default: no)"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass (default: no)"),
-    tls_model: Option<String> = (None, parse_opt_string, [TRACKED],
+    tls_model: Option<TlsModel> = (None, parse_tls_model, [TRACKED],
         "choose the TLS model to use (`rustc --print tls-models` for details)"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
         "for every macro invocation, print its name and arguments (default: no)"),

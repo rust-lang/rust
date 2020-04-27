@@ -256,6 +256,7 @@
 //! [`Read::read`]: trait.Read.html#tymethod.read
 //! [`Result`]: ../result/enum.Result.html
 //! [`.unwrap()`]: ../result/enum.Result.html#method.unwrap
+// ignore-tidy-filelength
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -578,6 +579,19 @@ pub trait Read {
     #[stable(feature = "iovec", since = "1.36.0")]
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
         default_read_vectored(|b| self.read(b), bufs)
+    }
+
+    /// Determines if this `Read`er has an efficient `read_vectored`
+    /// implementation.
+    ///
+    /// If a `Read`er does not override the default `read_vectored`
+    /// implementation, code using it may want to avoid the method all together
+    /// and coalesce writes into a single buffer for higher performance.
+    ///
+    /// The default implementation returns `false`.
+    #[unstable(feature = "can_vector", issue = "69941")]
+    fn is_read_vectored(&self) -> bool {
+        false
     }
 
     /// Determines if this `Read`er can work with buffers of uninitialized
@@ -1302,6 +1316,19 @@ pub trait Write {
     #[stable(feature = "iovec", since = "1.36.0")]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
         default_write_vectored(|b| self.write(b), bufs)
+    }
+
+    /// Determines if this `Write`er has an efficient `write_vectored`
+    /// implementation.
+    ///
+    /// If a `Write`er does not override the default `write_vectored`
+    /// implementation, code using it may want to avoid the method all together
+    /// and coalesce writes into a single buffer for higher performance.
+    ///
+    /// The default implementation returns `false`.
+    #[unstable(feature = "can_vector", issue = "69941")]
+    fn is_write_vectored(&self) -> bool {
+        false
     }
 
     /// Flush this output stream, ensuring that all intermediately buffered

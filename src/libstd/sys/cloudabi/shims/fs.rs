@@ -202,11 +202,19 @@ impl File {
         match self.0 {}
     }
 
+    pub fn is_read_vectored(&self) -> bool {
+        match self.0 {}
+    }
+
     pub fn write(&self, _buf: &[u8]) -> io::Result<usize> {
         match self.0 {}
     }
 
     pub fn write_vectored(&self, _bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        match self.0 {}
+    }
+
+    pub fn is_write_vectored(&self) -> bool {
         match self.0 {}
     }
 

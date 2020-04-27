@@ -266,6 +266,11 @@ impl Socket {
         }
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        true
+    }
+
     pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.recv_with_flags(buf, c::MSG_PEEK)
     }
@@ -322,6 +327,11 @@ impl Socket {
             ))?;
         }
         Ok(nwritten as usize)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        true
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: c_int) -> io::Result<()> {

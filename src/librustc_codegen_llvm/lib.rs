@@ -216,7 +216,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             }
             PrintRequest::TlsModels => {
                 println!("Available TLS models:");
-                for &(name, _) in back::write::TLS_MODEL_ARGS.iter() {
+                for name in &["global-dynamic", "local-dynamic", "initial-exec", "local-exec"] {
                     println!("    {}", name);
                 }
                 println!();

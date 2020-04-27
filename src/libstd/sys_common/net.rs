@@ -265,6 +265,11 @@ impl TcpStream {
         self.inner.read_vectored(bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
         let ret = cvt(unsafe {
@@ -275,6 +280,11 @@ impl TcpStream {
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        self.inner.is_write_vectored()
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {

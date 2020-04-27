@@ -43,13 +43,6 @@ pub const CODE_GEN_MODEL_ARGS: &[(&str, llvm::CodeModel)] = &[
     ("large", llvm::CodeModel::Large),
 ];
 
-pub const TLS_MODEL_ARGS: [(&str, llvm::ThreadLocalMode); 4] = [
-    ("global-dynamic", llvm::ThreadLocalMode::GeneralDynamic),
-    ("local-dynamic", llvm::ThreadLocalMode::LocalDynamic),
-    ("initial-exec", llvm::ThreadLocalMode::InitialExec),
-    ("local-exec", llvm::ThreadLocalMode::LocalExec),
-];
-
 pub fn llvm_err(handler: &rustc_errors::Handler, msg: &str) -> FatalError {
     match llvm::last_error() {
         Some(err) => handler.fatal(&format!("{}: {}", msg, err)),

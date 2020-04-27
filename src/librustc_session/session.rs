@@ -22,7 +22,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{self, FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
 use rustc_span::SourceFileHashAlgorithm;
-use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target, TargetTriple};
+use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target, TargetTriple, TlsModel};
 
 use std::cell::{self, RefCell};
 use std::env;
@@ -586,6 +586,10 @@ impl Session {
 
     pub fn relocation_model(&self) -> RelocModel {
         self.opts.cg.relocation_model.unwrap_or(self.target.target.options.relocation_model)
+    }
+
+    pub fn tls_model(&self) -> TlsModel {
+        self.opts.debugging_opts.tls_model.unwrap_or(self.target.target.options.tls_model)
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
