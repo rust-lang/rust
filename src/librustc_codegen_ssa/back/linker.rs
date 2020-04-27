@@ -19,6 +19,19 @@ use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 
+/// Disables non-English messages from localized linkers.
+/// Such messages may cause issues with text encoding on Windows (#35785)
+/// and prevent inspection of linker output in case of errors, which we occasionally do.
+/// This should be acceptable because other messages from rustc are in English anyway,
+/// and may also be desirable to improve searchability of the linker diagnostics.
+pub fn disable_localization(linker: &mut Command) {
+    // No harm in setting both env vars simultaneously.
+    // Unix-style linkers.
+    linker.env("LC_ALL", "C");
+    // MSVC's `link.exe`.
+    linker.env("VSLANG", "1033");
+}
+
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 #[derive(RustcEncodable, RustcDecodable)]
