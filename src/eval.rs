@@ -211,7 +211,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                     assert!(ecx.step()?, "a terminated thread was scheduled for execution");
                 }
                 SchedulingAction::ExecuteDtors => {
-                    ecx.schedule_tls_dtors_for_active_thread()?;
+                    ecx.schedule_next_tls_dtor_for_active_thread()?;
                 }
                 SchedulingAction::Stop => {
                     break;

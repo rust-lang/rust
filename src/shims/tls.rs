@@ -105,9 +105,9 @@ impl<'tcx> TlsData<'tcx> {
         match self.keys.get_mut(&key) {
             Some(TlsEntry { data, .. }) => {
                 match new_data {
-                    Some(ptr) => {
-                        trace!("TLS key {} for thread {:?} stored: {:?}", key, thread_id, ptr);
-                        data.insert(thread_id, ptr);
+                    Some(scalar) => {
+                        trace!("TLS key {} for thread {:?} stored: {:?}", key, thread_id, scalar);
+                        data.insert(thread_id, scalar);
                     }
                     None => {
                         trace!("TLS key {} for thread {:?} removed", key, thread_id);
@@ -271,7 +271,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some((instance, ptr, key)) = dtor {
             this.machine.tls.last_dtor_key.insert(active_thread, key);
             trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
-            assert!(!this.is_null(ptr).unwrap(), "Data can't be NULL when dtor is called!");
+            assert!(!this.is_null(ptr).unwrap(), "data can't be NULL when dtor is called!");
 
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
             this.call_function(
@@ -295,10 +295,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Schedule an active thread's TLS destructor to run on the active thread.
     /// Note that this function does not run the destructors itself, it just
-    /// schedules them one by one each time it is called.
+    /// schedules them one by one each time it is called and reenables the
+    /// thread so that it can be executed normally by the main execution loop.
     ///
     /// FIXME: we do not support yet deallocation of thread local statics.
-    fn schedule_tls_dtors_for_active_thread(&mut self) -> InterpResult<'tcx> {
+    /// Issue: https://github.com/rust-lang/miri/issues/1369
+    fn schedule_next_tls_dtor_for_active_thread(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread()?;
 
