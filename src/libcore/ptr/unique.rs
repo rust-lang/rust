@@ -3,7 +3,6 @@ use crate::fmt;
 use crate::marker::{PhantomData, Unsize};
 use crate::mem;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::ptr::NonNull;
 
 // ignore-tidy-undocumented-unsafe
 
@@ -169,21 +168,5 @@ impl<T: ?Sized> From<&mut T> for Unique<T> {
     #[inline]
     fn from(reference: &mut T) -> Self {
         unsafe { Unique { pointer: reference as *mut T, _marker: PhantomData } }
-    }
-}
-
-#[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> From<&T> for Unique<T> {
-    #[inline]
-    fn from(reference: &T) -> Self {
-        unsafe { Unique { pointer: reference as *const T, _marker: PhantomData } }
-    }
-}
-
-#[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
-    #[inline]
-    fn from(p: NonNull<T>) -> Self {
-        unsafe { Unique::new_unchecked(p.as_ptr()) }
     }
 }

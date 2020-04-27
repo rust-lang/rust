@@ -383,7 +383,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         has_self_arg
     }
 
-    fn followed_by_brace(&self, span: Span) -> (bool, Option<(Span, String)>) {
+    fn followed_by_brace(&self, span: Span) -> (bool, Option<Span>) {
         // HACK(estebank): find a better way to figure out that this was a
         // parser issue where a struct literal is being used on an expression
         // where a brace being opened means a block is being started. Look
@@ -406,7 +406,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             _ => false,
         };
         // In case this could be a struct literal that needs to be surrounded
-        // by parenthesis, find the appropriate span.
+        // by parentheses, find the appropriate span.
         let mut i = 0;
         let mut closing_brace = None;
         loop {
@@ -414,10 +414,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             match sm.span_to_snippet(sp) {
                 Ok(ref snippet) => {
                     if snippet == "}" {
-                        let sp = span.to(sp);
-                        if let Ok(snippet) = sm.span_to_snippet(sp) {
-                            closing_brace = Some((sp, snippet));
-                        }
+                        closing_brace = Some(span.to(sp));
                         break;
                     }
                 }
@@ -479,17 +476,23 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     suggested = path_sep(err, &parent);
                 }
                 PathSource::Expr(None) if followed_by_brace => {
-                    if let Some((sp, snippet)) = closing_brace {
-                        err.span_suggestion(
-                            sp,
-                            "surround the struct literal with parenthesis",
-                            format!("({})", snippet),
+                    if let Some(sp) = closing_brace {
+                        err.multipart_suggestion(
+                            "surround the struct literal with parentheses",
+                            vec![
+                                (sp.shrink_to_lo(), "(".to_string()),
+                                (sp.shrink_to_hi(), ")".to_string()),
+                            ],
                             Applicability::MaybeIncorrect,
                         );
                     } else {
                         err.span_label(
-                            span, // Note the parenthesis surrounding the suggestion below
-                            format!("did you mean `({} {{ /* fields */ }})`?", path_str),
+                            span, // Note the parentheses surrounding the suggestion below
+                            format!(
+                                "you might want to surround a struct literal with parentheses: \
+                                 `({} {{ /* fields */ }})`?",
+                                path_str
+                            ),
                         );
                     }
                     suggested = true;
@@ -516,10 +519,16 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     err.note("if you want the `try` keyword, you need to be in the 2018 edition");
                 }
             }
-            (Res::Def(DefKind::TyAlias, _), PathSource::Trait(_)) => {
+            (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
                 if nightly_options::is_nightly_build() {
-                    err.note("did you mean to use a trait alias?");
+                    let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
+                               `type` alias";
+                    if let Some(span) = self.r.definitions.opt_span(def_id) {
+                        err.span_help(span, msg);
+                    } else {
+                        err.help(msg);
+                    }
                 }
             }
             (Res::Def(DefKind::Mod, _), PathSource::Expr(Some(parent))) => {

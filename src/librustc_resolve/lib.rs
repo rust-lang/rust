@@ -2066,52 +2066,64 @@ impl<'a> Resolver<'a> {
                 };
             }
 
-            let binding = if let Some(module) = module {
-                self.resolve_ident_in_module(
-                    module,
-                    ident,
-                    ns,
-                    parent_scope,
-                    record_used,
-                    path_span,
-                )
-            } else if ribs.is_none() || opt_ns.is_none() || opt_ns == Some(MacroNS) {
-                let scopes = ScopeSet::All(ns, opt_ns.is_none());
-                self.early_resolve_ident_in_lexical_scope(
-                    ident,
-                    scopes,
-                    parent_scope,
-                    record_used,
-                    record_used,
-                    path_span,
-                )
-            } else {
-                let record_used_id =
-                    if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };
-                match self.resolve_ident_in_lexical_scope(
-                    ident,
-                    ns,
-                    parent_scope,
-                    record_used_id,
-                    path_span,
-                    &ribs.unwrap()[ns],
-                ) {
-                    // we found a locally-imported or available item/module
-                    Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
-                    // we found a local variable or type param
-                    Some(LexicalScopeBinding::Res(res))
-                        if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) =>
-                    {
-                        record_segment_res(self, res);
-                        return PathResult::NonModule(PartialRes::with_unresolved_segments(
-                            res,
-                            path.len() - 1,
-                        ));
+            enum FindBindingResult<'a> {
+                Binding(Result<&'a NameBinding<'a>, Determinacy>),
+                PathResult(PathResult<'a>),
+            }
+            let find_binding_in_ns = |this: &mut Self, ns| {
+                let binding = if let Some(module) = module {
+                    this.resolve_ident_in_module(
+                        module,
+                        ident,
+                        ns,
+                        parent_scope,
+                        record_used,
+                        path_span,
+                    )
+                } else if ribs.is_none() || opt_ns.is_none() || opt_ns == Some(MacroNS) {
+                    let scopes = ScopeSet::All(ns, opt_ns.is_none());
+                    this.early_resolve_ident_in_lexical_scope(
+                        ident,
+                        scopes,
+                        parent_scope,
+                        record_used,
+                        record_used,
+                        path_span,
+                    )
+                } else {
+                    let record_used_id = if record_used {
+                        crate_lint.node_id().or(Some(CRATE_NODE_ID))
+                    } else {
+                        None
+                    };
+                    match this.resolve_ident_in_lexical_scope(
+                        ident,
+                        ns,
+                        parent_scope,
+                        record_used_id,
+                        path_span,
+                        &ribs.unwrap()[ns],
+                    ) {
+                        // we found a locally-imported or available item/module
+                        Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
+                        // we found a local variable or type param
+                        Some(LexicalScopeBinding::Res(res))
+                            if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) =>
+                        {
+                            record_segment_res(this, res);
+                            return FindBindingResult::PathResult(PathResult::NonModule(
+                                PartialRes::with_unresolved_segments(res, path.len() - 1),
+                            ));
+                        }
+                        _ => Err(Determinacy::determined(record_used)),
                     }
-                    _ => Err(Determinacy::determined(record_used)),
-                }
+                };
+                FindBindingResult::Binding(binding)
             };
-
+            let binding = match find_binding_in_ns(self, ns) {
+                FindBindingResult::PathResult(x) => return x,
+                FindBindingResult::Binding(binding) => binding,
+            };
             match binding {
                 Ok(binding) => {
                     if i == 1 {
@@ -2201,7 +2213,33 @@ impl<'a> Resolver<'a> {
                     } else if i == 0 {
                         (format!("use of undeclared type or module `{}`", ident), None)
                     } else {
-                        (format!("could not find `{}` in `{}`", ident, path[i - 1].ident), None)
+                        let mut msg =
+                            format!("could not find `{}` in `{}`", ident, path[i - 1].ident);
+                        if ns == TypeNS || ns == ValueNS {
+                            let ns_to_try = if ns == TypeNS { ValueNS } else { TypeNS };
+                            if let FindBindingResult::Binding(Ok(binding)) =
+                                find_binding_in_ns(self, ns_to_try)
+                            {
+                                let mut found = |what| {
+                                    msg = format!(
+                                        "expected {}, found {} `{}` in `{}`",
+                                        ns.descr(),
+                                        what,
+                                        ident,
+                                        path[i - 1].ident
+                                    )
+                                };
+                                if binding.module().is_some() {
+                                    found("module")
+                                } else {
+                                    match binding.res() {
+                                        def::Res::<NodeId>::Def(kind, id) => found(kind.descr(id)),
+                                        _ => found(ns_to_try.descr()),
+                                    }
+                                }
+                            };
+                        }
+                        (msg, None)
                     };
                     return PathResult::Failed {
                         span: ident.span,

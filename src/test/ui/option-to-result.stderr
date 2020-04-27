@@ -1,6 +1,9 @@
 error[E0277]: `?` couldn't convert the error to `()`
   --> $DIR/option-to-result.rs:5:6
    |
+LL | fn test_result() -> Result<(),()> {
+   |                     ------------- expected `()` because of this
+LL |     let a:Option<()> = Some(());
 LL |     a?;
    |      ^ the trait `std::convert::From<std::option::NoneError>` is not implemented for `()`
    |
@@ -14,6 +17,9 @@ LL |     a.ok_or_else(|| /* error value */)?;
 error[E0277]: `?` couldn't convert the error to `std::option::NoneError`
   --> $DIR/option-to-result.rs:11:6
    |
+LL | fn test_option() -> Option<i32>{
+   |                     ----------- expected `std::option::NoneError` because of this
+LL |     let a:Result<i32, i32> = Ok(5);
 LL |     a?;
    |      ^ the trait `std::convert::From<i32>` is not implemented for `std::option::NoneError`
    |

@@ -16,7 +16,11 @@ LL | impl K for isize {}
    |      type aliases cannot be used as traits
    |      help: a trait with a similar name exists: `I`
    |
-   = note: did you mean to use a trait alias?
+help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
+  --> $DIR/issue-5035.rs:2:1
+   |
+LL | type K = dyn I;
+   | ^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
