@@ -1145,6 +1145,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "matches",
     },
     Lint {
+        name: "match_on_vec_items",
+        group: "correctness",
+        desc: "matching on vector elements can panic",
+        deprecation: None,
+        module: "match_on_vec_items",
+    },
+    Lint {
         name: "match_overlapping_arm",
         group: "style",
         desc: "a `match` with overlapping arms",
