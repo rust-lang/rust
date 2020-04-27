@@ -1012,4 +1012,7 @@ pub enum CargoMessage<'a> {
     BuildScriptExecuted {
         package_id: Cow<'a, str>,
     },
+    BuildFinished {
+        success: bool,
+    },
 }
