@@ -622,14 +622,14 @@ fn main() {
 fn infer_derive_clone_simple() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 #[derive(Clone)]
 struct S;
 fn test() {
     S.clone()<|>;
 }
 
-//- /lib.rs crate:std
+//- /lib.rs crate:core
 #[prelude_import]
 use clone::*;
 mod clone {
@@ -646,7 +646,7 @@ mod clone {
 fn infer_derive_clone_with_params() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs crate:main deps:core
 #[derive(Clone)]
 struct S;
 #[derive(Clone)]
@@ -656,7 +656,7 @@ fn test() {
     (Wrapper(S).clone(), Wrapper(NonClone).clone())<|>;
 }
 
-//- /lib.rs crate:std
+//- /lib.rs crate:core
 #[prelude_import]
 use clone::*;
 mod clone {
