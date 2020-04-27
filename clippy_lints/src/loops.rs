@@ -786,20 +786,29 @@ fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -
     }
 }
 
+#[derive(Clone, Copy)]
+enum OffsetSign {
+    Positive,
+    Negative,
+}
+
 struct Offset {
     value: String,
-    negate: bool,
+    sign: OffsetSign,
 }
 
 impl Offset {
-    fn negative(s: String) -> Self {
-        Self { value: s, negate: true }
+    fn negative(value: String) -> Self {
+        Self {
+            value,
+            sign: OffsetSign::Negative,
+        }
     }
 
-    fn positive(s: String) -> Self {
+    fn positive(value: String) -> Self {
         Self {
-            value: s,
-            negate: false,
+            value,
+            sign: OffsetSign::Positive,
         }
     }
 }
@@ -949,31 +958,23 @@ fn detect_manual_memcpy<'a, 'tcx>(
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.kind {
-            let print_sum = |arg1: &Offset, arg2: &Offset| -> String {
-                match (&arg1.value[..], arg1.negate, &arg2.value[..], arg2.negate) {
-                    ("0", _, "0", _) => "0".into(),
-                    ("0", _, x, false) | (x, false, "0", _) => x.into(),
-                    ("0", _, x, true) => format!("-{}", x),
-                    (x, false, y, false) => format!("({} + {})", x, y),
-                    (x, false, y, true) => {
+            let print_sum = |arg1: &str, arg2: &Offset| -> String {
+                match (arg1, &arg2.value[..], arg2.sign) {
+                    ("0", "0", _) => "0".into(),
+                    ("0", x, OffsetSign::Positive) | (x, "0", _) => x.into(),
+                    ("0", x, OffsetSign::Negative) => format!("-{}", x),
+                    (x, y, OffsetSign::Positive) => format!("({} + {})", x, y),
+                    (x, y, OffsetSign::Negative) => {
                         if x == y {
                             "0".into()
                         } else {
                             format!("({} - {})", x, y)
                         }
                     },
-                    (x, true, y, false) => {
-                        if x == y {
-                            "0".into()
-                        } else {
-                            format!("({} - {})", y, x)
-                        }
-                    },
-                    (x, true, y, true) => format!("-({} + {})", x, y),
                 }
             };
 
-            let print_offset = |start_str: &Offset, inline_offset: &Offset| -> String {
+            let print_offset = |start_str: &str, inline_offset: &Offset| -> String {
                 let offset = print_sum(start_str, inline_offset);
                 if offset.as_str() == "0" {
                     "".into()
@@ -990,10 +991,9 @@ fn detect_manual_memcpy<'a, 'tcx>(
                     if let Some(arg) = len_args.get(0);
                     if snippet(cx, arg.span, "??") == var_name;
                     then {
-                        if offset.negate {
-                            format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
-                        } else {
-                            String::new()
+                        match offset.sign {
+                            OffsetSign::Negative => format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value),
+                            OffsetSign::Positive => "".into(),
                         }
                     } else {
                         let end_str = match limits {
@@ -1004,7 +1004,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
                             ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
                         };
 
-                        print_sum(&Offset::positive(end_str), &offset)
+                        print_sum(&end_str, &offset)
                     }
                 }
             };
@@ -1016,7 +1016,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
             let big_sugg = manual_copies
                 .into_iter()
                 .map(|(dst_var, src_var)| {
-                    let start_str = Offset::positive(snippet(cx, start.span, "").to_string());
+                    let start_str = snippet(cx, start.span, "").to_string();
                     let dst_offset = print_offset(&start_str, &dst_var.offset);
                     let dst_limit = print_limit(end, dst_var.offset, &dst_var.var_name);
                     let src_offset = print_offset(&start_str, &src_var.offset);
