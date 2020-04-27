@@ -532,14 +532,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
         let msg = format!("use parentheses to call the {}", callable);
 
-        let obligation = self.mk_obligation_for_def_id(
-            trait_ref.def_id(),
-            output_ty.skip_binder(),
-            obligation.cause.clone(),
+        let new_obligation = self.mk_trait_obligation_with_new_self_ty(
             obligation.param_env,
+            trait_ref,
+            output_ty.skip_binder(),
         );
 
-        match self.evaluate_obligation(&obligation) {
+        match self.evaluate_obligation(&new_obligation) {
             Ok(
                 EvaluationResult::EvaluatedToOk
                 | EvaluationResult::EvaluatedToOkModuloRegions
@@ -694,7 +693,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     ) {
-        let trait_ref = trait_ref.skip_binder();
         let span = obligation.cause.span;
 
         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
@@ -705,17 +703,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return;
             }
 
-            let mut trait_type = trait_ref.self_ty();
+            let mut suggested_ty = trait_ref.self_ty();
 
             for refs_remaining in 0..refs_number {
-                if let ty::Ref(_, t_type, _) = trait_type.kind {
-                    trait_type = t_type;
+                if let ty::Ref(_, inner_ty, _) = suggested_ty.kind {
+                    suggested_ty = inner_ty;
 
-                    let new_obligation = self.mk_obligation_for_def_id(
-                        trait_ref.def_id,
-                        trait_type,
-                        ObligationCause::dummy(),
+                    let new_obligation = self.mk_trait_obligation_with_new_self_ty(
                         obligation.param_env,
+                        trait_ref,
+                        suggested_ty,
                     );
 
                     if self.predicate_may_hold(&new_obligation) {
@@ -782,20 +779,20 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                let trait_type = match mutability {
+                let suggested_ty = match mutability {
                     hir::Mutability::Mut => self.tcx.mk_imm_ref(region, t_type),
                     hir::Mutability::Not => self.tcx.mk_mut_ref(region, t_type),
                 };
 
-                let new_obligation = self.mk_obligation_for_def_id(
-                    trait_ref.skip_binder().def_id,
-                    trait_type,
-                    ObligationCause::dummy(),
+                let new_obligation = self.mk_trait_obligation_with_new_self_ty(
                     obligation.param_env,
+                    &trait_ref,
+                    suggested_ty,
                 );
-
-                if self.evaluate_obligation_no_overflow(&new_obligation).must_apply_modulo_regions()
-                {
+                let suggested_ty_would_satisfy_obligation = self
+                    .evaluate_obligation_no_overflow(&new_obligation)
+                    .must_apply_modulo_regions();
+                if suggested_ty_would_satisfy_obligation {
                     let sp = self
                         .tcx
                         .sess
@@ -812,7 +809,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         err.note(&format!(
                             "`{}` is implemented for `{:?}`, but not for `{:?}`",
                             trait_ref.print_only_trait_path(),
-                            trait_type,
+                            suggested_ty,
                             trait_ref.skip_binder().self_ty(),
                         ));
                     }
