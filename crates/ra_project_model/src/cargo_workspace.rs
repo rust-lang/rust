@@ -43,11 +43,6 @@ impl ops::Index<Target> for CargoWorkspace {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RustcConfig {
-    pub default_target: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CargoConfig {
     /// Do not activate the `default` feature.
     pub no_default_features: bool,
