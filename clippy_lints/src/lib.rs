@@ -339,7 +339,7 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore) {
 }
 
 #[doc(hidden)]
-pub fn read_conf(args: &[rustc_ast::ast::NestedMetaItem], sess: &Session) -> Conf {
+pub fn read_conf(args: &[rustc_ast::NestedMetaItem], sess: &Session) -> Conf {
     use std::path::Path;
     match utils::conf::file_from_args(args) {
         Ok(file_name) => {
