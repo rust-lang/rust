@@ -248,7 +248,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
             printer.name_resolver = Some(Box::new(&getter));
             let _ = if let ty::FnDef(..) = ty.kind {
-                // We don't want the regular output for `fn`s because it inscludes its path in
+                // We don't want the regular output for `fn`s because it includes its path in
                 // invalid pseduo-syntax, we want the `fn`-pointer output instead.
                 ty.fn_sig(self.tcx).print(printer)
             } else {
