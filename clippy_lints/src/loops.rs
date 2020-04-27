@@ -837,7 +837,7 @@ fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     }
 }
 
-fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -> Option<FixedOffsetVar> {
+fn get_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, idx: &Expr<'_>, var: HirId) -> Option<Offset> {
     fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr<'_>, var: HirId) -> Option<String> {
         match &e.kind {
             ExprKind::Lit(l) => match l.node {
@@ -849,38 +849,24 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, v
         }
     }
 
-    if let ExprKind::Index(seqexpr, idx) = expr.kind {
-        let ty = cx.tables.expr_ty(seqexpr);
-        if !is_slice_like(cx, ty) {
-            return None;
-        }
+    match idx.kind {
+        ExprKind::Binary(op, lhs, rhs) => match op.node {
+            BinOpKind::Add => {
+                let offset_opt = if same_var(cx, lhs, var) {
+                    extract_offset(cx, rhs, var)
+                } else if same_var(cx, rhs, var) {
+                    extract_offset(cx, lhs, var)
+                } else {
+                    None
+                };
 
-        let offset = match idx.kind {
-            ExprKind::Binary(op, lhs, rhs) => match op.node {
-                BinOpKind::Add => {
-                    let offset_opt = if same_var(cx, lhs, var) {
-                        extract_offset(cx, rhs, var)
-                    } else if same_var(cx, rhs, var) {
-                        extract_offset(cx, lhs, var)
-                    } else {
-                        None
-                    };
-
-                    offset_opt.map(Offset::positive)
-                },
-                BinOpKind::Sub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
-                _ => None,
+                offset_opt.map(Offset::positive)
             },
-            ExprKind::Path(..) if same_var(cx, idx, var) => Some(Offset::positive("0".into())),
+            BinOpKind::Sub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
             _ => None,
-        };
-
-        offset.map(|o| FixedOffsetVar {
-            var_name: snippet_opt(cx, seqexpr.span).unwrap_or_else(|| "???".into()),
-            offset: o,
-        })
-    } else {
-        None
+        },
+        ExprKind::Path(..) if same_var(cx, idx, var) => Some(Offset::positive("0".into())),
+        _ => None,
     }
 }
 
@@ -994,15 +980,22 @@ fn detect_manual_memcpy<'a, 'tcx>(
                     o.and_then(|(lhs, rhs)| {
                         let rhs = fetch_cloned_expr(rhs);
                         if_chain! {
-                            if let Some(offset_left) = get_fixed_offset_var(cx, lhs, canonical_id);
-                            if let Some(offset_right) = get_fixed_offset_var(cx, rhs, canonical_id);
+                            if let ExprKind::Index(seqexpr_left, idx_left) = lhs.kind;
+                            if let ExprKind::Index(seqexpr_right, idx_right) = rhs.kind;
+                            if is_slice_like(cx, cx.tables.expr_ty(seqexpr_left))
+                                && is_slice_like(cx, cx.tables.expr_ty(seqexpr_right));
+                            if let Some(offset_left) = get_offset(cx, &idx_left, canonical_id);
+                            if let Some(offset_right) = get_offset(cx, &idx_right, canonical_id);
+                            let var_name_left = snippet_opt(cx, seqexpr_left.span).unwrap_or_else(|| "???".into());
+                            let var_name_right = snippet_opt(cx, seqexpr_right.span).unwrap_or_else(|| "???".into());
 
                             // Source and destination must be different
-                            if offset_left.var_name != offset_right.var_name;
+                            if var_name_left != var_name_right;
                             then {
-                                Some((offset_left, offset_right))
+                                Some((FixedOffsetVar { var_name: var_name_left, offset: offset_left },
+                                    FixedOffsetVar { var_name: var_name_right, offset: offset_right }))
                             } else {
-                                return None
+                                None
                             }
                         }
                     })
