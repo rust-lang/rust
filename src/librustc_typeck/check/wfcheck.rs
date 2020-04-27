@@ -1233,7 +1233,7 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, span: Span, id: hir::HirId) {
     let empty_env = ty::ParamEnv::empty();
 
     let def_id = fcx.tcx.hir().local_def_id(id);
-    let predicates = fcx.tcx.predicates_of(def_id).predicates.iter().map(|(p, _)| *p).collect();
+    let predicates = fcx.tcx.predicates_of(def_id).predicates.iter().map(|(p, _)| *p);
     // Check elaborated bounds.
     let implied_obligations = traits::elaborate_predicates(fcx.tcx, predicates);
 

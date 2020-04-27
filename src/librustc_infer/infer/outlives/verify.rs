@@ -223,7 +223,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // like `T` and `T::Item`. It may not work as well for things
         // like `<T as Foo<'a>>::Item`.
         let c_b = self.param_env.caller_bounds;
-        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b);
+        let param_bounds = self.collect_outlives_from_predicate_list(&compare_ty, c_b.into_iter());
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -315,15 +315,12 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         let tcx = self.tcx;
         let assoc_item = tcx.associated_item(assoc_item_def_id);
         let trait_def_id = assoc_item.container.assert_trait();
-        let trait_predicates =
-            tcx.predicates_of(trait_def_id).predicates.iter().map(|(p, _)| *p).collect();
+        let trait_predicates = tcx.predicates_of(trait_def_id).predicates.iter().map(|(p, _)| *p);
         let identity_substs = InternalSubsts::identity_for_item(tcx, assoc_item_def_id);
         let identity_proj = tcx.mk_projection(assoc_item_def_id, identity_substs);
         self.collect_outlives_from_predicate_list(
             move |ty| ty == identity_proj,
-            traits::elaborate_predicates(tcx, trait_predicates)
-                .map(|o| o.predicate)
-                .collect::<Vec<_>>(),
+            traits::elaborate_predicates(tcx, trait_predicates).map(|o| o.predicate),
         )
         .map(|b| b.1)
     }
@@ -337,10 +334,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     fn collect_outlives_from_predicate_list(
         &self,
         compare_ty: impl Fn(Ty<'tcx>) -> bool,
-        predicates: impl IntoIterator<Item = impl AsRef<ty::Predicate<'tcx>>>,
+        predicates: impl Iterator<Item = impl AsRef<ty::Predicate<'tcx>>>,
     ) -> impl Iterator<Item = ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
         predicates
-            .into_iter()
             .filter_map(|p| p.as_ref().to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())
             .filter(move |p| compare_ty(p.0))

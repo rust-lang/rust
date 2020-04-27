@@ -116,8 +116,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             .predicates_of(source.def_id())
             .predicates
             .iter()
-            .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None })
-            .collect();
+            .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
         if !traits::normalize_and_test_predicates(
             tcx,
             traits::elaborate_predicates(tcx, predicates).map(|o| o.predicate).collect(),

@@ -110,8 +110,8 @@ pub enum TraitQueryMode {
 pub fn predicates_for_generics<'tcx>(
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    generic_bounds: &ty::InstantiatedPredicates<'tcx>,
-) -> PredicateObligations<'tcx> {
+    generic_bounds: ty::InstantiatedPredicates<'tcx>,
+) -> impl Iterator<Item = PredicateObligation<'tcx>> {
     util::predicates_for_generics(cause, 0, param_env, generic_bounds)
 }
 
@@ -297,7 +297,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
 
     let mut predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec())
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.into_iter().cloned())
             .map(|obligation| obligation.predicate)
             .collect();
 

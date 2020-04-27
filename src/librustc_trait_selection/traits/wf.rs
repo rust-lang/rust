@@ -140,7 +140,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     item: Option<&hir::Item<'tcx>>,
     cause: &mut traits::ObligationCause<'tcx>,
     pred: &ty::Predicate<'_>,
-    mut trait_assoc_items: impl Iterator<Item = ty::AssocItem>,
+    mut trait_assoc_items: impl Iterator<Item = &'tcx ty::AssocItem>,
 ) {
     debug!(
         "extended_cause_with_original_assoc_item_obligation {:?} {:?} {:?} {:?}",
@@ -232,34 +232,33 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         let item = self.item;
 
-        if let Elaborate::All = elaborate {
-            let implied_obligations = traits::util::elaborate_obligations(tcx, obligations.clone());
-            let implied_obligations = implied_obligations.map(|obligation| {
-                debug!("compute_trait_ref implied_obligation {:?}", obligation);
-                debug!("compute_trait_ref implied_obligation cause {:?}", obligation.cause);
-                let mut cause = cause.clone();
-                if let Some(parent_trait_ref) = obligation.predicate.to_opt_poly_trait_ref() {
-                    let derived_cause = traits::DerivedObligationCause {
-                        parent_trait_ref,
-                        parent_code: Rc::new(obligation.cause.code.clone()),
-                    };
-                    cause.code = traits::ObligationCauseCode::DerivedObligation(derived_cause);
-                }
-                extend_cause_with_original_assoc_item_obligation(
-                    tcx,
-                    trait_ref,
-                    item,
-                    &mut cause,
-                    &obligation.predicate,
-                    tcx.associated_items(trait_ref.def_id).in_definition_order().copied(),
-                );
-                debug!("compute_trait_ref new cause {:?}", cause);
-                traits::Obligation::new(cause, param_env, obligation.predicate)
-            });
-            self.out.extend(implied_obligations);
-        }
+        let extend = |obligation: traits::PredicateObligation<'tcx>| {
+            let mut cause = cause.clone();
+            if let Some(parent_trait_ref) = obligation.predicate.to_opt_poly_trait_ref() {
+                let derived_cause = traits::DerivedObligationCause {
+                    parent_trait_ref,
+                    parent_code: Rc::new(obligation.cause.code.clone()),
+                };
+                cause.code = traits::ObligationCauseCode::DerivedObligation(derived_cause);
+            }
+            extend_cause_with_original_assoc_item_obligation(
+                tcx,
+                trait_ref,
+                item,
+                &mut cause,
+                &obligation.predicate,
+                tcx.associated_items(trait_ref.def_id).in_definition_order(),
+            );
+            traits::Obligation::new(cause, param_env, obligation.predicate)
+        };
 
-        self.out.extend(obligations);
+        if let Elaborate::All = elaborate {
+            let implied_obligations = traits::util::elaborate_obligations(tcx, obligations);
+            let implied_obligations = implied_obligations.map(extend);
+            self.out.extend(implied_obligations);
+        } else {
+            self.out.extend(obligations);
+        }
 
         self.out.extend(trait_ref.substs.types().filter(|ty| !ty.has_escaping_bound_vars()).map(
             |ty| traits::Obligation::new(cause.clone(), param_env, ty::Predicate::WellFormed(ty)),
@@ -627,16 +626,13 @@ pub fn object_region_bounds<'tcx>(
     // a placeholder type.
     let open_ty = tcx.mk_ty_infer(ty::FreshTy(0));
 
-    let predicates = existential_predicates
-        .iter()
-        .filter_map(|predicate| {
-            if let ty::ExistentialPredicate::Projection(_) = *predicate.skip_binder() {
-                None
-            } else {
-                Some(predicate.with_self_ty(tcx, open_ty))
-            }
-        })
-        .collect();
+    let predicates = existential_predicates.iter().filter_map(|predicate| {
+        if let ty::ExistentialPredicate::Projection(_) = *predicate.skip_binder() {
+            None
+        } else {
+            Some(predicate.with_self_ty(tcx, open_ty))
+        }
+    });
 
     required_region_bounds(tcx, open_ty, predicates)
 }

@@ -97,24 +97,22 @@ pub fn elaborate_trait_ref<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Elaborator<'tcx> {
-    elaborate_predicates(tcx, vec![trait_ref.without_const().to_predicate()])
+    elaborate_predicates(tcx, std::iter::once(trait_ref.without_const().to_predicate()))
 }
 
 pub fn elaborate_trait_refs<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> Elaborator<'tcx> {
-    let predicates = trait_refs.map(|trait_ref| trait_ref.without_const().to_predicate()).collect();
+    let predicates = trait_refs.map(|trait_ref| trait_ref.without_const().to_predicate());
     elaborate_predicates(tcx, predicates)
 }
 
 pub fn elaborate_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mut predicates: Vec<ty::Predicate<'tcx>>,
+    predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
 ) -> Elaborator<'tcx> {
-    let mut visited = PredicateSet::new(tcx);
-    predicates.retain(|pred| visited.insert(pred));
-    let obligations: Vec<_> =
+    let obligations =
         predicates.into_iter().map(|predicate| predicate_obligation(predicate, None)).collect();
     elaborate_obligations(tcx, obligations)
 }
@@ -151,21 +149,20 @@ impl Elaborator<'tcx> {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations = predicates.predicates.iter().map(|(pred, span)| {
+                let obligations = predicates.predicates.into_iter().map(|(pred, span)| {
                     predicate_obligation(
                         pred.subst_supertrait(tcx, &data.to_poly_trait_ref()),
                         Some(*span),
                     )
                 });
-                debug!("super_predicates: data={:?} predicates={:?}", data, &obligations);
+                debug!("super_predicates: data={:?}", data);
 
                 // Only keep those bounds that we haven't already seen.
                 // This is necessary to prevent infinite recursion in some
                 // cases. One common case is when people define
                 // `trait Sized: Sized { }` rather than `trait Sized { }`.
                 let visited = &mut self.visited;
-                let obligations =
-                    obligations.filter(|obligation| visited.insert(&obligation.predicate));
+                let obligations = obligations.filter(|o| visited.insert(&o.predicate));
 
                 self.stack.extend(obligations);
             }

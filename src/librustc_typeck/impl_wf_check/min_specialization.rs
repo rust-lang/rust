@@ -329,7 +329,7 @@ fn check_predicates<'tcx>(
     // which is sound because we forbid impls like the following
     //
     // impl<D: Debug> AlwaysApplicable for D { }
-    let always_applicable_traits: Vec<_> = impl1_predicates
+    let always_applicable_traits = impl1_predicates
         .predicates
         .iter()
         .filter(|predicate| {
@@ -338,8 +338,7 @@ fn check_predicates<'tcx>(
                 Some(TraitSpecializationKind::AlwaysApplicable)
             )
         })
-        .copied()
-        .collect();
+        .copied();
 
     // Include the well-formed predicates of the type parameters of the impl.
     for ty in tcx.impl_trait_ref(impl1_def_id).unwrap().substs.types() {

@@ -1342,7 +1342,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // clauses) that must be considered. Make sure that those
             // match as well (or at least may match, sometimes we
             // don't have enough information to fully evaluate).
-            let candidate_obligations: Vec<_> = match probe.kind {
+            match probe.kind {
                 InherentImplCandidate(ref substs, ref ref_obligations) => {
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_def_id = probe.item.container.id();
@@ -1353,19 +1353,23 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                     // Convert the bounds into obligations.
                     let impl_obligations =
-                        traits::predicates_for_generics(cause, self.param_env, &impl_bounds);
+                        traits::predicates_for_generics(cause, self.param_env, impl_bounds);
 
-                    debug!("impl_obligations={:?}", impl_obligations);
-                    impl_obligations
-                        .into_iter()
+                    let candidate_obligations = impl_obligations
                         .chain(norm_obligations.into_iter())
-                        .chain(ref_obligations.iter().cloned())
-                        .collect()
+                        .chain(ref_obligations.iter().cloned());
+                    // Evaluate those obligations to see if they might possibly hold.
+                    for o in candidate_obligations {
+                        let o = self.resolve_vars_if_possible(&o);
+                        if !self.predicate_may_hold(&o) {
+                            result = ProbeResult::NoMatch;
+                            possibly_unsatisfied_predicates.push((o.predicate, None));
+                        }
+                    }
                 }
 
                 ObjectCandidate | WhereClauseCandidate(..) => {
                     // These have no additional conditions to check.
-                    vec![]
                 }
 
                 TraitCandidate(trait_ref) => {
@@ -1412,17 +1416,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             return ProbeResult::NoMatch;
                         }
                     }
-                    vec![]
                 }
-            };
-
-            debug!(
-                "consider_probe - candidate_obligations={:?} sub_obligations={:?}",
-                candidate_obligations, sub_obligations
-            );
+            }
 
             // Evaluate those obligations to see if they might possibly hold.
-            for o in candidate_obligations.into_iter().chain(sub_obligations) {
+            for o in sub_obligations {
                 let o = self.resolve_vars_if_possible(&o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;

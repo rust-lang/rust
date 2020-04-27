@@ -1017,7 +1017,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        for obligation in super::elaborate_predicates(self.tcx, vec![*cond]) {
+        for obligation in super::elaborate_predicates(self.tcx, std::iter::once(*cond)) {
             if let ty::Predicate::Trait(implication, _) = obligation.predicate {
                 let error = error.to_poly_trait_ref();
                 let implication = implication.to_poly_trait_ref();
@@ -1218,8 +1218,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         match simp {
             Some(simp) => all_impls
-                .iter()
-                .filter_map(|&def_id| {
+                .filter_map(|def_id| {
                     let imp = self.tcx.impl_trait_ref(def_id).unwrap();
                     let imp_simp = fast_reject::simplify_type(self.tcx, imp.self_ty(), true);
                     if let Some(imp_simp) = imp_simp {
@@ -1227,13 +1226,10 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                             return None;
                         }
                     }
-
                     Some(imp)
                 })
                 .collect(),
-            None => {
-                all_impls.iter().map(|&def_id| self.tcx.impl_trait_ref(def_id).unwrap()).collect()
-            }
+            None => all_impls.map(|def_id| self.tcx.impl_trait_ref(def_id).unwrap()).collect(),
         }
     }
 
