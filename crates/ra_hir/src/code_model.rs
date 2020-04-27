@@ -953,6 +953,16 @@ impl TypeParam {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.id.parent.module(db.upcast()).into()
     }
+
+    pub fn ty(self, db: &dyn HirDatabase) -> Type {
+        let resolver = self.id.parent.resolver(db.upcast());
+        let environment = TraitEnvironment::lower(db, &resolver);
+        let ty = Ty::Placeholder(self.id);
+        Type {
+            krate: self.id.parent.module(db.upcast()).krate,
+            ty: InEnvironment { value: ty, environment },
+        }
+    }
 }
 
 // FIXME: rename from `ImplDef` to `Impl`

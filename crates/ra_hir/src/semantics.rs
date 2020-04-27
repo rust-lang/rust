@@ -9,6 +9,7 @@ use hir_def::{
     AsMacroCall, TraitId,
 };
 use hir_expand::ExpansionInfo;
+use hir_ty::associated_types;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
 use ra_prof::profile;
@@ -24,8 +25,9 @@ use crate::{
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     AssocItem, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef,
-    Name, Origin, Path, ScopeDef, Trait, Type, TypeParam,
+    Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam,
 };
+use resolver::TypeNs;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathResolution {
@@ -38,6 +40,49 @@ pub enum PathResolution {
     SelfType(ImplDef),
     Macro(MacroDef),
     AssocItem(AssocItem),
+}
+
+impl PathResolution {
+    fn in_type_ns(self) -> Option<TypeNs> {
+        match self {
+            PathResolution::Def(ModuleDef::Adt(adt)) => Some(TypeNs::AdtId(adt.into())),
+            PathResolution::Def(ModuleDef::BuiltinType(builtin)) => {
+                Some(TypeNs::BuiltinType(builtin))
+            }
+            PathResolution::Def(ModuleDef::Const(_)) => None,
+            PathResolution::Def(ModuleDef::EnumVariant(_)) => None,
+            PathResolution::Def(ModuleDef::Function(_)) => None,
+            PathResolution::Def(ModuleDef::Module(_)) => None,
+            PathResolution::Def(ModuleDef::Static(_)) => None,
+            PathResolution::Def(ModuleDef::Trait(_)) => None,
+            PathResolution::Def(ModuleDef::TypeAlias(alias)) => {
+                Some(TypeNs::TypeAliasId(alias.into()))
+            }
+            PathResolution::Local(_) => None,
+            PathResolution::TypeParam(param) => Some(TypeNs::GenericParam(param.into())),
+            PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType(impl_def.into())),
+            PathResolution::Macro(_) => None,
+            PathResolution::AssocItem(AssocItem::Const(_)) => None,
+            PathResolution::AssocItem(AssocItem::Function(_)) => None,
+            PathResolution::AssocItem(AssocItem::TypeAlias(alias)) => {
+                Some(TypeNs::TypeAliasId(alias.into()))
+            }
+        }
+    }
+
+    /// Returns an iterator over associated types that may be specified after this path (using
+    /// `Ty::Assoc` syntax).
+    pub fn assoc_type_shorthand_candidates<R>(
+        &self,
+        db: &dyn HirDatabase,
+        mut cb: impl FnMut(TypeAlias) -> Option<R>,
+    ) -> Option<R> {
+        if let Some(res) = self.clone().in_type_ns() {
+            associated_types(db, res, |_, _, id| cb(id.into()))
+        } else {
+            None
+        }
+    }
 }
 
 /// Primary API to get semantic information, like types, from syntax trees.

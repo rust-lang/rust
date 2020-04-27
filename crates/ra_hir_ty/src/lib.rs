@@ -66,7 +66,8 @@ pub use autoderef::autoderef;
 pub use infer::{InferTy, InferenceResult};
 pub use lower::CallableDef;
 pub use lower::{
-    callable_item_sig, ImplTraitLoweringMode, TyDefId, TyLoweringContext, ValueTyDefId,
+    associated_types, callable_item_sig, ImplTraitLoweringMode, TyDefId, TyLoweringContext,
+    ValueTyDefId,
 };
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
