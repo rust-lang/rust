@@ -253,10 +253,10 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Schedule the MacOS thread destructor of the thread local storage to be
-    /// executed.
+    /// executed. Returns `true` if scheduled.
     ///
     /// Note: It is safe to call this function also on other Unixes.
-    fn schedule_macos_tls_dtor(&mut self) -> InterpResult<'tcx> {
+    fn schedule_macos_tls_dtor(&mut self) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let thread_id = this.get_active_thread()?;
         if let Some((instance, data)) = this.machine.tls.thread_dtors.remove(&thread_id) {
@@ -275,8 +275,10 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // guaranteed that we will schedule it again. The `dtors_running`
             // flag will prevent the code from adding the destructor again.
             this.enable_thread(thread_id)?;
+            Ok(true)
+        } else {
+            Ok(false)
         }
-        Ok(())
     }
 
     /// Schedule a pthread TLS destructor. Returns `true` if found
@@ -331,20 +333,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread()?;
 
-        let finished = if this.tcx.sess.target.target.target_os == "windows" {
+        let scheduled_next = if this.tcx.sess.target.target.target_os == "windows" {
             if !this.machine.tls.set_dtors_running_for_thread(active_thread) {
                 this.schedule_windows_tls_dtors()?;
+                true
+            } else {
+                false
             }
-            true
         } else {
             this.machine.tls.set_dtors_running_for_thread(active_thread);
             // The macOS thread wide destructor runs "before any TLS slots get
             // freed", so do that first.
-            this.schedule_macos_tls_dtor()?;
-            this.schedule_pthread_tls_dtors()?
+            if this.schedule_macos_tls_dtor()? {
+                true
+            } else {
+                this.schedule_pthread_tls_dtors()?
+            }
         };
 
-        if finished {
+        if !scheduled_next {
+            // No dtors scheduled means that we are finished. Delete the
+            // remaining TLS entries.
             this.machine.tls.delete_all_thread_tls(active_thread);
         }
 

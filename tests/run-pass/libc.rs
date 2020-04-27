@@ -144,6 +144,7 @@ fn test_rwlock_libc_static_initializer() {
 /// Test whether the `prctl` shim correctly sets the thread name.
 ///
 /// Note: `prctl` exists only on Linux.
+#[cfg(target_os = "linux")]
 fn test_prctl_thread_name() {
     use std::ffi::CString;
     unsafe {
