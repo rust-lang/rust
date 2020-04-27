@@ -905,6 +905,85 @@ fn get_assignments<'a, 'tcx>(
     iter_a.into_iter().flatten().chain(iter_b.into_iter())
 }
 
+fn build_manual_memcpy_suggestion<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    start: &Expr<'_>,
+    end: &Expr<'_>,
+    limits: ast::RangeLimits,
+    dst_var: FixedOffsetVar<'_>,
+    src_var: FixedOffsetVar<'_>,
+) -> String {
+    fn print_sum(arg1: &str, arg2: &Offset) -> String {
+        match (arg1, &arg2.value[..], arg2.sign) {
+            ("0", "0", _) => "0".into(),
+            ("0", x, OffsetSign::Positive) | (x, "0", _) => x.into(),
+            ("0", x, OffsetSign::Negative) => format!("-{}", x),
+            (x, y, OffsetSign::Positive) => format!("({} + {})", x, y),
+            (x, y, OffsetSign::Negative) => {
+                if x == y {
+                    "0".into()
+                } else {
+                    format!("({} - {})", x, y)
+                }
+            },
+        }
+    }
+
+    fn print_offset(start_str: &str, inline_offset: &Offset) -> String {
+        let offset = print_sum(start_str, inline_offset);
+        if offset.as_str() == "0" {
+            "".into()
+        } else {
+            offset
+        }
+    }
+
+    let print_limit = |end: &Expr<'_>, offset: Offset, var: &Expr<'_>| {
+        if_chain! {
+            if let ExprKind::MethodCall(method, _, len_args) = end.kind;
+            if method.ident.name == sym!(len);
+            if len_args.len() == 1;
+            if let Some(arg) = len_args.get(0);
+            if var_def_id(cx, arg) == var_def_id(cx, var);
+            then {
+                match offset.sign {
+                    OffsetSign::Negative => format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value),
+                    OffsetSign::Positive => "".into(),
+                }
+            } else {
+                let end_str = match limits {
+                    ast::RangeLimits::Closed => {
+                        let end = sugg::Sugg::hir(cx, end, "<count>");
+                        format!("{}", end + sugg::ONE)
+                    },
+                    ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
+                };
+
+                print_sum(&end_str, &offset)
+            }
+        }
+    };
+
+    let start_str = snippet(cx, start.span, "").to_string();
+    let dst_offset = print_offset(&start_str, &dst_var.offset);
+    let dst_limit = print_limit(end, dst_var.offset, dst_var.var);
+    let src_offset = print_offset(&start_str, &src_var.offset);
+    let src_limit = print_limit(end, src_var.offset, src_var.var);
+
+    let dst_var_name = snippet_opt(cx, dst_var.var.span).unwrap_or_else(|| "???".into());
+    let src_var_name = snippet_opt(cx, src_var.var.span).unwrap_or_else(|| "???".into());
+
+    let dst = if dst_offset == "" && dst_limit == "" {
+        dst_var_name
+    } else {
+        format!("{}[{}..{}]", dst_var_name, dst_offset, dst_limit)
+    };
+
+    format!(
+        "{}.clone_from_slice(&{}[{}..{}])",
+        dst, src_var_name, src_offset, src_limit
+    )
+}
 /// Checks for for loops that sequentially copy items from one slice-like
 /// object to another.
 fn detect_manual_memcpy<'a, 'tcx>(
@@ -922,57 +1001,6 @@ fn detect_manual_memcpy<'a, 'tcx>(
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.kind {
-            fn print_sum(arg1: &str, arg2: &Offset) -> String {
-                match (arg1, &arg2.value[..], arg2.sign) {
-                    ("0", "0", _) => "0".into(),
-                    ("0", x, OffsetSign::Positive) | (x, "0", _) => x.into(),
-                    ("0", x, OffsetSign::Negative) => format!("-{}", x),
-                    (x, y, OffsetSign::Positive) => format!("({} + {})", x, y),
-                    (x, y, OffsetSign::Negative) => {
-                        if x == y {
-                            "0".into()
-                        } else {
-                            format!("({} - {})", x, y)
-                        }
-                    },
-                }
-            }
-
-            fn print_offset(start_str: &str, inline_offset: &Offset) -> String {
-                let offset = print_sum(start_str, inline_offset);
-                if offset.as_str() == "0" {
-                    "".into()
-                } else {
-                    offset
-                }
-            }
-
-            let print_limit = |end: &Expr<'_>, offset: Offset, var: &Expr<'_>| {
-                if_chain! {
-                    if let ExprKind::MethodCall(method, _, len_args) = end.kind;
-                    if method.ident.name == sym!(len);
-                    if len_args.len() == 1;
-                    if let Some(arg) = len_args.get(0);
-                    if var_def_id(cx, arg) == var_def_id(cx, var);
-                    then {
-                        match offset.sign {
-                            OffsetSign::Negative => format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value),
-                            OffsetSign::Positive => "".into(),
-                        }
-                    } else {
-                        let end_str = match limits {
-                            ast::RangeLimits::Closed => {
-                                let end = sugg::Sugg::hir(cx, end, "<count>");
-                                format!("{}", end + sugg::ONE)
-                            },
-                            ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
-                        };
-
-                        print_sum(&end_str, &offset)
-                    }
-                }
-            };
-
             // The only statements in the for loops can be indexed assignments from
             // indexed retrievals.
             let big_sugg = get_assignments(body)
@@ -998,29 +1026,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
                         }
                     })
                 })
-                .map(|o| {
-                    o.map(|(dst_var, src_var)| {
-                        let start_str = snippet(cx, start.span, "").to_string();
-                        let dst_offset = print_offset(&start_str, &dst_var.offset);
-                        let dst_limit = print_limit(end, dst_var.offset, dst_var.var);
-                        let src_offset = print_offset(&start_str, &src_var.offset);
-                        let src_limit = print_limit(end, src_var.offset, src_var.var);
-
-                        let dst_var_name = snippet_opt(cx, dst_var.var.span).unwrap_or_else(|| "???".into());
-                        let src_var_name = snippet_opt(cx, src_var.var.span).unwrap_or_else(|| "???".into());
-
-                        let dst = if dst_offset == "" && dst_limit == "" {
-                            dst_var_name
-                        } else {
-                            format!("{}[{}..{}]", dst_var_name, dst_offset, dst_limit)
-                        };
-
-                        format!(
-                            "{}.clone_from_slice(&{}[{}..{}])",
-                            dst, src_var_name, src_offset, src_limit
-                        )
-                    })
-                })
+                .map(|o| o.map(|(dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, dst, src)))
                 .collect::<Option<Vec<_>>>()
                 .filter(|v| !v.is_empty())
                 .map(|v| v.join("\n    "));
