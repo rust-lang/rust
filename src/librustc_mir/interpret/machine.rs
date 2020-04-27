@@ -357,3 +357,67 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx, u64>;
 }
+
+// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
+// (CTFE and ConstProp) use the same instance.  Here, we share that code.
+pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
+    type PointerTag = ();
+    type ExtraFnVal = !;
+
+    type MemoryKind = !;
+    type MemoryMap = rustc_data_structures::fx::FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
+    const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
+
+    type AllocExtra = ();
+    type FrameExtra = ();
+
+    #[inline(always)]
+    fn enforce_alignment(_memory_extra: &Self::MemoryExtra) -> bool {
+        // We do not check for alignment to avoid having to carry an `Align`
+        // in `ConstValue::ByRef`.
+        false
+    }
+
+    #[inline(always)]
+    fn enforce_validity(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+        false // for now, we don't enforce validity
+    }
+
+    #[inline(always)]
+    fn call_extra_fn(
+        _ecx: &mut InterpCx<$mir, $tcx, Self>,
+        fn_val: !,
+        _args: &[OpTy<$tcx>],
+        _ret: Option<(PlaceTy<$tcx>, mir::BasicBlock)>,
+        _unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<$tcx> {
+        match fn_val {}
+    }
+
+    #[inline(always)]
+    fn init_allocation_extra<'b>(
+        _memory_extra: &Self::MemoryExtra,
+        _id: AllocId,
+        alloc: Cow<'b, Allocation>,
+        _kind: Option<MemoryKind<!>>,
+    ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
+        // We do not use a tag so we can just cheaply forward the allocation
+        (alloc, ())
+    }
+
+    #[inline(always)]
+    fn tag_global_base_pointer(
+        _memory_extra: &Self::MemoryExtra,
+        _id: AllocId,
+    ) -> Self::PointerTag {
+        ()
+    }
+
+    #[inline(always)]
+    fn init_frame_extra(
+        _ecx: &mut InterpCx<$mir, $tcx, Self>,
+        frame: Frame<$mir, $tcx>,
+    ) -> InterpResult<$tcx, Frame<$mir, $tcx>> {
+        Ok(frame)
+    }
+}
