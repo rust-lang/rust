@@ -44,7 +44,7 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   %1 = phi double [ 1.000000e+00, %entry ], [ %mul2, %while ]
 ; CHECK-NEXT:   %[[ivtrunc:.+]] = trunc i64 %iv to i32
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %[[bytesalloc:.+]] = shl nuw i64 %iv.next, 3
+; CHECK-NEXT:   %[[bytesalloc:.+]] = shl nuw nsw i64 %iv.next, 3
 ; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %0, i64 %[[bytesalloc]])
 ; CHECK-NEXT:   %_realloccast = bitcast i8* %_realloccache to double*
 ; CHECK-NEXT:   %[[storeloc:.+]] = getelementptr inbounds double, double* %_realloccast, i64 %iv

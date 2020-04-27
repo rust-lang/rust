@@ -1491,13 +1491,14 @@ endCheck:
                     if (isa<ConstantInt>(sublimits[i].first) && cast<ConstantInt>(sublimits[i].first)->isOne()) {
                         realloc_size = containedloops.back().first.incvar;
                     } else {
-                        realloc_size = build.CreateNUWMul(containedloops.back().first.incvar, sublimits[i].first);
+                        realloc_size = build.CreateMul(containedloops.back().first.incvar, sublimits[i].first, "", /*NUW*/true, /*NSW*/true);
                     }
 
                     Value* idxs[2] = {
                         build.CreatePointerCast(allocation, BPTy),
-                        build.CreateNUWMul(
-                            ConstantInt::get(size->getType(), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8), realloc_size
+                        build.CreateMul(
+                            ConstantInt::get(size->getType(), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8), realloc_size,
+                            "", /*NUW*/true, /*NSW*/true
                         )
                     };
 
@@ -1630,14 +1631,14 @@ endCheck:
               if (limits.size() == 0) {
                 limits.push_back(lim);
               } else {
-                limits.push_back(BuilderM.CreateNUWMul(lim, limits.back()));
+                limits.push_back(BuilderM.CreateMul(lim, limits.back(), "", /*NUW*/true, /*NSW*/true));
               }
             }
 
             if (indices.size() > 0) {
                 Value* idx = indices[0];
                 for(unsigned ind=1; ind<indices.size(); ind++) {
-                  idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[ind], limits[ind-1]));
+                  idx = BuilderM.CreateAdd(idx, BuilderM.CreateMul(indices[ind], limits[ind-1], "", /*NUW*/true, /*NSW*/true), "", /*NUW*/true, /*NSW*/true);
                 }
                 next = BuilderM.CreateGEP(next, {idx});
                 cast<GetElementPtrInst>(next)->setIsInBounds(true);

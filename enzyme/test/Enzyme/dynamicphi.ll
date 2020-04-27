@@ -69,7 +69,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.outerbody.loopexit ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %1 = bitcast double** %phi_cache.0 to i8*
-; CHECK-NEXT:   %2 = mul nuw i64 8, %iv.next
+; CHECK-NEXT:   %2 = mul nuw nsw i64 8, %iv.next
 ; CHECK-NEXT:   %phi_realloccache = call i8* @realloc(i8* %1, i64 %2)
 ; CHECK-NEXT:   %phi_realloccast = bitcast i8* %phi_realloccache to double**
 ; CHECK-NEXT:   %3 = bitcast i64* %loopLimit_cache3.0 to i8*
@@ -90,7 +90,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %phi = phi double [ %phiadd, %for.body.for.body_crit_edge ], [ %x, %for.body.ph ]
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %6 = bitcast double* %5 to i8*
-; CHECK-NEXT:   %7 = mul nuw i64 8, %iv.next2
+; CHECK-NEXT:   %7 = mul nuw nsw i64 8, %iv.next2
 ; CHECK-NEXT:   %phi_realloccache4 = call i8* @realloc(i8* %6, i64 %7)
 ; CHECK-NEXT:   %phi_realloccast5 = bitcast i8* %phi_realloccache4 to double*
 ; CHECK-NEXT:   store double* %phi_realloccast5, double** %4, align 8, !invariant.group !1

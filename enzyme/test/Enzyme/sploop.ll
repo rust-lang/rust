@@ -74,8 +74,8 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   %why = fmul fast double %L1, %L2
 ; CHECK-NEXT:   %tostore = getelementptr inbounds double, double* %z, i64 %a17
 ; CHECK-NEXT:   store double %why, double* %tostore
-; CHECK-NEXT:   %2 = mul nuw i64 %iv1, 4
-; CHECK-NEXT:   %3 = add nuw i64 %iv, %2
+; CHECK-NEXT:   %2 = mul nuw nsw i64 %iv1, 4
+; CHECK-NEXT:   %3 = add nuw nsw i64 %iv, %2
 ; CHECK-NEXT:   %4 = getelementptr inbounds double, double* %L2_malloccache, i64 %3
 ; CHECK-NEXT:   store double %L2, double* %4, align 8, !invariant.group !2
 ; CHECK-NEXT:   %exit2 = icmp eq i64 %iv.next2, 4
@@ -112,8 +112,8 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   %[[tostoreipg:.+]] = getelementptr inbounds double, double* %"z'", i64 %10
 ; CHECK-NEXT:   %11 = load double, double* %[[tostoreipg]]
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostoreipg]]
-; CHECK-NEXT:   %12 = mul nuw i64 %"iv1'ac.0", 4
-; CHECK-NEXT:   %13 = add nuw i64 %"iv'ac.0", %12
+; CHECK-NEXT:   %12 = mul nuw nsw i64 %"iv1'ac.0", 4
+; CHECK-NEXT:   %13 = add nuw nsw i64 %"iv'ac.0", %12
 ; CHECK-NEXT:   %14 = getelementptr inbounds double, double* %L2_malloccache, i64 %13
 ; CHECK-NEXT:   %15 = load double, double* %14, align 8, !invariant.group !2
 ; CHECK-NEXT:   %m0diffeL1 = fmul fast double %11, %15

@@ -53,7 +53,7 @@ entry:
 ; CHECK-NEXT:   %load.i1 = phi double [ 1.000000e+00, %entry ], [ %add10.i.i.i, %while.body.i.i.i ]
 ; CHECK-NEXT:   %2 = trunc i64 %iv to i32
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %3 = shl nuw i64 %iv.next, 3
+; CHECK-NEXT:   %3 = shl nuw nsw i64 %iv.next, 3
 ; CHECK-NEXT:   %[[loadi1_realloccache]] = call i8* @realloc(i8* %1, i64 %3)
 ; CHECK-NEXT:   %[[loadi1_realloccast:.+]] = bitcast i8* %[[loadi1_realloccache]] to double*
 ; CHECK-NEXT:   %[[tostore:.+]] = fmul fast double %load.i1, 0xBFF3333333333332
