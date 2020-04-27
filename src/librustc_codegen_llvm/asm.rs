@@ -5,8 +5,8 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
-use rustc_ast::ast::LlvmAsmDialect;
-use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::LlvmAsmDialect;
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;

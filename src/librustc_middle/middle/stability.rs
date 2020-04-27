@@ -4,7 +4,7 @@
 pub use self::StabilityLevel::*;
 
 use crate::ty::{self, TyCtxt};
-use rustc_ast::ast::CRATE_NODE_ID;
+use rustc_ast::CRATE_NODE_ID;
 use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};

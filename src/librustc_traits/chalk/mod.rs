@@ -101,7 +101,7 @@ crate fn evaluate_goal<'tcx>(
             match _data {
                 chalk_ir::GenericArgData::Ty(_t) => {
                     use chalk_ir::TyData;
-                    use rustc_ast::ast;
+                    use rustc_ast as ast;
 
                     let _data = _t.data(&interner);
                     let kind = match _data {

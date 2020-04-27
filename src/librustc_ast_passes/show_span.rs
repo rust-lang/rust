@@ -5,7 +5,7 @@
 
 use std::str::FromStr;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
 

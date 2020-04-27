@@ -2,8 +2,8 @@
 // pieces of AST and HIR. The resulting numbers are good approximations but not
 // completely accurate (some things might be counted twice, others missed).
 
-use rustc_ast::ast::{self, AttrId, NodeId};
 use rustc_ast::visit as ast_visit;
+use rustc_ast::{self as ast, AttrId, NodeId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::intravisit as hir_visit;

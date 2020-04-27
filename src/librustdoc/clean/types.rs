@@ -8,9 +8,9 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
 
-use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
+use rustc_ast::{self as ast, AttrStyle};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -420,7 +420,7 @@ pub struct Attributes {
 impl Attributes {
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
     pub fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
-        use rustc_ast::ast::NestedMetaItem::MetaItem;
+        use rustc_ast::NestedMetaItem::MetaItem;
 
         if let ast::MetaItemKind::List(ref nmis) = mi.kind {
             if nmis.len() == 1 {

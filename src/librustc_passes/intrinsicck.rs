@@ -1,4 +1,4 @@
-use rustc_ast::ast::{FloatTy, InlineAsmTemplatePiece, IntTy, UintTy};
+use rustc_ast::{FloatTy, InlineAsmTemplatePiece, IntTy, UintTy};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

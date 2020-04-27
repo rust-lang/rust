@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_ast::ast::FloatTy;
+use rustc_ast::FloatTy;
 use rustc_attr as attr;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;

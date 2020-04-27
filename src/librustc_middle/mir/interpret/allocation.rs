@@ -5,7 +5,7 @@ use std::convert::TryFrom;
 use std::iter;
 use std::ops::{Deref, DerefMut, Range};
 
-use rustc_ast::ast::Mutability;
+use rustc_ast::Mutability;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 

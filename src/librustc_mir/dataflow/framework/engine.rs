@@ -4,7 +4,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_data_structures::work_queue::WorkQueue;
 use rustc_graphviz as dot;
 use rustc_hir::def_id::DefId;

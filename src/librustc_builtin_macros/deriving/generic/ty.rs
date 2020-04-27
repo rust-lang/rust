@@ -4,8 +4,8 @@
 pub use PtrTy::*;
 pub use Ty::*;
 
-use rustc_ast::ast::{self, Expr, GenericArg, GenericParamKind, Generics, SelfKind};
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, Expr, GenericArg, GenericParamKind, Generics, SelfKind};
 use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::{respan, DUMMY_SP};
 use rustc_span::symbol::{kw, Ident, Symbol};

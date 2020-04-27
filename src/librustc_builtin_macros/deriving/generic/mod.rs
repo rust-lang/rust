@@ -181,9 +181,9 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
-use rustc_ast::ast::{self, BinOpKind, EnumDef, Expr, Generics, PatKind};
-use rustc_ast::ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, BinOpKind, EnumDef, Expr, Generics, PatKind};
+use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};

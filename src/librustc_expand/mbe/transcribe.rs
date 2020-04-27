@@ -2,10 +2,10 @@ use crate::base::ExtCtxt;
 use crate::mbe;
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
 
-use rustc_ast::ast::MacCall;
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, NtTT, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
+use rustc_ast::MacCall;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{pluralize, PResult};

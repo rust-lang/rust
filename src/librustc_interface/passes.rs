@@ -4,7 +4,7 @@ use crate::util;
 
 use once_cell::sync::Lazy;
 use rustc_ast::mut_visit::MutVisitor;
-use rustc_ast::{self, ast, visit};
+use rustc_ast::{self as ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{par_iter, Lrc, OnceCell, ParallelIterator, WorkerLocal};

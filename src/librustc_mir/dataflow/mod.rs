@@ -1,4 +1,4 @@
-use rustc_ast::ast::{self, MetaItem};
+use rustc_ast::{self as ast, MetaItem};
 use rustc_middle::ty;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};

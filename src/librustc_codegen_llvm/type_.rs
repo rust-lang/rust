@@ -7,7 +7,7 @@ use crate::llvm;
 use crate::llvm::{Bool, False, True};
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;

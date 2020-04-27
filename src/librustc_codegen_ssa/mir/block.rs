@@ -9,7 +9,7 @@ use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_hir::lang_items;
 use rustc_index::vec::Idx;
 use rustc_middle::mir;

@@ -5,7 +5,7 @@ use crate::utils::{
     span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
-use rustc_ast::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -570,7 +570,7 @@ declare_lint_pass!(EarlyAttributes => [
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
-    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::ast::Item) {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
         check_empty_line_after_outer_attr(cx, item);
     }
 
@@ -580,7 +580,7 @@ impl EarlyLintPass for EarlyAttributes {
     }
 }
 
-fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::ast::Item) {
+fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
     for attr in &item.attrs {
         let attr_item = if let AttrKind::Normal(ref attr) = attr.kind {
             attr

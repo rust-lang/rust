@@ -50,7 +50,7 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::CrateDisambiguator;
 use rustc_target::spec::PanicStrategy;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};

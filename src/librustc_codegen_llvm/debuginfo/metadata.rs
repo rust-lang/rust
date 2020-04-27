@@ -18,7 +18,7 @@ use crate::llvm::debuginfo::{
 };
 use crate::value::Value;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::const_cstr;
 use rustc_data_structures::fingerprint::Fingerprint;

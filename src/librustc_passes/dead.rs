@@ -15,7 +15,7 @@ use rustc_middle::middle::privacy;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_span::symbol::{sym, Symbol};
 
 // Any local node that may call something in its body block should be

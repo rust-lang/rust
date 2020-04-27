@@ -20,12 +20,12 @@ pub use rustc_hir::def::{Namespace, PerNS};
 use Determinacy::*;
 
 use rustc_arena::TypedArena;
-use rustc_ast::ast::{self, FloatTy, IntTy, NodeId, UintTy};
-use rustc_ast::ast::{Crate, CRATE_NODE_ID};
-use rustc_ast::ast::{ItemKind, Path};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
+use rustc_ast::{self as ast, FloatTy, IntTy, NodeId, UintTy};
+use rustc_ast::{Crate, CRATE_NODE_ID};
+use rustc_ast::{ItemKind, Path};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};

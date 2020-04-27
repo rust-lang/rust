@@ -1,7 +1,7 @@
 use crate::base::ExtCtxt;
 use crate::expand::{AstFragment, AstFragmentKind};
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_span::source_map::{dummy_spanned, DUMMY_SP};

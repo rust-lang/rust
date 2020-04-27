@@ -1,6 +1,6 @@
 use super::*;
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::Ident;
 use rustc_span::with_default_session_globals;

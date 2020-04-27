@@ -1,4 +1,4 @@
-use rustc_ast::ast::{FloatTy, IntTy, UintTy};
+use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;

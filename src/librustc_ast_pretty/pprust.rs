@@ -1,11 +1,6 @@
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
 
-use rustc_ast::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use rustc_ast::ast::{Attribute, GenericArg, MacArgs};
-use rustc_ast::ast::{GenericBound, SelfKind, TraitBoundModifier};
-use rustc_ast::ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
-use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, CommentKind, DelimToken, Nonterminal, Token, TokenKind};
@@ -13,6 +8,11 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
+use rustc_ast::{self as ast, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::{GenericArg, MacArgs};
+use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
+use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
@@ -902,7 +902,7 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod, attrs: &[Attribute]) {
+    crate fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod, attrs: &[ast::Attribute]) {
         self.print_inner_attributes(attrs);
         for item in &nmod.items {
             self.print_foreign_item(item);
@@ -1666,7 +1666,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>], attrs: &[Attribute]) {
+    fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>], attrs: &[ast::Attribute]) {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
         self.print_inner_attributes_inline(attrs);
@@ -1679,7 +1679,7 @@ impl<'a> State<'a> {
         &mut self,
         element: &ast::Expr,
         count: &ast::AnonConst,
-        attrs: &[Attribute],
+        attrs: &[ast::Attribute],
     ) {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
@@ -1696,7 +1696,7 @@ impl<'a> State<'a> {
         path: &ast::Path,
         fields: &[ast::Field],
         wth: &Option<P<ast::Expr>>,
-        attrs: &[Attribute],
+        attrs: &[ast::Attribute],
     ) {
         self.print_path(path, true, 0);
         self.s.word("{");
@@ -1736,7 +1736,7 @@ impl<'a> State<'a> {
         self.s.word("}");
     }
 
-    fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>], attrs: &[Attribute]) {
+    fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>], attrs: &[ast::Attribute]) {
         self.popen();
         self.print_inner_attributes_inline(attrs);
         self.commasep_exprs(Inconsistent, &exprs[..]);

@@ -6,7 +6,7 @@
 #![feature(try_blocks)]
 #![feature(or_patterns)]
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
 use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;

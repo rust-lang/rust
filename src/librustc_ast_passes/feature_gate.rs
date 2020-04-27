@@ -1,6 +1,7 @@
-use rustc_ast::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
-use rustc_ast::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
+use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::{AssocTyConstraint, AssocTyConstraintKind, NodeId};
+use rustc_ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
 use rustc_errors::struct_span_err;
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue};

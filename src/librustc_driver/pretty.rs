@@ -1,6 +1,6 @@
 //! The various pretty-printing routines.
 
-use rustc_ast::ast;
+use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;

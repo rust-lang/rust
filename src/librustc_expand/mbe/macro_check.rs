@@ -106,8 +106,8 @@
 //! bound.
 use crate::mbe::{KleeneToken, TokenTree};
 
-use rustc_ast::ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast::token::{DelimToken, Token, TokenKind};
+use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;

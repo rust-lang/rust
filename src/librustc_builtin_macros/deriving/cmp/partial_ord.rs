@@ -4,8 +4,8 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::{path_local, path_std, pathvec_std};
 
-use rustc_ast::ast::{self, BinOpKind, Expr, MetaItem};
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, BinOpKind, Expr, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;

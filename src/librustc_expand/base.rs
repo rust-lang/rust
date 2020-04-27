@@ -1,12 +1,12 @@
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirectoryOwnership;
 
-use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{self, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
+use rustc_ast::{self as ast, Attribute, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};

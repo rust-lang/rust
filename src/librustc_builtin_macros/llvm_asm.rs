@@ -2,10 +2,11 @@
 //
 use State::*;
 
-use rustc_ast::ast::{self, LlvmAsmDialect};
+use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{self, TokenStream};
+use rustc_ast::LlvmAsmDialect;
 use rustc_errors::{struct_span_err, DiagnosticBuilder, PResult};
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;

@@ -12,7 +12,7 @@ extern crate rustc_session;
 
 use rustc_driver::plugin::Registry;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintId, LintPass};
-use rustc_ast::ast;
+use rustc_ast as ast;
 declare_tool_lint!(pub clippy::TEST_LINT, Warn, "Warn about stuff");
 declare_tool_lint!(
     /// Some docs

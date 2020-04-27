@@ -1,9 +1,9 @@
 use crate::mbe::macro_parser;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, SequenceRepetition, TokenTree};
 
-use rustc_ast::ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream;
+use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, Ident};

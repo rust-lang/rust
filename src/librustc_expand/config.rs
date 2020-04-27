@@ -1,9 +1,9 @@
 //! Conditional compilation stripping.
 
-use rustc_ast::ast::{self, AttrItem, Attribute, MetaItem};
 use rustc_ast::attr::HasAttrs;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, AttrItem, Attribute, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::map_in_place::MapInPlace;
