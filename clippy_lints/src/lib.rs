@@ -350,7 +350,7 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &Co
     store.register_pre_expansion_pass(move || box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold,
     });
-    store.register_pre_expansion_pass(|| box attrs::DeprecatedCfgAttribute);
+    store.register_pre_expansion_pass(|| box attrs::EarlyAttributes);
     store.register_pre_expansion_pass(|| box dbg_macro::DbgMacro);
 }
 
@@ -496,6 +496,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &attrs::DEPRECATED_SEMVER,
         &attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
         &attrs::INLINE_ALWAYS,
+        &attrs::MISMATCHED_TARGET_OS,
         &attrs::UNKNOWN_CLIPPY_LINTS,
         &attrs::USELESS_ATTRIBUTE,
         &await_holding_lock::AWAIT_HOLDING_LOCK,
@@ -1190,6 +1191,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&atomic_ordering::INVALID_ATOMIC_ORDERING),
         LintId::of(&attrs::DEPRECATED_CFG_ATTR),
         LintId::of(&attrs::DEPRECATED_SEMVER),
+        LintId::of(&attrs::MISMATCHED_TARGET_OS),
         LintId::of(&attrs::UNKNOWN_CLIPPY_LINTS),
         LintId::of(&attrs::USELESS_ATTRIBUTE),
         LintId::of(&bit_mask::BAD_BIT_MASK),
@@ -1610,6 +1612,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&approx_const::APPROX_CONSTANT),
         LintId::of(&atomic_ordering::INVALID_ATOMIC_ORDERING),
         LintId::of(&attrs::DEPRECATED_SEMVER),
+        LintId::of(&attrs::MISMATCHED_TARGET_OS),
         LintId::of(&attrs::USELESS_ATTRIBUTE),
         LintId::of(&bit_mask::BAD_BIT_MASK),
         LintId::of(&bit_mask::INEFFECTIVE_BIT_MASK),
