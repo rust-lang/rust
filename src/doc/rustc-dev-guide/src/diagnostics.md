@@ -184,7 +184,7 @@ contexts:
 
 - shown as an independent sub-diagnostic (this is the default output)
 - shown as a label pointing at the affected span (this is done automatically if
-the some heuristics for verbosity are met)
+some heuristics for verbosity are met)
 - shown as a `help` sub-diagnostic with no content (used for cases where the
 suggestion is obvious from the text, but we still want to let tools to apply
 them))
