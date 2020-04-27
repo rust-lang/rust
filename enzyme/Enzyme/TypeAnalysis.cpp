@@ -127,7 +127,7 @@ DataType getTypeFromTBAAString(std::string typeNameStringRef, Instruction* inst)
             llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
         }
         return DataType(IntType::Integer);
-    } else if (typeNameStringRef == "any pointer" || typeNameStringRef == "vtable pointer" || typeNameStringRef == "jtbaa_arrayptr") {// || typeNameStringRef == "omnipotent char") {
+    } else if (typeNameStringRef == "any pointer" || typeNameStringRef == "vtable pointer" || typeNameStringRef == "jtbaa_arrayptr" || typeNameStringRef == "jtbaa_tag") {// || typeNameStringRef == "omnipotent char") {
         if (printtype) {
             llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
         }
