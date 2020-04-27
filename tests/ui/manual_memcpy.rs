@@ -98,6 +98,11 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     for i in from..from + 3 {
         dst[i] = src[i - from];
     }
+
+    // `RangeTo` `for` loop - don't trigger lint
+    for i in 0.. {
+        dst[i] = src[i];
+    }
 }
 
 #[warn(clippy::needless_range_loop, clippy::manual_memcpy)]

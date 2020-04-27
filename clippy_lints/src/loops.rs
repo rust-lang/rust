@@ -951,7 +951,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
 ) {
     if let Some(higher::Range {
         start: Some(start),
-        ref end,
+        end: Some(end),
         limits,
     }) = higher::range(cx, arg)
     {
@@ -990,35 +990,31 @@ fn detect_manual_memcpy<'a, 'tcx>(
                 }
             };
 
-            let print_limit = |end: &Option<&Expr<'_>>, offset: Offset, var_name: &str| {
-                if let Some(end) = *end {
-                    if_chain! {
-                        if let ExprKind::MethodCall(ref method, _, ref len_args) = end.kind;
-                        if method.ident.name == sym!(len);
-                        if len_args.len() == 1;
-                        if let Some(arg) = len_args.get(0);
-                        if snippet(cx, arg.span, "??") == var_name;
-                        then {
-                            return if offset.negate {
-                                format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
-                            } else {
-                                String::new()
-                            };
-                        }
+            let print_limit = |end: &Expr<'_>, offset: Offset, var_name: &str| {
+                if_chain! {
+                    if let ExprKind::MethodCall(ref method, _, ref len_args) = end.kind;
+                    if method.ident.name == sym!(len);
+                    if len_args.len() == 1;
+                    if let Some(arg) = len_args.get(0);
+                    if snippet(cx, arg.span, "??") == var_name;
+                    then {
+                        return if offset.negate {
+                            format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
+                        } else {
+                            String::new()
+                        };
                     }
-
-                    let end_str = match limits {
-                        ast::RangeLimits::Closed => {
-                            let end = sugg::Sugg::hir(cx, end, "<count>");
-                            format!("{}", end + sugg::ONE)
-                        },
-                        ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
-                    };
-
-                    print_sum(&Offset::positive(end_str), &offset)
-                } else {
-                    "..".into()
                 }
+
+                let end_str = match limits {
+                    ast::RangeLimits::Closed => {
+                        let end = sugg::Sugg::hir(cx, end, "<count>");
+                        format!("{}", end + sugg::ONE)
+                    },
+                    ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
+                };
+
+                print_sum(&Offset::positive(end_str), &offset)
             };
 
             // The only statements in the for loops can be indexed assignments from

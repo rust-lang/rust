@@ -67,7 +67,7 @@ LL |     for i in from..from + 3 {
    |              ^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[from..from + 3].clone_from_slice(&src[..(from + 3 - from)])`
 
 error: it looks like you're manually copying between slices
-  --> $DIR/manual_memcpy.rs:105:14
+  --> $DIR/manual_memcpy.rs:110:14
    |
 LL |     for i in 0..src.len() {
    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
