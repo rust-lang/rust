@@ -779,11 +779,11 @@ fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -
         // our variable!
         if local_id == var;
         then {
-            return true;
+            true
+        } else {
+            false
         }
     }
-
-    false
 }
 
 struct Offset {
@@ -853,13 +853,7 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, v
                 BinOpKind::Sub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
                 _ => None,
             },
-            ExprKind::Path(..) => {
-                if same_var(cx, idx, var) {
-                    Some(Offset::positive("0".into()))
-                } else {
-                    None
-                }
-            },
+            ExprKind::Path(..) if same_var(cx, idx, var) => Some(Offset::positive("0".into())),
             _ => None,
         };
 
@@ -883,11 +877,11 @@ fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
         if args.len() == 1;
         if let Some(arg) = args.get(0);
         then {
-            return get_fixed_offset_var(cx, arg, var);
+            get_fixed_offset_var(cx, arg, var)
+        } else {
+            get_fixed_offset_var(cx, expr, var)
         }
     }
-
-    get_fixed_offset_var(cx, expr, var)
 }
 
 fn get_indexed_assignments<'a, 'tcx>(
@@ -925,12 +919,12 @@ fn get_indexed_assignments<'a, 'tcx>(
 
         stmts
             .iter()
-            .map(|stmt| match stmt.kind {
+            .filter_map(|stmt| match stmt.kind {
                 StmtKind::Local(..) | StmtKind::Item(..) => None,
-                StmtKind::Expr(e) | StmtKind::Semi(e) => Some(get_assignment(cx, e, var)),
+                StmtKind::Expr(e) | StmtKind::Semi(e) => Some(e),
             })
-            .chain(expr.as_ref().into_iter().map(|e| Some(get_assignment(cx, &*e, var))))
-            .filter_map(|op| op)
+            .chain(expr.into_iter())
+            .map(|op| get_assignment(cx, op, var))
             .collect::<Option<Vec<_>>>()
             .unwrap_or_default()
     } else {
@@ -996,23 +990,23 @@ fn detect_manual_memcpy<'a, 'tcx>(
                     if let Some(arg) = len_args.get(0);
                     if snippet(cx, arg.span, "??") == var_name;
                     then {
-                        return if offset.negate {
+                        if offset.negate {
                             format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
                         } else {
                             String::new()
+                        }
+                    } else {
+                        let end_str = match limits {
+                            ast::RangeLimits::Closed => {
+                                let end = sugg::Sugg::hir(cx, end, "<count>");
+                                format!("{}", end + sugg::ONE)
+                            },
+                            ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
                         };
+
+                        print_sum(&Offset::positive(end_str), &offset)
                     }
                 }
-
-                let end_str = match limits {
-                    ast::RangeLimits::Closed => {
-                        let end = sugg::Sugg::hir(cx, end, "<count>");
-                        format!("{}", end + sugg::ONE)
-                    },
-                    ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
-                };
-
-                print_sum(&Offset::positive(end_str), &offset)
             };
 
             // The only statements in the for loops can be indexed assignments from
