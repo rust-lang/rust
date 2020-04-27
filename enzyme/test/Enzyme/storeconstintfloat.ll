@@ -47,12 +47,12 @@ entry:
 ; CHECK-NEXT:   %div = fmul fast double %t, 1.000000e-02
 ; CHECK-NEXT:   br label %while.body.i.i.i
 
-; CHECK: while.body.i.i.i: 
+; CHECK: while.body.i.i.i:
 ; CHECK-NEXT:   %1 = phi i8* [ null, %entry ], [ %[[loadi1_realloccache:.+]], %while.body.i.i.i ]
 ; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %while.body.i.i.i ]
 ; CHECK-NEXT:   %load.i1 = phi double [ 1.000000e+00, %entry ], [ %add10.i.i.i, %while.body.i.i.i ]
 ; CHECK-NEXT:   %2 = trunc i64 %iv to i32
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %3 = shl nuw i64 %iv.next, 3
 ; CHECK-NEXT:   %[[loadi1_realloccache]] = call i8* @realloc(i8* %1, i64 %3)
 ; CHECK-NEXT:   %[[loadi1_realloccast:.+]] = bitcast i8* %[[loadi1_realloccache]] to double*

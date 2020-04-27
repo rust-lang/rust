@@ -2,11 +2,11 @@
 
 ; #include <math.h>
 ; #include <stdio.h>
-; 
+;
 ; static double max(double x, double y) {
 ;     return (x > y) ? x : y;
 ; }
-; 
+;
 ; __attribute__((noinline))
 ; static double iterA(double *__restrict x, size_t n) {
 ;   double A = x[0];
@@ -15,7 +15,7 @@
 ;   }
 ;   return A;
 ; }
-; 
+;
 ; void dsincos(double *__restrict x, double *__restrict xp, size_t n) {
 ;     __builtin_autodiff(iterA, x, xp, n);
 ; }
@@ -80,9 +80,9 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br label %for.body.for.body_crit_edge
 
 ; CHECK: for.body.for.body_crit_edge:                      ; preds = %for.body.for.body_crit_edge, %for.body.for.body_crit_edge.preheader
-; CHECK-NEXT:   %[[indvar:.+]] = phi i64 [ %[[added:.+]], %for.body.for.body_crit_edge ], [ 0, %for.body.for.body_crit_edge.preheader ] 
+; CHECK-NEXT:   %[[indvar:.+]] = phi i64 [ %[[added:.+]], %for.body.for.body_crit_edge ], [ 0, %for.body.for.body_crit_edge.preheader ]
 ; CHECK-NEXT:   %cond.i12 = phi double [ %cond.i, %for.body.for.body_crit_edge ], [ %0, %for.body.for.body_crit_edge.preheader ]
-; CHECK-NEXT:   %[[added]] = add nuw i64 %[[indvar]], 1
+; CHECK-NEXT:   %[[added]] = add nuw nsw i64 %[[indvar]], 1
 ; CHECK-NEXT:   %arrayidx2.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %[[added]]
 ; CHECK-NEXT:   %.pre = load double, double* %arrayidx2.phi.trans.insert, align 8, !tbaa !2
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %cond.i12, %.pre
@@ -93,7 +93,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[exitcond:.+]] = icmp eq i64 %[[added]], %n
 ; CHECK-NEXT:   br i1 %[[exitcond]], label %[[thelabel:.+]], label %for.body.for.body_crit_edge
 
-; CHECK: invertentry:       
+; CHECK: invertentry:
 ; CHECK-NEXT:   %[[ientryde:.+]] = phi double [ %[[diffecond:.+]], %[[thelabel2:.+]] ], [ 1.000000e+00, %entry ]
 ; CHECK-NEXT:   %[[xppre:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   %[[xpstore:.+]] = fadd fast double %[[xppre]], %[[ientryde]]
@@ -104,9 +104,9 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   br label %invertentry
 
-; CHECK: [[thelabel]]:    
+; CHECK: [[thelabel]]:
 ; CHECK-NEXT:   %[[iforde:.+]] = phi double [ %[[diffecond]], %[[thelabel]] ], [ 1.000000e+00, %for.body.for.body_crit_edge ]
-; CHECK-NEXT:   %[[iin:.+]] = phi i64 [ %[[isub:.+]], %[[thelabel]] ], [ %n, %for.body.for.body_crit_edge ] 
+; CHECK-NEXT:   %[[iin:.+]] = phi i64 [ %[[isub:.+]], %[[thelabel]] ], [ %n, %for.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[isub]] = add i64 %[[iin]], -1
 ; CHECK-NEXT:   %[[cmpcache:.+]] = getelementptr inbounds i1, i1* %cmp.i_malloccache, i64 %[[isub]]
 ; CHECK-NEXT:   %[[toselect:.+]] = load i1, i1* %[[cmpcache]]
@@ -117,5 +117,5 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[arradd:.+]] = fadd fast double %[[prear]], %[[diffepre]]
 ; CHECK-NEXT:   store double %[[arradd]], double* %[[arrayidx2phitransinsertipg]]
 ; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %[[isub]], 0
-; CHECK-NEXT:   br i1 %[[lcmp]], label %[[thelabel2]], label %[[thelabel]] 
+; CHECK-NEXT:   br i1 %[[lcmp]], label %[[thelabel2]], label %[[thelabel]]
 ; CHECK-NEXT: }

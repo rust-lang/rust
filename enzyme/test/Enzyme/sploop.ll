@@ -57,7 +57,7 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK: loop1:                                            ; preds = %cleanup, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %cleanup ]
 ; CHECK-NEXT:   %a17 = phi i64 [ 4, %entry ], [ %.pre, %cleanup ]
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %X1 = getelementptr inbounds double, double* %x, i64 %iv
 ; CHECK-NEXT:   %L1 = load double, double* %X1
 ; CHECK-NEXT:   %[[gepL1:.+]] = getelementptr inbounds double, double* %L1_malloccache, i64 %iv
@@ -68,7 +68,7 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 
 ; CHECK: loop2:                                            ; preds = %loop2, %loop1
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %loop2 ], [ 0, %loop1 ]
-; CHECK-NEXT:   %iv.next2 = add nuw i64 %iv1, 1
+; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %X2 = getelementptr inbounds double, double* %x, i64 %iv1
 ; CHECK-NEXT:   %L2 = load double, double* %X2
 ; CHECK-NEXT:   %why = fmul fast double %L1, %L2

@@ -38,7 +38,7 @@ declare double @__enzyme_autodiff(void (float*, float*)*, ...) #2
 ; CHECK: do.body:
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %do.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %intsum = phi i32 [ 0, %entry ], [ %intadd, %do.body ]
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds float, float* %array, i64 %iv
 ; CHECK-NEXT:   %loaded = load float, float* %arrayidx
 ; CHECK-NEXT:   %fltload = bitcast i32 %intsum to float

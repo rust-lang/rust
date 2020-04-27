@@ -90,7 +90,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK: loop1:                                            ; preds = %exit, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %exit ], [ 0, %entry ]
 ; CHECK-NEXT:   %res1 = phi double [ %add, %exit ], [ 0.000000e+00, %entry ]
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %a19 = load i64, i64* %a4, align 4
 ; CHECK-NEXT:   %0 = getelementptr inbounds i64, i64* %a19_malloccache, i64 %iv
 ; CHECK-NEXT:   store i64 %a19, i64* %0, align 8, !invariant.group !0
@@ -100,7 +100,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK: loop2:                                            ; preds = %loop2, %loop1
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %loop2 ], [ 0, %loop1 ]
 ; CHECK-NEXT:   %res = phi double [ %add, %loop2 ], [ %res1, %loop1 ]
-; CHECK-NEXT:   %iv.next2 = add nuw i64 %iv1, 1
+; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %gepk3 = getelementptr double, double* %data, i64 %iv1
 ; CHECK-NEXT:   %datak = load double, double* %gepk3, align 8
 ; CHECK-NEXT:   %add = fadd fast double %datak, %res
@@ -127,14 +127,14 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 
 ; CHECK: loop1:                                            ; preds = %exit, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %exit ], [ 0, %entry ]
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %1 = getelementptr inbounds i64, i64* %[[a19cache]], i64 %iv
 ; CHECK-NEXT:   %a19 = load i64, i64* %1, align 8, !invariant.group !1
 ; CHECK-NEXT:   br label %loop2
 
 ; CHECK: loop2:                                            ; preds = %loop2, %loop1
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %loop2 ], [ 0, %loop1 ]
-; CHECK-NEXT:   %iv.next2 = add nuw i64 %iv1, 1
+; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %exitcond3 = icmp eq i64 %iv.next2, %a19
 ; CHECK-NEXT:   br i1 %exitcond3, label %exit, label %loop2
 

@@ -54,7 +54,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double, i64) local_unnamed_addr
 attributes #0 = { noinline norecurse nounwind uwtable }
 attributes #1 = { noinline nounwind uwtable }
 
-; CHECK: define internal { double } @diffef(double %x, i64 %n, double %differeturn) 
+; CHECK: define internal { double } @diffef(double %x, i64 %n, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %for.outerbody
 
@@ -67,7 +67,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %loopLimit_cache3.0 = phi i64* [ null, %entry ], [ %loopLimit_realloccast, %for.outerbody.loopexit ]
 ; CHECK-NEXT:   %phi_cache.0 = phi double** [ null, %entry ], [ %phi_realloccast, %for.outerbody.loopexit ]
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.outerbody.loopexit ], [ 0, %entry ]
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %1 = bitcast double** %phi_cache.0 to i8*
 ; CHECK-NEXT:   %2 = mul nuw i64 8, %iv.next
 ; CHECK-NEXT:   %phi_realloccache = call i8* @realloc(i8* %1, i64 %2)
@@ -88,7 +88,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %5 = phi double* [ %.pre, %for.body.for.body_crit_edge ], [ null, %for.body.ph ]
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body.for.body_crit_edge ], [ 0, %for.body.ph ]
 ; CHECK-NEXT:   %phi = phi double [ %phiadd, %for.body.for.body_crit_edge ], [ %x, %for.body.ph ]
-; CHECK-NEXT:   %iv.next2 = add nuw i64 %iv1, 1
+; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %6 = bitcast double* %5 to i8*
 ; CHECK-NEXT:   %7 = mul nuw i64 8, %iv.next2
 ; CHECK-NEXT:   %phi_realloccache4 = call i8* @realloc(i8* %6, i64 %7)

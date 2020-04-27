@@ -2,12 +2,12 @@
 
 ; #include <stdlib.h>
 ; #include <stdio.h>
-; 
+;
 ; struct n {
 ;     double *values;
 ;     struct n *next;
 ; };
-; 
+;
 ; __attribute__((noinline))
 ; double sum_list(const struct n *__restrict node, unsigned long times) {
 ;     double sum = 0;
@@ -97,11 +97,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[firstcmp]], label %invertentry, label %for.cond1.preheader
 
 ; CHECK: for.cond1.preheader:
-; CHECK-NEXT:   %[[phirealloc:.+]] = phi i8* [ %[[postrealloc:.+]], %for.cond.cleanup4 ], [ null, %entry ] 
+; CHECK-NEXT:   %[[phirealloc:.+]] = phi i8* [ %[[postrealloc:.+]], %for.cond.cleanup4 ], [ null, %entry ]
 ; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.cond.cleanup4 ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[valstruct:.+]] = phi %struct.n* [ %[[dstructload:.+]], %for.cond.cleanup4 ], [ %"node'", %entry ]
 ; CHECK-NEXT:   %val.020 = phi %struct.n* [ %[[nextstruct:.+]], %for.cond.cleanup4 ], [ %node, %entry ]
-; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
+; CHECK-NEXT:   %[[postidx]] = add nuw nsw i64 %[[preidx]], 1
 ; CHECK-NEXT:   %[[added:.+]] = shl nuw i64 %[[postidx]], 3
 ; CHECK-NEXT:   %[[postrealloc]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[added]])
 ; CHECK-NEXT:   %[[todoublep:.+]] = bitcast i8* %[[postrealloc]] to double**
@@ -121,7 +121,7 @@ attributes #4 = { nounwind }
 
 ; CHECK: for.body5:                                        ; preds = %for.body5, %for.cond1.preheader
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body5 ], [ 0, %for.cond1.preheader ]
-; CHECK-NEXT:   %[[ivnext]] = add nuw i64 %[[iv]], 1
+; CHECK-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:   %[[cond:.+]] = icmp eq i64 %[[iv]], %times
 ; CHECK-NEXT:   br i1 %[[cond]], label %for.cond.cleanup4, label %for.body5
 

@@ -74,7 +74,7 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: for.body7:                                        ; preds = %for.body7, %for.cond3.preheader
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body7 ], [ 0, %for.cond3.preheader ]
-; CHECK-NEXT:   %iv.next2 = add nuw i64 %iv1, 1
+; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %[[augmented:.+]] = call { {}, double } @augmented_get(double* %x, double* %"x'", i64 undef, i64 %iv1)
 ; CHECK-NEXT:   %[[retval:.+]] = extractvalue { {}, double } %[[augmented]], 1
 ; CHECK-NEXT:   %[[mallocgep2:.+]] = getelementptr inbounds double, double* %call_malloccache5, i64 %iv1
@@ -90,7 +90,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   ret {} undef
 
-; CHECK: invertfor.cond3.preheader: 
+; CHECK: invertfor.cond3.preheader:
 ; CHECK-NEXT:   %[[innerdatai8:.+]] = bitcast double* %[[innerdata:.+]] to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[innerdatai8]])
 ; CHECK-NEXT:   %[[done1:.+]] = icmp eq i64 %[[iv:.+]], 0

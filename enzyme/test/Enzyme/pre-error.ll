@@ -88,13 +88,13 @@ exit:                                             ; preds = %end2
 
 ; CHECK: for1:                                             ; preds = %end2, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %end2 ], [ 0, %entry ]
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   br label %for2
 
 ; CHECK: for2:                                             ; preds = %for2, %for1
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for2 ], [ 0, %for1 ]
 ; CHECK-NEXT:   %res = phi double [ %add, %for2 ], [ 0.000000e+00, %for1 ]
-; CHECK-NEXT:   %iv.next2 = add nuw i64 %iv1, 1
+; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %nextj = add nuw nsw i64 %iv.next2, 1
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %place, i64 %iv.next2
 ; CHECK-NEXT:   %loaded = load double, double* %arrayidx, align 8, !tbaa !2
@@ -133,7 +133,7 @@ exit:                                             ; preds = %end2
 ; CHECK: invertfor2:                                       ; preds = %invertend2, %incinvertfor2
 ; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %_unwrap, %invertend2 ], [ %[[sub:.+]], %incinvertfor2 ]
 ; CHECK-NEXT:   %m0diffeloaded = fmul fast double %[[addde:.+]], 2.000000e+00
-; CHECK-NEXT:   %iv.next2_unwrap = add nuw i64 %"iv1'ac.0", 1
+; CHECK-NEXT:   %iv.next2_unwrap = add nuw nsw i64 %"iv1'ac.0", 1
 ; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %"place'", i64 %iv.next2_unwrap
 ; CHECK-NEXT:   %[[ld:.+]] = load double, double* %[[arrayidxipg]], align 8
 ; CHECK-NEXT:   %[[ldadd:.+]] = fadd fast double %[[ld]], %m0diffeloaded

@@ -35,7 +35,7 @@ entry:
 declare double @__enzyme_autodiff(double (double*, i64)*, ...) #2
 
 attributes #0 = { norecurse nounwind readonly uwtable }
-attributes #1 = { nounwind uwtable } 
+attributes #1 = { nounwind uwtable }
 attributes #2 = { nounwind }
 
 ; CHECK: define dso_local void @dsum(double* %x, double* %xp, i64 %n)
@@ -47,14 +47,14 @@ attributes #2 = { nounwind }
 
 ; CHECK: for.body.i:
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %extra.i ], [ 0, %entry ]
-; CHECK-NEXT:   %[[ivnext]] = add nuw i64 %[[iv]], 1
+; CHECK-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:   %exitcond.i = call i1 @exitcond() #2
 ; CHECK-NEXT:   br i1 %exitcond.i, label %for.cond.cleanup.i, label %extra.i
 
 ; CHECK: extra.i:
 ; CHECK-NEXT:   br label %for.body.i
 
-; CHECK: invertfor.body.i: 
+; CHECK: invertfor.body.i:
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[iv]], %for.cond.cleanup.i ], [ %[[sub:.+]], %incinvertfor.body.i ]
 ; CHECK-NEXT:   %[[arrayidxipgi:.+]] = getelementptr inbounds double, double* %xp, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[arrayidxipgi]]

@@ -420,7 +420,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       Value* val1 = nullptr;
 
 
-      if (false && isConstantValue(arg->getOperand(0)) && isConstantValue(arg->getOperand(1))) {
+      if (isConstantValue(arg->getOperand(0)) && isConstantValue(arg->getOperand(1))) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
         dumpSet(this->originalInstructions);
@@ -582,7 +582,7 @@ std::pair<PHINode*,Instruction*> insertNewCanonicalIV(Loop* L, Type* Ty) {
     PHINode *CanonicalIV = B.CreatePHI(Ty, 1, "iv");
 
     B.SetInsertPoint(Header->getFirstNonPHIOrDbg());
-    Instruction* inc = cast<Instruction>(B.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1), "iv.next"));
+    Instruction* inc = cast<Instruction>(B.CreateAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1), "iv.next", /*NUW*/true, /*NSW*/true));
 
     for (BasicBlock *Pred : predecessors(Header)) {
         assert(Pred);

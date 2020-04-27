@@ -47,11 +47,11 @@ attributes #0 = { noinline nounwind uwtable }
 
 ; CHECK: for.cond:
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %cmp = icmp ne i64 %iv, %0
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertfor.cond
 
-; CHECK: for.body: 
+; CHECK: for.body:
 ; CHECK-NEXT:   %2 = load double, double* %x
 ; CHECK-NEXT:   %[[ipload:.+]] = load double*, double** %"y'"
 ; CHECK-NEXT:   %[[yload:.+]] = load double*, double** %y
@@ -67,7 +67,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   ret {} undef
 
 ; CHECK: invertfor.cond:
-; CHECK-NEXT:   %[[ivp:.+]] = phi i64 [ %[[sub:.+]], %incinvertfor.cond ], [ %0, %for.cond ] 
+; CHECK-NEXT:   %[[ivp:.+]] = phi i64 [ %[[sub:.+]], %incinvertfor.cond ], [ %0, %for.cond ]
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[ivp]], 0
 ; CHECK-NEXT:   br i1 %[[cmp]], label %invertentry, label %incinvertfor.cond
 

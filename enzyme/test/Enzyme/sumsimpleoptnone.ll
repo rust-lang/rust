@@ -47,11 +47,11 @@ attributes #0 = { noinline nounwind uwtable optnone }
 
 ; CHECK: for.cond:
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %cmp = icmp ne i64 %iv, %0
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertfor.end
 
-; CHECK: for.body: 
+; CHECK: for.body:
 ; CHECK-NEXT:   %2 = load double, double* %x
 ; CHECK-NEXT:   %[[ipl:.+]] = load double*, double** %"y'"
 ; CHECK-NEXT:   %[[yload:.+]] = load double*, double** %y

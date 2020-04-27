@@ -273,7 +273,7 @@ attributes #19 = { builtin nounwind }
 
 ; CHECK: for.body:                                         ; preds = %for.cond.cleanup3, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.cond.cleanup3 ], [ 0, %entry ]
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %out, i64 %iv
 ; CHECK-NEXT:   store double 0.000000e+00, double* %arrayidx, align 8, !tbaa !2
 ; CHECK-NEXT:   %i2000 = mul nuw nsw i64 %iv, 2000
@@ -282,7 +282,7 @@ attributes #19 = { builtin nounwind }
 ; CHECK: for.body4:                                        ; preds = %for.body4, %for.body
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body4 ], [ 0, %for.body ]
 ; CHECK-NEXT:   %a2 = phi double [ 0.000000e+00, %for.body ], [ %add12, %for.body4 ]
-; CHECK-NEXT:   %iv.next2 = add nuw i64 %iv1, 1
+; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %a3 = add nuw nsw i64 %iv1, %i2000
 ; CHECK-NEXT:   %arrayidx6 = getelementptr inbounds double, double* %mat, i64 %a3
 ; CHECK-NEXT:   %a4 = load double, double* %arrayidx6, align 8, !tbaa !2

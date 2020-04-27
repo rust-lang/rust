@@ -2,12 +2,12 @@
 
 ; #include <stdlib.h>
 ; #include <stdio.h>
-; 
+;
 ; struct n {
 ;     double *values;
 ;     struct n *next;
 ; };
-; 
+;
 ; __attribute__((noinline))
 ; double sum_list(const struct n *__restrict node, unsigned long times) {
 ;     double sum = 0;
@@ -18,7 +18,7 @@
 ;     }
 ;     return sum;
 ; }
-; 
+;
 ; double list_creator(double x, unsigned long n, unsigned long times) {
 ;     struct n *list = 0;
 ;     for(int i=0; i<=n; i++) {
@@ -32,12 +32,12 @@
 ;     }
 ;     return sum_list(list, times);
 ; }
-; 
+;
 ; __attribute__((noinline))
 ; double derivative(double x, unsigned long n, unsigned long times) {
 ;     return __builtin_autodiff(list_creator, x, n, times);
 ; }
-; 
+;
 ; int main(int argc, char** argv) {
 ;     double x = atof(argv[1]);
 ;     unsigned long n = atoi(argv[2]);
@@ -213,10 +213,10 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup7.i
 
 ; CHECK: for.body.i:                                       ; preds = %for.cond.cleanup7.i, %entry
-; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[nextvar:.+]], %for.cond.cleanup7.i ], [ 0, %entry ] 
+; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[nextvar:.+]], %for.cond.cleanup7.i ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[dstruct:.+]] = phi %struct.n* [ %[[ipci]], %for.cond.cleanup7.i ], [ null, %entry ]
-; CHECK-NEXT:   %list.029.i = phi %struct.n* [ %[[bccast]], %for.cond.cleanup7.i ], [ null, %entry ] 
-; CHECK-NEXT:   %[[nextvar]] = add nuw i64 %[[iv]], 1
+; CHECK-NEXT:   %list.029.i = phi %struct.n* [ %[[bccast]], %for.cond.cleanup7.i ], [ null, %entry ]
+; CHECK-NEXT:   %[[nextvar]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call.i = call noalias i8* @malloc(i64 16) #4
 ; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull i8* @malloc(i64 16) #4
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
@@ -251,12 +251,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[hcmp]], label %[[invertforcondcleanup]], label %for.body.i
 
 ; CHECK: for.body8.i:                                      ; preds = %for.body8.i, %for.body.i
-; CHECK-NEXT:   %[[iv2:.+]] = phi i64 [ %[[iv2next:.+]], %for.body8.i ], [ 0, %for.body.i ] 
-; CHECK-NEXT:   %[[iv2next]] = add nuw i64 %[[iv2]], 1
+; CHECK-NEXT:   %[[iv2:.+]] = phi i64 [ %[[iv2next:.+]], %for.body8.i ], [ 0, %for.body.i ]
+; CHECK-NEXT:   %[[iv2next]] = add nuw nsw i64 %[[iv2]], 1
 ; CHECK-NEXT:   %arrayidx.i = getelementptr inbounds double, double* %.cast.i, i64 %[[iv2]]
 ; CHECK-NEXT:   store double %x, double* %arrayidx.i, align 8, !tbaa !8
 ; CHECK-NEXT:   %[[thiscmp:.+]] = icmp eq i64 %[[iv2]], %times
-; CHECK-NEXT:   br i1 %[[thiscmp]], label %for.cond.cleanup7.i, label %for.body8.i 
+; CHECK-NEXT:   br i1 %[[thiscmp]], label %for.cond.cleanup7.i, label %for.body8.i
 
 ; CHECK: invertfor.body.i:                                 ; preds = %invertfor.body8.i
 ; CHECK-NEXT:   call void @free(i8* nonnull %[[loadcall2p:.+]]) #4
@@ -273,7 +273,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[cmpne]], label %diffelist_creator.exit, label %incinvertfor.body.i
 
 ; CHECK: incinvertfor.body.i:
-; CHECK-NEXT:   %[[iv7sub:.+]] = add nsw i64 %[[antiiv]], -1 
+; CHECK-NEXT:   %[[iv7sub:.+]] = add nsw i64 %[[antiiv]], -1
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup7.i
 
 ; CHECK: invertfor.cond.cleanup7.i:
@@ -292,7 +292,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[arrayidxipgi]]
 ; CHECK-NEXT:   %[[faddloop]] = fadd fast double %"x'de.1.i", %[[looparray]]
 ; CHECK-NEXT:   %[[loopcmpne:.+]] = icmp eq i64 %[[antiiv2]], 0
-; CHECK-NEXT:   br i1 %[[loopcmpne]], label %invertfor.body.i, label %incinvertfor.body8.i 
+; CHECK-NEXT:   br i1 %[[loopcmpne]], label %invertfor.body.i, label %incinvertfor.body8.i
 
 ; CHECK: incinvertfor.body8.i:
 ; CHECK-NEXT:   %[[idxsub]] = add nsw i64 %[[antiiv2]], -1
@@ -314,11 +314,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[firstcmp]], label %invertentry, label %for.cond1.preheader
 
 ; CHECK: for.cond1.preheader:
-; CHECK-NEXT:   %[[phirealloc:.+]] = phi i8* [ %[[postrealloc:.+]], %for.cond.cleanup4 ], [ null, %entry ] 
+; CHECK-NEXT:   %[[phirealloc:.+]] = phi i8* [ %[[postrealloc:.+]], %for.cond.cleanup4 ], [ null, %entry ]
 ; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.cond.cleanup4 ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[valstruct:.+]] = phi %struct.n* [ %[[dstructload:.+]], %for.cond.cleanup4 ], [ %"node'", %entry ]
 ; CHECK-NEXT:   %val.020 = phi %struct.n* [ %[[nextstruct:.+]], %for.cond.cleanup4 ], [ %node, %entry ]
-; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
+; CHECK-NEXT:   %[[postidx]] = add nuw nsw i64 %[[preidx]], 1
 ; CHECK-NEXT:   %[[added:.+]] = shl nuw i64 %[[postidx]], 3
 ; CHECK-NEXT:   %[[postrealloc]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[added]])
 ; CHECK-NEXT:   %[[todoublep:.+]] = bitcast i8* %[[postrealloc]] to double**
@@ -338,7 +338,7 @@ attributes #4 = { nounwind }
 
 ; CHECK: for.body5:                                        ; preds = %for.body5, %for.cond1.preheader
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body5 ], [ 0, %for.cond1.preheader ]
-; CHECK-NEXT:   %[[ivnext]] = add nuw i64 %[[iv]], 1
+; CHECK-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:   %[[cond:.+]] = icmp eq i64 %[[iv]], %times
 ; CHECK-NEXT:   br i1 %[[cond]], label %for.cond.cleanup4, label %for.body5
 

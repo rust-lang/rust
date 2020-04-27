@@ -2,7 +2,7 @@
 
 ; #include <stdlib.h>
 ; #include <stdio.h>
-; 
+;
 ; class node {
 ; public:
 ;     double value;
@@ -12,7 +12,7 @@
 ;         next = next_;
 ;     }
 ; };
-; 
+;
 ; __attribute__((noinline))
 ; double sum_list(const node *__restrict node) {
 ;     double sum = 0;
@@ -22,7 +22,7 @@
 ;     }
 ;     return sum;
 ; }
-; 
+;
 ; double list_creator(double x, unsigned long n) {
 ;     node *list = 0;
 ;     for(int i=0; i<=n; i++) {
@@ -32,12 +32,12 @@
 ;     delete list;
 ;     return res;
 ; }
-; 
+;
 ; __attribute__((noinline))
 ; double derivative(double x, unsigned long n) {
 ;     return __builtin_autodiff(list_creator, x, n);
 ; }
-; 
+;
 ; int main(int argc, char** argv) {
 ;     double x = atof(argv[1]);
 ;     double n = atoi(argv[2]);
@@ -178,9 +178,9 @@ attributes #8 = { builtin nounwind }
 
 ; CHECK: for.body.i:                                       ; preds = %for.body.i, %entry
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body.i ], [ 0, %entry ]
-; CHECK-NEXT:   %[[nodevar:.+]] = phi %class.node* [ %"'ipc.i", %for.body.i ], [ null, %entry ] 
-; CHECK-NEXT:   %list.09.i = phi %class.node* [ %[[bcnode:.+]], %for.body.i ], [ null, %entry ] 
-; CHECK-NEXT:   %[[ivnext]] = add nuw i64 %[[iv]], 1
+; CHECK-NEXT:   %[[nodevar:.+]] = phi %class.node* [ %"'ipc.i", %for.body.i ], [ null, %entry ]
+; CHECK-NEXT:   %list.09.i = phi %class.node* [ %[[bcnode:.+]], %for.body.i ], [ null, %entry ]
+; CHECK-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call.i = call i8* @_Znwm(i64 16) #10
 ; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull i8* @_Znwm(i64 16) #10
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #5
@@ -206,7 +206,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[dsum:.+]] = call {} @diffe_Z8sum_listPK4node(%class.node* nonnull %[[bcnode]], %class.node* nonnull %"'ipc.i", double 1.000000e+00)
 ; CHECK-NEXT:   br label %invertfor.body.i
 
-; CHECK: invertfor.body.i:                                
+; CHECK: invertfor.body.i:
 ; CHECK-NEXT:   %"x'de.0.i" = phi double [ 0.000000e+00, %[[invertdelete:.+]] ], [ %[[xadd:.+]], %incinvertfor.body.i ]
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %n, %[[invertdelete]] ], [ %[[isub:.+]], %incinvertfor.body.i ]
 ; CHECK-NEXT:   %[[gepiv:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache.i", i64 %[[antivar]]
@@ -222,9 +222,9 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[callload2free:.+]] = load i8*, i8** %[[heregep]]
 ; CHECK-NEXT:   call void @_ZdlPv(i8* %[[callload2free]]) #5
 ; CHECK-NEXT:   %[[cmpinst:.+]] = icmp eq i64 %[[antivar]], 0
-; CHECK-NEXT:   br i1 %[[cmpinst]], label %diffe_Z12list_creatordm.exit, label %incinvertfor.body.i 
+; CHECK-NEXT:   br i1 %[[cmpinst]], label %diffe_Z12list_creatordm.exit, label %incinvertfor.body.i
 
-; CHECK: incinvertfor.body.i:                                
+; CHECK: incinvertfor.body.i:
 ; CHECK-NEXT:   %[[isub]] = add nsw i64 %[[antivar]], -1
 ; CHECK-NEXT:   br label %invertfor.body.i
 
@@ -241,11 +241,11 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   br i1 %[[cmp]], label %invertentry, label %for.body
 
 ; CHECK: for.body:
-; CHECK-NEXT:   %[[rawcache:.+]] = phi i8* [ %_realloccache, %for.body ], [ null, %entry ] 
+; CHECK-NEXT:   %[[rawcache:.+]] = phi i8* [ %_realloccache, %for.body ], [ null, %entry ]
 ; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[cur:.+]] = phi %class.node* [ %"'ipl", %for.body ], [ %"node'", %entry ]
 ; CHECK-NEXT:   %val.08 = phi %class.node* [ %[[loadst:.+]], %for.body ], [ %node, %entry ]
-; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
+; CHECK-NEXT:   %[[postidx]] = add nuw nsw i64 %[[preidx]], 1
 ; CHECK-NEXT:   %[[nextrealloc:.+]] = shl nuw i64 %[[postidx]], 3
 ; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %[[rawcache]], i64 %[[nextrealloc]])
 ; CHECK-NEXT:   %[[reallocbc:.+]] = bitcast i8* %_realloccache to %class.node**
@@ -261,7 +261,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK: invertentry:
 ; CHECK-NEXT:   ret {} undef
 
-; CHECK: invertfor.body.preheader: 
+; CHECK: invertfor.body.preheader:
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
 ; CHECK-NEXT:   br label %invertentry
 

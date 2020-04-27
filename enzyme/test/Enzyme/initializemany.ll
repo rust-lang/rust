@@ -142,7 +142,7 @@ attributes #4 = { nounwind }
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %[[ivnext:.+]] = add nuw i64 %[[iv]], 1
+; CHECK-NEXT:   %[[ivnext:.+]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call = tail call noalias i8* @malloc(i64 8) #4
 ; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull i8* @malloc(i64 8) #4
 ; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %"call'mi" to i64*

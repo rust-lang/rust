@@ -116,7 +116,7 @@ attributes #6 = { noreturn nounwind }
 ; CHECK: for.body.for.body_crit_edge:                      ; preds = %for.body.for.body_crit_edge, %for.body.preheader
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[idxadd:.+]], %for.body.for.body_crit_edge ], [ 0, %for.body.preheader ]
 ; CHECK-NEXT:   %cond.i28 = phi double [ %0, %for.body.preheader ], [ %cond.i, %for.body.for.body_crit_edge ]
-; CHECK-NEXT:   %[[idxadd:.+]] = add nuw i64 %[[iv]], 1
+; CHECK-NEXT:   %[[idxadd:.+]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:   %arrayidx9.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %[[idxadd]]
 ; CHECK-NEXT:   %.pre = load double, double* %arrayidx9.phi.trans.insert, align 8, !tbaa !2
 ; CHECK-NEXT:   %cmp.i = fcmp fast ogt double %cond.i28, %.pre
@@ -139,14 +139,14 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[nm210:.+]] = add i64 %n, -2
 ; CHECK-NEXT:   br label %invertfor.body.for.body_crit_edge
 
-; CHECK: invertfor.body.for.body_crit_edge: 
+; CHECK: invertfor.body.for.body_crit_edge:
 ; CHECK-NEXT:   %"cond.i'de.0" = phi double [ -1.000000e+00, %invertfor.cond.cleanup ], [ %[[diffecond:.+]], %incinvertfor.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %[[nm210]], %invertfor.cond.cleanup ], [ %[[subd:.+]], %incinvertfor.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %[[gep1:.+]] = getelementptr inbounds i1, i1* %cmp.i_malloccache, i64 %[[antivar]]
 ; CHECK-NEXT:   %[[reload:.+]] = load i1, i1* %[[gep1]]
 ; CHECK-NEXT:   %[[diffecond]] = select{{( fast)?}} i1 %[[reload]], double %"cond.i'de.0", double 0.000000e+00
 ; CHECK-NEXT:   %[[diffepre:.+]] = select{{( fast)?}} i1 %[[reload]], double 0.000000e+00, double %"cond.i'de.0"
-; CHECK-NEXT:   %[[idx2:.+]] = add nuw i64 %[[antivar]], 1
+; CHECK-NEXT:   %[[idx2:.+]] = add nuw nsw i64 %[[antivar]], 1
 ; CHECK-NEXT:   %[[arrayidx9phitransinsertipg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[idx2]]
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %[[arrayidx9phitransinsertipg]]
 ; CHECK-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded]], %[[diffepre]]

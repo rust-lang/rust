@@ -62,7 +62,7 @@ attributes #0 = { noinline norecurse nounwind uwtable }
 ; CHECK-NEXT:   br i1 %cmp3, label %while.body, label %invertwhile.end
 
 ; CHECK: while.body:                                       ; preds = %land.rhs
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   store float %2, float* %arrayidx2, align 4
 ; CHECK-NEXT:   store float %3, float* %arrayidx, align 4
 ; CHECK-NEXT:   %cmp = icmp sgt i64 %1, 1

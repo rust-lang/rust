@@ -97,10 +97,10 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  br label %invertfor.body.i
 
 ; CHECK:for.body.i:                                       ; preds = %for.body.i, %entry
-; CHECK-NEXT:  %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body.i ], [ 0, %entry ] 
+; CHECK-NEXT:  %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body.i ], [ 0, %entry ]
 ; CHECK-NEXT:  %[[structtostore:.+]] = phi %struct.n* [ %[[dstructncast]], %for.body.i ], [ null, %entry ]
-; CHECK-NEXT:  %list.011.i = phi %struct.n* [ %[[thisbc]], %for.body.i ], [ null, %entry ] 
-; CHECK-NEXT:  %[[ivnext]] = add nuw i64 %[[iv]], 1
+; CHECK-NEXT:  %list.011.i = phi %struct.n* [ %[[thisbc]], %for.body.i ], [ null, %entry ]
+; CHECK-NEXT:  %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:  %call.i = call noalias i8* @malloc(i64 16) #4
 
 ; CHECK-NEXT:  %"call'mi.i" = call noalias nonnull i8* @malloc(i64 16) #4
@@ -143,7 +143,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  %[[loadprefree:.+]] = load i8*, i8** %[[gepcall]]
 ; CHECK-NEXT:  call void @free(i8* %[[loadprefree]]) #4
 ; CHECK-NEXT:  %[[cmp:.+]] = icmp eq i64 %[[antivar]], 0
-; CHECK-NEXT:  br i1 %[[cmp:.+]], label %diffelist_creator.exit, label %incinvertfor.body.i 
+; CHECK-NEXT:  br i1 %[[cmp:.+]], label %diffelist_creator.exit, label %incinvertfor.body.i
 
 ; CHECK: incinvertfor.body.i:
 ; CHECK-NEXT:  %[[sub]] = add nsw i64 %[[antivar]], -1
@@ -161,11 +161,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br i1 %cmp6, label %invertentry, label %for.body
 
 ; CHECK: for.body:
-; CHECK-NEXT:   %[[rawcache:.+]] = phi i8* [ %_realloccache, %for.body ], [ null, %entry ] 
+; CHECK-NEXT:   %[[rawcache:.+]] = phi i8* [ %_realloccache, %for.body ], [ null, %entry ]
 ; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[cur:.+]] = phi %struct.n* [ %"'ipl", %for.body ], [ %"node'", %entry ]
 ; CHECK-NEXT:   %val.08 = phi %struct.n* [ %[[loadst:.+]], %for.body ], [ %node, %entry ]
-; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
+; CHECK-NEXT:   %[[postidx]] = add nuw nsw i64 %[[preidx]], 1
 ; CHECK-NEXT:   %[[addalloc:.+]] = shl nuw i64 %[[postidx]], 3
 ; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %[[rawcache]], i64 %[[addalloc]])
 ; CHECK-NEXT:   %[[bcalloc:.+]] = bitcast i8* %_realloccache to %struct.n**
@@ -178,7 +178,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %cmp = icmp eq %struct.n* %[[loadst]], null
 ; CHECK-NEXT:   br i1 %cmp, label %[[antiloop:.+]], label %for.body
 
-; CHECK: invertentry: 
+; CHECK: invertentry:
 ; CHECK-NEXT:   ret {} undef
 
 ; CHECK: invertfor.body.preheader:

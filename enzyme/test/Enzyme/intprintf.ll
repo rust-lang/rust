@@ -43,7 +43,7 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %while ]
 ; CHECK-NEXT:   %1 = phi double [ 1.000000e+00, %entry ], [ %mul2, %while ]
 ; CHECK-NEXT:   %[[ivtrunc:.+]] = trunc i64 %iv to i32
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %[[bytesalloc:.+]] = shl nuw i64 %iv.next, 3
 ; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %0, i64 %[[bytesalloc]])
 ; CHECK-NEXT:   %_realloccast = bitcast i8* %_realloccache to double*
@@ -54,7 +54,7 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   %cmp2 = fcmp fast ugt double %mul2, 2.000000e+00
 ; CHECK-NEXT:   br i1 %cmp2, label %exit, label %while
 
-; CHECK: exit: 
+; CHECK: exit:
 ; CHECK-NEXT:   %a3 = zext i32 %inc to i64
 ; CHECK-NEXT:   %call2 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)
 ; CHECK-NEXT:   %5 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([46 x i8], [46 x i8]* @.str, i64 0, i64 0), double %t, double 0x400921FAFC8B007A, double -2.000000e-01, i64 %a3)
@@ -65,7 +65,7 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   %6 = insertvalue { double } undef, double %9, 0
 ; CHECK-NEXT:   ret { double } %6
 
-; CHECK: invertwhile: 
+; CHECK: invertwhile:
 ; CHECK-NEXT:   %"t'de.0" = phi double [ 0.000000e+00, %exit ], [ %9, %incinvertwhile ]
 ; CHECK-NEXT:   %"mul2'de.0" = phi double [ %differeturn, %exit ], [ %[[m0diffe:.+]], %incinvertwhile ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %iv, %exit ], [ %11, %incinvertwhile ]

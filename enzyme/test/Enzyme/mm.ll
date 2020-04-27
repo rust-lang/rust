@@ -105,13 +105,13 @@ attributes #3 = { argmemonly nounwind }
 
 ; CHECK: for.cond2.preheader:                              ; preds = %for.inc47, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.inc47 ], [ 0, %entry ]
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %lhs_i = getelementptr inbounds float, float* %lhs_data, i64 %iv
 ; CHECK-NEXT:   br label %for.body5
 
 ; CHECK: for.body5:                                        ; preds = %for.inc44, %for.cond2.preheader
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.inc44 ], [ 0, %for.cond2.preheader ]
-; CHECK-NEXT:   %iv.next2 = add nuw i64 %iv1, 1
+; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %L_lhs_i = load float, float* %lhs_i, align 8, !tbaa !6, !invariant.group !12
 ; CHECK-NEXT:   %1 = mul nsw i64 %iv1, %rows
 ; CHECK-NEXT:   %rhs_ij = getelementptr inbounds float, float* %rhs_data, i64 %1
@@ -126,7 +126,7 @@ attributes #3 = { argmemonly nounwind }
 ; CHECK: for.body23:                                       ; preds = %for.body23, %for.body5
 ; CHECK-NEXT:   %iv3 = phi i64 [ %iv.next4, %for.body23 ], [ 0, %for.body5 ]
 ; CHECK-NEXT:   %3 = phi float [ %add, %for.body23 ], [ %mul, %for.body5 ]
-; CHECK-NEXT:   %iv.next4 = add nuw i64 %iv3, 1
+; CHECK-NEXT:   %iv.next4 = add nuw nsw i64 %iv3, 1
 ; CHECK-NEXT:   %4 = mul nsw i64 %iv.next4, %rows
 ; CHECK-NEXT:   %5 = add nsw i64 %4, %iv
 ; CHECK-NEXT:   %lhs_ki = getelementptr inbounds float, float* %lhs_data, i64 %5
@@ -138,7 +138,7 @@ attributes #3 = { argmemonly nounwind }
 ; CHECK-NEXT:   %add = fadd fast float %3, %mul2
 ; CHECK-NEXT:   %add_ext = fpext float %add to double
 ; CHECK-NEXT:   store double %add_ext, double* %out_iji, align 8, !tbaa !8
-; CHECK-NEXT:   %nextk = add i64 %iv3, 2
+; CHECK-NEXT:   %nextk = add nuw nsw i64 %iv3, 2
 ; CHECK-NEXT:   %cmp22 = icmp slt i64 %nextk, %cols
 ; CHECK-NEXT:   br i1 %cmp22, label %for.body23, label %for.inc44
 
@@ -200,7 +200,7 @@ attributes #3 = { argmemonly nounwind }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"out_iji'ipg_unwrap9", align 8
 ; CHECK-NEXT:   %17 = fptrunc double %16 to float
 ; CHECK-NEXT:   %18 = fadd fast float %"add'de.0", %17
-; CHECK-NEXT:   %iv.next4_unwrap = add nuw i64 %"iv3'ac.0", 1
+; CHECK-NEXT:   %iv.next4_unwrap = add nuw nsw i64 %"iv3'ac.0", 1
 ; CHECK-NEXT:   %_unwrap11 = mul nsw i64 %iv.next4_unwrap, %rows
 ; CHECK-NEXT:   %_unwrap12 = add nsw i64 %_unwrap11, %"iv'ac.0"
 ; CHECK-NEXT:   %lhs_ki_unwrap = getelementptr inbounds float, float* %lhs_data, i64 %_unwrap12

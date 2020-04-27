@@ -47,14 +47,14 @@ attributes #2 = { nounwind }
 !5 = !{!"Simple C/C++ TBAA"}
 
 
-; CHECK: define dso_local void @ddynsum(double* %x, double* %xp) 
+; CHECK: define dso_local void @ddynsum(double* %x, double* %xp)
 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %for.cond.i
 
 ; CHECK: for.cond.i:                                       ; preds = %for.cond.i, %entry
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.cond.i ], [ 0, %entry ]
-; CHECK-NEXT:   %[[ivnext]] = add nuw i64 %[[iv]], 1
+; CHECK-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
 ; CHECK-NEXT:   %call.i = call i32 (...) @done() #2
 ; CHECK-NEXT:   %tobool.i = icmp eq i32 %call.i, 0
 ; CHECK-NEXT:   br i1 %tobool.i, label %for.cond.i, label %[[antiloop:.+]]
@@ -66,7 +66,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[fadd:.+]] = fadd fast double %[[load]], 1.000000e+00
 ; CHECK-NEXT:   store double %[[fadd]], double* %[[arrayidxipgi]]
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i64 %[[antiiv]], 0
-; CHECK-NEXT:   br i1 %[[cmp]], label %diffeunknowniters.exit, label %[[incantiloop]] 
+; CHECK-NEXT:   br i1 %[[cmp]], label %diffeunknowniters.exit, label %[[incantiloop]]
 
 ; CHECK: [[incantiloop]]:
 ; CHECK-NEXT:   %[[antiivnext]] = sub nuw nsw i64 %[[antiiv]], 1

@@ -53,14 +53,14 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %cmp2, label %invertif.then, label %if.end
 
 ; CHECK: if.end:                                           ; preds = %for.body
-; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
+; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %arrayidx4 = getelementptr inbounds double, double* %x, i64 %iv
 ; CHECK-NEXT:   %0 = load double, double* %arrayidx4, align 8
 ; CHECK-NEXT:   %add5 = fadd fast double %0, %data.016
 ; CHECK-NEXT:   %cmp = icmp ult i64 %iv, %n
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertif.end
 
-; CHECK: invertentry: 
+; CHECK: invertentry:
 ; CHECK-NEXT:   ret {} undef
 
 ; CHECK: invertfor.body:
@@ -79,7 +79,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   store double %[[tostoreit]], double* %[[arrayidxipg]], align 8
 ; CHECK-NEXT:   br label %invertfor.body
 
-; CHECK: invertif.end:  
+; CHECK: invertif.end:
 ; CHECK-NEXT:   %[[ivp1]] = phi i64 [ %[[ivp0m1]], %incinvertfor.body ], [ %iv, %if.end ]
 ; CHECK-NEXT:   %[[arrayidx4ipg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[ivp1]]
 ; CHECK-NEXT:   %[[loaditp:.+]] = load double, double* %[[arrayidx4ipg]], align 8
