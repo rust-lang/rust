@@ -9,6 +9,7 @@ ExternalProject_Add(adept2
     UPDATE_COMMAND ""
     TEST_COMMAND      ""
 )
+set_target_properties(adept2 PROPERTIES EXCLUDE_FROM_ALL TRUE)
 ExternalProject_Add(tapenade
     URL ${CMAKE_CURRENT_SOURCE_DIR}/ADFirstAidKit.tar
     PREFIX tapenade
@@ -19,7 +20,7 @@ ExternalProject_Add(tapenade
     INSTALL_COMMAND ""
     TEST_COMMAND      ""
 )
-
+set_target_properties(tapenade PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 set(BENCH_FLAGS "-I${CMAKE_CURRENT_BINARY_DIR}/adept2/src/adept2/include -I${CMAKE_CURRENT_BINARY_DIR}/tapenade/src/tapenade")
 set(BENCH_LINK "${CMAKE_CURRENT_BINARY_DIR}/tapenade/src/tapenade/adBuffer.o ${CMAKE_CURRENT_BINARY_DIR}/tapenade/src/tapenade/adStack.o -L${CMAKE_CURRENT_BINARY_DIR}/adept2/install/lib -ladept")
