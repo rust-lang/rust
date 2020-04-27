@@ -165,7 +165,7 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: LazyMacroId) -> tt::TokenTree {
         crates.iter().filter_map(|krate| cg[*krate].display_name.clone()).map(|it| it.to_string());
 
     let tt = if crate_names.any(|name| name == "std" || name == "core") {
-        quote! { krate }
+        quote! { crate }
     } else {
         quote! { core }
     };

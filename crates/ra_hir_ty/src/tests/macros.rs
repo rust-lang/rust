@@ -643,6 +643,32 @@ mod clone {
 }
 
 #[test]
+fn infer_derive_clone_in_core() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:core
+use core::S;
+fn test() {
+    S.clone()<|>;
+}
+
+//- /lib.rs crate:core
+#[prelude_import]
+use clone::*;
+mod clone {
+    trait Clone {
+        fn clone(&self) -> Self;
+    }
+}
+#[derive(Clone)]
+pub struct S;
+
+"#,
+    );
+    assert_eq!("S", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_derive_clone_with_params() {
     let (db, pos) = TestDB::with_position(
         r#"
