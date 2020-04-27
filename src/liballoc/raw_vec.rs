@@ -151,7 +151,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
 
             let memory = alloc.alloc(layout, init).unwrap_or_else(|_| handle_alloc_error(layout));
             Self {
-                ptr: memory.ptr.cast().into(),
+                ptr: unsafe { Unique::new_unchecked(memory.ptr.cast().as_ptr()) },
                 cap: Self::capacity_from_bytes(memory.size),
                 alloc,
             }
@@ -469,7 +469,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
     }
 
     fn set_memory(&mut self, memory: MemoryBlock) {
-        self.ptr = memory.ptr.cast().into();
+        self.ptr = unsafe { Unique::new_unchecked(memory.ptr.cast().as_ptr()) };
         self.cap = Self::capacity_from_bytes(memory.size);
     }
 

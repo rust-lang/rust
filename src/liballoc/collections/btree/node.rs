@@ -131,7 +131,7 @@ impl<K, V> BoxedNode<K, V> {
     }
 
     unsafe fn from_ptr(ptr: NonNull<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::from(ptr) }
+        BoxedNode { ptr: Unique::new_unchecked(ptr.as_ptr()) }
     }
 
     fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
