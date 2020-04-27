@@ -958,7 +958,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.kind {
-            let print_sum = |arg1: &str, arg2: &Offset| -> String {
+            fn print_sum(arg1: &str, arg2: &Offset) -> String {
                 match (arg1, &arg2.value[..], arg2.sign) {
                     ("0", "0", _) => "0".into(),
                     ("0", x, OffsetSign::Positive) | (x, "0", _) => x.into(),
@@ -972,16 +972,16 @@ fn detect_manual_memcpy<'a, 'tcx>(
                         }
                     },
                 }
-            };
+            }
 
-            let print_offset = |start_str: &str, inline_offset: &Offset| -> String {
+            fn print_offset(start_str: &str, inline_offset: &Offset) -> String {
                 let offset = print_sum(start_str, inline_offset);
                 if offset.as_str() == "0" {
                     "".into()
                 } else {
                     offset
                 }
-            };
+            }
 
             let print_limit = |end: &Expr<'_>, offset: Offset, var_name: &str| {
                 if_chain! {
