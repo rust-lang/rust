@@ -87,11 +87,20 @@ fn non_variables() {
     let f = _fn_test;
     f();
 }
-// Tests that we do not lint if the binding comes from await desugaring.
-// See issue 5360.
+
+// Tests that we do not lint if the binding comes from await desugaring,
+// but we do lint the awaited expression. See issue 5360.
 async fn await_desugaring() {
     async fn foo() {}
+    fn uses_i(_i: i32) {}
+
     foo().await;
+    ({
+        let _i = 5;
+        uses_i(_i);
+        foo()
+    })
+    .await
 }
 
 fn main() {
