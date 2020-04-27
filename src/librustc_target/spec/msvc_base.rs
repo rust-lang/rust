@@ -21,10 +21,6 @@ pub fn opts() -> TargetOptions {
         executables: true,
         is_like_windows: true,
         is_like_msvc: true,
-        // set VSLANG to 1033 can prevent link.exe from using
-        // language packs, and avoid generating Non-UTF-8 error
-        // messages if a link error occurred.
-        link_env: vec![("VSLANG".to_string(), "1033".to_string())],
         lld_flavor: LldFlavor::Link,
         pre_link_args,
         abi_return_struct_as_int: true,
