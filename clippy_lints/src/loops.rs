@@ -812,8 +812,8 @@ impl Offset {
     }
 }
 
-struct FixedOffsetVar {
-    var_name: String,
+struct FixedOffsetVar<'hir> {
+    var: &'hir Expr<'hir>,
     offset: Offset,
 }
 
@@ -947,13 +947,13 @@ fn detect_manual_memcpy<'a, 'tcx>(
                 }
             }
 
-            let print_limit = |end: &Expr<'_>, offset: Offset, var_name: &str| {
+            let print_limit = |end: &Expr<'_>, offset: Offset, var: &Expr<'_>| {
                 if_chain! {
                     if let ExprKind::MethodCall(method, _, len_args) = end.kind;
                     if method.ident.name == sym!(len);
                     if len_args.len() == 1;
                     if let Some(arg) = len_args.get(0);
-                    if snippet(cx, arg.span, "??") == var_name;
+                    if var_def_id(cx, arg) == var_def_id(cx, var);
                     then {
                         match offset.sign {
                             OffsetSign::Negative => format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value),
@@ -986,14 +986,12 @@ fn detect_manual_memcpy<'a, 'tcx>(
                                 && is_slice_like(cx, cx.tables.expr_ty(seqexpr_right));
                             if let Some(offset_left) = get_offset(cx, &idx_left, canonical_id);
                             if let Some(offset_right) = get_offset(cx, &idx_right, canonical_id);
-                            let var_name_left = snippet_opt(cx, seqexpr_left.span).unwrap_or_else(|| "???".into());
-                            let var_name_right = snippet_opt(cx, seqexpr_right.span).unwrap_or_else(|| "???".into());
 
                             // Source and destination must be different
-                            if var_name_left != var_name_right;
+                            if var_def_id(cx, seqexpr_left) != var_def_id(cx, seqexpr_right);
                             then {
-                                Some((FixedOffsetVar { var_name: var_name_left, offset: offset_left },
-                                    FixedOffsetVar { var_name: var_name_right, offset: offset_right }))
+                                Some((FixedOffsetVar { var: seqexpr_left, offset: offset_left },
+                                    FixedOffsetVar { var: seqexpr_right, offset: offset_right }))
                             } else {
                                 None
                             }
@@ -1004,18 +1002,22 @@ fn detect_manual_memcpy<'a, 'tcx>(
                     o.map(|(dst_var, src_var)| {
                         let start_str = snippet(cx, start.span, "").to_string();
                         let dst_offset = print_offset(&start_str, &dst_var.offset);
-                        let dst_limit = print_limit(end, dst_var.offset, &dst_var.var_name);
+                        let dst_limit = print_limit(end, dst_var.offset, dst_var.var);
                         let src_offset = print_offset(&start_str, &src_var.offset);
-                        let src_limit = print_limit(end, src_var.offset, &src_var.var_name);
+                        let src_limit = print_limit(end, src_var.offset, src_var.var);
+
+                        let dst_var_name = snippet_opt(cx, dst_var.var.span).unwrap_or_else(|| "???".into());
+                        let src_var_name = snippet_opt(cx, src_var.var.span).unwrap_or_else(|| "???".into());
+
                         let dst = if dst_offset == "" && dst_limit == "" {
-                            dst_var.var_name
+                            dst_var_name
                         } else {
-                            format!("{}[{}..{}]", dst_var.var_name, dst_offset, dst_limit)
+                            format!("{}[{}..{}]", dst_var_name, dst_offset, dst_limit)
                         };
 
                         format!(
                             "{}.clone_from_slice(&{}[{}..{}])",
-                            dst, src_var.var_name, src_offset, src_limit
+                            dst, src_var_name, src_offset, src_limit
                         )
                     })
                 })
