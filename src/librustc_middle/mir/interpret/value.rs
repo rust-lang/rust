@@ -129,7 +129,10 @@ impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Scalar<Tag, Id> {
 
 impl<Tag: fmt::Debug> fmt::Display for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        match self {
+            Scalar::Ptr(ptr) => write!(f, "pointer to {}", ptr),
+            Scalar::Raw { .. } => fmt::Debug::fmt(self, f),
+        }
     }
 }
 
