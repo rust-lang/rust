@@ -160,11 +160,17 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: LazyMacroId) -> tt::TokenTree {
     let m: MacroCallId = id.into();
     let file_id = m.as_file().original_file(db);
     let cg = db.crate_graph();
-    let crates = db.relevant_crates(file_id);
-    let mut crate_names =
-        crates.iter().filter_map(|krate| cg[*krate].display_name.clone()).map(|it| it.to_string());
+    let krates = db.relevant_crates(file_id);
+    let krate = match krates.get(0) {
+        Some(krate) => krate,
+        None => {
+            let tt = quote! { core };
+            return tt.token_trees[0].clone();
+        }
+    };
 
-    let tt = if crate_names.any(|name| name == "std" || name == "core") {
+    // Check whether it has any deps, if not, it should be core:
+    let tt = if cg[*krate].dependencies.is_empty() {
         quote! { crate }
     } else {
         quote! { core }
@@ -263,8 +269,18 @@ mod tests {
 
     fn expand_builtin_derive(s: &str, name: Name) -> String {
         let def = find_builtin_derive(&name).unwrap();
+        let fixture = format!(
+            r#"//- /main.rs crate:main deps:core
+<|>
+{}
+//- /lib.rs crate:core
+// empty
+"#,
+            s
+        );
 
-        let (db, file_id) = TestDB::with_single_file(&s);
+        let (db, file_pos) = TestDB::with_position(&fixture);
+        let file_id = file_pos.file_id;
         let parsed = db.parse(file_id);
         let items: Vec<_> =
             parsed.syntax_node().descendants().filter_map(ast::ModuleItem::cast).collect();

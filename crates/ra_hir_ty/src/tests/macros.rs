@@ -646,12 +646,6 @@ mod clone {
 fn infer_derive_clone_in_core() {
     let (db, pos) = TestDB::with_position(
         r#"
-//- /main.rs crate:main deps:core
-use core::S;
-fn test() {
-    S.clone()<|>;
-}
-
 //- /lib.rs crate:core
 #[prelude_import]
 use clone::*;
@@ -663,6 +657,11 @@ mod clone {
 #[derive(Clone)]
 pub struct S;
 
+//- /main.rs crate:main deps:core
+use core::S;
+fn test() {
+    S.clone()<|>;
+}
 "#,
     );
     assert_eq!("S", type_at_pos(&db, pos));
