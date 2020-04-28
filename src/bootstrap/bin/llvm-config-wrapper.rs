@@ -10,7 +10,14 @@ fn main() {
     let mut cmd = Command::new(real_llvm_config);
     cmd.args(env::args().skip(1)).stderr(Stdio::piped());
     let output = cmd.output().expect("failed to spawn llvm-config");
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut stdout = String::from_utf8_lossy(&output.stdout);
+
+    if let Ok(to_replace) = env::var("LLVM_CONFIG_SHIM_REPLACE") {
+        if let Ok(replace_with) = env::var("LLVM_CONFIG_SHIM_REPLACE_WITH") {
+            stdout = stdout.replace(&to_replace, &replace_with).into();
+        }
+    }
+
     print!("{}", stdout.replace("\\", "/"));
     io::stdout().flush().unwrap();
     process::exit(output.status.code().unwrap_or(1));

@@ -33,7 +33,7 @@ ENV CC_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-gcc \
 ENV HOSTS=aarch64-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS \
-      --enable-extended \
+      --enable-full-tools \
       --enable-profiler \
       --disable-docs
 ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS

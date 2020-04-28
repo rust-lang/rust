@@ -479,9 +479,28 @@ impl Step for Lld {
         let llvm_config_shim = env::current_exe().unwrap().with_file_name("llvm-config-wrapper");
         cfg.out_dir(&out_dir)
             .profile("Release")
-            .env("LLVM_CONFIG_REAL", llvm_config)
+            .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_CONFIG_PATH", llvm_config_shim)
             .define("LLVM_INCLUDE_TESTS", "OFF");
+
+        // While we're using this horrible workaround to shim the execution of
+        // llvm-config, let's just pile on more. I can't seem to figure out how
+        // to build LLD as a standalone project and also cross-compile it at the
+        // same time. It wants a natively executable `llvm-config` to learn
+        // about LLVM, but then it learns about all the host configuration of
+        // LLVM and tries to link to host LLVM libraries.
+        //
+        // To work around that we tell our shim to replace anything with the
+        // build target with the actual target instead. This'll break parts of
+        // LLD though which try to execute host tools, such as llvm-tblgen, so
+        // we specifically tell it where to find those. This is likely super
+        // brittle and will break over time. If anyone knows better how to
+        // cross-compile LLD it would be much appreciated to fix this!
+        if target != builder.config.build {
+            cfg.env("LLVM_CONFIG_SHIM_REPLACE", &builder.config.build)
+                .env("LLVM_CONFIG_SHIM_REPLACE_WITH", &target)
+                .define("LLVM_TABLEGEN_EXE", llvm_config.with_file_name("llvm-tblgen"));
+        }
 
         cfg.build();
 
