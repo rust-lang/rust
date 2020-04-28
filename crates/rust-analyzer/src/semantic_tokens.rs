@@ -4,64 +4,69 @@ use std::ops;
 
 use lsp_types::{Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens};
 
-pub(crate) const ATTRIBUTE: SemanticTokenType = SemanticTokenType::new("attribute");
-pub(crate) const BUILTIN_TYPE: SemanticTokenType = SemanticTokenType::new("builtinType");
-pub(crate) const ENUM_MEMBER: SemanticTokenType = SemanticTokenType::new("enumMember");
-pub(crate) const LIFETIME: SemanticTokenType = SemanticTokenType::new("lifetime");
-pub(crate) const TYPE_ALIAS: SemanticTokenType = SemanticTokenType::new("typeAlias");
-pub(crate) const UNION: SemanticTokenType = SemanticTokenType::new("union");
-pub(crate) const UNRESOLVED_REFERENCE: SemanticTokenType =
-    SemanticTokenType::new("unresolvedReference");
-pub(crate) const FORMAT_SPECIFIER: SemanticTokenType = SemanticTokenType::new("formatSpecifier");
+macro_rules! define_semantic_token_types {
+    ($(($ident:ident, $string:literal)),*$(,)?) => {
+        $(pub(crate) const $ident: SemanticTokenType = SemanticTokenType::new($string);)*
 
-pub(crate) const CONSTANT: SemanticTokenModifier = SemanticTokenModifier::new("constant");
-pub(crate) const CONTROL_FLOW: SemanticTokenModifier = SemanticTokenModifier::new("controlFlow");
-pub(crate) const MUTABLE: SemanticTokenModifier = SemanticTokenModifier::new("mutable");
-pub(crate) const UNSAFE: SemanticTokenModifier = SemanticTokenModifier::new("unsafe");
+        pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
+            SemanticTokenType::COMMENT,
+            SemanticTokenType::KEYWORD,
+            SemanticTokenType::STRING,
+            SemanticTokenType::NUMBER,
+            SemanticTokenType::REGEXP,
+            SemanticTokenType::OPERATOR,
+            SemanticTokenType::NAMESPACE,
+            SemanticTokenType::TYPE,
+            SemanticTokenType::STRUCT,
+            SemanticTokenType::CLASS,
+            SemanticTokenType::INTERFACE,
+            SemanticTokenType::ENUM,
+            SemanticTokenType::TYPE_PARAMETER,
+            SemanticTokenType::FUNCTION,
+            SemanticTokenType::MEMBER,
+            SemanticTokenType::PROPERTY,
+            SemanticTokenType::MACRO,
+            SemanticTokenType::VARIABLE,
+            SemanticTokenType::PARAMETER,
+            SemanticTokenType::LABEL,
+            $($ident),*
+        ];
+    };
+}
 
-pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
-    SemanticTokenType::COMMENT,
-    SemanticTokenType::KEYWORD,
-    SemanticTokenType::STRING,
-    SemanticTokenType::NUMBER,
-    SemanticTokenType::REGEXP,
-    SemanticTokenType::OPERATOR,
-    SemanticTokenType::NAMESPACE,
-    SemanticTokenType::TYPE,
-    SemanticTokenType::STRUCT,
-    SemanticTokenType::CLASS,
-    SemanticTokenType::INTERFACE,
-    SemanticTokenType::ENUM,
-    SemanticTokenType::TYPE_PARAMETER,
-    SemanticTokenType::FUNCTION,
-    SemanticTokenType::MEMBER,
-    SemanticTokenType::PROPERTY,
-    SemanticTokenType::MACRO,
-    SemanticTokenType::VARIABLE,
-    SemanticTokenType::PARAMETER,
-    SemanticTokenType::LABEL,
-    ATTRIBUTE,
-    BUILTIN_TYPE,
-    ENUM_MEMBER,
-    LIFETIME,
-    TYPE_ALIAS,
-    UNION,
-    UNRESOLVED_REFERENCE,
-    FORMAT_SPECIFIER,
+define_semantic_token_types![
+    (ATTRIBUTE, "attribute"),
+    (BUILTIN_TYPE, "builtinType"),
+    (ENUM_MEMBER, "enumMember"),
+    (LIFETIME, "lifetime"),
+    (TYPE_ALIAS, "typeAlias"),
+    (UNION, "union"),
+    (UNRESOLVED_REFERENCE, "unresolvedReference"),
+    (FORMAT_SPECIFIER, "formatSpecifier"),
 ];
 
-pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
-    SemanticTokenModifier::DOCUMENTATION,
-    SemanticTokenModifier::DECLARATION,
-    SemanticTokenModifier::DEFINITION,
-    SemanticTokenModifier::STATIC,
-    SemanticTokenModifier::ABSTRACT,
-    SemanticTokenModifier::DEPRECATED,
-    SemanticTokenModifier::READONLY,
-    CONSTANT,
-    MUTABLE,
-    UNSAFE,
-    CONTROL_FLOW,
+macro_rules! define_semantic_token_modifiers {
+    ($(($ident:ident, $string:literal)),*$(,)?) => {
+        $(pub(crate) const $ident: SemanticTokenModifier = SemanticTokenModifier::new($string);)*
+
+        pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
+            SemanticTokenModifier::DOCUMENTATION,
+            SemanticTokenModifier::DECLARATION,
+            SemanticTokenModifier::DEFINITION,
+            SemanticTokenModifier::STATIC,
+            SemanticTokenModifier::ABSTRACT,
+            SemanticTokenModifier::DEPRECATED,
+            SemanticTokenModifier::READONLY,
+            $($ident),*
+        ];
+    };
+}
+
+define_semantic_token_modifiers![
+    (CONSTANT, "constant"),
+    (CONTROL_FLOW, "controlFlow"),
+    (MUTABLE, "mutable"),
+    (UNSAFE, "unsafe"),
 ];
 
 #[derive(Default)]
