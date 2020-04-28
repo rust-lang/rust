@@ -634,13 +634,13 @@ pub fn eval_condition(
                 [NestedMetaItem::Literal(Lit { span, .. })
                 | NestedMetaItem::MetaItem(MetaItem { span, .. })] => {
                     sess.span_diagnostic
-                        .struct_span_err(*span, &*format!("expected string literal"))
+                        .struct_span_err(*span, &*format!("expected a version literal"))
                         .emit();
                     return false;
                 }
                 [..] => {
                     sess.span_diagnostic
-                        .struct_span_err(cfg.span, "expected single string literal")
+                        .struct_span_err(cfg.span, "expected single version literal")
                         .emit();
                     return false;
                 }
@@ -648,7 +648,7 @@ pub fn eval_condition(
             let min_version = match Version::parse(&min_version.as_str()) {
                 Some(ver) => ver,
                 None => {
-                    sess.span_diagnostic.struct_span_err(*span, "invalid version string").emit();
+                    sess.span_diagnostic.struct_span_err(*span, "invalid version literal").emit();
                     return false;
                 }
             };

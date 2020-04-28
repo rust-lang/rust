@@ -25,7 +25,7 @@ LL | #[cfg(version("1.43", "1.44", "1.45"))]
    = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
    = help: add `#![feature(cfg_version)]` to the crate attributes to enable
 
-error: expected single string literal
+error: expected single version literal
   --> $DIR/feature-gate-cfg-version.rs:8:7
    |
 LL | #[cfg(version("1.43", "1.44", "1.45"))]
@@ -40,7 +40,7 @@ LL | #[cfg(version(false))]
    = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
    = help: add `#![feature(cfg_version)]` to the crate attributes to enable
 
-error: expected string literal
+error: expected a version literal
   --> $DIR/feature-gate-cfg-version.rs:11:15
    |
 LL | #[cfg(version(false))]
@@ -55,7 +55,7 @@ LL | #[cfg(version("foo"))]
    = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
    = help: add `#![feature(cfg_version)]` to the crate attributes to enable
 
-error: invalid version string
+error: invalid version literal
   --> $DIR/feature-gate-cfg-version.rs:14:15
    |
 LL | #[cfg(version("foo"))]

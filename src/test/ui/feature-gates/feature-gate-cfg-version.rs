@@ -5,13 +5,16 @@ fn foo() -> bool { true }
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn foo() -> bool { false }
 
-#[cfg(version("1.43", "1.44", "1.45"))] //~ ERROR: expected single string literal
+#[cfg(version("1.43", "1.44", "1.45"))] //~ ERROR: expected single version literal
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn bar() -> bool  { false }
-#[cfg(version(false))] //~ ERROR: expected string literal
+#[cfg(version(false))] //~ ERROR: expected a version literal
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn bar() -> bool  { false }
-#[cfg(version("foo"))] //~ ERROR: invalid version string
+#[cfg(version("foo"))] //~ ERROR: invalid version literal
+//~^ ERROR `cfg(version)` is experimental and subject to change
+fn bar() -> bool  { false }
+#[cfg(version("999"))]
 //~^ ERROR `cfg(version)` is experimental and subject to change
 fn bar() -> bool  { false }
 #[cfg(version("999"))]
