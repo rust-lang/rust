@@ -46,6 +46,11 @@
 // After a depth len into the index tree, prune any lookups that are not {0} or {-1}
 // Todo handle {double}** to double** where there is a 0 removed
 ValueData ValueData::KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, llvm::Type* to) const {
+    assert(from);
+    assert(to);
+
+    bool fromOpaque = isa<StructType>(from) && cast<StructType>(from)->isOpaque();
+    bool toOpaque = isa<StructType>(to) && cast<StructType>(to)->isOpaque();
 
     ValueData vd;
 
@@ -59,6 +64,8 @@ ValueData ValueData::KeepForCast(const llvm::DataLayout& dl, llvm::Type* from, l
             vd2.insert(pair.first, pair.second);
             goto add;
         }
+
+        if (!fromOpaque && !toOpaque)
         {
         uint64_t fromsize = dl.getTypeSizeInBits(from) / 8;
         assert(fromsize > 0);
@@ -670,6 +677,10 @@ void TypeAnalyzer::visitValue(Value& val) {
     if (auto inst = dyn_cast<Instruction>(&val)) {
 		visit(*inst);
 	}
+}
+
+void TypeAnalyzer::visitCmpInst(CmpInst& cmp) {
+    updateAnalysis(&cmp, IntType::Integer, &cmp);
 }
 
 void TypeAnalyzer::visitAllocaInst(AllocaInst &I) {
@@ -1760,7 +1771,8 @@ ValueData TypeAnalysis::query(Value* val, const NewFnTypeInfo& fn) {
     assert(val);
     assert(val->getType());
 
-	if (isa<Constant>(val)) {
+    //TODO more concrete constant that avoid global issues
+	if (isa<Constant>(val) && !val->getType()->isPointerTy()) {
 		if (auto ci = dyn_cast<ConstantInt>(val)) {
 			if (ci->getLimitedValue() >=1 && ci->getLimitedValue() <= 4096) {
 				return ValueData(DataType(IntType::Integer));
@@ -1771,19 +1783,22 @@ ValueData TypeAnalysis::query(Value* val, const NewFnTypeInfo& fn) {
 		}
 		return ValueData(DataType(IntType::Anything));
 	}
+
 	Function* func = nullptr;
 	if (auto arg = dyn_cast<Argument>(val)) func = arg->getParent();
 	if (auto inst = dyn_cast<Instruction>(val)) func = inst->getParent()->getParent();
 
-	if (func == nullptr) return ValueData();
+	//if (func == nullptr) return ValueData();
 
     analyzeFunction(fn);
     auto &found = analyzedFunctions.find(fn)->second;
-    if (found.fntypeinfo.function != func) {
+    if (func && found.fntypeinfo.function != func) {
         llvm::errs() << " queryFunc: " << *func << "\n";
         llvm::errs() << " foundFunc: " << *found.fntypeinfo.function << "\n";
     }
-    assert(found.fntypeinfo.function == func);
+    assert(!func || found.fntypeinfo.function == func);
+    found.dump();
+
 	return found.getAnalysis(val);
 }
 
@@ -1793,8 +1808,8 @@ DataType TypeAnalysis::intType(Value* val, const NewFnTypeInfo& fn, bool errIfNo
     //assert(val->getType()->isIntOrIntVectorTy());
     auto q = query(val, fn);
     auto dt = q[{}];
-    //llvm::errs() << " intType for val: " << *val << " q: " << q.str() << " dt: " << dt.str() << "\n";
-	if (errIfNotFound && (!dt.isKnown() || dt.typeEnum == IntType::Anything) ) {
+    //dump();
+    if (errIfNotFound && (!dt.isKnown() || dt.typeEnum == IntType::Anything) ) {
 		if (auto inst = dyn_cast<Instruction>(val)) {
 			llvm::errs() << *inst->getParent()->getParent() << "\n";
 			for(auto &pair : analyzedFunctions.find(fn)->second.analysis) {

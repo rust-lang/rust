@@ -951,6 +951,8 @@ public:
 
     void visitValue(llvm::Value& val);
 
+    void visitCmpInst(llvm::CmpInst &I);
+
     void visitAllocaInst(llvm::AllocaInst &I);
 
     void visitLoadInst(llvm::LoadInst &I);

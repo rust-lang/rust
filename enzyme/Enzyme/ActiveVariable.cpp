@@ -49,169 +49,6 @@ cl::opt<bool> nonmarkedglobals_inactive(
             "enzyme_nonmarkedglobals_inactive", cl::init(false), cl::Hidden,
             cl::desc("Consider all nonmarked globals to be inactive"));
 
-bool isKnownIntegerTBAA(Instruction* inst) {
-    auto typeNameStringRef = getAccessNameTBAA(inst, {"long long", "long", "int", "bool", "any pointer", "vtable pointer", "float", "double"});
-    if (typeNameStringRef == "long long" || typeNameStringRef == "long" || typeNameStringRef == "int" || typeNameStringRef == "bool") {// || typeNameStringRef == "omnipotent char") {
-        if (printconst) {
-            llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-        }
-        return true;
-    } else {
-        //if (printconst)
-        //    llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
-    }
-    return false;
-}
-
-#if 0
-bool isKnownPointerTBAA(Instruction* inst) {
-    auto typeNameStringRef = getAccessNameTBAA(inst);
-    if (typeNameStringRef == "any pointer" || typeNameStringRef == "vtable pointer") {// || typeNameStringRef == "omnipotent char") {
-        if (printconst) {
-            llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-        }
-        return true;
-    } else {
-        //if (printconst)
-        //    llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
-    }
-    return false;
-}
-
-Type* isKnownFloatTBAA(Instruction* inst) {
-    auto typeNameStringRef = getAccessNameTBAA(inst);
-    if (typeNameStringRef == "float") {
-        if (printconst)
-            llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-        return Type::getFloatTy(inst->getContext());
-    } else if (typeNameStringRef == "double") {
-        if (printconst)
-            llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
-        return Type::getDoubleTy(inst->getContext());
-    } else {
-        //if (printconst)
-        //    llvm::errs() << "unknown tbaa " << *inst << " " << typeNameStringRef << "\n";
-    }
-    return nullptr;
-}
-#endif
-
-cl::opt<bool> fast_tracking(
-            "enzyme_fast_tracking", cl::init(true), cl::Hidden,
-            cl::desc("Enable fast tracking (e.g. don't verify if inconsistent state)"));
-
-// returns whether it found something
-bool trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& pointerUse, bool onlyFirst, std::vector<int> indices = {}) {
-#if 0
-    if (seen.find(et) != seen.end()) return false;
-    seen.insert(et);
-
-    /*
-    llvm::errs() << "  track type of saw " << *et << "\n";
-    llvm::errs() << "       indices = [";
-    for(auto a: indices) {
-        llvm::errs() << a << ",";
-    }
-    llvm::errs() << "] of:" << onlyFirst << "\n";
-    */
-
-
-    if (et->isFloatingPointTy()) {
-        if (floatingUse == nullptr) {
-            //llvm::errs() << "  tract type saw(f) " << *et << " " << *et << "\n";
-            floatingUse = et;
-        } else {
-            assert(floatingUse == et);
-        }
-        if (fast_tracking) return true;
-    } else if (et->isPointerTy()) {
-        //llvm::errs() << "  tract type saw(p) " << *et << "\n";
-        pointerUse = true;
-        if (fast_tracking) return true;
-    }
-
-    if (auto st = dyn_cast<SequentialType>(et)) {
-        if (trackType(st->getElementType(), seen, floatingUse, pointerUse, onlyFirst, indices)) {
-            if (fast_tracking) return true;
-        }
-    }
-
-    if (auto st = dyn_cast<StructType>(et)) {
-        int index = -1;
-        auto nindices = indices;
-        if (indices.size() > 0) {
-            index = indices[0];
-            nindices.erase(nindices.begin());
-        }
-        if (onlyFirst) {
-            if (index >= 0) {
-                if (index >= st->getNumElements()) {
-                    llvm::errs() << *st << " " << index << "\n";
-                }
-                assert(index < st->getNumElements());
-
-                if(trackType(st->getElementType(index), seen, floatingUse, pointerUse, onlyFirst, nindices)) {
-                    if (fast_tracking) return true;
-                }
-            } else {
-                for (auto innerType : st->elements()) {
-                    if (trackType(innerType, seen, floatingUse, pointerUse, onlyFirst, nindices)) {
-                        if (fast_tracking) return true;
-                    }
-                }
-            }
-        } else {
-            for (auto innerType : st->elements()) {
-                if (trackType(innerType, seen, floatingUse, pointerUse, false, {})) {
-                    if (fast_tracking) return true;
-                }
-            }
-        }
-    }
-#endif
-    return false;
-}
-
-// This function looks for recusion in the trace and removes the cycle
-// We should always prefer using the older version of this if possible (to ensure that type info is kept coming in)
-void addCallRemovingCycle(std::vector<CallInst*>& newtrace, CallInst* call) {
-    //llvm::errs() << "adding to cycle: [";
-    //for(auto c: newtrace) llvm::errs() << *c << ",";
-    //llvm::errs() << "] call " << *call << "\n";
-    for(int i=newtrace.size()-1; i>=0; i--) {
-        if (newtrace[i] == call) {
-            bool failedcycle = false;
-            for(int j=0; ;j++) {
-                // finished cycle
-                if (newtrace.size()-1-j == i) break;
-
-                // out of bounds
-                if (i-1-j < 0) {
-                    failedcycle = true;
-                    break;
-                }
-
-                if (newtrace[i-1-j] != newtrace[newtrace.size()-1-j]) {
-                    //llvm::errs() << "i: " << i << "j: " << j << " size:" << newtrace.size() << " nt[i-j]" << *newtrace[i-j] << " nt[s-1-j]" << *newtrace[newtrace.size()-1-j] << "\n";
-                    failedcycle = true;
-                    break;
-                }
-            }
-            if (!failedcycle) {
-                //erase all elements after i
-                newtrace.resize(i+1);
-                assert(newtrace.back() == call);
-                return;
-            }
-        }
-    }
-    newtrace.push_back(call);
-    //assert(newtrace.size() < 12);
-}
-
-typedef std::tuple<const FnTypeInfo, Value*,bool> IntSeenKey;
-typedef std::tuple<const FnTypeInfo, Value*> PtrSeenKey;
-
 cl::opt<bool> ipoconst(
             "enzyme_ipoconst", cl::init(false), cl::Hidden,
             cl::desc("Interprocedural constant detection"));
@@ -405,15 +242,10 @@ static bool isGuaranteedConstantValue(TypeResults &TR, Value* val, const SmallPt
     // Note that this is correct, but not aggressive as it should be (we should call isConstantValue(inst) here, but we need to be careful to not have an infinite recursion)
 
     //  TODO: make this more aggressive
-    if (val->getType()->isIntOrIntVectorTy()) {
-        //TODO propagate interprocedural type info here instead of using empty map {}
-        //  This does not affect correctness, but can do better constant analysis if we have
-        if (TR.intType(val, /*errIfNotFound=*/false).isIntegral()) {
-        //if (isIntASecretFloat({}, val, /*default*/IntType::Pointer)==IntType::Integer) {
-            if (printconst)
-                llvm::errs() << " -> known integer " << *val << "\n";
-            return true;
-        }
+    if (TR.intType(val, /*errIfNotFound=*/false).isIntegral()) {
+        if (printconst)
+            llvm::errs() << " -> known integer " << *val << "\n";
+        return true;
     // if we happen to have already deduced this instruction constant, we might as well use the information
     } else if (constantvals && constantvals->find(val) != constantvals->end()) {
         if (printconst)
@@ -530,16 +362,6 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
 			default:
 				break;
 		}
-	}
-
-    if (isa<FPToSIInst>(inst) || isa<FPToUIInst>(inst)) {
-            constants.insert(inst);
-            return true;
-    }
-
-	if (isa<CmpInst>(inst)) {
-		constants.insert(inst);
-		return true;
 	}
 
 	if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
@@ -988,10 +810,9 @@ bool isconstantValueM(TypeResults &TR, Value* val, SmallPtrSetImpl<Value*> &cons
     }
 
     //! This value is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
-    //TODO use typeInfo for more aggressive activity analysis
-    if (val->getType()->isIntOrIntVectorTy() && TR.intType(val, /*errIfNotFound*/false).isIntegral()) {
+    if (TR.intType(val, /*errIfNotFound*/false).isIntegral()) {
 		if (printconst)
-			llvm::errs() << " Value const as integral " << (int)directions << " " << *val << "\n";
+			llvm::errs() << " Value const as integral " << (int)directions << " " << *val << " " << TR.intType(val, /*errIfNotFound*/false).str() << "\n";
         constantvals.insert(val);
         return true;
     }
