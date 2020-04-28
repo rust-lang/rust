@@ -41,7 +41,7 @@
       "outFiles": [
         "${workspaceFolder}/editors/code/out/**/*.js"
       ],
-      "preLaunchTask": "Build Extension",
+      "preLaunchTask": "Build Server",
       "skipFiles": [
         "<node_internals>/**/*.js"
       ],
@@ -62,7 +62,7 @@
       "outFiles": [
         "${workspaceFolder}/editors/code/out/**/*.js"
       ],
-      "preLaunchTask": "Build Extension",
+      "preLaunchTask": "Build Server (Release)",
       "skipFiles": [
         "<node_internals>/**/*.js"
       ],
