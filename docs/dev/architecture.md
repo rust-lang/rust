@@ -56,7 +56,7 @@ In particular, `cargo xtask codegen` generates:
 2. [`ast/generated`](https://github.com/rust-analyzer/rust-analyzer/blob/a0be39296d2925972cacd9fbf8b5fb258fad6947/crates/ra_syntax/src/ast/generated.rs)
   -- AST data structure.
 
-.3 [`doc_tests/generated`](https://github.com/rust-analyzer/rust-analyzer/blob/a0be39296d2925972cacd9fbf8b5fb258fad6947/crates/ra_assists/src/doc_tests/generated.rs),
+3. [`doc_tests/generated`](https://github.com/rust-analyzer/rust-analyzer/blob/a0be39296d2925972cacd9fbf8b5fb258fad6947/crates/ra_assists/src/doc_tests/generated.rs),
   [`test_data/parser/inline`](https://github.com/rust-analyzer/rust-analyzer/tree/a0be39296d2925972cacd9fbf8b5fb258fad6947/crates/ra_syntax/test_data/parser/inline)
   -- tests for assists and the parser.
 
