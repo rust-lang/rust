@@ -4,11 +4,11 @@
 #![warn(indirect_structural_match)]
 
 extern crate consts;
-use consts::*;
+use consts::CustomEq;
 
 fn main() {
     match Some(CustomEq) {
-        NONE => panic!(),
+        consts::NONE => panic!(),
         _ => {}
     }
 }
