@@ -13,7 +13,12 @@ impl Comment {
     }
 
     pub fn prefix(&self) -> &'static str {
-        prefix_by_kind(self.kind())
+        for (prefix, k) in COMMENT_PREFIX_TO_KIND.iter() {
+            if *k == self.kind() && self.text().starts_with(prefix) {
+                return prefix;
+            }
+        }
+        unreachable!()
     }
 }
 
@@ -68,15 +73,6 @@ fn kind_by_prefix(text: &str) -> CommentKind {
         }
     }
     panic!("bad comment text: {:?}", text)
-}
-
-fn prefix_by_kind(kind: CommentKind) -> &'static str {
-    for (prefix, k) in COMMENT_PREFIX_TO_KIND.iter() {
-        if *k == kind {
-            return prefix;
-        }
-    }
-    unreachable!()
 }
 
 impl Whitespace {
