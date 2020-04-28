@@ -1,9 +1,10 @@
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
-use super::type_variable::TypeVariableOrigin;
+use super::region_constraints::RegionSnapshot;
+use super::type_variable::{self, TypeVariableOrigin};
 use super::InferCtxt;
-use super::{ConstVariableOrigin, RegionVariableOrigin, UnificationTable};
+use super::{CombinedSnapshot, ConstVariableOrigin, RegionVariableOrigin, UnificationTable};
 
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
@@ -35,7 +36,44 @@ fn const_vars_since_snapshot<'tcx>(
     )
 }
 
+/// Extends `CombinedSnapshot` by tracking which variables were added in the snapshot
+#[must_use = "once you start a snapshot, you should always consume it"]
+struct FudgeSnapshot<'a, 'tcx> {
+    snapshot: CombinedSnapshot<'a, 'tcx>,
+    region_constraints_snapshot: RegionSnapshot,
+    type_snapshot: type_variable::Snapshot<'tcx>,
+    const_var_len: usize,
+    int_var_len: usize,
+    float_var_len: usize,
+}
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    /// Like `probe` but provides information about which variables were created in the snapshot,
+    /// allowing for inference fudging
+    fn probe_fudge<R, F>(&self, f: F) -> R
+    where
+        F: FnOnce(&FudgeSnapshot<'a, 'tcx>) -> R,
+    {
+        debug!("probe()");
+        let snapshot = self.start_fudge_snapshot();
+        let r = f(&snapshot);
+        self.rollback_to("probe", snapshot.snapshot);
+        r
+    }
+
+    fn start_fudge_snapshot(&self) -> FudgeSnapshot<'a, 'tcx> {
+        let snapshot = self.start_snapshot();
+        let mut inner = self.inner.borrow_mut();
+        FudgeSnapshot {
+            snapshot,
+            type_snapshot: inner.type_variables().snapshot(),
+            const_var_len: inner.const_unification_table().len(),
+            int_var_len: inner.int_unification_table().len(),
+            float_var_len: inner.float_unification_table().len(),
+            region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
+        }
+    }
+
     /// This rather funky routine is used while processing expected
     /// types. What happens here is that we want to propagate a
     /// coercion through the return type of a fn to its

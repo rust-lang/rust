@@ -45,9 +45,7 @@ use self::free_regions::RegionRelations;
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
-use self::region_constraints::{
-    RegionConstraintCollector, RegionConstraintStorage, RegionSnapshot,
-};
+use self::region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
 use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 
 pub mod at;
@@ -705,17 +703,6 @@ impl<'tcx> InferOk<'tcx, ()> {
     }
 }
 
-/// Extends `CombinedSnapshot` by tracking which variables were added in the snapshot
-#[must_use = "once you start a snapshot, you should always consume it"]
-pub struct FudgeSnapshot<'a, 'tcx> {
-    snapshot: CombinedSnapshot<'a, 'tcx>,
-    region_constraints_snapshot: RegionSnapshot,
-    type_snapshot: type_variable::Snapshot<'tcx>,
-    const_var_len: usize,
-    int_var_len: usize,
-    float_var_len: usize,
-}
-
 #[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot<'a, 'tcx> {
     undo_snapshot: Snapshot<'tcx>,
@@ -831,19 +818,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         result
     }
 
-    fn start_fudge_snapshot(&self) -> FudgeSnapshot<'a, 'tcx> {
-        let snapshot = self.start_snapshot();
-        let mut inner = self.inner.borrow_mut();
-        FudgeSnapshot {
-            snapshot,
-            type_snapshot: inner.type_variables().snapshot(),
-            const_var_len: inner.const_unification_table().len(),
-            int_var_len: inner.int_unification_table().len(),
-            float_var_len: inner.float_unification_table().len(),
-            region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
-        }
-    }
-
     fn start_snapshot(&self) -> CombinedSnapshot<'a, 'tcx> {
         debug!("start_snapshot()");
 
@@ -923,19 +897,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
         self.rollback_to("probe", snapshot);
-        r
-    }
-
-    /// Like `probe` but provides information about which variables were created in the snapshot,
-    /// allowing for inference fudging
-    pub fn probe_fudge<R, F>(&self, f: F) -> R
-    where
-        F: FnOnce(&FudgeSnapshot<'a, 'tcx>) -> R,
-    {
-        debug!("probe()");
-        let snapshot = self.start_fudge_snapshot();
-        let r = f(&snapshot);
-        self.rollback_to("probe", snapshot.snapshot);
         r
     }
 
