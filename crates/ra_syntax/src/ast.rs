@@ -243,6 +243,21 @@ fn test_comments_preserve_trailing_whitespace() {
 }
 
 #[test]
+fn test_four_slash_line_comment() {
+    let file = SourceFile::parse(
+        r#"
+        //// too many slashes to be a doc comment
+        /// doc comment
+        mod foo {}
+        "#,
+    )
+    .ok()
+    .unwrap();
+    let module = file.syntax().descendants().find_map(Module::cast).unwrap();
+    assert_eq!("doc comment", module.doc_comment_text().unwrap());
+}
+
+#[test]
 fn test_where_predicates() {
     fn assert_bound(text: &str, bound: Option<TypeBound>) {
         assert_eq!(text, bound.unwrap().syntax().text().to_string());
