@@ -266,13 +266,6 @@ macro_rules! check {
     };
 }
 
-// CHECK-LABEL: reg_i8:
-// CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
-// CHECK: #NO_APP
-check!(reg_i8 i8 reg "mov");
-
 // CHECK-LABEL: reg_i16:
 // CHECK: #APP
 // x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
@@ -315,13 +308,6 @@ check!(reg_f64 f64 reg "mov");
 // CHECK: #NO_APP
 check!(reg_ptr ptr reg "mov");
 
-// CHECK-LABEL: reg_abcd_i8:
-// CHECK: #APP
-// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
-// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
-// CHECK: #NO_APP
-check!(reg_abcd_i8 i8 reg_abcd "mov");
-
 // CHECK-LABEL: reg_abcd_i16:
 // CHECK: #APP
 // x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
@@ -363,6 +349,12 @@ check!(reg_abcd_f64 f64 reg_abcd "mov");
 // i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_abcd_ptr ptr reg_abcd "mov");
+
+// CHECK-LABEL: reg_byte:
+// CHECK: #APP
+// CHECK: mov {{[a-z0-9]+}}, {{[a-z0-9]+}}
+// CHECK: #NO_APP
+check!(reg_byte i8 reg_byte "mov");
 
 // CHECK-LABEL: xmm_reg_i32:
 // CHECK: #APP

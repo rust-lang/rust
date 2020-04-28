@@ -25,8 +25,6 @@ fn main() {
         //~^ ERROR register class `zmm_reg` requires the `avx512f` target feature
         asm!("", in("zmm0") foo);
         //~^ ERROR register class `zmm_reg` requires the `avx512f` target feature
-        asm!("", in("ah") foo);
-        //~^ ERROR invalid register `ah`: high byte registers are not currently supported
         asm!("", in("ebp") foo);
         //~^ ERROR invalid register `ebp`: the frame pointer cannot be used as an operand
         asm!("", in("rsp") foo);
@@ -44,7 +42,7 @@ fn main() {
         // (except in/lateout which don't conflict)
 
         asm!("", in("eax") foo, in("al") bar);
-        //~^ ERROR register `ax` conflicts with register `ax`
+        //~^ ERROR register `al` conflicts with register `ax`
         asm!("", in("rax") foo, out("rax") bar);
         //~^ ERROR register `ax` conflicts with register `ax`
         asm!("", in("al") foo, lateout("al") bar);

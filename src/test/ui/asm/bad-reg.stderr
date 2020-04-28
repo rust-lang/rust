@@ -58,58 +58,52 @@ error: register class `zmm_reg` requires the `avx512f` target feature
 LL |         asm!("", in("zmm0") foo);
    |                  ^^^^^^^^^^^^^^
 
-error: invalid register `ah`: high byte registers are not currently supported as operands for inline asm
-  --> $DIR/bad-reg.rs:28:18
-   |
-LL |         asm!("", in("ah") foo);
-   |                  ^^^^^^^^^^^^
-
 error: invalid register `ebp`: the frame pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:30:18
+  --> $DIR/bad-reg.rs:28:18
    |
 LL |         asm!("", in("ebp") foo);
    |                  ^^^^^^^^^^^^^
 
 error: invalid register `rsp`: the stack pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:32:18
+  --> $DIR/bad-reg.rs:30:18
    |
 LL |         asm!("", in("rsp") foo);
    |                  ^^^^^^^^^^^^^
 
 error: invalid register `ip`: the instruction pointer cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:34:18
+  --> $DIR/bad-reg.rs:32:18
    |
 LL |         asm!("", in("ip") foo);
    |                  ^^^^^^^^^^^^
 
 error: invalid register `st(2)`: x87 registers are not currently supported as operands for inline asm
-  --> $DIR/bad-reg.rs:36:18
+  --> $DIR/bad-reg.rs:34:18
    |
 LL |         asm!("", in("st(2)") foo);
    |                  ^^^^^^^^^^^^^^^
 
 error: invalid register `mm0`: MMX registers are not currently supported as operands for inline asm
-  --> $DIR/bad-reg.rs:38:18
+  --> $DIR/bad-reg.rs:36:18
    |
 LL |         asm!("", in("mm0") foo);
    |                  ^^^^^^^^^^^^^
 
 error: invalid register `k0`: the k0 AVX mask register cannot be used as an operand for inline asm
-  --> $DIR/bad-reg.rs:40:18
+  --> $DIR/bad-reg.rs:38:18
    |
 LL |         asm!("", in("k0") foo);
    |                  ^^^^^^^^^^^^
 
-error: register `ax` conflicts with register `ax`
-  --> $DIR/bad-reg.rs:46:33
+error: register `al` conflicts with register `ax`
+  --> $DIR/bad-reg.rs:44:33
    |
 LL |         asm!("", in("eax") foo, in("al") bar);
-   |                  -------------  ^^^^^^^^^^^^ register `ax`
+   |                  -------------  ^^^^^^^^^^^^ register `al`
    |                  |
    |                  register `ax`
 
 error: register `ax` conflicts with register `ax`
-  --> $DIR/bad-reg.rs:48:33
+  --> $DIR/bad-reg.rs:46:33
    |
 LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  -------------  ^^^^^^^^^^^^^^ register `ax`
@@ -117,13 +111,13 @@ LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  register `ax`
    |
 help: use `lateout` instead of `out` to avoid conflict
-  --> $DIR/bad-reg.rs:48:18
+  --> $DIR/bad-reg.rs:46:18
    |
 LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  ^^^^^^^^^^^^^
 
 error: register `ymm0` conflicts with register `xmm0`
-  --> $DIR/bad-reg.rs:51:34
+  --> $DIR/bad-reg.rs:49:34
    |
 LL |         asm!("", in("xmm0") foo, in("ymm0") bar);
    |                  --------------  ^^^^^^^^^^^^^^ register `ymm0`
@@ -131,7 +125,7 @@ LL |         asm!("", in("xmm0") foo, in("ymm0") bar);
    |                  register `xmm0`
 
 error: register `ymm0` conflicts with register `xmm0`
-  --> $DIR/bad-reg.rs:53:34
+  --> $DIR/bad-reg.rs:51:34
    |
 LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  --------------  ^^^^^^^^^^^^^^^ register `ymm0`
@@ -139,10 +133,10 @@ LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  register `xmm0`
    |
 help: use `lateout` instead of `out` to avoid conflict
-  --> $DIR/bad-reg.rs:53:18
+  --> $DIR/bad-reg.rs:51:18
    |
 LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  ^^^^^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: aborting due to 18 previous errors
 

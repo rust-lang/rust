@@ -268,6 +268,12 @@ impl ExprVisitor<'tcx> {
                     reg_class.name(),
                     supported_tys.join(", "),
                 ));
+                if let Some(suggest) = reg_class.suggest_class(asm_arch, asm_ty) {
+                    err.help(&format!(
+                        "consider using the `{}` register class instead",
+                        suggest.name()
+                    ));
+                }
                 err.emit();
                 return Some(asm_ty);
             }
@@ -298,7 +304,7 @@ impl ExprVisitor<'tcx> {
         }
 
         // Check whether a modifier is suggested for using this type.
-        if let Some((suggested_modifier, suggested_result, switch_reg_class)) =
+        if let Some((suggested_modifier, suggested_result)) =
             reg_class.suggest_modifier(asm_arch, asm_ty)
         {
             // Search for any use of this operand without a modifier and emit
@@ -323,18 +329,10 @@ impl ExprVisitor<'tcx> {
                         let msg = "formatting may not be suitable for sub-register argument";
                         let mut err = lint.build(msg);
                         err.span_label(expr.span, "for this argument");
-                        if let Some(switch_reg_class) = switch_reg_class {
-                            err.help(&format!(
-                                "use the `{}` modifier with the `{}` register class \
-                                 to have the register formatted as `{}`",
-                                suggested_modifier, switch_reg_class, suggested_result,
-                            ));
-                        } else {
-                            err.help(&format!(
-                                "use the `{}` modifier to have the register formatted as `{}`",
-                                suggested_modifier, suggested_result,
-                            ));
-                        }
+                        err.help(&format!(
+                            "use the `{}` modifier to have the register formatted as `{}`",
+                            suggested_modifier, suggested_result,
+                        ));
                         err.help(&format!(
                             "or use the `{}` modifier to keep the default formatting of `{}`",
                             default_modifier, default_result,

@@ -14,11 +14,15 @@ impl RiscVInlineAsmRegClass {
         &[]
     }
 
+    pub fn suggest_class(self, _arch: InlineAsmArch, _ty: InlineAsmType) -> Option<Self> {
+        None
+    }
+
     pub fn suggest_modifier(
         self,
         _arch: InlineAsmArch,
         _ty: InlineAsmType,
-    ) -> Option<(char, &'static str, Option<&'static str>)> {
+    ) -> Option<(char, &'static str)> {
         None
     }
 

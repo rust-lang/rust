@@ -409,6 +409,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass) -> String {
             InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) => "Q",
+            InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) => "r",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg)
             | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg) => "x",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => "v",
@@ -459,6 +460,7 @@ fn modifier_to_llvm(
             Some('r') => Some('q'),
             _ => unreachable!(),
         },
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) => None,
         InlineAsmRegClass::X86(reg @ X86InlineAsmRegClass::xmm_reg)
         | InlineAsmRegClass::X86(reg @ X86InlineAsmRegClass::ymm_reg)
         | InlineAsmRegClass::X86(reg @ X86InlineAsmRegClass::zmm_reg) => match (reg, modifier) {
@@ -499,6 +501,7 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) => cx.type_i32(),
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) => cx.type_i8(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => cx.type_f32(),

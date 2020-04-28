@@ -6,6 +6,7 @@ def_reg_class! {
     X86 X86InlineAsmRegClass {
         reg,
         reg_abcd,
+        reg_byte,
         xmm_reg,
         ymm_reg,
         zmm_reg,
@@ -30,8 +31,16 @@ impl X86InlineAsmRegClass {
                     &['l', 'h', 'x', 'e']
                 }
             }
+            Self::reg_byte => &[],
             Self::xmm_reg | Self::ymm_reg | Self::zmm_reg => &['x', 'y', 'z'],
             Self::kreg => &[],
+        }
+    }
+
+    pub fn suggest_class(self, _arch: InlineAsmArch, ty: InlineAsmType) -> Option<Self> {
+        match self {
+            Self::reg | Self::reg_abcd if ty.size().bits() == 8 => Some(Self::reg_byte),
+            _ => None,
         }
     }
 
@@ -39,37 +48,28 @@ impl X86InlineAsmRegClass {
         self,
         arch: InlineAsmArch,
         ty: InlineAsmType,
-    ) -> Option<(char, &'static str, Option<&'static str>)> {
+    ) -> Option<(char, &'static str)> {
         match self {
             Self::reg => match ty.size().bits() {
-                8 => {
-                    if arch == InlineAsmArch::X86_64 {
-                        Some(('l', "al", None))
-                    } else {
-                        // Low byte registers require reg_abcd on x86 so we emit
-                        // a suggestion to use that register class instead.
-                        Some(('l', "al", Some("reg_abcd")))
-                    }
-                }
-                16 => Some(('x', "ax", None)),
-                32 if arch == InlineAsmArch::X86_64 => Some(('e', "eax", None)),
+                16 => Some(('x', "ax")),
+                32 if arch == InlineAsmArch::X86_64 => Some(('e', "eax")),
                 _ => None,
             },
             Self::reg_abcd => match ty.size().bits() {
-                8 => Some(('l', "al", None)),
-                16 => Some(('x', "ax", None)),
-                32 if arch == InlineAsmArch::X86_64 => Some(('e', "eax", None)),
+                16 => Some(('x', "ax")),
+                32 if arch == InlineAsmArch::X86_64 => Some(('e', "eax")),
                 _ => None,
             },
+            Self::reg_byte => None,
             Self::xmm_reg => None,
             Self::ymm_reg => match ty.size().bits() {
                 256 => None,
-                _ => Some(('x', "xmm0", None)),
+                _ => Some(('x', "xmm0")),
             },
             Self::zmm_reg => match ty.size().bits() {
                 512 => None,
-                256 => Some(('y', "ymm0", None)),
-                _ => Some(('x', "xmm0", None)),
+                256 => Some(('y', "ymm0")),
+                _ => Some(('x', "xmm0")),
             },
             Self::kreg => None,
         }
@@ -84,6 +84,7 @@ impl X86InlineAsmRegClass {
                     Some(('e', "eax"))
                 }
             }
+            Self::reg_byte => None,
             Self::xmm_reg => Some(('x', "xmm0")),
             Self::ymm_reg => Some(('y', "ymm0")),
             Self::zmm_reg => Some(('z', "zmm0")),
@@ -98,11 +99,12 @@ impl X86InlineAsmRegClass {
         match self {
             Self::reg | Self::reg_abcd => {
                 if arch == InlineAsmArch::X86_64 {
-                    types! { _: I8, I16, I32, I64, F32, F64; }
+                    types! { _: I16, I32, I64, F32, F64; }
                 } else {
-                    types! { _: I8, I16, I32, F32; }
+                    types! { _: I16, I32, F32; }
                 }
             }
+            Self::reg_byte => types! { _: I8; },
             Self::xmm_reg => types! {
                 "sse": I32, I64, F32, F64,
                   VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
@@ -139,20 +141,38 @@ fn x86_64_only(
 
 def_regs! {
     X86 X86InlineAsmReg X86InlineAsmRegClass {
-        ax: reg, reg_abcd = ["ax", "al", "eax", "rax"],
-        bx: reg, reg_abcd = ["bx", "bl", "ebx", "rbx"],
-        cx: reg, reg_abcd = ["cx", "cl", "ecx", "rcx"],
-        dx: reg, reg_abcd = ["dx", "dl", "edx", "rdx"],
-        si: reg = ["si", "sil", "esi", "rsi"],
-        di: reg = ["di", "dil", "edi", "rdi"],
-        r8: reg = ["r8", "r8b", "r8w", "r8d"] % x86_64_only,
-        r9: reg = ["r9", "r9b", "r9w", "r9d"] % x86_64_only,
-        r10: reg = ["r10", "r10b", "r10w", "r10d"] % x86_64_only,
-        r11: reg = ["r11", "r11b", "r11w", "r11d"] % x86_64_only,
-        r12: reg = ["r12", "r12b", "r12w", "r12d"] % x86_64_only,
-        r13: reg = ["r13", "r13b", "r13w", "r13d"] % x86_64_only,
-        r14: reg = ["r14", "r14b", "r14w", "r14d"] % x86_64_only,
-        r15: reg = ["r15", "r15b", "r15w", "r15d"] % x86_64_only,
+        ax: reg, reg_abcd = ["ax", "eax", "rax"],
+        bx: reg, reg_abcd = ["bx", "ebx", "rbx"],
+        cx: reg, reg_abcd = ["cx", "ecx", "rcx"],
+        dx: reg, reg_abcd = ["dx", "edx", "rdx"],
+        si: reg = ["si", "esi", "rsi"],
+        di: reg = ["di", "edi", "rdi"],
+        r8: reg = ["r8", "r8w", "r8d"] % x86_64_only,
+        r9: reg = ["r9", "r9w", "r9d"] % x86_64_only,
+        r10: reg = ["r10", "r10w", "r10d"] % x86_64_only,
+        r11: reg = ["r11", "r11w", "r11d"] % x86_64_only,
+        r12: reg = ["r12", "r12w", "r12d"] % x86_64_only,
+        r13: reg = ["r13", "r13w", "r13d"] % x86_64_only,
+        r14: reg = ["r14", "r14w", "r14d"] % x86_64_only,
+        r15: reg = ["r15", "r15w", "r15d"] % x86_64_only,
+        al: reg_byte = ["al"],
+        ah: reg_byte = ["ah"],
+        bl: reg_byte = ["bl"],
+        bh: reg_byte = ["bh"],
+        cl: reg_byte = ["cl"],
+        ch: reg_byte = ["ch"],
+        dl: reg_byte = ["dl"],
+        dh: reg_byte = ["dh"],
+        sil: reg_byte = ["sil"] % x86_64_only,
+        dil: reg_byte = ["dil"] % x86_64_only,
+        r8b: reg_byte = ["r8b"] % x86_64_only,
+        r9b: reg_byte = ["r9b"] % x86_64_only,
+        r10b: reg_byte = ["r10b"] % x86_64_only,
+        r11b: reg_byte = ["r11b"] % x86_64_only,
+        r12b: reg_byte = ["r12b"] % x86_64_only,
+        r13b: reg_byte = ["r13b"] % x86_64_only,
+        r14b: reg_byte = ["r14b"] % x86_64_only,
+        r15b: reg_byte = ["r15b"] % x86_64_only,
         xmm0: xmm_reg = ["xmm0"],
         xmm1: xmm_reg = ["xmm1"],
         xmm2: xmm_reg = ["xmm2"],
@@ -224,8 +244,6 @@ def_regs! {
         k5: kreg = ["k5"],
         k6: kreg = ["k6"],
         k7: kreg = ["k7"],
-        #error = ["ah", "bh", "ch", "dh"] =>
-            "high byte registers are not currently supported as operands for inline asm",
         #error = ["bp", "bpl", "ebp", "rbp"] =>
             "the frame pointer cannot be used as an operand for inline asm",
         #error = ["sp", "spl", "esp", "rsp"] =>
@@ -281,6 +299,8 @@ impl X86InlineAsmReg {
                 'r' => write!(out, "r{}", index),
                 _ => unreachable!(),
             }
+        } else if self as u32 <= Self::r15b as u32 {
+            out.write_str(self.name())
         } else if self as u32 <= Self::xmm15 as u32 {
             let prefix = modifier.unwrap_or('x');
             let index = self as u32 - Self::xmm0 as u32;
@@ -301,8 +321,39 @@ impl X86InlineAsmReg {
 
     pub fn overlapping_regs(self, mut cb: impl FnMut(X86InlineAsmReg)) {
         macro_rules! reg_conflicts {
-            ($($x:ident : $y:ident : $z:ident,)*) => {
+            (
+                $(
+                    $w:ident : $l:ident $h:ident
+                ),*;
+                $(
+                    $w2:ident : $l2:ident
+                ),*;
+                $(
+                    $x:ident : $y:ident : $z:ident
+                ),*;
+            ) => {
                 match self {
+                    $(
+                        Self::$w => {
+                            cb(Self::$w);
+                            cb(Self::$l);
+                            cb(Self::$h);
+                        }
+                        Self::$l => {
+                            cb(Self::$w);
+                            cb(Self::$l);
+                        }
+                        Self::$h => {
+                            cb(Self::$w);
+                            cb(Self::$h);
+                        }
+                    )*
+                    $(
+                        Self::$w2 | Self::$l2 => {
+                            cb(Self::$w2);
+                            cb(Self::$l2);
+                        }
+                    )*
                     $(
                         Self::$x | Self::$y | Self::$z => {
                             cb(Self::$x);
@@ -324,6 +375,20 @@ impl X86InlineAsmReg {
         // registers are only available with AVX-512, so we just specify them
         // as aliases directly.
         reg_conflicts! {
+            ax : al ah,
+            bx : bl bh,
+            cx : cl ch,
+            dx : dl dh;
+            si : sil,
+            di : dil,
+            r8 : r8b,
+            r9 : r9b,
+            r10 : r10b,
+            r11 : r11b,
+            r12 : r12b,
+            r13 : r13b,
+            r14 : r14b,
+            r15 : r15b;
             xmm0 : ymm0 : zmm0,
             xmm1 : ymm1 : zmm1,
             xmm2 : ymm2 : zmm2,
@@ -339,7 +404,7 @@ impl X86InlineAsmReg {
             xmm12 : ymm12 : zmm12,
             xmm13 : ymm13 : zmm13,
             xmm14 : ymm14 : zmm14,
-            xmm15 : ymm15 : zmm15,
+            xmm15 : ymm15 : zmm15;
         }
     }
 }

@@ -291,9 +291,20 @@ impl InlineAsmRegClass {
         }
     }
 
+    /// Returns a suggested register class to use for this type. This is called
+    /// after type checking via `supported_types` fails to give a better error
+    /// message to the user.
+    pub fn suggest_class(self, arch: InlineAsmArch, ty: InlineAsmType) -> Option<Self> {
+        match self {
+            Self::X86(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::X86),
+            Self::Arm(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Arm),
+            Self::AArch64(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::AArch64),
+            Self::RiscV(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::RiscV),
+        }
+    }
+
     /// Returns a suggested template modifier to use for this type and an
-    /// example of a  register named formatted with it. Optionally also returns
-    /// the name of a different register class to use instead.
+    /// example of a  register named formatted with it.
     ///
     /// Such suggestions are useful if a type smaller than the full register
     /// size is used and a modifier can be used to point to the subregister of
@@ -302,7 +313,7 @@ impl InlineAsmRegClass {
         self,
         arch: InlineAsmArch,
         ty: InlineAsmType,
-    ) -> Option<(char, &'static str, Option<&'static str>)> {
+    ) -> Option<(char, &'static str)> {
         match self {
             Self::X86(r) => r.suggest_modifier(arch, ty),
             Self::Arm(r) => r.suggest_modifier(arch, ty),

@@ -18,22 +18,26 @@ impl AArch64InlineAsmRegClass {
         }
     }
 
+    pub fn suggest_class(self, _arch: InlineAsmArch, _ty: InlineAsmType) -> Option<Self> {
+        None
+    }
+
     pub fn suggest_modifier(
         self,
         _arch: InlineAsmArch,
         ty: InlineAsmType,
-    ) -> Option<(char, &'static str, Option<&'static str>)> {
+    ) -> Option<(char, &'static str)> {
         match self {
             Self::reg => match ty.size().bits() {
                 64 => None,
-                _ => Some(('w', "w0", None)),
+                _ => Some(('w', "w0")),
             },
             Self::vreg | Self::vreg_low16 => match ty.size().bits() {
-                8 => Some(('b', "b0", None)),
-                16 => Some(('h', "h0", None)),
-                32 => Some(('s', "s0", None)),
-                64 => Some(('d', "d0", None)),
-                128 => Some(('q', "q0", None)),
+                8 => Some(('b', "b0")),
+                16 => Some(('h', "h0")),
+                32 => Some(('s', "s0")),
+                64 => Some(('d', "d0")),
+                128 => Some(('q', "q0")),
                 _ => None,
             },
         }

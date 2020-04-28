@@ -4,7 +4,7 @@ error: type `i128` cannot be used with this register class
 LL |         asm!("{}", in(reg) 0i128);
    |                            ^^^^^
    |
-   = note: register class `reg` supports these types: i8, i16, i32, i64, f32, f64
+   = note: register class `reg` supports these types: i16, i32, i64, f32, f64
 
 error: type `std::arch::x86_64::__m128` cannot be used with this register class
   --> $DIR/type-check-3.rs:14:28
@@ -12,7 +12,7 @@ error: type `std::arch::x86_64::__m128` cannot be used with this register class
 LL |         asm!("{}", in(reg) _mm_setzero_ps());
    |                            ^^^^^^^^^^^^^^^^
    |
-   = note: register class `reg` supports these types: i8, i16, i32, i64, f32, f64
+   = note: register class `reg` supports these types: i16, i32, i64, f32, f64
 
 error: type `std::arch::x86_64::__m256` cannot be used with this register class
   --> $DIR/type-check-3.rs:16:28
@@ -20,7 +20,7 @@ error: type `std::arch::x86_64::__m256` cannot be used with this register class
 LL |         asm!("{}", in(reg) _mm256_setzero_ps());
    |                            ^^^^^^^^^^^^^^^^^^^
    |
-   = note: register class `reg` supports these types: i8, i16, i32, i64, f32, f64
+   = note: register class `reg` supports these types: i16, i32, i64, f32, f64
 
 error: type `u8` cannot be used with this register class
   --> $DIR/type-check-3.rs:18:32
@@ -41,11 +41,11 @@ LL |         asm!("{}", in(kreg) 0u64);
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:32:15
    |
-LL |         asm!("{0} {0}", in(reg) 0i8);
-   |               ^^^ ^^^           --- for this argument
+LL |         asm!("{0} {0}", in(reg) 0i16);
+   |               ^^^ ^^^           ---- for this argument
    |
    = note: `#[warn(asm_sub_register)]` on by default
-   = help: use the `l` modifier to have the register formatted as `al`
+   = help: use the `x` modifier to have the register formatted as `ax`
    = help: or use the `r` modifier to keep the default formatting of `rax`
 
 warning: formatting may not be suitable for sub-register argument
@@ -75,18 +75,17 @@ LL |         asm!("{}", in(ymm_reg) 0i64);
    = help: use the `x` modifier to have the register formatted as `xmm0`
    = help: or use the `y` modifier to keep the default formatting of `ymm0`
 
-error: incompatible types for asm inout argument
-  --> $DIR/type-check-3.rs:57:33
+error: type `i8` cannot be used with this register class
+  --> $DIR/type-check-3.rs:50:28
    |
-LL |         asm!("{:r}", inout(reg) 0u16 => val_i8);
-   |                                 ^^^^    ^^^^^^ type `i8`
-   |                                 |
-   |                                 type `u16`
+LL |         asm!("{}", in(reg) 0i8);
+   |                            ^^^
    |
-   = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
+   = note: register class `reg` supports these types: i16, i32, i64, f32, f64
+   = help: consider using the `reg_byte` register class instead
 
 error: incompatible types for asm inout argument
-  --> $DIR/type-check-3.rs:59:33
+  --> $DIR/type-check-3.rs:62:33
    |
 LL |         asm!("{:r}", inout(reg) 0u32 => val_f32);
    |                                 ^^^^    ^^^^^^^ type `f32`
@@ -96,7 +95,7 @@ LL |         asm!("{:r}", inout(reg) 0u32 => val_f32);
    = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error: incompatible types for asm inout argument
-  --> $DIR/type-check-3.rs:61:33
+  --> $DIR/type-check-3.rs:64:33
    |
 LL |         asm!("{:r}", inout(reg) 0u32 => val_ptr);
    |                                 ^^^^    ^^^^^^^ type `*mut u8`
@@ -106,7 +105,7 @@ LL |         asm!("{:r}", inout(reg) 0u32 => val_ptr);
    = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error: incompatible types for asm inout argument
-  --> $DIR/type-check-3.rs:63:33
+  --> $DIR/type-check-3.rs:66:33
    |
 LL |         asm!("{:r}", inout(reg) main => val_u32);
    |                                 ^^^^    ^^^^^^^ type `u32`
