@@ -25,7 +25,8 @@ use crate::{
     Result,
 };
 use semantic_tokens::{
-    ATTRIBUTE, BUILTIN_TYPE, ENUM_MEMBER, LIFETIME, TYPE_ALIAS, UNION, UNRESOLVED_REFERENCE,
+    ATTRIBUTE, BUILTIN_TYPE, ENUM_MEMBER, FORMAT_SPECIFIER, LIFETIME, TYPE_ALIAS, UNION,
+    UNRESOLVED_REFERENCE,
 };
 
 pub trait Conv {
@@ -381,6 +382,7 @@ impl Conv for Highlight {
             HighlightTag::Attribute => ATTRIBUTE,
             HighlightTag::Keyword => SemanticTokenType::KEYWORD,
             HighlightTag::UnresolvedReference => UNRESOLVED_REFERENCE,
+            HighlightTag::FormatSpecifier => FORMAT_SPECIFIER,
         };
 
         for modifier in self.modifiers.iter() {

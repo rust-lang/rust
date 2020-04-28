@@ -12,6 +12,7 @@ pub(crate) const TYPE_ALIAS: SemanticTokenType = SemanticTokenType::new("typeAli
 pub(crate) const UNION: SemanticTokenType = SemanticTokenType::new("union");
 pub(crate) const UNRESOLVED_REFERENCE: SemanticTokenType =
     SemanticTokenType::new("unresolvedReference");
+pub(crate) const FORMAT_SPECIFIER: SemanticTokenType = SemanticTokenType::new("formatSpecifier");
 
 pub(crate) const CONSTANT: SemanticTokenModifier = SemanticTokenModifier::new("constant");
 pub(crate) const CONTROL_FLOW: SemanticTokenModifier = SemanticTokenModifier::new("controlFlow");
@@ -46,6 +47,7 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     TYPE_ALIAS,
     UNION,
     UNRESOLVED_REFERENCE,
+    FORMAT_SPECIFIER,
 ];
 
 pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
