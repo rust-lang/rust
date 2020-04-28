@@ -343,7 +343,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // Machine configuration does not allow us to read statics
                 // (e.g., `const` initializer).
                 // See const_eval::machine::MemoryExtra::can_access_statics for why
-                // this check is so important.
+                // this check is so important: if we could read statics, we could read pointers
+                // to mutable allocations *inside* statics. These allocations are not themselves
+                // statics, so pointers to them can get around the check in `validity.rs`.
                 Err(ConstEvalErrKind::ConstAccessesStatic.into())
             } else {
                 // Immutable global, this read is fine.
