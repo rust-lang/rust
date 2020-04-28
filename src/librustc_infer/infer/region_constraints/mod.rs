@@ -61,19 +61,19 @@ pub struct RegionConstraintStorage<'tcx> {
     any_unifications: bool,
 }
 
-pub struct RegionConstraintCollector<'tcx, 'a> {
+pub struct RegionConstraintCollector<'a, 'tcx> {
     storage: &'a mut RegionConstraintStorage<'tcx>,
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
 
-impl std::ops::Deref for RegionConstraintCollector<'tcx, '_> {
+impl std::ops::Deref for RegionConstraintCollector<'_, 'tcx> {
     type Target = RegionConstraintStorage<'tcx>;
     fn deref(&self) -> &RegionConstraintStorage<'tcx> {
         self.storage
     }
 }
 
-impl std::ops::DerefMut for RegionConstraintCollector<'tcx, '_> {
+impl std::ops::DerefMut for RegionConstraintCollector<'_, 'tcx> {
     fn deref_mut(&mut self) -> &mut RegionConstraintStorage<'tcx> {
         self.storage
     }
@@ -348,7 +348,7 @@ impl<'tcx> RegionConstraintStorage<'tcx> {
     pub(crate) fn with_log<'a>(
         &'a mut self,
         undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
-    ) -> RegionConstraintCollector<'tcx, 'a> {
+    ) -> RegionConstraintCollector<'a, 'tcx> {
         RegionConstraintCollector { storage: self, undo_log }
     }
 
@@ -381,7 +381,7 @@ impl<'tcx> RegionConstraintStorage<'tcx> {
     }
 }
 
-impl<'tcx> RegionConstraintCollector<'tcx, '_> {
+impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     pub fn num_region_vars(&self) -> usize {
         self.var_infos.len()
     }

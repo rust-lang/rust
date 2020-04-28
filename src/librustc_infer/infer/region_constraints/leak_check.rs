@@ -4,7 +4,7 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::RelateResult;
 
-impl<'tcx> RegionConstraintCollector<'tcx, '_> {
+impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// Searches region constraints created since `snapshot` that
     /// affect one of the placeholders in `placeholder_map`, returning
     /// an error if any of the placeholders are related to another

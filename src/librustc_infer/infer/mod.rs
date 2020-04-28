@@ -45,7 +45,9 @@ use self::free_regions::RegionRelations;
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
-use self::region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
+use self::region_constraints::{
+    RegionConstraintCollector, RegionConstraintStorage, RegionSnapshot,
+};
 use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 
 pub mod at;
@@ -265,7 +267,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
         self.const_unification_storage.with_log(&mut self.undo_log)
     }
 
-    pub fn unwrap_region_constraints(&mut self) -> RegionConstraintCollector<'tcx, '_> {
+    pub fn unwrap_region_constraints(&mut self) -> RegionConstraintCollector<'_, 'tcx> {
         self.region_constraint_storage
             .as_mut()
             .expect("region constraints already solved")
@@ -706,6 +708,7 @@ impl<'tcx> InferOk<'tcx, ()> {
 #[must_use = "once you start a snapshot, you should always consume it"]
 pub struct CombinedSnapshot<'a, 'tcx> {
     undo_snapshot: Snapshot<'tcx>,
+    region_constraints_snapshot: RegionSnapshot,
     universe: ty::UniverseIndex,
     was_in_snapshot: bool,
     _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
@@ -827,6 +830,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         CombinedSnapshot {
             undo_snapshot: inner.undo_log.start_snapshot(),
+            region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
             universe: self.universe(),
             was_in_snapshot: in_snapshot,
             // Borrow tables "in progress" (i.e., during typeck)
@@ -837,19 +841,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot<'a, 'tcx>) {
         debug!("rollback_to(cause={})", cause);
-        let CombinedSnapshot { undo_snapshot, universe, was_in_snapshot, _in_progress_tables } =
-            snapshot;
+        let CombinedSnapshot {
+            undo_snapshot,
+            region_constraints_snapshot,
+            universe,
+            was_in_snapshot,
+            _in_progress_tables,
+        } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
         self.universe.set(universe);
 
-        self.inner.borrow_mut().rollback_to(undo_snapshot);
+        let mut inner = self.inner.borrow_mut();
+        inner.rollback_to(undo_snapshot);
+        inner.unwrap_region_constraints().rollback_to(region_constraints_snapshot);
     }
 
     fn commit_from(&self, snapshot: CombinedSnapshot<'a, 'tcx>) {
         debug!("commit_from()");
-        let CombinedSnapshot { undo_snapshot, universe: _, was_in_snapshot, _in_progress_tables } =
-            snapshot;
+        let CombinedSnapshot {
+            undo_snapshot,
+            region_constraints_snapshot: _,
+            universe: _,
+            was_in_snapshot,
+            _in_progress_tables,
+        } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
 
