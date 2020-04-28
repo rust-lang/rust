@@ -27,6 +27,7 @@
     "scripts": {
         "vscode:prepublish": "tsc && rollup -c",
         "package": "vsce package -o rust-analyzer.vsix",
+        "build": "tsc",
         "watch": "tsc --watch",
         "lint": "tsfmt --verify && eslint -c .eslintrc.js --ext ts ./src",
         "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src --fix"
