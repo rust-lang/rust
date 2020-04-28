@@ -312,7 +312,6 @@ pub struct RegionVariableInfo {
 }
 
 pub struct RegionSnapshot {
-    value_count: usize,
     any_unifications: bool,
 }
 
@@ -454,10 +453,7 @@ impl<'tcx> RegionConstraintCollector<'tcx, '_> {
 
     pub fn start_snapshot(&mut self) -> RegionSnapshot {
         debug!("RegionConstraintCollector: start_snapshot");
-        RegionSnapshot {
-            value_count: self.unification_table.len(),
-            any_unifications: self.any_unifications,
-        }
+        RegionSnapshot { any_unifications: self.any_unifications }
     }
 
     pub fn rollback_to(&mut self, snapshot: RegionSnapshot) {
@@ -776,9 +772,9 @@ impl<'tcx> RegionConstraintCollector<'tcx, '_> {
 
     pub fn vars_since_snapshot(
         &self,
-        mark: &RegionSnapshot,
+        value_count: usize,
     ) -> (Range<RegionVid>, Vec<RegionVariableOrigin>) {
-        let range = RegionVid::from_index(mark.value_count as u32)
+        let range = RegionVid::from_index(value_count as u32)
             ..RegionVid::from_index(self.unification_table.len() as u32);
         (
             range.clone(),

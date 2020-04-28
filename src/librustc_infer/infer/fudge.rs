@@ -1,10 +1,9 @@
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
-use super::region_constraints::RegionSnapshot;
-use super::type_variable::{self, TypeVariableOrigin};
+use super::type_variable::TypeVariableOrigin;
 use super::InferCtxt;
-use super::{CombinedSnapshot, ConstVariableOrigin, RegionVariableOrigin, UnificationTable};
+use super::{ConstVariableOrigin, RegionVariableOrigin, UnificationTable};
 
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
@@ -14,13 +13,13 @@ use std::ops::Range;
 
 fn vars_since_snapshot<'tcx, T>(
     table: &mut UnificationTable<'_, 'tcx, T>,
-    snapshot: usize,
+    snapshot_var_len: usize,
 ) -> Range<T>
 where
     T: UnifyKey,
     super::UndoLog<'tcx>: From<sv::UndoLog<ut::Delegate<T>>>,
 {
-    T::from_index(snapshot as u32)..T::from_index(table.len() as u32)
+    T::from_index(snapshot_var_len as u32)..T::from_index(table.len() as u32)
 }
 
 fn const_vars_since_snapshot<'tcx>(
@@ -36,41 +35,23 @@ fn const_vars_since_snapshot<'tcx>(
     )
 }
 
-/// Extends `CombinedSnapshot` by tracking which variables were added in the snapshot
-#[must_use = "once you start a snapshot, you should always consume it"]
-struct FudgeSnapshot<'a, 'tcx> {
-    snapshot: CombinedSnapshot<'a, 'tcx>,
-    region_constraints_snapshot: RegionSnapshot,
-    type_snapshot: type_variable::Snapshot<'tcx>,
+struct VariableLengths {
+    type_var_len: usize,
     const_var_len: usize,
     int_var_len: usize,
     float_var_len: usize,
+    region_constraints_len: usize,
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    /// Like `probe` but provides information about which variables were created in the snapshot,
-    /// allowing for inference fudging
-    fn probe_fudge<R, F>(&self, f: F) -> R
-    where
-        F: FnOnce(&FudgeSnapshot<'a, 'tcx>) -> R,
-    {
-        debug!("probe()");
-        let snapshot = self.start_fudge_snapshot();
-        let r = f(&snapshot);
-        self.rollback_to("probe", snapshot.snapshot);
-        r
-    }
-
-    fn start_fudge_snapshot(&self) -> FudgeSnapshot<'a, 'tcx> {
-        let snapshot = self.start_snapshot();
+    fn variable_lengths(&self) -> VariableLengths {
         let mut inner = self.inner.borrow_mut();
-        FudgeSnapshot {
-            snapshot,
-            type_snapshot: inner.type_variables().snapshot(),
+        VariableLengths {
+            type_var_len: inner.type_variables().num_vars(),
             const_var_len: inner.const_unification_table().len(),
             int_var_len: inner.int_unification_table().len(),
             float_var_len: inner.float_unification_table().len(),
-            region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
+            region_constraints_len: inner.unwrap_region_constraints().num_region_vars(),
         }
     }
 
@@ -120,7 +101,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         debug!("fudge_inference_if_ok()");
 
-        let (mut fudger, value) = self.probe_fudge(|snapshot| {
+        let variable_lengths = self.variable_lengths();
+        let (mut fudger, value) = self.probe(|_| {
             match f() {
                 Ok(value) => {
                     let value = self.resolve_vars_if_possible(&value);
@@ -133,21 +115,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                     let mut inner = self.inner.borrow_mut();
                     let type_vars =
-                        inner.type_variables().vars_since_snapshot(&snapshot.type_snapshot);
+                        inner.type_variables().vars_since_snapshot(variable_lengths.type_var_len);
                     let int_vars = vars_since_snapshot(
                         &mut inner.int_unification_table(),
-                        snapshot.int_var_len,
+                        variable_lengths.int_var_len,
                     );
                     let float_vars = vars_since_snapshot(
                         &mut inner.float_unification_table(),
-                        snapshot.float_var_len,
+                        variable_lengths.float_var_len,
                     );
                     let region_vars = inner
                         .unwrap_region_constraints()
-                        .vars_since_snapshot(&snapshot.region_constraints_snapshot);
+                        .vars_since_snapshot(variable_lengths.region_constraints_len);
                     let const_vars = const_vars_since_snapshot(
                         &mut inner.const_unification_table(),
-                        snapshot.const_var_len,
+                        variable_lengths.const_var_len,
                     );
 
                     let fudger = InferenceFudger {

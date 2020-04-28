@@ -150,11 +150,6 @@ impl<'tcx> TypeVariableValue<'tcx> {
     }
 }
 
-pub struct Snapshot<'tcx> {
-    value_count: u32,
-    _marker: PhantomData<&'tcx ()>,
-}
-
 pub(crate) struct Instantiate {
     vid: ty::TyVid,
 }
@@ -324,14 +319,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         }
     }
 
-    /// Creates a snapshot of the type variable state. This snapshot
-    /// must later be committed (`commit()`) or rolled back
-    /// (`rollback_to()`). Nested snapshots are permitted, but must
-    /// be processed in a stack-like fashion.
-    pub fn snapshot(&mut self) -> Snapshot<'tcx> {
-        Snapshot { value_count: self.eq_relations().len() as u32, _marker: PhantomData }
-    }
-
     fn values(
         &mut self,
     ) -> sv::SnapshotVec<Delegate, &mut Vec<TypeVariableData>, &mut InferCtxtUndoLogs<'tcx>> {
@@ -349,10 +336,9 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Returns a range of the type variables created during the snapshot.
     pub fn vars_since_snapshot(
         &mut self,
-        s: &Snapshot<'tcx>,
+        value_count: usize,
     ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
-        let range =
-            TyVid { index: s.value_count }..TyVid { index: self.eq_relations().len() as u32 };
+        let range = TyVid { index: value_count as u32 }..TyVid { index: self.num_vars() as u32 };
         (
             range.start..range.end,
             (range.start.index..range.end.index)
