@@ -689,6 +689,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 let fty = self.sanitize_type(place, fty);
                 match self.field_ty(place, base, field, location) {
                     Ok(ty) => {
+                        let ty = self.cx.normalize(ty, location);
                         if let Err(terr) = self.cx.eq_types(
                             ty,
                             fty,
