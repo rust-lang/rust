@@ -11,6 +11,7 @@ use std::ops::RangeInclusive;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_middle::mir::interpret::{InterpError, InterpErrorInfo};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::symbol::{sym, Symbol};
@@ -492,7 +493,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // that lets us re-use `ref_to_mplace`).
                 let place = try_validation_pat!(
                     self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
-                    _,
+                    InterpErrorInfo { kind: err_ub!(InvalidUndefBytes(..)), ..},
                     "uninitialized raw pointer",
                     self.path
                 );
