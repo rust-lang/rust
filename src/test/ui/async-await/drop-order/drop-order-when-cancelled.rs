@@ -2,6 +2,9 @@
 // edition:2018
 // run-pass
 
+// revisions: default nomiropt
+//[nomiropt]compile-flags: -Z mir-opt-level=0
+
 // Test that the drop order for parameters in a fn and async fn matches up. Also test that
 // parameters (used or unused) are not dropped until the async fn is cancelled.
 // This file is mostly copy-pasted from drop-order-for-async-fn-parameters.rs

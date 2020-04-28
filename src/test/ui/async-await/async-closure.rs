@@ -1,5 +1,8 @@
 // run-pass
 
+// revisions: default nomiropt
+//[nomiropt]compile-flags: -Z mir-opt-level=0
+
 // edition:2018
 // aux-build:arc_wake.rs
 

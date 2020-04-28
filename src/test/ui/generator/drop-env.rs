@@ -1,5 +1,8 @@
 // run-pass
 
+// revisions: default nomiropt
+//[nomiropt]compile-flags: -Z mir-opt-level=0
+
 #![feature(generators, generator_trait)]
 
 use std::ops::Generator;
