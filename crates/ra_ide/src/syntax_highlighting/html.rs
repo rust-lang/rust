@@ -79,6 +79,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .macro              { color: #94BFF3; }
 .module             { color: #AFD8AF; }
 .variable           { color: #DCDCCC; }
+.format_specifier   { color: #CC696B; }
 .mutable            { text-decoration: underline; }
 
 .keyword            { color: #F0DFAF; font-weight: bold; }
