@@ -835,13 +835,6 @@ where
         }
     }
 
-    /// Returns a basic block that drop a place using the context
-    /// and path in `c`. If `mode` is something, also clear `c`
-    /// according to it.
-    ///
-    /// if FLAG(self.path)
-    ///     if let Some(mode) = mode: FLAG(self.path)[mode] = false
-    ///     drop(self.place)
     fn complete_drop(
         &mut self,
         drop_mode: Option<DropFlagMode>,
