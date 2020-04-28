@@ -393,10 +393,14 @@ You can find documentation style guidelines in [RFC 1574][rfc1574].
 
 [rfc1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
 
-In many cases, you don't need a full `./x.py doc`. You can use `rustdoc` directly
-to check small fixes. For example, `rustdoc src/doc/reference.md` will render
-reference to `doc/reference.html`. The CSS might be messed up, but you can
-verify that the HTML is right.
+In many cases, you don't need a full `./x.py doc`, which will build the entire
+stage 2 compiler. When updating documentation for the standard library, first
+try `./x.py doc --stage 0 src/libstd`. Results will should appear in
+`build/$TARGET/crate-docs`.
+
+You can also use `rustdoc` directly to check small fixes. For example,
+`rustdoc src/doc/reference.md` will render reference to `doc/reference.html`.
+The CSS might be messed up, but you can verify that the HTML is right.
 
 Additionally, contributions to the [rustc-dev-guide] are always welcome. Contributions
 can be made directly at [the
