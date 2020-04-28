@@ -34,9 +34,9 @@
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include "llvm/IR/Instructions.h"
 
-llvm::Function* preprocessForClone(llvm::Function *F, llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI);
+llvm::Function* preprocessForClone(llvm::Function *F, llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI, bool topLevel);
 
-llvm::Function *CloneFunctionWithReturns(llvm::Function *&F, llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI, llvm::ValueToValueMapTy& ptrInputs,
+llvm::Function *CloneFunctionWithReturns(bool topLevel, llvm::Function *&F, llvm::AAResults &AA, llvm::TargetLibraryInfo &TLI, llvm::ValueToValueMapTy& ptrInputs,
                                    const std::set<unsigned>& constant_args, llvm::SmallPtrSetImpl<llvm::Value*> &constants, llvm::SmallPtrSetImpl<llvm::Value*> &nonconstant,
                                    llvm::SmallPtrSetImpl<llvm::Value*> &returnvals, ReturnType returnValue, bool differentialReturn, llvm::Twine name,
                                    llvm::ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type* additionalArg = nullptr);

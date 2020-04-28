@@ -194,7 +194,7 @@ PHINode* canonicalizeIVs(fake::SCEVExpander &e, Type *Ty, Loop *L, DominatorTree
     return CanonicalIV;
 }
 
-Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI) {
+Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI, bool topLevel) {
  static std::map<Function*,Function*> cache;
  //static std::map<Function*, BasicAAResult*> cache_AA;
  if (cache.find(F) != cache.end()) {
@@ -370,7 +370,8 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
         std::vector<std::pair<Value*, User*>> todo;
 		for(auto a : ai->users()) todo.push_back(std::make_pair((Value*)ai, a));
         std::set<User*> seen;
-        bool needToConvert = false;
+        bool needToConvert = ai->getParent() != &NewF->getEntryBlock();
+        if (!needToConvert && !topLevel)
         while(todo.size() > 0) {
             auto used = todo.back();
             User* use = used.second;
@@ -474,9 +475,9 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
   return NewF;
 }
 
-Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInfo &TLI, ValueToValueMapTy& ptrInputs, const std::set<unsigned>& constant_args, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &returnvals, ReturnType returnValue, bool differentialReturn, Twine name, ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type* additionalArg) {
+Function *CloneFunctionWithReturns(bool topLevel, Function *&F, AAResults &AA, TargetLibraryInfo &TLI, ValueToValueMapTy& ptrInputs, const std::set<unsigned>& constant_args, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &returnvals, ReturnType returnValue, bool differentialReturn, Twine name, ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type* additionalArg) {
  assert(!F->empty());
- F = preprocessForClone(F, AA, TLI);
+ F = preprocessForClone(F, AA, TLI, topLevel);
  diffeReturnArg &= differentialReturn;
  std::vector<Type*> RetTypes;
  if (returnValue == ReturnType::ArgsWithReturn || returnValue == ReturnType::ArgsWithTwoReturns)

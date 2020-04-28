@@ -226,7 +226,7 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInf
     SmallPtrSet<Value*,20> nonconstant;
     SmallPtrSet<Value*,2> returnvals;
     ValueToValueMapTy originalToNew;
-    auto newFunc = CloneFunctionWithReturns(todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, /*returnValue*/returnValue, /*differentialReturn*/differentialReturn, "fakeaugmented_"+todiff->getName(), &originalToNew, /*diffeReturnArg*/false, /*additionalArg*/nullptr);
+    auto newFunc = CloneFunctionWithReturns(/*topLevel*/false, todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, /*returnValue*/returnValue, /*differentialReturn*/differentialReturn, "fakeaugmented_"+todiff->getName(), &originalToNew, /*diffeReturnArg*/false, /*additionalArg*/nullptr);
     //llvm::errs() <<  "returnvals:" << todiff->getName() << " \n";
     //for (auto a : returnvals ) {
     //    llvm::errs() <<"   + " << *a << "\n";
@@ -245,14 +245,14 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, TargetLibraryInf
     return res;
 }
 
-DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg) {
+DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(bool topLevel, Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg) {
   assert(!todiff->empty());
   ValueToValueMapTy invertedPointers;
   SmallPtrSet<Value*,4> constants;
   SmallPtrSet<Value*,20> nonconstant;
   SmallPtrSet<Value*,2> returnvals;
   ValueToValueMapTy originalToNew;
-  auto newFunc = CloneFunctionWithReturns(todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, returnValue, differentialReturn, "diffe"+todiff->getName(), &originalToNew, /*diffeReturnArg*/true, additionalArg);
+  auto newFunc = CloneFunctionWithReturns(topLevel, todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, returnValue, differentialReturn, "diffe"+todiff->getName(), &originalToNew, /*diffeReturnArg*/true, additionalArg);
     SmallPtrSet<Value*,4> constant_values;
     SmallPtrSet<Value*,4> nonconstant_values;
     if (differentialReturn) {

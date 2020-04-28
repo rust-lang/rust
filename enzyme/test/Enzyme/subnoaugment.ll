@@ -83,20 +83,16 @@ attributes #3 = { readnone }
 
 ; CHECK: define internal { double } @diffemeta(double %inp, double %differeturn) #0 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i64 8)
-; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull i8* @malloc(i64 8)
-; CHECK-NEXT:   %0 = bitcast i8* %"malloccall'mi" to i64*
-; CHECK-NEXT:   store i64 0, i64* %0, align 1
-; CHECK-NEXT:   %"arr'ipc" = bitcast i8* %"malloccall'mi" to double*
-; CHECK-NEXT:   %arr = bitcast i8* %malloccall to double*
+; CHECK-NEXT:   %"arr'ipa" = alloca double, align 8
+; CHECK-NEXT:   %0 = bitcast double* %"arr'ipa" to i64*
+; CHECK-NEXT:   store i64 0, i64* %0, align 8
+; CHECK-NEXT:   %arr = alloca double, align 8
 ; CHECK-NEXT:   store double %inp, double* %arr, align 8
-; CHECK-NEXT:   %call.i_augmented = call { {}, double* } @augmented_sub(double* %arr, double*{{( nonnull)?}} %"arr'ipc")
-; CHECK-NEXT:   %1 = call {} @diffesub(double* %arr, double*{{( nonnull)?}} %"arr'ipc", {} undef)
-; CHECK-NEXT:   %2 = load double, double* %"arr'ipc", align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipc", align 8
+; CHECK-NEXT:   %call.i_augmented = call { {}, double* } @augmented_sub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa")
+; CHECK-NEXT:   %1 = call {} @diffesub(double*{{( nonnull)?}} %arr, double*{{( nonnull)?}} %"arr'ipa", {} undef)
+; CHECK-NEXT:   %2 = load double, double* %"arr'ipa", align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa", align 8
 ; CHECK-NEXT:   %3 = fadd fast double %2, %differeturn
-; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
-; CHECK-NEXT:   tail call void @free(i8* %malloccall)
 ; CHECK-NEXT:   %4 = insertvalue { double } undef, double %3, 0
 ; CHECK-NEXT:   ret { double } %4
 ; CHECK-NEXT: }

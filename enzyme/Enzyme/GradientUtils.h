@@ -1790,7 +1790,7 @@ class DiffeGradientUtils : public GradientUtils {
 
 public:
   ValueToValueMapTy differentials;
-  static DiffeGradientUtils* CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg);
+  static DiffeGradientUtils* CreateFromClone(bool topLevel, Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg);
 
 private:
   Value* getDifferential(Value *val) {
