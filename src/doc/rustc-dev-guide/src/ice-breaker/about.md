@@ -5,7 +5,7 @@ The **ICE-breaker groups** are an easy way to help out with rustc in a
 ICE-breaker groups are **[easy to join](#join)** (just submit a PR!)
 and joining does not entail any particular commitment.
 
-Once you [join an ICE ICE-breaker group](#join), you will be added to
+Once you [join an ICE-breaker group](#join), you will be added to
 a list that receives pings on github whenever a new issue is found
 that fits the ICE-breaker group's criteria. If you are interested, you
 can then [claim the issue] and start working on it.
