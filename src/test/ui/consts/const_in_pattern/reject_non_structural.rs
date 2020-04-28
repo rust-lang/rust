@@ -57,8 +57,8 @@ fn main() {
     //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
     //~| ERROR must be annotated with `#[derive(PartialEq, Eq)]`
 
-    const TYPE: OND = Some(NoDerive): OND;
-    match Some(NoDerive) { TYPE => dbg!(TYPE), _ => panic!("whoops"), };
+    const TYPE_ASCRIPTION: OND = Some(NoDerive): OND;
+    match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
     //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
     //~| ERROR must be annotated with `#[derive(PartialEq, Eq)]`
 

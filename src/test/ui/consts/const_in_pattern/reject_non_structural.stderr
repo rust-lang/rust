@@ -25,8 +25,8 @@ LL |     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoop
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/reject_non_structural.rs:61:28
    |
-LL |     match Some(NoDerive) { TYPE => dbg!(TYPE), _ => panic!("whoops"), };
-   |                            ^^^^
+LL |     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
+   |                            ^^^^^^^^^^^^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/reject_non_structural.rs:66:36
@@ -99,8 +99,8 @@ LL |     match (None, Some(NoDerive)) { TUPLE => dbg!(TUPLE), _ => panic!("whoop
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/reject_non_structural.rs:61:28
    |
-LL |     match Some(NoDerive) { TYPE => dbg!(TYPE), _ => panic!("whoops"), };
-   |                            ^^^^
+LL |     match Some(NoDerive) { TYPE_ASCRIPTION => dbg!(TYPE_ASCRIPTION), _ => panic!("whoops"), };
+   |                            ^^^^^^^^^^^^^^^
 
 error: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq, Eq)]`
   --> $DIR/reject_non_structural.rs:66:36
