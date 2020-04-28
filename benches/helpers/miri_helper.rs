@@ -26,7 +26,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
 
             self.bencher.iter(|| {
                 let config = miri::MiriConfig::default();
-                miri::eval_main(tcx, entry_def_id, config);
+                miri::eval_main(tcx, entry_def_id.to_def_id(), config);
             });
         });
 

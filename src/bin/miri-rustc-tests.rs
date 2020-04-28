@@ -54,7 +54,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 tcx.hir().krate().visit_all_item_likes(&mut Visitor(tcx));
             } else if let Some((entry_def_id, _)) = tcx.entry_fn(LOCAL_CRATE) {
                 let config = miri::MiriConfig::default();
-                miri::eval_main(tcx, entry_def_id, config);
+                miri::eval_main(tcx, entry_def_id.to_def_id(), config);
 
                 compiler.session().abort_if_errors();
             } else {
