@@ -80,6 +80,7 @@ impl<K: Eq + Hash, V: Clone> QueryStorage for DefaultCache<K, V> {
     type Value = V;
     type Stored = V;
 
+    #[inline]
     fn store_nocache(&self, value: Self::Value) -> Self::Stored {
         // We have no dedicated storage
         value
@@ -157,6 +158,7 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
     type Value = V;
     type Stored = &'tcx V;
 
+    #[inline]
     fn store_nocache(&self, value: Self::Value) -> Self::Stored {
         let value = self.arena.alloc((value, DepNodeIndex::INVALID));
         let value = unsafe { &*(&value.0 as *const _) };
