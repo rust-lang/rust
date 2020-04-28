@@ -1,11 +1,9 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
-use std::borrow::Cow;
 use std::cell::Cell;
 
 use rustc_ast::ast::Mutability;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
@@ -29,9 +27,9 @@ use rustc_trait_selection::traits;
 
 use crate::const_eval::error_to_const_error;
 use crate::interpret::{
-    self, intern_const_alloc_recursive, AllocId, Allocation, Frame, ImmTy, Immediate, InternKind,
-    InterpCx, LocalState, LocalValue, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy,
-    Pointer, ScalarMaybeUndef, StackPopCleanup,
+    self, compile_time_machine, intern_const_alloc_recursive, AllocId, Allocation, Frame, ImmTy,
+    Immediate, InternKind, InterpCx, LocalState, LocalValue, Memory, MemoryKind, OpTy,
+    Operand as InterpOperand, PlaceTy, Pointer, ScalarMaybeUndef, StackPopCleanup,
 };
 use crate::transform::{MirPass, MirSource};
 
@@ -162,27 +160,9 @@ impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx> {
-    type MemoryKind = !;
-    type PointerTag = ();
-    type ExtraFnVal = !;
+    compile_time_machine!(<'mir, 'tcx>);
 
-    type FrameExtra = ();
     type MemoryExtra = ();
-    type AllocExtra = ();
-
-    type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
-
-    const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
-
-    #[inline(always)]
-    fn enforce_alignment(_memory_extra: &Self::MemoryExtra) -> bool {
-        false
-    }
-
-    #[inline(always)]
-    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
-        false
-    }
 
     fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -192,16 +172,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _unwind: Option<BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
         Ok(None)
-    }
-
-    fn call_extra_fn(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        fn_val: !,
-        _args: &[OpTy<'tcx>],
-        _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
-        _unwind: Option<BasicBlock>,
-    ) -> InterpResult<'tcx> {
-        match fn_val {}
     }
 
     fn call_intrinsic(
@@ -235,20 +205,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         // We can't do this because aliasing of memory can differ between const eval and llvm
         throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
     }
-
-    #[inline(always)]
-    fn init_allocation_extra<'b>(
-        _memory_extra: &(),
-        _id: AllocId,
-        alloc: Cow<'b, Allocation>,
-        _kind: Option<MemoryKind<!>>,
-    ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
-        // We do not use a tag so we can just cheaply forward the allocation
-        (alloc, ())
-    }
-
-    #[inline(always)]
-    fn tag_global_base_pointer(_memory_extra: &(), _id: AllocId) -> Self::PointerTag {}
 
     fn box_alloc(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -288,14 +244,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         }
 
         Ok(())
-    }
-
-    #[inline(always)]
-    fn init_frame_extra(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        frame: Frame<'mir, 'tcx>,
-    ) -> InterpResult<'tcx, Frame<'mir, 'tcx>> {
-        Ok(frame)
     }
 
     #[inline(always)]
