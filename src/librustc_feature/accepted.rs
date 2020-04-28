@@ -261,6 +261,8 @@ declare_features! (
     (accepted, transparent_enums, "1.42.0", Some(60405), None),
     /// Allows using subslice patterns, `[a, .., b]` and `[a, xs @ .., b]`.
     (accepted, slice_patterns, "1.42.0", Some(62254), None),
+    /// Allows `#[doc(alias = "...")]`.
+    (accepted, doc_alias, "1.45.0", Some(50146), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

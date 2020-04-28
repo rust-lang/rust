@@ -403,9 +403,6 @@ declare_features! (
     /// Allows comparing raw pointers during const eval.
     (active, const_compare_raw_pointers, "1.27.0", Some(53020), None),
 
-    /// Allows `#[doc(alias = "...")]`.
-    (active, doc_alias, "1.27.0", Some(50146), None),
-
     /// Allows inconsistent bounds in where clauses.
     (active, trivial_bounds, "1.28.0", Some(48214), None),
 

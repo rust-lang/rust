@@ -120,7 +120,7 @@
 #![feature(unsized_locals)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
-#![feature(doc_alias)]
+#![cfg_attr(bootstrap, feature(doc_alias))]
 #![feature(mmx_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(sse4a_target_feature)]
