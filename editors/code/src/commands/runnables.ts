@@ -3,6 +3,7 @@ import * as lc from 'vscode-languageclient';
 import * as ra from '../rust-analyzer-api';
 
 import { Ctx, Cmd } from '../ctx';
+import { Cargo } from '../cargo';
 
 export function run(ctx: Ctx): Cmd {
     let prevRunnable: RunnableQuickPick | undefined;
@@ -62,25 +63,47 @@ export function runSingle(ctx: Ctx): Cmd {
     };
 }
 
+function getLldbDebugConfig(config: ra.Runnable) : vscode.DebugConfiguration {
+    return {
+        type: "lldb",
+        request: "launch",
+        name: config.label,
+        cargo: {
+            args: config.args,
+        },
+        args: config.extraArgs,
+        cwd: config.cwd
+    };
+}
+
+async function getCppvsDebugConfig(config: ra.Runnable) : Promise<vscode.DebugConfiguration> {
+    let cargo = new Cargo(config.cwd || '.');
+    let executable = await cargo.executableFromArgs(config.args, config.extraArgs);
+
+    return {
+        type: "cppvsdbg",
+        request: "launch",
+        name: config.label,
+        program: executable,
+        args: config.extraArgs,
+        cwd: config.cwd,
+    };
+}
+
 export function debugSingle(ctx: Ctx): Cmd {
     return async (config: ra.Runnable) => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
-        if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
-            vscode.window.showErrorMessage("Install `vadimcn.vscode-lldb` extension for debugging");
+
+        const mscpp = vscode.extensions.getExtension("ms-vscode.cpptools");
+        const lldb = vscode.extensions.getExtension("vadimcn.vscode-lldb");
+
+        if (!(lldb || mscpp)) {
+            vscode.window.showErrorMessage("Install `vadimcn.vscode-lldb` or `ms-vscode.cpptools` extension for debugging");
             return;
         }
 
-        const debugConfig = {
-            type: "lldb",
-            request: "launch",
-            name: config.label,
-            cargo: {
-                args: config.args,
-            },
-            args: config.extraArgs,
-            cwd: config.cwd
-        };
+        const debugConfig = lldb ? getLldbDebugConfig(config) : await getCppvsDebugConfig(config);
 
         return vscode.debug.startDebugging(undefined, debugConfig);
     };
