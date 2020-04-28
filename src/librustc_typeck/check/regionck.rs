@@ -77,7 +77,7 @@ use crate::check::FnCtxt;
 use crate::mem_categorization as mc;
 use crate::middle::region;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::PatKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
@@ -109,7 +109,7 @@ macro_rules! ignore_err {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn regionck_expr(&self, body: &'tcx hir::Body<'tcx>) {
-        let subject = self.tcx.hir().body_owner_def_id(body.id()).to_def_id();
+        let subject = self.tcx.hir().body_owner_def_id(body.id());
         let id = body.value.hir_id;
         let mut rcx =
             RegionCtxt::new(self, RepeatingScope(id), id, Subject(subject), self.param_env);
@@ -135,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self,
             RepeatingScope(item_id),
             item_id,
-            Subject(subject.to_def_id()),
+            Subject(subject),
             self.param_env,
         );
         rcx.outlives_environment.add_implied_bounds(self, wf_tys, item_id, span);
@@ -154,7 +154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// constraints to add.
     pub fn regionck_fn(&self, fn_id: hir::HirId, body: &'tcx hir::Body<'tcx>) {
         debug!("regionck_fn(id={})", fn_id);
-        let subject = self.tcx.hir().body_owner_def_id(body.id()).to_def_id();
+        let subject = self.tcx.hir().body_owner_def_id(body.id());
         let hir_id = body.value.hir_id;
         let mut rcx =
             RegionCtxt::new(self, RepeatingScope(hir_id), hir_id, Subject(subject), self.param_env);
@@ -180,7 +180,7 @@ pub struct RegionCtxt<'a, 'tcx> {
 
     // id of innermost fn body id
     body_id: hir::HirId,
-    body_owner: DefId,
+    body_owner: LocalDefId,
 
     // call_site scope of innermost fn
     call_site_scope: Option<region::Scope>,
@@ -189,7 +189,7 @@ pub struct RegionCtxt<'a, 'tcx> {
     repeating_scope: hir::HirId,
 
     // id of AST node being analyzed (the subject of the analysis).
-    subject_def_id: DefId,
+    subject_def_id: LocalDefId,
 }
 
 impl<'a, 'tcx> Deref for RegionCtxt<'a, 'tcx> {
@@ -200,7 +200,7 @@ impl<'a, 'tcx> Deref for RegionCtxt<'a, 'tcx> {
 }
 
 pub struct RepeatingScope(hir::HirId);
-pub struct Subject(DefId);
+pub struct Subject(LocalDefId);
 
 impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     pub fn new(
@@ -290,7 +290,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         let body_id = body.id();
         self.body_id = body_id.hir_id;
-        self.body_owner = self.tcx.hir().body_owner_def_id(body_id).to_def_id();
+        self.body_owner = self.tcx.hir().body_owner_def_id(body_id);
 
         let call_site =
             region::Scope { id: body.value.hir_id.local_id, data: region::ScopeData::CallSite };
@@ -353,7 +353,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         );
 
         self.fcx.resolve_regions_and_report_errors(
-            self.subject_def_id,
+            self.subject_def_id.to_def_id(),
             &self.region_scope_tree,
             &self.outlives_environment,
             mode,

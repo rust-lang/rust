@@ -868,5 +868,9 @@ fn write_user_type_annotations(body: &Body<'_>, w: &mut dyn Write) -> io::Result
 }
 
 pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
-    if let Some(i) = single { vec![i] } else { tcx.mir_keys(LOCAL_CRATE).iter().cloned().collect() }
+    if let Some(i) = single {
+        vec![i]
+    } else {
+        tcx.mir_keys(LOCAL_CRATE).iter().map(|def_id| def_id.to_def_id()).collect()
+    }
 }

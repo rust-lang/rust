@@ -835,7 +835,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     });
 
     sess.time("MIR_borrow_checking", || {
-        tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id.to_def_id()));
+        tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
     });
 
     sess.time("dumping_chalk_like_clauses", || {

@@ -2637,7 +2637,7 @@ pub enum ImplOverlapKind {
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn body_tables(self, body: hir::BodyId) -> &'tcx TypeckTables<'tcx> {
-        self.typeck_tables_of(self.hir().body_owner_def_id(body).to_def_id())
+        self.typeck_tables_of(self.hir().body_owner_def_id(body))
     }
 
     /// Returns an iterator of the `DefId`s for all body-owners in this

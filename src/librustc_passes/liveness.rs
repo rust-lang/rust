@@ -101,7 +101,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, Node};
 use rustc_middle::hir::map::Map;
@@ -398,7 +398,7 @@ fn visit_fn<'tcx>(
     intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, sp, id);
 
     // compute liveness
-    let mut lsets = Liveness::new(&mut fn_maps, def_id.to_def_id());
+    let mut lsets = Liveness::new(&mut fn_maps, def_id);
     let entry_ln = lsets.compute(&body.value);
 
     // check for various error conditions
@@ -671,7 +671,7 @@ struct Liveness<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn new(ir: &'a mut IrMaps<'tcx>, def_id: DefId) -> Liveness<'a, 'tcx> {
+    fn new(ir: &'a mut IrMaps<'tcx>, def_id: LocalDefId) -> Liveness<'a, 'tcx> {
         // Special nodes and variables:
         // - exit_ln represents the end of the fn, either by return or panic
         // - implicit_ret_var is a pseudo-variable that represents

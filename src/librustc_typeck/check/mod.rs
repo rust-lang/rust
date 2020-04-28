@@ -754,16 +754,16 @@ fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
     });
 }
 
-fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
-    wfcheck::check_item_well_formed(tcx, def_id.expect_local());
+fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    wfcheck::check_item_well_formed(tcx, def_id);
 }
 
-fn check_trait_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
-    wfcheck::check_trait_item(tcx, def_id.expect_local());
+fn check_trait_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    wfcheck::check_trait_item(tcx, def_id);
 }
 
-fn check_impl_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
-    wfcheck::check_impl_item(tcx, def_id.expect_local());
+fn check_impl_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    wfcheck::check_impl_item(tcx, def_id);
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -853,7 +853,7 @@ fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     }
 }
 
-fn used_trait_imports(tcx: TyCtxt<'_>, def_id: DefId) -> &DefIdSet {
+fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &DefIdSet {
     &*tcx.typeck_tables_of(def_id).used_trait_imports
 }
 
@@ -968,8 +968,8 @@ where
     val.fold_with(&mut FixupFolder { tcx })
 }
 
-fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &ty::TypeckTables<'tcx> {
-    let fallback = move || tcx.type_of(def_id);
+fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckTables<'tcx> {
+    let fallback = move || tcx.type_of(def_id.to_def_id());
     typeck_tables_of_with_fallback(tcx, def_id, fallback)
 }
 
@@ -977,11 +977,10 @@ fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &ty::TypeckTables
 /// Currently only used for type inference of `static`s and `const`s to avoid type cycle errors.
 fn diagnostic_only_typeck_tables_of<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
 ) -> &ty::TypeckTables<'tcx> {
-    assert!(def_id.is_local());
     let fallback = move || {
-        let span = tcx.hir().span(tcx.hir().as_local_hir_id(def_id.expect_local()));
+        let span = tcx.hir().span(tcx.hir().as_local_hir_id(def_id));
         tcx.sess.delay_span_bug(span, "diagnostic only typeck table used");
         tcx.types.err
     };
@@ -990,17 +989,17 @@ fn diagnostic_only_typeck_tables_of<'tcx>(
 
 fn typeck_tables_of_with_fallback<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
     fallback: impl Fn() -> Ty<'tcx> + 'tcx,
 ) -> &'tcx ty::TypeckTables<'tcx> {
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
-    let outer_def_id = tcx.closure_base_def_id(def_id);
+    let outer_def_id = tcx.closure_base_def_id(def_id.to_def_id()).expect_local();
     if outer_def_id != def_id {
         return tcx.typeck_tables_of(outer_def_id);
     }
 
-    let id = tcx.hir().as_local_hir_id(def_id.expect_local());
+    let id = tcx.hir().as_local_hir_id(def_id);
     let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
@@ -1009,7 +1008,7 @@ fn typeck_tables_of_with_fallback<'tcx>(
     });
     let body = tcx.hir().body(body_id);
 
-    let tables = Inherited::build(tcx, def_id.expect_local()).enter(|inh| {
+    let tables = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
         let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
@@ -1029,7 +1028,7 @@ fn typeck_tables_of_with_fallback<'tcx>(
             check_abi(tcx, span, fn_sig.abi());
 
             // Compute the fty from point of view of inside the fn.
-            let fn_sig = tcx.liberate_late_bound_regions(def_id, &fn_sig);
+            let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), &fn_sig);
             let fn_sig = inh.normalize_associated_types_in(
                 body.value.span,
                 body_id.hir_id,
@@ -1121,7 +1120,7 @@ fn typeck_tables_of_with_fallback<'tcx>(
         // because they don't constrain other type variables.
         fcx.closure_analyze(body);
         assert!(fcx.deferred_call_resolutions.borrow().is_empty());
-        fcx.resolve_generator_interiors(def_id);
+        fcx.resolve_generator_interiors(def_id.to_def_id());
 
         for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
             let ty = fcx.normalize_ty(span, ty);
@@ -1452,7 +1451,7 @@ fn check_fn<'a, 'tcx>(
     // Check that the main return type implements the termination trait.
     if let Some(term_id) = tcx.lang_items().termination() {
         if let Some((def_id, EntryFnType::Main)) = tcx.entry_fn(LOCAL_CRATE) {
-            let main_id = hir.as_local_hir_id(def_id.expect_local());
+            let main_id = hir.as_local_hir_id(def_id);
             if main_id == fn_id {
                 let substs = tcx.mk_substs_trait(declared_ret_ty, &[]);
                 let trait_ref = ty::TraitRef::new(term_id, substs);

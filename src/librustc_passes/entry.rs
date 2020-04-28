@@ -1,7 +1,7 @@
 use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ImplItem, Item, ItemKind, TraitItem};
 use rustc_middle::hir::map::Map;
@@ -48,7 +48,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 }
 
-fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
+fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let any_exe =
@@ -143,13 +143,16 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
     }
 }
 
-fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(DefId, EntryFnType)> {
+fn configure_main(
+    tcx: TyCtxt<'_>,
+    visitor: &EntryContext<'_, '_>,
+) -> Option<(LocalDefId, EntryFnType)> {
     if let Some((hir_id, _)) = visitor.start_fn {
-        Some((tcx.hir().local_def_id(hir_id).to_def_id(), EntryFnType::Start))
+        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Start))
     } else if let Some((hir_id, _)) = visitor.attr_main_fn {
-        Some((tcx.hir().local_def_id(hir_id).to_def_id(), EntryFnType::Main))
+        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
     } else if let Some((hir_id, _)) = visitor.main_fn {
-        Some((tcx.hir().local_def_id(hir_id).to_def_id(), EntryFnType::Main))
+        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
     } else {
         no_main_err(tcx, visitor);
         None
@@ -211,7 +214,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     err.emit();
 }
 
-pub fn find_entry_point(tcx: TyCtxt<'_>) -> Option<(DefId, EntryFnType)> {
+pub fn find_entry_point(tcx: TyCtxt<'_>) -> Option<(LocalDefId, EntryFnType)> {
     tcx.entry_fn(LOCAL_CRATE)
 }
 
