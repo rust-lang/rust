@@ -1385,6 +1385,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: &ty::PolyTraitRef<'tcx>,
         new_self_ty: Ty<'tcx>,
     ) -> PredicateObligation<'tcx> {
+        assert!(!new_self_ty.has_escaping_bound_vars());
+
         let trait_ref = trait_ref.map_bound_ref(|tr| ty::TraitRef {
             substs: self.tcx.mk_substs_trait(new_self_ty, &tr.substs[1..]),
             ..*tr
