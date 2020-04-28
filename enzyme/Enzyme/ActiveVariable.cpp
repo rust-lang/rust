@@ -364,6 +364,11 @@ bool isconstantM(TypeResults &TR, Instruction* inst, SmallPtrSetImpl<Value*> &co
 		}
 	}
 
+    if (isa<SIToFPInst>(inst) || isa<UIToFPInst>(inst) || isa<FPToSIInst>(inst) || isa<FPToUIInst>(inst)) {
+        constants.insert(inst);
+        return true;
+    }
+
 	if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
 		if (parseTBAA(inst).typeEnum == IntType::Integer) {
 			if (printconst)

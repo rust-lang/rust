@@ -1797,8 +1797,6 @@ ValueData TypeAnalysis::query(Value* val, const NewFnTypeInfo& fn) {
         llvm::errs() << " foundFunc: " << *found.fntypeinfo.function << "\n";
     }
     assert(!func || found.fntypeinfo.function == func);
-    found.dump();
-
 	return found.getAnalysis(val);
 }
 
