@@ -571,8 +571,9 @@ pub trait Read {
     /// Like `read`, except that it reads into a slice of buffers.
     ///
     /// Data is copied to fill each buffer in order, with the final buffer
-    /// written to possibly being only partially filled. This method must behave
-    /// as a single call to `read` with the buffers concatenated would.
+    /// written to possibly being only partially filled. This method must
+    /// behave equivalently to a single call to `read` with concatenated
+    /// buffers.
     ///
     /// The default implementation calls `read` with either the first nonempty
     /// buffer provided, or an empty one if none exists.
