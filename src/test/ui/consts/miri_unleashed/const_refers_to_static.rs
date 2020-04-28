@@ -2,8 +2,6 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 #![allow(const_err)]
 
-#![feature(const_raw_ptr_deref)]
-
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
@@ -21,6 +19,7 @@ const READ_INTERIOR_MUT: usize = {
     static FOO: AtomicUsize = AtomicUsize::new(0);
     unsafe { *(&FOO as *const _ as *const usize) }
     //~^ WARN skipping const checks
+    //~| WARN skipping const checks
 };
 
 static mut MUTABLE: u32 = 0;

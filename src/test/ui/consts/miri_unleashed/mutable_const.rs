@@ -1,8 +1,6 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 // normalize-stderr-test "alloc[0-9]+" -> "allocN"
 
-#![feature(const_raw_ptr_deref)]
-#![feature(const_mut_refs)]
 #![deny(const_err)] // The `allow` variant is tested by `mutable_const2`.
 //~^ NOTE lint level
 // Here we check that even though `MUTABLE_BEHIND_RAW` is created from a mutable
@@ -20,6 +18,8 @@ const MUTATING_BEHIND_RAW: () = { //~ NOTE
     unsafe {
         *MUTABLE_BEHIND_RAW = 99 //~ ERROR any use of this value will cause an error
         //~^ NOTE: which is read-only
+        //~| WARN skipping const checks
+        //~| WARN skipping const checks
         // FIXME would be good to match more of the error message here, but looks like we
         // normalize *after* checking the annoations here.
     }

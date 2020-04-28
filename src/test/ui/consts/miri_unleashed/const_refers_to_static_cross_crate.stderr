@@ -18,7 +18,7 @@ LL | | };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:43:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:44:9
    |
 LL |         SLICE_MUT => true,
    |         ^^^^^^^^^
@@ -43,7 +43,7 @@ LL | | };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:51:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:52:9
    |
 LL |         U8_MUT => true,
    |         ^^^^^^
@@ -73,7 +73,7 @@ LL | #[warn(const_err)]
    |        ^^^^^^^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:61:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:62:9
    |
 LL |         U8_MUT2 => true,
    |         ^^^^^^^
@@ -84,12 +84,21 @@ warning: skipping const checks
 LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+warning: skipping const checks
+  --> $DIR/const_refers_to_static_cross_crate.rs:35:77
+   |
+LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
+   |                                                                             ^^^^^^^^
+   |
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
 warning: any use of this value will cause an error
   --> $DIR/const_refers_to_static_cross_crate.rs:35:51
    |
 LL | / const U8_MUT3: &u8 = {
 LL | |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    | |                                                   ^^^^^^^^^^^ constant accesses static
+LL | |
 LL | |
 LL | |
 LL | |
@@ -103,11 +112,11 @@ LL | #[warn(const_err)]
    |        ^^^^^^^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:68:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:69:9
    |
 LL |         U8_MUT3 => true,
    |         ^^^^^^^
 
-error: aborting due to 6 previous errors; 6 warnings emitted
+error: aborting due to 6 previous errors; 7 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

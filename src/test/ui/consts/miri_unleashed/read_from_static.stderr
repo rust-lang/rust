@@ -1,0 +1,8 @@
+warning: skipping const checks
+  --> $DIR/read_from_static.rs:5:27
+   |
+LL | static OH_YES: &mut i32 = &mut 42;
+   |                           ^^^^^^^
+
+warning: 1 warning emitted
+

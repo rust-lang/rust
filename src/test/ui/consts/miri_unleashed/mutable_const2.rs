@@ -5,8 +5,6 @@
 // normalize-stderr-test "note: compiler flags: .*" -> "note: compiler flags: FLAGS"
 // normalize-stderr-test "interpret/intern.rs:[0-9]+:[0-9]+" -> "interpret/intern.rs:LL:CC"
 
-#![feature(const_raw_ptr_deref)]
-#![feature(const_mut_refs)]
 #![allow(const_err)]
 
 use std::cell::UnsafeCell;
