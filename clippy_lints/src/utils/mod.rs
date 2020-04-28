@@ -293,7 +293,9 @@ pub fn qpath_res(cx: &LateContext<'_, '_>, qpath: &hir::QPath<'_>, id: hir::HirI
         hir::QPath::Resolved(_, path) => path.res,
         hir::QPath::TypeRelative(..) => {
             if cx.tcx.has_typeck_tables(id.owner.to_def_id()) {
-                cx.tcx.typeck_tables_of(id.owner.to_def_id()).qpath_res(qpath, id)
+                cx.tcx
+                    .typeck_tables_of(id.owner.to_def_id().expect_local())
+                    .qpath_res(qpath, id)
             } else {
                 Res::Err
             }
@@ -436,7 +438,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec
 pub fn is_entrypoint_fn(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
     cx.tcx
         .entry_fn(LOCAL_CRATE)
-        .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id)
+        .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id.to_def_id())
 }
 
 /// Gets the name of the item the expression is in, if available.
