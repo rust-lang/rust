@@ -48,6 +48,7 @@ pub enum CommentPlacement {
 const COMMENT_PREFIX_TO_KIND: &[(&str, CommentKind)] = {
     use {CommentPlacement::*, CommentShape::*};
     &[
+        ("////", CommentKind { shape: Line, doc: None }),
         ("///", CommentKind { shape: Line, doc: Some(Outer) }),
         ("//!", CommentKind { shape: Line, doc: Some(Inner) }),
         ("/**", CommentKind { shape: Block, doc: Some(Outer) }),
