@@ -392,7 +392,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
 ) -> Option<Bx::Function> {
-    let (main_def_id, span) = match cx.tcx().entry_fn(LOCAL_CRATE) {
+    let (main_def_id, span) = match cx.tcx().entry_fn(()) {
         Some((def_id, _)) => (def_id, cx.tcx().def_span(def_id)),
         None => return None,
     };
@@ -407,7 +407,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let main_llfn = cx.get_fn_addr(instance);
 
-    return cx.tcx().entry_fn(LOCAL_CRATE).map(|(_, et)| {
+    return cx.tcx().entry_fn(()).map(|(_, et)| {
         let use_start_lang_item = EntryFnType::Start != et;
         create_entry_fn::<Bx>(cx, span, main_llfn, main_def_id, use_start_lang_item)
     });

@@ -884,9 +884,9 @@ rustc_queries! {
             desc { "looking up the foreign modules of a linked crate" }
         }
 
-        /// Identifies the entry-point (e.g., the `main` function) for a given
+        /// Identifies the entry-point (e.g., the `main` function) for the current
         /// crate, returning `None` if there is no entry point (such as for library crates).
-        query entry_fn(_: CrateNum) -> Option<(LocalDefId, EntryFnType)> {
+        query entry_fn(_: ()) -> Option<(LocalDefId, EntryFnType)> {
             desc { "looking up the entry function of a crate" }
         }
         query plugin_registrar_fn(_: CrateNum) -> Option<DefId> {

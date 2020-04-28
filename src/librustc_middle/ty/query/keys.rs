@@ -6,7 +6,7 @@ use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_query_system::query::DefaultCacheSelector;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -23,6 +23,18 @@ pub trait Key {
     /// In the event that a cycle occurs, if no explicit span has been
     /// given for a query with key `self`, what span should we use?
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span;
+}
+
+impl Key for () {
+    type CacheSelector = DefaultCacheSelector;
+
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        tcx.def_span(DefId::local(CRATE_DEF_INDEX))
+    }
 }
 
 impl<'tcx> Key for ty::InstanceDef<'tcx> {

@@ -452,7 +452,7 @@ fn create_and_seed_worklist<'tcx>(
         )
         .chain(
             // Seed entry point
-            tcx.entry_fn(LOCAL_CRATE).map(|(def_id, _)| tcx.hir().as_local_hir_id(def_id)),
+            tcx.entry_fn(()).map(|(def_id, _)| tcx.hir().as_local_hir_id(def_id)),
         )
         .collect::<Vec<_>>();
 

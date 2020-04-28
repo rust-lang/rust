@@ -22,7 +22,7 @@ use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -289,7 +289,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if self.sess().opts.optimize != config::OptLevel::No {
             spflags |= DISPFlags::SPFlagOptimized;
         }
-        if let Some((id, _)) = self.tcx.entry_fn(LOCAL_CRATE) {
+        if let Some((id, _)) = self.tcx.entry_fn(()) {
             if id.to_def_id() == def_id {
                 spflags |= DISPFlags::SPFlagMainSubprogram;
             }

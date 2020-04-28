@@ -1,7 +1,7 @@
 use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
-use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{HirId, ImplItem, Item, ItemKind, TraitItem};
 use rustc_middle::hir::map::Map;
@@ -48,9 +48,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 }
 
-fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)> {
-    assert_eq!(cnum, LOCAL_CRATE);
-
+fn entry_fn(tcx: TyCtxt<'_>, _: ()) -> Option<(LocalDefId, EntryFnType)> {
     let any_exe =
         tcx.sess.crate_types.borrow().iter().any(|ty| *ty == config::CrateType::Executable);
     if !any_exe {
@@ -212,10 +210,6 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
         );
     }
     err.emit();
-}
-
-pub fn find_entry_point(tcx: TyCtxt<'_>) -> Option<(LocalDefId, EntryFnType)> {
-    tcx.entry_fn(LOCAL_CRATE)
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

@@ -1450,7 +1450,7 @@ fn check_fn<'a, 'tcx>(
 
     // Check that the main return type implements the termination trait.
     if let Some(term_id) = tcx.lang_items().termination() {
-        if let Some((def_id, EntryFnType::Main)) = tcx.entry_fn(LOCAL_CRATE) {
+        if let Some((def_id, EntryFnType::Main)) = tcx.entry_fn(()) {
             let main_id = hir.as_local_hir_id(def_id);
             if main_id == fn_id {
                 let substs = tcx.mk_substs_trait(declared_ret_ty, &[]);
