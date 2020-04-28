@@ -1157,18 +1157,21 @@ impl Type {
 
     pub fn fields(&self, db: &dyn HirDatabase) -> Vec<(Field, Type)> {
         if let Ty::Apply(a_ty) = &self.ty.value {
-            if let TypeCtor::Adt(AdtId::StructId(s)) = a_ty.ctor {
-                let var_def = s.into();
-                return db
-                    .field_types(var_def)
-                    .iter()
-                    .map(|(local_id, ty)| {
-                        let def = Field { parent: var_def.into(), id: local_id };
-                        let ty = ty.clone().subst(&a_ty.parameters);
-                        (def, self.derived(ty))
-                    })
-                    .collect();
-            }
+            let variant_id = match a_ty.ctor {
+                TypeCtor::Adt(AdtId::StructId(s)) => s.into(),
+                TypeCtor::Adt(AdtId::UnionId(u)) => u.into(),
+                _ => return Vec::new(),
+            };
+
+            return db
+                .field_types(variant_id)
+                .iter()
+                .map(|(local_id, ty)| {
+                    let def = Field { parent: variant_id.into(), id: local_id };
+                    let ty = ty.clone().subst(&a_ty.parameters);
+                    (def, self.derived(ty))
+                })
+                .collect();
         };
         Vec::new()
     }
