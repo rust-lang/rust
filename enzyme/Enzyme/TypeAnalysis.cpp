@@ -1157,6 +1157,177 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     }
 }
 
+template<typename T>
+struct Meta {
+};
+
+template<>
+struct Meta<double> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    TA.updateAnalysis(val, DataType(Type::getDoubleTy(call.getContext())), &call);
+}
+};
+
+template<>
+struct Meta<float> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    TA.updateAnalysis(val, DataType(Type::getFloatTy(call.getContext())), &call);
+}
+};
+
+template<>
+struct Meta<long double> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    TA.updateAnalysis(val, DataType(Type::getX86_FP80Ty(call.getContext())), &call);
+}
+};
+
+template<>
+struct Meta<__float128> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    TA.updateAnalysis(val, DataType(Type::getFP128Ty (call.getContext())), &call);
+}
+};
+
+template<>
+struct Meta<double*> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(Type::getDoubleTy(call.getContext())).Only({0});
+    vd |= ValueData(IntType::Pointer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<float*> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(Type::getFloatTy(call.getContext())).Only({0});
+    vd |= ValueData(IntType::Pointer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<long double*> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(Type::getX86_FP80Ty(call.getContext())).Only({0});
+    vd |= ValueData(IntType::Pointer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<__float128*> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(Type::getFP128Ty(call.getContext())).Only({0});
+    vd |= ValueData(IntType::Pointer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+
+template<>
+struct Meta<void> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+}
+};
+
+template<>
+struct Meta<void*> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Pointer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<int> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Integer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<int*> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Integer).Only({0});
+    vd |= ValueData(IntType::Pointer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<long int> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Integer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<long int*> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Integer).Only({0});
+    vd |= ValueData(IntType::Pointer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<long unsigned int> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Integer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<long unsigned int*> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Integer).Only({0});
+    vd |= ValueData(IntType::Pointer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<long long int> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Integer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<>
+struct Meta<long long int*> {
+static void analyzeType(Value* val, CallInst &call, TypeAnalyzer &TA) {
+    ValueData vd = ValueData(IntType::Integer).Only({0});
+    vd |= ValueData(IntType::Pointer);
+    TA.updateAnalysis(val, vd, &call);
+}
+};
+
+template<typename... Arg0>
+struct FunctionTemplatesSuck {
+  static void analyzeFuncTypesHelper(unsigned idx, CallInst& call, TypeAnalyzer& TA) {}
+};
+
+template<typename Arg0, typename... Args>
+struct FunctionTemplatesSuck<Arg0, Args...> {
+  static void analyzeFuncTypesHelper(unsigned idx, CallInst& call, TypeAnalyzer& TA) {
+    Meta<Arg0>::analyzeType(call.getOperand(idx), call, TA);
+    FunctionTemplatesSuck<Args...>::analyzeFuncTypesHelper(idx+1, call, TA);
+  }
+};
+
+
+template<typename RT, typename... Args>
+void analyzeFuncTypes( RT(*fn)(Args...), CallInst& call, TypeAnalyzer& TA) {
+    Meta<RT>::analyzeType(&call, call, TA);
+    FunctionTemplatesSuck<Args...>::analyzeFuncTypesHelper(0, call, TA);
+}
+
 void TypeAnalyzer::visitCallInst(CallInst &call) {
 	if (auto iasm = dyn_cast<InlineAsm>(call.getCalledValue())) {
 		if (iasm->getAsmString() == "cpuid") {
@@ -1169,9 +1340,139 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 
 	if (Function* ci = call.getCalledFunction()) {
 
-		if (ci->getName() == "malloc") {
-			updateAnalysis(call.getArgOperand(0), IntType::Integer, &call);
-		}
+        #define CONSIDER(fn)\
+        if (ci->getName() == #fn) {\
+            analyzeFuncTypes(::fn, call, *this);\
+            return;\
+        }
+
+        CONSIDER(malloc)
+        //CONSIDER(__lgamma_r_finite)
+        CONSIDER(frexp)
+        CONSIDER(frexpf)
+        CONSIDER(frexpl)
+        CONSIDER(ldexp)
+        CONSIDER(modf)
+
+        CONSIDER(cos)
+        CONSIDER(sin)
+        CONSIDER(tan)
+        CONSIDER(acos)
+        CONSIDER(asin)
+        CONSIDER(atan)
+        CONSIDER(atan2)
+        CONSIDER(cosh)
+        CONSIDER(sinh)
+        CONSIDER(tanh)
+        CONSIDER(acosh)
+        CONSIDER(acoshf)
+        CONSIDER(acoshl)
+        CONSIDER(asinh)
+        CONSIDER(asinhf)
+        CONSIDER(asinhl)
+        CONSIDER(atanh)
+        CONSIDER(atanhl)
+        CONSIDER(atanhf)
+        CONSIDER(exp)
+        CONSIDER(log)
+        CONSIDER(log10)
+        CONSIDER(exp2)
+        CONSIDER(exp2f)
+        CONSIDER(exp2l)
+        CONSIDER(log10)
+        CONSIDER(exp2)
+        CONSIDER(expm1)
+        CONSIDER(expm1f)
+        CONSIDER(expm1l)
+        CONSIDER(ilogb)
+        CONSIDER(ilogbf)
+        CONSIDER(ilogbl)
+        CONSIDER(log1p)
+        CONSIDER(log1pf)
+        CONSIDER(log1pl)
+        CONSIDER(log2)
+        CONSIDER(log2f)
+        CONSIDER(log2l)
+        CONSIDER(logb)
+        CONSIDER(logbf)
+        CONSIDER(logbl)
+        CONSIDER(scalbn)
+        CONSIDER(scalbnf)
+        CONSIDER(scalbnl)
+        CONSIDER(scalbln)
+        CONSIDER(scalblnf)
+        CONSIDER(scalblnl)
+        CONSIDER(pow)
+        CONSIDER(sqrt)
+        CONSIDER(cbrt)
+        CONSIDER(cbrtf)
+        CONSIDER(cbrtl)
+        CONSIDER(hypot)
+        CONSIDER(erf)
+        CONSIDER(erff)
+        CONSIDER(erfl)
+        CONSIDER(erfc)
+        CONSIDER(erfcf)
+        CONSIDER(erfcl)
+        CONSIDER(tgamma)
+        CONSIDER(tgammaf)
+        CONSIDER(tgammal)
+        CONSIDER(lgamma)
+        CONSIDER(lgammaf)
+        CONSIDER(lgammal)
+        CONSIDER(ceil)
+        CONSIDER(floor)
+        CONSIDER(fmod)
+        CONSIDER(trunc)
+        CONSIDER(truncf)
+        CONSIDER(truncl)
+        CONSIDER(round)
+        CONSIDER(roundf)
+        CONSIDER(roundl)
+        CONSIDER(lround)
+        CONSIDER(lroundf)
+        CONSIDER(lroundl)
+        CONSIDER(llround)
+        CONSIDER(llroundf)
+        CONSIDER(llroundl)
+        CONSIDER(rint)
+        CONSIDER(rintf)
+        CONSIDER(rintl)
+        CONSIDER(lrint)
+        CONSIDER(lrintf)
+        CONSIDER(lrintl)
+        CONSIDER(llrint)
+        CONSIDER(llrintf)
+        CONSIDER(llrintl)
+        CONSIDER(remainder)
+        CONSIDER(remainderf)
+        CONSIDER(remainderl)
+        CONSIDER(remquo)
+        CONSIDER(remquof)
+        CONSIDER(remquol)
+        CONSIDER(copysign)
+        CONSIDER(copysignf)
+        CONSIDER(copysignl)
+        CONSIDER(nextafter)
+        CONSIDER(nextafterf)
+        CONSIDER(nextafterl)
+        CONSIDER(nexttoward)
+        CONSIDER(nexttowardf)
+        CONSIDER(nexttowardl)
+        CONSIDER(fdim)
+        CONSIDER(fdimf)
+        CONSIDER(fdiml)
+        CONSIDER(fmax)
+        CONSIDER(fmaxf)
+        CONSIDER(fmaxl)
+        CONSIDER(fmin)
+        CONSIDER(fminf)
+        CONSIDER(fminl)
+        CONSIDER(fabs)
+        CONSIDER(fma)
+        CONSIDER(fmaf)
+        CONSIDER(fmal)
+
 
         if (ci->getName() == "__lgamma_r_finite") {
             updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
@@ -1179,10 +1480,47 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
             updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
         }
 
-        if (ci->getName() == "tanh") {
+        /*
+		if (ci->getName() == "malloc") {
+			updateAnalysis(call.getArgOperand(0), IntType::Integer, &call);
+		}
+
+
+
+        if (ci->getName() == "frexp") {
             updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
+            updateAnalysis(call.getArgOperand(1), ValueData(IntType::Integer).Only({0}), &call);
             updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
         }
+
+        if (ci->getName() == "ldexp") {
+            updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
+            updateAnalysis(call.getArgOperand(1), ValueData(IntType::Integer), &call);
+            updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
+        }
+
+        if (ci->getName() == "modf") {
+            updateAnalysis(call.getArgOperand(0), DataType(Type::getDoubleTy(call.getContext())), &call);
+            updateAnalysis(call.getArgOperand(1), ValueData(Type::getDoubleTy(call.getContext())).Only({0}), &call);
+            updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
+        }
+
+        if (ci->getName() == "sin")
+            analyzeFuncTypes(sin, call, *this);
+
+        const std::vector<std::string> doubleCmath = {
+                                                        "cos", "sin", "tan", "acos", "asin", "atan", "atan2",
+                                                        "cosh", "sinh", "tanh", "acosh", "asinh", "atanh",
+                                                        "exp", "log", "log10", "exp2", "expm1"
+                                                    };
+        const std::vector<std::string> floatCMath = {"acoshf", "asinhf", "atanhf", "exp2f", "expm1f"};
+        const std::vector<std::string> longDoubleCMath = {"acoshl", "asinhl", "atanhl", "exp2l", "expm1l"};
+
+        if (std::find(doubleCmath.begin(), doubleCmath.end(), ci->getName().str()) != doubleCmath.end()) {
+            for(unsigned i=0; i<call.getNumArgOperands(); i++)
+                updateAnalysis(call.getArgOperand(i), DataType(Type::getDoubleTy(call.getContext())), &call);
+            updateAnalysis(&call, DataType(Type::getDoubleTy(call.getContext())), &call);
+        }*/
 
 		//TODO we should handle calls interprocedurally, allowing better propagation of type information
 		if (!ci->empty()) {
