@@ -319,7 +319,7 @@ impl<'a> Parser<'a> {
                 Some(pos)
             } else {
                 let pos = self.to_span_index(pos);
-                let description = format!("expected `'}}'`, found `{:?}`", maybe);
+                let description = format!("expected `}}`, found `{:?}`", maybe);
                 let label = "expected `}`".to_owned();
                 let note =
                     Some("if you intended to print `{`, you can escape it using `{{`".to_owned());
