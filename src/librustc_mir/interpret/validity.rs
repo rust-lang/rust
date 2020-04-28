@@ -842,9 +842,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Run it.
         match visitor.visit_value(op) {
             Ok(()) => Ok(()),
-            // We should only get validation errors here. Avoid other errors as
-            // those do not show *where* in the value the issue lies.
+            // Allow validation failures to be returned.
             Err(err) if matches!(err.kind, err_ub!(ValidationFailure { .. })) => Err(err),
+            // Also allow InvalidProgram to be returned, because it's likely that different callers
+            // will want to do different things in this situation.
+            Err(err) if matches!(err.kind, InterpError::InvalidProgram(_)) => Err(err),
+            // Avoid other errors as those do not show *where* in the value the issue lies.
             Err(err) => bug!("Unexpected error during validation: {}", err),
         }
     }
