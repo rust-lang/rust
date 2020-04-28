@@ -652,8 +652,7 @@ pub fn eval_condition(
                     return false;
                 }
             };
-            let version = option_env!("CFG_VERSION").unwrap_or("unknown rustc version");
-            let version = Version::parse(version).unwrap();
+            let version = Version::parse(env!("CFG_VERSION")).unwrap();
 
             version >= min_version
         }
