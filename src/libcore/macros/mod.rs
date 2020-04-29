@@ -1160,7 +1160,7 @@ pub(crate) mod builtin {
     /// attribute.
     ///
     /// `cfg!`, unlike `#[cfg]`, does not remove any code and only evaluates to true or false. For
-    /// example, this means all code in an if/else block needs to be valid when `cfg!` is used for
+    /// example, all blocks in an if/else expression need to be valid when `cfg!` is used for
     /// the condition, regardless of what `cfg!` is evaluating.
     ///
     /// [`cfg`]: ../reference/conditional-compilation.html#the-cfg-attribute
