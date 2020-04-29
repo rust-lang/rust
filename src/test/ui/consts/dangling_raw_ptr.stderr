@@ -1,13 +1,11 @@
-error: any use of this value will cause an error
+error: encountered dangling pointer in final constant
   --> $DIR/dangling_raw_ptr.rs:1:1
    |
 LL | / const FOO: *const u32 = {
 LL | |     let x = 42;
 LL | |     &x
 LL | | };
-   | |__^ encountered dangling pointer in final constant
-   |
-   = note: `#[deny(const_err)]` on by default
+   | |__^
 
 error: aborting due to previous error
 

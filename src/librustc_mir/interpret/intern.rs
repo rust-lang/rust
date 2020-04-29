@@ -5,9 +5,8 @@
 
 use super::validity::RefTracking;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_middle::mir::interpret::{ErrorHandled, InterpResult};
+use rustc_middle::mir::interpret::InterpResult;
 use rustc_middle::ty::{self, query::TyCtxtAt, Ty};
 
 use rustc_ast::ast::Mutability;
@@ -64,6 +63,7 @@ enum InternMode {
 struct IsStaticOrFn;
 
 fn mutable_memory_in_const(tcx: TyCtxtAt<'_>, kind: &str) {
+    // FIXME: show this in validation instead so we can point at where in the value the error is?
     tcx.sess.span_err(tcx.span, &format!("mutable memory ({}) is not allowed in constant", kind));
 }
 
@@ -79,7 +79,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     alloc_id: AllocId,
     mode: InternMode,
     ty: Option<Ty<'tcx>>,
-) -> InterpResult<'tcx, Option<IsStaticOrFn>> {
+) -> Option<IsStaticOrFn> {
     trace!("intern_shallow {:?} with {:?}", alloc_id, mode);
     // remove allocation
     let tcx = ecx.tcx;
@@ -97,7 +97,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
             }
             // treat dangling pointers like other statics
             // just to stop trying to recurse into them
-            return Ok(Some(IsStaticOrFn));
+            return Some(IsStaticOrFn);
         }
     };
     // This match is just a canary for future changes to `MemoryKind`, which most likely need
@@ -136,7 +136,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     let alloc = tcx.intern_const_alloc(alloc);
     leftover_allocations.extend(alloc.relocations().iter().map(|&(_, ((), reloc))| reloc));
     tcx.set_alloc_id_memory(alloc_id, alloc);
-    Ok(None)
+    None
 }
 
 impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir, 'tcx, M> {
@@ -145,7 +145,7 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir
         alloc_id: AllocId,
         mode: InternMode,
         ty: Option<Ty<'tcx>>,
-    ) -> InterpResult<'tcx, Option<IsStaticOrFn>> {
+    ) -> Option<IsStaticOrFn> {
         intern_shallow(
             self.ecx,
             self.leftover_allocations,
@@ -213,7 +213,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                 if let Scalar::Ptr(vtable) = mplace.meta.unwrap_meta() {
                     // Explicitly choose const mode here, since vtables are immutable, even
                     // if the reference of the fat pointer is mutable.
-                    self.intern_shallow(vtable.alloc_id, InternMode::ConstInner, None)?;
+                    self.intern_shallow(vtable.alloc_id, InternMode::ConstInner, None);
                 } else {
                     // Let validation show the error message, but make sure it *does* error.
                     tcx.sess.delay_span_bug(
@@ -277,7 +277,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                         InternMode::ConstInner
                     }
                 };
-                match self.intern_shallow(ptr.alloc_id, ref_mode, Some(referenced_ty))? {
+                match self.intern_shallow(ptr.alloc_id, ref_mode, Some(referenced_ty)) {
                     // No need to recurse, these are interned already and statics may have
                     // cycles, so we don't want to recurse there
                     Some(IsStaticOrFn) => {}
@@ -304,12 +304,18 @@ pub enum InternKind {
     ConstProp,
 }
 
+/// Intern `ret` and everything it references.
+///
+/// This *cannot raise an interpreter error*.  Doing so is left to validation, which
+/// trakcs where in the value we are and thus can show much better error messages.
+/// Any errors here would anyway be turned into `const_err` lints, whereas validation failures
+/// are hard errors.
 pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     intern_kind: InternKind,
     ret: MPlaceTy<'tcx>,
     ignore_interior_mut_in_const: bool,
-) -> InterpResult<'tcx>
+)
 where
     'tcx: 'mir,
 {
@@ -338,7 +344,7 @@ where
         ret.ptr.assert_ptr().alloc_id,
         base_intern_mode,
         Some(ret.layout.ty),
-    )?;
+    );
 
     ref_tracking.track((ret, base_intern_mode), || ());
 
@@ -422,13 +428,16 @@ where
                 }
             }
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
-            // dangling pointer
-            throw_ub_format!("encountered dangling pointer in final constant")
+            // Codegen does not like dangling pointers, and generally `tcx` assumes that
+            // all allocations referenced anywhere actually exist. So, make sure we error here.
+            ecx.tcx.sess.span_err(
+                ecx.tcx.span,
+                "encountered dangling pointer in final constant",
+            );
         } else if ecx.tcx.get_global_alloc(alloc_id).is_none() {
-            // We have hit an `AllocId` that is neither in local or global memory and isn't marked
-            // as dangling by local memory.
+                // We have hit an `AllocId` that is neither in local or global memory and isn't
+                // marked as dangling by local memory.  That should be impossible.
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
     }
-    Ok(())
 }
