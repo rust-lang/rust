@@ -63,7 +63,7 @@ export function runSingle(ctx: Ctx): Cmd {
     };
 }
 
-function getLldbDebugConfig(config: ra.Runnable) : vscode.DebugConfiguration {
+function getLldbDebugConfig(config: ra.Runnable, sourceFileMap: Record<string, string>): vscode.DebugConfiguration {
     return {
         type: "lldb",
         request: "launch",
@@ -72,11 +72,12 @@ function getLldbDebugConfig(config: ra.Runnable) : vscode.DebugConfiguration {
             args: config.args,
         },
         args: config.extraArgs,
-        cwd: config.cwd
+        cwd: config.cwd,
+        sourceMap: sourceFileMap
     };
 }
 
-async function getCppvsDebugConfig(config: ra.Runnable) : Promise<vscode.DebugConfiguration> {
+async function getCppvsDebugConfig(config: ra.Runnable, sourceFileMap: Record<string, string>): Promise<vscode.DebugConfiguration> {
     let cargo = new Cargo(config.cwd || '.');
     let executable = await cargo.executableFromArgs(config.args, config.extraArgs);
 
@@ -87,6 +88,7 @@ async function getCppvsDebugConfig(config: ra.Runnable) : Promise<vscode.DebugCo
         program: executable,
         args: config.extraArgs,
         cwd: config.cwd,
+        sourceFileMap: sourceFileMap,
     };
 }
 
@@ -95,15 +97,30 @@ export function debugSingle(ctx: Ctx): Cmd {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
 
-        const mscpp = vscode.extensions.getExtension("ms-vscode.cpptools");
-        const lldb = vscode.extensions.getExtension("vadimcn.vscode-lldb");
+        const lldbId = "vadimcn.vscode-lldb";
+        const cpptoolsId = "ms-vscode.cpptools";
 
-        if (!(lldb || mscpp)) {
-            vscode.window.showErrorMessage("Install `vadimcn.vscode-lldb` or `ms-vscode.cpptools` extension for debugging");
+        let debugEngineId = ctx.config.debug.engine;
+        let debugEngine = null;
+        if (!debugEngineId) {
+            debugEngine = vscode.extensions.getExtension(lldbId);
+            if (!debugEngine) {
+                debugEngine = vscode.extensions.getExtension(cpptoolsId);
+            }
+        }
+        else {
+            debugEngine = vscode.extensions.getExtension(debugEngineId);
+        }
+
+        if (!debugEngine) {
+            vscode.window.showErrorMessage(`Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=${lldbId})`
+            + ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=${cpptoolsId}) extension for debugging.`);
             return;
         }
 
-        const debugConfig = lldb ? getLldbDebugConfig(config) : await getCppvsDebugConfig(config);
+        const debugConfig = lldbId == debugEngine.id
+            ? getLldbDebugConfig(config, ctx.config.debug.sourceFileMap)
+            : await getCppvsDebugConfig(config, ctx.config.debug.sourceFileMap);
 
         return vscode.debug.startDebugging(undefined, debugConfig);
     };

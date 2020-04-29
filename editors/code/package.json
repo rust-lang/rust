@@ -388,6 +388,25 @@
                     "description": "Enable Proc macro support, cargo.loadOutDirsFromCheck must be enabled.",
                     "type": "boolean",
                     "default": false
+                },
+                "rust-analyzer.debug.engine": {
+                    "type": [
+                        "null",
+                        "string"
+                    ],
+                    "enum": [
+                        "ms-vscode.cpptools",
+                        "vadimcn.vscode-lldb"
+                    ],
+                    "default": null,
+                    "description": "Preffered debug engine."
+                },
+                "rust-analyzer.debug.sourceFileMap" : {
+                    "type":"object",
+                    "description": "Optional source file mappings passed to the debug engine.",
+                    "default": {
+                        "<source-path>": "<target-path>"
+                    }
                 }
             }
         },

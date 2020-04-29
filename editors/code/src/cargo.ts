@@ -1,4 +1,3 @@
-import { window } from 'vscode';
 import * as cp from 'child_process';
 import * as readline from 'readline';
 

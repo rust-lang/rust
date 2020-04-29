@@ -92,7 +92,6 @@ export class Config {
     get askBeforeDownload() { return this.get<boolean>("updates.askBeforeDownload"); }
     get traceExtension() { return this.get<boolean>("trace.extension"); }
 
-
     get inlayHints() {
         return {
             typeHints: this.get<boolean>("inlayHints.typeHints"),
@@ -107,4 +106,12 @@ export class Config {
             command: this.get<string>("checkOnSave.command"),
         };
     }
+
+    get debug() {
+        return {
+            engine: this.get<null | string>("debug.engine"),
+            sourceFileMap: this.get<Record<string, string>>("debug.sourceFileMap"),
+        };
+    }
+
 }
