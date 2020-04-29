@@ -76,11 +76,7 @@ impl PathResolution {
         db: &dyn HirDatabase,
         mut cb: impl FnMut(TypeAlias) -> Option<R>,
     ) -> Option<R> {
-        if let Some(res) = self.in_type_ns() {
-            associated_type_shorthand_candidates(db, res, |_, _, id| cb(id.into()))
-        } else {
-            None
-        }
+        associated_type_shorthand_candidates(db, self.in_type_ns()?, |_, _, id| cb(id.into()))
     }
 }
 
