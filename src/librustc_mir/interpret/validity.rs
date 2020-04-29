@@ -49,7 +49,7 @@ macro_rules! try_validation {
 /// as a kind of validation blacklist:
 ///
 /// ```rust
-/// let v = try_validation_pat(some_fn(), Foo | Bar | Baz, "some failure", path);
+/// let v = try_validation_pat!(some_fn(), Foo | Bar | Baz, "some failure", path);
 /// // Failures that match $p are thrown up as validation errors, but other errors are passed back
 /// // unchanged.
 /// ```
@@ -59,7 +59,7 @@ macro_rules! try_validation_pat {
             Ok(x) => x,
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            $( Err($p) )|* if true => throw_validation_failure!($what, $where $(, $details)?),
+            $( Err(InterpErrorInfo { kind: $p, .. }) )|* if true => throw_validation_failure!($what, $where $(, $details)?),
             Err(e) => Err::<!, _>(e)?,
         }
     }};
@@ -494,7 +494,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // that lets us re-use `ref_to_mplace`).
                 let place = try_validation_pat!(
                     self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
-                    InterpErrorInfo { kind: err_ub!(InvalidUndefBytes(..)), ..},
+                    err_ub!(InvalidUndefBytes(..)),
                     "uninitialized raw pointer",
                     self.path
                 );
