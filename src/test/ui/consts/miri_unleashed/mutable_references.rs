@@ -17,12 +17,11 @@ struct Foo<T>(T);
 // this is fine for the same reason as `BAR`.
 static BOO: &mut Foo<()> = &mut Foo(());
 
+// interior mutability is fine
 struct Meh {
     x: &'static UnsafeCell<i32>,
 }
-
 unsafe impl Sync for Meh {}
-
 static MEH: Meh = Meh {
     x: &UnsafeCell::new(42),
 };
