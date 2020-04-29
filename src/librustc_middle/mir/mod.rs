@@ -672,6 +672,9 @@ pub struct BlockTailInfo {
     /// Examples include `{ ...; tail };` and `let _ = { ...; tail };`
     /// but not e.g., `let _x = { ...; tail };`
     pub tail_result_is_ignored: bool,
+
+    /// `Span` of the tail expression.
+    pub span: Span,
 }
 
 /// A MIR local.

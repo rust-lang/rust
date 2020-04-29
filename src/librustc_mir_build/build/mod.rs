@@ -242,6 +242,9 @@ enum BlockFrame {
         ///
         /// Example: `let _ = { STMT_1; EXPR };`
         tail_result_is_ignored: bool,
+
+        /// `Span` of the tail expression.
+        span: Span,
     },
 
     /// Generic mark meaning that the block occurred as a subexpression
@@ -369,8 +372,8 @@ impl BlockContext {
             match bf {
                 BlockFrame::SubExpr => continue,
                 BlockFrame::Statement { .. } => break,
-                &BlockFrame::TailExpr { tail_result_is_ignored } => {
-                    return Some(BlockTailInfo { tail_result_is_ignored });
+                &BlockFrame::TailExpr { tail_result_is_ignored, span } => {
+                    return Some(BlockTailInfo { tail_result_is_ignored, span });
                 }
             }
         }
@@ -394,7 +397,7 @@ impl BlockContext {
 
             // otherwise: use accumulated is_ignored state.
             Some(
-                BlockFrame::TailExpr { tail_result_is_ignored: ignored }
+                BlockFrame::TailExpr { tail_result_is_ignored: ignored, .. }
                 | BlockFrame::Statement { ignores_expr_result: ignored },
             ) => *ignored,
         }
