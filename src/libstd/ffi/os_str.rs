@@ -4,6 +4,7 @@ use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::ops;
 use crate::rc::Rc;
+use crate::str::FromStr;
 use crate::sync::Arc;
 
 use crate::sys::os_str::{Buf, Slice};
@@ -1171,6 +1172,15 @@ impl AsInner<Slice> for OsStr {
     #[inline]
     fn as_inner(&self) -> &Slice {
         &self.inner
+    }
+}
+
+#[stable(feature = "osstring_from_str", since = "1.45.0")]
+impl FromStr for OsString {
+    type Err = core::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(OsString::from(s))
     }
 }
 
