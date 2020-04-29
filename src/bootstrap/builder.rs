@@ -725,7 +725,9 @@ impl<'a> Builder<'a> {
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc(compiler))
             .env("RUSTDOC_CRATE_VERSION", self.rust_version())
-            .env("RUSTC_BOOTSTRAP", "1");
+            .env("RUSTC_BOOTSTRAP", "1")
+            .arg("--deny")
+            .arg("invalid_codeblock_attribute");
 
         // Remove make-related flags that can cause jobserver problems.
         cmd.env_remove("MAKEFLAGS");
@@ -838,7 +840,8 @@ impl<'a> Builder<'a> {
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
         // #71458.
-        let rustdocflags = rustflags.clone();
+        let mut rustdocflags = rustflags.clone();
+        rustdocflags.arg("--deny").arg("invalid_codeblock_attribute");
 
         if let Ok(s) = env::var("CARGOFLAGS") {
             cargo.args(s.split_whitespace());
