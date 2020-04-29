@@ -65,10 +65,16 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     #[cfg(target_arch = "x86_64")]
     {
         // x86-64 uses %rbx as the base register, so preserve it.
-        llvm_asm!("cpuid"
-                  : "={eax}"(eax), "={ebx}"(ebx), "={ecx}"(ecx), "={edx}"(edx)
+        // This works around a bug in LLVM with ASAN enabled:
+        // https://bugs.llvm.org/show_bug.cgi?id=17907
+        llvm_asm!(r#"
+                  mov %rbx, %rsi
+                  cpuid
+                  xchg %rbx, %rsi
+                  "#
+                  : "={eax}"(eax), "={esi}"(ebx), "={ecx}"(ecx), "={edx}"(edx)
                   : "{eax}"(leaf), "{ecx}"(sub_leaf)
-                  : "rbx" :);
+                  : :);
     }
     CpuidResult { eax, ebx, ecx, edx }
 }
