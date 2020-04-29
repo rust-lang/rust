@@ -212,6 +212,21 @@ let g:ycm_language_server =
 \ ]
 ----
 
+==== ALE
+
+To add the LSP server to https://github.com/dense-analysis/ale[ale]:
+
+[source,vim]
+----
+call ale#linter#Define('rust', {
+\   'name': 'rust-analyzer',
+\   'lsp': 'stdio',
+\   'executable': 'rust-analyzer',
+\   'command': '%e',
+\   'project_root': '.',
+\})
+----
+
 ==== nvim-lsp
 
 NeoVim 0.5 (not yet released) has built-in language server support.
