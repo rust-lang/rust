@@ -1,5 +1,4 @@
 use crate::attributes;
-use crate::back::bytecode;
 use crate::back::lto::ThinBuffer;
 use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
@@ -16,7 +15,7 @@ use crate::ModuleLlvm;
 use log::debug;
 use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, RLIB_BYTECODE_EXTENSION};
+use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{FatalError, Handler};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
@@ -654,19 +653,6 @@ pub(crate) unsafe fn codegen(
                 );
                 embed_bitcode(cgcx, llcx, llmod, Some(data));
             }
-
-            if config.emit_bc_compressed {
-                let _timer = cgcx.prof.generic_activity_with_arg(
-                    "LLVM_module_codegen_emit_compressed_bitcode",
-                    &module.name[..],
-                );
-                let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
-                let data = bytecode::encode(&module.name, data);
-                if let Err(e) = fs::write(&dst, data) {
-                    let msg = format!("failed to write bytecode to {}: {}", dst.display(), e);
-                    diag_handler.err(&msg);
-                }
-            }
         } else if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Marker) {
             embed_bitcode(cgcx, llcx, llmod, None);
         }
@@ -777,7 +763,6 @@ pub(crate) unsafe fn codegen(
     Ok(module.into_compiled_module(
         config.emit_obj != EmitObj::None,
         config.emit_bc,
-        config.emit_bc_compressed,
         &cgcx.output_filenames,
     ))
 }
@@ -832,6 +817,55 @@ unsafe fn embed_bitcode(
     let section = if is_apple { "__LLVM,__cmdline\0" } else { ".llvmcmd\0" };
     llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
     llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
+
+    // We're adding custom sections to the output object file, but we definitely
+    // do not want these custom sections to make their way into the final linked
+    // executable. The purpose of these custom sections is for tooling
+    // surrounding object files to work with the LLVM IR, if necessary. For
+    // example rustc's own LTO will look for LLVM IR inside of the object file
+    // in these sections by default.
+    //
+    // To handle this is a bit different depending on the object file format
+    // used by the backend, broken down into a few different categories:
+    //
+    // * Mach-O - this is for macOS. Inspecting the source code for the native
+    //   linker here shows that the `.llvmbc` and `.llvmcmd` sections are
+    //   automatically skipped by the linker. In that case there's nothing extra
+    //   that we need to do here.
+    //
+    // * Wasm - the native LLD linker is hard-coded to skip `.llvmbc` and
+    //   `.llvmcmd` sections, so there's nothing extra we need to do.
+    //
+    // * COFF - if we don't do anything the linker will by default copy all
+    //   these sections to the output artifact, not what we want! To subvert
+    //   this we want to flag the sections we inserted here as
+    //   `IMAGE_SCN_LNK_REMOVE`. Unfortunately though LLVM has no native way to
+    //   do this. Thankfully though we can do this with some inline assembly,
+    //   which is easy enough to add via module-level global inline asm.
+    //
+    // * ELF - this is very similar to COFF above. One difference is that these
+    //   sections are removed from the output linked artifact when
+    //   `--gc-sections` is passed, which we pass by default. If that flag isn't
+    //   passed though then these sections will show up in the final output.
+    //   Additionally the flag that we need to set here is `SHF_EXCLUDE`.
+    if is_apple
+        || cgcx.opts.target_triple.triple().starts_with("wasm")
+        || cgcx.opts.target_triple.triple().starts_with("asmjs")
+    {
+        // nothing to do here
+    } else if cgcx.opts.target_triple.triple().contains("windows") {
+        let asm = "
+            .section .llvmbc,\"n\"
+            .section .llvmcmd,\"n\"
+        ";
+        llvm::LLVMRustAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
+    } else {
+        let asm = "
+            .section .llvmbc,\"e\"
+            .section .llvmcmd,\"e\"
+        ";
+        llvm::LLVMRustAppendModuleInlineAsm(llmod, asm.as_ptr().cast(), asm.len());
+    }
 }
 
 pub unsafe fn with_llvm_pmb(

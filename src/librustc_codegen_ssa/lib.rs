@@ -55,31 +55,18 @@ pub struct ModuleCodegen<M> {
 
 // FIXME(eddyb) maybe include the crate name in this?
 pub const METADATA_FILENAME: &str = "lib.rmeta";
-pub const RLIB_BYTECODE_EXTENSION: &str = "bc.z";
 
 impl<M> ModuleCodegen<M> {
     pub fn into_compiled_module(
         self,
         emit_obj: bool,
         emit_bc: bool,
-        emit_bc_compressed: bool,
         outputs: &OutputFilenames,
     ) -> CompiledModule {
         let object = emit_obj.then(|| outputs.temp_path(OutputType::Object, Some(&self.name)));
         let bytecode = emit_bc.then(|| outputs.temp_path(OutputType::Bitcode, Some(&self.name)));
-        let bytecode_compressed = emit_bc_compressed.then(|| {
-            outputs
-                .temp_path(OutputType::Bitcode, Some(&self.name))
-                .with_extension(RLIB_BYTECODE_EXTENSION)
-        });
 
-        CompiledModule {
-            name: self.name.clone(),
-            kind: self.kind,
-            object,
-            bytecode,
-            bytecode_compressed,
-        }
+        CompiledModule { name: self.name.clone(), kind: self.kind, object, bytecode }
     }
 }
 
@@ -89,7 +76,6 @@ pub struct CompiledModule {
     pub kind: ModuleKind,
     pub object: Option<PathBuf>,
     pub bytecode: Option<PathBuf>,
-    pub bytecode_compressed: Option<PathBuf>,
 }
 
 pub struct CachedModuleCodegen {

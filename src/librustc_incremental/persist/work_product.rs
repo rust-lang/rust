@@ -21,7 +21,6 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
             let extension = match kind {
                 WorkProductFileKind::Object => "o",
                 WorkProductFileKind::Bytecode => "bc",
-                WorkProductFileKind::BytecodeCompressed => "bc.z",
             };
             let file_name = format!("{}.{}", cgu_name, extension);
             let path_in_incr_dir = in_incr_comp_dir_sess(sess, &file_name);

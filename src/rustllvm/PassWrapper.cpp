@@ -13,6 +13,8 @@
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/Object/ObjectFile.h"
+#include "llvm/Object/IRObjectFile.h"
 #include "llvm/Passes/PassBuilder.h"
 #if LLVM_VERSION_GE(9, 0)
 #include "llvm/Passes/StandardInstrumentations.h"
@@ -1473,6 +1475,32 @@ LLVMRustParseBitcodeForLTO(LLVMContextRef Context,
     return nullptr;
   }
   return wrap(std::move(*SrcOrError).release());
+}
+
+// Find the bitcode section in the object file data and return it as a slice.
+// Fail if the bitcode section is present but empty.
+//
+// On success, the return value is the pointer to the start of the slice and
+// `out_len` is filled with the (non-zero) length. On failure, the return value
+// is `nullptr` and `out_len` is set to zero.
+extern "C" const char*
+LLVMRustGetBitcodeSliceFromObjectData(const char *data,
+                                      size_t len,
+                                      size_t *out_len) {
+  *out_len = 0;
+
+  StringRef Data(data, len);
+  MemoryBufferRef Buffer(Data, ""); // The id is unused.
+
+  Expected<MemoryBufferRef> BitcodeOrError =
+    object::IRObjectFile::findBitcodeInMemBuffer(Buffer);
+  if (!BitcodeOrError) {
+    LLVMRustSetLastError(toString(BitcodeOrError.takeError()).c_str());
+    return nullptr;
+  }
+
+  *out_len = BitcodeOrError->getBufferSize();
+  return BitcodeOrError->getBufferStart();
 }
 
 // Rewrite all `DICompileUnit` pointers to the `DICompileUnit` specified. See

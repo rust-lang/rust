@@ -5,7 +5,6 @@ use super::symbol_export::symbol_name_for_instance_in_crate;
 
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
-    RLIB_BYTECODE_EXTENSION,
 };
 
 use crate::traits::*;
@@ -100,7 +99,6 @@ pub struct ModuleConfig {
     pub emit_pre_lto_bc: bool,
     pub emit_no_opt_bc: bool,
     pub emit_bc: bool,
-    pub emit_bc_compressed: bool,
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
@@ -150,9 +148,10 @@ impl ModuleConfig {
             || sess.opts.cg.linker_plugin_lto.enabled()
         {
             EmitObj::Bitcode
-        } else if sess.opts.debugging_opts.embed_bitcode {
+        } else if sess.opts.debugging_opts.embed_bitcode || need_crate_bitcode_for_rlib(sess) {
+            let force_full = need_crate_bitcode_for_rlib(sess);
             match sess.opts.optimize {
-                config::OptLevel::No | config::OptLevel::Less => {
+                config::OptLevel::No | config::OptLevel::Less if !force_full => {
                     EmitObj::ObjectCode(BitcodeSection::Marker)
                 }
                 _ => EmitObj::ObjectCode(BitcodeSection::Full),
@@ -204,16 +203,6 @@ impl ModuleConfig {
                 save_temps || sess.opts.output_types.contains_key(&OutputType::Bitcode),
                 save_temps
             ),
-            emit_bc_compressed: match kind {
-                ModuleKind::Regular | ModuleKind::Allocator => {
-                    // Emit compressed bitcode files for the crate if we're
-                    // emitting an rlib. Whenever an rlib is created, the
-                    // bitcode is inserted into the archive in order to allow
-                    // LTO against it.
-                    need_crate_bitcode_for_rlib(sess)
-                }
-                ModuleKind::Metadata => false,
-            },
             emit_ir: if_regular!(
                 sess.opts.output_types.contains_key(&OutputType::LlvmAssembly),
                 false
@@ -269,7 +258,6 @@ impl ModuleConfig {
 
     pub fn bitcode_needed(&self) -> bool {
         self.emit_bc
-            || self.emit_bc_compressed
             || self.emit_obj == EmitObj::Bitcode
             || self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
     }
@@ -494,9 +482,6 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         }
         if let Some(ref path) = module.bytecode {
             files.push((WorkProductFileKind::Bytecode, path.clone()));
-        }
-        if let Some(ref path) = module.bytecode_compressed {
-            files.push((WorkProductFileKind::BytecodeCompressed, path.clone()));
         }
 
         if let Some((id, product)) =
@@ -834,7 +819,6 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
     let mut object = None;
     let mut bytecode = None;
-    let mut bytecode_compressed = None;
     for (kind, saved_file) in &module.source.saved_files {
         let obj_out = match kind {
             WorkProductFileKind::Object => {
@@ -845,14 +829,6 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
             WorkProductFileKind::Bytecode => {
                 let path = cgcx.output_filenames.temp_path(OutputType::Bitcode, Some(&module.name));
                 bytecode = Some(path.clone());
-                path
-            }
-            WorkProductFileKind::BytecodeCompressed => {
-                let path = cgcx
-                    .output_filenames
-                    .temp_path(OutputType::Bitcode, Some(&module.name))
-                    .with_extension(RLIB_BYTECODE_EXTENSION);
-                bytecode_compressed = Some(path.clone());
                 path
             }
         };
@@ -876,14 +852,12 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
     assert_eq!(object.is_some(), module_config.emit_obj != EmitObj::None);
     assert_eq!(bytecode.is_some(), module_config.emit_bc);
-    assert_eq!(bytecode_compressed.is_some(), module_config.emit_bc_compressed);
 
     Ok(WorkItemResult::Compiled(CompiledModule {
         name: module.name,
         kind: ModuleKind::Regular,
         object,
         bytecode,
-        bytecode_compressed,
     }))
 }
 

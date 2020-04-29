@@ -18,10 +18,7 @@ use super::archive::ArchiveBuilder;
 use super::command::Command;
 use super::linker::Linker;
 use super::rpath::{self, RPathConfig};
-use crate::{
-    looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FILENAME,
-    RLIB_BYTECODE_EXTENSION,
-};
+use crate::{looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FILENAME};
 
 use cc::windows_registry;
 use tempfile::{Builder as TempFileBuilder, TempDir};
@@ -130,10 +127,6 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                     remove(sess, obj);
                 }
             }
-            for obj in codegen_results.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref())
-            {
-                remove(sess, obj);
-            }
             if let Some(ref metadata_module) = codegen_results.metadata_module {
                 if let Some(ref obj) = metadata_module.object {
                     remove(sess, obj);
@@ -142,9 +135,6 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             if let Some(ref allocator_module) = codegen_results.allocator_module {
                 if let Some(ref obj) = allocator_module.object {
                     remove(sess, obj);
-                }
-                if let Some(ref bc) = allocator_module.bytecode_compressed {
-                    remove(sess, bc);
                 }
             }
         }
@@ -377,14 +367,6 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             // Instead of putting the metadata in an object file section, rlibs
             // contain the metadata in a separate file.
             ab.add_file(&emit_metadata(sess, &codegen_results.metadata, tmpdir));
-
-            // For LTO purposes, the bytecode of this library is also inserted
-            // into the archive.
-            for bytecode in
-                codegen_results.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref())
-            {
-                ab.add_file(bytecode);
-            }
 
             // After adding all files to the archive, we need to update the
             // symbol table of the archive. This currently dies on macOS (see
@@ -1829,7 +1811,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
             let mut any_objects = false;
             for f in archive.src_files() {
-                if f.ends_with(RLIB_BYTECODE_EXTENSION) || f == METADATA_FILENAME {
+                if f == METADATA_FILENAME {
                     archive.remove_file(&f);
                     continue;
                 }
