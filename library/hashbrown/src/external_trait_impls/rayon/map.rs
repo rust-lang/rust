@@ -27,9 +27,7 @@ impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParIter<'a, K, V, S> {
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map
-            .table
-            .par_iter()
+        unsafe { self.map.table.par_iter() }
             .map(|x| unsafe {
                 let r = x.as_ref();
                 (&r.0, &r.1)
@@ -70,9 +68,7 @@ impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParKeys<'a, K, V, S> {
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map
-            .table
-            .par_iter()
+        unsafe { self.map.table.par_iter() }
             .map(|x| unsafe { &x.as_ref().0 })
             .drive_unindexed(consumer)
     }
@@ -110,9 +106,7 @@ impl<'a, K: Sync, V: Sync, S: Sync> ParallelIterator for ParValues<'a, K, V, S> 
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map
-            .table
-            .par_iter()
+        unsafe { self.map.table.par_iter() }
             .map(|x| unsafe { &x.as_ref().1 })
             .drive_unindexed(consumer)
     }
@@ -152,9 +146,7 @@ impl<'a, K: Send + Sync, V: Send, S: Send> ParallelIterator for ParIterMut<'a, K
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map
-            .table
-            .par_iter()
+        unsafe { self.map.table.par_iter() }
             .map(|x| unsafe {
                 let r = x.as_mut();
                 (&r.0, &mut r.1)
@@ -190,9 +182,7 @@ impl<'a, K: Send, V: Send, S: Send> ParallelIterator for ParValuesMut<'a, K, V, 
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        self.map
-            .table
-            .par_iter()
+        unsafe { self.map.table.par_iter() }
             .map(|x| unsafe { &mut x.as_mut().1 })
             .drive_unindexed(consumer)
     }

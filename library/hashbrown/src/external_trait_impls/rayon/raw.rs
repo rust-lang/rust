@@ -169,9 +169,9 @@ impl<T> Drop for ParDrainProducer<T> {
 impl<T> RawTable<T> {
     /// Returns a parallel iterator over the elements in a `RawTable`.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn par_iter(&self) -> RawParIter<T> {
+    pub unsafe fn par_iter(&self) -> RawParIter<T> {
         RawParIter {
-            iter: unsafe { self.iter().iter },
+            iter: self.iter().iter,
         }
     }
 
