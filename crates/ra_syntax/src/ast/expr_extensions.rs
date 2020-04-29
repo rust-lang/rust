@@ -43,7 +43,7 @@ impl ast::IfExpr {
         Some(res)
     }
 
-    fn blocks(&self) -> AstChildren<ast::BlockExpr> {
+    pub fn blocks(&self) -> AstChildren<ast::BlockExpr> {
         support::children(self.syntax())
     }
 }

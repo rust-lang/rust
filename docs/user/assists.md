@@ -695,3 +695,21 @@ use std::┃collections::HashMap;
 // AFTER
 use std::{collections::HashMap};
 ```
+
+## `unwrap_block`
+
+Removes the `mut` keyword.
+
+```rust
+// BEFORE
+fn foo() {
+    if true {┃
+        println!("foo");
+    }
+}
+
+// AFTER
+fn foo() {
+    ┃println!("foo");
+}
+```
