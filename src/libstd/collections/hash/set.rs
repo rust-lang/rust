@@ -273,6 +273,9 @@ impl<T, S> HashSet<T, S> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
     /// # Examples
     ///
     /// ```
@@ -283,6 +286,8 @@ impl<T, S> HashSet<T, S> {
     /// let mut set = HashSet::with_hasher(s);
     /// set.insert(2);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_hasher(hasher: S) -> HashSet<T, S> {
@@ -300,6 +305,9 @@ impl<T, S> HashSet<T, S> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
     /// # Examples
     ///
     /// ```
@@ -310,6 +318,8 @@ impl<T, S> HashSet<T, S> {
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
     /// set.insert(1);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashSet<T, S> {
