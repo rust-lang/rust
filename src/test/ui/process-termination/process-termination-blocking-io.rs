@@ -2,6 +2,7 @@
 // https://github.com/fortanix/rust-sgx/issues/109
 
 // run-pass
+// ignore-wasm no threads support
 
 use std::{net::TcpListener, sync::mpsc, thread};
 
