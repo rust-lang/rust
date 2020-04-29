@@ -1,6 +1,6 @@
 use std::iter;
 
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
+use super::{crt_objects, LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Result<Target, String> {
     const PRE_LINK_ARGS: &[&str] = &[
@@ -68,7 +68,8 @@ pub fn target() -> Result<Target, String> {
             PRE_LINK_ARGS.iter().cloned().map(String::from).collect(),
         ))
         .collect(),
-        post_link_objects: vec!["libunwind.a".into()],
+        // FIXME: libunwind is certainly not a CRT object, use some other option instead.
+        post_link_objects: crt_objects::all("libunwind.a"),
         override_export_symbols: Some(EXPORT_SYMBOLS.iter().cloned().map(String::from).collect()),
         relax_elf_relocations: true,
         ..Default::default()

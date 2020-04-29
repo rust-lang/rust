@@ -1,3 +1,4 @@
+use super::crt_objects::CrtObjectsFallback;
 use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel};
 use std::collections::BTreeMap;
 
@@ -122,6 +123,8 @@ pub fn options() -> TargetOptions {
         simd_types_indirect: false,
 
         pre_link_args,
+
+        crt_objects_fallback: Some(CrtObjectsFallback::Wasm),
 
         // This has no effect in LLVM 8 or prior, but in LLVM 9 and later when
         // PIC code is implemented this has quite a drastric effect if it stays

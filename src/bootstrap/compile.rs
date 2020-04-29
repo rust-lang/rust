@@ -125,15 +125,16 @@ fn copy_third_party_objects(
         target_deps.push(target);
     };
 
-    // Copies the crt(1,i,n).o startup objects
+    // Copies the CRT objects.
     //
-    // Since musl supports fully static linking, we can cross link for it even
-    // with a glibc-targeting toolchain, given we have the appropriate startup
-    // files. As those shipped with glibc won't work, copy the ones provided by
-    // musl so we have them on linux-gnu hosts.
+    // rustc historically provides a more self-contained installation for musl targets
+    // not requiring the presence of a native musl toolchain. For example, it can fall back
+    // to using gcc from a glibc-targeting toolchain for linking.
+    // To do that we have to distribute musl startup objects as a part of Rust toolchain
+    // and link with them manually in the self-contained mode.
     if target.contains("musl") {
         let srcdir = builder.musl_root(target).unwrap().join("lib");
-        for &obj in &["crt1.o", "crti.o", "crtn.o"] {
+        for &obj in &["crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
             copy_and_stamp(&srcdir, obj);
         }
     } else if target.ends_with("-wasi") {
