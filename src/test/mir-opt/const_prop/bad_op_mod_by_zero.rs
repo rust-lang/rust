@@ -1,4 +1,4 @@
-// error-pattern:attempt to calculate the remainder with a divisor of zero
+// EMIT_MIR rustc.main.ConstProp.diff
 #[allow(unconditional_panic)]
 fn main() {
     let y = 0;

@@ -1,4 +1,4 @@
-// error-pattern:attempt to divide by zero
+// EMIT_MIR rustc.main.ConstProp.diff
 #[allow(unconditional_panic)]
 fn main() {
     let y = 0;
