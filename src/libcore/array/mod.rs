@@ -385,6 +385,55 @@ where
         Ord::cmp(&&self[..], &&other[..])
     }
 }
+#[stable(since = "1.4.0", feature = "array_default")]
+impl<T: Default, const N: usize> Default for [T; N]
+where
+    [T; N]: LengthAtMost32,
+{
+    #[inline]
+    fn default() -> [T; N] {
+        use crate::mem::MaybeUninit;
+        // invariant: first `init` items are initialized
+        struct Wrapper<T, const N: usize> {
+            data: MaybeUninit<[T; N]>,
+            init: usize,
+        }
+
+        impl<T, const N: usize> Drop for Wrapper<T, N> {
+            fn drop(&mut self) {
+                debug_assert!(self.init <= N);
+                let ptr = self.data.as_mut_ptr() as *mut T;
+                for i in 0..self.init {
+                    // SAFETY: we iterate over only initialized values.
+                    // Each value is dropped once.
+                    unsafe {
+                        crate::ptr::drop_in_place(ptr.add(i));
+                    }
+                }
+            }
+        }
+
+        let mut w = Wrapper::<T, N> { data: MaybeUninit::uninit(), init: 0 };
+        let array_pointer = w.data.as_mut_ptr() as *mut T;
+        for i in 0..N {
+            // FIXME: this does not work for big N.
+            // Currently it is acceptable, because N <= 32.
+            assert!(N <= isize::MAX as usize);
+            // SAFETY: i < N <= isize::MAX, so add() is correct
+            unsafe {
+                let elem_ptr = array_pointer.add(i);
+                elem_ptr.write(T::default());
+            }
+            w.init += 1;
+        }
+
+        // Prevent double-read in callee and Wrepper::drop
+        w.init = 0;
+
+        // SAFETY: all arraty is initialized now.
+        unsafe { w.data.as_ptr().read() }
+    }
+}
 
 /// Implemented for lengths where trait impls are allowed on arrays in core/std
 #[rustc_on_unimplemented(message = "arrays only have std trait implementations for lengths 0..=32")]
@@ -410,26 +459,3 @@ array_impls! {
     20 21 22 23 24 25 26 27 28 29
     30 31 32
 }
-
-// The Default impls cannot be generated using the array_impls! macro because
-// they require array literals.
-
-macro_rules! array_impl_default {
-    {$n:expr, $t:ident $($ts:ident)*} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] where T: Default {
-            fn default() -> [T; $n] {
-                [$t::default(), $($ts::default()),*]
-            }
-        }
-        array_impl_default!{($n - 1), $($ts)*}
-    };
-    {$n:expr,} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] {
-            fn default() -> [T; $n] { [] }
-        }
-    };
-}
-
-array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
