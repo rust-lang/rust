@@ -25,7 +25,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let thread_info_place = this.deref_operand(thread)?;
         this.write_scalar(
-            Scalar::from_uint(new_thread_id.to_u128(), thread_info_place.layout.size),
+            Scalar::from_uint(new_thread_id.to_u32(), thread_info_place.layout.size),
             thread_info_place.into(),
         )?;
 
@@ -83,7 +83,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         let thread_id = this.get_active_thread()?;
-        this.write_scalar(Scalar::from_uint(thread_id.to_u128(), dest.layout.size), dest)
+        this.write_scalar(Scalar::from_uint(thread_id.to_u32(), dest.layout.size), dest)
     }
 
     fn prctl(

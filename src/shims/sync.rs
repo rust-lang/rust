@@ -555,7 +555,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // result, not only readers can starve writers, but also writers can
             // starve readers.
             if let Some(_writer) = this.unblock_some_thread(writer_blockset)? {
-                rwlock_set_writers(this, rwlock_op, Scalar::from_u32(1))?;
+                assert_eq!(writers, 1);
             } else {
                 rwlock_set_writers(this, rwlock_op, Scalar::from_u32(0))?;
                 let mut readers = 0;

@@ -26,7 +26,9 @@ pub struct TlsEntry<'tcx> {
 
 #[derive(Clone, Debug)]
 struct RunningDtorsState {
-    /// The last TlsKey used to retrieve a TLS destructor.
+    /// The last TlsKey used to retrieve a TLS destructor. `None` means that we
+    /// have not tried to retrieve a TLS destructor yet or that we already tried
+    /// all keys.
     last_dtor_key: Option<TlsKey>,
 }
 
@@ -40,7 +42,7 @@ pub struct TlsData<'tcx> {
 
     /// A single per thread destructor of the thread local storage (that's how
     /// things work on macOS) with a data argument.
-    thread_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar<Tag>)>,
+    macos_thread_dtors: BTreeMap<ThreadId, (ty::Instance<'tcx>, Scalar<Tag>)>,
 
     /// State for currently running TLS dtors. If this map contains a key for a
     /// specific thread, it means that we are in the "destruct" phase, during
@@ -53,7 +55,7 @@ impl<'tcx> Default for TlsData<'tcx> {
         TlsData {
             next_key: 1, // start with 1 as we must not use 0 on Windows
             keys: Default::default(),
-            thread_dtors: Default::default(),
+            macos_thread_dtors: Default::default(),
             dtors_running: Default::default(),
         }
     }
@@ -143,7 +145,7 @@ impl<'tcx> TlsData<'tcx> {
             // UB, according to libstd docs.
             throw_ub_format!("setting thread's local storage destructor while destructors are already running");
         }
-        if self.thread_dtors.insert(thread, (dtor, data)).is_some() {
+        if self.macos_thread_dtors.insert(thread, (dtor, data)).is_some() {
             throw_unsup_format!("setting more than one thread local storage destructor for the same thread is not supported");
         }
         Ok(())
@@ -186,6 +188,7 @@ impl<'tcx> TlsData<'tcx> {
             match data.entry(thread_id) {
                 Entry::Occupied(entry) => {
                     if let Some(dtor) = dtor {
+                        // Set TLS data to NULL, and call dtor with old value.
                         let data_scalar = entry.remove();
                         let ret = Some((*dtor, data_scalar, key));
                         return ret;
@@ -204,6 +207,8 @@ impl<'tcx> TlsData<'tcx> {
         if self.dtors_running.contains_key(&thread) {
             true
         } else {
+            // We need to guard this `insert` with a check because otherwise we
+            // would risk to overwrite `last_dtor_key` with `None`.
             self.dtors_running.insert(
                 thread,
                 RunningDtorsState { last_dtor_key: None }
@@ -259,7 +264,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn schedule_macos_tls_dtor(&mut self) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let thread_id = this.get_active_thread()?;
-        if let Some((instance, data)) = this.machine.tls.thread_dtors.remove(&thread_id) {
+        if let Some((instance, data)) = this.machine.tls.macos_thread_dtors.remove(&thread_id) {
             trace!("Running macos dtor {:?} on {:?} at {:?}", instance, data, thread_id);
 
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
@@ -283,7 +288,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Schedule a pthread TLS destructor. Returns `true` if found
     /// a destructor to schedule, and `false` otherwise.
-    fn schedule_pthread_tls_dtors(&mut self) -> InterpResult<'tcx, bool> {
+    fn schedule_next_pthread_tls_dtor(&mut self) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread()?;
 
@@ -329,33 +334,43 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ///
     /// FIXME: we do not support yet deallocation of thread local statics.
     /// Issue: https://github.com/rust-lang/miri/issues/1369
+    ///
+    /// Note: we consistently run TLS destructors for all threads, including the
+    /// main thread. However, it is not clear that we should run the TLS
+    /// destructors for the main thread. See issue:
+    /// https://github.com/rust-lang/rust/issues/28129.
     fn schedule_next_tls_dtor_for_active_thread(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread()?;
 
-        let scheduled_next = if this.tcx.sess.target.target.target_os == "windows" {
-            if !this.machine.tls.set_dtors_running_for_thread(active_thread) {
+        if this.machine.tls.set_dtors_running_for_thread(active_thread) {
+            // This is the first time we got asked to schedule a destructor. The
+            // Windows schedule destructor function must be called exactly once,
+            // this is why it is in this block.
+            if this.tcx.sess.target.target.target_os == "windows" {
+                // On Windows, we signal that the thread quit by starting the
+                // relevant function, reenabling the thread, and going back to
+                // the scheduler.
                 this.schedule_windows_tls_dtors()?;
-                true
-            } else {
-                false
+                return Ok(())
             }
-        } else {
-            this.machine.tls.set_dtors_running_for_thread(active_thread);
-            // The macOS thread wide destructor runs "before any TLS slots get
-            // freed", so do that first.
-            if this.schedule_macos_tls_dtor()? {
-                true
-            } else {
-                this.schedule_pthread_tls_dtors()?
-            }
-        };
-
-        if !scheduled_next {
-            // No dtors scheduled means that we are finished. Delete the
-            // remaining TLS entries.
-            this.machine.tls.delete_all_thread_tls(active_thread);
         }
+        // The macOS thread wide destructor runs "before any TLS slots get
+        // freed", so do that first.
+        if this.schedule_macos_tls_dtor()? {
+            // We have scheduled a MacOS dtor to run on the thread. Execute it
+            // to completion and come back here. Scheduling a destructor
+            // destroys it, so we will not enter this branch again.
+            return Ok(())
+        }
+        if this.schedule_next_pthread_tls_dtor()? {
+            // We have scheduled a pthread destructor and removed it from the
+            // destructors list. Run it to completion and come back here.
+            return Ok(())
+        }
+
+        // All dtors done!
+        this.machine.tls.delete_all_thread_tls(active_thread);
 
         Ok(())
     }
