@@ -9,7 +9,7 @@ use hir_def::{
     AsMacroCall, TraitId,
 };
 use hir_expand::ExpansionInfo;
-use hir_ty::associated_types;
+use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
 use ra_prof::profile;
@@ -78,7 +78,7 @@ impl PathResolution {
         mut cb: impl FnMut(TypeAlias) -> Option<R>,
     ) -> Option<R> {
         if let Some(res) = self.clone().in_type_ns() {
-            associated_types(db, res, |_, _, id| cb(id.into()))
+            associated_type_shorthand_candidates(db, res, |_, _, id| cb(id.into()))
         } else {
             None
         }

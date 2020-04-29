@@ -385,31 +385,32 @@ impl Ty {
         segment: PathSegment<'_>,
     ) -> Ty {
         if let Some(res) = res {
-            let ty = associated_types(ctx.db, res, move |name, t, associated_ty| {
-                if name == segment.name {
-                    let substs = match ctx.type_param_mode {
-                        TypeParamLoweringMode::Placeholder => {
-                            // if we're lowering to placeholders, we have to put
-                            // them in now
-                            let s = Substs::type_params(
-                                ctx.db,
-                                ctx.resolver
-                                    .generic_def()
-                                    .expect("there should be generics if there's a generic param"),
-                            );
-                            t.substs.clone().subst_bound_vars(&s)
-                        }
-                        TypeParamLoweringMode::Variable => t.substs.clone(),
-                    };
-                    // FIXME handle type parameters on the segment
-                    return Some(Ty::Projection(ProjectionTy {
-                        associated_ty,
-                        parameters: substs,
-                    }));
-                }
+            let ty =
+                associated_type_shorthand_candidates(ctx.db, res, move |name, t, associated_ty| {
+                    if name == segment.name {
+                        let substs = match ctx.type_param_mode {
+                            TypeParamLoweringMode::Placeholder => {
+                                // if we're lowering to placeholders, we have to put
+                                // them in now
+                                let s = Substs::type_params(
+                                    ctx.db,
+                                    ctx.resolver.generic_def().expect(
+                                        "there should be generics if there's a generic param",
+                                    ),
+                                );
+                                t.substs.clone().subst_bound_vars(&s)
+                            }
+                            TypeParamLoweringMode::Variable => t.substs.clone(),
+                        };
+                        // FIXME handle type parameters on the segment
+                        return Some(Ty::Projection(ProjectionTy {
+                            associated_ty,
+                            parameters: substs,
+                        }));
+                    }
 
-                None
-            });
+                    None
+                });
 
             ty.unwrap_or(Ty::Unknown)
         } else {
@@ -671,7 +672,7 @@ pub fn callable_item_sig(db: &dyn HirDatabase, def: CallableDef) -> PolyFnSig {
     }
 }
 
-pub fn associated_types<R>(
+pub fn associated_type_shorthand_candidates<R>(
     db: &dyn HirDatabase,
     res: TypeNs,
     mut cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
