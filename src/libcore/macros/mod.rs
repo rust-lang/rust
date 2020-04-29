@@ -1316,7 +1316,7 @@ pub(crate) mod builtin {
     ///
     /// Read the [unstable book] for the usage.
     ///
-    /// [unstable book]: ../unstable-book/library-features/asm.html
+    /// [unstable book]: ../unstable-book/library-features/llvm-asm.html
     #[unstable(
         feature = "llvm_asm",
         issue = "70173",
