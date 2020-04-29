@@ -5,19 +5,29 @@ use ra_syntax::AstNode;
 use test_utils::tested_by;
 
 use crate::completion::{CompletionContext, Completions};
+use rustc_hash::FxHashSet;
 
 pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_prefix {
         Some(path) => path.clone(),
         _ => return,
     };
-    let def = match ctx.scope().resolve_hir_path(&path) {
-        Some(PathResolution::Def(def)) => def,
-        _ => return,
+    let scope = ctx.scope();
+    let context_module = scope.module();
+
+    let res = match scope.resolve_hir_path(&path) {
+        Some(res) => res,
+        None => return,
     };
-    let context_module = ctx.scope().module();
-    match def {
-        hir::ModuleDef::Module(module) => {
+
+    // Add associated types on type parameters and `Self`.
+    res.assoc_type_shorthand_candidates(ctx.db, |alias| {
+        acc.add_type_alias(ctx, alias);
+        None::<()>
+    });
+
+    match res {
+        PathResolution::Def(hir::ModuleDef::Module(module)) => {
             let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
                 if ctx.use_item_syntax.is_some() {
@@ -35,7 +45,8 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 acc.add_resolution(ctx, name.to_string(), &def);
             }
         }
-        hir::ModuleDef::Adt(_) | hir::ModuleDef::TypeAlias(_) => {
+        PathResolution::Def(def @ hir::ModuleDef::Adt(_))
+        | PathResolution::Def(def @ hir::ModuleDef::TypeAlias(_)) => {
             if let hir::ModuleDef::Adt(Adt::Enum(e)) = def {
                 for variant in e.variants(ctx.db) {
                     acc.add_enum_variant(ctx, variant, None);
@@ -46,8 +57,10 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
                 _ => unreachable!(),
             };
-            // Iterate assoc types separately
-            // FIXME: complete T::AssocType
+
+            // XXX: For parity with Rust bug #22519, this does not complete Ty::AssocType.
+            // (where AssocType is defined on a trait, not an inherent impl)
+
             let krate = ctx.krate;
             if let Some(krate) = krate {
                 let traits_in_scope = ctx.scope().traits_in_scope();
@@ -65,6 +78,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     None::<()>
                 });
 
+                // Iterate assoc types separately
                 ty.iterate_impl_items(ctx.db, krate, |item| {
                     if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
                         return None;
@@ -77,7 +91,8 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 });
             }
         }
-        hir::ModuleDef::Trait(t) => {
+        PathResolution::Def(hir::ModuleDef::Trait(t)) => {
+            // Handles `Trait::assoc` as well as `<Ty as Trait>::assoc`.
             for item in t.items(ctx.db) {
                 if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
                     continue;
@@ -91,8 +106,38 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 }
             }
         }
+        PathResolution::TypeParam(_) | PathResolution::SelfType(_) => {
+            if let Some(krate) = ctx.krate {
+                let ty = match res {
+                    PathResolution::TypeParam(param) => param.ty(ctx.db),
+                    PathResolution::SelfType(impl_def) => impl_def.target_ty(ctx.db),
+                    _ => return,
+                };
+
+                let traits_in_scope = ctx.scope().traits_in_scope();
+                let mut seen = FxHashSet::default();
+                ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
+                    if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
+                        return None;
+                    }
+
+                    // We might iterate candidates of a trait multiple times here, so deduplicate
+                    // them.
+                    if seen.insert(item) {
+                        match item {
+                            hir::AssocItem::Function(func) => {
+                                acc.add_function(ctx, func, None);
+                            }
+                            hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
+                            hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
+                        }
+                    }
+                    None::<()>
+                });
+            }
+        }
         _ => {}
-    };
+    }
 }
 
 #[cfg(test)]
@@ -837,6 +882,211 @@ mod tests {
                 documentation: Documentation(
                     "A trait method",
                 ),
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn completes_ty_param_assoc_ty() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                trait Super {
+                    type Ty;
+                    const CONST: u8;
+                    fn func() {}
+                    fn method(&self) {}
+                }
+
+                trait Sub: Super {
+                    type SubTy;
+                    const C2: ();
+                    fn subfunc() {}
+                    fn submethod(&self) {}
+                }
+
+                fn foo<T: Sub>() {
+                    T::<|>
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "C2",
+                source_range: 219..219,
+                delete: 219..219,
+                insert: "C2",
+                kind: Const,
+                detail: "const C2: ();",
+            },
+            CompletionItem {
+                label: "CONST",
+                source_range: 219..219,
+                delete: 219..219,
+                insert: "CONST",
+                kind: Const,
+                detail: "const CONST: u8;",
+            },
+            CompletionItem {
+                label: "SubTy",
+                source_range: 219..219,
+                delete: 219..219,
+                insert: "SubTy",
+                kind: TypeAlias,
+                detail: "type SubTy;",
+            },
+            CompletionItem {
+                label: "Ty",
+                source_range: 219..219,
+                delete: 219..219,
+                insert: "Ty",
+                kind: TypeAlias,
+                detail: "type Ty;",
+            },
+            CompletionItem {
+                label: "func()",
+                source_range: 219..219,
+                delete: 219..219,
+                insert: "func()$0",
+                kind: Function,
+                lookup: "func",
+                detail: "fn func()",
+            },
+            CompletionItem {
+                label: "method()",
+                source_range: 219..219,
+                delete: 219..219,
+                insert: "method()$0",
+                kind: Method,
+                lookup: "method",
+                detail: "fn method(&self)",
+            },
+            CompletionItem {
+                label: "subfunc()",
+                source_range: 219..219,
+                delete: 219..219,
+                insert: "subfunc()$0",
+                kind: Function,
+                lookup: "subfunc",
+                detail: "fn subfunc()",
+            },
+            CompletionItem {
+                label: "submethod()",
+                source_range: 219..219,
+                delete: 219..219,
+                insert: "submethod()$0",
+                kind: Method,
+                lookup: "submethod",
+                detail: "fn submethod(&self)",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn completes_self_param_assoc_ty() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /lib.rs
+                trait Super {
+                    type Ty;
+                    const CONST: u8 = 0;
+                    fn func() {}
+                    fn method(&self) {}
+                }
+
+                trait Sub: Super {
+                    type SubTy;
+                    const C2: () = ();
+                    fn subfunc() {}
+                    fn submethod(&self) {}
+                }
+
+                struct Wrap<T>(T);
+                impl<T> Super for Wrap<T> {}
+                impl<T> Sub for Wrap<T> {
+                    fn subfunc() {
+                        // Should be able to assume `Self: Sub + Super`
+                        Self::<|>
+                    }
+                }
+                "
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "C2",
+                source_range: 365..365,
+                delete: 365..365,
+                insert: "C2",
+                kind: Const,
+                detail: "const C2: () = ();",
+            },
+            CompletionItem {
+                label: "CONST",
+                source_range: 365..365,
+                delete: 365..365,
+                insert: "CONST",
+                kind: Const,
+                detail: "const CONST: u8 = 0;",
+            },
+            CompletionItem {
+                label: "SubTy",
+                source_range: 365..365,
+                delete: 365..365,
+                insert: "SubTy",
+                kind: TypeAlias,
+                detail: "type SubTy;",
+            },
+            CompletionItem {
+                label: "Ty",
+                source_range: 365..365,
+                delete: 365..365,
+                insert: "Ty",
+                kind: TypeAlias,
+                detail: "type Ty;",
+            },
+            CompletionItem {
+                label: "func()",
+                source_range: 365..365,
+                delete: 365..365,
+                insert: "func()$0",
+                kind: Function,
+                lookup: "func",
+                detail: "fn func()",
+            },
+            CompletionItem {
+                label: "method()",
+                source_range: 365..365,
+                delete: 365..365,
+                insert: "method()$0",
+                kind: Method,
+                lookup: "method",
+                detail: "fn method(&self)",
+            },
+            CompletionItem {
+                label: "subfunc()",
+                source_range: 365..365,
+                delete: 365..365,
+                insert: "subfunc()$0",
+                kind: Function,
+                lookup: "subfunc",
+                detail: "fn subfunc()",
+            },
+            CompletionItem {
+                label: "submethod()",
+                source_range: 365..365,
+                delete: 365..365,
+                insert: "submethod()$0",
+                kind: Method,
+                lookup: "submethod",
+                detail: "fn submethod(&self)",
             },
         ]
         "###

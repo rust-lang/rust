@@ -17,9 +17,9 @@ use hir_def::{
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    AdtId, AssocContainerId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule,
-    ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
-    VariantId,
+    AdtId, AssocContainerId, AssocItemId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId,
+    HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
+    UnionId, VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::CrateId;
@@ -34,6 +34,7 @@ use crate::{
     Binders, BoundVar, DebruijnIndex, FnSig, GenericPredicate, PolyFnSig, ProjectionPredicate,
     ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
 };
+use hir_expand::name::Name;
 
 #[derive(Debug)]
 pub struct TyLoweringContext<'a> {
@@ -383,61 +384,38 @@ impl Ty {
         res: Option<TypeNs>,
         segment: PathSegment<'_>,
     ) -> Ty {
-        let traits_from_env: Vec<_> = match res {
-            Some(TypeNs::SelfType(impl_id)) => match ctx.db.impl_trait(impl_id) {
-                None => return Ty::Unknown,
-                Some(trait_ref) => vec![trait_ref.value],
-            },
-            Some(TypeNs::GenericParam(param_id)) => {
-                let predicates = ctx.db.generic_predicates_for_param(param_id);
-                let mut traits_: Vec<_> = predicates
-                    .iter()
-                    .filter_map(|pred| match &pred.value {
-                        GenericPredicate::Implemented(tr) => Some(tr.clone()),
-                        _ => None,
-                    })
-                    .collect();
-                // Handle `Self::Type` referring to own associated type in trait definitions
-                if let GenericDefId::TraitId(trait_id) = param_id.parent {
-                    let generics = generics(ctx.db.upcast(), trait_id.into());
-                    if generics.params.types[param_id.local_id].provenance
-                        == TypeParamProvenance::TraitSelf
-                    {
-                        let trait_ref = TraitRef {
-                            trait_: trait_id,
-                            substs: Substs::bound_vars(&generics, DebruijnIndex::INNERMOST),
+        if let Some(res) = res {
+            let ty =
+                associated_type_shorthand_candidates(ctx.db, res, move |name, t, associated_ty| {
+                    if name == segment.name {
+                        let substs = match ctx.type_param_mode {
+                            TypeParamLoweringMode::Placeholder => {
+                                // if we're lowering to placeholders, we have to put
+                                // them in now
+                                let s = Substs::type_params(
+                                    ctx.db,
+                                    ctx.resolver.generic_def().expect(
+                                        "there should be generics if there's a generic param",
+                                    ),
+                                );
+                                t.substs.clone().subst_bound_vars(&s)
+                            }
+                            TypeParamLoweringMode::Variable => t.substs.clone(),
                         };
-                        traits_.push(trait_ref);
+                        // FIXME handle type parameters on the segment
+                        return Some(Ty::Projection(ProjectionTy {
+                            associated_ty,
+                            parameters: substs,
+                        }));
                     }
-                }
-                traits_
-            }
-            _ => return Ty::Unknown,
-        };
-        let traits = traits_from_env.into_iter().flat_map(|t| all_super_trait_refs(ctx.db, t));
-        for t in traits {
-            if let Some(associated_ty) =
-                ctx.db.trait_data(t.trait_).associated_type_by_name(&segment.name)
-            {
-                let substs = match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => {
-                        // if we're lowering to placeholders, we have to put
-                        // them in now
-                        let s = Substs::type_params(
-                            ctx.db,
-                            ctx.resolver
-                                .generic_def()
-                                .expect("there should be generics if there's a generic param"),
-                        );
-                        t.substs.subst_bound_vars(&s)
-                    }
-                    TypeParamLoweringMode::Variable => t.substs,
-                };
-                // FIXME handle (forbid) type parameters on the segment
-                return Ty::Projection(ProjectionTy { associated_ty, parameters: substs });
-            }
+
+                    None
+                });
+
+            ty.unwrap_or(Ty::Unknown)
+        } else {
+            Ty::Unknown
         }
-        Ty::Unknown
     }
 
     fn from_hir_path_inner(
@@ -692,6 +670,61 @@ pub fn callable_item_sig(db: &dyn HirDatabase, def: CallableDef) -> PolyFnSig {
         CallableDef::StructId(s) => fn_sig_for_struct_constructor(db, s),
         CallableDef::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
     }
+}
+
+pub fn associated_type_shorthand_candidates<R>(
+    db: &dyn HirDatabase,
+    res: TypeNs,
+    mut cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
+) -> Option<R> {
+    let traits_from_env: Vec<_> = match res {
+        TypeNs::SelfType(impl_id) => match db.impl_trait(impl_id) {
+            None => vec![],
+            Some(trait_ref) => vec![trait_ref.value],
+        },
+        TypeNs::GenericParam(param_id) => {
+            let predicates = db.generic_predicates_for_param(param_id);
+            let mut traits_: Vec<_> = predicates
+                .iter()
+                .filter_map(|pred| match &pred.value {
+                    GenericPredicate::Implemented(tr) => Some(tr.clone()),
+                    _ => None,
+                })
+                .collect();
+            // Handle `Self::Type` referring to own associated type in trait definitions
+            if let GenericDefId::TraitId(trait_id) = param_id.parent {
+                let generics = generics(db.upcast(), trait_id.into());
+                if generics.params.types[param_id.local_id].provenance
+                    == TypeParamProvenance::TraitSelf
+                {
+                    let trait_ref = TraitRef {
+                        trait_: trait_id,
+                        substs: Substs::bound_vars(&generics, DebruijnIndex::INNERMOST),
+                    };
+                    traits_.push(trait_ref);
+                }
+            }
+            traits_
+        }
+        _ => vec![],
+    };
+
+    for t in traits_from_env.into_iter().flat_map(move |t| all_super_trait_refs(db, t)) {
+        let data = db.trait_data(t.trait_);
+
+        for (name, assoc_id) in &data.items {
+            match assoc_id {
+                AssocItemId::TypeAliasId(alias) => {
+                    if let Some(result) = cb(name, &t, *alias) {
+                        return Some(result);
+                    }
+                }
+                AssocItemId::FunctionId(_) | AssocItemId::ConstId(_) => {}
+            }
+        }
+    }
+
+    None
 }
 
 /// Build the type of all specific fields of a struct or enum variant.
