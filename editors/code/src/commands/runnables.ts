@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 import * as ra from '../rust-analyzer-api';
+import * as os from "os";
 
 import { Ctx, Cmd } from '../ctx';
 import { Cargo } from '../cargo';
@@ -82,7 +83,7 @@ async function getCppvsDebugConfig(config: ra.Runnable, sourceFileMap: Record<st
     let executable = await cargo.executableFromArgs(config.args, config.extraArgs);
 
     return {
-        type: "cppvsdbg",
+        type: (os.platform() === "win32") ? "cppvsdbg" : 'cppdbg',
         request: "launch",
         name: config.label,
         program: executable,
