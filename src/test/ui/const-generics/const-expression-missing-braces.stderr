@@ -9,8 +9,20 @@ help: to write a `const` expression, surround it with braces for it to be unambi
 LL |     foo::<{ BAR + 3 }>();
    |           ^         ^
 
+error: `const` generic expressions without braces are not supported
+  --> $DIR/const-expression-missing-braces.rs:15:11
+   |
+LL |     foo::<3 + 3>();
+   |           ^^^^^
+   |
+   = note: only literals are supported as `const` generic without braces
+help: surround `const` expressions with braces
+   |
+LL |     foo::<{ 3 + 3 }>();
+   |           ^       ^
+
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-missing-braces.rs:20:15
+  --> $DIR/const-expression-missing-braces.rs:18:15
    |
 LL |     foo::<BAR - 3>();
    |               ^ expected one of `,` or `>`
@@ -21,7 +33,7 @@ LL |     foo::<{ BAR - 3 }>();
    |           ^         ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-missing-braces.rs:24:15
+  --> $DIR/const-expression-missing-braces.rs:21:15
    |
 LL |     foo::<BAR - BAR>();
    |               ^ expected one of `,` or `>`
@@ -31,8 +43,20 @@ help: to write a `const` expression, surround it with braces for it to be unambi
 LL |     foo::<{ BAR - BAR }>();
    |           ^           ^
 
+error: `const` generic expressions without braces are not supported
+  --> $DIR/const-expression-missing-braces.rs:24:11
+   |
+LL |     foo::<100 - BAR>();
+   |           ^^^^^^^^^
+   |
+   = note: only literals are supported as `const` generic without braces
+help: surround `const` expressions with braces
+   |
+LL |     foo::<{ 100 - BAR }>();
+   |           ^           ^
+
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-missing-braces.rs:31:19
+  --> $DIR/const-expression-missing-braces.rs:27:19
    |
 LL |     foo::<bar<i32>()>();
    |                   ^ expected one of `,` or `>`
@@ -43,7 +67,7 @@ LL |     foo::<{ bar<i32>() }>();
    |           ^            ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-missing-braces.rs:34:21
+  --> $DIR/const-expression-missing-braces.rs:30:21
    |
 LL |     foo::<bar::<i32>()>();
    |                     ^ expected one of `,` or `>`
@@ -54,7 +78,7 @@ LL |     foo::<{ bar::<i32>() }>();
    |           ^              ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-missing-braces.rs:37:21
+  --> $DIR/const-expression-missing-braces.rs:33:21
    |
 LL |     foo::<bar::<i32>() + BAR>();
    |                     ^ expected one of `,` or `>`
@@ -65,7 +89,7 @@ LL |     foo::<{ bar::<i32>() + BAR }>();
    |           ^                    ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-missing-braces.rs:40:21
+  --> $DIR/const-expression-missing-braces.rs:36:21
    |
 LL |     foo::<bar::<i32>() - BAR>();
    |                     ^ expected one of `,` or `>`
@@ -76,7 +100,7 @@ LL |     foo::<{ bar::<i32>() - BAR }>();
    |           ^                    ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-missing-braces.rs:43:15
+  --> $DIR/const-expression-missing-braces.rs:39:15
    |
 LL |     foo::<BAR - bar::<i32>()>();
    |               ^ expected one of `,` or `>`
@@ -87,7 +111,7 @@ LL |     foo::<{ BAR - bar::<i32>() }>();
    |           ^                    ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-missing-braces.rs:46:15
+  --> $DIR/const-expression-missing-braces.rs:42:15
    |
 LL |     foo::<BAR - bar::<i32>()>();
    |               ^ expected one of `,` or `>`
@@ -98,7 +122,7 @@ LL |     foo::<{ BAR - bar::<i32>() }>();
    |           ^                    ^
 
 error: likely `const` expression parsed as trait bounds
-  --> $DIR/const-expression-missing-braces.rs:13:11
+  --> $DIR/const-expression-missing-braces.rs:12:11
    |
 LL |     foo::<BAR + BAR>();
    |           ^^^^^^^^^ parsed as trait bounds but traits weren't found
@@ -108,5 +132,5 @@ help: if you meant to write a `const` expression, surround the expression with b
 LL |     foo::<{ BAR + BAR }>();
    |           ^           ^
 
-error: aborting due to 10 previous errors
+error: aborting due to 12 previous errors
 

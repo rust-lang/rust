@@ -237,5 +237,6 @@ fn inside_const_generic_arguments() {
     if A::<
         true && let 1 = 1 //~ ERROR `let` expressions are not supported here
         //~^ ERROR `match` is not allowed in a `const`
+        //~| ERROR  `const` generic expressions without braces are not supported
     >::O == 5 {}
 }

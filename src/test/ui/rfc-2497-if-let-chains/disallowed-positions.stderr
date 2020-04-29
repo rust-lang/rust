@@ -1,3 +1,15 @@
+error: `const` generic expressions without braces are not supported
+  --> $DIR/disallowed-positions.rs:238:9
+   |
+LL |         true && let 1 = 1
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: only literals are supported as `const` generic without braces
+help: surround `const` expressions with braces
+   |
+LL |         { true && let 1 = 1 }
+   |         ^                   ^
+
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:32:9
    |
@@ -992,7 +1004,7 @@ LL |         let 0 = 0?;
    = help: the trait `std::ops::Try` is not implemented for `{integer}`
    = note: required by `std::ops::Try::into_result`
 
-error: aborting due to 107 previous errors; 2 warnings emitted
+error: aborting due to 108 previous errors; 2 warnings emitted
 
 Some errors have detailed explanations: E0277, E0308, E0600, E0614, E0658.
 For more information about an error, try `rustc --explain E0277`.

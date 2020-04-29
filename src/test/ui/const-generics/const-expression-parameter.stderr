@@ -1,0 +1,14 @@
+error: `const` generic expressions without braces are not supported
+  --> $DIR/const-expression-parameter.rs:13:20
+   |
+LL |     i32_identity::<1 + 2>();
+   |                    ^^^^^
+   |
+   = note: only literals are supported as `const` generic without braces
+help: surround `const` expressions with braces
+   |
+LL |     i32_identity::<{ 1 + 2 }>();
+   |                    ^       ^
+
+error: aborting due to previous error
+

@@ -593,13 +593,39 @@ impl<'a> Parser<'a> {
                 // we should introduce a GenericArg::Ident in the AST and distinguish when
                 // lowering to the HIR. For now, idents for const args are not permitted.
                 let start = self.token.span;
-                self.parse_expr_res(Restrictions::CONST_EXPR, None).map_err(|mut err| {
-                    err.span_label(
-                        start.shrink_to_lo(),
-                        "while parsing a `const` argument starting here",
-                    );
-                    err
-                })?
+                let expr =
+                    self.parse_expr_res(Restrictions::CONST_EXPR, None).map_err(|mut err| {
+                        err.span_label(
+                            start.shrink_to_lo(),
+                            "while parsing a `const` argument starting here",
+                        );
+                        err
+                    })?;
+                let valid_const = match &expr.kind {
+                    ast::ExprKind::Block(_, _) | ast::ExprKind::Lit(_) => true,
+                    ast::ExprKind::Unary(ast::UnOp::Neg, expr) => match &expr.kind {
+                        ast::ExprKind::Lit(_) => true,
+                        _ => false,
+                    },
+                    _ => false,
+                };
+                if !valid_const {
+                    self.struct_span_err(
+                        expr.span,
+                        "`const` generic expressions without braces are not supported",
+                    )
+                    .note("only literals are supported as `const` generic without braces")
+                    .multipart_suggestion(
+                        "surround `const` expressions with braces",
+                        vec![
+                            (expr.span.shrink_to_lo(), "{ ".to_string()),
+                            (expr.span.shrink_to_hi(), " }".to_string()),
+                        ],
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                }
+                expr
             };
             GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
         } else if self.check_type() {

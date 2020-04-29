@@ -1,4 +1,3 @@
-// check-pass
 #![allow(incomplete_features)]
 #![feature(const_generics)]
 
@@ -11,7 +10,7 @@ fn foo_a() {
 }
 
 fn foo_b() {
-    i32_identity::<1 + 2>(); // ok
+    i32_identity::<1 + 2>(); //~ ERROR  `const` generic expressions without braces are not supported
 }
 
 fn foo_c() {
