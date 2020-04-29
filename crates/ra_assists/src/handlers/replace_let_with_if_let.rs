@@ -1,6 +1,5 @@
 use std::iter::once;
 
-use hir::Adt;
 use ra_syntax::{
     ast::{
         self,
@@ -12,6 +11,7 @@ use ra_syntax::{
 
 use crate::{
     assist_ctx::{Assist, AssistCtx},
+    utils::TryEnum,
     AssistId,
 };
 
@@ -45,20 +45,10 @@ pub(crate) fn replace_let_with_if_let(ctx: AssistCtx) -> Option<Assist> {
     let init = let_stmt.initializer()?;
     let original_pat = let_stmt.pat()?;
     let ty = ctx.sema.type_of_expr(&init)?;
-    let enum_ = match ty.as_adt() {
-        Some(Adt::Enum(it)) => it,
-        _ => return None,
-    };
-    let happy_case =
-        [("Result", "Ok"), ("Option", "Some")].iter().find_map(|(known_type, happy_case)| {
-            if &enum_.name(ctx.db).to_string() == known_type {
-                return Some(happy_case);
-            }
-            None
-        });
+    let happy_variant = TryEnum::from_ty(ctx.sema, &ty).map(|it| it.happy_case());
 
     ctx.add_assist(AssistId("replace_let_with_if_let"), "Replace with if-let", |edit| {
-        let with_placeholder: ast::Pat = match happy_case {
+        let with_placeholder: ast::Pat = match happy_variant {
             None => make::placeholder_pat().into(),
             Some(var_name) => make::tuple_struct_pat(
                 make::path_unqualified(make::path_segment(make::name_ref(var_name))),
