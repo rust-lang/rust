@@ -1,0 +1,14 @@
+error: to use a constant of type `consts::CustomEq` in a pattern, `consts::CustomEq` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/cross-crate-fail.rs:9:9
+   |
+LL |         consts::SOME => panic!(),
+   |         ^^^^^^^^^^^^
+
+error: to use a constant of type `consts::CustomEq` in a pattern, `consts::CustomEq` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/cross-crate-fail.rs:9:9
+   |
+LL |         consts::SOME => panic!(),
+   |         ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

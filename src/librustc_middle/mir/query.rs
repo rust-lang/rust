@@ -80,6 +80,7 @@ pub struct BorrowCheckResult<'tcx> {
 pub struct ConstQualifs {
     pub has_mut_interior: bool,
     pub needs_drop: bool,
+    pub custom_eq: bool,
 }
 
 /// After we borrow check a closure, we are left with various

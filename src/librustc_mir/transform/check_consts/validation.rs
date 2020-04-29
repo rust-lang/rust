@@ -17,7 +17,7 @@ use std::borrow::Cow;
 use std::ops::Deref;
 
 use super::ops::{self, NonConstOp};
-use super::qualifs::{self, HasMutInterior, NeedsDrop};
+use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstCx, ConstKind, Qualif};
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
@@ -142,9 +142,35 @@ impl Qualifs<'mir, 'tcx> {
 
         let return_loc = ccx.body.terminator_loc(return_block);
 
+        let custom_eq = match ccx.const_kind() {
+            // We don't care whether a `const fn` returns a value that is not structurally
+            // matchable. Functions calls are opaque and always use type-based qualification, so
+            // this value should never be used.
+            ConstKind::ConstFn => true,
+
+            // If we know that all values of the return type are structurally matchable, there's no
+            // need to run dataflow.
+            ConstKind::Const | ConstKind::Static | ConstKind::StaticMut
+                if !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) =>
+            {
+                false
+            }
+
+            ConstKind::Const | ConstKind::Static | ConstKind::StaticMut => {
+                let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
+                    .into_engine(ccx.tcx, &ccx.body, ccx.def_id)
+                    .iterate_to_fixpoint()
+                    .into_results_cursor(&ccx.body);
+
+                cursor.seek_after(return_loc);
+                cursor.contains(RETURN_PLACE)
+            }
+        };
+
         ConstQualifs {
             needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
             has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
+            custom_eq,
         }
     }
 }

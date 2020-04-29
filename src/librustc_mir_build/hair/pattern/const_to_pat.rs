@@ -22,13 +22,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         cv: &'tcx ty::Const<'tcx>,
         id: hir::HirId,
         span: Span,
+        mir_structural_match_violation: bool,
     ) -> Pat<'tcx> {
         debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
         debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
 
         self.tcx.infer_ctxt().enter(|infcx| {
             let mut convert = ConstToPat::new(self, id, span, infcx);
-            convert.to_pat(cv)
+            convert.to_pat(cv, mir_structural_match_violation)
         })
     }
 }
@@ -81,7 +82,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         traits::type_marked_structural(self.id, self.span, &self.infcx, ty)
     }
 
-    fn to_pat(&mut self, cv: &'tcx ty::Const<'tcx>) -> Pat<'tcx> {
+    fn to_pat(
+        &mut self,
+        cv: &'tcx ty::Const<'tcx>,
+        mir_structural_match_violation: bool,
+    ) -> Pat<'tcx> {
         // This method is just a wrapper handling a validity check; the heavy lifting is
         // performed by the recursive `recur` method, which is not meant to be
         // invoked except by this method.
@@ -100,6 +105,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 "search_for_structural_match_violation cv.ty: {:?} returned: {:?}",
                 cv.ty, structural
             );
+
+            if structural.is_none() && mir_structural_match_violation {
+                bug!("MIR const-checker found novel structural match violation");
+            }
+
             if let Some(non_sm_ty) = structural {
                 let adt_def = match non_sm_ty {
                     traits::NonStructuralMatchTy::Adt(adt_def) => adt_def,
@@ -146,12 +156,17 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 if !ty_is_partial_eq {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
                     self.tcx().sess.span_fatal(self.span, &make_msg());
-                } else {
+                } else if mir_structural_match_violation {
                     self.tcx().struct_span_lint_hir(
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         self.id,
                         self.span,
                         |lint| lint.build(&make_msg()).emit(),
+                    );
+                } else {
+                    debug!(
+                        "`search_for_structural_match_violation` found one, but `CustomEq` was \
+                          not in the qualifs for that `const`"
                     );
                 }
             }
