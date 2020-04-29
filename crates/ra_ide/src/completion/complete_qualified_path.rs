@@ -15,10 +15,9 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     let scope = ctx.scope();
     let context_module = scope.module();
 
-    let res = if let Some(res) = scope.resolve_hir_path(&path) {
-        res
-    } else {
-        return;
+    let res = match scope.resolve_hir_path(&path) {
+        Some(res) => res,
+        None => return,
     };
 
     // Add associated types on type parameters and `Self`.
