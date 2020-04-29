@@ -43,11 +43,11 @@ pub enum PathResolution {
 }
 
 impl PathResolution {
-    fn in_type_ns(self) -> Option<TypeNs> {
+    fn in_type_ns(&self) -> Option<TypeNs> {
         match self {
-            PathResolution::Def(ModuleDef::Adt(adt)) => Some(TypeNs::AdtId(adt.into())),
+            PathResolution::Def(ModuleDef::Adt(adt)) => Some(TypeNs::AdtId((*adt).into())),
             PathResolution::Def(ModuleDef::BuiltinType(builtin)) => {
-                Some(TypeNs::BuiltinType(builtin))
+                Some(TypeNs::BuiltinType(*builtin))
             }
             PathResolution::Def(ModuleDef::Const(_)) => None,
             PathResolution::Def(ModuleDef::EnumVariant(_)) => None,
@@ -56,16 +56,16 @@ impl PathResolution {
             PathResolution::Def(ModuleDef::Static(_)) => None,
             PathResolution::Def(ModuleDef::Trait(_)) => None,
             PathResolution::Def(ModuleDef::TypeAlias(alias)) => {
-                Some(TypeNs::TypeAliasId(alias.into()))
+                Some(TypeNs::TypeAliasId((*alias).into()))
             }
             PathResolution::Local(_) => None,
-            PathResolution::TypeParam(param) => Some(TypeNs::GenericParam(param.into())),
-            PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType(impl_def.into())),
+            PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
+            PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
             PathResolution::Macro(_) => None,
             PathResolution::AssocItem(AssocItem::Const(_)) => None,
             PathResolution::AssocItem(AssocItem::Function(_)) => None,
             PathResolution::AssocItem(AssocItem::TypeAlias(alias)) => {
-                Some(TypeNs::TypeAliasId(alias.into()))
+                Some(TypeNs::TypeAliasId((*alias).into()))
             }
         }
     }
@@ -77,7 +77,7 @@ impl PathResolution {
         db: &dyn HirDatabase,
         mut cb: impl FnMut(TypeAlias) -> Option<R>,
     ) -> Option<R> {
-        if let Some(res) = self.clone().in_type_ns() {
+        if let Some(res) = self.in_type_ns() {
             associated_type_shorthand_candidates(db, res, |_, _, id| cb(id.into()))
         } else {
             None
