@@ -1,4 +1,4 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
+// compile-flags: -Zunleash-the-miri-inside-of-you -Zdeduplicate-diagnostics
 // aux-build:static_cross_crate.rs
 #![allow(const_err)]
 
@@ -14,15 +14,28 @@ const SLICE_MUT: &[u8; 1] = { //~ ERROR undefined behavior to use this value
 //~| NOTE
     unsafe { &static_cross_crate::ZERO }
     //~^ WARN skipping const checks
-    //~| WARN skipping const checks
+};
+
+const SLICE_MUT2: &u8 = { //~ ERROR undefined behavior to use this value
+//~| NOTE encountered a reference pointing to a static variable
+//~| NOTE
+    unsafe { &static_cross_crate::ZERO[0] }
+    //~^ WARN skipping const checks
 };
 
 pub fn test(x: &[u8; 1]) -> bool {
     match x {
         SLICE_MUT => true,
         //~^ ERROR could not evaluate constant pattern
-        //~| ERROR could not evaluate constant pattern
         &[1..] => false,
+    }
+}
+
+pub fn test2(x: &u8) -> bool {
+    match x {
+        SLICE_MUT2 => true,
+        //~^ ERROR could not evaluate constant pattern
+        &(1..) => false,
     }
 }
 
