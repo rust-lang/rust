@@ -1942,7 +1942,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
                         }
                         let refs: String = iter::repeat('&').take(n + 1).collect();
                         let derefs: String = iter::repeat('*').take(n).collect();
-                        let explicit = format!("{}{}::clone({})", refs, ty, snip);
+                        let explicit = format!("<{}{}>::clone({})", refs, ty, snip);
                         diag.span_suggestion(
                             expr.span,
                             "try dereferencing it",
@@ -1951,7 +1951,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
                         );
                         diag.span_suggestion(
                             expr.span,
-                            "or try being explicit about what type to clone",
+                            "or try being explicit if you are sure, that you want to clone a reference",
                             explicit,
                             Applicability::MaybeIncorrect,
                         );
