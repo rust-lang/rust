@@ -1,8 +1,8 @@
 warning: skipping const checks
-  --> $DIR/non_const_fn.rs:9:16
+  --> $DIR/non_const_fn.rs:9:1
    |
 LL | static C: () = foo();
-   |                ^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/non_const_fn.rs:9:16

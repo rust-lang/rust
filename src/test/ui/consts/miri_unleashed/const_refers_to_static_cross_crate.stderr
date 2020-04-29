@@ -1,8 +1,13 @@
 warning: skipping const checks
-  --> $DIR/const_refers_to_static_cross_crate.rs:14:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:11:1
    |
-LL |     unsafe { &static_cross_crate::ZERO }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / const SLICE_MUT: &[u8; 1] = {
+LL | |
+LL | |
+LL | |
+LL | |     unsafe { &static_cross_crate::ZERO }
+LL | | };
+   | |__^
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const_refers_to_static_cross_crate.rs:11:1
@@ -10,24 +15,29 @@ error[E0080]: it is undefined behavior to use this value
 LL | / const SLICE_MUT: &[u8; 1] = {
 LL | |
 LL | |
-LL | |     unsafe { &static_cross_crate::ZERO }
 LL | |
+LL | |     unsafe { &static_cross_crate::ZERO }
 LL | | };
    | |__^ type validation failed: encountered a reference pointing to a static variable
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:44:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:43:9
    |
 LL |         SLICE_MUT => true,
    |         ^^^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static_cross_crate.rs:21:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:18:1
    |
-LL |     unsafe { &static_cross_crate::ZERO[0] }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / const U8_MUT: &u8 = {
+LL | |
+LL | |
+LL | |
+LL | |     unsafe { &static_cross_crate::ZERO[0] }
+LL | | };
+   | |__^
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const_refers_to_static_cross_crate.rs:18:1
@@ -35,32 +45,37 @@ error[E0080]: it is undefined behavior to use this value
 LL | / const U8_MUT: &u8 = {
 LL | |
 LL | |
-LL | |     unsafe { &static_cross_crate::ZERO[0] }
 LL | |
+LL | |     unsafe { &static_cross_crate::ZERO[0] }
 LL | | };
    | |__^ type validation failed: encountered a reference pointing to a static variable
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:52:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:51:9
    |
 LL |         U8_MUT => true,
    |         ^^^^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static_cross_crate.rs:28:17
-   |
-LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static_cross_crate.rs:28:14
+  --> $DIR/const_refers_to_static_cross_crate.rs:27:1
    |
 LL | / const U8_MUT2: &u8 = {
+LL | |
+LL | |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
+LL | |
+LL | |
+LL | | };
+   | |__^
+
+warning: any use of this value will cause an error
+  --> $DIR/const_refers_to_static_cross_crate.rs:29:14
+   |
+LL | / const U8_MUT2: &u8 = {
+LL | |
 LL | |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
    | |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
-LL | |
 LL | |
 LL | |
 LL | | };
@@ -73,33 +88,29 @@ LL | #[warn(const_err)]
    |        ^^^^^^^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:62:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:61:9
    |
 LL |         U8_MUT2 => true,
    |         ^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static_cross_crate.rs:35:20
-   |
-LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: skipping const checks
-  --> $DIR/const_refers_to_static_cross_crate.rs:35:77
-   |
-LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
-   |                                                                             ^^^^^^^^
-   |
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-warning: any use of this value will cause an error
-  --> $DIR/const_refers_to_static_cross_crate.rs:35:51
+  --> $DIR/const_refers_to_static_cross_crate.rs:34:1
    |
 LL | / const U8_MUT3: &u8 = {
+LL | |
+LL | |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
+LL | |
+LL | |
+LL | | };
+   | |__^
+
+warning: any use of this value will cause an error
+  --> $DIR/const_refers_to_static_cross_crate.rs:36:51
+   |
+LL | / const U8_MUT3: &u8 = {
+LL | |
 LL | |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    | |                                                   ^^^^^^^^^^^ constant accesses static
-LL | |
-LL | |
 LL | |
 LL | |
 LL | | };
@@ -112,11 +123,11 @@ LL | #[warn(const_err)]
    |        ^^^^^^^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:69:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:68:9
    |
 LL |         U8_MUT3 => true,
    |         ^^^^^^^
 
-error: aborting due to 6 previous errors; 7 warnings emitted
+error: aborting due to 6 previous errors; 6 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

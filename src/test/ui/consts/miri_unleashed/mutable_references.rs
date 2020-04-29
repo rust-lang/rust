@@ -26,9 +26,8 @@ struct Meh {
 
 unsafe impl Sync for Meh {}
 
-static MEH: Meh = Meh {
+static MEH: Meh = Meh { //~ WARN skipping const checks
     x: &UnsafeCell::new(42),
-    //~^ WARN: skipping const checks
 };
 
 // this is fine for the same reason as `BAR`.

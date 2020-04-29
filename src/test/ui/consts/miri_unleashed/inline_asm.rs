@@ -6,11 +6,9 @@
 fn main() {}
 
 // Make sure we catch executing inline assembly.
-static TEST_BAD: () = {
+static TEST_BAD: () = { //~ WARN skipping const checks
     unsafe { llvm_asm!("xor %eax, %eax" ::: "eax"); }
     //~^ ERROR could not evaluate static initializer
-    //~| NOTE in this expansion of llvm_asm!
     //~| NOTE inline assembly is not supported
-    //~| WARN skipping const checks
     //~| NOTE in this expansion of llvm_asm!
 };

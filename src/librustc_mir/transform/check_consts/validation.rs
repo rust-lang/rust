@@ -253,7 +253,7 @@ impl Validator<'mir, 'tcx> {
         let is_unleashable = O::IS_SUPPORTED_IN_MIRI;
 
         if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-            self.tcx.sess.span_warn(span, "skipping const checks");
+            self.tcx.sess.span_warn(self.tcx.def_span(self.def_id), "skipping const checks");
             return;
         }
 

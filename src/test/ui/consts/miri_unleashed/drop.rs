@@ -13,7 +13,6 @@ static TEST_OK: () = {
 
 // Make sure we catch executing bad drop functions.
 // The actual error is tested by the error-pattern above.
-static TEST_BAD: () = {
+static TEST_BAD: () = { //~ WARN skipping const checks
     let _v: Vec<i32> = Vec::new();
-    //~^ WARN skipping const check
 };

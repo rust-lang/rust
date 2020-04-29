@@ -1,8 +1,10 @@
 warning: skipping const checks
-  --> $DIR/mutable_references_ice.rs:22:8
+  --> $DIR/mutable_references_ice.rs:21:1
    |
-LL |     x: &UnsafeCell::new(42),
-   |        ^^^^^^^^^^^^^^^^^^^^
+LL | / const MUH: Meh = Meh {
+LL | |     x: &UnsafeCell::new(42),
+LL | | };
+   | |__^
 
 thread 'rustc' panicked at 'assertion failed: `(left != right)`
   left: `Const`,

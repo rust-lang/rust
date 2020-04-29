@@ -1,8 +1,12 @@
 warning: skipping const checks
-  --> $DIR/caller-location-fnptr-rt-ctfe-equiv.rs:21:5
+  --> $DIR/caller-location-fnptr-rt-ctfe-equiv.rs:18:1
    |
-LL |     ptr()
-   |     ^^^^^
+LL | / const fn calling_attributed() -> L {
+LL | |     // We need `-Z unleash-the-miri-inside-of-you` for this as we don't have `const fn` pointers.
+LL | |     let ptr: fn() -> L = attributed;
+LL | |     ptr()
+LL | | }
+   | |_^
 
 warning: 1 warning emitted
 

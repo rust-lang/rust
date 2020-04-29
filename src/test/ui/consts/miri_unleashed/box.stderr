@@ -1,26 +1,12 @@
 warning: skipping const checks
-  --> $DIR/box.rs:10:11
+  --> $DIR/box.rs:9:1
    |
-LL |     &mut *(box 0)
-   |           ^^^^^^^
-
-warning: skipping const checks
-  --> $DIR/box.rs:10:16
-   |
-LL |     &mut *(box 0)
-   |                ^
-
-warning: skipping const checks
-  --> $DIR/box.rs:10:5
-   |
-LL |     &mut *(box 0)
-   |     ^^^^^^^^^^^^^
-
-warning: skipping const checks
-  --> $DIR/box.rs:10:5
-   |
-LL |     &mut *(box 0)
-   |     ^^^^^^^^^^^^^
+LL | / static TEST_BAD: &mut i32 = {
+LL | |     &mut *(box 0)
+LL | |
+LL | |
+LL | | };
+   | |__^
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/box.rs:10:11
@@ -28,6 +14,6 @@ error[E0080]: could not evaluate static initializer
 LL |     &mut *(box 0)
    |           ^^^^^^^ "heap allocations via `box` keyword" needs an rfc before being allowed inside constants
 
-error: aborting due to previous error; 4 warnings emitted
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

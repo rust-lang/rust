@@ -1,4 +1,4 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
+// compile-flags: -Zunleash-the-miri-inside-of-you -Zdeduplicate-diagnostics
 // normalize-stderr-test "alloc[0-9]+" -> "allocN"
 
 #![deny(const_err)] // The `allow` variant is tested by `mutable_const2`.
@@ -14,12 +14,11 @@ const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
 //~^ WARN: skipping const checks
 
 const MUTATING_BEHIND_RAW: () = { //~ NOTE
+//~^ WARN skipping const checks
     // Test that `MUTABLE_BEHIND_RAW` is actually immutable, by doing this at const time.
     unsafe {
         *MUTABLE_BEHIND_RAW = 99 //~ ERROR any use of this value will cause an error
         //~^ NOTE: which is read-only
-        //~| WARN skipping const checks
-        //~| WARN skipping const checks
         // FIXME would be good to match more of the error message here, but looks like we
         // normalize *after* checking the annoations here.
     }

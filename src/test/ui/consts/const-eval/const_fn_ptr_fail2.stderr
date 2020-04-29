@@ -1,8 +1,10 @@
 warning: skipping const checks
-  --> $DIR/const_fn_ptr_fail2.rs:13:5
+  --> $DIR/const_fn_ptr_fail2.rs:12:1
    |
-LL |     x(y)
-   |     ^^^^
+LL | / const fn bar(x: fn(usize) -> usize, y: usize) -> usize {
+LL | |     x(y)
+LL | | }
+   | |_^
 
 error[E0080]: evaluation of constant expression failed
   --> $DIR/const_fn_ptr_fail2.rs:20:5

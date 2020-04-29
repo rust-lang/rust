@@ -1,25 +1,26 @@
 warning: skipping const checks
-  --> $DIR/mutable_const.rs:13:38
+  --> $DIR/mutable_const.rs:13:1
    |
 LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
-   |                                      ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: skipping const checks
-  --> $DIR/mutable_const.rs:19:9
-   |
-LL |         *MUTABLE_BEHIND_RAW = 99
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: skipping const checks
-  --> $DIR/mutable_const.rs:19:9
-   |
-LL |         *MUTABLE_BEHIND_RAW = 99
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: any use of this value will cause an error
-  --> $DIR/mutable_const.rs:19:9
+  --> $DIR/mutable_const.rs:16:1
    |
 LL | / const MUTATING_BEHIND_RAW: () = {
+LL | |
+LL | |     // Test that `MUTABLE_BEHIND_RAW` is actually immutable, by doing this at const time.
+LL | |     unsafe {
+...  |
+LL | |     }
+LL | | };
+   | |__^
+
+error: any use of this value will cause an error
+  --> $DIR/mutable_const.rs:20:9
+   |
+LL | / const MUTATING_BEHIND_RAW: () = {
+LL | |
 LL | |     // Test that `MUTABLE_BEHIND_RAW` is actually immutable, by doing this at const time.
 LL | |     unsafe {
 LL | |         *MUTABLE_BEHIND_RAW = 99
@@ -35,5 +36,5 @@ note: the lint level is defined here
 LL | #![deny(const_err)] // The `allow` variant is tested by `mutable_const2`.
    |         ^^^^^^^^^
 
-error: aborting due to previous error; 3 warnings emitted
+error: aborting due to previous error; 2 warnings emitted
 

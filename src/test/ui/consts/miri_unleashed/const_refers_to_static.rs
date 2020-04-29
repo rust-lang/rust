@@ -1,5 +1,5 @@
 // build-fail
-// compile-flags: -Zunleash-the-miri-inside-of-you
+// compile-flags: -Zunleash-the-miri-inside-of-you -Zdeduplicate-diagnostics
 #![allow(const_err)]
 
 use std::sync::atomic::AtomicUsize;
@@ -9,23 +9,20 @@ use std::sync::atomic::Ordering;
 // when *using* the const.
 
 const MUTATE_INTERIOR_MUT: usize = {
+//~^ WARN skipping const checks
     static FOO: AtomicUsize = AtomicUsize::new(0);
     FOO.fetch_add(1, Ordering::Relaxed)
-    //~^ WARN skipping const checks
-    //~| WARN skipping const checks
 };
 
 const READ_INTERIOR_MUT: usize = {
+//~^ WARN skipping const checks
     static FOO: AtomicUsize = AtomicUsize::new(0);
     unsafe { *(&FOO as *const _ as *const usize) }
-    //~^ WARN skipping const checks
-    //~| WARN skipping const checks
 };
 
 static mut MUTABLE: u32 = 0;
 const READ_MUT: u32 = unsafe { MUTABLE };
 //~^ WARN skipping const checks
-//~| WARN skipping const checks
 
 fn main() {
     MUTATE_INTERIOR_MUT;

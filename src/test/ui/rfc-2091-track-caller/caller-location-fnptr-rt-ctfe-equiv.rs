@@ -15,10 +15,10 @@ const fn attributed() -> L {
     std::intrinsics::caller_location()
 }
 
-const fn calling_attributed() -> L {
+const fn calling_attributed() -> L { //~ WARN skipping const checks
     // We need `-Z unleash-the-miri-inside-of-you` for this as we don't have `const fn` pointers.
     let ptr: fn() -> L = attributed;
-    ptr() //~ WARN skipping const checks
+    ptr()
 }
 
 fn main() {

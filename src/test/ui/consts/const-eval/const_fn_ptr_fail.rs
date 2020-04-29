@@ -6,9 +6,8 @@
 fn double(x: usize) -> usize { x * 2 }
 const X: fn(usize) -> usize = double;
 
-const fn bar(x: usize) -> usize {
+const fn bar(x: usize) -> usize { //~ WARNING skipping const checks
     X(x) // FIXME: this should error someday
-    //~^ WARN: skipping const checks
 }
 
 fn main() {}
