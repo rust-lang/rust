@@ -300,7 +300,7 @@ pub enum InternKind {
 /// Intern `ret` and everything it references.
 ///
 /// This *cannot raise an interpreter error*.  Doing so is left to validation, which
-/// trakcs where in the value we are and thus can show much better error messages.
+/// tracks where in the value we are and thus can show much better error messages.
 /// Any errors here would anyway be turned into `const_err` lints, whereas validation failures
 /// are hard errors.
 pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
