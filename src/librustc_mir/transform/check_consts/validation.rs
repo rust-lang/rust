@@ -448,6 +448,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             }
 
             ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {
@@ -459,10 +460,6 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                     _ => {}
                 }
-            }
-
-            ProjectionElem::Downcast(..) => {
-                self.check_op(ops::Downcast);
             }
         }
     }
