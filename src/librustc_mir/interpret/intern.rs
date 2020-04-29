@@ -343,7 +343,7 @@ where
     ref_tracking.track((ret, base_intern_mode), || ());
 
     while let Some(((mplace, mode), _)) = ref_tracking.todo.pop() {
-        let interned = InternVisitor {
+        let res = InternVisitor {
             ref_tracking: &mut ref_tracking,
             ecx,
             mode,
@@ -352,23 +352,24 @@ where
             inside_unsafe_cell: false,
         }
         .visit_value(mplace);
-        if let Err(error) = interned {
-            // This can happen when e.g. the tag of an enum is not a valid discriminant. We do have
-            // to read enum discriminants in order to find references in enum variant fields.
-            if let err_ub!(ValidationFailure(_)) = error.kind {
-                let err = crate::const_eval::error_to_const_error(&ecx, error);
-                match err.struct_error(
-                    ecx.tcx,
-                    "it is undefined behavior to use this value",
-                    |mut diag| {
-                        diag.note(crate::const_eval::note_on_undefined_behavior_error());
-                        diag.emit();
-                    },
-                ) {
-                    ErrorHandled::TooGeneric
-                    | ErrorHandled::Reported(ErrorReported)
-                    | ErrorHandled::Linted => {}
-                }
+        // We deliberately *ignore* interpreter errors here.  When there is a problem, the remaining
+        // references are "leftover"-interned, and later validation will show a proper error
+        // and point at the right part of the value causing the problem.
+        match res {
+            Ok(()) => {},
+            Err(error) => {
+                ecx.tcx.sess.delay_span_bug(
+                    ecx.tcx.span,
+                    "error during interning should later cause validation failure",
+                );
+                // Some errors shouldn't come up because creating them causes
+                // an allocation, which we should avoid. When that happens,
+                // dedicated error variants should be introduced instead.
+                assert!(
+                    !error.kind.allocates(),
+                    "interning encountered allocating error: {}",
+                    error
+                );
             }
         }
     }
