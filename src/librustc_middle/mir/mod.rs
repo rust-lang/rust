@@ -1807,7 +1807,7 @@ pub enum ProjectionElem<V, T> {
     /// ```
     ConstantIndex {
         /// index or -index (in Python terms), depending on from_end
-        offset: u32,
+        offset: u64,
         /// The thing being indexed must be at least this long. For arrays this
         /// is always the exact length.
         min_length: u32,
@@ -1821,8 +1821,8 @@ pub enum ProjectionElem<V, T> {
     /// If `from_end` is true `slice[from..slice.len() - to]`.
     /// Otherwise `array[from..to]`.
     Subslice {
-        from: u32,
-        to: u32,
+        from: u64,
+        to: u64,
         /// Whether `to` counts from the start or end of the array/slice.
         /// For `PlaceElem`s this is `true` if and only if the base is a slice.
         /// For `ProjectionKind`, this can also be `true` for arrays.

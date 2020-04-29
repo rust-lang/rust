@@ -675,7 +675,7 @@ where
         let tcx = self.tcx();
 
         if let Some(size) = opt_size {
-            let size: u32 = size.try_into().unwrap_or_else(|_| {
+            let size: u64 = size.try_into().unwrap_or_else(|_| {
                 bug!("move out check isn't implemented for array sizes bigger than u32::MAX");
             });
             let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size)
