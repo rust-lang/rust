@@ -1,6 +1,8 @@
 //! Assorted functions shared by several assists.
 pub(crate) mod insert_use;
 
+use std::iter;
+
 use hir::{Adt, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
@@ -100,15 +102,50 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
     }
 }
 
-pub(crate) fn happy_try_variant(sema: &Semantics<RootDatabase>, ty: &Type) -> Option<&'static str> {
-    let enum_ = match ty.as_adt() {
-        Some(Adt::Enum(it)) => it,
-        _ => return None,
-    };
-    [("Result", "Ok"), ("Option", "Some")].iter().find_map(|(known_type, happy_case)| {
-        if &enum_.name(sema.db).to_string() == known_type {
-            return Some(*happy_case);
+#[derive(Clone, Copy)]
+pub(crate) enum TryEnum {
+    Result,
+    Option,
+}
+
+impl TryEnum {
+    const ALL: [TryEnum; 2] = [TryEnum::Option, TryEnum::Result];
+
+    pub(crate) fn from_ty(sema: &Semantics<RootDatabase>, ty: &Type) -> Option<TryEnum> {
+        let enum_ = match ty.as_adt() {
+            Some(Adt::Enum(it)) => it,
+            _ => return None,
+        };
+        TryEnum::ALL.iter().find_map(|&var| {
+            if &enum_.name(sema.db).to_string() == var.type_name() {
+                return Some(var);
+            }
+            None
+        })
+    }
+
+    pub(crate) fn happy_case(self) -> &'static str {
+        match self {
+            TryEnum::Result => "Ok",
+            TryEnum::Option => "Some",
         }
-        None
-    })
+    }
+
+    pub(crate) fn sad_pattern(self) -> ast::Pat {
+        match self {
+            TryEnum::Result => make::tuple_struct_pat(
+                make::path_unqualified(make::path_segment(make::name_ref("Err"))),
+                iter::once(make::placeholder_pat().into()),
+            )
+            .into(),
+            TryEnum::Option => make::bind_pat(make::name("None")).into(),
+        }
+    }
+
+    fn type_name(self) -> &'static str {
+        match self {
+            TryEnum::Result => "Result",
+            TryEnum::Option => "Option",
+        }
+    }
 }

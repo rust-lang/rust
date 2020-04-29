@@ -5,7 +5,7 @@ use ra_syntax::{
     AstNode,
 };
 
-use crate::{utils::happy_try_variant, Assist, AssistCtx, AssistId};
+use crate::{utils::TryEnum, Assist, AssistCtx, AssistId};
 
 // Assist: replace_unwrap_with_match
 //
@@ -37,7 +37,7 @@ pub(crate) fn replace_unwrap_with_match(ctx: AssistCtx) -> Option<Assist> {
     }
     let caller = method_call.expr()?;
     let ty = ctx.sema.type_of_expr(&caller)?;
-    let happy_variant = happy_try_variant(ctx.sema, &ty)?;
+    let happy_variant = TryEnum::from_ty(ctx.sema, &ty)?.happy_case();
 
     ctx.add_assist(AssistId("replace_unwrap_with_match"), "Replace unwrap with match", |edit| {
         let ok_path = make::path_unqualified(make::path_segment(make::name_ref(happy_variant)));

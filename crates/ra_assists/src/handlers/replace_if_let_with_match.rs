@@ -1,11 +1,10 @@
 use ra_fmt::unwrap_trivial_block;
 use ra_syntax::{
-    ast::{self, make},
+    ast::{self, edit::IndentLevel, make},
     AstNode,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
-use ast::edit::IndentLevel;
+use crate::{utils::TryEnum, Assist, AssistCtx, AssistId};
 
 // Assist: replace_if_let_with_match
 //
@@ -44,15 +43,21 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
         ast::ElseBranch::IfExpr(_) => return None,
     };
 
-    ctx.add_assist(AssistId("replace_if_let_with_match"), "Replace with match", |edit| {
+    let sema = ctx.sema;
+    ctx.add_assist(AssistId("replace_if_let_with_match"), "Replace with match", move |edit| {
         let match_expr = {
             let then_arm = {
                 let then_expr = unwrap_trivial_block(then_block);
-                make::match_arm(vec![pat], then_expr)
+                make::match_arm(vec![pat.clone()], then_expr)
             };
             let else_arm = {
+                let pattern = sema
+                    .type_of_pat(&pat)
+                    .and_then(|ty| TryEnum::from_ty(sema, &ty))
+                    .map(|it| it.sad_pattern())
+                    .unwrap_or_else(|| make::placeholder_pat().into());
                 let else_expr = unwrap_trivial_block(else_block);
-                make::match_arm(vec![make::placeholder_pat().into()], else_expr)
+                make::match_arm(vec![pattern], else_expr)
             };
             make::expr_match(expr, make::match_arm_list(vec![then_arm, else_arm]))
         };
@@ -68,6 +73,7 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use crate::helpers::{check_assist, check_assist_target};
 
     #[test]
@@ -143,6 +149,66 @@ impl VariantData {
         } else {
             false
         }",
+        );
+    }
+
+    #[test]
+    fn special_case_option() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn foo(x: Option<i32>) {
+    <|>if let Some(x) = x {
+        println!("{}", x)
+    } else {
+        println!("none")
+    }
+}
+           "#,
+            r#"
+enum Option<T> { Some(T), None }
+use Option::*;
+
+fn foo(x: Option<i32>) {
+    <|>match x {
+        Some(x) => println!("{}", x),
+        None => println!("none"),
+    }
+}
+           "#,
+        );
+    }
+
+    #[test]
+    fn special_case_result() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+enum Result<T, E> { Ok(T), Err(E) }
+use Result::*;
+
+fn foo(x: Result<i32, ()>) {
+    <|>if let Ok(x) = x {
+        println!("{}", x)
+    } else {
+        println!("none")
+    }
+}
+           "#,
+            r#"
+enum Result<T, E> { Ok(T), Err(E) }
+use Result::*;
+
+fn foo(x: Result<i32, ()>) {
+    <|>match x {
+        Ok(x) => println!("{}", x),
+        Err(_) => println!("none"),
+    }
+}
+           "#,
         );
     }
 }

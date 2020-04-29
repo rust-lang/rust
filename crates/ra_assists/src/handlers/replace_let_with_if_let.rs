@@ -11,7 +11,7 @@ use ra_syntax::{
 
 use crate::{
     assist_ctx::{Assist, AssistCtx},
-    utils::happy_try_variant,
+    utils::TryEnum,
     AssistId,
 };
 
@@ -45,7 +45,7 @@ pub(crate) fn replace_let_with_if_let(ctx: AssistCtx) -> Option<Assist> {
     let init = let_stmt.initializer()?;
     let original_pat = let_stmt.pat()?;
     let ty = ctx.sema.type_of_expr(&init)?;
-    let happy_variant = happy_try_variant(ctx.sema, &ty);
+    let happy_variant = TryEnum::from_ty(ctx.sema, &ty).map(|it| it.happy_case());
 
     ctx.add_assist(AssistId("replace_let_with_if_let"), "Replace with if-let", |edit| {
         let with_placeholder: ast::Pat = match happy_variant {
