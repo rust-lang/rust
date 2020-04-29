@@ -1,7 +1,7 @@
 //! Assorted functions shared by several assists.
 pub(crate) mod insert_use;
 
-use hir::Semantics;
+use hir::{Adt, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, make, NameOwner},
@@ -98,4 +98,17 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
         // ast::Expr::Literal(true | false )
         _ => None,
     }
+}
+
+pub(crate) fn happy_try_variant(sema: &Semantics<RootDatabase>, ty: &Type) -> Option<&'static str> {
+    let enum_ = match ty.as_adt() {
+        Some(Adt::Enum(it)) => it,
+        _ => return None,
+    };
+    [("Result", "Ok"), ("Option", "Some")].iter().find_map(|(known_type, happy_case)| {
+        if &enum_.name(sema.db).to_string() == known_type {
+            return Some(*happy_case);
+        }
+        None
+    })
 }

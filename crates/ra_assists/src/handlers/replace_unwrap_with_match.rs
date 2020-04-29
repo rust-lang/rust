@@ -1,12 +1,11 @@
 use std::iter;
 
 use ra_syntax::{
-    ast::{self, make},
+    ast::{self, edit::IndentLevel, make},
     AstNode,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
-use ast::edit::IndentLevel;
+use crate::{utils::happy_try_variant, Assist, AssistCtx, AssistId};
 
 // Assist: replace_unwrap_with_match
 //
@@ -38,42 +37,27 @@ pub(crate) fn replace_unwrap_with_match(ctx: AssistCtx) -> Option<Assist> {
     }
     let caller = method_call.expr()?;
     let ty = ctx.sema.type_of_expr(&caller)?;
+    let happy_variant = happy_try_variant(ctx.sema, &ty)?;
 
-    let type_name = ty.as_adt()?.name(ctx.sema.db).to_string();
+    ctx.add_assist(AssistId("replace_unwrap_with_match"), "Replace unwrap with match", |edit| {
+        let ok_path = make::path_unqualified(make::path_segment(make::name_ref(happy_variant)));
+        let it = make::bind_pat(make::name("a")).into();
+        let ok_tuple = make::tuple_struct_pat(ok_path, iter::once(it)).into();
 
-    for (unwrap_type, variant_name) in [("Result", "Ok"), ("Option", "Some")].iter() {
-        if &type_name == unwrap_type {
-            return ctx.add_assist(
-                AssistId("replace_unwrap_with_match"),
-                "Replace unwrap with match",
-                |edit| {
-                    let ok_path =
-                        make::path_unqualified(make::path_segment(make::name_ref(variant_name)));
-                    let it = make::bind_pat(make::name("a")).into();
-                    let ok_tuple = make::tuple_struct_pat(ok_path, iter::once(it)).into();
+        let bind_path = make::path_unqualified(make::path_segment(make::name_ref("a")));
+        let ok_arm = make::match_arm(iter::once(ok_tuple), make::expr_path(bind_path));
 
-                    let bind_path = make::path_unqualified(make::path_segment(make::name_ref("a")));
-                    let ok_arm = make::match_arm(iter::once(ok_tuple), make::expr_path(bind_path));
+        let unreachable_call = make::unreachable_macro_call().into();
+        let err_arm = make::match_arm(iter::once(make::placeholder_pat().into()), unreachable_call);
 
-                    let unreachable_call = make::unreachable_macro_call().into();
-                    let err_arm = make::match_arm(
-                        iter::once(make::placeholder_pat().into()),
-                        unreachable_call,
-                    );
+        let match_arm_list = make::match_arm_list(vec![ok_arm, err_arm]);
+        let match_expr = make::expr_match(caller.clone(), match_arm_list);
+        let match_expr = IndentLevel::from_node(method_call.syntax()).increase_indent(match_expr);
 
-                    let match_arm_list = make::match_arm_list(vec![ok_arm, err_arm]);
-                    let match_expr = make::expr_match(caller.clone(), match_arm_list);
-                    let match_expr =
-                        IndentLevel::from_node(method_call.syntax()).increase_indent(match_expr);
-
-                    edit.target(method_call.syntax().text_range());
-                    edit.set_cursor(caller.syntax().text_range().start());
-                    edit.replace_ast::<ast::Expr>(method_call.into(), match_expr);
-                },
-            );
-        }
-    }
-    None
+        edit.target(method_call.syntax().text_range());
+        edit.set_cursor(caller.syntax().text_range().start());
+        edit.replace_ast::<ast::Expr>(method_call.into(), match_expr);
+    })
 }
 
 #[cfg(test)]
