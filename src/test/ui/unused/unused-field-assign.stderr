@@ -1,0 +1,84 @@
+error: unused assignement to temporary
+  --> $DIR/unused-field-assign.rs:11:20
+   |
+LL |     Foo { x: 2 }.x = 3;
+   |     ------------   ^
+   |     |
+   |     this is not bound to any variable
+   |
+note: the lint level is defined here
+  --> $DIR/unused-field-assign.rs:1:9
+   |
+LL | #![deny(unused_assignments)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: unused assignement to temporary
+  --> $DIR/unused-field-assign.rs:13:20
+   |
+LL |     Foo { x: 2 }.x += 1;
+   |     ------------   ^^
+   |     |
+   |     this is not bound to any variable
+
+error: unused assignement to temporary
+  --> $DIR/unused-field-assign.rs:16:15
+   |
+LL |     (2, 12).0 += 10;
+   |     -------   ^^
+   |     |
+   |     this is not bound to any variable
+
+error: unused assignement to temporary
+  --> $DIR/unused-field-assign.rs:18:19
+   |
+LL |     (10, false).1 = true;
+   |     -----------   ^
+   |     |
+   |     this is not bound to any variable
+
+error: unused assignement to temporary
+  --> $DIR/unused-field-assign.rs:21:11
+   |
+LL |     FOO.x = 2;
+   |     ---   ^
+   |     |
+   |     this is not bound to any variable
+   |     help: consider introducing a local variable: `let mut foo = FOO;`
+   |
+   = note: in Rust, constants are not associated with a specific memory location, and are inlined wherever they are used
+
+error: unused assignement to temporary
+  --> $DIR/unused-field-assign.rs:24:11
+   |
+LL |     FOO.x -= 6;
+   |     ---   ^^
+   |     |
+   |     this is not bound to any variable
+   |     help: consider introducing a local variable: `let mut foo = FOO;`
+   |
+   = note: in Rust, constants are not associated with a specific memory location, and are inlined wherever they are used
+
+error: unused assignement to temporary
+  --> $DIR/unused-field-assign.rs:28:11
+   |
+LL |     BAR.1 = true;
+   |     ---   ^
+   |     |
+   |     this is not bound to any variable
+   |     help: consider introducing a local variable: `let mut bar = BAR;`
+   |
+   = note: in Rust, constants are not associated with a specific memory location, and are inlined wherever they are used
+
+error: unused assignement to temporary
+  --> $DIR/unused-field-assign.rs:31:11
+   |
+LL |     BAR.0 *= 2;
+   |     ---   ^^
+   |     |
+   |     this is not bound to any variable
+   |     help: consider introducing a local variable: `let mut bar = BAR;`
+   |
+   = note: in Rust, constants are not associated with a specific memory location, and are inlined wherever they are used
+
+error: aborting due to 8 previous errors
+
