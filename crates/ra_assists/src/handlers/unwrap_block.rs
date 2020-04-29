@@ -6,7 +6,7 @@ use ra_syntax::{ast, AstNode};
 
 // Assist: unwrap_block
 //
-// Removes the `mut` keyword.
+// This assist removes if...else, for, while and loop control statements to just keep the body.
 //
 // ```
 // fn foo() {
@@ -18,7 +18,7 @@ use ra_syntax::{ast, AstNode};
 // ->
 // ```
 // fn foo() {
-//     <|>println!("foo");
+//     println!("foo");
 // }
 // ```
 pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {

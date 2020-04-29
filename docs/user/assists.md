@@ -698,7 +698,7 @@ use std::{collections::HashMap};
 
 ## `unwrap_block`
 
-Removes the `mut` keyword.
+This assist removes if...else, for, while and loop control statements to just keep the body.
 
 ```rust
 // BEFORE
@@ -710,6 +710,6 @@ fn foo() {
 
 // AFTER
 fn foo() {
-    ┃println!("foo");
+    println!("foo");
 }
 ```

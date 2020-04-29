@@ -740,7 +740,7 @@ fn foo() {
 "#####,
         r#####"
 fn foo() {
-    <|>println!("foo");
+    println!("foo");
 }
 "#####,
     )
