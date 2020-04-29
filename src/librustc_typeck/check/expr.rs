@@ -35,6 +35,7 @@ use rustc_middle::ty::adjustment::{
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{AdtKind, Visibility};
+use rustc_session::lint::builtin::UNUSED_ASSIGNMENTS;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -800,10 +801,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
+        self.check_unused_assign_to_field(lhs, span);
+
         if lhs_ty.references_error() || rhs_ty.references_error() {
             self.tcx.types.err
         } else {
             self.tcx.mk_unit()
+        }
+    }
+
+    /// Check the LHS for unused assignments to fields, when they aren't bound to a local variable
+    pub(crate) fn check_unused_assign_to_field(
+        &self,
+        lhs: &'tcx hir::Expr<'tcx>,
+        expr_span: &Span,
+    ) {
+        debug!("check_unused_assign(lhs = {:?})", &lhs);
+        match lhs.kind {
+            ExprKind::Struct(..) | ExprKind::Tup(..) => {
+                self.tcx.struct_span_lint_hir(UNUSED_ASSIGNMENTS, lhs.hir_id, *expr_span, |lint| {
+                    lint.build("unused assignement to temporary")
+                        .span_label(lhs.span, "this is not bound to any variable")
+                        .emit();
+                })
+            }
+            // Assigning to a field of a const is useless, since the constant will
+            // get evaluated and injected into the expression
+            ExprKind::Path(QPath::Resolved(
+                _,
+                hir::Path { res: Res::Def(DefKind::Const, _), ref segments, .. },
+            )) => {
+                let const_name = segments.last().unwrap().ident.as_str();
+                let mut path_str = String::new();
+                for (i, seg) in segments.iter().enumerate() {
+                    if i > 0 {
+                        path_str.push_str("::");
+                    }
+                    if seg.ident.name != kw::PathRoot {
+                        path_str.push_str(&seg.ident.as_str());
+                    }
+                }
+
+                self.tcx.struct_span_lint_hir(UNUSED_ASSIGNMENTS, lhs.hir_id, *expr_span, |lint| {
+                    lint.build("unused assignement to temporary")
+                        .span_label(lhs.span, "this is not bound to any variable")
+                        .note("in Rust, constants are not associated with a specific memory location, and are inlined wherever they are used")
+                        .span_suggestion(
+                            lhs.span.shrink_to_lo(),
+                            "consider introducing a local variable",
+                            format!("let mut {} = {};", (&*const_name).to_lowercase(), path_str), Applicability::MaybeIncorrect)
+                        .emit();
+                })
+            }
+            ExprKind::Field(ref base, _) => self.check_unused_assign_to_field(base, expr_span),
+            _ => {}
         }
     }
 

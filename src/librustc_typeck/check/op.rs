@@ -35,6 +35,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
         self.check_lhs_assignable(lhs, "E0067", &op.span);
+        self.check_unused_assign_to_field(lhs, &op.span);
 
         ty
     }
