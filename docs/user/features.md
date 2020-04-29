@@ -140,8 +140,8 @@ space or `;` depending on the return type of the function.
 When completing a function call, `()` are automatically inserted. If a function
 takes arguments, the cursor is positioned inside the parenthesis.
 
-There are postifx completions, which can be triggerd by typing something like
-`foo().if`. The word after `.` determines postifx completion. Possible variants are:
+There are postfix completions, which can be triggered by typing something like
+`foo().if`. The word after `.` determines postfix completion. Possible variants are:
 
 - `expr.if` -> `if expr {}`
 - `expr.match` -> `match expr {}`
