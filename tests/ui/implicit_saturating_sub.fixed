@@ -21,8 +21,8 @@ fn main() {
         _ => u_8 = 0,
     }
 
-    let end_16: u16 = 35;
-    let start_16: u16 = 40;
+    let end_16: u16 = 40;
+    let start_16: u16 = 35;
 
     let mut u_16: u16 = end_16 - start_16;
 
