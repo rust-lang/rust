@@ -85,9 +85,11 @@ RUSTFLAGS="-C debug-assertions=no" $build_intrinsics --features c --release
 if [ -z "$DEBUG_LTO_BUILD_DOESNT_WORK" ]; then
   RUSTFLAGS="-C debug-assertions=no" \
     CARGO_INCREMENTAL=0 \
-    $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics -- -C lto
+    CARGO_PROFILE_DEV_LTO=true \
+    $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics
 fi
-$cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics --release -- -C lto
+CARGO_PROFILE_RELEASE_LTO=true \
+  $cargo rustc --features "$INTRINSICS_FEATURES" --target $1 --example intrinsics --release
 
 # Ensure no references to a panicking function
 for rlib in $(echo $path); do

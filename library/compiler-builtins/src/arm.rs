@@ -8,13 +8,15 @@ use core::intrinsics;
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_uidivmod() {
-    asm!("push {lr}
-          sub sp, sp, #4
-          mov r2, sp
-          bl __udivmodsi4
-          ldr r1, [sp]
-          add sp, sp, #4
-          pop {pc}" ::: "memory" : "volatile");
+    llvm_asm!("
+        push {lr}
+        sub sp, sp, #4
+        mov r2, sp
+        bl __udivmodsi4
+        ldr r1, [sp]
+        add sp, sp, #4
+        pop {pc}
+    " ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -22,13 +24,15 @@ pub unsafe fn __aeabi_uidivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_uidivmod() {
-    asm!("push {lr}
-          sub sp, sp, #4
-          mov r2, sp
-          bl ___udivmodsi4
-          ldr r1, [sp]
-          add sp, sp, #4
-          pop {pc}" ::: "memory" : "volatile");
+    llvm_asm!("
+        push {lr}
+        sub sp, sp, #4
+        mov r2, sp
+        bl ___udivmodsi4
+        ldr r1, [sp]
+        add sp, sp, #4
+        pop {pc}
+    " ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -36,15 +40,17 @@ pub unsafe fn __aeabi_uidivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_uldivmod() {
-    asm!("push {r4, lr}
-          sub sp, sp, #16
-          add r4, sp, #8
-          str r4, [sp]
-          bl __udivmoddi4
-          ldr r2, [sp, #8]
-          ldr r3, [sp, #12]
-          add sp, sp, #16
-          pop {r4, pc}" ::: "memory" : "volatile");
+    llvm_asm!("
+        push {r4, lr}
+        sub sp, sp, #16
+        add r4, sp, #8
+        str r4, [sp]
+        bl __udivmoddi4
+        ldr r2, [sp, #8]
+        ldr r3, [sp, #12]
+        add sp, sp, #16
+        pop {r4, pc}
+    " ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -52,15 +58,17 @@ pub unsafe fn __aeabi_uldivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_uldivmod() {
-    asm!("push {r4, lr}
-          sub sp, sp, #16
-          add r4, sp, #8
-          str r4, [sp]
-          bl ___udivmoddi4
-          ldr r2, [sp, #8]
-          ldr r3, [sp, #12]
-          add sp, sp, #16
-          pop {r4, pc}" ::: "memory" : "volatile");
+    llvm_asm!("
+        push {r4, lr}
+        sub sp, sp, #16
+        add r4, sp, #8
+        str r4, [sp]
+        bl ___udivmoddi4
+        ldr r2, [sp, #8]
+        ldr r3, [sp, #12]
+        add sp, sp, #16
+        pop {r4, pc}
+    " ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -68,12 +76,14 @@ pub unsafe fn __aeabi_uldivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_idivmod() {
-    asm!("push {r0, r1, r4, lr}
-          bl __aeabi_idiv
-          pop {r1, r2}
-          muls r2, r2, r0
-          subs r1, r1, r2
-          pop {r4, pc}" ::: "memory" : "volatile");
+    llvm_asm!("
+        push {r0, r1, r4, lr}
+        bl __aeabi_idiv
+        pop {r1, r2}
+        muls r2, r2, r0
+        subs r1, r1, r2
+        pop {r4, pc}
+    " ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -81,12 +91,14 @@ pub unsafe fn __aeabi_idivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_idivmod() {
-    asm!("push {r0, r1, r4, lr}
-          bl ___aeabi_idiv
-          pop {r1, r2}
-          muls r2, r2, r0
-          subs r1, r1, r2
-          pop {r4, pc}" ::: "memory" : "volatile");
+    llvm_asm!("
+        push {r0, r1, r4, lr}
+        bl ___aeabi_idiv
+        pop {r1, r2}
+        muls r2, r2, r0
+        subs r1, r1, r2
+        pop {r4, pc}
+    " ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -94,15 +106,17 @@ pub unsafe fn __aeabi_idivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_ldivmod() {
-    asm!("push {r4, lr}
-          sub sp, sp, #16
-          add r4, sp, #8
-          str r4, [sp]
-          bl __divmoddi4
-          ldr r2, [sp, #8]
-          ldr r3, [sp, #12]
-          add sp, sp, #16
-          pop {r4, pc}" ::: "memory" : "volatile");
+    llvm_asm!("
+        push {r4, lr}
+        sub sp, sp, #16
+        add r4, sp, #8
+        str r4, [sp]
+        bl __divmoddi4
+        ldr r2, [sp, #8]
+        ldr r3, [sp, #12]
+        add sp, sp, #16
+        pop {r4, pc}
+    " ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 
@@ -110,15 +124,17 @@ pub unsafe fn __aeabi_ldivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_ldivmod() {
-    asm!("push {r4, lr}
-          sub sp, sp, #16
-          add r4, sp, #8
-          str r4, [sp]
-          bl ___divmoddi4
-          ldr r2, [sp, #8]
-          ldr r3, [sp, #12]
-          add sp, sp, #16
-          pop {r4, pc}" ::: "memory" : "volatile");
+    llvm_asm!("
+        push {r4, lr}
+        sub sp, sp, #16
+        add r4, sp, #8
+        str r4, [sp]
+        bl ___divmoddi4
+        ldr r2, [sp, #8]
+        ldr r3, [sp, #12]
+        add sp, sp, #16
+        pop {r4, pc}
+    " ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
 

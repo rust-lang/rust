@@ -6,7 +6,7 @@
 #![allow(unused_features)]
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
-#![feature(asm)]
+#![feature(llvm_asm)]
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(allocator_api)]
@@ -280,7 +280,7 @@ fn run() {
 
     // A copy of "test::black_box". Used to prevent LLVM from optimizing away the intrinsics during LTO
     fn bb<T>(dummy: T) -> T {
-        unsafe { asm!("" : : "r"(&dummy)) }
+        unsafe { llvm_asm!("" : : "r"(&dummy)) }
         dummy
     }
 

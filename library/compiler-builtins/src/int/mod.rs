@@ -88,55 +88,55 @@ fn unwrap<T>(t: Option<T>) -> T {
 
 macro_rules! int_impl_common {
     ($ty:ty, $bits:expr) => {
-            const BITS: u32 = $bits;
+        const BITS: u32 = $bits;
 
-            const ZERO: Self = 0;
-            const ONE: Self = 1;
+        const ZERO: Self = 0;
+        const ONE: Self = 1;
 
-            fn from_bool(b: bool) -> Self {
-                b as $ty
-            }
+        fn from_bool(b: bool) -> Self {
+            b as $ty
+        }
 
-            fn max_value() -> Self {
-                <Self>::max_value()
-            }
+        fn max_value() -> Self {
+            <Self>::max_value()
+        }
 
-            fn min_value() -> Self {
-                <Self>::min_value()
-            }
+        fn min_value() -> Self {
+            <Self>::min_value()
+        }
 
-            fn wrapping_add(self, other: Self) -> Self {
-                <Self>::wrapping_add(self, other)
-            }
+        fn wrapping_add(self, other: Self) -> Self {
+            <Self>::wrapping_add(self, other)
+        }
 
-            fn wrapping_mul(self, other: Self) -> Self {
-                <Self>::wrapping_mul(self, other)
-            }
+        fn wrapping_mul(self, other: Self) -> Self {
+            <Self>::wrapping_mul(self, other)
+        }
 
-            fn wrapping_sub(self, other: Self) -> Self {
-                <Self>::wrapping_sub(self, other)
-            }
+        fn wrapping_sub(self, other: Self) -> Self {
+            <Self>::wrapping_sub(self, other)
+        }
 
-            fn wrapping_shl(self, other: u32) -> Self {
-                <Self>::wrapping_shl(self, other)
-            }
+        fn wrapping_shl(self, other: u32) -> Self {
+            <Self>::wrapping_shl(self, other)
+        }
 
-            fn overflowing_add(self, other: Self) -> (Self, bool) {
-                <Self>::overflowing_add(self, other)
-            }
+        fn overflowing_add(self, other: Self) -> (Self, bool) {
+            <Self>::overflowing_add(self, other)
+        }
 
-            fn aborting_div(self, other: Self) -> Self {
-                unwrap(<Self>::checked_div(self, other))
-            }
+        fn aborting_div(self, other: Self) -> Self {
+            unwrap(<Self>::checked_div(self, other))
+        }
 
-            fn aborting_rem(self, other: Self) -> Self {
-                unwrap(<Self>::checked_rem(self, other))
-            }
+        fn aborting_rem(self, other: Self) -> Self {
+            unwrap(<Self>::checked_rem(self, other))
+        }
 
-            fn leading_zeros(self) -> u32 {
-                <Self>::leading_zeros(self)
-            }
-    }
+        fn leading_zeros(self) -> u32 {
+            <Self>::leading_zeros(self)
+        }
+    };
 }
 
 macro_rules! int_impl {

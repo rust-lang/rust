@@ -12,7 +12,7 @@ use core::intrinsics;
 #[naked]
 #[no_mangle]
 pub unsafe fn ___chkstk_ms() {
-    asm!("
+    llvm_asm!("
         push   %ecx
         push   %eax
         cmp    $$0x1000,%eax
@@ -38,7 +38,7 @@ pub unsafe fn ___chkstk_ms() {
 #[naked]
 #[no_mangle]
 pub unsafe fn __alloca() {
-    asm!("jmp ___chkstk   // Jump to ___chkstk since fallthrough may be unreliable"
+    llvm_asm!("jmp ___chkstk   // Jump to ___chkstk since fallthrough may be unreliable"
          ::: "memory" : "volatile");
     intrinsics::unreachable();
 }
@@ -47,7 +47,7 @@ pub unsafe fn __alloca() {
 #[naked]
 #[no_mangle]
 pub unsafe fn ___chkstk() {
-    asm!("
+    llvm_asm!("
         push   %ecx
         cmp    $$0x1000,%eax
         lea    8(%esp),%ecx     // esp before calling this routine -> ecx

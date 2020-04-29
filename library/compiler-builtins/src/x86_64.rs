@@ -12,7 +12,7 @@ use core::intrinsics;
 #[naked]
 #[no_mangle]
 pub unsafe fn ___chkstk_ms() {
-    asm!("
+    llvm_asm!("
         push   %rcx
         push   %rax
         cmp    $$0x1000,%rax
@@ -37,7 +37,7 @@ pub unsafe fn ___chkstk_ms() {
 #[naked]
 #[no_mangle]
 pub unsafe fn __alloca() {
-    asm!("mov    %rcx,%rax  // x64 _alloca is a normal function with parameter in rcx
+    llvm_asm!("mov    %rcx,%rax  // x64 _alloca is a normal function with parameter in rcx
           jmp    ___chkstk  // Jump to ___chkstk since fallthrough may be unreliable"
          ::: "memory" : "volatile");
     intrinsics::unreachable();
@@ -47,7 +47,7 @@ pub unsafe fn __alloca() {
 #[naked]
 #[no_mangle]
 pub unsafe fn ___chkstk() {
-    asm!(
+    llvm_asm!(
         "
         push   %rcx
         cmp    $$0x1000,%rax
