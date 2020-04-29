@@ -146,13 +146,7 @@ impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir
         mode: InternMode,
         ty: Option<Ty<'tcx>>,
     ) -> Option<IsStaticOrFn> {
-        intern_shallow(
-            self.ecx,
-            self.leftover_allocations,
-            alloc_id,
-            mode,
-            ty,
-        )
+        intern_shallow(self.ecx, self.leftover_allocations, alloc_id, mode, ty)
     }
 }
 
@@ -216,10 +210,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                     self.intern_shallow(vtable.alloc_id, InternMode::ConstInner, None);
                 } else {
                     // Let validation show the error message, but make sure it *does* error.
-                    tcx.sess.delay_span_bug(
-                        tcx.span,
-                        "vtables pointers cannot be integer pointers",
-                    );
+                    tcx.sess
+                        .delay_span_bug(tcx.span, "vtables pointers cannot be integer pointers");
                 }
             }
             // Check if we have encountered this pointer+layout combination before.
@@ -264,7 +256,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                                 ty::Array(_, n)
                                     if n.eval_usize(tcx.tcx, self.ecx.param_env) == 0 => {}
                                 ty::Slice(_)
-                                    if mplace.meta.unwrap_meta().to_machine_usize(self.ecx)? == 0 => {}
+                                    if mplace.meta.unwrap_meta().to_machine_usize(self.ecx)?
+                                        == 0 => {}
                                 _ => mutable_memory_in_const(tcx, "`&mut`"),
                             }
                         } else {
@@ -315,16 +308,16 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     intern_kind: InternKind,
     ret: MPlaceTy<'tcx>,
     ignore_interior_mut_in_const: bool,
-)
-where
+) where
     'tcx: 'mir,
 {
     let tcx = ecx.tcx;
     let base_intern_mode = match intern_kind {
         InternKind::Static(mutbl) => InternMode::Static(mutbl),
         // FIXME: what about array lengths, array initializers?
-        InternKind::Constant | InternKind::ConstProp | InternKind::Promoted =>
-            InternMode::ConstBase,
+        InternKind::Constant | InternKind::ConstProp | InternKind::Promoted => {
+            InternMode::ConstBase
+        }
     };
 
     // Type based interning.
@@ -362,7 +355,7 @@ where
         // references are "leftover"-interned, and later validation will show a proper error
         // and point at the right part of the value causing the problem.
         match res {
-            Ok(()) => {},
+            Ok(()) => {}
             Err(error) => {
                 ecx.tcx.sess.delay_span_bug(
                     ecx.tcx.span,
@@ -412,10 +405,9 @@ where
                     // is tracked by const-checking.
                     // FIXME: downgrade this to a warning? It rejects some legitimate consts,
                     // such as `const CONST_RAW: *const Vec<i32> = &Vec::new() as *const _;`.
-                    ecx.tcx.sess.span_err(
-                        ecx.tcx.span,
-                        "untyped pointers are not allowed in constant",
-                    );
+                    ecx.tcx
+                        .sess
+                        .span_err(ecx.tcx.span, "untyped pointers are not allowed in constant");
                     // For better errors later, mark the allocation as immutable.
                     alloc.mutability = Mutability::Not;
                 }
@@ -430,13 +422,10 @@ where
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
             // Codegen does not like dangling pointers, and generally `tcx` assumes that
             // all allocations referenced anywhere actually exist. So, make sure we error here.
-            ecx.tcx.sess.span_err(
-                ecx.tcx.span,
-                "encountered dangling pointer in final constant",
-            );
+            ecx.tcx.sess.span_err(ecx.tcx.span, "encountered dangling pointer in final constant");
         } else if ecx.tcx.get_global_alloc(alloc_id).is_none() {
-                // We have hit an `AllocId` that is neither in local or global memory and isn't
-                // marked as dangling by local memory.  That should be impossible.
+            // We have hit an `AllocId` that is neither in local or global memory and isn't
+            // marked as dangling by local memory.  That should be impossible.
             span_bug!(ecx.tcx.span, "encountered unknown alloc id {:?}", alloc_id);
         }
     }
