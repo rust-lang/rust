@@ -109,7 +109,7 @@ export class Config {
 
     get debug() {
         return {
-            engine: this.get<null | string>("debug.engine"),
+            engine: this.get<string>("debug.engine"),
             sourceFileMap: this.get<Record<string, string>>("debug.sourceFileMap"),
         };
     }

@@ -102,7 +102,7 @@ export function debugSingle(ctx: Ctx): Cmd {
 
         let debugEngineId = ctx.config.debug.engine;
         let debugEngine = null;
-        if (!debugEngineId) {
+        if ( debugEngineId === "auto" ) {
             debugEngine = vscode.extensions.getExtension(lldbId);
             if (!debugEngine) {
                 debugEngine = vscode.extensions.getExtension(cpptoolsId);
