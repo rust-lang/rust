@@ -191,6 +191,7 @@ use self::Ordering::*;
 /// assert_eq!(x.eq(&y), false);
 /// ```
 ///
+/// [`Eq`]: Eq
 /// [`eq`]: PartialEq::eq
 /// [`ne`]: PartialEq::ne
 #[lang = "eq"]
