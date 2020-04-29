@@ -27,8 +27,8 @@ name = "rust-semver-public"
 path = "src/bin/rust_semver_public.rs"
 
 [dependencies]
-cargo = "0.43"
-crates-io = "0.31"
+cargo = "0.44"
+crates-io = "0.32"
 curl = "0.4.21"
 env_logger = "0.7"
 anyhow = "1.0.27"
