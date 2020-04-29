@@ -73,6 +73,8 @@ impl<T: Sized> Unique<T> {
     // FIXME: rename to dangling() to match NonNull?
     #[inline]
     pub const fn empty() -> Self {
+        // SAFETY: mem::align_of() returns a valid, non-null pointer. The
+        // conditions to call new_unchecked() are thus respected.
         unsafe { Unique::new_unchecked(mem::align_of::<T>() as *mut T) }
     }
 }
@@ -93,6 +95,7 @@ impl<T: ?Sized> Unique<T> {
     #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
+            // SAFETY: The pointer has already been checked and is not null.
             Some(unsafe { Unique { pointer: ptr as _, _marker: PhantomData } })
         } else {
             None
@@ -128,6 +131,9 @@ impl<T: ?Sized> Unique<T> {
     /// Casts to a pointer of another type.
     #[inline]
     pub const fn cast<U>(self) -> Unique<U> {
+        // SAFETY: Unique::new_unchecked() creates a new unique and needs
+        // the given pointer to not be null.
+        // Since we are passing self as a pointer, it cannot be null.
         unsafe { Unique::new_unchecked(self.as_ptr() as *mut U) }
     }
 }
@@ -167,6 +173,7 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 impl<T: ?Sized> From<&mut T> for Unique<T> {
     #[inline]
     fn from(reference: &mut T) -> Self {
+        // SAFETY: A mutable reference cannot be null
         unsafe { Unique { pointer: reference as *mut T, _marker: PhantomData } }
     }
 }

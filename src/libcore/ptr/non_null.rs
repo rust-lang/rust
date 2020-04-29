@@ -7,8 +7,6 @@ use crate::mem;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::Unique;
 
-// ignore-tidy-undocumented-unsafe
-
 /// `*mut T` but non-zero and covariant.
 ///
 /// This is often the correct thing to use when building data structures using
@@ -69,6 +67,9 @@ impl<T: Sized> NonNull<T> {
     #[rustc_const_stable(feature = "const_nonnull_dangling", since = "1.32.0")]
     #[inline]
     pub const fn dangling() -> Self {
+        // SAFETY: mem::align_of() returns a non-zero usize which is then casted
+        // to a *mut T. Therefore, `ptr` is not null and the conditions for
+        // calling new_unchecked() are respected.
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
             NonNull::new_unchecked(ptr)
@@ -93,7 +94,12 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
-        if !ptr.is_null() { Some(unsafe { Self::new_unchecked(ptr) }) } else { None }
+        if !ptr.is_null() {
+            // SAFETY: The pointer is already checked and is not null
+            Some(unsafe { Self::new_unchecked(ptr) })
+        } else {
+            None
+        }
     }
 
     /// Acquires the underlying `*mut` pointer.
@@ -131,6 +137,7 @@ impl<T: ?Sized> NonNull<T> {
     #[rustc_const_stable(feature = "const_nonnull_cast", since = "1.32.0")]
     #[inline]
     pub const fn cast<U>(self) -> NonNull<U> {
+        // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
         unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
     }
 }
@@ -205,6 +212,8 @@ impl<T: ?Sized> hash::Hash for NonNull<T> {
 impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
     #[inline]
     fn from(unique: Unique<T>) -> Self {
+        // SAFETY: A Unique pointer cannot be null, so the conditions for
+        // new_unchecked() are respected.
         unsafe { NonNull::new_unchecked(unique.as_ptr()) }
     }
 }
@@ -213,6 +222,7 @@ impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
 impl<T: ?Sized> From<&mut T> for NonNull<T> {
     #[inline]
     fn from(reference: &mut T) -> Self {
+        // SAFETY: A mutable reference cannot be null.
         unsafe { NonNull { pointer: reference as *mut T } }
     }
 }
@@ -221,6 +231,8 @@ impl<T: ?Sized> From<&mut T> for NonNull<T> {
 impl<T: ?Sized> From<&T> for NonNull<T> {
     #[inline]
     fn from(reference: &T) -> Self {
+        // SAFETY: A reference cannot be null, so the conditions for
+        // new_unchecked() are respected.
         unsafe { NonNull { pointer: reference as *const T } }
     }
 }
