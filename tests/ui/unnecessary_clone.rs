@@ -109,4 +109,9 @@ mod many_derefs {
         let _: E = a.clone();
         let _: E = *****a;
     }
+
+    fn check(mut encoded: &[u8]) {
+        let _ = &mut encoded.clone();
+        let _ = &encoded.clone();
+    }
 }

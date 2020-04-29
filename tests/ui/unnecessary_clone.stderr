@@ -85,10 +85,10 @@ help: try dereferencing it
    |
 LL |     let z: &Vec<_> = &(*y).clone();
    |                      ^^^^^^^^^^^^^
-help: or try being explicit about what type to clone
+help: or try being explicit if you are sure, that you want to clone a reference
    |
-LL |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let z: &Vec<_> = <&std::vec::Vec<i32>>::clone(y);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: using `clone` on a `Copy` type
   --> $DIR/unnecessary_clone.rs:109:20
@@ -96,5 +96,35 @@ error: using `clone` on a `Copy` type
 LL |         let _: E = a.clone();
    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
 
-error: aborting due to 14 previous errors
+error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
+  --> $DIR/unnecessary_clone.rs:114:22
+   |
+LL |         let _ = &mut encoded.clone();
+   |                      ^^^^^^^^^^^^^^^
+   |
+help: try dereferencing it
+   |
+LL |         let _ = &mut &(*encoded).clone();
+   |                      ^^^^^^^^^^^^^^^^^^^
+help: or try being explicit if you are sure, that you want to clone a reference
+   |
+LL |         let _ = &mut <&[u8]>::clone(encoded);
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
+  --> $DIR/unnecessary_clone.rs:115:18
+   |
+LL |         let _ = &encoded.clone();
+   |                  ^^^^^^^^^^^^^^^
+   |
+help: try dereferencing it
+   |
+LL |         let _ = &&(*encoded).clone();
+   |                  ^^^^^^^^^^^^^^^^^^^
+help: or try being explicit if you are sure, that you want to clone a reference
+   |
+LL |         let _ = &<&[u8]>::clone(encoded);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
 
