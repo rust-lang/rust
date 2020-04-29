@@ -1,6 +1,6 @@
 //! This modules takes care of rendering various definitions as completion items.
 
-use hir::{Docs, HasAttrs, HasSource, HirDisplay, ScopeDef, StructKind, Type};
+use hir::{Docs, HasAttrs, HasSource, HirDisplay, ModPath, ScopeDef, StructKind, Type};
 use ra_syntax::ast::NameOwner;
 use stdx::SepBy;
 use test_utils::tested_by;
@@ -246,14 +246,37 @@ impl Completions {
             .add_to(self);
     }
 
+    pub(crate) fn add_qualified_enum_variant(
+        &mut self,
+        ctx: &CompletionContext,
+        variant: hir::EnumVariant,
+        path: ModPath,
+    ) {
+        self.add_enum_variant_impl(ctx, variant, None, Some(path))
+    }
+
     pub(crate) fn add_enum_variant(
         &mut self,
         ctx: &CompletionContext,
         variant: hir::EnumVariant,
         local_name: Option<String>,
     ) {
+        self.add_enum_variant_impl(ctx, variant, local_name, None)
+    }
+
+    fn add_enum_variant_impl(
+        &mut self,
+        ctx: &CompletionContext,
+        variant: hir::EnumVariant,
+        local_name: Option<String>,
+        path: Option<ModPath>,
+    ) {
         let is_deprecated = is_deprecated(variant, ctx.db);
         let name = local_name.unwrap_or_else(|| variant.name(ctx.db).to_string());
+        let qualified_name = match &path {
+            Some(it) => it.to_string(),
+            None => name.to_string(),
+        };
         let detail_types = variant
             .fields(ctx.db)
             .into_iter()
@@ -271,16 +294,23 @@ impl Completions {
                 .surround_with("{ ", " }")
                 .to_string(),
         };
-        let mut res =
-            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
-                .kind(CompletionItemKind::EnumVariant)
-                .set_documentation(variant.docs(ctx.db))
-                .set_deprecated(is_deprecated)
-                .detail(detail);
+        let mut res = CompletionItem::new(
+            CompletionKind::Reference,
+            ctx.source_range(),
+            qualified_name.clone(),
+        )
+        .kind(CompletionItemKind::EnumVariant)
+        .set_documentation(variant.docs(ctx.db))
+        .set_deprecated(is_deprecated)
+        .detail(detail);
+
+        if path.is_some() {
+            res = res.lookup_by(name);
+        }
 
         if variant_kind == StructKind::Tuple {
             let params = Params::Anonymous(variant.fields(ctx.db).len());
-            res = res.add_call_parens(ctx, name, params)
+            res = res.add_call_parens(ctx, qualified_name, params)
         }
 
         res.add_to(self);
