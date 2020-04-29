@@ -2050,6 +2050,54 @@ impl<'a, K, V> Entry<'a, K, V> {
             Vacant(entry) => entry.insert_entry(value),
         }
     }
+
+    /// Returns `Some(entry)` if `self` is an `OccupiedEntry`, or else `None`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(entry_option_getters)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<usize, &str> = HashMap::new();
+    /// map.insert(42, "asdf");
+    ///
+    /// let maybe_replaced = map.entry(42).occupied().map(|o| o.insert("hee hee"));
+    ///
+    /// assert_eq!(maybe_replaced, Some("asdf"));
+    /// assert_eq!(map[&42], "hee hee");
+    /// ```
+    #[inline]
+    #[unstable(feature = "entry_option_getters", issue = "none")]
+    pub fn occupied(self) -> Option<OccupiedEntry<'a, K, V>> {
+        match self {
+            Occupied(entry) => Some(entry),
+            Vacant(_entry) => None,
+        }
+    }
+
+    /// Returns `Some(entry)` if `self` is an `VacantEntry`, or else `None`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(entry_option_getters)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<usize, &str> = HashMap::new();
+    ///
+    /// let maybe_inserted = map.entry(42).vacant().map(|v| v.insert("hee hee"));
+    ///
+    /// assert_eq!(maybe_inserted, Some(&mut "hee hee"));
+    /// ```
+    #[inline]
+    #[unstable(feature = "entry_option_getters", issue = "none")]
+    pub fn vacant(self) -> Option<VacantEntry<'a, K, V>> {
+        match self {
+            Occupied(_entry) => None,
+            Vacant(entry) => Some(entry),
+        }
+    }
 }
 
 impl<'a, K, V: Default> Entry<'a, K, V> {
@@ -3316,7 +3364,7 @@ mod test_map {
     #[test]
     fn test_entry_take_doesnt_corrupt() {
         #![allow(deprecated)] //rand
-        // Test for #19292
+                              // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
