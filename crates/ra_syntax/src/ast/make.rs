@@ -22,8 +22,7 @@ pub fn path_unqualified(segment: ast::PathSegment) -> ast::Path {
 pub fn path_qualified(qual: ast::Path, segment: ast::PathSegment) -> ast::Path {
     path_from_text(&format!("{}::{}", qual, segment))
 }
-
-pub fn path_from_text(text: &str) -> ast::Path {
+fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(text)
 }
 

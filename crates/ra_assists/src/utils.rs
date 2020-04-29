@@ -3,7 +3,7 @@ pub(crate) mod insert_use;
 
 use std::iter;
 
-use hir::{Adt, Semantics, Type};
+use hir::{Adt, Crate, Semantics, Trait, Type};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, make, NameOwner},
@@ -146,6 +146,64 @@ impl TryEnum {
         match self {
             TryEnum::Result => "Result",
             TryEnum::Option => "Option",
+        }
+    }
+}
+
+/// Helps with finding well-know things inside the standard library. This is
+/// somewhat similar to the known paths infra inside hir, but it different; We
+/// want to make sure that IDE specific paths don't become interesting inside
+/// the compiler itself as well.
+pub(crate) struct FamousDefs<'a, 'b>(pub(crate) &'a Semantics<'b, RootDatabase>, pub(crate) Crate);
+
+#[allow(non_snake_case)]
+impl FamousDefs<'_, '_> {
+    #[cfg(test)]
+    pub(crate) const FIXTURE: &'static str = r#"
+//- /libcore.rs crate:core
+pub mod convert{
+    pub trait From<T> {
+        fn from(T) -> Self;
+    }
+}
+
+pub mod prelude { pub use crate::convert::From }
+#[prelude_import]
+pub use prelude::*;
+"#;
+
+    pub(crate) fn core_convert_From(&self) -> Option<Trait> {
+        self.find_trait("core:convert:From")
+    }
+
+    fn find_trait(&self, path: &str) -> Option<Trait> {
+        let db = self.0.db;
+        let mut path = path.split(':');
+        let trait_ = path.next_back()?;
+        let std_crate = path.next()?;
+        let std_crate = self
+            .1
+            .dependencies(db)
+            .into_iter()
+            .find(|dep| &dep.name.to_string() == std_crate)?
+            .krate;
+
+        let mut module = std_crate.root_module(db)?;
+        for segment in path {
+            module = module.children(db).find_map(|child| {
+                let name = child.name(db)?;
+                if &name.to_string() == segment {
+                    Some(child)
+                } else {
+                    None
+                }
+            })?;
+        }
+        let def =
+            module.scope(db, None).into_iter().find(|(name, _def)| &name.to_string() == trait_)?.1;
+        match def {
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Trait(it)) => Some(it),
+            _ => None,
         }
     }
 }
