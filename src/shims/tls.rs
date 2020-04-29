@@ -342,7 +342,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let active_thread = this.get_active_thread()?;
 
-        if this.machine.tls.set_dtors_running_for_thread(active_thread) {
+        if !this.machine.tls.set_dtors_running_for_thread(active_thread) {
             // This is the first time we got asked to schedule a destructor. The
             // Windows schedule destructor function must be called exactly once,
             // this is why it is in this block.
