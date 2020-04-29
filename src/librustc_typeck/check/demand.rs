@@ -767,7 +767,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     suggest_to_change_suffix_or_into(err, is_fallible);
                     true
                 }
-                (&ty::Int(_), &ty::Uint(_)) | (&ty::Uint(_), &ty::Int(_)) => {
+                (&ty::Int(exp), &ty::Uint(found)) => {
+                    let is_fallible = match (exp.bit_width(), found.bit_width()) {
+                        (Some(exp), Some(found)) if found < exp => false,
+                        (None, Some(8)) => false,
+                        _ => true,
+                    };
+                    suggest_to_change_suffix_or_into(err, is_fallible);
+                    true
+                }
+                (&ty::Uint(_), &ty::Int(_)) => {
                     suggest_to_change_suffix_or_into(err, true);
                     true
                 }

@@ -478,7 +478,11 @@ impl Step for Rustc {
 
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
-        cargo.env("RUSTDOCFLAGS", "--document-private-items");
+        cargo.env(
+            "RUSTDOCFLAGS",
+            "--document-private-items \
+            --enable-index-page -Zunstable-options",
+        );
         compile::rustc_cargo(builder, &mut cargo, target);
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
