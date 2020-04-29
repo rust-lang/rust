@@ -1,11 +1,12 @@
+use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     TextSize,
 };
 use stdx::format_to;
 
-use crate::{Assist, AssistCtx, AssistId};
-use ra_ide_db::RootDatabase;
+use crate::{utils::FamousDefs, Assist, AssistCtx, AssistId};
+use test_utils::tested_by;
 
 // Assist add_from_impl_for_enum
 //
@@ -41,7 +42,8 @@ pub(crate) fn add_from_impl_for_enum(ctx: AssistCtx) -> Option<Assist> {
         _ => return None,
     };
 
-    if already_has_from_impl(ctx.sema, &variant) {
+    if existing_from_impl(ctx.sema, &variant).is_some() {
+        tested_by!(test_add_from_impl_already_exists);
         return None;
     }
 
@@ -70,41 +72,33 @@ impl From<{0}> for {1} {{
     )
 }
 
-fn already_has_from_impl(
+fn existing_from_impl(
     sema: &'_ hir::Semantics<'_, RootDatabase>,
     variant: &ast::EnumVariant,
-) -> bool {
-    let scope = sema.scope(&variant.syntax());
+) -> Option<()> {
+    let variant = sema.to_def(variant)?;
+    let enum_ = variant.parent_enum(sema.db);
+    let krate = enum_.module(sema.db).krate();
 
-    let from_path = ast::make::path_from_text("From");
-    let from_hir_path = match hir::Path::from_ast(from_path) {
-        Some(p) => p,
-        None => return false,
-    };
-    let from_trait = match scope.resolve_hir_path(&from_hir_path) {
-        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(t))) => t,
-        _ => return false,
-    };
+    let from_trait = FamousDefs(sema, krate).core_convert_From()?;
 
-    let e: hir::Enum = match sema.to_def(&variant.parent_enum()) {
-        Some(e) => e,
-        None => return false,
-    };
-    let e_ty = e.ty(sema.db);
+    let enum_type = enum_.ty(sema.db);
 
-    let hir_enum_var: hir::EnumVariant = match sema.to_def(variant) {
-        Some(ev) => ev,
-        None => return false,
-    };
-    let var_ty = hir_enum_var.fields(sema.db)[0].signature_ty(sema.db);
+    let wrapped_type = variant.fields(sema.db).get(0)?.signature_ty(sema.db);
 
-    e_ty.impls_trait(sema.db, from_trait, &[var_ty])
+    if enum_type.impls_trait(sema.db, from_trait, &[wrapped_type]) {
+        Some(())
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use crate::helpers::{check_assist, check_assist_not_applicable};
+    use test_utils::covers;
 
     #[test]
     fn test_add_from_impl_for_enum() {
@@ -136,36 +130,40 @@ mod tests {
         );
     }
 
+    fn check_not_applicable(ra_fixture: &str) {
+        let fixture =
+            format!("//- main.rs crate:main deps:core\n{}\n{}", ra_fixture, FamousDefs::FIXTURE);
+        check_assist_not_applicable(add_from_impl_for_enum, &fixture)
+    }
+
     #[test]
     fn test_add_from_impl_no_element() {
-        check_assist_not_applicable(add_from_impl_for_enum, "enum A { <|>One }");
+        check_not_applicable("enum A { <|>One }");
     }
 
     #[test]
     fn test_add_from_impl_more_than_one_element_in_tuple() {
-        check_assist_not_applicable(add_from_impl_for_enum, "enum A { <|>One(u32, String) }");
+        check_not_applicable("enum A { <|>One(u32, String) }");
     }
 
     #[test]
     fn test_add_from_impl_struct_variant() {
-        check_assist_not_applicable(add_from_impl_for_enum, "enum A { <|>One { x: u32 } }");
+        check_not_applicable("enum A { <|>One { x: u32 } }");
     }
 
     #[test]
     fn test_add_from_impl_already_exists() {
-        check_assist_not_applicable(
-            add_from_impl_for_enum,
-            r#"enum A { <|>One(u32), }
+        covers!(test_add_from_impl_already_exists);
+        check_not_applicable(
+            r#"
+enum A { <|>One(u32), }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
         A::One(v)
     }
 }
-
-pub trait From<T> {
-    fn from(T) -> Self;
-}"#,
+"#,
         );
     }
 
