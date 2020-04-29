@@ -1,7 +1,7 @@
 //! utils used in proc-macro tests
 
 use crate::dylib;
-use crate::list_macros;
+use crate::ProcMacroSrv;
 pub use difference::Changeset as __Changeset;
 use ra_proc_macro::ListMacrosTask;
 use std::str::FromStr;
@@ -59,7 +59,7 @@ pub fn assert_expand(
 pub fn list(crate_name: &str, version: &str) -> Vec<String> {
     let path = fixtures::dylib_path(crate_name, version);
     let task = ListMacrosTask { lib: path };
-
-    let res = list_macros(&task);
+    let mut srv = ProcMacroSrv::default();
+    let res = srv.list_macros(&task).unwrap();
     res.macros.into_iter().map(|(name, kind)| format!("{} [{:?}]", name, kind)).collect()
 }

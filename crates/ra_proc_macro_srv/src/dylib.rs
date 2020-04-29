@@ -2,13 +2,12 @@
 
 use crate::{proc_macro::bridge, rustc_server::TokenStream};
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use goblin::{mach::Mach, Object};
 use libloading::Library;
 use memmap::Mmap;
 use ra_proc_macro::ProcMacroKind;
-
 use std::io;
 
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
@@ -109,23 +108,21 @@ impl ProcMacroLibraryLibloading {
     }
 }
 
-type ProcMacroLibraryImpl = ProcMacroLibraryLibloading;
-
 pub struct Expander {
-    libs: Vec<ProcMacroLibraryImpl>,
+    inner: ProcMacroLibraryLibloading,
 }
 
 impl Expander {
-    pub fn new(lib: &Path) -> Result<Expander, String> {
+    pub fn new(lib: &Path) -> io::Result<Expander> {
         // Some libraries for dynamic loading require canonicalized path even when it is
         // already absolute
-        let lib = lib
-            .canonicalize()
-            .unwrap_or_else(|err| panic!("Cannot canonicalize {}: {:?}", lib.display(), err));
+        let lib = lib.canonicalize()?;
 
-        let library = ProcMacroLibraryImpl::open(&lib).map_err(|e| e.to_string())?;
+        let lib = ensure_file_with_lock_free_access(&lib)?;
 
-        Ok(Expander { libs: vec![library] })
+        let library = ProcMacroLibraryLibloading::open(&lib)?;
+
+        Ok(Expander { inner: library })
     }
 
     pub fn expand(
@@ -141,38 +138,36 @@ impl Expander {
                 TokenStream::with_subtree(attr.clone())
             });
 
-        for lib in &self.libs {
-            for proc_macro in &lib.exported_macros {
-                match proc_macro {
-                    bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
-                        if *trait_name == macro_name =>
-                    {
-                        let res = client.run(
-                            &crate::proc_macro::bridge::server::SameThread,
-                            crate::rustc_server::Rustc::default(),
-                            parsed_body,
-                        );
-                        return res.map(|it| it.subtree);
-                    }
-                    bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
-                        let res = client.run(
-                            &crate::proc_macro::bridge::server::SameThread,
-                            crate::rustc_server::Rustc::default(),
-                            parsed_body,
-                        );
-                        return res.map(|it| it.subtree);
-                    }
-                    bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
-                        let res = client.run(
-                            &crate::proc_macro::bridge::server::SameThread,
-                            crate::rustc_server::Rustc::default(),
-                            parsed_attributes,
-                            parsed_body,
-                        );
-                        return res.map(|it| it.subtree);
-                    }
-                    _ => continue,
+        for proc_macro in &self.inner.exported_macros {
+            match proc_macro {
+                bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
+                    if *trait_name == macro_name =>
+                {
+                    let res = client.run(
+                        &crate::proc_macro::bridge::server::SameThread,
+                        crate::rustc_server::Rustc::default(),
+                        parsed_body,
+                    );
+                    return res.map(|it| it.subtree);
                 }
+                bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
+                    let res = client.run(
+                        &crate::proc_macro::bridge::server::SameThread,
+                        crate::rustc_server::Rustc::default(),
+                        parsed_body,
+                    );
+                    return res.map(|it| it.subtree);
+                }
+                bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
+                    let res = client.run(
+                        &crate::proc_macro::bridge::server::SameThread,
+                        crate::rustc_server::Rustc::default(),
+                        parsed_attributes,
+                        parsed_body,
+                    );
+                    return res.map(|it| it.subtree);
+                }
+                _ => continue,
             }
         }
 
@@ -180,9 +175,9 @@ impl Expander {
     }
 
     pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
-        self.libs
+        self.inner
+            .exported_macros
             .iter()
-            .flat_map(|it| &it.exported_macros)
             .map(|proc_macro| match proc_macro {
                 bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
                     (trait_name.to_string(), ProcMacroKind::CustomDerive)
@@ -196,4 +191,34 @@ impl Expander {
             })
             .collect()
     }
+}
+
+/// Copy the dylib to temp directory to prevent locking in Windows
+#[cfg(windows)]
+fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
+    use std::{ffi::OsString, time::SystemTime};
+
+    let mut to = std::env::temp_dir();
+
+    let file_name = path.file_name().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("File path is invalid: {}", path.display()),
+        )
+    })?;
+
+    // generate a time deps unique number
+    let t = SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("Time went backwards");
+
+    let mut unique_name = OsString::from(t.as_millis().to_string());
+    unique_name.push(file_name);
+
+    to.push(unique_name);
+    std::fs::copy(path, &to).unwrap();
+    Ok(to)
+}
+
+#[cfg(unix)]
+fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
+    Ok(path.to_path_buf())
 }
