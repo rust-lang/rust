@@ -376,6 +376,17 @@ impl NameMapping {
                 AssocFn |
                 AssocConst => Some(&mut self.value_map),
                 Macro(_) => Some(&mut self.macro_map),
+                // They are not namespaced.
+                ExternCrate |
+                Use |
+                ForeignMod |
+                AnonConst |
+                Field |
+                LifetimeParam |
+                GlobalAsm |
+                Impl |
+                Closure |
+                Generator => None,
             },
             PrimTy(_) | SelfTy(_, _) => Some(&mut self.type_map),
             SelfCtor(_) | Local(_) => Some(&mut self.value_map),
