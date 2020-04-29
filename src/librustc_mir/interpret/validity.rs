@@ -38,6 +38,7 @@ macro_rules! throw_validation_failure {
 }
 
 /// Returns a validation failure for any Err value of $e.
+// FIXME: Replace all usages of try_validation! with try_validation_pat!.
 macro_rules! try_validation {
     ($e:expr, $what:expr, $where:expr $(, $details:expr )?) => {{
         try_validation_pat!($e, _, $what, $where $(, $details )?)
