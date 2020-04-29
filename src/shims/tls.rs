@@ -1,7 +1,8 @@
 //! Implement thread-local storage.
 
 use std::collections::BTreeMap;
-use std::collections::btree_map::Entry;
+use std::collections::btree_map::Entry as BTreeEntry;
+use std::collections::hash_map::Entry as HashMapEntry;
 
 use log::trace;
 
@@ -186,7 +187,7 @@ impl<'tcx> TlsData<'tcx> {
             thread_local.range_mut((start, Unbounded))
         {
             match data.entry(thread_id) {
-                Entry::Occupied(entry) => {
+                BTreeEntry::Occupied(entry) => {
                     if let Some(dtor) = dtor {
                         // Set TLS data to NULL, and call dtor with old value.
                         let data_scalar = entry.remove();
@@ -194,7 +195,7 @@ impl<'tcx> TlsData<'tcx> {
                         return ret;
                     }
                 }
-                Entry::Vacant(_) => {}
+                BTreeEntry::Vacant(_) => {}
             }
         }
         None
@@ -204,16 +205,14 @@ impl<'tcx> TlsData<'tcx> {
     /// the existing values stored in `dtors_running` for this thread. Returns
     /// `true` if dtors for `thread` are already running.
     fn set_dtors_running_for_thread(&mut self, thread: ThreadId) -> bool {
-        if self.dtors_running.contains_key(&thread) {
-            true
-        } else {
-            // We need to guard this `insert` with a check because otherwise we
-            // would risk to overwrite `last_dtor_key` with `None`.
-            self.dtors_running.insert(
-                thread,
-                RunningDtorsState { last_dtor_key: None }
-            );
-            false
+        match self.dtors_running.entry(thread) {
+            HashMapEntry::Occupied(_) => true,
+            HashMapEntry::Vacant(entry) => {
+                // We cannot just do `self.dtors_running.insert` because that
+                // would overwrite `last_dtor_key` with `None`.
+                entry.insert(RunningDtorsState { last_dtor_key: None });
+                false
+            }
         }
     }
 
