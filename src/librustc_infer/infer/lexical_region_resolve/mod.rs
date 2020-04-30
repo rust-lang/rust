@@ -6,6 +6,7 @@ use crate::infer::region_constraints::MemberConstraint;
 use crate::infer::region_constraints::RegionConstraintData;
 use crate::infer::region_constraints::VarInfos;
 use crate::infer::region_constraints::VerifyBound;
+use crate::infer::RegionRelations;
 use crate::infer::RegionVariableOrigin;
 use crate::infer::RegionckMode;
 use crate::infer::SubregionOrigin;
@@ -14,7 +15,6 @@ use rustc_data_structures::graph::implementation::{
     Direction, Graph, NodeIndex, INCOMING, OUTGOING,
 };
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::middle::free_region::RegionRelations;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
