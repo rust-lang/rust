@@ -52,7 +52,7 @@ impl Error for ConstEvalErrKind {}
 /// Should be called only if the error is actually going to to be reported!
 pub fn error_to_const_error<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>(
     ecx: &InterpCx<'mir, 'tcx, M>,
-    mut error: InterpErrorInfo<'tcx>,
+    error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
     let stacktrace = ecx.generate_stacktrace();

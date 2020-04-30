@@ -3977,7 +3977,6 @@ name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
  "arena",
- "backtrace",
  "bitflags",
  "byteorder",
  "log",
