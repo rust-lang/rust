@@ -210,12 +210,14 @@ x--expand-yaml-anchors--remove:
     steps:
       - name: mark the job as a success
         run: exit 0
+        shell: bash
     <<: *base-outcome-job
 
   - &base-failure-job
     steps:
       - name: mark the job as a failure
         run: exit 1
+        shell: bash
     <<: *base-outcome-job
 
 ###########################

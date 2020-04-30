@@ -624,6 +624,7 @@ jobs:
     steps:
       - name: mark the job as a success
         run: exit 0
+        shell: bash
     name: bors build finished
     runs-on: ubuntu-latest
   try-failure:
@@ -633,6 +634,7 @@ jobs:
     steps:
       - name: mark the job as a failure
         run: exit 1
+        shell: bash
     name: bors build finished
     runs-on: ubuntu-latest
   auto-success:
@@ -642,6 +644,7 @@ jobs:
     steps:
       - name: mark the job as a success
         run: exit 0
+        shell: bash
     name: bors build finished
     runs-on: ubuntu-latest
   auto-failure:
@@ -651,5 +654,6 @@ jobs:
     steps:
       - name: mark the job as a failure
         run: exit 1
+        shell: bash
     name: bors build finished
     runs-on: ubuntu-latest
