@@ -99,6 +99,16 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
         dst[i] = src[i - from];
     }
 
+    #[allow(clippy::identity_op)]
+    for i in 0..5 {
+        dst[i - 0] = src[i];
+    }
+
+    #[allow(clippy::reverse_range_loop)]
+    for i in 0..0 {
+        dst[i] = src[i];
+    }
+
     // `RangeTo` `for` loop - don't trigger lint
     for i in 0.. {
         dst[i] = src[i];
