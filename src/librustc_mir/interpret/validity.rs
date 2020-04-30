@@ -802,7 +802,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
                                 throw_validation_failure!("uninitialized bytes", self.path)
                             }
-                            // Other errors shouldn't be possible
+                            // Propagate upwards (that will also check for unexpected errors).
                             _ => return Err(err),
                         }
                     }
