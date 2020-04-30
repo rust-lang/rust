@@ -7,7 +7,8 @@
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-// These tests only cause an error when *using* the const.
+// These fail during CTFE (as they read a static), so they only cause an error
+// when *using* the const.
 
 const MUTATE_INTERIOR_MUT: usize = {
     static FOO: AtomicUsize = AtomicUsize::new(0);

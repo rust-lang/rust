@@ -1,19 +1,21 @@
 warning: skipping const checks
-  --> $DIR/const_refers_to_static2.rs:13:18
+  --> $DIR/const_refers_to_static2.rs:16:18
    |
 LL |     unsafe { &*(&FOO as *const _ as *const usize) }
    |                  ^^^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static2.rs:20:6
+  --> $DIR/const_refers_to_static2.rs:25:6
    |
 LL |     &FOO
    |      ^^^
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static2.rs:11:1
+  --> $DIR/const_refers_to_static2.rs:12:1
    |
 LL | / const REF_INTERIOR_MUT: &usize = {
+LL | |
+LL | |
 LL | |     static FOO: AtomicUsize = AtomicUsize::new(0);
 LL | |     unsafe { &*(&FOO as *const _ as *const usize) }
 LL | |
@@ -23,9 +25,11 @@ LL | | };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static2.rs:18:1
+  --> $DIR/const_refers_to_static2.rs:21:1
    |
 LL | / const READ_IMMUT: &usize = {
+LL | |
+LL | |
 LL | |     static FOO: usize = 0;
 LL | |     &FOO
 LL | |

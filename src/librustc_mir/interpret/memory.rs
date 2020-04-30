@@ -453,7 +453,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // thing here: one maps to `GlobalAlloc::Static`, this is the "lazy" ID,
                 // and the other one is maps to `GlobalAlloc::Memory`, this is returned by
                 // `const_eval_raw` and it is the "resolved" ID.
-                // The resolved ID is never used by the interpreted progrma, it is hidden.
+                // The resolved ID is never used by the interpreted program, it is hidden.
+                // This is relied upon for soundness of const-patterns; a pointer to the resolved
+                // ID would "sidestep" the checks that make sure consts do not point to statics!
                 // The `GlobalAlloc::Memory` branch here is still reachable though; when a static
                 // contains a reference to memory that was created during its evaluation (i.e., not
                 // to another static), those inner references only exist in "resolved" form.
