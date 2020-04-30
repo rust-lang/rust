@@ -48,7 +48,7 @@ macro_rules! try_validation {
 /// as a kind of validation blacklist:
 ///
 /// ```rust
-/// let v = try_validation_pat(some_fn(), Foo | Bar | Baz, "some failure", "some place");
+/// let v = try_validation_pat(some_fn(), Foo | Bar | Baz, "some failure", path);
 /// // Failures that match $p are thrown up as validation errors, but other errors are passed back
 /// // unchanged.
 /// ```
@@ -59,7 +59,7 @@ macro_rules! try_validation_pat {
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
             $( Err($p) )|* if true => throw_validation_failure!($what, $where $(, $details)?),
-            Err(e) =>  Err::<!, _>(e)?,
+            Err(e) => Err::<!, _>(e)?,
         }
     }};
 }
@@ -843,10 +843,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Run it.
         match visitor.visit_value(op) {
             Ok(()) => Ok(()),
-            // Allow validation failures to be returned.
+            // Pass through validation failures.
             Err(err) if matches!(err.kind, err_ub!(ValidationFailure { .. })) => Err(err),
-            // Also allow InvalidProgram to be returned, because it's likely that different callers
-            // will want to do different things in this situation.
+            // Also pass through InvalidProgram, those just indicate that we could not
+            // validate and each caller will know best what to do with them.
             Err(err) if matches!(err.kind, InterpError::InvalidProgram(_)) => Err(err),
             // Avoid other errors as those do not show *where* in the value the issue lies.
             Err(err) => bug!("Unexpected error during validation: {}", err),
