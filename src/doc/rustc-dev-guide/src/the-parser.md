@@ -38,6 +38,11 @@ To minimise the amount of copying that is done, both the `StringReader` and
 `Parser` have lifetimes which bind them to the parent `ParseSess`. This contains
 all the information needed while parsing, as well as the `SourceMap` itself.
 
+Note that while parsing, we may encounter macro definitions or invocations. We
+set these aside to be expanded (see [this chapter](./macro-expansion.md)).
+Expansion may itself require parsing the output of the macro, which may reveal
+more macros to be expanded, and so on.
+
 ## More on Lexical Analysis
 
 Code for lexical analysis is split between two crates:
