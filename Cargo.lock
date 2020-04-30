@@ -1193,9 +1193,9 @@ dependencies = [
 
 [[package]]
 name = "ra_vfs"
-version = "0.5.3"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58a265769d5e5655345a9fcbd870a1a7c3658558c0d8efaed79e0669358f46b8"
+checksum = "fcaa5615f420134aea7667253db101d03a5c5f300eac607872dc2a36407b2ac9"
 dependencies = [
  "crossbeam-channel",
  "jod-thread",
