@@ -15,6 +15,8 @@ use ra_prof::profile;
 use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
 
+pub(crate) use lower::LowerCtx;
+
 use crate::{
     attr::Attrs,
     db::DefDatabase,

@@ -12,7 +12,7 @@ use crate::{
     HirFileId, HirFileIdRepr, MacroCallId, MacroDefKind,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Hygiene {
     // This is what `$crate` expands to
     def_crate: Option<CrateId>,

@@ -15,6 +15,7 @@ use ra_syntax::ast::{
 
 use crate::{
     attr::Attrs,
+    body::LowerCtx,
     db::DefDatabase,
     path::{path, AssociatedTypeBinding, GenericArgs, Path},
     src::HasSource,
@@ -40,13 +41,14 @@ impl FunctionData {
     pub(crate) fn fn_data_query(db: &impl DefDatabase, func: FunctionId) -> Arc<FunctionData> {
         let loc = func.lookup(db);
         let src = loc.source(db);
+        let ctx = LowerCtx::new(db, src.file_id);
         let name = src.value.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
         let mut params = Vec::new();
         let mut has_self_param = false;
         if let Some(param_list) = src.value.param_list() {
             if let Some(self_param) = param_list.self_param() {
                 let self_type = if let Some(type_ref) = self_param.ascribed_type() {
-                    TypeRef::from_ast(type_ref)
+                    TypeRef::from_ast(&ctx, type_ref)
                 } else {
                     let self_type = TypeRef::Path(name![Self].into());
                     match self_param.kind() {
@@ -63,14 +65,14 @@ impl FunctionData {
                 has_self_param = true;
             }
             for param in param_list.params() {
-                let type_ref = TypeRef::from_ast_opt(param.ascribed_type());
+                let type_ref = TypeRef::from_ast_opt(&ctx, param.ascribed_type());
                 params.push(type_ref);
             }
         }
         let attrs = Attrs::new(&src.value, &Hygiene::new(db.upcast(), src.file_id));
 
         let ret_type = if let Some(type_ref) = src.value.ret_type().and_then(|rt| rt.type_ref()) {
-            TypeRef::from_ast(type_ref)
+            TypeRef::from_ast(&ctx, type_ref)
         } else {
             TypeRef::unit()
         };
@@ -122,7 +124,8 @@ impl TypeAliasData {
         let loc = typ.lookup(db);
         let node = loc.source(db);
         let name = node.value.name().map_or_else(Name::missing, |n| n.as_name());
-        let type_ref = node.value.type_ref().map(TypeRef::from_ast);
+        let lower_ctx = LowerCtx::new(db, node.file_id);
+        let type_ref = node.value.type_ref().map(|it| TypeRef::from_ast(&lower_ctx, it));
         let vis_default = RawVisibility::default_for_container(loc.container);
         let visibility = RawVisibility::from_ast_with_default(
             db,
@@ -130,7 +133,7 @@ impl TypeAliasData {
             node.as_ref().map(|n| n.visibility()),
         );
         let bounds = if let Some(bound_list) = node.value.type_bound_list() {
-            bound_list.bounds().map(TypeBound::from_ast).collect()
+            bound_list.bounds().map(|it| TypeBound::from_ast(&lower_ctx, it)).collect()
         } else {
             Vec::new()
         };
@@ -223,9 +226,10 @@ impl ImplData {
         let _p = profile("impl_data_query");
         let impl_loc = id.lookup(db);
         let src = impl_loc.source(db);
+        let lower_ctx = LowerCtx::new(db, src.file_id);
 
-        let target_trait = src.value.target_trait().map(TypeRef::from_ast);
-        let target_type = TypeRef::from_ast_opt(src.value.target_type());
+        let target_trait = src.value.target_trait().map(|it| TypeRef::from_ast(&lower_ctx, it));
+        let target_type = TypeRef::from_ast_opt(&lower_ctx, src.value.target_type());
         let is_negative = src.value.excl_token().is_some();
         let module_id = impl_loc.container.module(db);
 
@@ -279,8 +283,9 @@ impl ConstData {
         vis_default: RawVisibility,
         node: InFile<N>,
     ) -> ConstData {
+        let ctx = LowerCtx::new(db, node.file_id);
         let name = node.value.name().map(|n| n.as_name());
-        let type_ref = TypeRef::from_ast_opt(node.value.ascribed_type());
+        let type_ref = TypeRef::from_ast_opt(&ctx, node.value.ascribed_type());
         let visibility =
             RawVisibility::from_ast_with_default(db, vis_default, node.map(|n| n.visibility()));
         ConstData { name, type_ref, visibility }

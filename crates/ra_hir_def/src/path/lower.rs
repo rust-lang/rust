@@ -13,6 +13,7 @@ use ra_syntax::ast::{self, AstNode, TypeAscriptionOwner, TypeBoundsOwner};
 
 use super::AssociatedTypeBinding;
 use crate::{
+    body::LowerCtx,
     path::{GenericArg, GenericArgs, ModPath, Path, PathKind},
     type_ref::{TypeBound, TypeRef},
 };
@@ -26,6 +27,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
     let mut type_anchor = None;
     let mut segments = Vec::new();
     let mut generic_args = Vec::new();
+    let ctx = LowerCtx::with_hygiene(hygiene);
     loop {
         let segment = path.segment()?;
 
@@ -40,9 +42,10 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                     Either::Left(name) => {
                         let args = segment
                             .type_arg_list()
-                            .and_then(lower_generic_args)
+                            .and_then(|it| lower_generic_args(&ctx, it))
                             .or_else(|| {
                                 lower_generic_args_from_fn_path(
+                                    &ctx,
                                     segment.param_list(),
                                     segment.ret_type(),
                                 )
@@ -60,7 +63,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
             ast::PathSegmentKind::Type { type_ref, trait_ref } => {
                 assert!(path.qualifier().is_none()); // this can only occur at the first segment
 
-                let self_type = TypeRef::from_ast(type_ref?);
+                let self_type = TypeRef::from_ast(&ctx, type_ref?);
 
                 match trait_ref {
                     // <T>::foo
@@ -128,10 +131,13 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
     }
 }
 
-pub(super) fn lower_generic_args(node: ast::TypeArgList) -> Option<GenericArgs> {
+pub(super) fn lower_generic_args(
+    lower_ctx: &LowerCtx,
+    node: ast::TypeArgList,
+) -> Option<GenericArgs> {
     let mut args = Vec::new();
     for type_arg in node.type_args() {
-        let type_ref = TypeRef::from_ast_opt(type_arg.type_ref());
+        let type_ref = TypeRef::from_ast_opt(lower_ctx, type_arg.type_ref());
         args.push(GenericArg::Type(type_ref));
     }
     // lifetimes ignored for now
@@ -140,9 +146,9 @@ pub(super) fn lower_generic_args(node: ast::TypeArgList) -> Option<GenericArgs> 
         let assoc_type_arg: ast::AssocTypeArg = assoc_type_arg;
         if let Some(name_ref) = assoc_type_arg.name_ref() {
             let name = name_ref.as_name();
-            let type_ref = assoc_type_arg.type_ref().map(TypeRef::from_ast);
+            let type_ref = assoc_type_arg.type_ref().map(|it| TypeRef::from_ast(lower_ctx, it));
             let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
-                l.bounds().map(TypeBound::from_ast).collect()
+                l.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
             } else {
                 Vec::new()
             };
@@ -159,6 +165,7 @@ pub(super) fn lower_generic_args(node: ast::TypeArgList) -> Option<GenericArgs> 
 /// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)
 /// -> Z` (which desugars to `Fn<(X, Y), Output=Z>`).
 fn lower_generic_args_from_fn_path(
+    ctx: &LowerCtx,
     params: Option<ast::ParamList>,
     ret_type: Option<ast::RetType>,
 ) -> Option<GenericArgs> {
@@ -167,14 +174,14 @@ fn lower_generic_args_from_fn_path(
     if let Some(params) = params {
         let mut param_types = Vec::new();
         for param in params.params() {
-            let type_ref = TypeRef::from_ast_opt(param.ascribed_type());
+            let type_ref = TypeRef::from_ast_opt(&ctx, param.ascribed_type());
             param_types.push(type_ref);
         }
         let arg = GenericArg::Type(TypeRef::Tuple(param_types));
         args.push(arg);
     }
     if let Some(ret_type) = ret_type {
-        let type_ref = TypeRef::from_ast_opt(ret_type.type_ref());
+        let type_ref = TypeRef::from_ast_opt(&ctx, ret_type.type_ref());
         bindings.push(AssociatedTypeBinding {
             name: name![Output],
             type_ref: Some(type_ref),
