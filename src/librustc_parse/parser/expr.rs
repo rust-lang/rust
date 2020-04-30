@@ -1549,6 +1549,11 @@ impl<'a> Parser<'a> {
             let block = self.parse_block().map_err(|mut err| {
                 if not_block {
                     err.span_label(lo, "this `if` expression has a condition, but no block");
+                    if let ExprKind::Binary(_, _, ref right) = cond.kind {
+                        if let ExprKind::Block(_, _) = right.kind {
+                            err.help("maybe you forgot the right operand of the condition?");
+                        }
+                    }
                 }
                 err
             })?;
