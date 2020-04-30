@@ -3,13 +3,205 @@
 > `librustc_ast`, `librustc_expand`, and `librustc_builtin_macros` are all undergoing
 > refactoring, so some of the links in this chapter may be broken.
 
-Rust has a very powerful macro system. There are two major types of macros:
+Rust has a very powerful macro system. In the previous chapter, we saw how the
+parser sets aside macros to be expanded. This chapter is about the process of
+expanding those macros iteratively until we have a complete AST for our crate
+with no unexpanded macros (or a compile error).
+
+First, we will discuss the algorithm that expands and integrates macro output
+into ASTs. Next, we will take a look at how hygiene data is collected. Finally,
+we will look at the specifics of expanding different types of macros.
+
+## Expansion and AST Integration
+
+TODO: expand these notes (har har)...
+
+- Expansion happens over a whole crate at once.
+- We run `fully_expand_fragment` on the crate
+    - If `fully_expand_fragment` is run not on a whole crate, it means that we are performing eager expansion.
+        - We do this for some built-ins that expect literals (not exposed to users).
+        - It performs a subset of actions performed by non-eager expansion, so the discussion below focuses on eager expansion.
+    - Original description here: https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
+    - Algorithm: `fully_expand_fragment` works in iterations. We repeat until there are no unresolved macros left.
+        - Resolve imports in our partially built crate as much as possible.
+            - (link to name-resolution chapter) names resolved from "closer" scopes (e.g. current block) to further ones (e.g. prelude)
+            - A resolution fails differently for different scopes, e.g. for a module scope it means no unexpanded macros and no unresolved glob imports in that module.
+        - Collect as many macro invocations as possible from our partially built crate
+          (fn-like, attributes, derives) from the crate and add them to the queue.
+        - Take a macro from the queue, and attempt to resolve it.
+        - If it's resolved - run its expander function that consumes tokens or AST and produces tokens or AST (depending on the macro kind). (If it's not resolved, then put it back into the queue.)
+            - At this point, we know everything about the macro itself and can call `set_expn_data` to fill in its properties in the global data -- that is the hygiene data associated with `ExpnId`.
+        - The macro's expander function returns a piece of AST (or tokens). We need to integrate that piece of AST into the big existing partially built AST.
+            - If the macro produces tokens (e.g. a proc macro), we will have to parse into an AST, which may produce parse errors.
+            - During expansion, we create `SyntaxContext`s (heirarchy 2).
+            - This is essentially where the "token-like mass" becomes a proper set-in-stone AST with side-tables
+            - These three passes happen one after another on every AST fragment freshly expanded from a macro
+                - `NodeId`s are assigned by `InvocationCollector`
+                    - also collects new macro calls from this new AST piece and adds them to the queue
+                - def_paths are created and `DefId`s are assigned to them by `DefCollector`
+                - `Name`s are put into modules (from the resolver's point of view) by `BuildReducedGraphVisitor`
+        - After expanding a single macro and integrating its output continue to the next iteration of `fully_expand_fragment`.
+        - If we make no progress in an iteration, then we have reached a compilation error (e.g. an undefined macro).
+
+    - We attempt to recover from failures (unresolved macros or imports) for the sake of diagnostics
+        - recovery can't cause compilation to suceed. We know that it will fail at this point.
+        - we expand errors into `ExprKind::Err` or something like that for unresolved macros
+        - this allows compilation to continue past the first error so that we can report more errors at a time
+
+### Relationship to name resolution
+
+- name resolution is done for macro and import names during expansion and integration into the AST, as discussed above
+- For all other names we certainly know whether a name is resolved successfully or not on the first attempt, because no new names can appear, due to hygiene
+    - They are resolved in a later pass, see `librustc_resolve/late.rs`
+
+## Hygiene and Heirarchies
+
+If you have ever used C/C++ preprocessor macros, you know that there are some
+annoying and hard-to-debug gotchas! For example, consider the following C code:
+
+```c
+#define DEFINE_FOO struct Bar {int x;}; struct Foo {Bar bar;};
+
+// Then, somewhere else
+struct Bar {
+    ...
+};
+
+DEFINE_FOO
+```
+
+Most people avoid writing C like this – and for good reason: it doesn't
+compile. The `struct Bar` defined by the macro clashes names with the `struct
+Bar` defined in the code. Consider also the following example:
+
+```c
+#define DO_FOO(x) {\
+    int y = 0;\
+    foo(x, y);\
+    }
+
+// Then elsewhere
+int y = 22;
+DO_FOO(y);
+```
+
+Do you see the problem? We wanted to generate a call `foo(22, 0)`, but instead
+we got `foo(0, 0)` because the macro defined its own `y`!
+
+These are both examples of _macro hygiene_ issues. _Hygiene_ relates to how to
+handle names defined _within a macro_. In particular, a hygienic macro system
+prevents errors due to names introduced within a macro. Rust macros are hygienic
+in that they do not allow one to write the sorts of bugs above.
+
+At a high level, hygiene within the rust compiler is accomplished by keeping
+track of the context where a name is introduced and used. We can then
+disambiguate names based on that context. Future iterations of the macro system
+will allow greater control to the macro author to use that context. For example,
+a macro author may want to introduce a new name to the context where the macro
+was called. Alternately, the macro author may be defining a variable for use
+only within the macro (i.e. it should not be visible outside the macro).
+
+This section is about how that context is tracked.
+
+[code_dir]: https://github.com/rust-lang/rust/tree/master/src/librustc_expand/mbe
+[code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser
+[code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_rules
+[code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/fn.parse_tt.html
+[parsing]: ./the-parser.html
+
+TODO: expand these notes
+
+- Expansion is lazy. We work from the outside of a macro invocation inward.
+    - Ex: foo!(bar!(ident)) -> expand -> bar!(ident) -> expand -> ident
+    - Eager expansion: https://github.com/rust-lang/rfcs/pull/2320.
+        - Seems complicated to implemented
+        - We have it hacked into some built-in macros, but not generally.
+- Many AST nodes have some sort of syntax context, especially nodes from macros.
+- When we ask what is the syntax context of a node, the answer actually differs by what we are trying to do. Thus, we don't just keep track of a single context. There are in fact 3 different types of context used for different things.
+- Each type of context is tracked by an "expansion heirarchy". As we expand macros, new macro calls or macro definitions may be generated, leading to some nesting. This nesting is where the heirarchies come from. Each heirarchy tracks some different aspect, though, as we will see.
+- There are 3 expansion heirarchies
+    - All macros receive an integer ID assigned continuously starting from 0 as we discover new macro calls
+        - This is used as the `expn_id` where needed.
+    - All heirarchies start at ExpnId::root, which is its own parent
+    - The context of a node consists of a chain of expansions leading to `ExpnId::root`. A non-macro-expanded node has syntax context 0 (`SyntaxContext::empty()`) which represents just the root node.
+    - There are vectors in `HygieneData` that contain expansion info.
+        - There are entries here for both `SyntaxContext::empty()` and `ExpnId::root`, but they aren't used much.
+
+    1. Tracks expansion order: when a macro invocation is in the output of another macro.
+        ...
+            expn_id2
+                expn_id1
+        InternalExpnData::parent is the child->parent link. That is the expn_id1 points to expn_id2 points to ...
+
+        Ex:
+            macro_rules! foo { () => { println!(); } }
+            fn main() { foo!(); }
+
+            // Then AST nodes that are finally generated would have parent(expn_id_println) -> parent(expn_id_foo), right?
+
+    2. Tracks macro definitions: when we are expanding one macro another macro definition is revealed in its output.
+        ...
+            SyntaxContext2
+                SyntaxContext1
+        SyntaxContextData::parent is the child->parent link here.
+        SyntaxContext is the whole chain in this hierarchy, and SyntaxContextData::outer_expns are individual elements in the chain.
+
+        - For built-in macros (e.g. `line!()`) or stable proc macros: tokens produced by the macro are given the context `SyntaxContext::empty().apply_mark(expn_id)`
+            - Such macros are considered to have been defined at the root.
+                - For proc macros this is because they are always cross-crate and we don't have cross-crate hygiene implemented.
+
+        The second hierarchy has the context transplantation hack. See https://github.com/rust-lang/rust/pull/51762#issuecomment-401400732.
+
+        If the token had context X before being produced by a macro then after being produced by the macro it has context X -> macro_id.
+
+        Ex:
+            ```rust
+            macro m() { ident }
+            ```
+
+            Here `ident` originally has context SyntaxContext::root(). `ident` has context ROOT -> id(m) after it's produced by m.
+            The "chaining operator" is `apply_mark` in compiler code.
+
+        Ex:
+
+            ```rust
+            macro m() { macro n() { ident } }
+            ```
+            In this example the ident has context ROOT originally, then ROOT -> id(m), then ROOT -> id(m) -> id(n).
+
+        Note that these chains are not entirely determined by their last element, in other words ExpnId is not isomorphic to SyntaxCtxt.
+
+        Ex:
+            ```rust
+            macro m($i: ident) { macro n() { ($i, bar) } }
+
+            m!(foo);
+            ```
+
+            After all expansions, foo has context ROOT -> id(n) and bar has context ROOT -> id(m) -> id(n)
+
+    3. Call-site: tracks the location of the macro invocation.
+        Ex:
+            If foo!(bar!(ident)) expands into ident
+            then hierarchy 1 is root -> foo -> bar -> ident
+            but hierarchy 3 is root -> ident
+
+        ExpnInfo::call_site is the child-parent link in this case.
+
+- Hygiene-related algorithms are entirely in hygiene.rs
+    - Some hacks in `resolve_crate_root`, though.
+
+## Producing Macro Output
+
+Above, we saw how the output of a macro is integrated into the AST for a crate,
+and we also saw how th e hygiene data for a crate is generated. But how do we
+actually produce the output of a macro? It depends on the type of macro.
+
+There are two types of macros in Rust:
 `macro_rules!` macros (a.k.a. "Macros By Example" (MBE)) and procedural macros
-("proc macros"; including custom derives). During the parsing phase, the normal
+(or "proc macros"; including custom derives). During the parsing phase, the normal
 Rust parser will set aside the contents of macros and their invocations. Later,
-before name resolution, macros are expanded using these portions of the code.
-In this chapter, we will discuss MBEs, proc macros, and hygiene. Both types of
-macros are expanded during parsing, but they happen in different ways.
+macros are expanded using these portions of the code.
 
 ## Macros By Example
 
@@ -65,10 +257,10 @@ called _macro expansion_, and it is the topic of this chapter.
 
 ### The MBE parser
 
-There are two parts to macro expansion: parsing the definition and parsing the
+There are two parts to MBE expansion: parsing the definition and parsing the
 invocations. Interestingly, both are done by the macro parser.
 
-Basically, the macro parser is like an NFA-based regex parser. It uses an
+Basically, the MBE parser is like an NFA-based regex parser. It uses an
 algorithm similar in spirit to the [Earley parsing
 algorithm](https://en.wikipedia.org/wiki/Earley_parser). The macro parser is
 defined in [`src/librustc_expand/mbe/macro_parser.rs`][code_mp].
@@ -180,62 +372,9 @@ Custom derives are a special type of proc macro.
 
 TODO: more?
 
-## Hygiene
-
-If you have ever used C/C++ preprocessor macros, you know that there are some
-annoying and hard-to-debug gotchas! For example, consider the following C code:
-
-```c
-#define DEFINE_FOO struct Bar {int x;}; struct Foo {Bar bar;};
-
-// Then, somewhere else
-struct Bar {
-    ...
-};
-
-DEFINE_FOO
-```
-
-Most people avoid writing C like this – and for good reason: it doesn't
-compile. The `struct Bar` defined by the macro clashes names with the `struct
-Bar` defined in the code. Consider also the following example:
-
-```c
-#define DO_FOO(x) {\
-    int y = 0;\
-    foo(x, y);\
-    }
-
-// Then elsewhere
-int y = 22;
-DO_FOO(y);
-```
-
-Do you see the problem? We wanted to generate a call `foo(22, 0)`, but instead
-we got `foo(0, 0)` because the macro defined its own `y`!
-
-These are both examples of _macro hygiene_ issues. _Hygiene_ relates to how to
-handle names defined _within a macro_. In particular, a hygienic macro system
-prevents errors due to names introduced within a macro. Rust macros are hygienic
-in that they do not allow one to write the sorts of bugs above.
-
-At a high level, hygiene within the rust compiler is accomplished by keeping
-track of the context where a name is introduced and used. We can then
-disambiguate names based on that context. Future iterations of the macro system
-will allow greater control to the macro author to use that context. For example,
-a macro author may want to introduce a new name to the context where the macro
-was called. Alternately, the macro author may be defining a variable for use
-only within the macro (i.e. it should not be visible outside the macro).
-
-This section is about how that context is tracked.
-
-[code_dir]: https://github.com/rust-lang/rust/tree/master/src/librustc_expand/mbe
-[code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser
-[code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_rules
-[code_parse_int]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/fn.parse_tt.html
-[parsing]: ./the-parser.html
-
 ## Notes from petrochenkov discussion
+
+TODO: sprinkle these links around the chapter...
 
 Where to find the code:
 - librustc_span/hygiene.rs - structures related to hygiene and expansion that are kept in global data (can be accessed from any Ident without any context)
@@ -272,123 +411,3 @@ Primary structures:
 - Annotatable - a piece of AST that can be an attribute target, almost same thing as AstFragment except for types and patterns that can be produced by macros but cannot be annotated with attributes (TODO: Merge into AstFragment)
 - MacResult - a "polymorphic" AST fragment, something that can turn into a different AstFragment depending on its context (aka AstFragmentKind - item, or expression, or pattern etc.)
 - Invocation/InvocationKind - a structure describing a macro call, these structures are collected by the expansion infra (InvocationCollector), queued, resolved, expanded when resolved, etc.
-
-Hygiene and Expansion Heirarchies
-
-- Expansion is lazy. We work from the outside of a macro invocation inward.
-    - Ex: foo!(bar!(ident)) -> expand -> bar!(ident) -> expand -> ident
-    - Eager expansion: https://github.com/rust-lang/rfcs/pull/2320.
-        - Seems complicated to implemented
-        - We have it hacked into some built-in macros, but not generally.
-- Many AST nodes have some sort of syntax context, especially nodes from macros.
-- When we ask what is the syntax context of a node, the answer actually differs by what we are trying to do. Thus, we don't just keep track of a single context. There are in fact 3 different types of context used for different things.
-- Each type of context is tracked by an "expansion heirarchy". As we expand macros, new macro calls or macro definitions may be generated, leading to some nesting. This nesting is where the heirarchies come from. Each heirarchy tracks some different aspect, though, as we will see.
-- There are 3 expansion heirarchies
-    - All macros receive an integer ID assigned continuously starting from 0 as we discover new macro calls
-        - This is used as the `expn_id` where needed.
-    - All heirarchies start at ExpnId::root, which is its own parent
-    - The context of a node consists of a chain of expansions leading to `ExpnId::root`. A non-macro-expanded node has syntax context 0 (`SyntaxContext::empty()`) which represents just the root node.
-    - There are vectors in `HygieneData` that contain expansion info.
-        - There are entries here for both `SyntaxContext::empty()` and `ExpnId::root`, but they aren't used much.
-
-    1. Tracks expansion order: when a macro invocation is in the output of another macro.
-        ...
-            expn_id2
-                expn_id1
-        InternalExpnData::parent is the child->parent link. That is the expn_id1 points to expn_id2 points to ...
-
-        Ex:
-            macro_rules! foo { () => { println!(); } }
-            fn main() { foo!(); }
-
-            // Then AST nodes that are finally generated would have parent(expn_id_println) -> parent(expn_id_foo), right?
-
-    2. Tracks macro definitions: when we are expanding one macro another macro definition is revealed in its output.
-        ...
-            SyntaxContext2
-                SyntaxContext1
-        SyntaxContextData::parent is the child->parent link here.
-        SyntaxContext is the whole chain in this hierarchy, and SyntaxContextData::outer_expns are individual elements in the chain.
-
-        - For built-in macros (e.g. `line!()`) or stable proc macros: tokens produced by the macro are given the context `SyntaxContext::empty().apply_mark(expn_id)`
-            - Such macros are considered to have been defined at the root.
-                - For proc macros this is because they are always cross-crate and we don't have cross-crate hygiene implemented.
-
-        The second hierarchy has the context transplantation hack. See https://github.com/rust-lang/rust/pull/51762#issuecomment-401400732.
-
-        If the token had context X before being produced by a macro then after being produced by the macro it has context X -> macro_id.
-
-        Ex:
-            ```rust
-            macro m() { ident }
-            ```
-
-            Here `ident` originally has context SyntaxContext::root(). `ident` has context ROOT -> id(m) after it's produced by m.
-            The "chaining operator" is `apply_mark` in compiler code.
-
-        Ex:
-
-            ```rust
-            macro m() { macro n() { ident } }
-            ```
-            In this example the ident has context ROOT originally, then ROOT -> id(m), then ROOT -> id(m) -> id(n).
-
-        Note that these chains are not entirely determined by their last element, in other words ExpnId is not isomorphic to SyntaxCtxt.
-
-        Ex:
-            ```rust
-            macro m($i: ident) { macro n() { ($i, bar) } }
-
-            m!(foo);
-            ```
-
-            After all expansions, foo has context ROOT -> id(n) and bar has context ROOT -> id(m) -> id(n)
-
-    3. Call-site: tracks the location of the macro invocation.
-        Ex:
-            If foo!(bar!(ident)) expands into ident
-            then hierarchy 1 is root -> foo -> bar -> ident
-            but hierarchy 3 is root -> ident
-
-        ExpnInfo::call_site is the child-parent link in this case.
-
-- Hygiene-related algorithms are entirely in hygiene.rs
-    - Some hacks in `resolve_crate_root`, though.
-
-Expansion
-- Expansion happens over a whole crate at once.
-- We run `fully_expand_fragment` on the crate
-    - If `fully_expand_fragment` is run not on a whole crate, it means that we are performing eager expansion.
-        - We do this for some built-ins that expect literals (not exposed to users).
-        - It performs a subset of actions performed by non-eager expansion, so the discussion below focuses on eager expansion.
-    - Original description here: https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
-    - Algorithm: `fully_expand_fragment` works in iterations. We repeat until there are no unresolved macros left.
-        - Resolve imports in our partially built crate as much as possible.
-            - (link to name-resolution chapter) names resolved from "closer" scopes (e.g. current block) to further ones (e.g. prelude)
-            - A resolution fails differently for different scopes, e.g. for a module scope it means no unexpanded macros and no unresolved glob imports in that module.
-        - Collect as many macro invocations as possible from our partially built crate
-          (fn-like, attributes, derives) from the crate and add them to the queue.
-        - Take a macro from the queue, and attempt to resolve it.
-        - If it's resolved - run its expander function that consumes tokens or AST and produces tokens or AST (depending on the macro kind). (If it's not resolved, then put it back into the queue.)
-            - At this point, we know everything about the macro itself and can call `set_expn_data` to fill in its properties in the global data -- that is the hygiene data associated with `ExpnId`.
-        - The macro's expander function returns a piece of AST (or tokens). We need to integrate that piece of AST into the big existing partially built AST.
-            - If the macro produces tokens (e.g. a proc macro), we will have to parse into an AST, which may produce parse errors.
-            - During expansion, we create `SyntaxContext`s (heirarchy 2).
-            - This is essentially where the "token-like mass" becomes a proper set-in-stone AST with side-tables
-            - These three passes happen one after another on every AST fragment freshly expanded from a macro
-                - `NodeId`s are assigned by `InvocationCollector`
-                    - also collects new macro calls from this new AST piece and adds them to the queue
-                - def_paths are created and `DefId`s are assigned to them by `DefCollector`
-                - `Name`s are put into modules (from the resolver's point of view) by `BuildReducedGraphVisitor`
-        - After expanding a single macro and integrating its output continue to the next iteration of `fully_expand_fragment`.
-        - If we make no progress in an iteration, then we have reached a compilation error (e.g. an undefined macro).
-
-    - We attempt to recover from failures (unresolved macros or imports) for the sake of diagnostics
-        - recovery can't cause compilation to suceed. We know that it will fail at this point.
-        - we expand errors into `ExprKind::Err` or something like that for unresolved macros
-        - this allows compilation to continue past the first error so that we can report more errors at a time
-
-Relationship to name resolution
-- name resolution is done for macro and import names during expansion and integration into the AST, as discussed above
-- For all other names we certainly know whether a name is resolved successfully or not on the first attempt, because no new names can appear, due to hygiene
-    - They are resolved in a later pass, see `librustc_resolve/late.rs`
