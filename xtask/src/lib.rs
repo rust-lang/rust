@@ -10,7 +10,6 @@ pub mod pre_commit;
 pub mod codegen;
 mod ast_src;
 
-use anyhow::Context;
 use std::{
     env,
     io::Write,
@@ -24,9 +23,9 @@ use crate::{
     not_bash::{date_iso, fs2, pushd, rm_rf, run},
 };
 
-pub use anyhow::Result;
+pub use anyhow::{bail, Context as _, Result};
 
-const TOOLCHAIN: &str = "stable";
+const RUSTFMT_TOOLCHAIN: &str = "stable";
 
 pub fn project_root() -> PathBuf {
     Path::new(
@@ -57,15 +56,25 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
     let _dir = pushd(project_root());
     ensure_rustfmt()?;
 
-    let check = if mode == Mode::Verify { "--check" } else { "" };
-    run!("rustup run {} -- cargo fmt -- {}", TOOLCHAIN, check)?;
-    Ok(())
+    if Command::new("cargo")
+        .env("RUSTUP_TOOLCHAIN", RUSTFMT_TOOLCHAIN)
+        .args(&["fmt", "--"])
+        .args(if mode == Mode::Verify { &["--check"][..] } else { &[] })
+        .stderr(Stdio::inherit())
+        .status()?
+        .success()
+    {
+        Ok(())
+    } else {
+        bail!("Rustfmt failed");
+    }
 }
 
 fn reformat(text: impl std::fmt::Display) -> Result<String> {
     ensure_rustfmt()?;
-    let mut rustfmt = Command::new("rustup")
-        .args(&["run", TOOLCHAIN, "--", "rustfmt", "--config-path"])
+    let mut rustfmt = Command::new("rustfmt")
+        .env("RUSTUP_TOOLCHAIN", RUSTFMT_TOOLCHAIN)
+        .args(&["--config-path"])
         .arg(project_root().join("rustfmt.toml"))
         .args(&["--config", "fn_single_line=true"])
         .stdin(Stdio::piped())
@@ -79,29 +88,42 @@ fn reformat(text: impl std::fmt::Display) -> Result<String> {
 }
 
 fn ensure_rustfmt() -> Result<()> {
-    match Command::new("rustup")
-        .args(&["run", TOOLCHAIN, "--", "cargo", "fmt", "--version"])
+    match Command::new("rustfmt")
+        .args(&["--version"])
+        .env("RUSTUP_TOOLCHAIN", RUSTFMT_TOOLCHAIN)
+        .stdout(Stdio::piped())
         .stderr(Stdio::null())
-        .stdout(Stdio::null())
-        .status()
+        .spawn()
+        .and_then(|child| child.wait_with_output())
     {
-        Ok(status) if status.success() => return Ok(()),
-        _ => (),
-    };
-    run!("rustup toolchain install {}", TOOLCHAIN)?;
-    run!("rustup component add rustfmt --toolchain {}", TOOLCHAIN)?;
-    Ok(())
+        Ok(output)
+            if output.status.success()
+                && std::str::from_utf8(&output.stdout)?.contains(RUSTFMT_TOOLCHAIN) =>
+        {
+            Ok(())
+        }
+        _ => {
+            bail!(
+                "Failed to run rustfmt from toolchain '{0}'. \
+                Please run `rustup component add rustfmt --toolchain {0}` to install it.",
+                RUSTFMT_TOOLCHAIN,
+            );
+        }
+    }
 }
 
 pub fn run_clippy() -> Result<()> {
-    match Command::new("rustup")
-        .args(&["run", TOOLCHAIN, "--", "cargo", "clippy", "--version"])
+    match Command::new("cargo")
+        .args(&["clippy", "--version"])
         .stderr(Stdio::null())
         .stdout(Stdio::null())
         .status()
     {
         Ok(status) if status.success() => (),
-        _ => install_clippy().context("install clippy")?,
+        _ => bail!(
+            "Failed run cargo clippy. \
+            Please run `rustup component add clippy` to install it.",
+        ),
     };
 
     let allowed_lints = [
@@ -110,17 +132,7 @@ pub fn run_clippy() -> Result<()> {
         "clippy::nonminimal_bool",
         "clippy::redundant_pattern_matching",
     ];
-    run!(
-        "rustup run {} -- cargo clippy --all-features --all-targets -- -A {}",
-        TOOLCHAIN,
-        allowed_lints.join(" -A ")
-    )?;
-    Ok(())
-}
-
-fn install_clippy() -> Result<()> {
-    run!("rustup toolchain install {}", TOOLCHAIN)?;
-    run!("rustup component add clippy --toolchain {}", TOOLCHAIN)?;
+    run!("cargo clippy --all-features --all-targets -- -A {}", allowed_lints.join(" -A "))?;
     Ok(())
 }
 
@@ -130,7 +142,29 @@ pub fn run_fuzzer() -> Result<()> {
         run!("cargo install cargo-fuzz")?;
     };
 
-    run!("rustup run nightly -- cargo fuzz run parser")?;
+    // Expecting nightly rustc
+    match Command::new("rustc")
+        .args(&["--version"])
+        .env("RUSTUP_TOOLCHAIN", "nightly")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .and_then(|child| child.wait_with_output())
+    {
+        Ok(output)
+            if output.status.success()
+                && std::str::from_utf8(&output.stdout)?.contains("nightly") => {}
+        _ => bail!("fuzz tests require nightly rustc"),
+    }
+
+    let status = Command::new("cargo")
+        .env("RUSTUP_TOOLCHAIN", "nightly")
+        .args(&["fuzz", "run", "parser"])
+        .stderr(Stdio::inherit())
+        .status()?;
+    if !status.success() {
+        bail!("{}", status);
+    }
     Ok(())
 }
 
