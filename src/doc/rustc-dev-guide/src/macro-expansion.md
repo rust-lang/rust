@@ -273,8 +273,6 @@ Primary structures:
 - MacResult - a "polymorphic" AST fragment, something that can turn into a different AstFragment depending on its context (aka AstFragmentKind - item, or expression, or pattern etc.)
 - Invocation/InvocationKind - a structure describing a macro call, these structures are collected by the expansion infra (InvocationCollector), queued, resolved, expanded when resolved, etc.
 
-TODO: how a crate transitions from the state "macros exist as written in source" to "all macros are expanded"
-
 Hygiene and Expansion Heirarchies
 
 - Expansion is lazy. We work from the outside of a macro invocation inward.
