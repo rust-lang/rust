@@ -674,7 +674,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// control for this.
     pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
         // Cannot be a closure because it is generic in `Tag`, `Extra`.
-        fn write_allocation_track_relocs<'tcx, Tag, Extra>(
+        fn write_allocation_track_relocs<'tcx, Tag: Copy + fmt::Debug, Extra>(
             tcx: TyCtxtAt<'tcx>,
             allocs_to_print: &mut VecDeque<AllocId>,
             alloc: &Allocation<Tag, Extra>,

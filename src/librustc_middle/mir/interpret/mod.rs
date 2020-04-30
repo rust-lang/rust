@@ -168,15 +168,17 @@ pub enum LitToConstError {
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AllocId(pub u64);
 
+// We want the `Debug` output to be readable as it is used by `derive(Debug)` for
+// all the Miri types.
 impl fmt::Debug for AllocId {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, fmt)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() { write!(f, "a{}", self.0) } else { write!(f, "alloc{}", self.0) }
     }
 }
 
 impl fmt::Display for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "alloc{}", self.0)
+        fmt::Debug::fmt(self, f)
     }
 }
 

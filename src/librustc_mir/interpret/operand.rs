@@ -122,11 +122,11 @@ impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
                         p(cx, s, ty)?;
                         return Ok(());
                     }
-                    write!(f, "{:?}: {}", s.erase_tag(), self.layout.ty)
+                    write!(f, "{}: {}", s.erase_tag(), self.layout.ty)
                 }
                 Immediate::ScalarPair(a, b) => {
                     // FIXME(oli-obk): at least print tuples and slices nicely
-                    write!(f, "({:?}, {:?}): {}", a.erase_tag(), b.erase_tag(), self.layout.ty,)
+                    write!(f, "({}, {}): {}", a.erase_tag(), b.erase_tag(), self.layout.ty,)
                 }
             }
         })

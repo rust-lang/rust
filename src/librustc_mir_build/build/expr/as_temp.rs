@@ -3,10 +3,9 @@
 use crate::build::scope::DropKind;
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
+use rustc_hir as hir;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_hir as hir;
-use rustc_span::symbol::sym;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
@@ -60,7 +59,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 local_decl = local_decl.block_tail(tail_info);
             }
             if let ExprKind::StaticRef { def_id, .. } = expr.kind {
-                let is_thread_local = this.hir.tcx().has_attr(def_id, sym::thread_local);
+                let is_thread_local = this.hir.tcx().is_thread_local_static(def_id);
                 local_decl.internal = true;
                 local_decl.local_info = LocalInfo::StaticRef { def_id, is_thread_local };
             }

@@ -286,11 +286,6 @@ fn check_place(
     while let &[ref proj_base @ .., elem] = cursor {
         cursor = proj_base;
         match elem {
-            ProjectionElem::Downcast(..) if !feature_allowed(tcx, def_id, sym::const_if_match) => {
-                return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
-            }
-            ProjectionElem::Downcast(_symbol, _variant_index) => {}
-
             ProjectionElem::Field(..) => {
                 let base_ty = Place::ty_from(place.local, &proj_base, body, tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
@@ -303,6 +298,7 @@ fn check_place(
                 }
             }
             ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Deref
             | ProjectionElem::Index(_) => {}
@@ -344,7 +340,8 @@ fn check_terminator(
         | TerminatorKind::FalseUnwind { .. }
         | TerminatorKind::Goto { .. }
         | TerminatorKind::Return
-        | TerminatorKind::Resume => Ok(()),
+        | TerminatorKind::Resume
+        | TerminatorKind::Unreachable => Ok(()),
 
         TerminatorKind::Drop { location, .. } => check_place(tcx, *location, span, def_id, body),
         TerminatorKind::DropAndReplace { location, value, .. } => {
@@ -360,12 +357,7 @@ fn check_terminator(
             check_operand(tcx, discr, span, def_id, body)
         }
 
-        // FIXME(ecstaticmorse): We probably want to allow `Unreachable` unconditionally.
-        TerminatorKind::Unreachable if feature_allowed(tcx, def_id, sym::const_if_match) => Ok(()),
-
-        TerminatorKind::Abort | TerminatorKind::Unreachable => {
-            Err((span, "const fn with unreachable code is not stable".into()))
-        }
+        TerminatorKind::Abort => Err((span, "abort is not stable in const fn".into())),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
             Err((span, "const fn generators are unstable".into()))
         }

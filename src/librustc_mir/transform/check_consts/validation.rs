@@ -8,7 +8,6 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{self, Instance, InstanceDef, TyCtxt};
-use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, TraitEngine};
@@ -224,7 +223,7 @@ impl Validator<'mir, 'tcx> {
 
         // Ensure that the end result is `Sync` in a non-thread local `static`.
         let should_check_for_sync =
-            const_kind == Some(ConstKind::Static) && !tcx.has_attr(def_id, sym::thread_local);
+            const_kind == Some(ConstKind::Static) && !tcx.is_thread_local_static(def_id);
 
         if should_check_for_sync {
             let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
@@ -267,8 +266,7 @@ impl Validator<'mir, 'tcx> {
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
-        let is_thread_local = self.tcx.has_attr(def_id, sym::thread_local);
-        if is_thread_local {
+        if self.tcx.is_thread_local_static(def_id) {
             self.check_op_spanned(ops::ThreadLocalAccess, span)
         } else {
             self.check_op_spanned(ops::StaticAccess, span)
@@ -474,6 +472,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             }
 
             ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {
@@ -485,10 +484,6 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                     _ => {}
                 }
-            }
-
-            ProjectionElem::Downcast(..) => {
-                self.check_op(ops::Downcast);
             }
         }
     }

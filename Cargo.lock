@@ -135,9 +135,9 @@ dependencies = [
 
 [[package]]
 name = "backtrace-sys"
-version = "0.1.36"
+version = "0.1.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78848718ee1255a2485d1309ad9cdecfc2e7d0362dd11c6829364c6b35ae1bc7"
+checksum = "18fbebbe1c9d1f383a9cc7e8ccdb471b91c8d024ee9c2ca5b5346121fe8b4399"
 dependencies = [
  "cc",
  "compiler_builtins",
@@ -487,7 +487,7 @@ dependencies = [
  "if_chain",
  "itertools 0.9.0",
  "lazy_static 1.4.0",
- "pulldown-cmark 0.7.0",
+ "pulldown-cmark 0.7.1",
  "quine-mc_cluskey",
  "regex-syntax",
  "semver",
@@ -2657,9 +2657,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c2d7fd131800e0d63df52aff46201acaab70b431a4a1ec6f0343fe8e64f35a4"
+checksum = "3e142c3b8f49d2200605ee6ba0b1d757310e9e7a72afe78c36ee2ef67300ee00"
 dependencies = [
  "bitflags",
  "memchr",
@@ -4342,7 +4342,7 @@ version = "0.0.0"
 dependencies = [
  "itertools 0.8.0",
  "minifier",
- "pulldown-cmark 0.7.0",
+ "pulldown-cmark 0.7.1",
  "rustc-rayon",
  "serde",
  "serde_json",

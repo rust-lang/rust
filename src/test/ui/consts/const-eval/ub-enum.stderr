@@ -1,53 +1,53 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:23:1
+  --> $DIR/ub-enum.rs:24:1
    |
 LL | const BAD_ENUM: Enum = unsafe { mem::transmute(1usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 1, but expected a valid enum discriminant
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x00000001, but expected a valid enum discriminant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:26:1
+  --> $DIR/ub-enum.rs:27:1
    |
 LL | const BAD_ENUM_PTR: Enum = unsafe { mem::transmute(&1) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer at .<enum-tag>, but expected initialized plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc8+0x0 at .<enum-tag>, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:29:1
+  --> $DIR/ub-enum.rs:30:1
    |
 LL | const BAD_ENUM_WRAPPED: Wrap<Enum> = unsafe { mem::transmute(&1) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer at .0.<enum-tag>, but expected initialized plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc13+0x0 at .0.<enum-tag>, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:41:1
+  --> $DIR/ub-enum.rs:42:1
    |
 LL | const BAD_ENUM2: Enum2 = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected a valid enum discriminant
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x00000000, but expected a valid enum discriminant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:43:1
+  --> $DIR/ub-enum.rs:44:1
    |
 LL | const BAD_ENUM2_PTR: Enum2 = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer at .<enum-tag>, but expected initialized plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc20+0x0 at .<enum-tag>, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:46:1
+  --> $DIR/ub-enum.rs:47:1
    |
 LL | const BAD_ENUM2_WRAPPED: Wrap<Enum2> = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer at .0.<enum-tag>, but expected initialized plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc25+0x0 at .0.<enum-tag>, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:55:1
+  --> $DIR/ub-enum.rs:56:1
    |
 LL | const BAD_ENUM2_UNDEF : Enum2 = unsafe { MaybeUninit { uninit: () }.init };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes at .<enum-tag>, but expected initialized plain (non-pointer) bytes
@@ -55,15 +55,15 @@ LL | const BAD_ENUM2_UNDEF : Enum2 = unsafe { MaybeUninit { uninit: () }.init };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:59:1
+  --> $DIR/ub-enum.rs:60:1
    |
 LL | const BAD_ENUM2_OPTION_PTR: Option<Enum2> = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer at .<enum-tag>, but expected initialized plain (non-pointer) bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc32+0x0 at .<enum-tag>, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:76:1
+  --> $DIR/ub-enum.rs:77:1
    |
 LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute(1u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of the never type `!` at .<enum-variant(B)>.0
@@ -71,7 +71,7 @@ LL | const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:78:1
+  --> $DIR/ub-enum.rs:79:1
    |
 LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of uninhabited type Never at .<enum-variant(D)>.0
@@ -79,15 +79,15 @@ LL | const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:86:1
+  --> $DIR/ub-enum.rs:87:1
    |
 LL | const BAD_OPTION_CHAR: Option<(char, char)> = Some(('x', unsafe { mem::transmute(!0u32) }));
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 4294967295 at .<enum-variant(Some)>.0.1, but expected a valid unicode codepoint
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0xffffffff at .<enum-variant(Some)>.0.1, but expected a valid unicode codepoint
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:90:1
+  --> $DIR/ub-enum.rs:91:1
    |
 LL | const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe { mem::transmute(1u64) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of the never type `!` at .<enum-variant(Err)>.0.1
@@ -95,7 +95,7 @@ LL | const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe {
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:92:1
+  --> $DIR/ub-enum.rs:93:1
    |
 LL | const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem::transmute(1u64) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of uninhabited type Never at .<enum-variant(Err)>.0.1

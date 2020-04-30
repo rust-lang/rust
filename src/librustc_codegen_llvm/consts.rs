@@ -212,6 +212,7 @@ impl CodegenCx<'ll, 'tcx> {
         let g = if let Some(def_id) = def_id.as_local() {
             let id = self.tcx.hir().as_local_hir_id(def_id);
             let llty = self.layout_of(ty).llvm_type(self);
+            // FIXME: refactor this to work without accessing the HIR
             let (g, attrs) = match self.tcx.hir().get(id) {
                 Node::Item(&hir::Item { attrs, span, kind: hir::ItemKind::Static(..), .. }) => {
                     let sym_str = sym.as_str();

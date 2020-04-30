@@ -107,6 +107,8 @@ pub enum Scalar<Tag = (), Id = AllocId> {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(Scalar, 24);
 
+// We want the `Debug` output to be readable as it is used by `derive(Debug)` for
+// all the Miri types.
 impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Scalar<Tag, Id> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -125,11 +127,11 @@ impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Scalar<Tag, Id> {
     }
 }
 
-impl<Tag> fmt::Display for Scalar<Tag> {
+impl<Tag: fmt::Debug> fmt::Display for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Scalar::Ptr(_) => write!(f, "a pointer"),
-            Scalar::Raw { data, .. } => write!(f, "{}", data),
+            Scalar::Ptr(ptr) => write!(f, "pointer to {}", ptr),
+            Scalar::Raw { .. } => fmt::Debug::fmt(self, f),
         }
     }
 }
@@ -559,16 +561,18 @@ impl<Tag> From<Pointer<Tag>> for ScalarMaybeUndef<Tag> {
     }
 }
 
+// We want the `Debug` output to be readable as it is used by `derive(Debug)` for
+// all the Miri types.
 impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for ScalarMaybeUndef<Tag, Id> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ScalarMaybeUndef::Undef => write!(f, "Undef"),
+            ScalarMaybeUndef::Undef => write!(f, "<uninitialized>"),
             ScalarMaybeUndef::Scalar(s) => write!(f, "{:?}", s),
         }
     }
 }
 
-impl<Tag> fmt::Display for ScalarMaybeUndef<Tag> {
+impl<Tag: fmt::Debug> fmt::Display for ScalarMaybeUndef<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ScalarMaybeUndef::Undef => write!(f, "uninitialized bytes"),
