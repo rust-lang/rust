@@ -270,6 +270,7 @@ Definite bugs found:
 * [Memory leak in `beef`](https://github.com/maciejhirsz/beef/issues/12)
 * [Invalid use of undefined memory in `EbrCell`](https://github.com/Firstyear/concread/commit/b15be53b6ec076acb295a5c0483cdb4bf9be838f#diff-6282b2fc8e98bd089a1f0c86f648157cR229)
 * [Unaligned pointer access in TiKV](https://github.com/tikv/tikv/issues/7613)
+* [Dangling shared reference in `servo_arc`](https://github.com/servo/servo/issues/26357)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
