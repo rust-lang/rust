@@ -365,7 +365,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 assert!(size.bytes() == 0);
                 // Must be non-NULL.
                 if bits == 0 {
-                    throw_ub!(InvalidIntPointerUsage(0))
+                    throw_ub!(DanglingIntPointer(0, msg))
                 }
                 // Must be aligned.
                 if let Some(align) = align {
