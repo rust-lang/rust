@@ -72,7 +72,9 @@ pub(crate) fn trans_constant<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
-    let const_ = match constant.literal.val {
+    let const_ = fx.monomorphize(&constant.literal);
+    let const_val = match const_.val {
+        ConstKind::Value(const_val) => const_val,
         ConstKind::Unevaluated(def_id, ref substs, promoted) if fx.tcx.is_static(def_id) => {
             assert!(substs.is_empty());
             assert!(promoted.is_none());
@@ -83,17 +85,33 @@ pub(crate) fn trans_constant<'tcx>(
                 fx.layout_of(fx.monomorphize(&constant.literal.ty)),
             ).to_cvalue(fx);
         }
-        _ => fx.monomorphize(&constant.literal).eval(fx.tcx, ParamEnv::reveal_all()),
+        ConstKind::Unevaluated(def_id, ref substs, promoted) => {
+            match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def_id, substs, promoted, None) {
+                Ok(const_val) => const_val,
+                Err(_) => {
+                    if promoted.is_none() {
+                        fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
+                    }
+                    return crate::trap::trap_unreachable_ret_value(
+                        fx,
+                        fx.layout_of(const_.ty),
+                        "erroneous constant encountered",
+                    );
+                }
+            }
+        }
+        ConstKind::Param(_) | ConstKind::Infer(_) | ConstKind::Bound(_, _)
+        | ConstKind::Placeholder(_) | ConstKind::Error(_) => unreachable!("{:?}", const_),
     };
 
-    trans_const_value(fx, const_)
+    trans_const_value(fx, const_val, const_.ty)
 }
 
 pub(crate) fn trans_const_value<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    const_: &'tcx Const<'tcx>,
+    const_val: ConstValue<'tcx>,
+    ty: Ty<'tcx>
 ) -> CValue<'tcx> {
-    let ty = fx.monomorphize(&const_.ty);
     let layout = fx.layout_of(ty);
     assert!(!layout.is_unsized(), "sized const value");
 
@@ -103,10 +121,6 @@ pub(crate) fn trans_const_value<'tcx>(
             layout,
         );
     }
-    let const_val = match const_.val {
-        ConstKind::Value(const_val) => const_val,
-        _ => unreachable!("Const {:?} should have been evaluated", const_),
-    };
 
     match const_val {
         ConstValue::Scalar(x) => {

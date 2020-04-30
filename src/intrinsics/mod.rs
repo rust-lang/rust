@@ -822,7 +822,8 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
             let val = crate::constant::trans_const_value(
                 fx,
-                ty::Const::from_value(fx.tcx, const_val, ret.layout().ty),
+                const_val,
+                ret.layout().ty,
             );
             ret.write_cvalue(fx, val);
         };

@@ -351,7 +351,8 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         ));
         crate::constant::trans_const_value(
             self,
-            ty::Const::from_value(self.tcx, const_loc, self.tcx.caller_location_ty()),
+            const_loc,
+            self.tcx.caller_location_ty(),
         )
     }
 
