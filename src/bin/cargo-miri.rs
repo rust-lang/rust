@@ -144,7 +144,8 @@ fn list_targets() -> impl Iterator<Item = cargo_metadata::Target> {
         })
         .unwrap_or_else(|| {
             show_error(format!(
-                "This seems to be a workspace, which is not supported by cargo-miri"
+                "this seems to be a workspace, which is not supported by `cargo miri`.\n\
+                 Try to `cd` into the crate you want to test, and re-run `cargo miri` there."
             ))
         });
     let package = metadata.packages.remove(package_index);
