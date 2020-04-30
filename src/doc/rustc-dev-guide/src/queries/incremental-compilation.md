@@ -137,7 +137,7 @@ algorithm like so:
     it did not change.
 
 ## Resources
-The initial design document can be found at [here][initial-design], which expands on the memoization details, provides more high-level overview and motivation for this system.
+The initial design document can be found [here][initial-design], which expands on the memoization details, provides more high-level overview and motivation for this system.
 
 # Footnotes
 
