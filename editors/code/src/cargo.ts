@@ -56,7 +56,7 @@ export class Cargo {
     }
 
     public async executableFromArgs(args: string[]): Promise<string> {
-        let cargoArgs = [...args]; // to remain  args unchanged
+        const cargoArgs = [...args]; // to remain  args unchanged
         cargoArgs.push("--message-format=json");
 
         const artifacts = await this.artifactsFromArgs(cargoArgs);
