@@ -128,7 +128,7 @@ fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
         mutex_set_id(ecx, mutex_op, id.to_u32_scalar())?;
         Ok(id)
     } else {
-        Ok(id.into())
+        Ok(MutexId::from_u32(id))
     }
 }
 
@@ -168,7 +168,7 @@ fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
         rwlock_set_id(ecx, rwlock_op, id.to_u32_scalar())?;
         Ok(id)
     } else {
-        Ok(id.into())
+        Ok(RwLockId::from_u32(id))
     }
 }
 
@@ -232,7 +232,7 @@ fn cond_get_or_create_id<'mir, 'tcx: 'mir>(
         cond_set_id(ecx, cond_op, id.to_u32_scalar())?;
         Ok(id)
     } else {
-        Ok(id.into())
+        Ok(CondvarId::from_u32(id))
     }
 }
 
@@ -656,7 +656,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let id = cond_get_or_create_id(this, cond_op)?;
         if let Some((thread, mutex)) = this.condvar_signal(id) {
             reacquire_cond_mutex(this, thread, mutex)?;
-            this.unregister_callback_if_exists(thread)?;
+            this.unregister_timeout_callback_if_exists(thread)?;
         }
 
         Ok(0)
@@ -668,7 +668,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         while let Some((thread, mutex)) = this.condvar_signal(id) {
             reacquire_cond_mutex(this, thread, mutex)?;
-            this.unregister_callback_if_exists(thread)?;
+            this.unregister_timeout_callback_if_exists(thread)?;
         }
 
         Ok(0)
@@ -739,7 +739,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         // Register the timeout callback.
-        this.register_callback(
+        this.register_timeout_callback(
             active_thread,
             timeout_time,
             Box::new(move |ecx| {

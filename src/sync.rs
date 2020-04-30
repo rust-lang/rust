@@ -9,8 +9,17 @@ use crate::*;
 
 macro_rules! declare_id {
     ($name: ident) => {
+        /// 0 is used to indicate that the id was not yet assigned and,
+        /// therefore, is not a valid identifier.
         #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
         pub struct $name(NonZeroU32);
+
+        impl $name {
+            // Panics if `id == 0`.
+            pub fn from_u32(id: u32) -> Self {
+                Self(NonZeroU32::new(id).unwrap())
+            }
+        }
 
         impl Idx for $name {
             fn new(idx: usize) -> Self {
@@ -18,12 +27,6 @@ macro_rules! declare_id {
             }
             fn index(self) -> usize {
                 usize::try_from(self.0.get() - 1).unwrap()
-            }
-        }
-
-        impl From<u32> for $name {
-            fn from(id: u32) -> Self {
-                Self(NonZeroU32::new(id).unwrap())
             }
         }
 
