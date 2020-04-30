@@ -26,6 +26,8 @@ pub struct FunctionSignature {
     pub kind: CallableKind,
     /// Optional visibility
     pub visibility: Option<String>,
+    /// Qualifiers like `async`, `unsafe`, ...
+    pub qualifier: FunctionQualifier,
     /// Name of the function
     pub name: Option<String>,
     /// Documentation for the function
@@ -44,6 +46,16 @@ pub struct FunctionSignature {
     pub where_predicates: Vec<String>,
     /// Self param presence
     pub has_self_param: bool,
+}
+
+#[derive(Debug, Default)]
+pub struct FunctionQualifier {
+    // `async` and `const` are mutually exclusive. Do we need to enforcing it here?
+    pub is_async: bool,
+    pub is_const: bool,
+    pub is_unsafe: bool,
+    /// The string `extern ".."`
+    pub extern_abi: Option<String>,
 }
 
 impl FunctionSignature {
@@ -83,6 +95,8 @@ impl FunctionSignature {
             FunctionSignature {
                 kind: CallableKind::StructConstructor,
                 visibility: node.visibility().map(|n| n.syntax().text().to_string()),
+                // Do we need `const`?
+                qualifier: Default::default(),
                 name: node.name().map(|n| n.text().to_string()),
                 ret_type: node.name().map(|n| n.text().to_string()),
                 parameters: params,
@@ -128,6 +142,8 @@ impl FunctionSignature {
             FunctionSignature {
                 kind: CallableKind::VariantConstructor,
                 visibility: None,
+                // Do we need `const`?
+                qualifier: Default::default(),
                 name: Some(name),
                 ret_type: None,
                 parameters: params,
@@ -151,6 +167,7 @@ impl FunctionSignature {
             FunctionSignature {
                 kind: CallableKind::Macro,
                 visibility: None,
+                qualifier: Default::default(),
                 name: node.name().map(|n| n.text().to_string()),
                 ret_type: None,
                 parameters: params,
@@ -223,6 +240,12 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
         FunctionSignature {
             kind: CallableKind::Function,
             visibility: node.visibility().map(|n| n.syntax().text().to_string()),
+            qualifier: FunctionQualifier {
+                is_async: node.async_token().is_some(),
+                is_const: node.const_token().is_some(),
+                is_unsafe: node.unsafe_token().is_some(),
+                extern_abi: node.abi().map(|n| n.to_string()),
+            },
             name: node.name().map(|n| n.text().to_string()),
             ret_type: node
                 .ret_type()
@@ -244,6 +267,23 @@ impl Display for FunctionSignature {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(t) = &self.visibility {
             write!(f, "{} ", t)?;
+        }
+
+        if self.qualifier.is_async {
+            write!(f, "async ")?;
+        }
+
+        if self.qualifier.is_const {
+            write!(f, "const ")?;
+        }
+
+        if self.qualifier.is_unsafe {
+            write!(f, "unsafe ")?;
+        }
+
+        if let Some(extern_abi) = &self.qualifier.extern_abi {
+            // Keyword `extern` is included in the string.
+            write!(f, "{} ", extern_abi)?;
         }
 
         if let Some(name) = &self.name {
