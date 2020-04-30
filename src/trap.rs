@@ -56,7 +56,9 @@ pub(crate) fn trap_unreachable_ret_value<'tcx>(
     dest_layout: TyAndLayout<'tcx>,
     msg: impl AsRef<str>,
 ) -> CValue<'tcx> {
-    trap_unreachable(fx, msg);
+    codegen_print(fx, msg.as_ref());
+    let true_ = fx.bcx.ins().iconst(types::I32, 1);
+    fx.bcx.ins().trapnz(true_, TrapCode::UnreachableCodeReached);
     CValue::by_ref(Pointer::const_addr(fx, 0), dest_layout)
 }
 
