@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 import * as ra from '../rust-analyzer-api';
+import * as os from "os";
 
 import { Ctx, Cmd } from '../ctx';
+import { Cargo } from '../cargo';
 
 export function run(ctx: Ctx): Cmd {
     let prevRunnable: RunnableQuickPick | undefined;
@@ -62,25 +64,69 @@ export function runSingle(ctx: Ctx): Cmd {
     };
 }
 
+function getLldbDebugConfig(config: ra.Runnable, sourceFileMap: Record<string, string>): vscode.DebugConfiguration {
+    return {
+        type: "lldb",
+        request: "launch",
+        name: config.label,
+        cargo: {
+            args: config.args,
+        },
+        args: config.extraArgs,
+        cwd: config.cwd,
+        sourceMap: sourceFileMap
+    };
+}
+
+const debugOutput = vscode.window.createOutputChannel("Debug");
+
+async function getCppvsDebugConfig(config: ra.Runnable, sourceFileMap: Record<string, string>): Promise<vscode.DebugConfiguration> {
+    debugOutput.clear();
+
+    const cargo = new Cargo(config.cwd || '.', debugOutput);
+    const executable = await cargo.executableFromArgs(config.args);
+
+    // if we are here, there were no compilation errors.
+    return {
+        type: (os.platform() === "win32") ? "cppvsdbg" : 'cppdbg',
+        request: "launch",
+        name: config.label,
+        program: executable,
+        args: config.extraArgs,
+        cwd: config.cwd,
+        sourceFileMap: sourceFileMap,
+    };
+}
+
 export function debugSingle(ctx: Ctx): Cmd {
     return async (config: ra.Runnable) => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
-        if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
-            vscode.window.showErrorMessage("Install `vadimcn.vscode-lldb` extension for debugging");
+
+        const lldbId = "vadimcn.vscode-lldb";
+        const cpptoolsId = "ms-vscode.cpptools";
+
+        const debugEngineId = ctx.config.debug.engine;
+        let debugEngine = null;
+        if (debugEngineId === "auto") {
+            debugEngine = vscode.extensions.getExtension(lldbId);
+            if (!debugEngine) {
+                debugEngine = vscode.extensions.getExtension(cpptoolsId);
+            }
+        }
+        else {
+            debugEngine = vscode.extensions.getExtension(debugEngineId);
+        }
+
+        if (!debugEngine) {
+            vscode.window.showErrorMessage(`Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=${lldbId})`
+                + ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=${cpptoolsId}) extension for debugging.`);
             return;
         }
 
-        const debugConfig = {
-            type: "lldb",
-            request: "launch",
-            name: config.label,
-            cargo: {
-                args: config.args,
-            },
-            args: config.extraArgs,
-            cwd: config.cwd
-        };
+        const debugConfig = lldbId === debugEngine.id
+            ? getLldbDebugConfig(config, ctx.config.debug.sourceFileMap)
+            : await getCppvsDebugConfig(config, ctx.config.debug.sourceFileMap);
 
         return vscode.debug.startDebugging(undefined, debugConfig);
     };
