@@ -43,8 +43,8 @@ macro_rules! throw_machine_stop_str {
         // We make a new local type for it. The type itself does not carry any information,
         // but its vtable (for the `MachineStopType` trait) does.
         struct Zst;
-        // Debug-printing this type shows the desired string.
-        impl std::fmt::Debug for Zst {
+        // Printing this type shows the desired string.
+        impl std::fmt::Display for Zst {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, $($tt)*)
             }
