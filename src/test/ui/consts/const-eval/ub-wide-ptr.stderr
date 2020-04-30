@@ -186,7 +186,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/ub-wide-ptr.rs:121:5
    |
 LL |     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid use of NULL pointer
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing NULL pointer
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/ub-wide-ptr.rs:125:5
