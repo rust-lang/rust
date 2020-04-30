@@ -1,0 +1,76 @@
+SOURCE_FILE@0..83
+  USE_ITEM@0..12
+    USE_KW@0..3 "use"
+    WHITESPACE@3..4 " "
+    USE_TREE@4..11
+      PATH@4..11
+        PATH_SEGMENT@4..11
+          COLON2@4..6 "::"
+          CRATE_KW@6..11 "crate"
+    SEMICOLON@11..12 ";"
+  WHITESPACE@12..13 "\n"
+  USE_ITEM@13..39
+    USE_KW@13..16 "use"
+    WHITESPACE@16..17 " "
+    USE_TREE@17..38
+      USE_TREE_LIST@17..38
+        L_CURLY@17..18 "{"
+        USE_TREE@18..23
+          PATH@18..23
+            PATH_SEGMENT@18..23
+              CRATE_KW@18..23 "crate"
+        COMMA@23..24 ","
+        WHITESPACE@24..25 " "
+        USE_TREE@25..37
+          PATH@25..28
+            PATH_SEGMENT@25..28
+              NAME_REF@25..28
+                IDENT@25..28 "foo"
+          COLON2@28..30 "::"
+          USE_TREE_LIST@30..37
+            L_CURLY@30..31 "{"
+            USE_TREE@31..36
+              PATH@31..36
+                PATH_SEGMENT@31..36
+                  CRATE_KW@31..36 "crate"
+            R_CURLY@36..37 "}"
+        R_CURLY@37..38 "}"
+    SEMICOLON@38..39 ";"
+  WHITESPACE@39..40 "\n"
+  USE_ITEM@40..57
+    USE_KW@40..43 "use"
+    WHITESPACE@43..44 " "
+    USE_TREE@44..56
+      PATH@44..56
+        PATH@44..49
+          PATH_SEGMENT@44..49
+            NAME_REF@44..49
+              IDENT@44..49 "hello"
+        COLON2@49..51 "::"
+        PATH_SEGMENT@51..56
+          CRATE_KW@51..56 "crate"
+    SEMICOLON@56..57 ";"
+  WHITESPACE@57..58 "\n"
+  USE_ITEM@58..82
+    USE_KW@58..61 "use"
+    WHITESPACE@61..62 " "
+    USE_TREE@62..81
+      PATH@62..81
+        PATH@62..74
+          PATH@62..67
+            PATH_SEGMENT@62..67
+              NAME_REF@62..67
+                IDENT@62..67 "hello"
+          COLON2@67..69 "::"
+          PATH_SEGMENT@69..74
+            CRATE_KW@69..74 "crate"
+        COLON2@74..76 "::"
+        PATH_SEGMENT@76..81
+          NAME_REF@76..81
+            IDENT@76..81 "there"
+    SEMICOLON@81..82 ";"
+  WHITESPACE@82..83 "\n"
+error 6..11: The `crate` keyword is only allowed as the first segment of a path
+error 31..36: The `crate` keyword is only allowed as the first segment of a path
+error 51..56: The `crate` keyword is only allowed as the first segment of a path
+error 69..74: The `crate` keyword is only allowed as the first segment of a path

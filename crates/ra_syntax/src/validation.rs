@@ -96,6 +96,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
                 ast::RecordField(it) => validate_numeric_name(it.name_ref(), &mut errors),
                 ast::Visibility(it) => validate_visibility(it, &mut errors),
                 ast::RangeExpr(it) => validate_range_expr(it, &mut errors),
+                ast::PathSegment(it) => validate_crate_keyword_in_path_segment(it, &mut errors),
                 _ => (),
             }
         }
@@ -220,5 +221,43 @@ fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxError>) {
             "An inclusive range must have an end expression",
             expr.syntax().text_range(),
         ));
+    }
+}
+
+fn validate_crate_keyword_in_path_segment(
+    segment: ast::PathSegment,
+    errors: &mut Vec<SyntaxError>,
+) {
+    const ERR_MSG: &str = "The `crate` keyword is only allowed as the first segment of a path";
+
+    let crate_token = match segment.crate_token() {
+        None => return,
+        Some(it) => it,
+    };
+
+    // Disallow both ::crate and foo::crate
+    let path = segment.parent_path();
+    if segment.coloncolon_token().is_some() || path.qualifier().is_some() {
+        errors.push(SyntaxError::new(ERR_MSG, crate_token.text_range()));
+        return;
+    }
+
+    // We now know that the path variable describes a complete path.
+    // For expressions and types, validation is complete, but we still have
+    // to handle UseItems like this:
+    //      use foo:{crate};
+    // so we crawl upwards looking for any preceding paths on `UseTree`s
+    for node in path.syntax().ancestors().skip(1) {
+        match_ast! {
+            match node {
+                ast::UseTree(it) => if let Some(tree_path) = it.path() {
+                    if tree_path != path {
+                        errors.push(SyntaxError::new(ERR_MSG, crate_token.text_range()));
+                    }
+                },
+                ast::UseTreeList(_it) => continue,
+                _ => return,
+            }
+        };
     }
 }
