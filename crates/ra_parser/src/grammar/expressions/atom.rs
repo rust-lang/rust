@@ -535,6 +535,22 @@ fn break_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
 fn try_block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T![try]));
     let m = m.unwrap_or_else(|| p.start());
+    // Special-case `try!` as macro.
+    // This is a hack until we do proper edition support
+    if p.nth_at(1, T![!]) {
+        // test try_macro_fallback
+        // fn foo() { try!(Ok(())); }
+        let path = p.start();
+        let path_segment = p.start();
+        let name_ref = p.start();
+        p.bump_remap(IDENT);
+        name_ref.complete(p, NAME_REF);
+        path_segment.complete(p, PATH_SEGMENT);
+        path.complete(p, PATH);
+        let _block_like = items::macro_call_after_excl(p);
+        return m.complete(p, MACRO_CALL);
+    }
+
     p.bump(T![try]);
     block(p);
     m.complete(p, TRY_EXPR)
