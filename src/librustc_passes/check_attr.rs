@@ -76,7 +76,7 @@ impl CheckAttrVisitor<'tcx> {
             return;
         }
 
-        if target == Target::Fn {
+        if matches!(target, Target::Fn | Target::Method(_) | Target::ForeignFn) {
             self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(hir_id));
         }
 
@@ -388,6 +388,9 @@ impl CheckAttrVisitor<'tcx> {
                     "not defining a struct, enum, or union",
                 );
             }
+        }
+        if target == Target::Closure {
+            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(expr.hir_id));
         }
     }
 

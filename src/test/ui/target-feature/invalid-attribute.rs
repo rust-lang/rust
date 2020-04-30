@@ -65,9 +65,26 @@ trait Baz { }
 #[target_feature(enable = "sse2")]
 unsafe fn test() {}
 
+trait Quux {
+    fn foo();
+}
+
+impl Quux for Foo {
+    #[target_feature(enable = "sse2")]
+    //~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
+    //~| NOTE can only be applied to `unsafe` functions
+    fn foo() {}
+    //~^ NOTE not an `unsafe` function
+}
+
 fn main() {
     unsafe {
         foo();
         bar();
     }
+    #[target_feature(enable = "sse2")]
+    //~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
+    //~| NOTE can only be applied to `unsafe` functions
+    || {};
+    //~^ NOTE not an `unsafe` function
 }

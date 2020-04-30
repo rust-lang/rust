@@ -1,3 +1,4 @@
+use crate::check::coercion::Coerce;
 use crate::check::FnCtxt;
 use rustc_infer::infer::InferOk;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -8,8 +9,9 @@ use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Node};
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::{self, AssocItem, Ty};
+use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -25,7 +27,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         self.annotate_expected_due_to_let_ty(err, expr);
         self.suggest_compatible_variants(err, expr, expected, expr_ty);
-        self.suggest_ref_or_into(err, expr, expected, expr_ty);
+        self.suggest_deref_ref_or_into(err, expr, expected, expr_ty);
         if self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty) {
             return;
         }
@@ -537,6 +539,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if let Ok(code) = sm.span_to_snippet(expr.span) {
                     return Some((sp, "consider removing the borrow", code));
+                }
+            }
+            (
+                _,
+                &ty::RawPtr(TypeAndMut { ty: _, mutbl: hir::Mutability::Not }),
+                &ty::Ref(_, _, hir::Mutability::Not),
+            ) => {
+                let cause = self.cause(rustc_span::DUMMY_SP, ObligationCauseCode::ExprAssignable);
+                // We don't ever need two-phase here since we throw out the result of the coercion
+                let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
+
+                if let Some(steps) =
+                    coerce.autoderef(sp, checked_ty).skip(1).find_map(|(referent_ty, steps)| {
+                        coerce
+                            .unify(
+                                coerce.tcx.mk_ptr(ty::TypeAndMut {
+                                    mutbl: hir::Mutability::Not,
+                                    ty: referent_ty,
+                                }),
+                                expected,
+                            )
+                            .ok()
+                            .map(|_| steps)
+                    })
+                {
+                    // The pointer type implements `Copy` trait so the suggestion is always valid.
+                    if let Ok(code) = sm.span_to_snippet(sp) {
+                        if code.starts_with('&') {
+                            let derefs = "*".repeat(steps - 1);
+                            let message = "consider dereferencing the reference";
+                            let suggestion = format!("&{}{}", derefs, code[1..].to_string());
+                            return Some((sp, message, suggestion));
+                        }
+                    }
                 }
             }
             _ if sp == expr.span && !is_macro => {

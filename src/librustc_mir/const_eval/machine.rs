@@ -99,7 +99,12 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct MemoryExtra {
-    /// Whether this machine may read from statics
+    /// We need to make sure consts never point to anything mutable, even recursively. That is
+    /// relied on for pattern matching on consts with references.
+    /// To achieve this, two pieces have to work together:
+    /// * Interning makes everything outside of statics immutable.
+    /// * Pointers to allocations inside of statics can never leak outside, to a non-static global.
+    /// This boolean here controls the second part.
     pub(super) can_access_statics: bool,
 }
 
@@ -337,6 +342,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             } else if static_def_id.is_some() {
                 // Machine configuration does not allow us to read statics
                 // (e.g., `const` initializer).
+                // See const_eval::machine::MemoryExtra::can_access_statics for why
+                // this check is so important: if we could read statics, we could read pointers
+                // to mutable allocations *inside* statics. These allocations are not themselves
+                // statics, so pointers to them can get around the check in `validity.rs`.
                 Err(ConstEvalErrKind::ConstAccessesStatic.into())
             } else {
                 // Immutable global, this read is fine.
