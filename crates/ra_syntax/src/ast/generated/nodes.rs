@@ -476,16 +476,6 @@ impl LoopExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TryBlockExpr {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for TryBlockExpr {}
-impl TryBlockExpr {
-    pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
-    pub fn body(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ForExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1475,7 +1465,6 @@ pub enum Expr {
     FieldExpr(FieldExpr),
     AwaitExpr(AwaitExpr),
     TryExpr(TryExpr),
-    TryBlockExpr(TryBlockExpr),
     CastExpr(CastExpr),
     RefExpr(RefExpr),
     PrefixExpr(PrefixExpr),
@@ -1949,17 +1938,6 @@ impl AstNode for IfExpr {
 }
 impl AstNode for LoopExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LOOP_EXPR }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for TryBlockExpr {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TRY_BLOCK_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3310,9 +3288,6 @@ impl From<AwaitExpr> for Expr {
 impl From<TryExpr> for Expr {
     fn from(node: TryExpr) -> Expr { Expr::TryExpr(node) }
 }
-impl From<TryBlockExpr> for Expr {
-    fn from(node: TryBlockExpr) -> Expr { Expr::TryBlockExpr(node) }
-}
 impl From<CastExpr> for Expr {
     fn from(node: CastExpr) -> Expr { Expr::CastExpr(node) }
 }
@@ -3343,9 +3318,8 @@ impl AstNode for Expr {
             TUPLE_EXPR | ARRAY_EXPR | PAREN_EXPR | PATH_EXPR | LAMBDA_EXPR | IF_EXPR
             | LOOP_EXPR | FOR_EXPR | WHILE_EXPR | CONTINUE_EXPR | BREAK_EXPR | LABEL
             | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | RECORD_LIT | CALL_EXPR | INDEX_EXPR
-            | METHOD_CALL_EXPR | FIELD_EXPR | AWAIT_EXPR | TRY_EXPR | TRY_BLOCK_EXPR
-            | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL
-            | BOX_EXPR => true,
+            | METHOD_CALL_EXPR | FIELD_EXPR | AWAIT_EXPR | TRY_EXPR | CAST_EXPR | REF_EXPR
+            | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL | BOX_EXPR => true,
             _ => false,
         }
     }
@@ -3373,7 +3347,6 @@ impl AstNode for Expr {
             FIELD_EXPR => Expr::FieldExpr(FieldExpr { syntax }),
             AWAIT_EXPR => Expr::AwaitExpr(AwaitExpr { syntax }),
             TRY_EXPR => Expr::TryExpr(TryExpr { syntax }),
-            TRY_BLOCK_EXPR => Expr::TryBlockExpr(TryBlockExpr { syntax }),
             CAST_EXPR => Expr::CastExpr(CastExpr { syntax }),
             REF_EXPR => Expr::RefExpr(RefExpr { syntax }),
             PREFIX_EXPR => Expr::PrefixExpr(PrefixExpr { syntax }),
@@ -3410,7 +3383,6 @@ impl AstNode for Expr {
             Expr::FieldExpr(it) => &it.syntax,
             Expr::AwaitExpr(it) => &it.syntax,
             Expr::TryExpr(it) => &it.syntax,
-            Expr::TryBlockExpr(it) => &it.syntax,
             Expr::CastExpr(it) => &it.syntax,
             Expr::RefExpr(it) => &it.syntax,
             Expr::PrefixExpr(it) => &it.syntax,
@@ -3887,11 +3859,6 @@ impl std::fmt::Display for IfExpr {
     }
 }
 impl std::fmt::Display for LoopExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for TryBlockExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

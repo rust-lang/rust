@@ -16,7 +16,7 @@ impl ast::Expr {
             | ast::Expr::WhileExpr(_)
             | ast::Expr::BlockExpr(_)
             | ast::Expr::MatchExpr(_)
-            | ast::Expr::TryBlockExpr(_) => true,
+            | ast::Expr::TryExpr(_) => true,
             _ => false,
         }
     }
@@ -371,12 +371,12 @@ impl ast::BlockExpr {
         if self.unsafe_token().is_some() || self.async_token().is_some() {
             return false;
         }
-        let kind = match self.syntax().parent() {
+        let parent = match self.syntax().parent() {
+            Some(it) => it,
             None => return true,
-            Some(it) => it.kind(),
         };
-        match kind {
-            FN_DEF | IF_EXPR | WHILE_EXPR | LOOP_EXPR | TRY_BLOCK_EXPR => false,
+        match parent.kind() {
+            FN_DEF | IF_EXPR | WHILE_EXPR | LOOP_EXPR => false,
             _ => true,
         }
     }
