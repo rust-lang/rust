@@ -25,14 +25,14 @@ use super::{
 };
 
 macro_rules! throw_validation_failure {
-    ($what:expr, $where:expr $(, $details:expr )?) => {{
+    ($what:expr, $where:expr $(, $expected:expr )?) => {{
         let mut msg = format!("encountered {}", $what);
         let where_ = &$where;
         if !where_.is_empty() {
             msg.push_str(" at ");
             write_path(&mut msg, where_);
         }
-        $( write!(&mut msg, ", but expected {}", $details).unwrap(); )?
+        $( write!(&mut msg, ", but expected {}", $expected).unwrap(); )?
         throw_ub!(ValidationFailure(msg))
     }};
 }
@@ -40,8 +40,10 @@ macro_rules! throw_validation_failure {
 /// Returns a validation failure for any Err value of $e.
 // FIXME: Replace all usages of try_validation! with try_validation_pat!.
 macro_rules! try_validation {
-    ($e:expr, $what:expr, $where:expr $(, $details:expr )?) => {{
-        try_validation_pat!($e, _, $what, $where $(, $details )?)
+    ($e:expr, $what:expr, $where:expr $(, $expected:expr )?) => {{
+        try_validation_pat!($e, $where, {
+            _ => { $what } $( expected { $expected } )?,
+        })
     }};
 }
 /// Like try_validation, but will throw a validation error if any of the patterns in $p are
@@ -54,12 +56,12 @@ macro_rules! try_validation {
 /// // unchanged.
 /// ```
 macro_rules! try_validation_pat {
-    ($e:expr, $( $p:pat )|*, $what:expr, $where:expr $(, $details:expr )?) => {{
+    ($e:expr, $where:expr, { $( $p:pat )|* => { $what:tt } $( expected { $expected:expr } )? $( , )?}) => {{
         match $e {
             Ok(x) => x,
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            $( Err(InterpErrorInfo { kind: $p, .. }) )|* => throw_validation_failure!($what, $where $(, $details)?),
+            $( Err(InterpErrorInfo { kind: $p, .. }) )|* => throw_validation_failure!($what, $where $(, $expected)?),
             #[allow(unreachable_patterns)]
             Err(e) => Err::<!, _>(e)?,
         }
@@ -493,12 +495,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // We are conservative with undef for integers, but try to
                 // actually enforce the strict rules for raw pointers (mostly because
                 // that lets us re-use `ref_to_mplace`).
-                let place = try_validation_pat!(
-                    self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
-                    err_ub!(InvalidUndefBytes(..)),
-                    "uninitialized raw pointer",
-                    self.path
-                );
+                let place = try_validation_pat!(self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?), self.path, {
+                    err_ub!(InvalidUndefBytes(..)) => { "uninitialized raw pointer" },
+                });
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
                 }
