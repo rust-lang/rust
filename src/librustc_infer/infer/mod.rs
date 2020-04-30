@@ -18,7 +18,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
-use rustc_middle::middle::free_region::RegionRelations;
 use rustc_middle::middle::region;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ConstEvalResult;
@@ -39,6 +38,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use self::combine::CombineFields;
+use self::free_regions::RegionRelations;
 use self::lexical_region_resolve::LexicalRegionResolutions;
 use self::outlives::env::OutlivesEnvironment;
 use self::region_constraints::{GenericKind, RegionConstraintData, VarInfos, VerifyBound};
@@ -50,6 +50,7 @@ pub mod canonical;
 mod combine;
 mod equate;
 pub mod error_reporting;
+pub mod free_regions;
 mod freshen;
 mod fudge;
 mod glb;
@@ -472,6 +473,9 @@ pub enum NLLRegionVariableOrigin {
     /// from a `for<'a> T` binder). Meant to represent "any region".
     Placeholder(ty::PlaceholderRegion),
 
+    /// The variable we create to represent `'empty(U0)`.
+    RootEmptyRegion,
+
     Existential {
         /// If this is true, then this variable was created to represent a lifetime
         /// bound in a `for` binder. For example, it might have been created to
@@ -493,6 +497,7 @@ impl NLLRegionVariableOrigin {
             NLLRegionVariableOrigin::FreeRegion => true,
             NLLRegionVariableOrigin::Placeholder(..) => true,
             NLLRegionVariableOrigin::Existential { .. } => false,
+            NLLRegionVariableOrigin::RootEmptyRegion => false,
         }
     }
 

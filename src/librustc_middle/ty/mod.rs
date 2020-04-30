@@ -96,7 +96,6 @@ pub mod error;
 pub mod fast_reject;
 pub mod flags;
 pub mod fold;
-pub mod free_region_map;
 pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;

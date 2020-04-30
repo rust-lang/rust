@@ -1,0 +1,20 @@
+error: higher-ranked subtype error
+  --> $DIR/impl-fn-ignore-binder-via-bottom.rs:32:14
+   |
+LL |     let _x = <fn(&())>::make_f();
+   |              ^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/impl-fn-ignore-binder-via-bottom.rs:32:14
+   |
+LL |     let _x = <fn(&())>::make_f();
+   |              ^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/impl-fn-ignore-binder-via-bottom.rs:32:14
+   |
+LL |     let _x = <fn(&())>::make_f();
+   |              ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

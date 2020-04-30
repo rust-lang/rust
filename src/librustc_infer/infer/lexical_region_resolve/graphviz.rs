@@ -10,10 +10,10 @@ use graphviz as dot;
 
 use super::Constraint;
 use crate::infer::region_constraints::RegionConstraintData;
+use crate::infer::RegionRelations;
 use crate::infer::SubregionOrigin;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefIndex;
-use rustc_middle::middle::free_region::RegionRelations;
 use rustc_middle::middle::region;
 use rustc_middle::ty;
 

@@ -2,7 +2,7 @@ error: higher-ranked subtype error
   --> $DIR/due-to-where-clause.rs:2:5
    |
 LL |     test::<FooS>(&mut 42);
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

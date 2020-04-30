@@ -21,13 +21,13 @@ fn compare_fn_ptr<'a, 'b, 'c>(f: fn(&'c mut &'a i32), g: fn(&'c mut &'b i32)) {
 }
 
 fn compare_hr_fn_ptr<'a>(f: fn(&'a i32), g: fn(&i32)) {
-    // Ideally this should compile with the operands swapped as well, but HIR
-    // type checking prevents it (and stops compilation) for now.
-    f == g; // OK
+    f == g;
+    //~^ ERROR higher-ranked subtype error
 }
 
 fn compare_const_fn_ptr<'a>(f: *const fn(&'a i32), g: *const fn(&i32)) {
-    f == g; // OK
+    f == g;
+    //~^ ERROR higher-ranked subtype error
 }
 
 fn main() {}
