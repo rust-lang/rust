@@ -1,4 +1,4 @@
-use super::{AllocId, CheckInAllocMsg, Pointer, RawConst, ScalarMaybeUndef};
+use super::{AllocId, Pointer, RawConst, ScalarMaybeUndef};
 
 use crate::mir::interpret::ConstValue;
 use crate::ty::layout::LayoutError;
@@ -304,6 +304,32 @@ impl fmt::Display for InvalidProgramInfo<'_> {
     }
 }
 
+/// Details of why a pointer had to be in-bounds.
+#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
+pub enum CheckInAllocMsg {
+    MemoryAccessTest,
+    NullPointerTest,
+    PointerArithmeticTest,
+    InboundsTest,
+}
+
+impl fmt::Display for CheckInAllocMsg {
+    /// When this is printed as an error the context looks like this
+    /// "{test name} failed: pointer must be in-bounds at offset..."
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match *self {
+                CheckInAllocMsg::MemoryAccessTest => "memory access",
+                CheckInAllocMsg::NullPointerTest => "NULL pointer test",
+                CheckInAllocMsg::PointerArithmeticTest => "pointer arithmetic",
+                CheckInAllocMsg::InboundsTest => "inbounds test",
+            }
+        )
+    }
+}
+
 /// Error information for when the program caused Undefined Behavior.
 pub enum UndefinedBehaviorInfo {
     /// Free-form case. Only for errors that are never caught!
@@ -333,17 +359,15 @@ pub enum UndefinedBehaviorInfo {
         msg: CheckInAllocMsg,
         allocation_size: Size,
     },
+    /// Using an integer as a pointer in the wrong way.
+    DanglingIntPointer(u64, CheckInAllocMsg),
     /// Used a pointer with bad alignment.
     AlignmentCheckFailed {
         required: Align,
         has: Align,
     },
-    /// Using an integer as a pointer in the wrong way.
-    InvalidIntPointerUsage(u64),
     /// Writing to read-only memory.
     WriteToReadOnly(AllocId),
-    /// Using a pointer-not-to-a-function as function pointer.
-    InvalidFunctionPointer(Pointer),
     // Trying to access the data behind a function pointer.
     DerefFunctionPointer(AllocId),
     /// The value validity check found a problem.
@@ -356,6 +380,8 @@ pub enum UndefinedBehaviorInfo {
     InvalidChar(u32),
     /// An enum discriminant was set to a value which was outside the range of valid values.
     InvalidDiscriminant(ScalarMaybeUndef),
+    /// Using a pointer-not-to-a-function as function pointer.
+    InvalidFunctionPointer(Pointer),
     /// Using uninitialized data where it is not allowed.
     InvalidUndefBytes(Option<Pointer>),
     /// Working with a local that is not currently live.
@@ -397,8 +423,12 @@ impl fmt::Display for UndefinedBehaviorInfo {
                 ptr.alloc_id,
                 allocation_size.bytes()
             ),
-            InvalidIntPointerUsage(0) => write!(f, "dereferencing NULL pointer"),
-            InvalidIntPointerUsage(i) => write!(f, "dereferencing dangling pointer to 0x{:x}", i),
+            DanglingIntPointer(_, CheckInAllocMsg::NullPointerTest) => {
+                write!(f, "NULL pointer is not allowed for this operation")
+            }
+            DanglingIntPointer(i, msg) => {
+                write!(f, "{} failed: 0x{:x} is not a valid pointer", msg, i)
+            }
             AlignmentCheckFailed { required, has } => write!(
                 f,
                 "accessing memory with alignment {}, but alignment {} is required",
@@ -406,14 +436,14 @@ impl fmt::Display for UndefinedBehaviorInfo {
                 required.bytes()
             ),
             WriteToReadOnly(a) => write!(f, "writing to {} which is read-only", a),
-            InvalidFunctionPointer(p) => {
-                write!(f, "using {} as function pointer but it does not point to a function", p)
-            }
             DerefFunctionPointer(a) => write!(f, "accessing {} which contains a function", a),
             ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
             InvalidBool(b) => write!(f, "interpreting an invalid 8-bit value as a bool: {}", b),
             InvalidChar(c) => write!(f, "interpreting an invalid 32-bit value as a char: {}", c),
             InvalidDiscriminant(val) => write!(f, "enum value has invalid discriminant: {}", val),
+            InvalidFunctionPointer(p) => {
+                write!(f, "using {} as function pointer but it does not point to a function", p)
+            }
             InvalidUndefBytes(Some(p)) => write!(
                 f,
                 "reading uninitialized memory at {}, but this operation requires initialized memory",
