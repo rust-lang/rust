@@ -53,15 +53,6 @@ pub trait NonConstOp: std::fmt::Debug {
     }
 }
 
-/// A `Downcast` projection.
-#[derive(Debug)]
-pub struct Downcast;
-impl NonConstOp for Downcast {
-    fn feature_gate() -> Option<Symbol> {
-        Some(sym::const_if_match)
-    }
-}
-
 /// A function call where the callee is a pointer.
 #[derive(Debug)]
 pub struct FnCallIndirect;

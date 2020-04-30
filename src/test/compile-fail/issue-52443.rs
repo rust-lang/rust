@@ -11,6 +11,5 @@ fn main() {
     //~| ERROR calls in constants are limited to constant functions
     //~| ERROR references in constants may only refer to immutable values
     //~| ERROR calls in constants are limited to constant functions
-    //~| ERROR constant contains unimplemented expression type
     //~| ERROR evaluation of constant value failed
 }

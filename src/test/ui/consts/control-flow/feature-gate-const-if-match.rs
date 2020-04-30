@@ -113,6 +113,5 @@ fn main() { //[if_match]~ ERROR fatal error triggered by #[rustc_error]
         //[stock]~^ ERROR `match` is not allowed in a `const`
         if let Some(x) = Some(x) { x } else { 1 }
         //[stock]~^ ERROR `if` is not allowed in a `const`
-        //[stock]~| ERROR constant contains unimplemented expression type
     }];
 }
