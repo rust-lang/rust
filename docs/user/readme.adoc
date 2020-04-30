@@ -169,13 +169,15 @@ The are several LSP client implementations for vim:
 
 1. Install coc.nvim by following the instructions at
    https://github.com/neoclide/coc.nvim[coc.nvim]
-   (nodejs required)
+   (Node.js required)
 2. Run `:CocInstall coc-rust-analyzer` to install
    https://github.com/fannheyward/coc-rust-analyzer[coc-rust-analyzer],
    this extension implements _most_ of the features supported in the VSCode extension:
+   * automatically install and upgrade stable/nightly releases
    * same configurations as VSCode extension, `rust-analyzer.serverPath`, `rust-analyzer.cargo.features` etc.
    * same commands too, `rust-analyzer.analyzerStatus`, `rust-analyzer.ssr` etc.
-   * highlighting and inlay_hints are not implemented yet
+   * inlay hints for method chaining support, _Neovim Only_
+   * semantic highlighting is not implemented yet
 
 ==== LanguageClient-neovim
 
