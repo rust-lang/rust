@@ -315,6 +315,17 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
             Owned(owned) => owned,
         }
     }
+
+    /// Makes the `Cow` independent of its lifetime, by taking
+    /// ownership of the underlying data.
+    #[unstable(feature = "cow_into_static", issue = "none")]
+    #[must_use]
+    pub fn into_static(self) -> Cow<'static, B> {
+        match self {
+            Borrowed(b) => Owned(b.to_owned()),
+            Owned(o) => Owned(o),
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
