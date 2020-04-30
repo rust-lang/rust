@@ -1,8 +1,10 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
+// compile-flags: -Zmiri-disable-isolation
 
 use std::sync::mpsc::{channel, sync_channel};
 use std::sync::{Arc, Barrier, Condvar, Mutex, Once, RwLock};
 use std::thread;
+use std::time::{Duration, Instant};
 
 // Check if Rust barriers are working.
 
@@ -48,6 +50,17 @@ fn check_conditional_variables() {
     while !*started {
         started = cvar.wait(started).unwrap();
     }
+}
+
+/// Test that waiting on a conditional variable with a timeout does not
+/// deadlock.
+fn check_conditional_variables_timeout() {
+    let lock = Mutex::new(());
+    let cvar = Condvar::new();
+    let guard = lock.lock().unwrap();
+    let now = Instant::now();
+    let _guard = cvar.wait_timeout(guard, Duration::from_millis(100)).unwrap().0;
+    assert!(now.elapsed().as_millis() >= 100);
 }
 
 // Check if locks are working.
@@ -206,6 +219,7 @@ fn check_once() {
 fn main() {
     check_barriers();
     check_conditional_variables();
+    check_conditional_variables_timeout();
     check_mutex();
     check_rwlock_write();
     check_rwlock_read_no_deadlock();
