@@ -228,6 +228,8 @@ impl<'a> Location<'a> {
     /// assert_ne!(this_location.line(), another_location.line());
     /// assert_ne!(this_location.column(), another_location.column());
     /// ```
+    // FIXME: When stabilizing this method, please also update the documentation
+    // of `intrinsics::caller_location`.
     #[unstable(
         feature = "track_caller",
         reason = "uses #[track_caller] which is not yet stable",
