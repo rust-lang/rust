@@ -359,7 +359,22 @@ impl ast::Literal {
     }
 }
 
+pub enum BlockModifier {
+    Async(SyntaxToken),
+    Unsafe(SyntaxToken),
+}
+
 impl ast::BlockExpr {
+    pub fn modifier(&self) -> Option<BlockModifier> {
+        if let Some(token) = self.async_token() {
+            return Some(BlockModifier::Async(token));
+        }
+        if let Some(token) = self.unsafe_token() {
+            return Some(BlockModifier::Unsafe(token));
+        }
+        None
+    }
+
     /// false if the block is an intrinsic part of the syntax and can't be
     /// replaced with arbitrary expression.
     ///
@@ -368,7 +383,7 @@ impl ast::BlockExpr {
     /// const FOO: () = { stand_alone };
     /// ```
     pub fn is_standalone(&self) -> bool {
-        if self.unsafe_token().is_some() || self.async_token().is_some() {
+        if self.modifier().is_some() {
             return false;
         }
         let parent = match self.syntax().parent() {
