@@ -70,9 +70,8 @@ impl<T: Sized> Unique<T> {
     /// a `T`, which means this must not be used as a "not yet initialized"
     /// sentinel value. Types that lazily allocate must track initialization by
     /// some other means.
-    // FIXME: rename to dangling() to match NonNull?
     #[inline]
-    pub const fn empty() -> Self {
+    pub const fn dangling() -> Self {
         // SAFETY: mem::align_of() returns a valid, non-null pointer. The
         // conditions to call new_unchecked() are thus respected.
         unsafe { Unique::new_unchecked(mem::align_of::<T>() as *mut T) }
