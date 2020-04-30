@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import contextlib
 import datetime
+import distutils.version
 import hashlib
 import os
 import re
@@ -331,6 +332,7 @@ class RustBuild(object):
         self.use_locked_deps = ''
         self.use_vendored_sources = ''
         self.verbose = False
+        self.git_version = None
 
     def download_stage0(self):
         """Fetch the build system for Rust, written in Rust
@@ -743,15 +745,13 @@ class RustBuild(object):
 
         run(["git", "submodule", "-q", "sync", module],
             cwd=self.rust_root, verbose=self.verbose)
-        try:
-            run(["git", "submodule", "update",
-                 "--init", "--recursive", "--progress", module],
-                cwd=self.rust_root, verbose=self.verbose, exception=True)
-        except RuntimeError:
-            # Some versions of git don't support --progress.
-            run(["git", "submodule", "update",
-                 "--init", "--recursive", module],
-                cwd=self.rust_root, verbose=self.verbose)
+
+        update_args = ["git", "submodule", "update", "--init", "--recursive"]
+        if self.git_version >= distutils.version.LooseVersion("2.11.0"):
+            update_args.append("--progress")
+        update_args.append(module)
+        run(update_args, cwd=self.rust_root, verbose=self.verbose, exception=True)
+
         run(["git", "reset", "-q", "--hard"],
             cwd=module_path, verbose=self.verbose)
         run(["git", "clean", "-qdfx"],
@@ -763,9 +763,13 @@ class RustBuild(object):
                 self.get_toml('submodules') == "false":
             return
 
-        # check the existence of 'git' command
+        default_encoding = sys.getdefaultencoding()
+
+        # check the existence and version of 'git' command
         try:
-            subprocess.check_output(['git', '--version'])
+            git_version_output = subprocess.check_output(['git', '--version'])
+            git_version_str = git_version_output.strip().split()[2].decode(default_encoding)
+            self.git_version = distutils.version.LooseVersion(git_version_str)
         except (subprocess.CalledProcessError, OSError):
             print("error: `git` is not found, please make sure it's installed and in the path.")
             sys.exit(1)
