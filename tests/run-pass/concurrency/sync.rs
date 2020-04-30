@@ -31,7 +31,7 @@ fn check_barriers() {
 // Check if Rust conditional variables are working.
 
 /// The test taken from the Rust documentation.
-fn check_conditional_variables() {
+fn check_conditional_variables_notify_one() {
     let pair = Arc::new((Mutex::new(false), Condvar::new()));
     let pair2 = pair.clone();
 
@@ -52,15 +52,57 @@ fn check_conditional_variables() {
     }
 }
 
+/// The test taken from the Rust documentation.
+fn check_conditional_variables_notify_all() {
+    let pair = Arc::new((Mutex::new(false), Condvar::new()));
+    let pair2 = pair.clone();
+
+    thread::spawn(move || {
+        let (lock, cvar) = &*pair2;
+        let mut started = lock.lock().unwrap();
+        *started = true;
+        // We notify the condvar that the value has changed.
+        cvar.notify_all();
+    });
+
+    // Wait for the thread to start up.
+    let (lock, cvar) = &*pair;
+    let mut started = lock.lock().unwrap();
+    // As long as the value inside the `Mutex<bool>` is `false`, we wait.
+    while !*started {
+        started = cvar.wait(started).unwrap();
+    }
+}
+
 /// Test that waiting on a conditional variable with a timeout does not
 /// deadlock.
-fn check_conditional_variables_timeout() {
+fn check_conditional_variables_timed_wait_timeout() {
     let lock = Mutex::new(());
     let cvar = Condvar::new();
     let guard = lock.lock().unwrap();
     let now = Instant::now();
-    let _guard = cvar.wait_timeout(guard, Duration::from_millis(100)).unwrap().0;
+    let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(100)).unwrap();
+    assert!(timeout.timed_out());
     assert!(now.elapsed().as_millis() >= 100);
+}
+
+/// Test that signaling a conditional variable when waiting with a timeout works
+/// as expected.
+fn check_conditional_variables_timed_wait_notimeout() {
+    let pair = Arc::new((Mutex::new(()), Condvar::new()));
+    let pair2 = pair.clone();
+
+    let (lock, cvar) = &*pair;
+    let guard = lock.lock().unwrap();
+
+    let handle = thread::spawn(move || {
+        let (_lock, cvar) = &*pair2;
+        cvar.notify_one();
+    });
+
+    let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(100)).unwrap();
+    assert!(!timeout.timed_out());
+    handle.join().unwrap();
 }
 
 // Check if locks are working.
@@ -218,8 +260,10 @@ fn check_once() {
 
 fn main() {
     check_barriers();
-    check_conditional_variables();
-    check_conditional_variables_timeout();
+    check_conditional_variables_notify_one();
+    check_conditional_variables_notify_all();
+    check_conditional_variables_timed_wait_timeout();
+    check_conditional_variables_timed_wait_notimeout();
     check_mutex();
     check_rwlock_write();
     check_rwlock_read_no_deadlock();
