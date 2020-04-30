@@ -137,8 +137,10 @@ algorithm like so:
     it did not change.
 
 ## Resources
-The initial design document can be found at https://github.com/nikomatsakis/rustc-on-demand-incremental-design-doc/blob/master/0000-rustc-on-demand-and-incremental.md, which expands on the memoization details, provides more high-level overview and motivation for this system.
+The initial design document can be found at [here][initial-design], which expands on the memoization details, provides more high-level overview and motivation for this system.
 
 # Footnotes
 
 [^salsa]: I have long wanted to rename it to the Salsa algorithm, but it never caught on. -@nikomatsakis
+
+[initial-design]: https://github.com/nikomatsakis/rustc-on-demand-incremental-design-doc/blob/master/0000-rustc-on-demand-and-incremental.md
