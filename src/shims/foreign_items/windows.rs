@@ -97,8 +97,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Allocation
             "HeapAlloc" => {
-                let &[_handle, flags, size] = check_arg_count(args)?;
-                let _handle = this.read_scalar(_handle)?.to_machine_isize(this)?;
+                let &[handle, flags, size] = check_arg_count(args)?;
+                this.read_scalar(handle)?.to_machine_isize(this)?;
                 let flags = this.read_scalar(flags)?.to_u32()?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let zero_init = (flags & 0x00000008) != 0; // HEAP_ZERO_MEMORY
@@ -106,16 +106,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(res, dest)?;
             }
             "HeapFree" => {
-                let &[_handle, _flags, ptr] = check_arg_count(args)?;
-                let _handle = this.read_scalar(_handle)?.to_machine_isize(this)?;
+                let &[handle, _flags, ptr] = check_arg_count(args)?;
+                this.read_scalar(handle)?.to_machine_isize(this)?;
                 let _flags = this.read_scalar(_flags)?.to_u32()?;
                 let ptr = this.read_scalar(ptr)?.not_undef()?;
                 this.free(ptr, MiriMemoryKind::WinHeap)?;
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
             "HeapReAlloc" => {
-                let &[_handle, _flags, ptr, size] = check_arg_count(args)?;
-                let _handle = this.read_scalar(_handle)?.to_machine_isize(this)?;
+                let &[handle, _flags, ptr, size] = check_arg_count(args)?;
+                this.read_scalar(handle)?.to_machine_isize(this)?;
                 let _flags = this.read_scalar(_flags)?.to_u32()?;
                 let ptr = this.read_scalar(ptr)?.not_undef()?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
@@ -216,18 +216,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "GetConsoleScreenBufferInfo" => {
                 // `term` needs this, so we fake it.
-                let &[_console, _buffer_info] = check_arg_count(args)?;
-                let _console = this.read_scalar(_console)?.to_machine_isize(this)?;
-                let _buffer_info = this.deref_operand(_buffer_info)?;
+                let &[console, buffer_info] = check_arg_count(args)?;
+                this.read_scalar(console)?.to_machine_isize(this)?;
+                this.deref_operand(buffer_info)?;
                 // Indicate an error.
                 // FIXME: we should set last_error, but to what?
                 this.write_null(dest)?;
             }
             "GetConsoleMode" => {
                 // Windows "isatty" (in libtest) needs this, so we fake it.
-                let &[_console, _mode] = check_arg_count(args)?;
-                let _console = this.read_scalar(_console)?.to_machine_isize(this)?;
-                let _mode = this.deref_operand(_mode)?;
+                let &[console, mode] = check_arg_count(args)?;
+                this.read_scalar(console)?.to_machine_isize(this)?;
+                this.deref_operand(mode)?;
                 // Indicate an error.
                 // FIXME: we should set last_error, but to what?
                 this.write_null(dest)?;

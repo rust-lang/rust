@@ -46,11 +46,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             // Linux-only
             "posix_fadvise" => {
-                let &[_fd, _offset, _len, _advice] = check_arg_count(args)?;
-                let _fd = this.read_scalar(_fd)?.to_i32()?;
-                let _offset = this.read_scalar(_offset)?.to_machine_isize(this)?;
-                let _len = this.read_scalar(_len)?.to_machine_isize(this)?;
-                let _advice = this.read_scalar(_advice)?.to_i32()?;
+                let &[fd, offset, len, advice] = check_arg_count(args)?;
+                this.read_scalar(fd)?.to_i32()?;
+                this.read_scalar(offset)?.to_machine_isize(this)?;
+                this.read_scalar(len)?.to_machine_isize(this)?;
+                this.read_scalar(advice)?.to_i32()?;
                 // fadvise is only informational, we can ignore it.
                 this.write_null(dest)?;
             }
@@ -66,8 +66,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Querying system information
             "pthread_attr_getstack" => {
                 // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here.
-                let &[_attr_place, addr_place, size_place] = check_arg_count(args)?;
-                let _attr_place = this.deref_operand(_attr_place)?;
+                let &[attr_place, addr_place, size_place] = check_arg_count(args)?;
+                this.deref_operand(attr_place)?;
                 let addr_place = this.deref_operand(addr_place)?;
                 let size_place = this.deref_operand(size_place)?;
 
@@ -102,14 +102,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .to_machine_usize(this)?;
 
                 if args.is_empty() {
-                    throw_ub_format!("incorrect number of arguments, needed at least 1");
+                    throw_ub_format!("incorrect number of arguments for syscall, needed at least 1");
                 }
                 match this.read_scalar(args[0])?.to_machine_usize(this)? {
                     // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
                     // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                     id if id == sys_getrandom => {
                         // The first argument is the syscall id, so skip over it.
-                        getrandom(this, &args[1..], dest)?;
+                        let &[_, ptr, len, flags] = check_arg_count(args)?;
+                        getrandom(this, ptr, len, flags, dest)?;
                     }
                     // `statx` is used by `libstd` to retrieve metadata information on `linux`
                     // instead of using `stat`,`lstat` or `fstat` as on `macos`.
@@ -125,13 +126,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Miscelanneous
             "getrandom" => {
-                getrandom(this, args, dest)?;
+                let &[ptr, len, flags] = check_arg_count(args)?;
+                getrandom(this, ptr, len, flags, dest)?;
             }
             "sched_getaffinity" => {
-                let &[_pid, _cpusetsize, _mask] = check_arg_count(args)?;
-                let _pid = this.read_scalar(_pid)?.to_i32()?;
-                let _cpusetsize = this.read_scalar(_cpusetsize)?.to_machine_usize(this)?;
-                let _mask = this.deref_operand(_mask)?;
+                let &[pid, cpusetsize, mask] = check_arg_count(args)?;
+                this.read_scalar(pid)?.to_i32()?;
+                this.read_scalar(cpusetsize)?.to_machine_usize(this)?;
+                this.deref_operand(mask)?;
                 // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
                 let einval = this.eval_libc("EINVAL")?;
                 this.set_last_error(einval)?;
@@ -154,16 +156,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 // Shims the linux `getrandom` syscall.
 fn getrandom<'tcx>(
     this: &mut MiriEvalContext<'_, 'tcx>,
-    args: &[OpTy<'tcx, Tag>],
+    ptr: OpTy<'tcx, Tag>,
+    len: OpTy<'tcx, Tag>,
+    flags: OpTy<'tcx, Tag>,
     dest: PlaceTy<'tcx, Tag>,
 ) -> InterpResult<'tcx> {
-    let &[ptr, len, _flags] = check_arg_count(args)?;
     let ptr = this.read_scalar(ptr)?.not_undef()?;
     let len = this.read_scalar(len)?.to_machine_usize(this)?;
 
     // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
     // neither of which have any effect on our current PRNG.
-    let _flags = this.read_scalar(_flags)?.to_i32()?;
+    this.read_scalar(flags)?.to_i32()?;
 
     this.gen_random(ptr, len)?;
     this.write_scalar(Scalar::from_machine_usize(len, this), dest)?;

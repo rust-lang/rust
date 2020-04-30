@@ -56,7 +56,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "fcntl" => {
-                let result = this.fcntl(args);
+                let result = this.fcntl(args)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "read" => {
@@ -168,8 +168,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Dynamic symbol loading
             "dlsym" => {
-                let &[_handle, symbol] = check_arg_count(args)?;
-                let _handle = this.read_scalar(_handle)?.not_undef()?;
+                let &[handle, symbol] = check_arg_count(args)?;
+                this.read_scalar(handle)?.not_undef()?;
                 let symbol = this.read_scalar(symbol)?.not_undef()?;
                 let symbol_name = this.memory.read_c_str(symbol)?;
                 let err = format!("bad c unicode symbol: {:?}", symbol_name);
@@ -360,8 +360,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Miscellaneous
             "isatty" => {
-                let &[_fd] = check_arg_count(args)?;
-                let _fd = this.read_scalar(_fd)?.to_i32()?;
+                let &[fd] = check_arg_count(args)?;
+                this.read_scalar(fd)?.to_i32()?;
                 // "returns 1 if fd is an open file descriptor referring to a terminal; otherwise 0 is returned, and errno is set to indicate the error"
                 // FIXME: we just say nothing is a terminal.
                 let enotty = this.eval_libc("ENOTTY")?;
@@ -369,10 +369,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
             "pthread_atfork" => {
-                let &[_prepare, _parent, _child] = check_arg_count(args)?;
-                let _prepare = this.read_scalar(_prepare)?.not_undef()?;
-                let _parent = this.read_scalar(_parent)?.not_undef()?;
-                let _child = this.read_scalar(_child)?.not_undef()?;
+                let &[prepare, parent, child] = check_arg_count(args)?;
+                this.read_scalar(prepare)?.not_undef()?;
+                this.read_scalar(parent)?.not_undef()?;
+                this.read_scalar(child)?.not_undef()?;
                 // We do not support forking, so there is nothing to do here.
                 this.write_null(dest)?;
             }

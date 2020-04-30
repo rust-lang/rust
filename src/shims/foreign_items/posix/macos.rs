@@ -104,14 +104,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Querying system information
             "pthread_get_stackaddr_np" => {
-                let &[_thread] = check_arg_count(args)?;
-                let _thread = this.read_scalar(_thread)?.not_undef()?;
+                let &[thread] = check_arg_count(args)?;
+                this.read_scalar(thread)?.not_undef()?;
                 let stack_addr = Scalar::from_uint(STACK_ADDR, this.pointer_size());
                 this.write_scalar(stack_addr, dest)?;
             }
             "pthread_get_stacksize_np" => {
-                let &[_thread] = check_arg_count(args)?;
-                let _thread = this.read_scalar(_thread)?.not_undef()?;
+                let &[thread] = check_arg_count(args)?;
+                this.read_scalar(thread)?.not_undef()?;
                 let stack_size = Scalar::from_uint(STACK_SIZE, this.pointer_size());
                 this.write_scalar(stack_size, dest)?;
             }
