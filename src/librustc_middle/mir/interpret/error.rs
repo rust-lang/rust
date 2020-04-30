@@ -285,7 +285,7 @@ pub enum InvalidProgramInfo<'tcx> {
     TransmuteSizeDiff(Ty<'tcx>, Ty<'tcx>),
 }
 
-impl fmt::Debug for InvalidProgramInfo<'_> {
+impl fmt::Display for InvalidProgramInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InvalidProgramInfo::*;
         match self {
@@ -310,8 +310,6 @@ pub enum UndefinedBehaviorInfo {
     Ub(String),
     /// Unreachable code was executed.
     Unreachable,
-    /// An enum discriminant was set to a value which was outside the range of valid values.
-    InvalidDiscriminant(ScalarMaybeUndef),
     /// A slice/array index projection went out-of-bounds.
     BoundsCheckFailed {
         len: u64,
@@ -356,6 +354,8 @@ pub enum UndefinedBehaviorInfo {
     InvalidBool(u8),
     /// Using a non-character `u32` as character.
     InvalidChar(u32),
+    /// An enum discriminant was set to a value which was outside the range of valid values.
+    InvalidDiscriminant(ScalarMaybeUndef),
     /// Using uninitialized data where it is not allowed.
     InvalidUndefBytes(Option<Pointer>),
     /// Working with a local that is not currently live.
@@ -367,29 +367,26 @@ pub enum UndefinedBehaviorInfo {
     },
 }
 
-impl fmt::Debug for UndefinedBehaviorInfo {
+impl fmt::Display for UndefinedBehaviorInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UndefinedBehaviorInfo::*;
         match self {
             Ub(msg) => write!(f, "{}", msg),
             Unreachable => write!(f, "entering unreachable code"),
-            InvalidDiscriminant(val) => write!(f, "encountering invalid enum discriminant {}", val),
-            BoundsCheckFailed { ref len, ref index } => write!(
-                f,
-                "indexing out of bounds: the len is {:?} but the index is {:?}",
-                len, index
-            ),
+            BoundsCheckFailed { ref len, ref index } => {
+                write!(f, "indexing out of bounds: the len is {} but the index is {}", len, index)
+            }
             DivisionByZero => write!(f, "dividing by zero"),
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
             InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
             UnterminatedCString(p) => write!(
                 f,
-                "reading a null-terminated string starting at {:?} with no null found before end of allocation",
+                "reading a null-terminated string starting at {} with no null found before end of allocation",
                 p,
             ),
             PointerUseAfterFree(a) => {
-                write!(f, "pointer to {:?} was dereferenced after this allocation got freed", a)
+                write!(f, "pointer to {} was dereferenced after this allocation got freed", a)
             }
             PointerOutOfBounds { ptr, msg, allocation_size } => write!(
                 f,
@@ -408,17 +405,18 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 has.bytes(),
                 required.bytes()
             ),
-            WriteToReadOnly(a) => write!(f, "writing to {:?} which is read-only", a),
+            WriteToReadOnly(a) => write!(f, "writing to {} which is read-only", a),
             InvalidFunctionPointer(p) => {
-                write!(f, "using {:?} as function pointer but it does not point to a function", p)
+                write!(f, "using {} as function pointer but it does not point to a function", p)
             }
-            DerefFunctionPointer(a) => write!(f, "accessing {:?} which contains a function", a),
+            DerefFunctionPointer(a) => write!(f, "accessing {} which contains a function", a),
             ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
             InvalidBool(b) => write!(f, "interpreting an invalid 8-bit value as a bool: {}", b),
             InvalidChar(c) => write!(f, "interpreting an invalid 32-bit value as a char: {}", c),
+            InvalidDiscriminant(val) => write!(f, "enum value has invalid discriminant: {}", val),
             InvalidUndefBytes(Some(p)) => write!(
                 f,
-                "reading uninitialized memory at {:?}, but this operation requires initialized memory",
+                "reading uninitialized memory at {}, but this operation requires initialized memory",
                 p
             ),
             InvalidUndefBytes(None) => write!(
@@ -455,7 +453,7 @@ pub enum UnsupportedOpInfo {
     ReadBytesAsPointer,
 }
 
-impl fmt::Debug for UnsupportedOpInfo {
+impl fmt::Display for UnsupportedOpInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UnsupportedOpInfo::*;
         match self {
@@ -481,7 +479,7 @@ pub enum ResourceExhaustionInfo {
     StepLimitReached,
 }
 
-impl fmt::Debug for ResourceExhaustionInfo {
+impl fmt::Display for ResourceExhaustionInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use ResourceExhaustionInfo::*;
         match self {
@@ -499,7 +497,6 @@ impl fmt::Debug for ResourceExhaustionInfo {
 pub trait AsAny: Any {
     fn as_any(&self) -> &dyn Any;
 }
-
 impl<T: Any> AsAny for T {
     #[inline(always)]
     fn as_any(&self) -> &dyn Any {
@@ -508,7 +505,7 @@ impl<T: Any> AsAny for T {
 }
 
 /// A trait for machine-specific errors (or other "machine stop" conditions).
-pub trait MachineStopType: AsAny + fmt::Debug + Send {}
+pub trait MachineStopType: AsAny + fmt::Display + Send {}
 impl MachineStopType for String {}
 
 impl dyn MachineStopType {
@@ -538,21 +535,21 @@ pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 
 impl fmt::Display for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Forward `Display` to `Debug`.
-        fmt::Debug::fmt(self, f)
+        use InterpError::*;
+        match *self {
+            Unsupported(ref msg) => write!(f, "{}", msg),
+            InvalidProgram(ref msg) => write!(f, "{}", msg),
+            UndefinedBehavior(ref msg) => write!(f, "{}", msg),
+            ResourceExhaustion(ref msg) => write!(f, "{}", msg),
+            MachineStop(ref msg) => write!(f, "{}", msg),
+        }
     }
 }
 
+// Forward `Debug` to `Display`, so it does not look awful.
 impl fmt::Debug for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use InterpError::*;
-        match *self {
-            Unsupported(ref msg) => write!(f, "{:?}", msg),
-            InvalidProgram(ref msg) => write!(f, "{:?}", msg),
-            UndefinedBehavior(ref msg) => write!(f, "{:?}", msg),
-            ResourceExhaustion(ref msg) => write!(f, "{:?}", msg),
-            MachineStop(ref msg) => write!(f, "{:?}", msg),
-        }
+        fmt::Display::fmt(self, f)
     }
 }
 
