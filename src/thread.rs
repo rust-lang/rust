@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::convert::TryFrom;
-use std::num::{NonZeroU32, TryFromIntError};
+use std::num::TryFromIntError;
 use std::time::Instant;
 
 use log::trace;
@@ -77,21 +77,6 @@ impl ThreadId {
     }
 }
 
-/// An identifier of a set of blocked threads. 0 is used to indicate the absence
-/// of a blockset identifier and, therefore, is not a valid identifier.
-#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct BlockSetId(NonZeroU32);
-
-impl BlockSetId {
-    /// Panics if `id` is 0.
-    pub fn new(id: u32) -> Self {
-        Self(NonZeroU32::new(id).expect("0 is not a valid blockset id"))
-    }
-    pub fn to_u32_scalar<'tcx>(&self) -> Scalar<Tag> {
-        Scalar::from_u32(self.0.get())
-    }
-}
-
 /// The state of a thread.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ThreadState {
@@ -100,9 +85,10 @@ pub enum ThreadState {
     /// The thread tried to join the specified thread and is blocked until that
     /// thread terminates.
     BlockedOnJoin(ThreadId),
-    /// The thread is blocked and belongs to the given blockset.
-    Blocked(BlockSetId),
-    BlockedThread,
+    /// The thread is blocked on some synchronization primitive. It is the
+    /// responsibility of the synchronization primitives to track threads that
+    /// are blocked by them.
+    BlockedOnSync,
     /// The thread has terminated its execution (we do not delete terminated
     /// threads).
     Terminated,
@@ -357,13 +343,13 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     fn block_thread(&mut self, thread: ThreadId) {
         let state = &mut self.threads[thread].state;
         assert_eq!(*state, ThreadState::Enabled);
-        *state = ThreadState::BlockedThread;
+        *state = ThreadState::BlockedOnSync;
     }
 
     /// Put the blocked thread into the enabled state.
     fn unblock_thread(&mut self, thread: ThreadId) {
         let state = &mut self.threads[thread].state;
-        assert_eq!(*state, ThreadState::BlockedThread);
+        assert_eq!(*state, ThreadState::BlockedOnSync);
         *state = ThreadState::Enabled;
     }
 
