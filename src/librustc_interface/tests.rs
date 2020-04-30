@@ -410,10 +410,10 @@ fn test_codegen_options_tracking_hash() {
 
     // Make sure that changing a [TRACKED] option changes the hash.
     // This list is in alphabetical order.
-    tracked!(bitcode_in_rlib, false);
     tracked!(code_model, Some(String::from("code model")));
     tracked!(debug_assertions, Some(true));
     tracked!(debuginfo, 0xdeadbeef);
+    tracked!(embed_bitcode, false);
     tracked!(force_frame_pointers, Some(false));
     tracked!(inline_threshold, Some(0xf007ba11));
     tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
@@ -529,7 +529,6 @@ fn test_debugging_options_tracking_hash() {
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);
     tracked!(dual_proc_macros, true);
-    tracked!(embed_bitcode, true);
     tracked!(fewer_names, true);
     tracked!(force_overflow_checks, Some(true));
     tracked!(force_unstable_if_unmarked, true);

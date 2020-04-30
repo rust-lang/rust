@@ -1,2 +1,2 @@
-error: options `-C bitcode-in-rlib=no` and `-C lto` are incompatible
+error: options `-C embed-bitcode=no` and `-C lto` are incompatible
 
