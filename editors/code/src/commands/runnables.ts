@@ -84,7 +84,7 @@ async function getCppvsDebugConfig(config: ra.Runnable, sourceFileMap: Record<st
     debugOutput.clear();
 
     const cargo = new Cargo(config.cwd || '.', debugOutput);
-    const executable = await cargo.executableFromArgs(config.args, config.extraArgs);
+    const executable = await cargo.executableFromArgs(config.args);
 
     // if we are here, there were no compilation errors.
     return {

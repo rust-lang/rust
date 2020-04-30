@@ -55,12 +55,9 @@ export class Cargo {
         return artifacts;
     }
 
-    public async executableFromArgs(cargoArgs: string[], extraArgs?: string[]): Promise<string> {
+    public async executableFromArgs(args: string[]): Promise<string> {
+        let cargoArgs = [...args]; // to remain  args unchanged
         cargoArgs.push("--message-format=json");
-        if (extraArgs) {
-            cargoArgs.push('--');
-            cargoArgs.push(...extraArgs);
-        }
 
         const artifacts = await this.artifactsFromArgs(cargoArgs);
 
