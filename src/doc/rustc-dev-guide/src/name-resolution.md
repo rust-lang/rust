@@ -1,5 +1,28 @@
 # Name resolution
 
+In the previous chapters, we saw how the AST is built with all macros expanded.
+We saw how doing that requires doing some name resolution to resolve imports
+and macro names. In this chapter, we show how this is actually done and more.
+
+In fact, we don't do full name resolution during macro expansion -- we only
+resolve imports and macros at that time. This is required to know what to even
+expand. Later, after we have the whole AST, we due full name resolution to
+resolve all names in the crate. This happens in [`rustc_resolve::late`][late].
+Unlike during macro expansion, in this late expansion, we only need to try to
+resolve a name once, since no new names can be added. If we fail to resolve a
+name now, then it is a compiler error.
+
+Name resolution can be complex. There are a few different namespaces (e.g.
+macros, values, types, lifetimes), and names my be valid at different (nested)
+scopes. Also, different types of names can fail to be resolved differently, and
+failures can happen differently at different scopes. For example, for a module
+scope, failure means no unexpanded macros and no unresolved glob imports in
+that module. On the other hand, in a function body, failure requires that a
+name be absent from the block we are in, all outer scopes, and the global
+scope.
+
+[late]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/late/index.html
+
 ## Basics
 
 In our programs we can refer to variables, types, functions, etc, by giving them

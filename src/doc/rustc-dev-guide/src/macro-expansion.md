@@ -14,45 +14,87 @@ we will look at the specifics of expanding different types of macros.
 
 ## Expansion and AST Integration
 
-TODO: expand these notes (har har)...
+First of all, expansion happens at the crate level. Given a raw source code for
+a crate, the compiler will produce a massive AST with all macros expanded, all
+modules inlined, etc.
 
-- Expansion happens over a whole crate at once.
-- We run `fully_expand_fragment` on the crate
-    - If `fully_expand_fragment` is run not on a whole crate, it means that we are performing eager expansion.
-        - We do this for some built-ins that expect literals (not exposed to users).
-        - It performs a subset of actions performed by non-eager expansion, so the discussion below focuses on eager expansion.
-    - Original description here: https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
-    - Algorithm: `fully_expand_fragment` works in iterations. We repeat until there are no unresolved macros left.
-        - Resolve imports in our partially built crate as much as possible.
-            - (link to name-resolution chapter) names resolved from "closer" scopes (e.g. current block) to further ones (e.g. prelude)
-            - A resolution fails differently for different scopes, e.g. for a module scope it means no unexpanded macros and no unresolved glob imports in that module.
-        - Collect as many macro invocations as possible from our partially built crate
-          (fn-like, attributes, derives) from the crate and add them to the queue.
-        - Take a macro from the queue, and attempt to resolve it.
-        - If it's resolved - run its expander function that consumes tokens or AST and produces tokens or AST (depending on the macro kind). (If it's not resolved, then put it back into the queue.)
-            - At this point, we know everything about the macro itself and can call `set_expn_data` to fill in its properties in the global data -- that is the hygiene data associated with `ExpnId`.
-        - The macro's expander function returns a piece of AST (or tokens). We need to integrate that piece of AST into the big existing partially built AST.
-            - If the macro produces tokens (e.g. a proc macro), we will have to parse into an AST, which may produce parse errors.
-            - During expansion, we create `SyntaxContext`s (heirarchy 2).
-            - This is essentially where the "token-like mass" becomes a proper set-in-stone AST with side-tables
-            - These three passes happen one after another on every AST fragment freshly expanded from a macro
-                - `NodeId`s are assigned by `InvocationCollector`
-                    - also collects new macro calls from this new AST piece and adds them to the queue
-                - def_paths are created and `DefId`s are assigned to them by `DefCollector`
-                - `Name`s are put into modules (from the resolver's point of view) by `BuildReducedGraphVisitor`
-        - After expanding a single macro and integrating its output continue to the next iteration of `fully_expand_fragment`.
-        - If we make no progress in an iteration, then we have reached a compilation error (e.g. an undefined macro).
+The primary entry point for this process is the
+[`MacroExpander::fully_expand_fragment`][fef] method. Usually, we run this
+method on a whole crate. If it is not run on a full crate, it means we are
+doing _eager macro expansion_. Eager expansion means that we expand the
+arguments of a macro invocation before the macro invocation itself. This is
+implemented only for a few special built-in macros that expect literals (it's
+not a generally available feature of Rust). Eager expansion generally performs
+a subset of the things that lazy (normal) expansion does, so we will focus on
+lazy expansion for the rest of this chapter.
 
-    - We attempt to recover from failures (unresolved macros or imports) for the sake of diagnostics
-        - recovery can't cause compilation to suceed. We know that it will fail at this point.
-        - we expand errors into `ExprKind::Err` or something like that for unresolved macros
-        - this allows compilation to continue past the first error so that we can report more errors at a time
+At a high level, [`fully_expand_fragment`][fef] works in iterations. We keep a
+queue of unresolved macro invocations (that is, macros we haven't found the
+definition of yet). We repeatedly try to pick a macro from the queue, resolve
+it, expand it, and integrate it back. If we can't make progress in an
+iteration, this represents a compile error.  Here is the [algorithm][original]:
 
-### Relationship to name resolution
+[fef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.MacroExpander.html#method.fully_expand_fragment
+[original]: https://github.com/rust-lang/rust/pull/53778#issuecomment-419224049
 
-- name resolution is done for macro and import names during expansion and integration into the AST, as discussed above
-- For all other names we certainly know whether a name is resolved successfully or not on the first attempt, because no new names can appear, due to hygiene
-    - They are resolved in a later pass, see `librustc_resolve/late.rs`
+0. Initialize an `queue` of unresolved macros.
+1. Repeat until `queue` is empty (or we make no progress, which is an error):
+    0. [Resolve](./name-resolution.md) imports in our partially built crate as
+       much as possible.
+    1. Collect as many macro invocations as possible from our partially built
+       crate (fn-like, attributes, derives) and add them to the queue.
+    2. Dequeue the first element, and attempt to resolve it.
+    3. If it's resolved:
+        0. Run the macro's expander function that consumes tokens or AST and
+           produces tokens or AST (depending on the macro kind).
+            - At this point, we know everything about the macro itself and can
+              call `set_expn_data` to fill in its properties in the global data
+              -- that is the hygiene data associated with `ExpnId`. (See [the
+              "Hygiene" section below][hybelow]).
+        1. Integrate that piece of AST into the big existing partially built
+           AST. This is essentially where the "token-like mass" becomes a
+           proper set-in-stone AST with side-tables. It happens as follows:
+            - If the macro produces tokens (e.g. a proc macro), we parse into
+              an AST, which may produce parse errors.
+            - During expansion, we create `SyntaxContext`s (heirarchy 2). (See
+              [the "Hygiene" section below][hybelow])
+            - These three passes happen one after another on every AST fragment
+              freshly expanded from a macro:
+                - [`NodeId`]s are assigned by [`InvocationCollector`]. This
+                  also collects new macro calls from this new AST piece and
+                  adds them to the queue.
+                - ["Def paths"][defpath] are created and [`DefId`]s are
+                  assigned to them by [`DefCollector`].
+                - Names are put into modules (from the resolver's point of
+                  view) by [`BuildReducedGraphVisitor`].
+        2. After expanding a single macro and integrating its output, continue
+           to the next iteration of [`fully_expand_fragment`][fef].
+    4. If it's not resolved:
+        0. Put the macro back in the queue
+        1. Continue to next iteration...
+
+[defpaths]: https://rustc-dev-guide.rust-lang.org/hir.html?highlight=def,path#identifiers-in-the-hir
+[`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
+[`InvocationCollector`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.InvocationCollector.html
+[`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
+[`DefCollector`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/def_collector/struct.DefCollector.html
+[`BuildReducedGraphVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/build_reduced_graph/struct.BuildReducedGraphVisitor.html
+[hybelow]: #hygiene-and-heirarchies
+
+If we make no progress in an iteration, then we have reached a compilation
+error (e.g. an undefined macro). We attempt to recover from failures
+(unresolved macros or imports) for the sake of diagnostics. This allows
+compilation to continue past the first error, so that we can report more errors
+at a time. Recovery can't cause compilation to suceed. We know that it will
+fail at this point. The recovery happens by expanding unresolved macros into
+[`ExprKind::Err`][err].
+
+[err]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/enum.ExprKind.html#variant.Err
+
+Notice that name resolution is involved here: we need to resolve imports and
+macro names in the above algorithm. However, we don't try to resolve other
+names yet. This happens later, as we will see in the [next
+chapter](./name-resolution.md).
 
 ## Hygiene and Heirarchies
 
