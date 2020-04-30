@@ -8,24 +8,28 @@
 struct Foo;
 impl Fn<()> for Foo {
 //~^ ERROR the precise format of `Fn`-family traits' type parameters is subject to change
+//~| ERROR manual implementations of `Fn` are experimental
     extern "rust-call" fn call(self, args: ()) -> () {}
     //~^ ERROR rust-call ABI is subject to change
 }
 struct Foo1;
 impl FnOnce() for Foo1 {
 //~^ ERROR associated type bindings are not allowed here
+//~| ERROR manual implementations of `FnOnce` are experimental
     extern "rust-call" fn call_once(self, args: ()) -> () {}
     //~^ ERROR rust-call ABI is subject to change
 }
 struct Bar;
 impl FnMut<()> for Bar {
 //~^ ERROR the precise format of `Fn`-family traits' type parameters is subject to change
+//~| ERROR manual implementations of `FnMut` are experimental
     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
     //~^ ERROR rust-call ABI is subject to change
 }
 struct Baz;
 impl FnOnce<()> for Baz {
 //~^ ERROR the precise format of `Fn`-family traits' type parameters is subject to change
+//~| ERROR manual implementations of `FnOnce` are experimental
     extern "rust-call" fn call_once(&self, args: ()) -> () {}
     //~^ ERROR rust-call ABI is subject to change
 }
