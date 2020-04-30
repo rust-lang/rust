@@ -963,6 +963,50 @@ function getSearchElement() {
                 return itemTypes[ty.ty] + ty.path + ty.name;
             }
 
+            function handleAliases(ret, query, filterCrates) {
+                if (ALIASES) {
+                    var aliases = [];
+                    if (filterCrates !== undefined &&
+                            ALIASES[filterCrates] &&
+                            ALIASES[filterCrates][query.search]) {
+                        aliases = ALIASES[filterCrates][query.search];
+                    } else {
+                        Object.keys(ALIASES).forEach(function(crate) {
+                            if (ALIASES[crate][query.search]) {
+                                for (var i = 0; i < ALIASES[crate][query.search].length; ++i) {
+                                    aliases.push(ALIASES[crate][query.search][i]);
+                                }
+                            }
+                        });
+                    }
+                    aliases.sort(function(aaa, bbb) {
+                        if (aaa.path < bbb.path) {
+                            return 1;
+                        } else if (aaa.path === bbb.path) {
+                            return 0;
+                        }
+                        return -1;
+                    });
+                    for (var i = 0; i < aliases.length; ++i) {
+                        var alias = aliases[i];
+                        alias.is_alias = true;
+                        if (typeof alias.parent === "number") {
+                            alias.parent = rawSearchIndex[alias.crate].p[alias.parent];
+                        }
+                        alias.alias = query.raw;
+                        alias.path = alias.p || alias.crate;
+                        var res = buildHrefAndPath(aliases[i]);
+                        alias.displayPath = pathSplitter(res[0]);
+                        alias.fullPath = alias.displayPath + alias.name;
+                        alias.href = res[1];
+                        ret.others.unshift(alias);
+                        if (ret.others.length > MAX_RESULTS) {
+                            ret.others.pop();
+                        }
+                    }
+                }
+            }
+
             // quoted values mean literal search
             var nSearchWords = searchWords.length;
             var i;
@@ -1190,23 +1234,7 @@ function getSearchElement() {
                 "returned": sortResults(results_returned, true),
                 "others": sortResults(results),
             };
-            if (ALIASES && ALIASES[window.currentCrate] &&
-                    ALIASES[window.currentCrate][query.raw]) {
-                var aliases = ALIASES[window.currentCrate][query.raw];
-                for (i = 0; i < aliases.length; ++i) {
-                    aliases[i].is_alias = true;
-                    aliases[i].alias = query.raw;
-                    aliases[i].path = aliases[i].p;
-                    var res = buildHrefAndPath(aliases[i]);
-                    aliases[i].displayPath = pathSplitter(res[0]);
-                    aliases[i].fullPath = aliases[i].displayPath + aliases[i].name;
-                    aliases[i].href = res[1];
-                    ret.others.unshift(aliases[i]);
-                    if (ret.others.length > MAX_RESULTS) {
-                        ret.others.pop();
-                    }
-                }
-            }
+            handleAliases(ret, query, filterCrates);
             return ret;
         }
 
@@ -1599,13 +1627,12 @@ function getSearchElement() {
                     "returned": mergeArrays(results.returned),
                     "others": mergeArrays(results.others),
                 };
-            } else {
-                return {
-                    "in_args": results.in_args[0],
-                    "returned": results.returned[0],
-                    "others": results.others[0],
-                };
             }
+            return {
+                "in_args": results.in_args[0],
+                "returned": results.returned[0],
+                "others": results.others[0],
+            };
         }
 
         function getFilterCrates() {
