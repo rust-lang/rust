@@ -451,7 +451,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct ContinueExpr: AttrsOwner { T![continue], T![lifetime] }
         struct BreakExpr: AttrsOwner { T![break], T![lifetime], Expr }
         struct Label { T![lifetime] }
-        struct BlockExpr: AttrsOwner { Label, T![unsafe], Block  }
+        struct BlockExpr: AttrsOwner { Label, T![unsafe], T![async], Block  }
         struct ReturnExpr: AttrsOwner { Expr }
         struct CallExpr: ArgListOwner { Expr }
         struct MethodCallExpr: AttrsOwner, ArgListOwner {
