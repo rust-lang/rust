@@ -368,12 +368,15 @@ impl ast::BlockExpr {
     /// const FOO: () = { stand_alone };
     /// ```
     pub fn is_standalone(&self) -> bool {
+        if self.unsafe_token().is_some() || self.async_token().is_some() {
+            return false;
+        }
         let kind = match self.syntax().parent() {
             None => return true,
             Some(it) => it.kind(),
         };
         match kind {
-            FN_DEF | MATCH_ARM | IF_EXPR | WHILE_EXPR | LOOP_EXPR | TRY_BLOCK_EXPR => false,
+            FN_DEF | IF_EXPR | WHILE_EXPR | LOOP_EXPR | TRY_BLOCK_EXPR => false,
             _ => true,
         }
     }

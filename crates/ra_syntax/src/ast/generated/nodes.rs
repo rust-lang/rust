@@ -554,6 +554,7 @@ impl ast::AttrsOwner for BlockExpr {}
 impl BlockExpr {
     pub fn label(&self) -> Option<Label> { support::child(&self.syntax) }
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
+    pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
     pub fn block(&self) -> Option<Block> { support::child(&self.syntax) }
 }
 
