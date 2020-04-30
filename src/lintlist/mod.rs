@@ -1089,6 +1089,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "loops",
     },
     Lint {
+        name: "manual_non_exhaustive",
+        group: "style",
+        desc: "manual implementations of the non-exhaustive pattern can be simplified using #[non_exhaustive]",
+        deprecation: None,
+        module: "manual_non_exhaustive",
+    },
+    Lint {
         name: "manual_saturating_arithmetic",
         group: "style",
         desc: "`.chcked_add/sub(x).unwrap_or(MAX/MIN)`",

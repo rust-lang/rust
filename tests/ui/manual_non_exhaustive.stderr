@@ -1,0 +1,48 @@
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive.rs:5:5
+   |
+LL | /     enum E {
+LL | |         A,
+LL | |         B,
+LL | |         #[doc(hidden)]
+LL | |         _C,
+LL | |     }
+   | |_____^ help: add the attribute: `#[non_exhaustive] enum E`
+   |
+   = note: `-D clippy::manual-non-exhaustive` implied by `-D warnings`
+help: and remove this variant
+  --> $DIR/manual_non_exhaustive.rs:9:9
+   |
+LL |         _C,
+   |         ^^
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive.rs:67:5
+   |
+LL | /     struct S {
+LL | |         pub a: i32,
+LL | |         pub b: i32,
+LL | |         _c: (),
+LL | |     }
+   | |_____^ help: add the attribute: `#[non_exhaustive] struct S`
+   |
+help: and remove this field
+  --> $DIR/manual_non_exhaustive.rs:70:9
+   |
+LL |         _c: (),
+   |         ^^^^^^
+
+error: this seems like a manual implementation of the non-exhaustive pattern
+  --> $DIR/manual_non_exhaustive.rs:108:5
+   |
+LL |     struct T(pub i32, pub i32, ());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add the attribute: `#[non_exhaustive] struct T`
+   |
+help: and remove this field
+  --> $DIR/manual_non_exhaustive.rs:108:32
+   |
+LL |     struct T(pub i32, pub i32, ());
+   |                                ^^
+
+error: aborting due to 3 previous errors
+
