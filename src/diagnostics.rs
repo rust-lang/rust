@@ -139,7 +139,7 @@ fn report_msg<'tcx, 'mir>(
     mut helps: Vec<String>,
     error: bool,
 ) {
-    let span = if let Some(frame) = ecx.machine.stack.last() {
+    let span = if let Some(frame) = ecx.active_thread_stack().last() {
         frame.current_source_info().unwrap().span
     } else {
         DUMMY_SP
@@ -171,7 +171,7 @@ fn report_msg<'tcx, 'mir>(
 
     err.emit();
 
-    for (i, frame) in ecx.machine.stack.iter().enumerate() {
+    for (i, frame) in ecx.active_thread_stack().iter().enumerate() {
         trace!("-------------------");
         trace!("Frame {}", i);
         trace!("    return: {:?}", frame.return_place.map(|p| *p));

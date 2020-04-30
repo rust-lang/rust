@@ -75,6 +75,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
+            // Threading
+            "prctl" => {
+                assert_eq!(args.len(), 5);
+                let result = this.prctl(args[0], args[1], args[2], args[3], args[4])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+
             // Dynamically invoked syscalls
             "syscall" => {
                 let sys_getrandom = this

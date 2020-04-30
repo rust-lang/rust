@@ -221,13 +221,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_getspecific" => {
                 let key = this.force_bits(this.read_scalar(args[0])?.not_undef()?, args[0].layout.size)?;
-                let ptr = this.machine.tls.load_tls(key, this)?;
+                let active_thread = this.get_active_thread()?;
+                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let key = this.force_bits(this.read_scalar(args[0])?.not_undef()?, args[0].layout.size)?;
+                let active_thread = this.get_active_thread()?;
                 let new_ptr = this.read_scalar(args[1])?.not_undef()?;
-                this.machine.tls.store_tls(key, this.test_null(new_ptr)?)?;
+                this.machine.tls.store_tls(key, active_thread, this.test_null(new_ptr)?)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
@@ -291,9 +293,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
-            // Better error for attempts to create a thread
+            // Threading
             "pthread_create" => {
-                throw_unsup_format!("Miri does not support threading");
+                assert_eq!(args.len(), 4);
+                let result = this.pthread_create(args[0], args[1], args[2], args[3])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_join" => {
+                assert_eq!(args.len(), 2);
+                let result = this.pthread_join(args[0], args[1])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_detach" => {
+                assert_eq!(args.len(), 1);
+                let result = this.pthread_detach(args[0])?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
+            }
+            "pthread_self" => {
+                assert_eq!(args.len(), 0);
+                this.pthread_self(dest)?;
+            }
+            "sched_yield" => {
+                assert_eq!(args.len(), 0);
+                let result = this.sched_yield()?;
+                this.write_scalar(Scalar::from_i32(result), dest)?;
             }
 
             // Miscellaneous
@@ -312,15 +335,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // We do not support forking, so there is nothing to do here.
                 this.write_null(dest)?;
             }
-            "sched_yield" => {
-                this.write_null(dest)?;
-            }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             | "pthread_attr_init"
             | "pthread_attr_destroy"
-            | "pthread_self"
             | "pthread_attr_setstacksize"
             | "pthread_condattr_init"
             | "pthread_condattr_setclock"
@@ -328,6 +347,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "pthread_condattr_destroy"
             | "pthread_cond_destroy" if this.frame().instance.to_string().starts_with("std::sys::unix::")
             => {
+                this.write_null(dest)?;
+            }
+            "pthread_attr_getguardsize" if this.frame().instance.to_string().starts_with("std::sys::unix::")
+            => {
+                let guard_size = this.deref_operand(args[1])?;
+                let guard_size_layout = this.libc_ty_layout("size_t")?;
+                this.write_scalar(Scalar::from_uint(crate::PAGE_SIZE, guard_size_layout.size), guard_size.into())?;
+
+                // Return success (`0`).
                 this.write_null(dest)?;
             }
 

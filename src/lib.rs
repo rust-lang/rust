@@ -12,6 +12,7 @@ extern crate rustc_ast;
 #[macro_use] extern crate rustc_middle;
 extern crate rustc_data_structures;
 extern crate rustc_hir;
+extern crate rustc_index;
 extern crate rustc_mir;
 extern crate rustc_span;
 extern crate rustc_target;
@@ -26,6 +27,7 @@ mod operator;
 mod range_map;
 mod shims;
 mod stacked_borrows;
+mod thread;
 
 // Make all those symbols available in the same place as our own.
 pub use rustc_mir::interpret::*;
@@ -40,6 +42,7 @@ pub use crate::shims::intrinsics::EvalContextExt as IntrinsicsEvalContextExt;
 pub use crate::shims::os_str::EvalContextExt as OsStrEvalContextExt;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as PanicEvalContextExt};
 pub use crate::shims::sync::{EvalContextExt as SyncEvalContextExt};
+pub use crate::shims::thread::EvalContextExt as ThreadShimsEvalContextExt;
 pub use crate::shims::time::EvalContextExt as TimeEvalContextExt;
 pub use crate::shims::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 pub use crate::shims::EvalContextExt as ShimsEvalContextExt;
@@ -59,6 +62,9 @@ pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::stacked_borrows::{
     EvalContextExt as StackedBorEvalContextExt, Item, Permission, PtrId, Stack, Stacks, Tag,
+};
+pub use crate::thread::{
+    EvalContextExt as ThreadsEvalContextExt, SchedulingAction, ThreadId, ThreadManager, ThreadState,
 };
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be

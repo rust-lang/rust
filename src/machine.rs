@@ -251,8 +251,8 @@ pub struct Evaluator<'mir, 'tcx> {
     /// The "time anchor" for this machine's monotone clock (for `Instant` simulation).
     pub(crate) time_anchor: Instant,
 
-    /// The call stack.
-    pub(crate) stack: Vec<Frame<'mir, 'tcx, Tag, FrameData<'tcx>>>,
+    /// The set of threads.
+    pub(crate) threads: ThreadManager<'mir, 'tcx>,
 
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
@@ -282,7 +282,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             panic_payload: None,
             time_anchor: Instant::now(),
             layouts,
-            stack: Vec::default(),
+            threads: ThreadManager::default(),
         }
     }
 }
@@ -416,6 +416,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         Ok(())
     }
 
+    fn adjust_global_const(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        mut val: mir::interpret::ConstValue<'tcx>,
+    ) -> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
+        ecx.remap_thread_local_alloc_ids(&mut val)?;
+        Ok(val)
+    }
+
     fn canonical_alloc_id(mem: &Memory<'mir, 'tcx, Self>, id: AllocId) -> AllocId {
         let tcx = mem.tcx;
         // Figure out if this is an extern static, and if yes, which one.
@@ -525,18 +533,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         Ok(frame.with_extra(extra))
     }
 
-    #[inline(always)]
     fn stack<'a>(
-        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+        ecx: &'a InterpCx<'mir, 'tcx, Self>
     ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
-        &ecx.machine.stack
+        ecx.active_thread_stack()
     }
 
-    #[inline(always)]
     fn stack_mut<'a>(
-        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>
     ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
-        &mut ecx.machine.stack
+        ecx.active_thread_stack_mut()
     }
 
     #[inline(always)]
