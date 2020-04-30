@@ -313,11 +313,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Get the name of the active thread.
-    fn get_thread_name(&self) -> InterpResult<'tcx, &[u8]> {
+    fn get_thread_name(&self) -> &[u8] {
         if let Some(ref thread_name) = self.active_thread_ref().thread_name {
-            Ok(thread_name)
+            thread_name
         } else {
-            throw_ub_format!("thread {:?} has no name set", self.active_thread)
+            b"<unnamed>"
         }
     }
 
@@ -574,7 +574,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         'mir: 'c,
     {
         let this = self.eval_context_ref();
-        this.machine.threads.get_thread_name()
+        Ok(this.machine.threads.get_thread_name())
     }
 
     #[inline]

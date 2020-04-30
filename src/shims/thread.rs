@@ -99,11 +99,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let option = this.read_scalar(option)?.to_i32()?;
         if option == this.eval_libc_i32("PR_SET_NAME")? {
             let address = this.read_scalar(arg2)?.not_undef()?;
-            let name = this.memory.read_c_str(address)?.to_owned();
+            let mut name = this.memory.read_c_str(address)?.to_owned();
+            // The name should be no more than 16 bytes, including the null
+            // byte. Since `read_c_str` returns the string without the null
+            // byte, we need to truncate to 15.
+            name.truncate(15);
             this.set_active_thread_name(name)?;
         } else if option == this.eval_libc_i32("PR_GET_NAME")? {
             let address = this.read_scalar(arg2)?.not_undef()?;
-            let name = this.get_active_thread_name()?.to_vec();
+            let mut name = this.get_active_thread_name()?.to_vec();
+            name.push(0u8);
+            assert!(name.len() <= 16);
             this.memory.write_bytes(address, name)?;
         } else {
             throw_unsup_format!("unsupported prctl option {}", option);
