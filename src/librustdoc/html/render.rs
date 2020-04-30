@@ -278,7 +278,7 @@ pub struct RenderInfo {
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
 #[derive(Debug)]
-struct IndexItem {
+pub struct IndexItem {
     ty: ItemType,
     name: String,
     path: String,
@@ -293,7 +293,12 @@ impl Serialize for IndexItem {
     where
         S: Serializer,
     {
-        assert_eq!(self.parent.is_some(), self.parent_idx.is_some());
+        assert_eq!(
+            self.parent.is_some(),
+            self.parent_idx.is_some(),
+            "`{}` is missing idx",
+            self.name
+        );
 
         (self.ty, &self.name, &self.path, &self.desc, self.parent_idx, &self.search_type)
             .serialize(serializer)
@@ -836,7 +841,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     {
         let (mut all_aliases, _) = try_err!(collect(&dst, &krate.name, "ALIASES"), &dst);
         let mut output = String::with_capacity(100);
-        for (alias, items) in &cx.cache.aliases {
+        for (alias, items) in cx.cache.get_aliases() {
             if items.is_empty() {
                 continue;
             }
