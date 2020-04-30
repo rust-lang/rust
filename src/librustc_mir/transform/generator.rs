@@ -68,6 +68,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::GeneratorSubsts;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
+use rustc_target::spec::PanicStrategy;
 use std::borrow::Cow;
 use std::iter;
 
@@ -978,7 +979,7 @@ fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
 
 fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
     // Nothing can unwind when landing pads are off.
-    if tcx.sess.no_landing_pads() {
+    if tcx.sess.panic_strategy() == PanicStrategy::Abort {
         return false;
     }
 

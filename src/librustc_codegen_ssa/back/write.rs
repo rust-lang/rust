@@ -35,7 +35,7 @@ use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::spec::MergeFunctions;
+use rustc_target::spec::{MergeFunctions, PanicStrategy};
 
 use std::any::Any;
 use std::fs;
@@ -995,7 +995,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         crate_types: sess.crate_types.borrow().clone(),
         each_linked_rlib_for_lto,
         lto: sess.lto(),
-        no_landing_pads: sess.no_landing_pads(),
+        no_landing_pads: sess.panic_strategy() == PanicStrategy::Abort,
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
         opts: Arc::new(sess.opts.clone()),

@@ -540,9 +540,6 @@ impl Session {
         self.opts.debugging_opts.fewer_names || !more_names
     }
 
-    pub fn no_landing_pads(&self) -> bool {
-        self.opts.debugging_opts.no_landing_pads || self.panic_strategy() == PanicStrategy::Abort
-    }
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
     }
