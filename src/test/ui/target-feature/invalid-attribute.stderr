@@ -91,5 +91,23 @@ error: cannot use `#[inline(always)]` with `#[target_feature]`
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: `#[target_feature(..)]` can only be applied to `unsafe` functions
+  --> $DIR/invalid-attribute.rs:85:5
+   |
+LL |     #[target_feature(enable = "sse2")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only be applied to `unsafe` functions
+...
+LL |     || {};
+   |     ----- not an `unsafe` function
+
+error: `#[target_feature(..)]` can only be applied to `unsafe` functions
+  --> $DIR/invalid-attribute.rs:73:5
+   |
+LL |     #[target_feature(enable = "sse2")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only be applied to `unsafe` functions
+...
+LL |     fn foo() {}
+   |     ----------- not an `unsafe` function
+
+error: aborting due to 14 previous errors
 
