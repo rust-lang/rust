@@ -21,24 +21,24 @@ export class Cargo {
     }
 
     public async artifactsFromArgs(cargoArgs: string[]): Promise<CompilationArtifact[]> {
-        let artifacts: CompilationArtifact[] = [];
+        const artifacts: CompilationArtifact[] = [];
 
         try {
             await this.runCargo(cargoArgs,
                 message => {
-                    if (message.reason == 'compiler-artifact' && message.executable) {
-                        let isBinary = message.target.crate_types.includes('bin');
-                        let isBuildScript = message.target.kind.includes('custom-build');
+                    if (message.reason === 'compiler-artifact' && message.executable) {
+                        const isBinary = message.target.crate_types.includes('bin');
+                        const isBuildScript = message.target.kind.includes('custom-build');
                         if ((isBinary && !isBuildScript) || message.profile.test) {
                             artifacts.push({
                                 fileName: message.executable,
                                 name: message.target.name,
                                 kind: message.target.kind[0],
                                 isTest: message.profile.test
-                            })
+                            });
                         }
                     }
-                    else if( message.reason == 'compiler-message') {
+                    else if (message.reason === 'compiler-message') {
                         this.output.append(message.message.rendered);
                     }
                 },
@@ -62,9 +62,9 @@ export class Cargo {
             cargoArgs.push(...extraArgs);
         }
 
-        let artifacts = await this.artifactsFromArgs(cargoArgs);
+        const artifacts = await this.artifactsFromArgs(cargoArgs);
 
-        if (artifacts.length == 0 ) {
+        if (artifacts.length === 0) {
             throw new Error('No compilation artifacts');
         } else if (artifacts.length > 1) {
             throw new Error('Multiple compilation artifacts are not supported.');
@@ -79,7 +79,7 @@ export class Cargo {
         onStderrString: (data: string) => void
     ): Promise<number> {
         return new Promise<number>((resolve, reject) => {
-            let cargo = cp.spawn('cargo', cargoArgs, {
+            const cargo = cp.spawn('cargo', cargoArgs, {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 cwd: this.rootFolder,
                 env: this.env,
@@ -92,14 +92,14 @@ export class Cargo {
                 onStderrString(chunk.toString());
             });
 
-            let rl = readline.createInterface({ input: cargo.stdout });
+            const rl = readline.createInterface({ input: cargo.stdout });
             rl.on('line', line => {
-                let message = JSON.parse(line);
+                const message = JSON.parse(line);
                 onStdoutJson(message);
             });
 
             cargo.on('exit', (exitCode, _) => {
-                if (exitCode == 0)
+                if (exitCode === 0)
                     resolve(exitCode);
                 else
                     reject(new Error(`exit code: ${exitCode}.`));

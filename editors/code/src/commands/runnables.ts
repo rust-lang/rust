@@ -82,9 +82,9 @@ const debugOutput = vscode.window.createOutputChannel("Debug");
 
 async function getCppvsDebugConfig(config: ra.Runnable, sourceFileMap: Record<string, string>): Promise<vscode.DebugConfiguration> {
     debugOutput.clear();
-    
-    let cargo = new Cargo(config.cwd || '.', debugOutput);
-    let executable = await cargo.executableFromArgs(config.args, config.extraArgs);
+
+    const cargo = new Cargo(config.cwd || '.', debugOutput);
+    const executable = await cargo.executableFromArgs(config.args, config.extraArgs);
 
     // if we are here, there were no compilation errors.
     return {
@@ -106,9 +106,9 @@ export function debugSingle(ctx: Ctx): Cmd {
         const lldbId = "vadimcn.vscode-lldb";
         const cpptoolsId = "ms-vscode.cpptools";
 
-        let debugEngineId = ctx.config.debug.engine;
+        const debugEngineId = ctx.config.debug.engine;
         let debugEngine = null;
-        if ( debugEngineId === "auto" ) {
+        if (debugEngineId === "auto") {
             debugEngine = vscode.extensions.getExtension(lldbId);
             if (!debugEngine) {
                 debugEngine = vscode.extensions.getExtension(cpptoolsId);
@@ -120,11 +120,11 @@ export function debugSingle(ctx: Ctx): Cmd {
 
         if (!debugEngine) {
             vscode.window.showErrorMessage(`Install [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=${lldbId})`
-            + ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=${cpptoolsId}) extension for debugging.`);
+                + ` or [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=${cpptoolsId}) extension for debugging.`);
             return;
         }
 
-        const debugConfig = lldbId == debugEngine.id
+        const debugConfig = lldbId === debugEngine.id
             ? getLldbDebugConfig(config, ctx.config.debug.sourceFileMap)
             : await getCppvsDebugConfig(config, ctx.config.debug.sourceFileMap);
 
