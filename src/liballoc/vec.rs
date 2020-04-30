@@ -741,7 +741,7 @@ impl<T> Vec<T> {
                 return;
             }
             let remaining_len = self.len - len;
-            let s = slice::from_raw_parts_mut(self.as_mut_ptr().add(len), remaining_len);
+            let s = ptr::slice_from_raw_parts_mut(self.as_mut_ptr().add(len), remaining_len);
             self.len = len;
             ptr::drop_in_place(s);
         }
@@ -2379,7 +2379,9 @@ unsafe impl<#[may_dangle] T> Drop for Vec<T> {
     fn drop(&mut self) {
         unsafe {
             // use drop for [T]
-            ptr::drop_in_place(&mut self[..]);
+            // use a raw slice to refer to the elements of the vector as weakest necessary type;
+            // could avoid questions of validity in certain cases
+            ptr::drop_in_place(ptr::slice_from_raw_parts_mut(self.as_mut_ptr(), self.len))
         }
         // RawVec handles deallocation
     }
@@ -2596,7 +2598,11 @@ impl<T> IntoIter<T> {
     /// ```
     #[stable(feature = "vec_into_iter_as_slice", since = "1.15.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { slice::from_raw_parts_mut(self.ptr as *mut T, self.len()) }
+        unsafe { &mut *self.as_raw_mut_slice() }
+    }
+
+    fn as_raw_mut_slice(&mut self) -> *mut [T] {
+        ptr::slice_from_raw_parts_mut(self.ptr as *mut T, self.len())
     }
 }
 
@@ -2708,7 +2714,7 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
         let guard = DropGuard(self);
         // destroy the remaining elements
         unsafe {
-            ptr::drop_in_place(guard.0.as_mut_slice());
+            ptr::drop_in_place(guard.0.as_raw_mut_slice());
         }
         // now `guard` will be dropped and do the rest
     }
