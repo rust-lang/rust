@@ -1159,6 +1159,10 @@ pub(crate) mod builtin {
     /// The syntax given to this macro is the same syntax as the [`cfg`]
     /// attribute.
     ///
+    /// `cfg!`, unlike `#[cfg]`, does not remove any code and only evaluates to true or false. For
+    /// example, all blocks in an if/else expression need to be valid when `cfg!` is used for
+    /// the condition, regardless of what `cfg!` is evaluating.
+    ///
     /// [`cfg`]: ../reference/conditional-compilation.html#the-cfg-attribute
     ///
     /// # Examples
