@@ -438,10 +438,7 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 /// Error information for when the program did something that might (or might not) be correct
 /// to do according to the Rust spec, but due to limitations in the interpreter, the
 /// operation could not be carried out. These limitations can differ between CTFE and the
-/// Miri engine, e.g., CTFE does not support casting pointers to "real" integers.
-///
-/// Currently, we also use this as fall-back error kind for errors that have not been
-/// categorized yet.
+/// Miri engine, e.g., CTFE does not support dereferencing pointers at integral addresses.
 pub enum UnsupportedOpInfo {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
@@ -451,6 +448,9 @@ pub enum UnsupportedOpInfo {
     NoMirFor(DefId),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
+    //
+    // The variants below are only reachable from CTFE/const prop, miri will never emit them.
+    //
     /// Encountered raw bytes where we needed a pointer.
     ReadBytesAsPointer,
 }
