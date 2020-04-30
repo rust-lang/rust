@@ -236,21 +236,40 @@ fn validate_crate_keyword_in_path_segment(
     };
 
     // Disallow both ::crate and foo::crate
-    let path = segment.parent_path();
+    let mut path = segment.parent_path();
     if segment.coloncolon_token().is_some() || path.qualifier().is_some() {
         errors.push(SyntaxError::new(ERR_MSG, crate_token.text_range()));
         return;
     }
 
-    // We now know that the path variable describes a complete path.
     // For expressions and types, validation is complete, but we still have
-    // to handle UseItems like this:
-    //      use foo:{crate};
-    // so we crawl upwards looking for any preceding paths on `UseTree`s
+    // to handle invalid UseItems like this:
+    //
+    //      use foo:{crate::bar::baz};
+    //
+    // To handle this we must inspect the parent `UseItem`s and `UseTree`s
+    // but right now we're looking deep inside the nested `Path` nodes because
+    // `Path`s are left-associative:
+    //
+    //   ((crate)::bar)::baz)
+    //       ^ current value of path
+    //
+    // So we need to climb to the top
+    while let Some(parent) = path.parent_path() {
+        path = parent;
+    }
+
+    // Now that we've found the whole path we need to see if there's a prefix
+    // somewhere in the UseTree hierarchy. This check is arbitrarily deep
+    // because rust allows arbitrary nesting like so:
+    //
+    // use {foo::{{{{crate::bar::baz}}}}};
     for node in path.syntax().ancestors().skip(1) {
         match_ast! {
             match node {
                 ast::UseTree(it) => if let Some(tree_path) = it.path() {
+                    // Even a top-level path exists within a `UseTree` so we must explicitly
+                    // allow our path but disallow anything else
                     if tree_path != path {
                         errors.push(SyntaxError::new(ERR_MSG, crate_token.text_range()));
                     }
