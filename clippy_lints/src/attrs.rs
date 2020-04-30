@@ -238,6 +238,7 @@ declare_clippy_lint! {
     /// #[cfg(unix)]
     /// fn conditional() { }
     /// ```
+    /// Check the [Rust Reference](https://doc.rust-lang.org/reference/conditional-compilation.html#target_os) for more details.
     pub MISMATCHED_TARGET_OS,
     correctness,
     "usage of `cfg(operating_system)` instead of `cfg(target_os = \"operating_system\")`"
