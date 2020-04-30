@@ -400,8 +400,8 @@ impl fmt::Debug for UndefinedBehaviorInfo {
                 ptr.alloc_id,
                 allocation_size.bytes()
             ),
-            InvalidIntPointerUsage(0) => write!(f, "invalid use of NULL pointer"),
-            InvalidIntPointerUsage(i) => write!(f, "invalid use of {} as a pointer", i),
+            InvalidIntPointerUsage(0) => write!(f, "dereferencing NULL pointer"),
+            InvalidIntPointerUsage(i) => write!(f, "dereferencing dangling pointer to 0x{:x}", i),
             AlignmentCheckFailed { required, has } => write!(
                 f,
                 "accessing memory with alignment {}, but alignment {} is required",
