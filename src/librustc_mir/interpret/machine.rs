@@ -84,6 +84,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Tag tracked alongside every pointer. This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
     /// The `default()` is used for pointers to consts, statics, vtables and functions.
+    /// The `Debug` formatting is used for displaying pointers; we cannot use `Display`
+    /// as `()` does not implement that, but it should be "nice" output.
     type PointerTag: ::std::fmt::Debug + Copy + Eq + Hash + 'static;
 
     /// Machines can define extra (non-instance) things that represent values of function pointers.
