@@ -78,10 +78,15 @@ function getLldbDebugConfig(config: ra.Runnable, sourceFileMap: Record<string, s
     };
 }
 
+const debugOutput = vscode.window.createOutputChannel("Debug");
+
 async function getCppvsDebugConfig(config: ra.Runnable, sourceFileMap: Record<string, string>): Promise<vscode.DebugConfiguration> {
-    let cargo = new Cargo(config.cwd || '.');
+    debugOutput.clear();
+    
+    let cargo = new Cargo(config.cwd || '.', debugOutput);
     let executable = await cargo.executableFromArgs(config.args, config.extraArgs);
 
+    // if we are here, there were no compilation errors.
     return {
         type: (os.platform() === "win32") ? "cppvsdbg" : 'cppdbg',
         request: "launch",

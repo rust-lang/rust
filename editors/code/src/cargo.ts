@@ -1,5 +1,6 @@
 import * as cp from 'child_process';
 import * as readline from 'readline';
+import { OutputChannel } from 'vscode';
 
 interface CompilationArtifact {
     fileName: string;
@@ -10,10 +11,13 @@ interface CompilationArtifact {
 
 export class Cargo {
     rootFolder: string;
-    env?: { [key: string]: string };
+    env?: Record<string, string>;
+    output: OutputChannel;
 
-    public constructor(cargoTomlFolder: string) {
+    public constructor(cargoTomlFolder: string, output: OutputChannel, env: Record<string, string> | undefined = undefined) {
         this.rootFolder = cargoTomlFolder;
+        this.output = output;
+        this.env = env;
     }
 
     public async artifactsFromArgs(cargoArgs: string[]): Promise<CompilationArtifact[]> {
@@ -34,14 +38,17 @@ export class Cargo {
                             })
                         }
                     }
+                    else if( message.reason == 'compiler-message') {
+                        this.output.append(message.message.rendered);
+                    }
                 },
-                _stderr => {
-                    // TODO: to output
+                stderr => {
+                    this.output.append(stderr);
                 }
             );
         }
         catch (err) {
-            // TODO: to output
+            this.output.show(true);
             throw new Error(`Cargo invocation has failed: ${err}`);
         }
 
