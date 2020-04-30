@@ -1,4 +1,4 @@
-SOURCE_FILE@0..250
+SOURCE_FILE@0..249
   USE_ITEM@0..58
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
@@ -104,32 +104,33 @@ SOURCE_FILE@0..250
   WHITESPACE@166..167 " "
   COMMENT@167..179 "// Rust 2015"
   WHITESPACE@179..180 "\n"
-  USE_ITEM@180..206
+  USE_ITEM@180..205
     USE_KW@180..183 "use"
     WHITESPACE@183..184 " "
-    USE_TREE@184..205
+    USE_TREE@184..204
       COLON2@184..186 "::"
-      USE_TREE_LIST@186..205
+      USE_TREE_LIST@186..204
         L_CURLY@186..187 "{"
-        USE_TREE@187..204
-          USE_TREE_LIST@187..204
+        USE_TREE@187..203
+          USE_TREE_LIST@187..203
             L_CURLY@187..188 "{"
-            USE_TREE@188..203
-              USE_TREE_LIST@188..203
+            USE_TREE@188..202
+              USE_TREE_LIST@188..202
                 L_CURLY@188..189 "{"
-                USE_TREE@189..202
-                  PATH@189..202
-                    PATH@189..194
-                      PATH_SEGMENT@189..194
-                        CRATE_KW@189..194 "crate"
-                    COLON2@194..196 "::"
-                    PATH_SEGMENT@196..202
-                      NAME_REF@196..202
-                        IDENT@196..202 "export"
-                R_CURLY@202..203 "}"
-            R_CURLY@203..204 "}"
-        R_CURLY@204..205 "}"
-    SEMICOLON@205..206 ";"
-  WHITESPACE@206..207 " "
-  COMMENT@207..249 "// Nonsensical but pe ..."
-  WHITESPACE@249..250 "\n"
+                USE_TREE@189..201
+                  PATH@189..201
+                    PATH@189..193
+                      PATH_SEGMENT@189..193
+                        NAME_REF@189..193
+                          IDENT@189..193 "root"
+                    COLON2@193..195 "::"
+                    PATH_SEGMENT@195..201
+                      NAME_REF@195..201
+                        IDENT@195..201 "export"
+                R_CURLY@201..202 "}"
+            R_CURLY@202..203 "}"
+        R_CURLY@203..204 "}"
+    SEMICOLON@204..205 ";"
+  WHITESPACE@205..206 " "
+  COMMENT@206..248 "// Nonsensical but pe ..."
+  WHITESPACE@248..249 "\n"
