@@ -10,6 +10,22 @@ use rustc_span::{Span, Symbol};
 
 use super::ConstCx;
 
+/// Emits an error if `op` is not allowed in the given const context.
+pub fn non_const<O: NonConstOp>(ccx: &ConstCx<'_, '_>, op: O, span: Span) {
+    debug!("illegal_op: op={:?}", op);
+
+    if op.is_allowed_in_item(ccx) {
+        return;
+    }
+
+    if ccx.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+        ccx.tcx.sess.miri_unleashed_feature(span, O::feature_gate());
+        return;
+    }
+
+    op.emit_error(ccx, span);
+}
+
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
     /// Returns the `Symbol` corresponding to the feature gate that would enable this operation,

@@ -232,30 +232,15 @@ impl Validator<'mir, 'tcx> {
         self.qualifs.in_return_place(self.ccx)
     }
 
-    /// Emits an error at the given `span` if an expression cannot be evaluated in the current
-    /// context.
-    pub fn check_op_spanned<O>(&mut self, op: O, span: Span)
-    where
-        O: NonConstOp,
-    {
-        debug!("check_op: op={:?}", op);
-
-        if op.is_allowed_in_item(self) {
-            return;
-        }
-
-        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-            self.tcx.sess.miri_unleashed_feature(span, O::feature_gate());
-            return;
-        }
-
-        op.emit_error(self, span);
-    }
-
     /// Emits an error if an expression cannot be evaluated in the current context.
     pub fn check_op(&mut self, op: impl NonConstOp) {
-        let span = self.span;
-        self.check_op_spanned(op, span)
+        ops::non_const(self.ccx, op, self.span);
+    }
+
+    /// Emits an error at the given `span` if an expression cannot be evaluated in the current
+    /// context.
+    pub fn check_op_spanned(&mut self, op: impl NonConstOp, span: Span) {
+        ops::non_const(self.ccx, op, span);
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
