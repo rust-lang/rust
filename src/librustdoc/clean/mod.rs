@@ -1736,11 +1736,12 @@ impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
 impl Clean<Item> for hir::StructField<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let local_did = cx.tcx.hir().local_def_id(self.hir_id);
+        let span = cx.tcx.hir().span(self.hir_id);
 
         Item {
             name: Some(self.ident.name).clean(cx),
             attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
+            source: span.clean(cx),
             visibility: self.vis.clean(cx),
             stability: get_stability(cx, local_did.to_def_id()),
             deprecation: get_deprecation(cx, local_did.to_def_id()),

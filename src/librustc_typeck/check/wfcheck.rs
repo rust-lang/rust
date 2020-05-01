@@ -1326,10 +1326,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .iter()
             .map(|field| {
                 let field_ty = self.tcx.type_of(self.tcx.hir().local_def_id(field.hir_id));
-                let field_ty = self.normalize_associated_types_in(field.span, &field_ty);
+                let span = self.tcx.hir().span(field.hir_id);
+                let field_ty = self.normalize_associated_types_in(span, &field_ty);
                 let field_ty = self.resolve_vars_if_possible(&field_ty);
                 debug!("non_enum_variant: type of field {:?} is {:?}", field, field_ty);
-                AdtField { ty: field_ty, span: field.span }
+                AdtField { ty: field_ty, span }
             })
             .collect();
         AdtVariant { fields, explicit_discr: None }

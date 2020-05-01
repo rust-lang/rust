@@ -2382,7 +2382,6 @@ impl VisibilityKind<'_> {
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct StructField<'hir> {
-    pub span: Span,
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub vis: Visibility<'hir>,

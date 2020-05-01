@@ -136,7 +136,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
             hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
                     let def_id = cx.tcx.hir().local_def_id(struct_field.hir_id);
-                    self.check_heap_type(cx, struct_field.span, cx.tcx.type_of(def_id));
+                    let span = cx.tcx.hir().span(struct_field.hir_id);
+                    self.check_heap_type(cx, span, cx.tcx.type_of(def_id));
                 }
             }
             _ => (),
@@ -505,14 +506,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, sf: &hir::StructField<'_>) {
         if !sf.is_positional() {
-            self.check_missing_docs_attrs(
-                cx,
-                Some(sf.hir_id),
-                &sf.attrs,
-                sf.span,
-                "a",
-                "struct field",
-            )
+            let span = cx.tcx.hir().span(sf.hir_id);
+            self.check_missing_docs_attrs(cx, Some(sf.hir_id), &sf.attrs, span, "a", "struct field")
         }
     }
 
@@ -1025,7 +1020,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'_, '_>, field: &hir::StructField<'_>) {
-        self.perform_lint(cx, "field", field.hir_id, &field.vis, field.span, false);
+        let span = cx.tcx.hir().span(field.hir_id);
+        self.perform_lint(cx, "field", field.hir_id, &field.vis, span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem<'_>) {

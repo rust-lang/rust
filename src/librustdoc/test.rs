@@ -1015,9 +1015,15 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_struct_field(&mut self, f: &'hir hir::StructField) {
-        self.visit_testable(f.ident.to_string(), &f.attrs, f.hir_id, f.span, |this| {
-            intravisit::walk_struct_field(this, f);
-        });
+        self.visit_testable(
+            f.ident.to_string(),
+            &f.attrs,
+            f.hir_id,
+            self.map.span(f.hir_id),
+            |this| {
+                intravisit::walk_struct_field(this, f);
+            },
+        );
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef) {
