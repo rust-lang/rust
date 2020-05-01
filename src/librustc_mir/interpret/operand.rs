@@ -15,8 +15,8 @@ use rustc_target::abi::{Abi, DiscriminantKind, HasDataLayout, Integer, LayoutOf,
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
-    from_known_layout, sign_extend, truncate, AllocId, ConstValue, GlobalId, InterpCx,
-    InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUndef,
+    from_known_layout, sign_extend, truncate, ConstValue, GlobalId, InterpCx, InterpResult,
+    MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUndef,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -27,9 +27,9 @@ use super::{
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, Hash)]
-pub enum Immediate<Tag = (), Id = AllocId> {
-    Scalar(ScalarMaybeUndef<Tag, Id>),
-    ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
+pub enum Immediate<Tag = ()> {
+    Scalar(ScalarMaybeUndef<Tag>),
+    ScalarPair(ScalarMaybeUndef<Tag>, ScalarMaybeUndef<Tag>),
 }
 
 impl<Tag> From<ScalarMaybeUndef<Tag>> for Immediate<Tag> {
@@ -145,9 +145,9 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
 /// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, Hash)]
-pub enum Operand<Tag = (), Id = AllocId> {
-    Immediate(Immediate<Tag, Id>),
-    Indirect(MemPlace<Tag, Id>),
+pub enum Operand<Tag = ()> {
+    Immediate(Immediate<Tag>),
+    Indirect(MemPlace<Tag>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

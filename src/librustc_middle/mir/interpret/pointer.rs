@@ -75,18 +75,14 @@ pub trait PointerArithmetic: HasDataLayout {
 
 impl<T: HasDataLayout> PointerArithmetic for T {}
 
-/// `Pointer` is generic over the type that represents a reference to `Allocation`s,
-/// thus making it possible for the most convenient representation to be used in
-/// each context.
+/// Represents a pointer in the Miri engine.
 ///
-/// Defaults to the index based and loosely coupled `AllocId`.
-///
-/// `Pointer` is also generic over the `Tag` associated with each pointer,
+/// `Pointer` is generic over the `Tag` associated with each pointer,
 /// which is used to do provenance tracking during execution.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 #[derive(HashStable)]
-pub struct Pointer<Tag = (), Id = AllocId> {
-    pub alloc_id: Id,
+pub struct Pointer<Tag = ()> {
+    pub alloc_id: AllocId,
     pub offset: Size,
     pub tag: Tag,
 }
@@ -97,7 +93,7 @@ static_assert_size!(Pointer, 16);
 // all the Miri types.
 // We have to use `Debug` output for the tag, because `()` does not implement
 // `Display` so we cannot specialize that.
-impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Pointer<Tag, Id> {
+impl<Tag: fmt::Debug> fmt::Debug for Pointer<Tag> {
     default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             write!(f, "{:#?}+0x{:x}[{:?}]", self.alloc_id, self.offset.bytes(), self.tag)
@@ -107,7 +103,7 @@ impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Pointer<Tag, Id> {
     }
 }
 // Specialization for no tag
-impl<Id: fmt::Debug> fmt::Debug for Pointer<(), Id> {
+impl fmt::Debug for Pointer<()> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             write!(f, "{:#?}+0x{:x}", self.alloc_id, self.offset.bytes())
