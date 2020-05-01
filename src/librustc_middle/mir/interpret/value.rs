@@ -89,7 +89,7 @@ impl<'tcx> ConstValue<'tcx> {
 /// of a simple value or a pointer into another `Allocation`
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 #[derive(HashStable)]
-pub enum Scalar<Tag = (), Id = AllocId> {
+pub enum Scalar<Tag = ()> {
     /// The raw bytes of a simple value.
     Raw {
         /// The first `size` bytes of `data` are the value.
@@ -101,7 +101,7 @@ pub enum Scalar<Tag = (), Id = AllocId> {
     /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
     /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
     /// relocation and its associated offset together as a `Pointer` here.
-    Ptr(Pointer<Tag, Id>),
+    Ptr(Pointer<Tag>),
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -109,7 +109,7 @@ static_assert_size!(Scalar, 24);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
-impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Scalar<Tag, Id> {
+impl<Tag: fmt::Debug> fmt::Debug for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr) => write!(f, "{:?}", ptr),
@@ -542,8 +542,8 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, RustcEncodable, RustcDecodable, HashStable, Hash)]
-pub enum ScalarMaybeUndef<Tag = (), Id = AllocId> {
-    Scalar(Scalar<Tag, Id>),
+pub enum ScalarMaybeUndef<Tag = ()> {
+    Scalar(Scalar<Tag>),
     Undef,
 }
 
@@ -563,7 +563,7 @@ impl<Tag> From<Pointer<Tag>> for ScalarMaybeUndef<Tag> {
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
-impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for ScalarMaybeUndef<Tag, Id> {
+impl<Tag: fmt::Debug> fmt::Debug for ScalarMaybeUndef<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ScalarMaybeUndef::Undef => write!(f, "<uninitialized>"),
