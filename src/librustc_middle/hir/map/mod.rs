@@ -87,6 +87,7 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
 }
 
 pub(super) struct HirOwnerData<'hir> {
+    pub(super) spans: IndexVec<ItemLocalId, Option<Span>>,
     pub(super) signature: Option<&'hir Owner<'hir>>,
     pub(super) with_bodies: Option<&'hir mut OwnerNodes<'hir>>,
 }
@@ -827,41 +828,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span(&self, hir_id: HirId) -> Span {
-        match self.find_entry(hir_id).map(|entry| entry.node) {
-            Some(Node::Param(param)) => param.span,
-            Some(Node::Item(item)) => item.span,
-            Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
-            Some(Node::TraitItem(trait_method)) => trait_method.span,
-            Some(Node::ImplItem(impl_item)) => impl_item.span,
-            Some(Node::Variant(variant)) => variant.span,
-            Some(Node::Field(field)) => field.span,
-            Some(Node::AnonConst(constant)) => self.body(constant.body).value.span,
-            Some(Node::Expr(expr)) => expr.span,
-            Some(Node::Stmt(stmt)) => stmt.span,
-            Some(Node::PathSegment(seg)) => seg.ident.span,
-            Some(Node::Ty(ty)) => ty.span,
-            Some(Node::TraitRef(tr)) => tr.path.span,
-            Some(Node::Binding(pat)) => pat.span,
-            Some(Node::Pat(pat)) => pat.span,
-            Some(Node::Arm(arm)) => arm.span,
-            Some(Node::Block(block)) => block.span,
-            Some(Node::Ctor(..)) => match self.find(self.get_parent_node(hir_id)) {
-                Some(Node::Item(item)) => item.span,
-                Some(Node::Variant(variant)) => variant.span,
-                _ => unreachable!(),
-            },
-            Some(Node::Lifetime(lifetime)) => lifetime.span,
-            Some(Node::GenericParam(param)) => param.span,
-            Some(Node::Visibility(&Spanned {
-                node: VisibilityKind::Restricted { ref path, .. },
-                ..
-            })) => path.span,
-            Some(Node::Visibility(v)) => bug!("unexpected Visibility {:?}", v),
-            Some(Node::Local(local)) => local.span,
-            Some(Node::MacroDef(macro_def)) => macro_def.span,
-            Some(Node::Crate(item)) => item.span,
-            None => bug!("hir::map::Map::span: id not in map: {:?}", hir_id),
-        }
+        self.tcx.index_hir(LOCAL_CRATE).map[hir_id.owner].spans[hir_id.local_id].unwrap()
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {

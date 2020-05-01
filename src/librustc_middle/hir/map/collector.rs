@@ -16,7 +16,7 @@ use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_span::{Span, Symbol};
 
 use std::iter::repeat;
 
@@ -133,10 +133,15 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             hcx,
             hir_body_nodes,
             map: (0..definitions.def_index_count())
-                .map(|_| HirOwnerData { signature: None, with_bodies: None })
+                .map(|_| HirOwnerData {
+                    spans: IndexVec::new(),
+                    signature: None,
+                    with_bodies: None,
+                })
                 .collect(),
         };
         collector.insert_entry(
+            krate.item.span,
             hir::CRATE_HIR_ID,
             Entry { parent: hir::CRATE_HIR_ID, node: Node::Crate(&krate.item) },
             hash,
@@ -196,7 +201,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         (self.map, svh)
     }
 
-    fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>, hash: Fingerprint) {
+    fn insert_entry(&mut self, span: Span, id: HirId, entry: Entry<'hir>, hash: Fingerprint) {
         let i = id.local_id.as_u32() as usize;
 
         let arena = self.arena;
@@ -213,6 +218,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let nodes = data.with_bodies.as_mut().unwrap();
 
+        insert_vec_map(&mut data.spans, id.local_id, span);
         if i == 0 {
             // Overwrite the dummy hash with the real HIR owner hash.
             nodes.hash = hash;
@@ -262,7 +268,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             }
         }
 
-        self.insert_entry(hir_id, entry, hash);
+        self.insert_entry(span, hir_id, entry, hash);
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_node_id: HirId, f: F) {
@@ -323,7 +329,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_param(&mut self, param: &'hir Param<'hir>) {
         let node = Node::Param(param);
-        self.insert(param.pat.span, param.hir_id, node);
+        self.insert(param.span, param.hir_id, node);
         self.with_parent(param.hir_id, |this| {
             intravisit::walk_param(this, param);
         });
@@ -411,7 +417,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
-        self.insert(DUMMY_SP, constant.hir_id, Node::AnonConst(constant));
+        self.insert(
+            self.krate.body(constant.body).value.span,
+            constant.hir_id,
+            Node::AnonConst(constant),
+        );
 
         self.with_parent(constant.hir_id, |this| {
             intravisit::walk_anon_const(this, constant);
@@ -436,7 +446,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'hir PathSegment<'hir>) {
         if let Some(hir_id) = path_segment.hir_id {
-            self.insert(path_span, hir_id, Node::PathSegment(path_segment));
+            self.insert(path_segment.ident.span, hir_id, Node::PathSegment(path_segment));
         }
         intravisit::walk_path_segment(self, path_span, path_segment);
     }
