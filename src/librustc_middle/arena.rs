@@ -67,6 +67,10 @@ macro_rules! arena_types {
             [] attribute: rustc_ast::ast::Attribute,
             [] name_set: rustc_data_structures::fx::FxHashSet<rustc_ast::ast::Name>,
             [] hir_id_set: rustc_hir::HirIdSet,
+            // Sub-parts of the TypeckTables
+            [decode] concrete_opaque_types: rustc_data_structures::fx::FxHashMap<rustc_hir::def_id::DefId, rustc_middle::ty::ResolvedOpaqueTy<$tcx>>,
+            [decode] upvar_list: rustc_middle::ty::UpvarListMap,
+            [decode] user_provided_sigs: rustc_data_structures::fx::FxHashMap<rustc_hir::def_id::DefId, rustc_middle::ty::CanonicalPolyFnSig<$tcx>>,
 
             // Interned types
             [] tys: rustc_middle::ty::TyS<$tcx>,
