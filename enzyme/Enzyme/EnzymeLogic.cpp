@@ -1274,7 +1274,7 @@ public:
           }
 
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(1))) {
-            Value *args[] = {lookup(II.getOperand(1), Builder2)};
+            Value *args[] = {lookup(II.getOperand(0), Builder2)};
             Type *tys[] = {II.getOperand(1)->getType()};
 
             Value* dif1 = Builder2.CreateFMul(
