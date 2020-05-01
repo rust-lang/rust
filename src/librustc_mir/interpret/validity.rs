@@ -50,11 +50,22 @@ macro_rules! try_validation {
 /// matched. Other errors are passed back to the caller, unchanged. This lets you use the patterns
 /// as a kind of validation blacklist:
 ///
-/// ```rust
-/// let v = try_validation_pat!(some_fn(), Foo | Bar | Baz, "some failure", path);
+/// ```
+/// let v = try_validation_pat!(some_fn(), some_path, {
+///     Foo | Bar | Baz => { "some failure" },
+/// });
 /// // Failures that match $p are thrown up as validation errors, but other errors are passed back
 /// // unchanged.
 /// ```
+///
+/// An additional expected parameter can also be added to the failure message:
+///
+/// ```
+/// let v = try_validation_pat!(some_fn(), some_path, {
+///     Foo | Bar | Baz => { "some failure" } expected { "something that wasn't a failure" },
+/// });
+/// ```
+///
 macro_rules! try_validation_pat {
     ($e:expr, $where:expr, { $( $p:pat )|* => { $what:tt } $( expected { $expected:expr } )? $( , )?}) => {{
         match $e {
