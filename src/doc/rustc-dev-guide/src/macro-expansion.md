@@ -81,7 +81,7 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
     3. If it's resolved:
         0. Run the macro's expander function that consumes a [`TokenStream`] or
            AST and produces a [`TokenStream`] or [`AstFragment`] (depending on
-           the macro kind). (A `TokenStream` is a collection of [`TokenTrees`],
+           the macro kind). (A `TokenStream` is a collection of [`TokenTree`s][tt],
            each of which are a token (punctuation, identifier, or literal) or a
            delimited group (anything inside `()`/`[]`/`{}`)).
             - At this point, we know everything about the macro itself and can
@@ -110,14 +110,14 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
         0. Put the macro back in the queue
         1. Continue to next iteration...
 
-[defpaths]: https://rustc-dev-guide.rust-lang.org/hir.html?highlight=def,path#identifiers-in-the-hir
+[defpath]: https://rustc-dev-guide.rust-lang.org/hir.html?highlight=def,path#identifiers-in-the-hir
 [`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
 [`InvocationCollector`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.InvocationCollector.html
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [`DefCollector`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/def_collector/struct.DefCollector.html
 [`BuildReducedGraphVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/build_reduced_graph/struct.BuildReducedGraphVisitor.html
 [hybelow]: #hygiene-and-heirarchies
-[`TokenTree`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/enum.TokenTree.html
+[tt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/enum.TokenTree.html
 [`TokenStream`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/struct.TokenStream.html
 [inv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.Invocation.html
 [`AstFragment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/enum.AstFragment.html
