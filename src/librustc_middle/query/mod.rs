@@ -480,6 +480,11 @@ rustc_queries! {
                 typeck_tables.map(|x| &*tcx.arena.alloc(x))
             }
         }
+
+        query typeck_has_errors(key: LocalDefId) -> Option<ErrorReported> {
+            desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
+        }
     }
 
     Other {

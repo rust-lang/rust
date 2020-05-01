@@ -137,8 +137,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                     owner, def_id,
                                 ),
                             );
-                            if let Some(ErrorReported) =
-                                tcx.typeck_tables_of(owner.expect_local()).tainted_by_errors
+                            if let Some(ErrorReported) = tcx.typeck_has_errors(owner.expect_local())
                             {
                                 // Some error in the
                                 // owner fn prevented us from populating

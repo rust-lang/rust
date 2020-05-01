@@ -291,7 +291,7 @@ pub fn const_eval_raw_provider<'tcx>(
 
     if let Some(def_id) = def_id.as_local() {
         if tcx.has_typeck_tables(def_id) {
-            if let Some(error_reported) = tcx.typeck_tables_of(def_id).tainted_by_errors {
+            if let Some(error_reported) = tcx.typeck_has_errors(def_id) {
                 return Err(ErrorHandled::Reported(error_reported));
             }
         }

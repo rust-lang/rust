@@ -775,6 +775,7 @@ pub fn provide(providers: &mut Providers<'_>) {
         has_typeck_tables,
         adt_destructor,
         used_trait_imports,
+        typeck_has_errors,
         check_item_well_formed,
         check_trait_item_well_formed,
         check_impl_item_well_formed,
@@ -855,6 +856,10 @@ fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &DefIdSet {
     &*tcx.typeck_tables_of(def_id).used_trait_imports
+}
+
+fn typeck_has_errors(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ErrorReported> {
+    tcx.typeck_tables_of(def_id).tainted_by_errors
 }
 
 /// Inspects the substs of opaque types, replacing any inference variables

@@ -404,7 +404,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let did = instance.def_id();
         if let Some(did) = did.as_local() {
             if self.tcx.has_typeck_tables(did) {
-                if let Some(error_reported) = self.tcx.typeck_tables_of(did).tainted_by_errors {
+                if let Some(error_reported) = self.tcx.typeck_has_errors(did) {
                     throw_inval!(TypeckError(error_reported))
                 }
             }
