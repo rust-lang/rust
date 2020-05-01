@@ -1,10 +1,11 @@
 use crate::utils::{snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
-use rustc_ast::ast::{Attribute, Ident, Item, ItemKind, StructField, TyKind, Variant, VariantData, VisibilityKind};
+use rustc_ast::ast::{Attribute, Item, ItemKind, StructField, Variant, VariantData, VisibilityKind};
 use rustc_attr as attr;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual implementations of the non-exhaustive pattern.
@@ -90,11 +91,9 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
     }
 
     if_chain! {
-        if !attr::contains_name(&item.attrs, sym!(non_exhaustive));
-        let markers = variants.iter().filter(|v| is_non_exhaustive_marker(v)).count();
-        if markers == 1 && variants.len() > markers;
-        if let Some(variant) = variants.last();
-        if is_non_exhaustive_marker(variant);
+        let mut markers = variants.iter().filter(|v| is_non_exhaustive_marker(v));
+        if let Some(marker) = markers.next();
+        if markers.count() == 0 && variants.len() > 1;
         then {
             span_lint_and_then(
                 cx,
@@ -102,17 +101,20 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
                 item.span,
                 "this seems like a manual implementation of the non-exhaustive pattern",
                 |diag| {
-                    let header_span = cx.sess.source_map().span_until_char(item.span, '{');
-
-                    if let Some(snippet) = snippet_opt(cx, header_span) {
-                        diag.span_suggestion(
-                            item.span,
-                            "add the attribute",
-                            format!("#[non_exhaustive] {}", snippet),
-                            Applicability::Unspecified,
-                        );
-                        diag.span_help(variant.span, "and remove this variant");
+                    if_chain! {
+                        if !attr::contains_name(&item.attrs, sym!(non_exhaustive));
+                        let header_span = cx.sess.source_map().span_until_char(item.span, '{');
+                        if let Some(snippet) = snippet_opt(cx, header_span);
+                        then {
+                            diag.span_suggestion(
+                                header_span,
+                                "add the attribute",
+                                format!("#[non_exhaustive] {}", snippet),
+                                Applicability::Unspecified,
+                            );
+                        }
                     }
+                    diag.span_help(marker.span, "remove this variant");
                 });
         }
     }
@@ -123,8 +125,18 @@ fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: 
         matches!(field.vis.node, VisibilityKind::Inherited)
     }
 
-    fn is_non_exhaustive_marker(name: &Option<Ident>) -> bool {
-        name.map(|n| n.as_str().starts_with('_')).unwrap_or(true)
+    fn is_non_exhaustive_marker(field: &StructField) -> bool {
+        is_private(field) && field.ty.kind.is_unit() && field.ident.map_or(true, |n| n.as_str().starts_with('_'))
+    }
+
+    fn find_header_span(cx: &EarlyContext<'_>, item: &Item, data: &VariantData) -> Span {
+        let delimiter = match data {
+            VariantData::Struct(..) => '{',
+            VariantData::Tuple(..) => '(',
+            _ => unreachable!("`VariantData::Unit` is already handled above"),
+        };
+
+        cx.sess.source_map().span_until_char(item.span, delimiter)
     }
 
     let fields = data.fields();
@@ -132,12 +144,8 @@ fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: 
     let public_fields = fields.iter().filter(|f| f.vis.node.is_pub()).count();
 
     if_chain! {
-        if !attr::contains_name(&item.attrs, sym!(non_exhaustive));
-        if private_fields == 1 && public_fields >= private_fields && public_fields == fields.len() - 1;
-        if let Some(field) = fields.iter().find(|f| is_private(f));
-        if is_non_exhaustive_marker(&field.ident);
-        if let TyKind::Tup(tup_fields) = &field.ty.kind;
-        if tup_fields.is_empty();
+        if private_fields == 1 && public_fields >= 1 && public_fields == fields.len() - 1;
+        if let Some(marker) = fields.iter().find(|f| is_non_exhaustive_marker(f));
         then {
             span_lint_and_then(
                 cx,
@@ -145,22 +153,20 @@ fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: 
                 item.span,
                 "this seems like a manual implementation of the non-exhaustive pattern",
                 |diag| {
-                    let delimiter = match data {
-                        VariantData::Struct(..) => '{',
-                        VariantData::Tuple(..) => '(',
-                        _ => unreachable!(),
-                    };
-                    let header_span = cx.sess.source_map().span_until_char(item.span, delimiter);
-
-                    if let Some(snippet) = snippet_opt(cx, header_span) {
-                        diag.span_suggestion(
-                            item.span,
-                            "add the attribute",
-                            format!("#[non_exhaustive] {}", snippet),
-                            Applicability::Unspecified,
-                        );
-                        diag.span_help(field.span, "and remove this field");
+                    if_chain! {
+                        if !attr::contains_name(&item.attrs, sym!(non_exhaustive));
+                        let header_span = find_header_span(cx, item, data);
+                        if let Some(snippet) = snippet_opt(cx, header_span);
+                        then {
+                            diag.span_suggestion(
+                                header_span,
+                                "add the attribute",
+                                format!("#[non_exhaustive] {}", snippet),
+                                Applicability::Unspecified,
+                            );
+                        }
                     }
+                    diag.span_help(marker.span, "remove this field");
                 });
         }
     }
