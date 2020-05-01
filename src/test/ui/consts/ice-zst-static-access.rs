@@ -1,5 +1,10 @@
 // check-pass
 
+// This is a regression test for ICEs from
+// https://github.com/rust-lang/rust/issues/71612
+// and
+// https://github.com/rust-lang/rust/issues/71709
+
 #[derive(Copy, Clone)]
 pub struct Glfw;
 
