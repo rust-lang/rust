@@ -8,7 +8,7 @@ use hir_def::{
     resolver::{self, HasResolver, Resolver},
     AsMacroCall, TraitId,
 };
-use hir_expand::ExpansionInfo;
+use hir_expand::{hygiene::Hygiene, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
@@ -244,6 +244,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
+    }
+
+    pub fn lower_path(&self, path: &ast::Path) -> Option<Path> {
+        let src = self.find_file(path.syntax().clone());
+        Path::from_src(path.clone(), &Hygiene::new(self.db.upcast(), src.file_id.into()))
     }
 
     pub fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {

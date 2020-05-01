@@ -18,7 +18,7 @@ ra_db = { path = "../ra_db" }
 ra_cfg = { path = "../ra_cfg" }
 ra_proc_macro =  { path = "../ra_proc_macro" }
 
-serde = { version = "1.0.104", features = ["derive"] }
+serde = { version = "1.0.106", features = ["derive"] }
 serde_json = "1.0.48"
 
 anyhow = "1.0.26"

@@ -3,8 +3,9 @@
 
 use either::Either;
 use hir_expand::{
+    hygiene::Hygiene,
     name::{name, AsName, Name},
-    MacroDefId, MacroDefKind,
+    HirFileId, MacroDefId, MacroDefKind,
 };
 use ra_arena::Arena;
 use ra_syntax::{
@@ -26,7 +27,7 @@ use crate::{
         LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
-    path::GenericArgs,
+    path::{GenericArgs, Path},
     type_ref::{Mutability, TypeRef},
     AdtId, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern, ModuleDefId,
     StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
@@ -35,6 +36,23 @@ use crate::{
 use super::{ExprSource, PatSource};
 use ast::AstChildren;
 
+pub(crate) struct LowerCtx {
+    hygiene: Hygiene,
+}
+
+impl LowerCtx {
+    pub fn new(db: &dyn DefDatabase, file_id: HirFileId) -> Self {
+        LowerCtx { hygiene: Hygiene::new(db.upcast(), file_id) }
+    }
+    pub fn with_hygiene(hygiene: &Hygiene) -> Self {
+        LowerCtx { hygiene: hygiene.clone() }
+    }
+
+    pub fn lower_path(&self, ast: ast::Path) -> Option<Path> {
+        Path::from_src(ast, &self.hygiene)
+    }
+}
+
 pub(super) fn lower(
     db: &dyn DefDatabase,
     def: DefWithBodyId,
@@ -42,10 +60,13 @@ pub(super) fn lower(
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
+    let ctx = LowerCtx::new(db, expander.current_file_id.clone());
+
     ExprCollector {
         db,
         def,
         expander,
+        ctx,
         source_map: BodySourceMap::default(),
         body: Body {
             exprs: Arena::default(),
@@ -62,7 +83,7 @@ struct ExprCollector<'a> {
     db: &'a dyn DefDatabase,
     def: DefWithBodyId,
     expander: Expander,
-
+    ctx: LowerCtx,
     body: Body,
     source_map: BodySourceMap,
 }
@@ -237,7 +258,8 @@ impl ExprCollector<'_> {
                     Vec::new()
                 };
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
-                let generic_args = e.type_arg_list().and_then(GenericArgs::from_ast);
+                let generic_args =
+                    e.type_arg_list().and_then(|it| GenericArgs::from_ast(&self.ctx, it));
                 self.alloc_expr(
                     Expr::MethodCall { receiver, method_name, args, generic_args },
                     syntax_ptr,
@@ -343,7 +365,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let type_ref = TypeRef::from_ast_opt(e.type_ref());
+                let type_ref = TypeRef::from_ast_opt(&self.ctx, e.type_ref());
                 self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr)
             }
             ast::Expr::RefExpr(e) => {
@@ -365,12 +387,16 @@ impl ExprCollector<'_> {
                 if let Some(pl) = e.param_list() {
                     for param in pl.params() {
                         let pat = self.collect_pat_opt(param.pat());
-                        let type_ref = param.ascribed_type().map(TypeRef::from_ast);
+                        let type_ref =
+                            param.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx, it));
                         args.push(pat);
                         arg_types.push(type_ref);
                     }
                 }
-                let ret_type = e.ret_type().and_then(|r| r.type_ref()).map(TypeRef::from_ast);
+                let ret_type = e
+                    .ret_type()
+                    .and_then(|r| r.type_ref())
+                    .map(|it| TypeRef::from_ast(&self.ctx, it));
                 let body = self.collect_expr_opt(e.body());
                 self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr)
             }
@@ -476,7 +502,7 @@ impl ExprCollector<'_> {
             .map(|s| match s {
                 ast::Stmt::LetStmt(stmt) => {
                     let pat = self.collect_pat_opt(stmt.pat());
-                    let type_ref = stmt.ascribed_type().map(TypeRef::from_ast);
+                    let type_ref = stmt.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx, it));
                     let initializer = stmt.initializer().map(|e| self.collect_expr(e));
                     Statement::Let { pat, type_ref, initializer }
                 }

@@ -15,6 +15,7 @@ use ra_prof::profile;
 use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
+    body::LowerCtx,
     child_by_source::ChildBySource,
     db::DefDatabase,
     dyn_map::DynMap,
@@ -80,11 +81,13 @@ impl GenericParams {
     fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
         let mut generics = GenericParams { types: Arena::default(), where_predicates: Vec::new() };
         let mut sm = ArenaMap::default();
+
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         let file_id = match def {
             GenericDefId::FunctionId(it) => {
                 let src = it.lookup(db).source(db);
-                generics.fill(&mut sm, &src.value);
+                let lower_ctx = LowerCtx::new(db, src.file_id);
+                generics.fill(&lower_ctx, &mut sm, &src.value);
                 // lower `impl Trait` in arguments
                 let data = db.function_data(it);
                 for param in &data.params {
@@ -94,21 +97,25 @@ impl GenericParams {
             }
             GenericDefId::AdtId(AdtId::StructId(it)) => {
                 let src = it.lookup(db).source(db);
-                generics.fill(&mut sm, &src.value);
+                let lower_ctx = LowerCtx::new(db, src.file_id);
+                generics.fill(&lower_ctx, &mut sm, &src.value);
                 src.file_id
             }
             GenericDefId::AdtId(AdtId::UnionId(it)) => {
                 let src = it.lookup(db).source(db);
-                generics.fill(&mut sm, &src.value);
+                let lower_ctx = LowerCtx::new(db, src.file_id);
+                generics.fill(&lower_ctx, &mut sm, &src.value);
                 src.file_id
             }
             GenericDefId::AdtId(AdtId::EnumId(it)) => {
                 let src = it.lookup(db).source(db);
-                generics.fill(&mut sm, &src.value);
+                let lower_ctx = LowerCtx::new(db, src.file_id);
+                generics.fill(&lower_ctx, &mut sm, &src.value);
                 src.file_id
             }
             GenericDefId::TraitId(it) => {
                 let src = it.lookup(db).source(db);
+                let lower_ctx = LowerCtx::new(db, src.file_id);
 
                 // traits get the Self type as an implicit first type parameter
                 let self_param_id = generics.types.alloc(TypeParamData {
@@ -120,14 +127,16 @@ impl GenericParams {
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name![Self].into());
-                generics.fill_bounds(&src.value, self_param);
+                generics.fill_bounds(&lower_ctx, &src.value, self_param);
 
-                generics.fill(&mut sm, &src.value);
+                generics.fill(&lower_ctx, &mut sm, &src.value);
                 src.file_id
             }
             GenericDefId::TypeAliasId(it) => {
                 let src = it.lookup(db).source(db);
-                generics.fill(&mut sm, &src.value);
+                let lower_ctx = LowerCtx::new(db, src.file_id);
+
+                generics.fill(&lower_ctx, &mut sm, &src.value);
                 src.file_id
             }
             // Note that we don't add `Self` here: in `impl`s, `Self` is not a
@@ -135,7 +144,9 @@ impl GenericParams {
             // type, so this is handled by the resolver.
             GenericDefId::ImplId(it) => {
                 let src = it.lookup(db).source(db);
-                generics.fill(&mut sm, &src.value);
+                let lower_ctx = LowerCtx::new(db, src.file_id);
+
+                generics.fill(&lower_ctx, &mut sm, &src.value);
                 src.file_id
             }
             // We won't be using this ID anyway
@@ -145,28 +156,38 @@ impl GenericParams {
         (generics, InFile::new(file_id, sm))
     }
 
-    fn fill(&mut self, sm: &mut SourceMap, node: &dyn TypeParamsOwner) {
+    fn fill(&mut self, lower_ctx: &LowerCtx, sm: &mut SourceMap, node: &dyn TypeParamsOwner) {
         if let Some(params) = node.type_param_list() {
-            self.fill_params(sm, params)
+            self.fill_params(lower_ctx, sm, params)
         }
         if let Some(where_clause) = node.where_clause() {
-            self.fill_where_predicates(where_clause);
+            self.fill_where_predicates(lower_ctx, where_clause);
         }
     }
 
-    fn fill_bounds(&mut self, node: &dyn ast::TypeBoundsOwner, type_ref: TypeRef) {
+    fn fill_bounds(
+        &mut self,
+        lower_ctx: &LowerCtx,
+        node: &dyn ast::TypeBoundsOwner,
+        type_ref: TypeRef,
+    ) {
         for bound in
             node.type_bound_list().iter().flat_map(|type_bound_list| type_bound_list.bounds())
         {
-            self.add_where_predicate_from_bound(bound, type_ref.clone());
+            self.add_where_predicate_from_bound(lower_ctx, bound, type_ref.clone());
         }
     }
 
-    fn fill_params(&mut self, sm: &mut SourceMap, params: ast::TypeParamList) {
+    fn fill_params(
+        &mut self,
+        lower_ctx: &LowerCtx,
+        sm: &mut SourceMap,
+        params: ast::TypeParamList,
+    ) {
         for type_param in params.type_params() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
-            let default = type_param.default_type().map(TypeRef::from_ast);
+            let default = type_param.default_type().map(|it| TypeRef::from_ast(lower_ctx, it));
             let param = TypeParamData {
                 name: Some(name.clone()),
                 default,
@@ -176,29 +197,34 @@ impl GenericParams {
             sm.insert(param_id, Either::Right(type_param.clone()));
 
             let type_ref = TypeRef::Path(name.into());
-            self.fill_bounds(&type_param, type_ref);
+            self.fill_bounds(&lower_ctx, &type_param, type_ref);
         }
     }
 
-    fn fill_where_predicates(&mut self, where_clause: ast::WhereClause) {
+    fn fill_where_predicates(&mut self, lower_ctx: &LowerCtx, where_clause: ast::WhereClause) {
         for pred in where_clause.predicates() {
             let type_ref = match pred.type_ref() {
                 Some(type_ref) => type_ref,
                 None => continue,
             };
-            let type_ref = TypeRef::from_ast(type_ref);
+            let type_ref = TypeRef::from_ast(lower_ctx, type_ref);
             for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
-                self.add_where_predicate_from_bound(bound, type_ref.clone());
+                self.add_where_predicate_from_bound(lower_ctx, bound, type_ref.clone());
             }
         }
     }
 
-    fn add_where_predicate_from_bound(&mut self, bound: ast::TypeBound, type_ref: TypeRef) {
+    fn add_where_predicate_from_bound(
+        &mut self,
+        lower_ctx: &LowerCtx,
+        bound: ast::TypeBound,
+        type_ref: TypeRef,
+    ) {
         if bound.question_token().is_some() {
             // FIXME: remove this bound
             return;
         }
-        let bound = TypeBound::from_ast(bound);
+        let bound = TypeBound::from_ast(lower_ctx, bound);
         self.where_predicates
             .push(WherePredicate { target: WherePredicateTarget::TypeRef(type_ref), bound });
     }
