@@ -147,11 +147,6 @@ impl Constraint<'_> {
     }
 }
 
-/// `VerifyGenericBound(T, _, R, RS)`: the parameter type `T` (or
-/// associated type) must outlive the region `R`. `T` is known to
-/// outlive `RS`. Therefore, verify that `R <= RS[i]` for some
-/// `i`. Inference variables may be involved (but this verification
-/// step doesn't influence inference).
 #[derive(Debug, Clone)]
 pub struct Verify<'tcx> {
     pub kind: GenericKind<'tcx>,
@@ -687,7 +682,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    /// See [`Verify::VerifyGenericBound`].
     pub fn verify_generic_bound(
         &mut self,
         origin: SubregionOrigin<'tcx>,
