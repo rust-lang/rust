@@ -111,7 +111,7 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
 /// expression like a lambda or match arm.
 fn anchor_stmt(expr: ast::Expr) -> Option<(SyntaxNode, bool)> {
     expr.syntax().ancestors().find_map(|node| {
-        if let Some(expr) = node.parent().and_then(ast::Block::cast).and_then(|it| it.expr()) {
+        if let Some(expr) = node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.expr()) {
             if expr.syntax() == &node {
                 tested_by!(test_introduce_var_last_expr);
                 return Some((node, false));

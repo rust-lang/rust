@@ -432,6 +432,7 @@ impl Field<'_> {
                     ":" => "colon",
                     "::" => "coloncolon",
                     "#" => "pound",
+                    "?" => "question_mark",
                     _ => name,
                 };
                 format_ident!("{}_token", name)

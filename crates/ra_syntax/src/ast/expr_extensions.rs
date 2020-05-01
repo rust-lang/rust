@@ -16,7 +16,7 @@ impl ast::Expr {
             | ast::Expr::WhileExpr(_)
             | ast::Expr::BlockExpr(_)
             | ast::Expr::MatchExpr(_)
-            | ast::Expr::TryBlockExpr(_) => true,
+            | ast::Expr::EffectExpr(_) => true,
             _ => false,
         }
     }
@@ -359,6 +359,33 @@ impl ast::Literal {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Effect {
+    Async(SyntaxToken),
+    Unsafe(SyntaxToken),
+    Try(SyntaxToken),
+    // Very much not an effect, but we stuff it into this node anyway
+    Label(ast::Label),
+}
+
+impl ast::EffectExpr {
+    pub fn effect(&self) -> Effect {
+        if let Some(token) = self.async_token() {
+            return Effect::Async(token);
+        }
+        if let Some(token) = self.unsafe_token() {
+            return Effect::Unsafe(token);
+        }
+        if let Some(token) = self.try_token() {
+            return Effect::Try(token);
+        }
+        if let Some(label) = self.label() {
+            return Effect::Label(label);
+        }
+        unreachable!("ast::EffectExpr without Effect")
+    }
+}
+
 impl ast::BlockExpr {
     /// false if the block is an intrinsic part of the syntax and can't be
     /// replaced with arbitrary expression.
@@ -368,15 +395,12 @@ impl ast::BlockExpr {
     /// const FOO: () = { stand_alone };
     /// ```
     pub fn is_standalone(&self) -> bool {
-        if self.unsafe_token().is_some() || self.async_token().is_some() {
-            return false;
-        }
-        let kind = match self.syntax().parent() {
+        let parent = match self.syntax().parent() {
+            Some(it) => it,
             None => return true,
-            Some(it) => it.kind(),
         };
-        match kind {
-            FN_DEF | IF_EXPR | WHILE_EXPR | LOOP_EXPR | TRY_BLOCK_EXPR => false,
+        match parent.kind() {
+            FN_DEF | IF_EXPR | WHILE_EXPR | LOOP_EXPR | EFFECT_EXPR => false,
             _ => true,
         }
     }

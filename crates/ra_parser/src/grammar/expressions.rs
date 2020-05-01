@@ -59,16 +59,7 @@ pub(crate) fn block(p: &mut Parser) {
         p.error("expected a block");
         return;
     }
-    atom::block_expr(p, None);
-}
-
-pub(crate) fn naked_block(p: &mut Parser) {
-    assert!(p.at(T!['{']));
-    let m = p.start();
-    p.bump(T!['{']);
-    expr_block_contents(p);
-    p.expect(T!['}']);
-    m.complete(p, BLOCK);
+    atom::block_expr(p);
 }
 
 fn is_expr_stmt_attr_allowed(kind: SyntaxKind) -> bool {
@@ -197,7 +188,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
     }
 }
 
-pub(crate) fn expr_block_contents(p: &mut Parser) {
+pub(super) fn expr_block_contents(p: &mut Parser) {
     // This is checked by a validator
     attributes::inner_attributes(p);
 

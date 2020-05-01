@@ -82,10 +82,10 @@ pub fn block_expr(
     ast_from_text(&format!("fn f() {}", buf))
 }
 
-pub fn block_from_expr(e: ast::Expr) -> ast::Block {
+pub fn block_from_expr(e: ast::Expr) -> ast::BlockExpr {
     return from_text(&format!("{{ {} }}", e));
 
-    fn from_text(text: &str) -> ast::Block {
+    fn from_text(text: &str) -> ast::BlockExpr {
         ast_from_text(&format!("fn f() {}", text))
     }
 }
