@@ -1530,16 +1530,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    // FIXME: Support `StaticPicExe` correctly.
-    match link_output_kind {
-        LinkOutputKind::DynamicPicExe | LinkOutputKind::StaticPicExe => {
-            cmd.position_independent_executable()
-        }
-        LinkOutputKind::DynamicNoPicExe | LinkOutputKind::StaticNoPicExe => {
-            cmd.no_position_independent_executable()
-        }
-        _ => {}
-    }
+    cmd.set_output_kind(link_output_kind, out_filename);
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     add_relro_args(cmd, sess);
@@ -1567,17 +1558,6 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         codegen_results,
         tmpdir,
     );
-
-    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    // FIXME: Merge with the previous `link_output_kind` match,
-    // and support `StaticPicExe` and `StaticDylib` correctly.
-    match link_output_kind {
-        LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => {
-            cmd.build_static_executable()
-        }
-        LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => cmd.build_dylib(out_filename),
-        _ => {}
-    }
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     if sess.opts.cg.profile_generate.enabled() {
