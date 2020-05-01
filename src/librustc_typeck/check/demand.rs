@@ -353,6 +353,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    fn replace_prefix<A, B, C>(&self, s: A, old: B, new: C) -> Option<String>
+    where
+        A: AsRef<str>,
+        B: AsRef<str>,
+        C: AsRef<str>,
+    {
+        let s = s.as_ref();
+        let old = old.as_ref();
+        if s.starts_with(old) { Some(new.as_ref().to_owned() + &s[old.len()..]) } else { None }
+    }
+
     /// This function is used to determine potential "simple" improvements or users' errors and
     /// provide them useful help. For example:
     ///
@@ -393,20 +404,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `ExprKind::DropTemps` is semantically irrelevant for these suggestions.
         let expr = expr.peel_drop_temps();
 
-        let remove_prefix = |s: String, prefix: &str| {
-            if s.starts_with(prefix) { Some(s[prefix.len()..].to_string()) } else { None }
-        };
-
         match (&expr.kind, &expected.kind, &checked_ty.kind) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.kind, &check.kind) {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(src) = remove_prefix(src, "b\"") {
+                            if let Some(src) = self.replace_prefix(src, "b\"", "\"") {
                                 return Some((
                                     sp,
                                     "consider removing the leading `b`",
-                                    format!("\"{}", src),
+                                    src,
                                     Applicability::MachineApplicable,
                                 ));
                             }
@@ -416,11 +423,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(src) = remove_prefix(src, "\"") {
+                            if let Some(src) = self.replace_prefix(src, "\"", "b\"") {
                                 return Some((
                                     sp,
                                     "consider adding a leading `b`",
-                                    format!("b\"{}", src),
+                                    src,
                                     Applicability::MachineApplicable,
                                 ));
                             }
@@ -539,7 +546,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // we may want to suggest removing a `&`.
                 if sm.is_imported(expr.span) {
                     if let Ok(src) = sm.span_to_snippet(sp) {
-                        if let Some(src) = remove_prefix(src, "&") {
+                        if let Some(src) = self.replace_prefix(src, "&", "") {
                             return Some((
                                 sp,
                                 "consider removing the borrow",
@@ -569,52 +576,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if steps > 0 {
                         // The pointer type implements `Copy` trait so the suggestion is always valid.
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            let derefs = "*".repeat(steps);
-                            match mutbl_b {
-                                hir::Mutability::Mut => match mutbl_a {
-                                    hir::Mutability::Mut => {
-                                        if let Some(src) = remove_prefix(src, "&mut ") {
-                                            return Some((
-                                                sp,
-                                                "consider dereferencing",
-                                                format!("&mut {}{}", derefs, src),
-                                                Applicability::MachineApplicable,
-                                            ));
+                            let derefs = &"*".repeat(steps);
+                            if let Some((src, applicability)) = match mutbl_b {
+                                hir::Mutability::Mut => {
+                                    let new_prefix = "&mut ".to_owned() + derefs;
+                                    match mutbl_a {
+                                        hir::Mutability::Mut => {
+                                            if let Some(s) =
+                                                self.replace_prefix(src, "&mut ", new_prefix)
+                                            {
+                                                Some((s, Applicability::MachineApplicable))
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                        hir::Mutability::Not => {
+                                            if let Some(s) =
+                                                self.replace_prefix(src, "&", new_prefix)
+                                            {
+                                                Some((s, Applicability::Unspecified))
+                                            } else {
+                                                None
+                                            }
                                         }
                                     }
-                                    hir::Mutability::Not => {
-                                        if let Some(src) = remove_prefix(src, "&") {
-                                            return Some((
-                                                sp,
-                                                "consider dereferencing",
-                                                format!("&mut {}{}", derefs, src),
-                                                Applicability::Unspecified,
-                                            ));
+                                }
+                                hir::Mutability::Not => {
+                                    let new_prefix = "&".to_owned() + derefs;
+                                    match mutbl_a {
+                                        hir::Mutability::Mut => {
+                                            if let Some(s) =
+                                                self.replace_prefix(src, "&mut ", new_prefix)
+                                            {
+                                                Some((s, Applicability::MachineApplicable))
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                        hir::Mutability::Not => {
+                                            if let Some(s) =
+                                                self.replace_prefix(src, "&", new_prefix)
+                                            {
+                                                Some((s, Applicability::MachineApplicable))
+                                            } else {
+                                                None
+                                            }
                                         }
                                     }
-                                },
-                                hir::Mutability::Not => match mutbl_a {
-                                    hir::Mutability::Mut => {
-                                        if let Some(src) = remove_prefix(src, "&mut ") {
-                                            return Some((
-                                                sp,
-                                                "consider dereferencing",
-                                                format!("&{}{}", derefs, src),
-                                                Applicability::MachineApplicable,
-                                            ));
-                                        }
-                                    }
-                                    hir::Mutability::Not => {
-                                        if let Some(src) = remove_prefix(src, "&") {
-                                            return Some((
-                                                sp,
-                                                "consider dereferencing",
-                                                format!("&{}{}", derefs, src),
-                                                Applicability::MachineApplicable,
-                                            ));
-                                        }
-                                    }
-                                },
+                                }
+                            } {
+                                return Some((sp, "consider dereferencing", src, applicability));
                             }
                         }
                     }

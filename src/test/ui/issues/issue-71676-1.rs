@@ -50,5 +50,4 @@ fn main() {
 
     let mut a = Emm(Foo(Bar(0)));
     let _: *mut u8 = &mut a; //~ ERROR mismatched types
-
 }
