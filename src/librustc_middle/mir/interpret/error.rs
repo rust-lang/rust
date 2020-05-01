@@ -438,8 +438,12 @@ impl fmt::Display for UndefinedBehaviorInfo {
             WriteToReadOnly(a) => write!(f, "writing to {} which is read-only", a),
             DerefFunctionPointer(a) => write!(f, "accessing {} which contains a function", a),
             ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
-            InvalidBool(b) => write!(f, "interpreting an invalid 8-bit value as a bool: {}", b),
-            InvalidChar(c) => write!(f, "interpreting an invalid 32-bit value as a char: {}", c),
+            InvalidBool(b) => {
+                write!(f, "interpreting an invalid 8-bit value as a bool: 0x{:2x}", b)
+            }
+            InvalidChar(c) => {
+                write!(f, "interpreting an invalid 32-bit value as a char: 0x{:8x}", c)
+            }
             InvalidDiscriminant(val) => write!(f, "enum value has invalid discriminant: {}", val),
             InvalidFunctionPointer(p) => {
                 write!(f, "using {} as function pointer but it does not point to a function", p)
