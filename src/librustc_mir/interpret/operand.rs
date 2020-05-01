@@ -15,8 +15,8 @@ use rustc_target::abi::{Abi, DiscriminantKind, HasDataLayout, Integer, LayoutOf,
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
-    from_known_layout, sign_extend, truncate, ConstValue, GlobalId, InterpCx,
-    InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUndef,
+    from_known_layout, sign_extend, truncate, ConstValue, GlobalId, InterpCx, InterpResult,
+    MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Scalar, ScalarMaybeUndef,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
