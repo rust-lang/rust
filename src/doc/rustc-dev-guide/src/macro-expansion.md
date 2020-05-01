@@ -4,13 +4,26 @@
 > refactoring, so some of the links in this chapter may be broken.
 
 Rust has a very powerful macro system. In the previous chapter, we saw how the
-parser sets aside macros to be expanded. This chapter is about the process of
-expanding those macros iteratively until we have a complete AST for our crate
-with no unexpanded macros (or a compile error).
+parser sets aside macros to be expanded (it temporarily uses [placeholders]).
+This chapter is about the process of expanding those macros iteratively until
+we have a complete AST for our crate with no unexpanded macros (or a compile
+error).
+
+[placeholders]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/placeholders/index.html
 
 First, we will discuss the algorithm that expands and integrates macro output
 into ASTs. Next, we will take a look at how hygiene data is collected. Finally,
 we will look at the specifics of expanding different types of macros.
+
+Many of the algorithms and data structures described below are in [`rustc_expand`],
+with basic data structures in [`rustc_expand::base`][base].
+
+Also of note, `cfg` and `cfg_attr` are treated specially from other macros, and are
+handled in [`rustc_expand::config`][cfg].
+
+[`rustc_expand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/index.html
+[base]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/index.html
+[cfg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/config/index.html
 
 ## Expansion and AST Integration
 
@@ -24,10 +37,7 @@ method on a whole crate. If it is not run on a full crate, it means we are
 doing _eager macro expansion_. Eager expansion means that we expand the
 arguments of a macro invocation before the macro invocation itself. This is
 implemented only for a few special built-in macros that expect literals (it's
-not a generally available feature of Rust). Eager expansion generally performs
-a subset of the things that lazy (normal) expansion does, so we will focus on
-lazy expansion for the rest of this chapter.
-
+not a generally available feature of Rust).
 As an example, consider the following:
 
 ```rust,ignore
@@ -40,7 +50,16 @@ foo!(bar!(baz));
 A lazy expansion would expand `foo!` first. An eager expansion would expand
 `bar!` first. Implementing eager expansion more generally would be challenging,
 but we implement it for a few special built-in macros for the sake of user
-experience.
+experience. The built-in macros are implemented in [`rustc_builtin_macros`],
+along with some other early code generation facilities like injection of
+standard library imports or generation of test harness. There are some
+additional helpers for building their AST fragments in
+[`rustc_expand::build`][reb]. Eager expansion generally performs a subset of
+the things that lazy (normal) expansion does, so we will focus on lazy
+expansion for the rest of this chapter.
+
+[`rustc_builtin_macros`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_builtin_macros/index.html
+[reb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/build/index.html
 
 At a high level, [`fully_expand_fragment`][fef] works in iterations. We keep a
 queue of unresolved macro invocations (that is, macros we haven't found the
@@ -114,9 +133,14 @@ fail at this point. The recovery happens by expanding unresolved macros into
 [err]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/enum.ExprKind.html#variant.Err
 
 Notice that name resolution is involved here: we need to resolve imports and
-macro names in the above algorithm. However, we don't try to resolve other
-names yet. This happens later, as we will see in the [next
+macro names in the above algorithm. This is done in
+[`rustc_resolve::macros`][mresolve], which resolves macro paths, validates
+those resolutions, and reports various errors (e.g. "not found" or "found, but
+it's unstable" or "expected x, found y"). However, we don't try to resolve
+other names yet. This happens later, as we will see in the [next
 chapter](./name-resolution.md).
+
+[mresolve]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/macros/index.html
 
 Here are some other notable data structures involved in expansion and integration:
 - [`Resolver`] - a trait used to break crate dependencies. This allows the resolver services to be used in [`rustc_ast`], despite [`rustc_resolve`] and pretty much everything else depending on [`rustc_ast`].
@@ -217,9 +241,9 @@ an integer ID, assigned continuously starting from 0 as we discover new macro
 calls.  All heirarchies start at [`ExpnId::root()`][rootid], which is its own
 parent.
 
-All of the hygiene-related algorithms are implemented in
-[`rustc_span::hygiene`][hy], with the exception of some hacks
-[`Resolver::resolve_crate_root`][hacks].
+[`rustc_span::hygiene`][hy] contains all of the hygiene-related algorithms
+(with the exception of some hacks in [`Resolver::resolve_crate_root`][hacks])
+and structures related to hygiene and expansion that are kept in global data.
 
 The actual heirarchies are stored in [`HygieneData`][hd]. This is a global
 piece of data containing hygiene and expansion info that can be accessed from
@@ -361,6 +385,13 @@ foo!(bar!(baz));
 
 For the `baz` AST node in the final output, the first heirarchy is `ROOT ->
 id(foo) -> id(bar) -> baz`, while the third heirarchy is `ROOT -> baz`.
+
+### Macro Backtraces
+
+Macro backtraces are implemented in [`rustc_span`] using the hygiene machinery
+in [`rustc_span::hygiene`][hy].
+
+[`rustc_span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/index.html
 
 ## Producing Macro Output
 
@@ -551,7 +582,17 @@ stream, which is synthesized into the AST.
 
 It's worth noting that the token stream type used by proc macros is _stable_,
 so `rustc` does not use it internally (since our internal data structures are
-unstable).
+unstable). The compiler's token stream is
+[`rustc_ast::tokenstream::TokenStream`][rustcts], as previously. This is
+converted into the stable [`proc_macro::TokenStream`][stablets] and back in
+[`rustc_expand::proc_macro`][pm] and [`rustc_expand::proc_macro_server`][pms].
+Because the Rust ABI is unstable, we use the C ABI for this conversion.
+
+[tsmod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/index.html
+[rustcts]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/struct.TokenStream.html
+[stablets]: https://doc.rust-lang.org/proc_macro/struct.TokenStream.html
+[pm]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/proc_macro/index.html
+[pms]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/proc_macro_server/index.html
 
 TODO: more here.
 
@@ -560,22 +601,3 @@ TODO: more here.
 Custom derives are a special type of proc macro.
 
 TODO: more?
-
-## Important Modules and Data Structures
-
-TODO: sprinkle these throughout the chapter as much as possible...
-
-- librustc_span/hygiene.rs - structures related to hygiene and expansion that are kept in global data (can be accessed from any Ident without any context)
-- librustc_span/lib.rs - some secondary methods like macro backtrace using primary methods from hygiene.rs
-- librustc_builtin_macros - implementations of built-in macros (including macro attributes and derives) and some other early code generation facilities like injection of standard library imports or generation of test harness.
-- librustc_ast/config.rs - implementation of cfg/cfg_attr (they treated specially from other macros), should probably be moved into librustc_ast/ext.
-- librustc_ast/tokenstream.rs + librustc_ast/parse/token.rs - structures for compiler-side tokens, token trees, and token streams.
-- librustc_ast/ext - various expansion-related stuff
-- librustc_ast/ext/base.rs - basic structures used by expansion
-- librustc_ast/ext/expand.rs - some expansion structures and the bulk of expansion infrastructure code - collecting macro invocations, calling into resolve for them, calling their expanding functions, and integrating the results back into AST
-- librustc_ast/ext/placeholder.rs - the part of expand.rs responsible for "integrating the results back into AST" basicallly, "placeholder" is a temporary AST node replaced with macro expansion result nodes
-- librustc_ast/ext/builer.rs - helper functions for building AST for built-in macros in librustc_builtin_macros (and user-defined syntactic plugins previously), can probably be moved into librustc_builtin_macros these days
-- librustc_ast/ext/proc_macro.rs + librustc_ast/ext/proc_macro_server.rs - interfaces between the compiler and the stable proc_macro library, converting tokens and token streams between the two representations and sending them through C ABI
-- librustc_ast/ext/tt - implementation of macro_rules, turns macro_rules DSL into something with signature Fn(TokenStream) -> TokenStream that can eat and produce tokens, @mark-i-m knows more about this
-- librustc_resolve/macros.rs - resolving macro paths, validating those resolutions, reporting various "not found"/"found, but it's unstable"/"expected x, found y" errors
-- librustc_middle/hir/map/def_collector.rs + librustc_resolve/build_reduced_graph.rs - integrate an AST fragment freshly expanded from a macro into various parent/child structures like module hierarchy or "definition paths"

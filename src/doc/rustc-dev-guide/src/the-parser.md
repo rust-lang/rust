@@ -7,10 +7,11 @@ The very first thing the compiler does is take the program (in Unicode
 characters) and turn it into something the compiler can work with more
 conveniently than strings. This happens in two stages: Lexing and Parsing.
 
-Lexing takes strings and turns them into streams of tokens. For example,
+Lexing takes strings and turns them into streams of [tokens]. For example,
 `a.b + c` would be turned into the tokens `a`, `.`, `b`, `+`, and `c`.
 The lexer lives in [`librustc_lexer`][lexer].
 
+[tokens]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/token/index.html
 [lexer]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
 
 Parsing then takes streams of tokens and turns them into a structured
