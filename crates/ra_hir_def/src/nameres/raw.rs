@@ -188,6 +188,7 @@ pub(super) struct MacroData {
     pub(super) path: ModPath,
     pub(super) name: Option<Name>,
     pub(super) export: bool,
+    pub(super) local_inner: bool,
     pub(super) builtin: bool,
 }
 
@@ -401,14 +402,28 @@ impl RawItemsCollector {
 
         let name = m.name().map(|it| it.as_name());
         let ast_id = self.source_ast_id_map.ast_id(&m);
-        // FIXME: cfg_attr
-        let export = m.attrs().filter_map(|x| x.simple_name()).any(|name| name == "macro_export");
 
         // FIXME: cfg_attr
-        let builtin =
-            m.attrs().filter_map(|x| x.simple_name()).any(|name| name == "rustc_builtin_macro");
+        let export = attrs.by_key("macro_export").exists();
+        let local_inner =
+            attrs.by_key("macro_export").tt_values().map(|it| &it.token_trees).flatten().any(
+                |it| match it {
+                    tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                        ident.text.contains("local_inner_macros")
+                    }
+                    _ => false,
+                },
+            );
+        let builtin = attrs.by_key("rustc_builtin_macro").exists();
 
-        let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export, builtin });
+        let m = self.raw_items.macros.alloc(MacroData {
+            ast_id,
+            path,
+            name,
+            export,
+            local_inner,
+            builtin,
+        });
         self.push_item(current_module, attrs, RawItemKind::Macro(m));
     }
 

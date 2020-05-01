@@ -16,31 +16,34 @@ use crate::{
 pub struct Hygiene {
     // This is what `$crate` expands to
     def_crate: Option<CrateId>,
+
+    // Indiciate this is a local inner macro
+    local_inner: bool,
 }
 
 impl Hygiene {
     pub fn new(db: &dyn AstDatabase, file_id: HirFileId) -> Hygiene {
-        let def_crate = match file_id.0 {
-            HirFileIdRepr::FileId(_) => None,
+        let (def_crate, local_inner) = match file_id.0 {
+            HirFileIdRepr::FileId(_) => (None, false),
             HirFileIdRepr::MacroFile(macro_file) => match macro_file.macro_call_id {
                 MacroCallId::LazyMacro(id) => {
                     let loc = db.lookup_intern_macro(id);
                     match loc.def.kind {
-                        MacroDefKind::Declarative => loc.def.krate,
-                        MacroDefKind::BuiltIn(_) => None,
-                        MacroDefKind::BuiltInDerive(_) => None,
-                        MacroDefKind::BuiltInEager(_) => None,
-                        MacroDefKind::CustomDerive(_) => None,
+                        MacroDefKind::Declarative => (loc.def.krate, loc.def.local_inner),
+                        MacroDefKind::BuiltIn(_) => (None, false),
+                        MacroDefKind::BuiltInDerive(_) => (None, false),
+                        MacroDefKind::BuiltInEager(_) => (None, false),
+                        MacroDefKind::CustomDerive(_) => (None, false),
                     }
                 }
-                MacroCallId::EagerMacro(_id) => None,
+                MacroCallId::EagerMacro(_id) => (None, false),
             },
         };
-        Hygiene { def_crate }
+        Hygiene { def_crate, local_inner }
     }
 
     pub fn new_unhygienic() -> Hygiene {
-        Hygiene { def_crate: None }
+        Hygiene { def_crate: None, local_inner: false }
     }
 
     // FIXME: this should just return name
@@ -51,5 +54,13 @@ impl Hygiene {
             }
         }
         Either::Left(name_ref.as_name())
+    }
+
+    pub fn local_inner_macros(&self) -> Option<CrateId> {
+        if self.local_inner {
+            self.def_crate
+        } else {
+            None
+        }
     }
 }

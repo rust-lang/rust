@@ -73,11 +73,13 @@ pub fn find_builtin_macro(
             krate: Some(krate),
             ast_id: Some(ast_id),
             kind: MacroDefKind::BuiltIn(kind),
+            local_inner: false,
         }),
         Either::Right(kind) => Some(MacroDefId {
             krate: Some(krate),
             ast_id: Some(ast_id),
             kind: MacroDefKind::BuiltInEager(kind),
+            local_inner: false,
         }),
     }
 }
@@ -406,6 +408,7 @@ mod tests {
                     krate: Some(CrateId(0)),
                     ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
                     kind: MacroDefKind::BuiltIn(expander),
+                    local_inner: false,
                 };
 
                 let loc = MacroCallLoc {
@@ -425,6 +428,7 @@ mod tests {
                     krate: Some(CrateId(0)),
                     ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
                     kind: MacroDefKind::BuiltInEager(expander),
+                    local_inner: false,
                 };
 
                 let args = macro_calls[1].token_tree().unwrap();

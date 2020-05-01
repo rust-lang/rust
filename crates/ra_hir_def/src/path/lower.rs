@@ -9,7 +9,10 @@ use hir_expand::{
     hygiene::Hygiene,
     name::{name, AsName},
 };
-use ra_syntax::ast::{self, AstNode, TypeAscriptionOwner, TypeBoundsOwner};
+use ra_syntax::{
+    ast::{self, AstNode, TypeAscriptionOwner, TypeBoundsOwner},
+    T,
+};
 
 use super::AssociatedTypeBinding;
 use crate::{
@@ -113,6 +116,20 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
     }
     segments.reverse();
     generic_args.reverse();
+
+    // handle local_inner_macros :
+    // Basically, even in rustc it is quite hacky:
+    // https://github.com/rust-lang/rust/blob/614f273e9388ddd7804d5cbc80b8865068a3744e/src/librustc_resolve/macros.rs#L456
+    // We follow what it did anyway :)
+    if segments.len() == 1 && kind == PathKind::Plain {
+        let next = path.syntax().last_token().and_then(|it| it.next_token());
+        if next.map_or(false, |it| it.kind() == T![!]) {
+            if let Some(crate_id) = hygiene.local_inner_macros() {
+                kind = PathKind::DollarCrate(crate_id);
+            }
+        }
+    }
+
     let mod_path = ModPath { kind, segments };
     return Some(Path { type_anchor, mod_path, generic_args });
 
