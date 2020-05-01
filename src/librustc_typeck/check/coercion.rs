@@ -831,6 +831,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.probe(|_| coerce.coerce(source, target)).is_ok()
     }
 
+    /// Given a type and a target type, this function will calculate and return
+    /// how many dereference steps needed to achieve `expr_ty <: target`. If
+    /// it's not possible, return `None`.
     pub fn deref_steps(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> Option<usize> {
         let cause = self.cause(rustc_span::DUMMY_SP, ObligationCauseCode::ExprAssignable);
         // We don't ever need two-phase here since we throw out the result of the coercion
