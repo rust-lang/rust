@@ -217,7 +217,6 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
     (impl_trait_ref, impl_obligations)
 }
 
-/// See [`super::obligations_for_generics`].
 pub fn predicates_for_generics<'tcx>(
     cause: ObligationCause<'tcx>,
     recursion_depth: usize,
