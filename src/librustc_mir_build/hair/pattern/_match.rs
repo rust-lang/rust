@@ -513,6 +513,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 }
 
 /// Pretty-printer for matrices of patterns, example:
+///
+/// ```text
 /// +++++++++++++++++++++++++++++
 /// + _     + []                +
 /// +++++++++++++++++++++++++++++

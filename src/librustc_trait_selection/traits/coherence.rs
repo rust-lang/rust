@@ -327,12 +327,12 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///    try to implement this trait-ref. To check for this, we use InCrate::Remote
 ///    mode. That is sound because we already know all the impls from known crates.
 ///
-/// 3. For non-#[fundamental] traits, they guarantee that parent crates can
+/// 3. For non-`#[fundamental]` traits, they guarantee that parent crates can
 ///    add "non-blanket" impls without breaking negative reasoning in dependent
 ///    crates. This is the "rebalancing coherence" (RFC 1023) restriction.
 ///
 ///    For that, we only a allow crate to perform negative reasoning on
-///    non-local-non-#[fundamental] only if there's a local key parameter as per (2).
+///    non-local-non-`#[fundamental]` only if there's a local key parameter as per (2).
 ///
 ///    Because we never perform negative reasoning generically (coherence does
 ///    not involve type parameters), this can be interpreted as doing the full

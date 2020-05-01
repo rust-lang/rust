@@ -98,7 +98,7 @@ pub enum Ty<'a> {
     Self_,
     /// &/Box/ Ty
     Ptr(Box<Ty<'a>>, PtrTy),
-    /// mod::mod::Type<[lifetime], [Params...]>, including a plain type
+    /// `mod::mod::Type<[lifetime], [Params...]>`, including a plain type
     /// parameter, and things like `i32`
     Literal(Path<'a>),
     /// includes unit

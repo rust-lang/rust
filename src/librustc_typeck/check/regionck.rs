@@ -1105,19 +1105,21 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// itself the referent of a borrowed pointer. Let me give an
     /// example fragment of code to make clear(er) the situation:
     ///
-    ///    let r: &'a mut T = ...;  // the original reference "r" has lifetime 'a
-    ///    ...
-    ///    &'z *r                   // the reborrow has lifetime 'z
+    /// ```ignore (incomplete Rust code)
+    /// let r: &'a mut T = ...;  // the original reference "r" has lifetime 'a
+    /// ...
+    /// &'z *r                   // the reborrow has lifetime 'z
+    /// ```
     ///
     /// Now, in this case, our primary job is to add the inference
     /// constraint that `'z <= 'a`. Given this setup, let's clarify the
     /// parameters in (roughly) terms of the example:
     ///
     /// ```plain,ignore (pseudo-Rust)
-    ///     A borrow of: `& 'z bk * r` where `r` has type `& 'a bk T`
-    ///     borrow_region   ^~                 ref_region    ^~
-    ///     borrow_kind        ^~               ref_kind        ^~
-    ///     ref_cmt                 ^
+    /// A borrow of: `& 'z bk * r` where `r` has type `& 'a bk T`
+    /// borrow_region   ^~                 ref_region    ^~
+    /// borrow_kind        ^~               ref_kind        ^~
+    /// ref_cmt                 ^
     /// ```
     ///
     /// Here `bk` stands for some borrow-kind (e.g., `mut`, `uniq`, etc).
@@ -1193,7 +1195,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     ///   a `FnMut` or `Fn` closure.
     ///
     /// This function links the lifetimes of those references to the lifetime
-    /// of the borrow that's provided. See [link_reborrowed_region] for some
+    /// of the borrow that's provided. See [RegionCtxt::link_reborrowed_region] for some
     /// more explanation of this in the general case.
     ///
     /// We also supply a *cause*, and in this case we set the cause to

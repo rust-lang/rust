@@ -5,7 +5,7 @@
 pub struct Toc {
     /// The levels are strictly decreasing, i.e.
     ///
-    /// entries[0].level >= entries[1].level >= ...
+    /// `entries[0].level >= entries[1].level >= ...`
     ///
     /// Normally they are equal, but can differ in cases like A and B,
     /// both of which end up in the same `Toc` as they have the same
@@ -39,8 +39,8 @@ pub struct TocEntry {
 pub struct TocBuilder {
     top_level: Toc,
     /// The current hierarchy of parent headings, the levels are
-    /// strictly increasing (i.e., chain[0].level < chain[1].level <
-    /// ...) with each entry being the most recent occurrence of a
+    /// strictly increasing (i.e., `chain[0].level < chain[1].level <
+    /// ...`) with each entry being the most recent occurrence of a
     /// heading with that level (it doesn't include the most recent
     /// occurrences of every level, just, if it *is* in `chain` then
     /// it is the most recent one).

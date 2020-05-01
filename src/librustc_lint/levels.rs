@@ -103,8 +103,8 @@ impl<'s> LintLevelsBuilder<'s> {
     /// * It'll validate all lint-related attributes in `attrs`
     /// * It'll mark all lint-related attributes as used
     /// * Lint levels will be updated based on the attributes provided
-    /// * Lint attributes are validated, e.g., a #[forbid] can't be switched to
-    ///   #[allow]
+    /// * Lint attributes are validated, e.g., a `#[forbid]` can't be switched to
+    ///   `#[allow]`
     ///
     /// Don't forget to call `pop`!
     pub fn push(&mut self, attrs: &[ast::Attribute], store: &LintStore) -> BuilderPush {

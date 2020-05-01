@@ -70,8 +70,8 @@ impl IntegerExt for Integer {
     }
 
     /// Finds the appropriate Integer type and signedness for the given
-    /// signed discriminant range and #[repr] attribute.
-    /// N.B.: u128 values above i128::MAX will be treated as signed, but
+    /// signed discriminant range and `#[repr]` attribute.
+    /// N.B.: `u128` values above `i128::MAX` will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
     fn repr_discr<'tcx>(
         tcx: TyCtxt<'tcx>,

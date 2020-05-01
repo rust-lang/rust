@@ -173,7 +173,7 @@ struct Node<O> {
     /// must all be in a non-pending state.
     dependents: Vec<usize>,
 
-    /// If true, dependents[0] points to a "parent" node, which requires
+    /// If true, `dependents[0]` points to a "parent" node, which requires
     /// special treatment upon error but is otherwise treated the same.
     /// (It would be more idiomatic to store the parent node in a separate
     /// `Option<usize>` field, but that slows down the common case of
