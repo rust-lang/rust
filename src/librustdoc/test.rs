@@ -98,7 +98,7 @@ pub fn run(options: Options) -> i32 {
         externs: options.externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
         actually_rustdoc: true,
-        debugging_opts: config::DebuggingOptions { ..config::basic_debugging_options() },
+        debugging_opts: config::basic_debugging_options(),
         edition: options.edition,
         target_triple: options.target.clone(),
         ..config::Options::default()
