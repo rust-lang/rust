@@ -490,6 +490,11 @@ rustc_queries! {
             desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
         }
+
+        query user_provided_sigs(key: LocalDefId) -> &'tcx FxHashMap<DefId, ty::CanonicalPolyFnSig<'tcx>> {
+            desc { |tcx| "user_provided_sigs `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
+        }
     }
 
     Other {
