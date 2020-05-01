@@ -43,7 +43,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         code_action_provider: Some(CodeActionProviderCapability::Options(CodeActionOptions {
             // Advertise support for all built-in CodeActionKinds
             code_action_kinds: Some(vec![
-                String::new(),
+                lsp_types::code_action_kind::EMPTY.to_string(),
                 lsp_types::code_action_kind::QUICKFIX.to_string(),
                 lsp_types::code_action_kind::REFACTOR.to_string(),
                 lsp_types::code_action_kind::REFACTOR_EXTRACT.to_string(),
