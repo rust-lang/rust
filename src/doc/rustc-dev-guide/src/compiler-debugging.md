@@ -205,7 +205,7 @@ if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see
 `INFO` logs, make sure that `debug-assertions=yes` is turned on in your
 config.toml.
 
-I also think that in some cases just setting it will not trigger a rebuild,
+In some cases, just setting it will not trigger a rebuild,
 so if you changed it and you already have a compiler built, you might
 want to call `x.py clean` to force one.
 
