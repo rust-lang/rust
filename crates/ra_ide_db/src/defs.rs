@@ -11,7 +11,7 @@ use hir::{
 };
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, NameOwner},
     match_ast,
 };
 use test_utils::tested_by;
@@ -115,10 +115,16 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
 }
 
 fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<Definition> {
+    println!("name : {} -- {:?}", name, name);
     let parent = name.syntax().parent()?;
+    println!("parent : {} -- {:?}", parent, parent);
 
     match_ast! {
         match parent {
+            ast::Alias(it) => {
+                let def = sema.to_def(&it)?;
+                Some(Definition::ModuleDef(def.into()))
+            },
             ast::BindPat(it) => {
                 let local = sema.to_def(&it)?;
                 Some(Definition::Local(local))
