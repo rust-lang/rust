@@ -161,7 +161,7 @@ impl Qualifs<'mir, 'tcx> {
                     .iterate_to_fixpoint()
                     .into_results_cursor(&ccx.body);
 
-                cursor.seek_after(return_loc);
+                cursor.seek_after_primary_effect(return_loc);
                 cursor.contains(RETURN_PLACE)
             }
         };
