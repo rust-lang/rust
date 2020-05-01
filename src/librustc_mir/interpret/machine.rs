@@ -10,8 +10,8 @@ use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
 
 use super::{
-    AllocId, Allocation, AllocationExtra, Frame, ImmTy, InterpCx, InterpResult, Memory, MemoryKind,
-    OpTy, Operand, PlaceTy, Pointer, Scalar,
+    AllocId, Allocation, AllocationExtra, CheckInAllocMsg, Frame, ImmTy, InterpCx, InterpResult,
+    Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -346,7 +346,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         Err((if int == 0 {
             // This is UB, seriously.
-            err_ub!(InvalidIntPointerUsage(0))
+            err_ub!(DanglingIntPointer(0, CheckInAllocMsg::InboundsTest))
         } else {
             // This is just something we cannot support during const-eval.
             err_unsup!(ReadBytesAsPointer)

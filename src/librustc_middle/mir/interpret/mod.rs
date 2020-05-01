@@ -117,8 +117,8 @@ use crate::ty::subst::GenericArgKind;
 use crate::ty::{self, Instance, Ty, TyCtxt};
 
 pub use self::error::{
-    struct_error, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled, FrameInfo,
-    InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, MachineStopType,
+    struct_error, CheckInAllocMsg, ConstEvalErr, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
+    FrameInfo, InterpError, InterpErrorInfo, InterpResult, InvalidProgramInfo, MachineStopType,
     ResourceExhaustionInfo, UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 
@@ -126,7 +126,7 @@ pub use self::value::{get_slice_bytes, ConstValue, RawConst, Scalar, ScalarMaybe
 
 pub use self::allocation::{Allocation, AllocationExtra, Relocations, UndefMask};
 
-pub use self::pointer::{CheckInAllocMsg, Pointer, PointerArithmetic};
+pub use self::pointer::{Pointer, PointerArithmetic};
 
 /// Uniquely identifies one of the following:
 /// - A constant

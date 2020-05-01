@@ -186,13 +186,13 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/ub-wide-ptr.rs:121:5
    |
 LL |     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid use of NULL pointer
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inbounds test failed: 0x0 is not a valid pointer
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/ub-wide-ptr.rs:125:5
    |
 LL |     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Memory access failed: pointer must be in-bounds at offset N, but is outside bounds of allocN which has size N
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: pointer must be in-bounds at offset N, but is outside bounds of allocN which has size N
 
 error: aborting due to 24 previous errors
 

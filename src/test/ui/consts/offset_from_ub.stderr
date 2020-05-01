@@ -66,7 +66,7 @@ error: any use of this value will cause an error
 LL |           intrinsics::ptr_offset_from(self, origin)
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |           |
-   |           invalid use of NULL pointer
+   |           inbounds test failed: 0x0 is not a valid pointer
    |           inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
    |           inside `OFFSET_FROM_NULL` at $DIR/offset_from_ub.rs:37:14
    | 

@@ -360,10 +360,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     place.ptr, size, align
                 );
                 match err.kind {
-                    err_ub!(InvalidIntPointerUsage(0)) => {
+                    err_ub!(DanglingIntPointer(0, _)) => {
                         throw_validation_failure!(format_args!("a NULL {}", kind), self.path)
                     }
-                    err_ub!(InvalidIntPointerUsage(i)) => throw_validation_failure!(
+                    err_ub!(DanglingIntPointer(i, _)) => throw_validation_failure!(
                         format_args!("a {} to unallocated address {}", kind, i),
                         self.path
                     ),
