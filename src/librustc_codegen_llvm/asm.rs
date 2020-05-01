@@ -269,7 +269,11 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             tys => self.type_struct(&tys, false),
         };
         let dialect = match asm_arch {
-            InlineAsmArch::X86 | InlineAsmArch::X86_64 => LlvmAsmDialect::Intel,
+            InlineAsmArch::X86 | InlineAsmArch::X86_64
+                if !options.contains(InlineAsmOptions::ATT_SYNTAX) =>
+            {
+                LlvmAsmDialect::Intel
+            }
             _ => LlvmAsmDialect::Att,
         };
         let result = inline_asm_call(

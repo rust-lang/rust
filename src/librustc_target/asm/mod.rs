@@ -426,6 +426,7 @@ bitflags::bitflags! {
         const PRESERVES_FLAGS = 1 << 3;
         const NORETURN = 1 << 4;
         const NOSTACK = 1 << 5;
+        const ATT_SYNTAX = 1 << 6;
     }
 }
 

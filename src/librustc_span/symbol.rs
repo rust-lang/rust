@@ -160,6 +160,7 @@ symbols! {
         attr,
         attributes,
         attr_literals,
+        att_syntax,
         augmented_assignments,
         automatically_derived,
         avx512_target_feature,

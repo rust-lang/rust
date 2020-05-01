@@ -279,9 +279,11 @@ fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), Diagn
             args.options |= InlineAsmOptions::PRESERVES_FLAGS;
         } else if p.eat(&token::Ident(sym::noreturn, false)) {
             args.options |= InlineAsmOptions::NORETURN;
-        } else {
-            p.expect(&token::Ident(sym::nostack, false))?;
+        } else if p.eat(&token::Ident(sym::nostack, false)) {
             args.options |= InlineAsmOptions::NOSTACK;
+        } else {
+            p.expect(&token::Ident(sym::att_syntax, false))?;
+            args.options |= InlineAsmOptions::ATT_SYNTAX;
         }
 
         // Allow trailing commas

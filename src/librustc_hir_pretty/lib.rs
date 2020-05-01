@@ -1503,6 +1503,9 @@ impl<'a> State<'a> {
                         if opts.contains(InlineAsmOptions::NOSTACK) {
                             options.push("nostack");
                         }
+                        if opts.contains(InlineAsmOptions::ATT_SYNTAX) {
+                            options.push("att_syntax");
+                        }
                         s.commasep(Inconsistent, &options, |s, &opt| {
                             s.word(opt);
                         });

@@ -980,6 +980,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
             struct_span_err!(self.sess, sp, E0472, "asm! is unsupported on this target").emit();
             return hir::ExprKind::Err;
         };
+        if asm.options.contains(asm::InlineAsmOptions::ATT_SYNTAX) {
+            match asm_arch {
+                asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64 => {}
+                _ => self
+                    .sess
+                    .struct_span_err(sp, "the `att_syntax` option is only supported on x86")
+                    .emit(),
+            }
+        }
 
         // Lower operands to HIR, filter_map skips any operands with invalid
         // register classes.
