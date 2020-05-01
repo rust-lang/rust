@@ -14,7 +14,7 @@
 //! - [`Generics`], [`GenericParam`], [`WhereClause`]: Metadata associated with generic parameters.
 //! - [`EnumDef`] and [`Variant`]: Enum declaration.
 //! - [`Lit`] and [`LitKind`]: Literal expressions.
-//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimeter`]: Macro definition and invocation.
+//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimiter`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
