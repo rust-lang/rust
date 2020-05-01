@@ -119,7 +119,11 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
     })
 }
 
-/// Represents the #[stable], #[unstable], #[rustc_deprecated] attributes.
+/// Represents the following attributes:
+///
+/// - `#[stable]`
+/// - `#[unstable]`
+/// - `#[rustc_deprecated]`
 #[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct Stability {
@@ -128,7 +132,7 @@ pub struct Stability {
     pub rustc_depr: Option<RustcDeprecation>,
 }
 
-/// Represents the #[rustc_const_unstable] and #[rustc_const_stable] attributes.
+/// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
 #[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct ConstStability {
