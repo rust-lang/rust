@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub MATCH_ON_VEC_ITEMS,
-    correctness,
+    pedantic,
     "matching on vector elements can panic"
 }
 
