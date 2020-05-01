@@ -13,7 +13,6 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -861,62 +860,31 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn opt_span(&self, hir_id: HirId) -> Option<Span> {
-        let span = match self.find_entry(hir_id)?.node {
-            Node::Param(param) => param.span,
-            Node::Item(item) => match &item.kind {
-                ItemKind::Fn(sig, _, _) => sig.span,
-                _ => item.span,
-            },
-            Node::ForeignItem(foreign_item) => foreign_item.span,
-            Node::TraitItem(trait_item) => match &trait_item.kind {
-                TraitItemKind::Fn(sig, _) => sig.span,
-                _ => trait_item.span,
-            },
-            Node::ImplItem(impl_item) => match &impl_item.kind {
-                ImplItemKind::Fn(sig, _) => sig.span,
-                _ => impl_item.span,
-            },
-            Node::Variant(variant) => variant.span,
-            Node::Field(field) => field.span,
-            Node::AnonConst(constant) => self.body(constant.body).value.span,
-            Node::Expr(expr) => expr.span,
-            Node::Stmt(stmt) => stmt.span,
-            Node::PathSegment(seg) => seg.ident.span,
-            Node::Ty(ty) => ty.span,
-            Node::TraitRef(tr) => tr.path.span,
-            Node::Binding(pat) => pat.span,
-            Node::Pat(pat) => pat.span,
-            Node::Arm(arm) => arm.span,
-            Node::Block(block) => block.span,
-            Node::Ctor(..) => match self.find(self.get_parent_node(hir_id))? {
-                Node::Item(item) => item.span,
-                Node::Variant(variant) => variant.span,
-                _ => unreachable!(),
-            },
-            Node::Lifetime(lifetime) => lifetime.span,
-            Node::GenericParam(param) => param.span,
-            Node::Visibility(&Spanned {
-                node: VisibilityKind::Restricted { ref path, .. },
-                ..
-            }) => path.span,
-            Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
-            Node::Local(local) => local.span,
-            Node::MacroDef(macro_def) => macro_def.span,
-            Node::Crate(item) => item.span,
+        match self.find_entry(hir_id).map(|entry| entry.node) {
+            Some(Node::Item(item)) => {
+                if let ItemKind::Fn(sig, _, _) = &item.kind {
+                    return Some(sig.span);
+                }
+            }
+            Some(Node::TraitItem(item)) => {
+                if let TraitItemKind::Fn(sig, _) = &item.kind {
+                    return Some(sig.span);
+                }
+            }
+            Some(Node::ImplItem(item)) => {
+                if let ImplItemKind::Fn(sig, _) = &item.kind {
+                    return Some(sig.span);
+                }
+            }
+            _ => {}
         };
-        Some(span)
+        self.tcx.hir_spans(hir_id.owner).get(hir_id.local_id).copied()
     }
 
     /// Like `hir.span()`, but includes the body of function items
     /// (instead of just the function header)
     pub fn span_with_body(&self, hir_id: HirId) -> Span {
-        match self.find_entry(hir_id).map(|entry| entry.node) {
-            Some(Node::TraitItem(item)) => item.span,
-            Some(Node::ImplItem(impl_item)) => impl_item.span,
-            Some(Node::Item(item)) => item.span,
-            Some(_) => self.span(hir_id),
-            _ => bug!("hir::map::Map::span_with_body: id not in map: {:?}", hir_id),
-        }
+        self.tcx.hir_spans(hir_id.owner)[hir_id.local_id]
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
