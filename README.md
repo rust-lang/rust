@@ -285,6 +285,7 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [`String::push_str` invalidating existing references into the string](https://github.com/rust-lang/rust/issues/70301)
 * [`ryu` using raw pointers outside their valid memory area](https://github.com/dtolnay/ryu/issues/24)
 * [ink! creating overlapping mutable references](https://github.com/rust-lang/miri/issues/1364)
+* [Stacked borrowing violation in TiKV](https://github.com/tikv/tikv/pull/7709)
 
 ## License
 
