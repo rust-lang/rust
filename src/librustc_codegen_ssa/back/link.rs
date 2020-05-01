@@ -16,7 +16,7 @@ use rustc_target::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Rel
 
 use super::archive::ArchiveBuilder;
 use super::command::Command;
-use super::linker::Linker;
+use super::linker::{self, Linker};
 use super::rpath::{self, RPathConfig};
 use crate::{looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FILENAME};
 
@@ -479,6 +479,8 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         codegen_results,
         target_cpu,
     );
+
+    linker::disable_localization(&mut cmd);
 
     for &(ref k, ref v) in &sess.target.target.options.link_env {
         cmd.env(k, v);
