@@ -126,7 +126,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // Otherwise, the base path is an implicit `Self` type path,
             // e.g., `Vec` in `Vec::new` or `<I as Iterator>::Item` in
             // `<I as Iterator>::Item::default`.
-            let new_id = self.next_id();
+            let new_id = self.next_id(p.span);
             self.arena.alloc(self.ty_path(new_id, p.span, hir::QPath::Resolved(qself, path)))
         };
 
@@ -158,7 +158,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
 
             // Wrap the associated extension in another type node.
-            let new_id = self.next_id();
+            let new_id = self.next_id(p.span);
             ty = self.arena.alloc(self.ty_path(new_id, p.span, qpath));
         }
 
@@ -340,9 +340,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let res = self.expect_full_res(segment.id);
         let id = if let Some(owner) = explicit_owner {
-            self.lower_node_id_with_owner(segment.id, owner)
+            self.lower_node_id_with_owner(segment.id, owner, segment.ident.span)
         } else {
-            self.lower_node_id(segment.id)
+            self.lower_node_id(segment.id, segment.ident.span)
         };
         debug!(
             "lower_path_segment: ident={:?} original-id={:?} new-id={:?}",
@@ -426,6 +426,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::TypeBinding<'hir> {
         let ident = Ident::with_dummy_span(hir::FN_OUTPUT_NAME);
         let kind = hir::TypeBindingKind::Equality { ty };
-        hir::TypeBinding { hir_id: self.next_id(), span, ident, kind }
+        hir::TypeBinding { hir_id: self.next_id(span), span, ident, kind }
     }
 }
