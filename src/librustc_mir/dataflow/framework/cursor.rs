@@ -79,7 +79,7 @@ where
         self.state.contains(elem)
     }
 
-    /// Resets the cursor to hold the dataflow state for the given basic block at fixpoint.
+    /// Resets the cursor to hold the entry set for the given basic block.
     ///
     /// For forward dataflow analyses, this is the dataflow state prior to the first statement.
     ///
@@ -90,9 +90,9 @@ where
         self.state_needs_reset = false;
     }
 
-    /// Resets the cursor to hold the state at the entry to the given block.
+    /// Resets the cursor to hold the state prior to the first statement in a basic block.
     ///
-    /// For forward analyses, this is the block's state at fixpoint.
+    /// For forward analyses, this is the entry set for the given block.
     ///
     /// For backward analyses, this is the state that will be propagated to its
     /// predecessors (ignoring edge-specific effects).
@@ -104,9 +104,9 @@ where
         }
     }
 
-    /// Resets the cursor to hold the state at the exit of the given block.
+    /// Resets the cursor to hold the state after the terminator in a basic block.
     ///
-    /// For backward analyses, this is the block's state at fixpoint.
+    /// For backward analyses, this is the entry set for the given block.
     ///
     /// For forward analyses, this is the state that will be propagated to its
     /// successors (ignoring edge-specific effects).
