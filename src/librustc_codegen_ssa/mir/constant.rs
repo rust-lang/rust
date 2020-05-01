@@ -16,25 +16,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         constant: &mir::Constant<'tcx>,
     ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled> {
-        match constant.literal.val {
-            // Special case unevaluated statics, because statics have an identity and thus should
-            // use `get_static` to get at their id.
-            // FIXME(oli-obk): can we unify this somehow, maybe by making const eval of statics
-            // always produce `&STATIC`. This may also simplify how const eval works with statics.
-            ty::ConstKind::Unevaluated(def_id, substs, None) if self.cx.tcx().is_static(def_id) => {
-                assert!(substs.is_empty(), "we don't support generic statics yet");
-                let static_ = bx.get_static(def_id);
-                // we treat operands referring to statics as if they were `&STATIC` instead
-                let ptr_ty = self.cx.tcx().mk_mut_ptr(self.monomorphize(&constant.literal.ty));
-                let layout = bx.layout_of(ptr_ty);
-                Ok(OperandRef::from_immediate_or_packed_pair(bx, static_, layout))
-            }
-            _ => {
-                let val = self.eval_mir_constant(constant)?;
-                let ty = self.monomorphize(&constant.literal.ty);
-                Ok(OperandRef::from_const(bx, val, ty))
-            }
-        }
+        let val = self.eval_mir_constant(constant)?;
+        let ty = self.monomorphize(&constant.literal.ty);
+        Ok(OperandRef::from_const(bx, val, ty))
     }
 
     pub fn eval_mir_constant(
