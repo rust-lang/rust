@@ -120,7 +120,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                             // We shouldn't leak borrowck results through impl trait in bindings.
                             // For example, we shouldn't be able to tell if `x` in
                             // `let x: impl Sized + 'a = &()` has type `&'static ()` or `&'a ()`.
-                            &tcx.typeck_tables_of(owner.expect_local()).concrete_opaque_types
+                            tcx.concrete_opaque_types(owner.expect_local())
                         }
                         OpaqueTyOrigin::TypeAlias => {
                             span_bug!(item.span, "Type alias impl trait shouldn't have an owner")
@@ -427,7 +427,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             }
             // Calling `mir_borrowck` can lead to cycle errors through
             // const-checking, avoid calling it if we don't have to.
-            if !self.tcx.typeck_tables_of(def_id).concrete_opaque_types.contains_key(&self.def_id) {
+            if !self.tcx.concrete_opaque_types(def_id).contains_key(&self.def_id) {
                 debug!(
                     "find_opaque_ty_constraints: no constraint for `{:?}` at `{:?}`",
                     self.def_id, def_id,

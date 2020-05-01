@@ -481,6 +481,11 @@ rustc_queries! {
             }
         }
 
+        query concrete_opaque_types(key: LocalDefId) -> &'tcx FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>> {
+            desc { |tcx| "concrete_opaque_types `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
+        }
+
         query typeck_has_errors(key: LocalDefId) -> Option<ErrorReported> {
             desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
