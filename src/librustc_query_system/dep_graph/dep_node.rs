@@ -64,6 +64,24 @@ impl<K: DepKind> DepNode<K> {
         debug_assert!(!kind.has_params());
         DepNode { kind, hash: Fingerprint::ZERO }
     }
+
+    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
+    where
+        Ctxt: crate::query::QueryContext<DepKind = K>,
+        Key: DepNodeParams<Ctxt>,
+    {
+        let hash = arg.to_fingerprint(tcx);
+        let dep_node = DepNode { kind, hash };
+
+        #[cfg(debug_assertions)]
+        {
+            if !kind.can_reconstruct_query_key() && tcx.debug_dep_node() {
+                tcx.dep_graph().register_dep_node_debug_str(dep_node, || arg.to_debug_str(tcx));
+            }
+        }
+
+        return dep_node;
+    }
 }
 
 impl<K: DepKind> fmt::Debug for DepNode<K> {
@@ -117,6 +135,12 @@ where
 
     default fn recover(_: Ctxt, _: &DepNode<Ctxt::DepKind>) -> Option<Self> {
         None
+    }
+}
+
+impl<Ctxt: DepContext> DepNodeParams<Ctxt> for () {
+    fn to_fingerprint(&self, _: Ctxt) -> Fingerprint {
+        Fingerprint::ZERO
     }
 }
 

@@ -1009,7 +1009,7 @@ where
 
     state.iter_results(|results| {
         for (key, value, dep_node) in results {
-            if Q::cache_on_disk(tcx, key.clone(), Some(&value)) {
+            if Q::cache_on_disk(tcx, &key, Some(&value)) {
                 let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
                 // Record position of the cache entry.

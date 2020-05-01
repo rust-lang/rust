@@ -28,6 +28,7 @@ pub trait DepContext: Copy {
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext;
 
     fn debug_dep_tasks(&self) -> bool;
+    fn debug_dep_node(&self) -> bool;
 
     /// Try to force a dep node to execute and see if it's green.
     fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
