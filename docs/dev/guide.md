@@ -26,7 +26,7 @@ properties hold:
 
 ## IDE API
 
-To see the bigger picture of how the IDE features works, let's take a look at the [`AnalysisHost`] and
+To see the bigger picture of how the IDE features work, let's take a look at the [`AnalysisHost`] and
 [`Analysis`] pair of types. `AnalysisHost` has three methods:
 
 * `default()` for creating an empty analysis instance
@@ -131,7 +131,7 @@ mapping between `SourceRoot` IDs (which are assigned by the client) and actual
 analyzer.
 
 Note that `mod`, `#[path]` and `include!()` can only reference files from the
-same source root. It is of course is possible to explicitly add extra files to
+same source root. It is of course possible to explicitly add extra files to
 the source root, even `/dev/random`.
 
 ## Language Server Protocol
@@ -192,7 +192,7 @@ task will be canceled as soon as the main loop calls `apply_change` on the
 [`schedule`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L426-L455
 [The task]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop/handlers.rs#L205-L223
 
-This concludes the overview of the analyzer's programing *interface*. Next, lets
+This concludes the overview of the analyzer's programing *interface*. Next, let's
 dig into the implementation!
 
 ## Salsa
@@ -480,7 +480,7 @@ throughout the analyzer:
 ## Source Map pattern
 
 Due to an obscure edge case in completion, IDE needs to know the syntax node of
-an use statement which imported the given completion candidate. We can't just
+a use statement which imported the given completion candidate. We can't just
 store the syntax node as a part of name resolution: this will break
 incrementality, due to the fact that syntax changes after every file
 modification.
