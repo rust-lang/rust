@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::prelude::*;
 
 use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
-use rustc_codegen_ssa::{METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
+use rustc_codegen_ssa::METADATA_FILENAME;
 
 struct ArchiveConfig<'a> {
     sess: &'a Session,
@@ -116,8 +116,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         let obj_start = name.to_owned();
 
         self.add_archive(rlib.to_owned(), move |fname: &str| {
-            // Ignore bytecode/metadata files, no matter the name.
-            if fname.ends_with(RLIB_BYTECODE_EXTENSION) || fname == METADATA_FILENAME {
+            // Ignore metadata files, no matter the name.
+            if fname == METADATA_FILENAME {
                 return true;
             }
 

@@ -64,7 +64,6 @@ fn emit_module<B: Backend>(
             kind,
             object: Some(tmp_file),
             bytecode: None,
-            bytecode_compressed: None,
         },
         work_product,
     )
@@ -85,7 +84,7 @@ fn reuse_workproduct_for_cgu(
                 object = Some(path.clone());
                 path
             }
-            WorkProductFileKind::Bytecode | WorkProductFileKind::BytecodeCompressed => {
+            WorkProductFileKind::Bytecode => {
                 panic!("cg_clif doesn't use bytecode");
             }
         };
@@ -107,7 +106,6 @@ fn reuse_workproduct_for_cgu(
         kind: ModuleKind::Regular,
         object,
         bytecode: None,
-        bytecode_compressed: None,
     }
 }
 
@@ -239,7 +237,6 @@ pub(super) fn run_aot(
             kind: ModuleKind::Metadata,
             object: Some(tmp_file),
             bytecode: None,
-            bytecode_compressed: None,
         })
     } else {
         None
