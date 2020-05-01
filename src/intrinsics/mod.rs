@@ -987,6 +987,18 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let ret_val = CValue::const_val(fx, ret.layout(), 0);
             ret.write_cvalue(fx, ret_val);
         };
+
+        fadd_fast | fsub_fast | fmul_fast | fdiv_fast | frem_fast, (c x, c y) {
+            let res = crate::num::trans_float_binop(fx, match intrinsic {
+                "fadd_fast" => BinOp::Add,
+                "fsub_fast" => BinOp::Sub,
+                "fmul_fast" => BinOp::Mul,
+                "fdiv_fast" => BinOp::Div,
+                "frem_fast" => BinOp::Rem,
+                _ => unreachable!(),
+            }, x, y);
+            ret.write_cvalue(fx, res);
+        };
     }
 
     if let Some((_, dest)) = destination {
