@@ -593,7 +593,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             qualifier: Path,
         }
         struct PathSegment {
-            T![::], T![crate], T![<], NameRef, TypeArgList, ParamList, RetType, PathType, T![>]
+            T![::], T![crate], T![self], T![super], T![<], NameRef, TypeArgList, ParamList, RetType, PathType, T![>]
         }
         struct TypeArgList {
             T![::],
