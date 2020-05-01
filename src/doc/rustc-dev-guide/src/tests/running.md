@@ -148,10 +148,10 @@ time in subsequent rebuilds:
 ```
 
 If you don't want to include the flag with every command, you can
-enable it in the `config.toml`, too:
+enable it in the `config.toml`:
 
 ```toml
-# Whether to always use incremental compilation when building rustc
+[rust]
 incremental = true
 ```
 
