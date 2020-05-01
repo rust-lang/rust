@@ -191,6 +191,7 @@ pub enum SyntaxKind {
     RECORD_LIT,
     RECORD_FIELD_LIST,
     RECORD_FIELD,
+    TRY_BLOCK_EXPR,
     BOX_EXPR,
     CALL_EXPR,
     INDEX_EXPR,
