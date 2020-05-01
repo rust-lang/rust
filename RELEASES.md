@@ -1,3 +1,13 @@
+Version 1.43.1 (2020-05-07)
+===========================
+
+* [Updated openssl-src to 1.1.1g for CVE-2020-1967.][71430]
+* [Fixed the stabilization of AVX-512 features.][71473]
+
+[71430]: https://github.com/rust-lang/rust/pull/71430
+[71473]: https://github.com/rust-lang/rust/issues/71473
+
+
 Version 1.43.0 (2020-04-23)
 ==========================
 
