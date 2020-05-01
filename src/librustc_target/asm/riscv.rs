@@ -50,6 +50,7 @@ impl RiscVInlineAsmRegClass {
 fn not_e(
     _arch: InlineAsmArch,
     mut has_feature: impl FnMut(&str) -> bool,
+    _allocating: bool,
 ) -> Result<(), &'static str> {
     if has_feature("e") {
         Err("register can't be used with the `e` target feature")

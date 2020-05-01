@@ -87,7 +87,7 @@ macro_rules! def_regs {
                 match name {
                     $(
                         $($alias)|* | $reg_name => {
-                            $($filter(_arch, &mut _has_feature)?;)?
+                            $($filter(_arch, &mut _has_feature, false)?;)?
                             Ok(Self::$reg)
                         }
                     )*
@@ -109,7 +109,7 @@ macro_rules! def_regs {
         ) {
             use super::{InlineAsmReg, InlineAsmRegClass};
             $(
-                if $($filter(_arch, &mut _has_feature).is_ok() &&)? true {
+                if $($filter(_arch, &mut _has_feature, true).is_ok() &&)? true {
                     if let Some(set) = map.get_mut(&InlineAsmRegClass::$arch($arch_regclass::$class)) {
                         set.insert(InlineAsmReg::$arch($arch_reg::$reg));
                     }
@@ -239,6 +239,8 @@ impl InlineAsmReg {
         })
     }
 
+    // NOTE: This function isn't used at the moment, but is needed to support
+    // falling back to an external assembler.
     pub fn emit(
         self,
         out: &mut dyn fmt::Write,
@@ -542,6 +544,8 @@ impl fmt::Display for InlineAsmType {
 /// registers in each register class. A particular register may be allocatable
 /// from multiple register classes, in which case it will appear multiple times
 /// in the map.
+// NOTE: This function isn't used at the moment, but is needed to support
+// falling back to an external assembler.
 pub fn allocatable_registers(
     arch: InlineAsmArch,
     has_feature: impl FnMut(&str) -> bool,

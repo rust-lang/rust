@@ -131,11 +131,26 @@ impl X86InlineAsmRegClass {
 fn x86_64_only(
     arch: InlineAsmArch,
     _has_feature: impl FnMut(&str) -> bool,
+    _allocating: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86 => Err("register is only available on x86_64"),
         InlineAsmArch::X86_64 => Ok(()),
         _ => unreachable!(),
+    }
+}
+
+fn high_byte(
+    arch: InlineAsmArch,
+    _has_feature: impl FnMut(&str) -> bool,
+    allocating: bool,
+) -> Result<(), &'static str> {
+    match arch {
+        InlineAsmArch::X86_64 if allocating => {
+            // The error message isn't actually used...
+            Err("high byte registers are not allocated by reg_byte")
+        }
+        _ => Ok(()),
     }
 }
 
@@ -156,13 +171,13 @@ def_regs! {
         r14: reg = ["r14", "r14w", "r14d"] % x86_64_only,
         r15: reg = ["r15", "r15w", "r15d"] % x86_64_only,
         al: reg_byte = ["al"],
-        ah: reg_byte = ["ah"],
+        ah: reg_byte = ["ah"] % high_byte,
         bl: reg_byte = ["bl"],
-        bh: reg_byte = ["bh"],
+        bh: reg_byte = ["bh"] % high_byte,
         cl: reg_byte = ["cl"],
-        ch: reg_byte = ["ch"],
+        ch: reg_byte = ["ch"] % high_byte,
         dl: reg_byte = ["dl"],
-        dh: reg_byte = ["dh"],
+        dh: reg_byte = ["dh"] % high_byte,
         sil: reg_byte = ["sil"] % x86_64_only,
         dil: reg_byte = ["dil"] % x86_64_only,
         r8b: reg_byte = ["r8b"] % x86_64_only,
