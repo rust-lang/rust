@@ -67,12 +67,12 @@ macro_rules! try_validation {
 /// ```
 ///
 macro_rules! try_validation_pat {
-    ($e:expr, $where:expr, { $( $p:pat )|* => { $( $what_fmt:expr ),* } $( expected { $( $expected_fmt:expr ),* } )? $( , )?}) => {{
+    ($e:expr, $where:expr, { $( $p:pat )|+ => { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? $( , )?}) => {{
         match $e {
             Ok(x) => x,
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            $( Err(InterpErrorInfo { kind: $p, .. }) )|* => throw_validation_failure!(format_args!($( $what_fmt ),*), $where $(, format_args!($( $expected_fmt ),*))?),
+            $( Err(InterpErrorInfo { kind: $p, .. }) )|+ => throw_validation_failure!(format_args!($( $what_fmt ),+), $where $(, format_args!($( $expected_fmt ),+))?),
             #[allow(unreachable_patterns)]
             Err(e) => Err::<!, _>(e)?,
         }
