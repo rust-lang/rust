@@ -853,61 +853,30 @@ impl<'hir> Map<'hir> {
     /// This is used by `tcx.get_span`
     pub fn span(&self, hir_id: HirId) -> Span {
         match self.find_entry(hir_id).map(|entry| entry.node) {
-            Some(Node::Param(param)) => param.span,
-            Some(Node::Item(item)) => match &item.kind {
-                ItemKind::Fn(sig, _, _) => sig.span,
-                _ => item.span,
-            },
-            Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
-            Some(Node::TraitItem(trait_item)) => match &trait_item.kind {
-                TraitItemKind::Fn(sig, _) => sig.span,
-                _ => trait_item.span,
-            },
-            Some(Node::ImplItem(impl_item)) => match &impl_item.kind {
-                ImplItemKind::Fn(sig, _) => sig.span,
-                _ => impl_item.span,
-            },
-            Some(Node::Variant(variant)) => variant.span,
-            Some(Node::Field(field)) => field.span,
-            Some(Node::AnonConst(constant)) => self.body(constant.body).value.span,
-            Some(Node::Expr(expr)) => expr.span,
-            Some(Node::Stmt(stmt)) => stmt.span,
-            Some(Node::PathSegment(seg)) => seg.ident.span,
-            Some(Node::Ty(ty)) => ty.span,
-            Some(Node::TraitRef(tr)) => tr.path.span,
-            Some(Node::Binding(pat)) => pat.span,
-            Some(Node::Pat(pat)) => pat.span,
-            Some(Node::Arm(arm)) => arm.span,
-            Some(Node::Block(block)) => block.span,
-            Some(Node::Ctor(..)) => match self.find(self.get_parent_node(hir_id)) {
-                Some(Node::Item(item)) => item.span,
-                Some(Node::Variant(variant)) => variant.span,
-                _ => unreachable!(),
-            },
-            Some(Node::Lifetime(lifetime)) => lifetime.span,
-            Some(Node::GenericParam(param)) => param.span,
-            Some(Node::Visibility(&Spanned {
-                node: VisibilityKind::Restricted { ref path, .. },
-                ..
-            })) => path.span,
-            Some(Node::Visibility(v)) => bug!("unexpected Visibility {:?}", v),
-            Some(Node::Local(local)) => local.span,
-            Some(Node::MacroDef(macro_def)) => macro_def.span,
-            Some(Node::Crate(item)) => item.span,
-            None => bug!("hir::map::Map::span: id not in map: {:?}", hir_id),
-        }
+            Some(Node::Item(item)) => {
+                if let ItemKind::Fn(sig, _, _) = &item.kind {
+                    return sig.span;
+                }
+            }
+            Some(Node::TraitItem(item)) => {
+                if let TraitItemKind::Fn(sig, _) = &item.kind {
+                    return sig.span;
+                }
+            }
+            Some(Node::ImplItem(item)) => {
+                if let ImplItemKind::Fn(sig, _) = &item.kind {
+                    return sig.span;
+                }
+            }
+            _ => {}
+        };
+        self.tcx.hir_owner_spans(hir_id.owner)[hir_id.local_id]
     }
 
     /// Like `hir.span()`, but includes the body of function items
     /// (instead of just the function header)
     pub fn span_with_body(&self, hir_id: HirId) -> Span {
-        match self.find_entry(hir_id).map(|entry| entry.node) {
-            Some(Node::TraitItem(item)) => item.span,
-            Some(Node::ImplItem(impl_item)) => impl_item.span,
-            Some(Node::Item(item)) => item.span,
-            Some(_) => self.span(hir_id),
-            _ => bug!("hir::map::Map::span_with_body: id not in map: {:?}", hir_id),
-        }
+        self.tcx.hir_owner_spans(hir_id.owner)[hir_id.local_id]
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {

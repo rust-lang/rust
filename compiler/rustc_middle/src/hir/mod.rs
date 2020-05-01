@@ -77,6 +77,7 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.hir_owner = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].signature;
     providers.hir_owner_nodes = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].with_bodies.as_deref();
+    providers.hir_owner_spans = |tcx, id| tcx.hir_crate(LOCAL_CRATE).spans.get_owner(id);
     providers.fn_arg_names = |tcx, id| {
         let hir = tcx.hir();
         let hir_id = hir.local_def_id_to_hir_id(id.expect_local());
