@@ -202,6 +202,14 @@ public:
             return changed;
         }
 
+        if (op == BinaryOperator::And && ( ( (typeEnum == IntType::Anything || typeEnum == IntType::Integer) && dt.isFloat()) ||
+            (isFloat() && (dt.typeEnum == IntType::Anything || dt.typeEnum == IntType::Integer)) ) ) {
+            typeEnum = IntType::Unknown;
+            type = nullptr;
+            changed = true;
+            return changed;
+        }
+
         if ((typeEnum == IntType::Unknown && dt.typeEnum == IntType::Anything) ||
             (typeEnum == IntType::Anything && dt.typeEnum == IntType::Unknown)) {
             if (typeEnum != IntType::Unknown) {
