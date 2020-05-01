@@ -101,8 +101,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             return;
         }
 
+        let span = cx.tcx.hir().span(s.hir_id);
         let ty = cx.typeck_results().expr_ty(&expr);
-        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1);
+        let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, span, "", "", 1);
 
         let mut fn_warned = false;
         let mut op_warned = false;
@@ -124,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             _ => None,
         };
         if let Some(def_id) = maybe_def_id {
-            fn_warned = check_must_use_def(cx, def_id, s.span, "return value of ", "");
+            fn_warned = check_must_use_def(cx, def_id, span, "return value of ", "");
         } else if type_permits_lack_of_use {
             // We don't warn about unused unit or uninhabited types.
             // (See https://github.com/rust-lang/rust/issues/43806 for details.)
@@ -166,7 +167,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         }
 
         if !(type_permits_lack_of_use || fn_warned || op_warned) {
-            cx.struct_span_lint(UNUSED_RESULTS, s.span, |lint| lint.build("unused result").emit());
+            cx.struct_span_lint(UNUSED_RESULTS, span, |lint| lint.build("unused result").emit());
         }
 
         // Returns whether an error has been emitted (and thus another does not need to be later).
@@ -349,19 +350,20 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
-                cx.struct_span_lint(PATH_STATEMENTS, s.span, |lint| {
+                let span = cx.tcx.hir().span(s.hir_id);
+                cx.struct_span_lint(PATH_STATEMENTS, span, |lint| {
                     let ty = cx.typeck_results().expr_ty(expr);
                     if ty.needs_drop(cx.tcx, cx.param_env) {
                         let mut lint = lint.build("path statement drops value");
                         if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span) {
                             lint.span_suggestion(
-                                s.span,
+                                span,
                                 "use `drop` to clarify the intent",
                                 format!("drop({});", snippet),
                                 Applicability::MachineApplicable,
                             );
                         } else {
-                            lint.span_help(s.span, "use `drop` to clarify the intent");
+                            lint.span_help(span, "use `drop` to clarify the intent");
                         }
                         lint.emit()
                     } else {

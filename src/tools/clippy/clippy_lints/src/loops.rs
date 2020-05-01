@@ -1932,14 +1932,14 @@ fn check_for_single_element_loop<'tcx>(
             block_str.remove(0);
             block_str.pop();
 
-
+            let first_span = cx.tcx.hir().span(block.stmts[0].hir_id);
             span_lint_and_sugg(
                 cx,
                 SINGLE_ELEMENT_LOOP,
                 for_span,
                 "for loop over a single element",
                 "try",
-                format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0)), target.name, list_item_name, block_str),
+                format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, first_span).unwrap_or(0)), target.name, list_item_name, block_str),
                 Applicability::MachineApplicable
             )
         }
@@ -2949,17 +2949,18 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
 
                     // Suggest replacing iter_call with iter_replacement, and removing stmt
                     let iter_call = &iter_calls[0];
+                    let stmt_span = cx.tcx.hir().span(stmt.hir_id);
                     span_lint_and_then(
                         cx,
                         NEEDLESS_COLLECT,
-                        stmt.span.until(iter_call.span),
+                        stmt_span.until(iter_call.span),
                         NEEDLESS_COLLECT_MSG,
                         |diag| {
                             let iter_replacement = format!("{}{}", Sugg::hir(cx, iter_source, ".."), iter_call.get_iter_method(cx));
                             diag.multipart_suggestion(
                                 iter_call.get_suggestion_text(),
                                 vec![
-                                    (stmt.span, String::new()),
+                                    (stmt_span, String::new()),
                                     (iter_call.span, iter_replacement)
                                 ],
                                 Applicability::MachineApplicable,// MaybeIncorrect,

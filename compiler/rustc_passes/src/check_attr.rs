@@ -932,7 +932,8 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
         // When checking statements ignore expressions, they will be checked later.
         if let hir::StmtKind::Local(ref l) = stmt.kind {
-            self.check_attributes(l.hir_id, &l.attrs, &stmt.span, Target::Statement, None);
+            let stmt_span = self.tcx.hir().span(stmt.hir_id);
+            self.check_attributes(l.hir_id, &l.attrs, &stmt_span, Target::Statement, None);
         }
         intravisit::walk_stmt(self, stmt)
     }

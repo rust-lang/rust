@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Semi(ref expr) = stmt.kind {
             if has_no_effect(cx, expr) {
-                span_lint(cx, NO_EFFECT, stmt.span, "statement with no effect");
+                span_lint(cx, NO_EFFECT, cx.tcx.hir().span(stmt.hir_id), "statement with no effect");
             } else if let Some(reduced) = reduce_expression(cx, expr) {
                 let mut snippet = String::new();
                 for e in reduced {
@@ -109,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
                 span_lint_and_sugg(
                     cx,
                     UNNECESSARY_OPERATION,
-                    stmt.span,
+                    cx.tcx.hir().span(stmt.hir_id),
                     "statement can be reduced",
                     "replace it with",
                     snippet,

@@ -1110,7 +1110,6 @@ impl UnOp {
 pub struct Stmt<'hir> {
     pub hir_id: HirId,
     pub kind: StmtKind<'hir>,
-    pub span: Span,
 }
 
 /// The contents of a statement.

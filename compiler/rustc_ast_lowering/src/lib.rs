@@ -2424,7 +2424,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     hir::Stmt {
                         hir_id: self.lower_node_id(s.id, s.span),
                         kind: hir::StmtKind::Local(self.arena.alloc(l)),
-                        span: s.span,
                     }
                 });
                 return ids;
@@ -2441,7 +2440,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .map(|id| self.lower_node_id(id, s.span))
                             .unwrap_or_else(|| self.next_id(s.span));
 
-                        hir::Stmt { hir_id, kind: hir::StmtKind::Item(item_id), span: s.span }
+                        hir::Stmt { hir_id, kind: hir::StmtKind::Item(item_id) }
                     })
                     .collect();
             }
@@ -2450,7 +2449,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             StmtKind::Empty => return smallvec![],
             StmtKind::MacCall(..) => panic!("shouldn't exist here"),
         };
-        smallvec![hir::Stmt { hir_id: self.lower_node_id(s.id, s.span), kind, span: s.span }]
+        smallvec![hir::Stmt { hir_id: self.lower_node_id(s.id, s.span), kind }]
     }
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
@@ -2485,7 +2484,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // Helper methods for building HIR.
 
     fn stmt(&mut self, span: Span, kind: hir::StmtKind<'hir>) -> hir::Stmt<'hir> {
-        hir::Stmt { span, kind, hir_id: self.next_id(span) }
+        hir::Stmt { kind, hir_id: self.next_id(span) }
     }
 
     fn stmt_expr(&mut self, span: Span, expr: hir::Expr<'hir>) -> hir::Stmt<'hir> {

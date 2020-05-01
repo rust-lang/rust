@@ -888,7 +888,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // no return, suggest removal of semicolon on last statement.
                     // Once that is added, close #54771.
                     if let Some(ref stmt) = blk.stmts.last() {
-                        let sp = self.tcx.sess.source_map().end_point(stmt.span);
+                        let span = self.tcx.hir().span(stmt.hir_id);
+                        let sp = self.tcx.sess.source_map().end_point(span);
                         err.span_label(sp, "consider removing this semicolon");
                     }
                 }

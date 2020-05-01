@@ -133,7 +133,7 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                     (true, String::new(), String::new())
                 };
 
-                let span = w[0].span.to(second.span);
+                let span = cx.tcx.hir().span(w[0].hir_id).to(second.span);
 
                 span_lint_and_then(
                     cx,
