@@ -143,7 +143,9 @@ chapter](./name-resolution.md).
 [mresolve]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/macros/index.html
 
 Here are some other notable data structures involved in expansion and integration:
-- [`Resolver`] - a trait used to break crate dependencies. This allows the resolver services to be used in [`rustc_ast`], despite [`rustc_resolve`] and pretty much everything else depending on [`rustc_ast`].
+- [`Resolver`] - a trait used to break crate dependencies. This allows the
+  resolver services to be used in [`rustc_ast`], despite [`rustc_resolve`] and
+  pretty much everything else depending on [`rustc_ast`].
 - [`ExtCtxt`]/[`ExpansionData`] - various intermediate data kept and used by expansion
   infrastructure in the process of its work
 - [`Annotatable`] - a piece of AST that can be an attribute target, almost same
