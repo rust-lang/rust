@@ -10,5 +10,5 @@ fn main() {
     let mut x = Bool::True;
     evil(&mut x);
     let _y = x; // reading this ought to be enough to trigger validation
-    //~^ ERROR encountered 44, but expected a valid enum discriminant
+    //~^ ERROR encountered 0x0000002c, but expected a valid enum discriminant
 }
