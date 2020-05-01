@@ -703,7 +703,7 @@ fn create_single_code_action(assist: Assist, world: &WorldSnapshot) -> Result<Co
 
     Ok(CodeAction {
         title,
-        kind: Some("refactor".to_owned()),
+        kind: Some(String::new()),
         diagnostics: None,
         edit: None,
         command: Some(command),
@@ -808,6 +808,7 @@ pub fn handle_code_action(
     // If the client only supports commands then filter the list
     // and remove and actions that depend on edits.
     if !world.config.client_caps.code_action_literals {
+        // FIXME: use drain_filter once it hits stable.
         res = res
             .into_iter()
             .filter_map(|it| match it {
