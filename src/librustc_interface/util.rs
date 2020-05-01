@@ -16,11 +16,12 @@ use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_middle::ty;
 use rustc_resolve::{self, Resolver};
 use rustc_session as session;
+use rustc_session::config::{self, CrateType};
 use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::CrateConfig;
 use rustc_session::CrateDisambiguator;
-use rustc_session::{config, early_error, filesearch, output, DiagnosticOutput, Session};
+use rustc_session::{early_error, filesearch, output, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, SourceMap};
 use rustc_span::symbol::{sym, Symbol};
@@ -409,7 +410,7 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
 
     // Also incorporate crate type, so that we don't get symbol conflicts when
     // linking against a library of the same name, if this is an executable.
-    let is_exe = session.crate_types.borrow().contains(&config::CrateType::Executable);
+    let is_exe = session.crate_types.borrow().contains(&CrateType::Executable);
     hasher.write(if is_exe { b"exe" } else { b"lib" });
 
     CrateDisambiguator::from(hasher.finish::<Fingerprint>())
@@ -457,23 +458,23 @@ pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut 
     }
 }
 
-const CRATE_TYPES: &[(Symbol, config::CrateType)] = &[
-    (sym::rlib, config::CrateType::Rlib),
-    (sym::dylib, config::CrateType::Dylib),
-    (sym::cdylib, config::CrateType::Cdylib),
+const CRATE_TYPES: &[(Symbol, CrateType)] = &[
+    (sym::rlib, CrateType::Rlib),
+    (sym::dylib, CrateType::Dylib),
+    (sym::cdylib, CrateType::Cdylib),
     (sym::lib, config::default_lib_output()),
-    (sym::staticlib, config::CrateType::Staticlib),
-    (sym::proc_dash_macro, config::CrateType::ProcMacro),
-    (sym::bin, config::CrateType::Executable),
+    (sym::staticlib, CrateType::Staticlib),
+    (sym::proc_dash_macro, CrateType::ProcMacro),
+    (sym::bin, CrateType::Executable),
 ];
 
-fn categorize_crate_type(s: Symbol) -> Option<config::CrateType> {
+fn categorize_crate_type(s: Symbol) -> Option<CrateType> {
     Some(CRATE_TYPES.iter().find(|(key, _)| *key == s)?.1)
 }
 
-pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<config::CrateType> {
+pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<CrateType> {
     // Unconditionally collect crate types from attributes to make them used
-    let attr_types: Vec<config::CrateType> = attrs
+    let attr_types: Vec<CrateType> = attrs
         .iter()
         .filter_map(|a| {
             if a.check_name(sym::crate_type) {
@@ -490,7 +491,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
-        return vec![config::CrateType::Executable];
+        return vec![CrateType::Executable];
     }
 
     // Only check command line flags if present. If no types are specified by

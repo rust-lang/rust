@@ -9,12 +9,15 @@ use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::{self, config, lint, DiagnosticOutput, Session};
+use rustc_session::config::{self, CrateType};
+use rustc_session::{lint, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::TargetTriple;
+use tempfile::Builder as TempFileBuilder;
+
 use std::collections::HashMap;
 use std::env;
 use std::io::{self, Write};
@@ -22,7 +25,6 @@ use std::panic;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
-use tempfile::Builder as TempFileBuilder;
 
 use crate::clean::Attributes;
 use crate::config::Options;
@@ -82,11 +84,8 @@ pub fn run(options: Options) -> i32 {
         })
         .collect();
 
-    let crate_types = if options.proc_macro_crate {
-        vec![config::CrateType::ProcMacro]
-    } else {
-        vec![config::CrateType::Rlib]
-    };
+    let crate_types =
+        if options.proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
 
     let sessopts = config::Options {
         maybe_sysroot: options.maybe_sysroot.clone(),
