@@ -89,27 +89,35 @@ pub struct Pointer<Tag = ()> {
 
 static_assert_size!(Pointer, 16);
 
+/// Print the address of a pointer (without the tag)
+fn print_ptr_addr<Tag>(ptr: &Pointer<Tag>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    // Forward `alternate` flag to `alloc_id` printing.
+    if f.alternate() {
+        write!(f, "{:#?}", ptr.alloc_id)?;
+    } else {
+        write!(f, "{:?}", ptr.alloc_id)?;
+    }
+    // Print offset only if it is non-zero.
+    if ptr.offset.bytes() > 0 {
+        write!(f, "+0x{:x}", ptr.offset.bytes())?;
+    }
+    Ok(())
+}
+
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
 // We have to use `Debug` output for the tag, because `()` does not implement
 // `Display` so we cannot specialize that.
 impl<Tag: fmt::Debug> fmt::Debug for Pointer<Tag> {
     default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            write!(f, "{:#?}+0x{:x}[{:?}]", self.alloc_id, self.offset.bytes(), self.tag)
-        } else {
-            write!(f, "{:?}+0x{:x}[{:?}]", self.alloc_id, self.offset.bytes(), self.tag)
-        }
+        print_ptr_addr(self, f)?;
+        write!(f, "[{:?}]", self.tag)
     }
 }
 // Specialization for no tag
 impl fmt::Debug for Pointer<()> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            write!(f, "{:#?}+0x{:x}", self.alloc_id, self.offset.bytes())
-        } else {
-            write!(f, "{:?}+0x{:x}", self.alloc_id, self.offset.bytes())
-        }
+        print_ptr_addr(self, f)
     }
 }
 
