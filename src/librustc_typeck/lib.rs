@@ -100,7 +100,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
 use rustc_session::config::EntryFnType;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SPID};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -398,7 +398,7 @@ pub fn hir_trait_to_predicates<'tcx>(
     let _ = AstConv::instantiate_poly_trait_ref_inner(
         &item_cx,
         hir_trait,
-        DUMMY_SP,
+        DUMMY_SPID,
         hir::Constness::NotConst,
         self_ty,
         &mut bounds,

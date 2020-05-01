@@ -942,7 +942,7 @@ pub struct GlobalCtxt<'tcx> {
     pub queries: query::Queries<'tcx>,
 
     maybe_unused_trait_imports: FxHashSet<LocalDefId>,
-    maybe_unused_extern_crates: Vec<(DefId, Span)>,
+    maybe_unused_extern_crates: Vec<(DefId, SpanId)>,
     /// A map of glob use to a set of names it actually imports. Currently only
     /// used in save-analysis.
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
@@ -1158,7 +1158,7 @@ impl<'tcx> TyCtxt<'tcx> {
             maybe_unused_extern_crates: resolutions
                 .maybe_unused_extern_crates
                 .into_iter()
-                .map(|(id, sp)| (definitions.local_def_id(id).to_def_id(), sp))
+                .map(|(id, sp)| (definitions.local_def_id(id).to_def_id(), sp.into()))
                 .collect(),
             glob_map: resolutions
                 .glob_map

@@ -245,7 +245,7 @@ rustc_queries! {
 
         /// Returns the inferred outlives predicates (e.g., for `struct
         /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
-        query inferred_outlives_of(_: DefId) -> &'tcx [(ty::Predicate<'tcx>, Span)] {}
+        query inferred_outlives_of(_: DefId) -> &'tcx [(ty::Predicate<'tcx>, SpanId)] {}
 
         /// Maps from the `DefId` of a trait to the list of
         /// super-predicates. This is a subset of the full list of
@@ -1048,7 +1048,7 @@ rustc_queries! {
             desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
         }
         query maybe_unused_extern_crates(_: CrateNum)
-            -> &'tcx [(DefId, Span)] {
+            -> &'tcx [(DefId, SpanId)] {
             eval_always
             desc { "looking up all possibly unused extern crates" }
         }

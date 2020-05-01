@@ -5,7 +5,7 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 use super::explicit::ExplicitPredicatesMap;
 use super::utils::*;
@@ -77,7 +77,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
                     // (struct/enum/union) there will be outlive
                     // requirements for adt_def.
                     let field_ty = self.tcx.type_of(field_def.did);
-                    let field_span = self.tcx.real_def_span(field_def.did);
+                    let field_span = self.tcx.def_span(field_def.did);
                     insert_required_predicates_to_be_wf(
                         self.tcx,
                         field_ty,
@@ -114,7 +114,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
 fn insert_required_predicates_to_be_wf<'tcx>(
     tcx: TyCtxt<'tcx>,
     field_ty: Ty<'tcx>,
-    field_span: Span,
+    field_span: SpanId,
     global_inferred_outlives: &FxHashMap<DefId, RequiredPredicates<'tcx>>,
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,

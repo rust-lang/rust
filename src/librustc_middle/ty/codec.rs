@@ -14,7 +14,7 @@ use crate::ty::{self, List, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
-use rustc_span::Span;
+use rustc_span::SpanId;
 use std::hash::Hash;
 use std::intrinsics;
 
@@ -93,7 +93,7 @@ where
 
 pub fn encode_spanned_predicates<'tcx, E, C>(
     encoder: &mut E,
-    predicates: &'tcx [(ty::Predicate<'tcx>, Span)],
+    predicates: &'tcx [(ty::Predicate<'tcx>, SpanId)],
     cache: C,
 ) -> Result<(), E::Error>
 where
@@ -187,7 +187,7 @@ where
 #[inline]
 pub fn decode_spanned_predicates<D>(
     decoder: &mut D,
-) -> Result<&'tcx [(ty::Predicate<'tcx>, Span)], D::Error>
+) -> Result<&'tcx [(ty::Predicate<'tcx>, SpanId)], D::Error>
 where
     D: TyDecoder<'tcx>,
 {
@@ -356,7 +356,7 @@ macro_rules! implement_ty_decoder {
             use $crate::ty::subst::SubstsRef;
             use rustc_hir::def_id::{CrateNum};
 
-            use rustc_span::Span;
+            use rustc_span::SpanId;
 
             use super::$DecoderName;
 
@@ -413,10 +413,10 @@ macro_rules! implement_ty_decoder {
                 }
             }
 
-            impl<$($typaram),*> SpecializedDecoder<&'tcx [(ty::Predicate<'tcx>, Span)]>
+            impl<$($typaram),*> SpecializedDecoder<&'tcx [(ty::Predicate<'tcx>, SpanId)]>
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self)
-                                      -> Result<&'tcx [(ty::Predicate<'tcx>, Span)], Self::Error> {
+                                      -> Result<&'tcx [(ty::Predicate<'tcx>, SpanId)], Self::Error> {
                     decode_spanned_predicates(self)
                 }
             }

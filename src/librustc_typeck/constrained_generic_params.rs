@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::source_map::Span;
+use rustc_span::SpanId;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Parameter(pub u32);
@@ -146,7 +146,7 @@ pub fn identify_constrained_generic_params<'tcx>(
 /// think of any.
 pub fn setup_constraining_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: &mut [(ty::Predicate<'tcx>, Span)],
+    predicates: &mut [(ty::Predicate<'tcx>, SpanId)],
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     input_parameters: &mut FxHashSet<Parameter>,
 ) {

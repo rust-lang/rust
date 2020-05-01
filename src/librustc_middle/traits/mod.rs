@@ -16,7 +16,7 @@ use crate::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{Span, SpanId, DUMMY_SP, DUMMY_SPID};
 use smallvec::SmallVec;
 
 use std::borrow::Cow;
@@ -568,17 +568,17 @@ pub struct VtableTraitAliasData<'tcx, N> {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 pub enum ObjectSafetyViolation {
     /// `Self: Sized` declared on the trait.
-    SizedSelf(SmallVec<[Span; 1]>),
+    SizedSelf(SmallVec<[SpanId; 1]>),
 
     /// Supertrait reference references `Self` an in illegal location
     /// (e.g., `trait Foo : Bar<Self>`).
-    SupertraitSelf(SmallVec<[Span; 1]>),
+    SupertraitSelf(SmallVec<[SpanId; 1]>),
 
     /// Method has something illegal.
-    Method(Symbol, MethodViolationCode, Span),
+    Method(Symbol, MethodViolationCode, SpanId),
 
     /// Associated const.
-    AssocConst(Symbol, Span),
+    AssocConst(Symbol, SpanId),
 }
 
 impl ObjectSafetyViolation {
@@ -586,7 +586,7 @@ impl ObjectSafetyViolation {
         match *self {
             ObjectSafetyViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
             ObjectSafetyViolation::SupertraitSelf(ref spans) => {
-                if spans.iter().any(|sp| *sp != DUMMY_SP) {
+                if spans.iter().any(|sp| *sp != DUMMY_SPID) {
                     "it uses `Self` as a type parameter in this".into()
                 } else {
                     "it cannot use `Self` as a type parameter in a supertrait or `where`-clause"
@@ -599,7 +599,7 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::ReferencesSelfInput(_),
-                DUMMY_SP,
+                DUMMY_SPID,
             ) => format!("method `{}` references the `Self` type in its parameters", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelfInput(_), _) => {
                 format!("method `{}` references the `Self` type in this parameter", name).into()
@@ -620,14 +620,14 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) => {
                 format!("method `{}`'s `self` parameter cannot be dispatched on", name).into()
             }
-            ObjectSafetyViolation::AssocConst(name, DUMMY_SP) => {
+            ObjectSafetyViolation::AssocConst(name, DUMMY_SPID) => {
                 format!("it contains associated `const` `{}`", name).into()
             }
             ObjectSafetyViolation::AssocConst(..) => "it contains this associated `const`".into(),
         }
     }
 
-    pub fn solution(&self) -> Option<(String, Option<(String, Span)>)> {
+    pub fn solution(&self) -> Option<(String, Option<(String, SpanId)>)> {
         Some(match *self {
             ObjectSafetyViolation::SizedSelf(_) | ObjectSafetyViolation::SupertraitSelf(_) => {
                 return None;
@@ -655,15 +655,15 @@ impl ObjectSafetyViolation {
         })
     }
 
-    pub fn spans(&self) -> SmallVec<[Span; 1]> {
-        // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
+    pub fn spans(&self) -> SmallVec<[SpanId; 1]> {
+        // When `span` comes from a separate crate, it'll be `DUMMY_SPID`. Treat it as `None` so
         // diagnostics use a `note` instead of a `span_label`.
         match self {
             ObjectSafetyViolation::SupertraitSelf(spans)
             | ObjectSafetyViolation::SizedSelf(spans) => spans.clone(),
             ObjectSafetyViolation::AssocConst(_, span)
             | ObjectSafetyViolation::Method(_, _, span)
-                if *span != DUMMY_SP =>
+                if *span != DUMMY_SPID =>
             {
                 smallvec![*span]
             }
@@ -676,7 +676,7 @@ impl ObjectSafetyViolation {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 pub enum MethodViolationCode {
     /// e.g., `fn foo()`
-    StaticMethod(Option<(&'static str, Span)>),
+    StaticMethod(Option<(&'static str, SpanId)>),
 
     /// e.g., `fn foo(&self, x: Self)`
     ReferencesSelfInput(usize),

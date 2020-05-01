@@ -34,7 +34,7 @@ use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder};
 use rustc_session::Session;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
+use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, SpanId, DUMMY_SP};
 
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
@@ -837,7 +837,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self,
         item_id: DefIndex,
         tcx: TyCtxt<'tcx>,
-    ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
+    ) -> &'tcx [(ty::Predicate<'tcx>, SpanId)] {
         self.root
             .tables
             .inferred_outlives

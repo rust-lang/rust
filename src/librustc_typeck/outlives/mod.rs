@@ -5,7 +5,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, CratePredicatesMap, TyCtxt};
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 mod explicit;
 mod implicit_infer;
@@ -17,7 +17,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers { inferred_outlives_of, inferred_outlives_crate, ..*providers };
 }
 
-fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate<'_>, Span)] {
+fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate<'_>, SpanId)] {
     let id = tcx.hir().as_local_hir_id(item_def_id.expect_local());
 
     match tcx.hir().get(id) {
@@ -87,13 +87,13 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CratePredica
                         ty::Predicate::TypeOutlives(ty::Binder::bind(ty::OutlivesPredicate(
                             ty1, region2,
                         ))),
-                        span,
+                        span.into(),
                     )),
                     GenericArgKind::Lifetime(region1) => Some((
                         ty::Predicate::RegionOutlives(ty::Binder::bind(ty::OutlivesPredicate(
                             region1, region2,
                         ))),
-                        span,
+                        span.into(),
                     )),
                     GenericArgKind::Const(_) => {
                         // Generic consts don't impose any constraints.

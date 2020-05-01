@@ -20,7 +20,7 @@ use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst}
 use rustc_middle::ty::{self, Predicate, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::SpanId;
 use smallvec::SmallVec;
 
 use std::iter;
@@ -163,7 +163,7 @@ fn object_safety_violations_for_trait(
         tcx.associated_items(trait_def_id)
             .in_definition_order()
             .filter(|item| item.kind == ty::AssocKind::Const)
-            .map(|item| ObjectSafetyViolation::AssocConst(item.ident.name, item.ident.span)),
+            .map(|item| ObjectSafetyViolation::AssocConst(item.ident.name, item.ident.span.into())),
     );
 
     debug!(
@@ -177,7 +177,7 @@ fn object_safety_violations_for_trait(
 fn sized_trait_bound_spans<'tcx>(
     tcx: TyCtxt<'tcx>,
     bounds: hir::GenericBounds<'tcx>,
-) -> impl 'tcx + Iterator<Item = Span> {
+) -> impl 'tcx + Iterator<Item = SpanId> {
     bounds.iter().filter_map(move |b| match b {
         hir::GenericBound::Trait(trait_ref, hir::TraitBoundModifier::None)
             if trait_has_sized_self(
@@ -186,13 +186,13 @@ fn sized_trait_bound_spans<'tcx>(
             ) =>
         {
             // Fetch spans for supertraits that are `Sized`: `trait T: Super`
-            Some(trait_ref.span)
+            Some(trait_ref.span.into())
         }
         _ => None,
     })
 }
 
-fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]> {
+fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[SpanId; 1]> {
     tcx.hir()
         .get_if_local(trait_def_id)
         .and_then(|node| match node {
@@ -219,7 +219,7 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
                     .flatten()
                     // Fetch spans for supertraits that are `Sized`: `trait T: Super`.
                     .chain(sized_trait_bound_spans(tcx, bounds))
-                    .collect::<SmallVec<[Span; 1]>>(),
+                    .collect::<SmallVec<[SpanId; 1]>>(),
             ),
             _ => None,
         })
@@ -230,7 +230,7 @@ fn predicates_reference_self(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
     supertraits_only: bool,
-) -> SmallVec<[Span; 1]> {
+) -> SmallVec<[SpanId; 1]> {
     let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, trait_def_id));
     let predicates = if supertraits_only {
         tcx.super_predicates_of(trait_def_id)
@@ -322,7 +322,7 @@ fn object_safety_violation_for_method(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
     method: &ty::AssocItem,
-) -> Option<(MethodViolationCode, Span)> {
+) -> Option<(MethodViolationCode, SpanId)> {
     debug!("object_safety_violation_for_method({:?}, {:?})", trait_def_id, method);
     // Any method that has a `Self : Sized` requisite is otherwise
     // exempt from the regulations.
@@ -348,7 +348,7 @@ fn object_safety_violation_for_method(
             }
             _ => method.ident.span,
         };
-        (v, span)
+        (v, span.into())
     })
 }
 
@@ -367,8 +367,8 @@ fn virtual_call_violation_for_method<'tcx>(
         let sugg =
             tcx.hir().get_if_local(method.def_id).as_ref().and_then(|node| node.generics()).map(
                 |generics| match generics.where_clause.predicates {
-                    [] => (" where Self: Sized", generics.where_clause.span),
-                    [.., pred] => (", Self: Sized", pred.span().shrink_to_hi()),
+                    [] => (" where Self: Sized", generics.where_clause.span.into()),
+                    [.., pred] => (", Self: Sized", pred.span().shrink_to_hi().into()),
                 },
             );
         return Some(MethodViolationCode::StaticMethod(sugg));

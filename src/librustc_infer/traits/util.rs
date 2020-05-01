@@ -4,7 +4,7 @@ use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, TyCtxt, WithConstness};
-use rustc_span::Span;
+use rustc_span::SpanId;
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -112,7 +112,8 @@ pub fn elaborate_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
 ) -> Elaborator<'tcx> {
-    let obligations = predicates.map(|predicate| predicate_obligation(predicate, None)).collect();
+    let obligations =
+        predicates.map(|predicate| predicate_obligation(tcx, predicate, None)).collect();
     elaborate_obligations(tcx, obligations)
 }
 
@@ -126,12 +127,13 @@ pub fn elaborate_obligations<'tcx>(
 }
 
 fn predicate_obligation<'tcx>(
+    tcx: TyCtxt<'tcx>,
     predicate: ty::Predicate<'tcx>,
-    span: Option<Span>,
+    span: Option<SpanId>,
 ) -> PredicateObligation<'tcx> {
     let mut cause = ObligationCause::dummy();
     if let Some(span) = span {
-        cause.span = span;
+        cause.span = tcx.reify_span(span);
     }
     Obligation { cause, param_env: ty::ParamEnv::empty(), recursion_depth: 0, predicate }
 }
@@ -150,6 +152,7 @@ impl Elaborator<'tcx> {
 
                 let obligations = predicates.predicates.iter().map(|(pred, span)| {
                     predicate_obligation(
+                        tcx,
                         pred.subst_supertrait(tcx, &data.to_poly_trait_ref()),
                         Some(*span),
                     )
@@ -245,7 +248,7 @@ impl Elaborator<'tcx> {
                             }
                         })
                         .filter(|p| visited.insert(p))
-                        .map(|p| predicate_obligation(p, None)),
+                        .map(|p| predicate_obligation(tcx, p, None)),
                 );
             }
         }

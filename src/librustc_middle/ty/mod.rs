@@ -39,7 +39,7 @@ use rustc_serialize::{self, Encodable, Encoder};
 use rustc_session::DataTypeKind;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, SpanId};
 use rustc_target::abi::{Align, VariantIdx};
 
 use std::cell::RefCell;
@@ -1082,7 +1082,7 @@ impl<'tcx> Generics {
 #[derive(Copy, Clone, Default, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
-    pub predicates: &'tcx [(Predicate<'tcx>, Span)],
+    pub predicates: &'tcx [(Predicate<'tcx>, SpanId)],
 }
 
 impl<'tcx> GenericPredicates<'tcx> {
@@ -1206,7 +1206,7 @@ pub struct CratePredicatesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
     /// predicate of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
-    pub predicates: FxHashMap<DefId, &'tcx [(ty::Predicate<'tcx>, Span)]>,
+    pub predicates: FxHashMap<DefId, &'tcx [(ty::Predicate<'tcx>, SpanId)]>,
 }
 
 impl<'tcx> AsRef<Predicate<'tcx>> for Predicate<'tcx> {
@@ -1529,7 +1529,7 @@ impl<'tcx> Predicate<'tcx> {
 #[derive(Clone, Debug, TypeFoldable)]
 pub struct InstantiatedPredicates<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
-    pub spans: Vec<Span>,
+    pub spans: Vec<SpanId>,
 }
 
 impl<'tcx> InstantiatedPredicates<'tcx> {

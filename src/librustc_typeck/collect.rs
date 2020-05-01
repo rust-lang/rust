@@ -43,7 +43,7 @@ use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{Span, SpanId, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 
@@ -527,8 +527,10 @@ fn type_param_predicates(
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
                         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
-                        extend =
-                            Some((identity_trait_ref.without_const().to_predicate(), item.span));
+                        extend = Some((
+                            identity_trait_ref.without_const().to_predicate(),
+                            item.span.into(),
+                        ));
                     }
                     generics
                 }
@@ -551,7 +553,8 @@ fn type_param_predicates(
             .filter(|(predicate, _)| match predicate {
                 ty::Predicate::Trait(ref data, _) => data.skip_binder().self_ty().is_param(index),
                 _ => false,
-            }),
+            })
+            .map(|(p, s)| (p, s.into())),
     );
     result.predicates =
         tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(extra_predicates));
@@ -569,7 +572,7 @@ impl ItemCtxt<'tcx> {
         param_id: hir::HirId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
-    ) -> Vec<(ty::Predicate<'tcx>, Span)> {
+    ) -> Vec<(ty::Predicate<'tcx>, SpanId)> {
         let constness = self.default_constness_for_trait_bounds();
         let from_ty_params = ast_generics
             .params
@@ -1655,7 +1658,7 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
         result.predicates =
             tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
                 ty::TraitRef::identity(tcx, def_id).without_const().to_predicate(),
-                span,
+                span.into(),
             ))));
     }
     debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
@@ -1674,8 +1677,8 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     /// compile-fail UI tests.
     // FIXME(eddyb) just use `IndexSet` from `indexmap`.
     struct UniquePredicates<'tcx> {
-        predicates: Vec<(ty::Predicate<'tcx>, Span)>,
-        uniques: FxHashSet<(ty::Predicate<'tcx>, Span)>,
+        predicates: Vec<(ty::Predicate<'tcx>, SpanId)>,
+        uniques: FxHashSet<(ty::Predicate<'tcx>, SpanId)>,
     }
 
     impl<'tcx> UniquePredicates<'tcx> {
@@ -1683,13 +1686,13 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
             UniquePredicates { predicates: vec![], uniques: FxHashSet::default() }
         }
 
-        fn push(&mut self, value: (ty::Predicate<'tcx>, Span)) {
+        fn push(&mut self, value: (ty::Predicate<'tcx>, SpanId)) {
             if self.uniques.insert(value) {
                 self.predicates.push(value);
             }
         }
 
-        fn extend<I: IntoIterator<Item = (ty::Predicate<'tcx>, Span)>>(&mut self, iter: I) {
+        fn extend<I: IntoIterator<Item = (ty::Predicate<'tcx>, SpanId)>>(&mut self, iter: I) {
             for value in iter {
                 self.push(value);
             }
@@ -1830,7 +1833,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     if let Some(trait_ref) = is_default_impl_trait {
         predicates.push((
             trait_ref.to_poly_trait_ref().without_const().to_predicate(),
-            tcx.real_def_span(def_id),
+            tcx.def_span(def_id),
         ));
     }
 
@@ -1852,7 +1855,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                     hir::GenericBound::Outlives(lt) => {
                         let bound = AstConv::ast_region_to_region(&icx, &lt, None);
                         let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound));
-                        predicates.push((outlives.to_predicate(), lt.span));
+                        predicates.push((outlives.to_predicate(), lt.span.into()));
                     }
                     _ => bug!(),
                 });
@@ -1894,7 +1897,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                         // users who never wrote `where Type:,` themselves, to
                         // compiler/tooling bugs from not handling WF predicates.
                     } else {
-                        let span = bound_pred.bounded_ty.span;
+                        let span = bound_pred.bounded_ty.span.into();
                         let re_root_empty = tcx.lifetimes.re_root_empty;
                         let predicate = ty::OutlivesPredicate(ty, re_root_empty);
                         predicates.push((
@@ -1927,7 +1930,8 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                         &hir::GenericBound::Outlives(ref lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx, lifetime, None);
                             let pred = ty::Binder::bind(ty::OutlivesPredicate(ty, region));
-                            predicates.push((ty::Predicate::TypeOutlives(pred), lifetime.span))
+                            predicates
+                                .push((ty::Predicate::TypeOutlives(pred), lifetime.span.into()))
                         }
                     }
                 }
@@ -1944,7 +1948,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                     };
                     let pred = ty::Binder::bind(ty::OutlivesPredicate(r1, r2));
 
-                    (ty::Predicate::RegionOutlives(pred), span)
+                    (ty::Predicate::RegionOutlives(pred), span.into())
                 }))
             }
 
@@ -1992,7 +1996,7 @@ fn associated_item_predicates(
     def_id: DefId,
     self_trait_ref: ty::TraitRef<'tcx>,
     trait_item_ref: &hir::TraitItemRef,
-) -> Vec<(ty::Predicate<'tcx>, Span)> {
+) -> Vec<(ty::Predicate<'tcx>, SpanId)> {
     let trait_item = tcx.hir().trait_item(trait_item_ref.id);
     let item_def_id = tcx.hir().local_def_id(trait_item_ref.id.hir_id);
     let bounds = match trait_item.kind {
@@ -2099,7 +2103,7 @@ fn predicates_from_bound<'tcx>(
     param_ty: Ty<'tcx>,
     bound: &'tcx hir::GenericBound<'tcx>,
     constness: hir::Constness,
-) -> Vec<(ty::Predicate<'tcx>, Span)> {
+) -> Vec<(ty::Predicate<'tcx>, SpanId)> {
     match *bound {
         hir::GenericBound::Trait(ref tr, modifier) => {
             let constness = match modifier {
@@ -2115,7 +2119,7 @@ fn predicates_from_bound<'tcx>(
         hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::Binder::bind(ty::OutlivesPredicate(param_ty, region));
-            vec![(ty::Predicate::TypeOutlives(pred), lifetime.span)]
+            vec![(ty::Predicate::TypeOutlives(pred), lifetime.span.into())]
         }
     }
 }

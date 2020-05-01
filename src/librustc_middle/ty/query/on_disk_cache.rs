@@ -21,7 +21,7 @@ use rustc_span::hygiene::{ExpnId, SyntaxContext};
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::symbol::Ident;
 use rustc_span::CachingSourceMapView;
-use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
+use rustc_span::{BytePos, SourceFile, Span, SpanId, DUMMY_SP};
 use std::mem;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
@@ -838,7 +838,7 @@ where
     }
 }
 
-impl<'a, 'tcx, E> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, Span)]>
+impl<'a, 'tcx, E> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, SpanId)]>
     for CacheEncoder<'a, 'tcx, E>
 where
     E: 'a + TyEncoder,
@@ -846,7 +846,7 @@ where
     #[inline]
     fn specialized_encode(
         &mut self,
-        predicates: &&'tcx [(ty::Predicate<'tcx>, Span)],
+        predicates: &&'tcx [(ty::Predicate<'tcx>, SpanId)],
     ) -> Result<(), Self::Error> {
         ty_codec::encode_spanned_predicates(self, predicates, |encoder| {
             &mut encoder.predicate_shorthands

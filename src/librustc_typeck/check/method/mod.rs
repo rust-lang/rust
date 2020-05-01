@@ -207,6 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.confirm_method(span, self_expr, call_expr, self_ty, pick.clone(), segment);
 
         if let Some(span) = result.illegal_sized_bound {
+            let span = self.tcx.reify_span(span);
             let mut needs_mut = false;
             if let ty::Ref(region, t_type, mutability) = self_ty.kind {
                 let trait_type = self

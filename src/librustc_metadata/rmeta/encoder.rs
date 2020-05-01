@@ -253,10 +253,10 @@ impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, Span)]> for EncodeContext<'tcx> {
+impl<'tcx> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, SpanId)]> for EncodeContext<'tcx> {
     fn specialized_encode(
         &mut self,
-        predicates: &&'tcx [(ty::Predicate<'tcx>, Span)],
+        predicates: &&'tcx [(ty::Predicate<'tcx>, SpanId)],
     ) -> Result<(), Self::Error> {
         ty_codec::encode_spanned_predicates(self, predicates, |ecx| &mut ecx.predicate_shorthands)
     }

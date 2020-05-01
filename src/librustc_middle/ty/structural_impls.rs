@@ -290,6 +290,7 @@ CloneTypeFoldableAndLiftImpls! {
     crate::ty::UniverseIndex,
     crate::ty::Variance,
     ::rustc_span::Span,
+    ::rustc_span::SpanId,
 }
 
 ///////////////////////////////////////////////////////////////////////////

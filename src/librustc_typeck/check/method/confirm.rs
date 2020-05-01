@@ -11,7 +11,7 @@ use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutabili
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, Ty};
-use rustc_span::Span;
+use rustc_span::{Span, SpanId};
 use rustc_trait_selection::traits;
 
 use std::ops::Deref;
@@ -32,7 +32,7 @@ impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
 
 pub struct ConfirmResult<'tcx> {
     pub callee: MethodCallee<'tcx>,
-    pub illegal_sized_bound: Option<Span>,
+    pub illegal_sized_bound: Option<SpanId>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -565,7 +565,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn predicates_require_illegal_sized_bound(
         &self,
         predicates: &ty::InstantiatedPredicates<'tcx>,
-    ) -> Option<Span> {
+    ) -> Option<SpanId> {
         let sized_def_id = match self.tcx.lang_items().sized_trait() {
             Some(def_id) => def_id,
             None => return None,
@@ -581,7 +581,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         .find_map(
                             |(p, span)| if *p == obligation.predicate { Some(*span) } else { None },
                         )
-                        .unwrap_or(rustc_span::DUMMY_SP);
+                        .unwrap_or(rustc_span::DUMMY_SPID);
                     Some((trait_pred, span))
                 }
                 _ => None,

@@ -27,7 +27,7 @@ use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETI
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{MultiSpan, Span, SpanId, DUMMY_SP};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::astconv_object_safety_violations;
@@ -1006,7 +1006,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub(super) fn instantiate_poly_trait_ref_inner(
         &self,
         trait_ref: &hir::TraitRef<'_>,
-        span: Span,
+        span: SpanId,
         constness: Constness,
         self_ty: Ty<'tcx>,
         bounds: &mut Bounds<'tcx>,
@@ -1079,7 +1079,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> Result<(), GenericArgCountMismatch> {
         self.instantiate_poly_trait_ref_inner(
             &poly_trait_ref.trait_ref,
-            poly_trait_ref.span,
+            poly_trait_ref.span.into(),
             constness,
             self_ty,
             bounds,
@@ -1280,7 +1280,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         bounds.region_bounds.extend(
-            region_bounds.into_iter().map(|r| (self.ast_region_to_region(r, None), r.span)),
+            region_bounds.into_iter().map(|r| (self.ast_region_to_region(r, None), r.span.into())),
         );
     }
 
@@ -1313,7 +1313,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         bounds.trait_bounds.sort_by_key(|(t, _, _)| t.def_id());
 
         bounds.implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
-            if !self.is_unsized(ast_bounds, span) { Some(span) } else { None }
+            if !self.is_unsized(ast_bounds, span) { Some(span.into()) } else { None }
         } else {
             None
         };
@@ -1476,7 +1476,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         ),
                         ty,
                     }),
-                    binding.span,
+                    binding.span.into(),
                 ));
             }
             ConvertedBindingKind::Constraint(ast_bounds) => {
@@ -1529,8 +1529,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
-        let expanded_traits =
-            traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().map(|&(a, b, _)| (a, b)));
+        let expanded_traits = traits::expand_trait_aliases(
+            tcx,
+            bounds.trait_bounds.iter().map(|&(a, b, _)| (a, b.into())),
+        );
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
@@ -1598,6 +1600,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 );
                 match obligation.predicate {
                     ty::Predicate::Trait(pred, _) => {
+                        let span = tcx.reify_span(span);
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
@@ -3007,22 +3010,22 @@ pub struct Bounds<'tcx> {
     /// A list of region bounds on the (implicit) self type. So if you
     /// had `T: 'a + 'b` this might would be a list `['a, 'b]` (but
     /// the `T` is not explicitly included).
-    pub region_bounds: Vec<(ty::Region<'tcx>, Span)>,
+    pub region_bounds: Vec<(ty::Region<'tcx>, SpanId)>,
 
     /// A list of trait bounds. So if you had `T: Debug` this would be
     /// `T: Debug`. Note that the self-type is explicit here.
-    pub trait_bounds: Vec<(ty::PolyTraitRef<'tcx>, Span, Constness)>,
+    pub trait_bounds: Vec<(ty::PolyTraitRef<'tcx>, SpanId, Constness)>,
 
     /// A list of projection equality bounds. So if you had `T:
     /// Iterator<Item = u32>` this would include `<T as
     /// Iterator>::Item => u32`. Note that the self-type is explicit
     /// here.
-    pub projection_bounds: Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>,
+    pub projection_bounds: Vec<(ty::PolyProjectionPredicate<'tcx>, SpanId)>,
 
     /// `Some` if there is *no* `?Sized` predicate. The `span`
     /// is the location in the source of the `T` declaration which can
     /// be cited as the source of the `T: Sized` requirement.
-    pub implicitly_sized: Option<Span>,
+    pub implicitly_sized: Option<SpanId>,
 }
 
 impl<'tcx> Bounds<'tcx> {
@@ -3034,7 +3037,7 @@ impl<'tcx> Bounds<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         param_ty: Ty<'tcx>,
-    ) -> Vec<(ty::Predicate<'tcx>, Span)> {
+    ) -> Vec<(ty::Predicate<'tcx>, SpanId)> {
         // If it could be sized, and is, add the `Sized` predicate.
         let sized_predicate = self.implicitly_sized.and_then(|span| {
             tcx.lang_items().sized_trait().map(|sized| {

@@ -5,7 +5,7 @@ use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, SpanId, Symbol};
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let mut used_trait_imports = DefIdSet::default();
@@ -70,7 +70,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     // Collect first the crates that are completely unused.  These we
     // can always suggest removing (no matter which edition we are
     // in).
-    let unused_extern_crates: FxHashMap<DefId, Span> = tcx
+    let unused_extern_crates: FxHashMap<DefId, SpanId> = tcx
         .maybe_unused_extern_crates(LOCAL_CRATE)
         .iter()
         .filter(|&&(def_id, _)| {
@@ -125,7 +125,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
                         .get_attrs(extern_crate.def_id)
                         .iter()
                         .map(|attr| attr.span)
-                        .fold(span, |acc, attr_span| acc.to(attr_span));
+                        .fold(tcx.reify_span(span), |acc, attr_span| acc.to(attr_span));
 
                     lint.build("unused extern crate")
                         .span_suggestion_short(

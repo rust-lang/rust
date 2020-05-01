@@ -1,14 +1,14 @@
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, Region, RegionKind, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::SpanId;
 use smallvec::smallvec;
 use std::collections::BTreeMap;
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.
 pub type RequiredPredicates<'tcx> =
-    BTreeMap<ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>, Span>;
+    BTreeMap<ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>, SpanId>;
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_predicates`
@@ -16,7 +16,7 @@ pub fn insert_outlives_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: GenericArg<'tcx>,
     outlived_region: Region<'tcx>,
-    span: Span,
+    span: SpanId,
     required_predicates: &mut RequiredPredicates<'tcx>,
 ) {
     // If the `'a` region is bound within the field type itself, we

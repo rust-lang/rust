@@ -546,6 +546,7 @@ fn check_associated_type_defaults(fcx: &FnCtxt<'_, '_>, trait_def_id: DefId) {
     let mut norm = DefaultNormalizer { tcx, map };
     let predicates = fcx.tcx.predicates_of(trait_def_id);
     for &(orig_pred, span) in predicates.predicates.iter() {
+        let span = tcx.reify_span(span);
         let pred = orig_pred.fold_with(&mut norm);
         if pred != orig_pred {
             // Mentions one of the defaulted assoc. types
@@ -798,6 +799,7 @@ fn check_where_clauses<'tcx, 'fcx>(
             // Note the subtle difference from how we handle `predicates`
             // below: there, we are not trying to prove those predicates
             // to be *true* but merely *well-formed*.
+            let sp = tcx.reify_span(sp);
             let pred = fcx.normalize_associated_types_in(sp, &pred);
             let cause =
                 traits::ObligationCause::new(sp, fcx.body_id, traits::ItemObligation(def_id));
@@ -809,7 +811,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     if let Some((return_ty, span)) = return_ty {
         let opaque_types = check_opaque_types(tcx, fcx, def_id.expect_local(), span, return_ty);
         for _ in 0..opaque_types.len() {
-            predicates.spans.push(span);
+            predicates.spans.push(span.into());
         }
         predicates.predicates.extend(opaque_types);
     }
@@ -820,7 +822,13 @@ fn check_where_clauses<'tcx, 'fcx>(
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations =
         predicates.predicates.iter().zip(predicates.spans.iter()).flat_map(|(p, sp)| {
-            traits::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, *sp)
+            traits::wf::predicate_obligations(
+                fcx,
+                fcx.param_env,
+                fcx.body_id,
+                p,
+                tcx.reify_span(*sp),
+            )
         });
 
     for obligation in wf_obligations.chain(default_obligations) {

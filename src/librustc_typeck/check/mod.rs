@@ -132,7 +132,7 @@ use rustc_session::Session;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{self, BytePos, MultiSpan, Span};
+use rustc_span::{self, BytePos, MultiSpan, Span, SpanId};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -2771,7 +2771,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                         if data.skip_binder().self_ty().is_param(index) =>
                     {
                         // HACK(eddyb) should get the original `Span`.
-                        let span = tcx.real_def_span(def_id);
+                        let span = tcx.def_span(def_id);
                         Some((predicate, span))
                     }
                     _ => None,
@@ -3222,9 +3222,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-    ) -> (ty::InstantiatedPredicates<'tcx>, Vec<Span>) {
+    ) -> (ty::InstantiatedPredicates<'tcx>, Vec<SpanId>) {
         let bounds = self.tcx.predicates_of(def_id);
-        let spans: Vec<Span> = bounds.predicates.iter().map(|(_, span)| *span).collect();
+        let spans: Vec<_> = bounds.predicates.iter().map(|(_, span)| *span).collect();
         let result = bounds.instantiate(self.tcx, substs);
         let result = self.normalize_associated_types_in(span, &result);
         debug!(
@@ -5682,7 +5682,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // This makes the error point at the bound, but we want to point at the argument
             if let Some(span) = spans.get(i) {
-                obligation.cause.code = traits::BindingObligation(def_id, *span);
+                let span = self.tcx.reify_span(*span);
+                obligation.cause.code = traits::BindingObligation(def_id, span);
             }
             self.register_predicate(obligation);
         }

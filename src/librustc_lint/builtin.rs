@@ -42,7 +42,7 @@ use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, SpanId};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
@@ -1491,7 +1491,7 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
-        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
+        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, SpanId)],
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
@@ -1510,7 +1510,7 @@ impl ExplicitOutlivesRequirements {
     }
 
     fn lifetimes_outliving_type<'tcx>(
-        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
+        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, SpanId)],
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
@@ -1529,7 +1529,7 @@ impl ExplicitOutlivesRequirements {
         &self,
         param: &'tcx hir::GenericParam<'tcx>,
         tcx: TyCtxt<'tcx>,
-        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
+        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, SpanId)],
         ty_generics: &'tcx ty::Generics,
     ) -> Vec<ty::Region<'tcx>> {
         let index =

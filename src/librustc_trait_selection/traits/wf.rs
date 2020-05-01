@@ -549,7 +549,8 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             .into_iter()
             .zip(predicates.spans.into_iter())
             .map(|(pred, span)| {
-                let cause = self.cause(traits::BindingObligation(def_id, span));
+                let cause =
+                    self.cause(traits::BindingObligation(def_id, self.infcx.tcx.reify_span(span)));
                 traits::Obligation::new(cause, self.param_env, pred)
             })
             .filter(|pred| !pred.has_escaping_bound_vars())

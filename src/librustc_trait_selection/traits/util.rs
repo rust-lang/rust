@@ -1,5 +1,5 @@
 use rustc_errors::DiagnosticBuilder;
-use rustc_span::Span;
+use rustc_span::SpanId;
 use smallvec::smallvec;
 use smallvec::SmallVec;
 
@@ -31,11 +31,11 @@ pub struct TraitAliasExpander<'tcx> {
 /// Stores information about the expansion of a trait via a path of zero or more trait aliases.
 #[derive(Debug, Clone)]
 pub struct TraitAliasExpansionInfo<'tcx> {
-    pub path: SmallVec<[(ty::PolyTraitRef<'tcx>, Span); 4]>,
+    pub path: SmallVec<[(ty::PolyTraitRef<'tcx>, SpanId); 4]>,
 }
 
 impl<'tcx> TraitAliasExpansionInfo<'tcx> {
-    fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
+    fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: SpanId) -> Self {
         Self { path: smallvec![(trait_ref, span)] }
     }
 
@@ -63,15 +63,15 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
         &self.top().0
     }
 
-    pub fn top(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
+    pub fn top(&self) -> &(ty::PolyTraitRef<'tcx>, SpanId) {
         self.path.last().unwrap()
     }
 
-    pub fn bottom(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
+    pub fn bottom(&self) -> &(ty::PolyTraitRef<'tcx>, SpanId) {
         self.path.first().unwrap()
     }
 
-    fn clone_and_push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
+    fn clone_and_push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: SpanId) -> Self {
         let mut path = self.path.clone();
         path.push((trait_ref, span));
 
@@ -81,7 +81,7 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
 
 pub fn expand_trait_aliases<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_refs: impl Iterator<Item = (ty::PolyTraitRef<'tcx>, Span)>,
+    trait_refs: impl Iterator<Item = (ty::PolyTraitRef<'tcx>, SpanId)>,
 ) -> TraitAliasExpander<'tcx> {
     let items: Vec<_> =
         trait_refs.map(|(trait_ref, span)| TraitAliasExpansionInfo::new(trait_ref, span)).collect();

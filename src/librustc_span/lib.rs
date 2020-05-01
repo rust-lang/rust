@@ -240,6 +240,7 @@ impl Ord for Span {
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub enum SpanId {
     Span(Span),
     DefId(DefId),
