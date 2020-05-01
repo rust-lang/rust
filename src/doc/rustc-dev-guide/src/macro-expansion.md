@@ -28,6 +28,20 @@ not a generally available feature of Rust). Eager expansion generally performs
 a subset of the things that lazy (normal) expansion does, so we will focus on
 lazy expansion for the rest of this chapter.
 
+As an example, consider the following:
+
+```rust,ignore
+macro bar($i: ident) { $i }
+macro foo($i: ident) { $i }
+
+foo!(bar!(baz));
+```
+
+A lazy expansion would expand `foo!` first. An eager expansion would expand
+`bar!` first. Implementing eager expansion more generally would be challenging,
+but we implement it for a few special built-in macros for the sake of user
+experience.
+
 At a high level, [`fully_expand_fragment`][fef] works in iterations. We keep a
 queue of unresolved macro invocations (that is, macros we haven't found the
 definition of yet). We repeatedly try to pick a macro from the queue, resolve
@@ -143,8 +157,6 @@ a macro author may want to introduce a new name to the context where the macro
 was called. Alternately, the macro author may be defining a variable for use
 only within the macro (i.e. it should not be visible outside the macro).
 
-This section is about how that context is tracked.
-
 [code_dir]: https://github.com/rust-lang/rust/tree/master/src/librustc_expand/mbe
 [code_mp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser
 [code_mr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_rules
@@ -153,11 +165,6 @@ This section is about how that context is tracked.
 
 TODO: expand these notes
 
-- Expansion is lazy. We work from the outside of a macro invocation inward.
-    - Ex: foo!(bar!(ident)) -> expand -> bar!(ident) -> expand -> ident
-    - Eager expansion: https://github.com/rust-lang/rfcs/pull/2320.
-        - Seems complicated to implemented
-        - We have it hacked into some built-in macros, but not generally.
 - Many AST nodes have some sort of syntax context, especially nodes from macros.
 - When we ask what is the syntax context of a node, the answer actually differs by what we are trying to do. Thus, we don't just keep track of a single context. There are in fact 3 different types of context used for different things.
 - Each type of context is tracked by an "expansion heirarchy". As we expand macros, new macro calls or macro definitions may be generated, leading to some nesting. This nesting is where the heirarchies come from. Each heirarchy tracks some different aspect, though, as we will see.
