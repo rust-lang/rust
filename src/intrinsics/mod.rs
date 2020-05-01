@@ -812,7 +812,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let pointee_size: u64 = fx.layout_of(T).size.bytes();
             let diff = fx.bcx.ins().isub(ptr, base);
             // FIXME this can be an exact division.
-            let val = CValue::by_val(fx.bcx.ins().udiv_imm(diff, pointee_size as i64), isize_layout);
+            let val = CValue::by_val(fx.bcx.ins().sdiv_imm(diff, pointee_size as i64), isize_layout);
             ret.write_cvalue(fx, val);
         };
 
