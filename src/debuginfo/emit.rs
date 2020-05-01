@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use rustc_data_structures::fx::FxHashMap;
 
 use gimli::write::{Address, AttributeValue, EndianVec, Result, Sections, Writer};
@@ -66,6 +68,25 @@ impl WriterRelocate {
             relocs: Vec::new(),
             writer: EndianVec::new(endian),
         }
+    }
+
+    pub(super) fn relocate_for_jit(
+        mut self,
+        jit_module: &mut cranelift_module::Module<cranelift_simplejit::SimpleJITBackend>,
+    ) -> Vec<u8> {
+        for reloc in self.relocs.drain(..) {
+            match reloc.name {
+                super::DebugRelocName::Section(_) => unreachable!(),
+                super::DebugRelocName::Symbol(sym) => {
+                    let addr = jit_module.get_finalized_function(
+                        cranelift_module::FuncId::from_u32(sym.try_into().unwrap()),
+                    );
+                    let val = (addr as u64 as i64 + reloc.addend) as u64;
+                    self.writer.write_udata_at(reloc.offset as usize, val, reloc.size).unwrap();
+                }
+            }
+        }
+        self.writer.into_vec()
     }
 }
 

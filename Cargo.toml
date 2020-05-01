@@ -18,6 +18,7 @@ target-lexicon = "0.10.0"
 ar = "0.8.0"
 byteorder = "1.2.7"
 indexmap = "1.0.2"
+cfg-if = "0.1.10"
 
 [dependencies.object]
 version = "0.18.0"

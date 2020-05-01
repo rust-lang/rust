@@ -63,6 +63,8 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     jit_module.finalize_definitions();
 
+    let _unwind_register_guard = unsafe { unwind_context.register_jit(&mut jit_module) };
+
     tcx.sess.abort_if_errors();
 
     let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
