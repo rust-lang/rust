@@ -5,23 +5,26 @@
 
 use super::completion_context::CompletionContext;
 use super::completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions};
+use ast::AttrInput;
 use ra_syntax::{
-    ast::{Attr, AttrKind},
-    AstNode,
+    ast::{self, AttrKind},
+    AstNode, SyntaxKind,
 };
+use rustc_hash::FxHashSet;
 
-pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_attribute {
-        return;
+pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
+    let attribute = ctx.attribute_under_caret.as_ref()?;
+
+    match (attribute.path(), attribute.input()) {
+        (Some(path), Some(AttrInput::TokenTree(token_tree))) if path.to_string() == "derive" => {
+            complete_derive(acc, ctx, token_tree)
+        }
+        _ => complete_attribute_start(acc, ctx, attribute),
     }
+    Some(())
+}
 
-    let is_inner = ctx
-        .original_token
-        .ancestors()
-        .find_map(Attr::cast)
-        .map(|attr| attr.kind() == AttrKind::Inner)
-        .unwrap_or(false);
-
+fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attribute: &ast::Attr) {
     for attr_completion in ATTRIBUTES {
         let mut item = CompletionItem::new(
             CompletionKind::Attribute,
@@ -37,7 +40,7 @@ pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             _ => {}
         }
 
-        if is_inner || !attr_completion.should_be_inner {
+        if attribute.kind() == AttrKind::Inner || !attr_completion.should_be_inner {
             acc.add(item);
         }
     }
@@ -126,6 +129,68 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     },
 ];
 
+fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input: ast::TokenTree) {
+    // TODO kb autodetect derive macros
+    // https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0/topic/Find.20all.20possible.20derive.20macro.20values.3F/near/195955580
+
+    if let Ok(existing_derives) = parse_derive_input(derive_input) {
+        for derive_completion in DERIVE_COMPLETIONS
+            .into_iter()
+            .filter(|completion| !existing_derives.contains(completion.label))
+        {
+            let mut label = derive_completion.label.to_owned();
+            for dependency in derive_completion
+                .dependencies
+                .into_iter()
+                .filter(|&&dependency| !existing_derives.contains(dependency))
+            {
+                label.push_str(", ");
+                label.push_str(dependency);
+            }
+            let item = CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label)
+                .kind(CompletionItemKind::Attribute);
+            acc.add(item);
+        }
+    }
+}
+
+fn parse_derive_input(derive_input: ast::TokenTree) -> Result<FxHashSet<String>, ()> {
+    match (derive_input.left_delimiter_token(), derive_input.right_delimiter_token()) {
+        (Some(left_paren), Some(right_paren))
+            if left_paren.kind() == SyntaxKind::L_PAREN
+                && right_paren.kind() == SyntaxKind::R_PAREN =>
+        {
+            Ok(derive_input
+                .syntax()
+                .children_with_tokens()
+                .filter_map(|child| child.into_token())
+                .skip_while(|child| child != &left_paren)
+                .take_while(|child| child != &right_paren)
+                .filter(|child| child.kind() == SyntaxKind::IDENT)
+                .map(|child| child.to_string())
+                .collect())
+        }
+        _ => Err(()),
+    }
+}
+
+struct DeriveCompletion {
+    label: &'static str,
+    dependencies: &'static [&'static str],
+}
+
+const DERIVE_COMPLETIONS: &[DeriveCompletion] = &[
+    DeriveCompletion { label: "Clone", dependencies: &[] },
+    DeriveCompletion { label: "Copy", dependencies: &["Clone"] },
+    DeriveCompletion { label: "Debug", dependencies: &[] },
+    DeriveCompletion { label: "Default", dependencies: &[] },
+    DeriveCompletion { label: "Hash", dependencies: &[] },
+    DeriveCompletion { label: "PartialEq", dependencies: &[] },
+    DeriveCompletion { label: "Eq", dependencies: &["PartialEq"] },
+    DeriveCompletion { label: "PartialOrd", dependencies: &["PartialEq"] },
+    DeriveCompletion { label: "Ord", dependencies: &["PartialOrd", "Eq", "PartialEq"] },
+];
+
 #[cfg(test)]
 mod tests {
     use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
@@ -133,6 +198,170 @@ mod tests {
 
     fn do_attr_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Attribute)
+    }
+
+    #[test]
+    fn empty_derive_completion() {
+        assert_debug_snapshot!(
+            do_attr_completion(
+                    r"
+                    #[derive(<|>)]
+                    struct Test {}
+                    ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Clone",
+                source_range: 30..30,
+                delete: 30..30,
+                insert: "Clone",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Copy, Clone",
+                source_range: 30..30,
+                delete: 30..30,
+                insert: "Copy, Clone",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Debug",
+                source_range: 30..30,
+                delete: 30..30,
+                insert: "Debug",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Default",
+                source_range: 30..30,
+                delete: 30..30,
+                insert: "Default",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Eq, PartialEq",
+                source_range: 30..30,
+                delete: 30..30,
+                insert: "Eq, PartialEq",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Hash",
+                source_range: 30..30,
+                delete: 30..30,
+                insert: "Hash",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Ord, PartialOrd, Eq, PartialEq",
+                source_range: 30..30,
+                delete: 30..30,
+                insert: "Ord, PartialOrd, Eq, PartialEq",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "PartialEq",
+                source_range: 30..30,
+                delete: 30..30,
+                insert: "PartialEq",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "PartialOrd, PartialEq",
+                source_range: 30..30,
+                delete: 30..30,
+                insert: "PartialOrd, PartialEq",
+                kind: Attribute,
+            },
+        ]
+            "###
+        );
+    }
+
+    #[test]
+    fn no_completion_for_incorrect_derive() {
+        assert_debug_snapshot!(
+            do_attr_completion(
+                r"
+                    #[derive{<|>)]
+                    struct Test {}
+                    ",
+            ),
+            @"[]"
+        );
+    }
+
+    #[test]
+    fn derive_with_input_completion() {
+        assert_debug_snapshot!(
+            do_attr_completion(
+                    r"
+                    #[derive(Whatever, PartialEq, <|>)]
+                    struct Test {}
+                    ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "Clone",
+                source_range: 51..51,
+                delete: 51..51,
+                insert: "Clone",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Copy, Clone",
+                source_range: 51..51,
+                delete: 51..51,
+                insert: "Copy, Clone",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Debug",
+                source_range: 51..51,
+                delete: 51..51,
+                insert: "Debug",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Default",
+                source_range: 51..51,
+                delete: 51..51,
+                insert: "Default",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Eq",
+                source_range: 51..51,
+                delete: 51..51,
+                insert: "Eq",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Hash",
+                source_range: 51..51,
+                delete: 51..51,
+                insert: "Hash",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "Ord, PartialOrd, Eq",
+                source_range: 51..51,
+                delete: 51..51,
+                insert: "Ord, PartialOrd, Eq",
+                kind: Attribute,
+            },
+            CompletionItem {
+                label: "PartialOrd",
+                source_range: 51..51,
+                delete: 51..51,
+                insert: "PartialOrd",
+                kind: Attribute,
+            },
+        ]
+            "###
+        );
     }
 
     #[test]
