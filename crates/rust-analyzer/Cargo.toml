@@ -20,7 +20,7 @@ globset = "0.4.4"
 itertools = "0.9.0"
 jod-thread = "0.1.0"
 log = "0.4.8"
-lsp-types = { version = "0.73.0", features = ["proposed"] }
+lsp-types = { version = "0.74.0", features = ["proposed"] }
 parking_lot = "0.10.0"
 pico-args = "0.3.1"
 rand = { version = "0.7.3", features = ["small_rng"] }
@@ -39,7 +39,7 @@ ra_prof = { path = "../ra_prof" }
 ra_project_model = { path = "../ra_project_model" }
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
-ra_vfs = "0.5.2"
+ra_vfs = "0.6.0"
 
 # This should only be used in CLI
 ra_db = { path = "../ra_db" }

@@ -16,7 +16,7 @@ impl ast::Expr {
             | ast::Expr::WhileExpr(_)
             | ast::Expr::BlockExpr(_)
             | ast::Expr::MatchExpr(_)
-            | ast::Expr::TryBlockExpr(_) => true,
+            | ast::Expr::TryExpr(_) => true,
             _ => false,
         }
     }
@@ -359,7 +359,22 @@ impl ast::Literal {
     }
 }
 
+pub enum BlockModifier {
+    Async(SyntaxToken),
+    Unsafe(SyntaxToken),
+}
+
 impl ast::BlockExpr {
+    pub fn modifier(&self) -> Option<BlockModifier> {
+        if let Some(token) = self.async_token() {
+            return Some(BlockModifier::Async(token));
+        }
+        if let Some(token) = self.unsafe_token() {
+            return Some(BlockModifier::Unsafe(token));
+        }
+        None
+    }
+
     /// false if the block is an intrinsic part of the syntax and can't be
     /// replaced with arbitrary expression.
     ///
@@ -368,12 +383,15 @@ impl ast::BlockExpr {
     /// const FOO: () = { stand_alone };
     /// ```
     pub fn is_standalone(&self) -> bool {
-        let kind = match self.syntax().parent() {
+        if self.modifier().is_some() {
+            return false;
+        }
+        let parent = match self.syntax().parent() {
+            Some(it) => it,
             None => return true,
-            Some(it) => it.kind(),
         };
-        match kind {
-            FN_DEF | MATCH_ARM | IF_EXPR | WHILE_EXPR | LOOP_EXPR | TRY_BLOCK_EXPR => false,
+        match parent.kind() {
+            FN_DEF | IF_EXPR | WHILE_EXPR | LOOP_EXPR => false,
             _ => true,
         }
     }

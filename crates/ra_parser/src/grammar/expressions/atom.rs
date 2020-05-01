@@ -84,7 +84,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T![box] => box_expr(p, None),
         T![for] => for_expr(p, None),
         T![while] => while_expr(p, None),
-        T![try] => try_block_expr(p, None),
+        T![try] => try_expr(p, None),
         LIFETIME if la == T![:] => {
             let m = p.start();
             label(p);
@@ -134,7 +134,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         }
     };
     let blocklike = match done.kind() {
-        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR | TRY_BLOCK_EXPR => {
+        IF_EXPR | WHILE_EXPR | FOR_EXPR | LOOP_EXPR | MATCH_EXPR | BLOCK_EXPR | TRY_EXPR => {
             BlockLike::Block
         }
         _ => BlockLike::NotBlock,
@@ -532,9 +532,25 @@ fn break_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
 // fn foo() {
 //     let _ = try {};
 // }
-fn try_block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
+fn try_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T![try]));
     let m = m.unwrap_or_else(|| p.start());
+    // Special-case `try!` as macro.
+    // This is a hack until we do proper edition support
+    if p.nth_at(1, T![!]) {
+        // test try_macro_fallback
+        // fn foo() { try!(Ok(())); }
+        let path = p.start();
+        let path_segment = p.start();
+        let name_ref = p.start();
+        p.bump_remap(IDENT);
+        name_ref.complete(p, NAME_REF);
+        path_segment.complete(p, PATH_SEGMENT);
+        path.complete(p, PATH);
+        let _block_like = items::macro_call_after_excl(p);
+        return m.complete(p, MACRO_CALL);
+    }
+
     p.bump(T![try]);
     block(p);
     m.complete(p, TRY_EXPR)

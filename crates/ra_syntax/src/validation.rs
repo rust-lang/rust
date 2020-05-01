@@ -96,6 +96,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
                 ast::RecordField(it) => validate_numeric_name(it.name_ref(), &mut errors),
                 ast::Visibility(it) => validate_visibility(it, &mut errors),
                 ast::RangeExpr(it) => validate_range_expr(it, &mut errors),
+                ast::PathSegment(it) => validate_crate_keyword_in_path_segment(it, &mut errors),
                 _ => (),
             }
         }
@@ -220,5 +221,62 @@ fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxError>) {
             "An inclusive range must have an end expression",
             expr.syntax().text_range(),
         ));
+    }
+}
+
+fn validate_crate_keyword_in_path_segment(
+    segment: ast::PathSegment,
+    errors: &mut Vec<SyntaxError>,
+) {
+    const ERR_MSG: &str = "The `crate` keyword is only allowed as the first segment of a path";
+
+    let crate_token = match segment.crate_token() {
+        None => return,
+        Some(it) => it,
+    };
+
+    // Disallow both ::crate and foo::crate
+    let mut path = segment.parent_path();
+    if segment.coloncolon_token().is_some() || path.qualifier().is_some() {
+        errors.push(SyntaxError::new(ERR_MSG, crate_token.text_range()));
+        return;
+    }
+
+    // For expressions and types, validation is complete, but we still have
+    // to handle invalid UseItems like this:
+    //
+    //      use foo:{crate::bar::baz};
+    //
+    // To handle this we must inspect the parent `UseItem`s and `UseTree`s
+    // but right now we're looking deep inside the nested `Path` nodes because
+    // `Path`s are left-associative:
+    //
+    //   ((crate)::bar)::baz)
+    //       ^ current value of path
+    //
+    // So we need to climb to the top
+    while let Some(parent) = path.parent_path() {
+        path = parent;
+    }
+
+    // Now that we've found the whole path we need to see if there's a prefix
+    // somewhere in the UseTree hierarchy. This check is arbitrarily deep
+    // because rust allows arbitrary nesting like so:
+    //
+    // use {foo::{{{{crate::bar::baz}}}}};
+    for node in path.syntax().ancestors().skip(1) {
+        match_ast! {
+            match node {
+                ast::UseTree(it) => if let Some(tree_path) = it.path() {
+                    // Even a top-level path exists within a `UseTree` so we must explicitly
+                    // allow our path but disallow anything else
+                    if tree_path != path {
+                        errors.push(SyntaxError::new(ERR_MSG, crate_token.text_range()));
+                    }
+                },
+                ast::UseTreeList(_it) => continue,
+                _ => return,
+            }
+        };
     }
 }

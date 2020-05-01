@@ -53,7 +53,7 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
                 // Variants with trivial paths are already added by the existing completion logic,
                 // so we should avoid adding these twice
                 if path.segments.len() > 1 {
-                    acc.add_enum_variant(ctx, variant, Some(path.to_string()));
+                    acc.add_qualified_enum_variant(ctx, variant, path);
                 }
             }
         }
@@ -1173,6 +1173,7 @@ mod tests {
                 delete: 248..250,
                 insert: "Foo::Bar",
                 kind: EnumVariant,
+                lookup: "Bar",
                 detail: "()",
             },
             CompletionItem {
@@ -1181,6 +1182,7 @@ mod tests {
                 delete: 248..250,
                 insert: "Foo::Baz",
                 kind: EnumVariant,
+                lookup: "Baz",
                 detail: "()",
             },
             CompletionItem {
@@ -1189,6 +1191,7 @@ mod tests {
                 delete: 248..250,
                 insert: "Foo::Quux",
                 kind: EnumVariant,
+                lookup: "Quux",
                 detail: "()",
             },
         ]
@@ -1231,6 +1234,7 @@ mod tests {
                 delete: 219..221,
                 insert: "Foo::Bar",
                 kind: EnumVariant,
+                lookup: "Bar",
                 detail: "()",
             },
             CompletionItem {
@@ -1239,6 +1243,7 @@ mod tests {
                 delete: 219..221,
                 insert: "Foo::Baz",
                 kind: EnumVariant,
+                lookup: "Baz",
                 detail: "()",
             },
             CompletionItem {
@@ -1247,6 +1252,7 @@ mod tests {
                 delete: 219..221,
                 insert: "Foo::Quux",
                 kind: EnumVariant,
+                lookup: "Quux",
                 detail: "()",
             },
         ]
@@ -1285,6 +1291,7 @@ mod tests {
                 delete: 185..186,
                 insert: "Foo::Bar",
                 kind: EnumVariant,
+                lookup: "Bar",
                 detail: "()",
             },
             CompletionItem {
@@ -1293,6 +1300,7 @@ mod tests {
                 delete: 185..186,
                 insert: "Foo::Baz",
                 kind: EnumVariant,
+                lookup: "Baz",
                 detail: "()",
             },
             CompletionItem {
@@ -1301,6 +1309,7 @@ mod tests {
                 delete: 185..186,
                 insert: "Foo::Quux",
                 kind: EnumVariant,
+                lookup: "Quux",
                 detail: "()",
             },
             CompletionItem {
@@ -1353,6 +1362,7 @@ mod tests {
                 delete: 98..99,
                 insert: "m::E::V",
                 kind: EnumVariant,
+                lookup: "V",
                 detail: "()",
             },
         ]

@@ -35,7 +35,7 @@ The syntax tree consists of three layers:
 * AST
 
 Of these, only GreenNodes store the actual data, the other two layers are (non-trivial) views into green tree.
-Red-green terminology comes from Roslyn ([link](https://docs.microsoft.com/en-ie/archive/blogs/ericlippert/persistence-facades-and-roslyns-red-green-trees)) and gives the name to the `rowan` library. Green and syntax nodes are defined in rowan, ast is defined in rust-analyzer.
+Red-green terminology comes from Roslyn ([link](https://ericlippert.com/2012/06/08/red-green-trees/)) and gives the name to the `rowan` library. Green and syntax nodes are defined in rowan, ast is defined in rust-analyzer.
 
 Syntax trees are a semi-transient data structure.
 In general, frontend does not keep syntax trees for all files in memory.

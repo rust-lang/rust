@@ -30,8 +30,9 @@ pub fn init_from(spec: &str) {
 pub type Label = &'static str;
 
 /// This function starts a profiling scope in the current execution stack with a given description.
-/// It returns a Profile structure and measure elapsed time between this method invocation and Profile structure drop.
-/// It supports nested profiling scopes in case when this function invoked multiple times at the execution stack. In this case the profiling information will be nested at the output.
+/// It returns a `Profile` struct that measures elapsed time between this method invocation and `Profile` struct drop.
+/// It supports nested profiling scopes in case when this function is invoked multiple times at the execution stack.
+/// In this case the profiling information will be nested at the output.
 /// Profiling information is being printed in the stderr.
 ///
 /// # Example
@@ -58,36 +59,35 @@ pub type Label = &'static str;
 /// ```
 pub fn profile(label: Label) -> Profiler {
     assert!(!label.is_empty());
-    let enabled = PROFILING_ENABLED.load(Ordering::Relaxed)
-        && PROFILE_STACK.with(|stack| stack.borrow_mut().push(label));
-    let label = if enabled { Some(label) } else { None };
-    Profiler { label, detail: None }
+
+    if PROFILING_ENABLED.load(Ordering::Relaxed)
+        && PROFILE_STACK.with(|stack| stack.borrow_mut().push(label))
+    {
+        Profiler(Some(ProfilerImpl { label, detail: None }))
+    } else {
+        Profiler(None)
+    }
 }
 
-pub struct Profiler {
-    label: Option<Label>,
+pub struct Profiler(Option<ProfilerImpl>);
+
+struct ProfilerImpl {
+    label: Label,
     detail: Option<String>,
 }
 
 impl Profiler {
     pub fn detail(mut self, detail: impl FnOnce() -> String) -> Profiler {
-        if self.label.is_some() {
-            self.detail = Some(detail())
+        if let Some(profiler) = &mut self.0 {
+            profiler.detail = Some(detail())
         }
         self
     }
 }
 
-impl Drop for Profiler {
+impl Drop for ProfilerImpl {
     fn drop(&mut self) {
-        match self {
-            Profiler { label: Some(label), detail } => {
-                PROFILE_STACK.with(|stack| {
-                    stack.borrow_mut().pop(label, detail.take());
-                });
-            }
-            Profiler { label: None, .. } => (),
-        }
+        PROFILE_STACK.with(|it| it.borrow_mut().pop(self.label, self.detail.take()));
     }
 }
 
@@ -179,21 +179,18 @@ impl ProfileStack {
     pub fn pop(&mut self, label: Label, detail: Option<String>) {
         let start = self.starts.pop().unwrap();
         let duration = start.elapsed();
-        let level = self.starts.len();
         self.messages.finish(Message { duration, label, detail });
-        if level == 0 {
+        if self.starts.is_empty() {
             let longer_than = self.filter.longer_than;
             // Convert to millis for comparison to avoid problems with rounding
             // (otherwise we could print `0ms` despite user's `>0` filter when
             // `duration` is just a few nanos).
             if duration.as_millis() > longer_than.as_millis() {
-                let stderr = stderr();
                 if let Some(root) = self.messages.root() {
-                    print(&self.messages, root, 0, longer_than, &mut stderr.lock());
+                    print(&self.messages, root, 0, longer_than, &mut stderr().lock());
                 }
             }
             self.messages.clear();
-            assert!(self.starts.is_empty())
         }
     }
 }

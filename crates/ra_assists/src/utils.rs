@@ -1,7 +1,9 @@
 //! Assorted functions shared by several assists.
 pub(crate) mod insert_use;
 
-use hir::Semantics;
+use std::iter;
+
+use hir::{Adt, Crate, Semantics, Trait, Type};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, make, NameOwner},
@@ -97,5 +99,111 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
         // FIXME:
         // ast::Expr::Literal(true | false )
         _ => None,
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum TryEnum {
+    Result,
+    Option,
+}
+
+impl TryEnum {
+    const ALL: [TryEnum; 2] = [TryEnum::Option, TryEnum::Result];
+
+    pub(crate) fn from_ty(sema: &Semantics<RootDatabase>, ty: &Type) -> Option<TryEnum> {
+        let enum_ = match ty.as_adt() {
+            Some(Adt::Enum(it)) => it,
+            _ => return None,
+        };
+        TryEnum::ALL.iter().find_map(|&var| {
+            if &enum_.name(sema.db).to_string() == var.type_name() {
+                return Some(var);
+            }
+            None
+        })
+    }
+
+    pub(crate) fn happy_case(self) -> &'static str {
+        match self {
+            TryEnum::Result => "Ok",
+            TryEnum::Option => "Some",
+        }
+    }
+
+    pub(crate) fn sad_pattern(self) -> ast::Pat {
+        match self {
+            TryEnum::Result => make::tuple_struct_pat(
+                make::path_unqualified(make::path_segment(make::name_ref("Err"))),
+                iter::once(make::placeholder_pat().into()),
+            )
+            .into(),
+            TryEnum::Option => make::bind_pat(make::name("None")).into(),
+        }
+    }
+
+    fn type_name(self) -> &'static str {
+        match self {
+            TryEnum::Result => "Result",
+            TryEnum::Option => "Option",
+        }
+    }
+}
+
+/// Helps with finding well-know things inside the standard library. This is
+/// somewhat similar to the known paths infra inside hir, but it different; We
+/// want to make sure that IDE specific paths don't become interesting inside
+/// the compiler itself as well.
+pub(crate) struct FamousDefs<'a, 'b>(pub(crate) &'a Semantics<'b, RootDatabase>, pub(crate) Crate);
+
+#[allow(non_snake_case)]
+impl FamousDefs<'_, '_> {
+    #[cfg(test)]
+    pub(crate) const FIXTURE: &'static str = r#"
+//- /libcore.rs crate:core
+pub mod convert{
+    pub trait From<T> {
+        fn from(T) -> Self;
+    }
+}
+
+pub mod prelude { pub use crate::convert::From }
+#[prelude_import]
+pub use prelude::*;
+"#;
+
+    pub(crate) fn core_convert_From(&self) -> Option<Trait> {
+        self.find_trait("core:convert:From")
+    }
+
+    fn find_trait(&self, path: &str) -> Option<Trait> {
+        let db = self.0.db;
+        let mut path = path.split(':');
+        let trait_ = path.next_back()?;
+        let std_crate = path.next()?;
+        let std_crate = self
+            .1
+            .dependencies(db)
+            .into_iter()
+            .find(|dep| &dep.name.to_string() == std_crate)?
+            .krate;
+
+        let mut module = std_crate.root_module(db)?;
+        for segment in path {
+            module = module.children(db).find_map(|child| {
+                let name = child.name(db)?;
+                if &name.to_string() == segment {
+                    Some(child)
+                } else {
+                    None
+                }
+            })?;
+        }
+        let def =
+            module.scope(db, None).into_iter().find(|(name, _def)| &name.to_string() == trait_)?.1;
+        match def {
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Trait(it)) => Some(it),
+            _ => None,
+        }
     }
 }

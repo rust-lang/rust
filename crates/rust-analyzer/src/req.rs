@@ -8,14 +8,15 @@ pub use lsp_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens,
     CodeLensParams, CompletionParams, CompletionResponse, ConfigurationItem, ConfigurationParams,
     DiagnosticTag, DidChangeConfigurationParams, DidChangeWatchedFilesParams,
-    DidChangeWatchedFilesRegistrationOptions, DocumentOnTypeFormattingParams, DocumentSymbolParams,
-    DocumentSymbolResponse, FileSystemWatcher, Hover, InitializeResult, MessageType,
-    PartialResultParams, ProgressParams, ProgressParamsValue, ProgressToken,
-    PublishDiagnosticsParams, ReferenceParams, Registration, RegistrationParams, SelectionRange,
-    SelectionRangeParams, SemanticTokensParams, SemanticTokensRangeParams,
+    DidChangeWatchedFilesRegistrationOptions, DocumentHighlightParams,
+    DocumentOnTypeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse,
+    FileSystemWatcher, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverParams,
+    InitializeResult, MessageType, PartialResultParams, ProgressParams, ProgressParamsValue,
+    ProgressToken, PublishDiagnosticsParams, ReferenceParams, Registration, RegistrationParams,
+    SelectionRange, SelectionRangeParams, SemanticTokensParams, SemanticTokensRangeParams,
     SemanticTokensRangeResult, SemanticTokensResult, ServerCapabilities, ShowMessageParams,
-    SignatureHelp, SymbolKind, TextDocumentEdit, TextDocumentPositionParams, TextEdit,
-    WorkDoneProgressParams, WorkspaceEdit, WorkspaceSymbolParams,
+    SignatureHelp, SignatureHelpParams, SymbolKind, TextDocumentEdit, TextDocumentPositionParams,
+    TextEdit, WorkDoneProgressParams, WorkspaceEdit, WorkspaceSymbolParams,
 };
 use std::path::PathBuf;
 

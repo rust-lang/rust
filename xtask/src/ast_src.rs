@@ -162,7 +162,6 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "RECORD_LIT",
         "RECORD_FIELD_LIST",
         "RECORD_FIELD",
-        "TRY_BLOCK_EXPR",
         "BOX_EXPR",
         // postfix
         "CALL_EXPR",
@@ -440,7 +439,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
         struct IfExpr: AttrsOwner { T![if], Condition }
         struct LoopExpr: AttrsOwner, LoopBodyOwner { T![loop] }
-        struct TryBlockExpr: AttrsOwner { T![try], body: BlockExpr }
         struct ForExpr: AttrsOwner, LoopBodyOwner {
             T![for],
             Pat,
@@ -451,7 +449,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct ContinueExpr: AttrsOwner { T![continue], T![lifetime] }
         struct BreakExpr: AttrsOwner { T![break], T![lifetime], Expr }
         struct Label { T![lifetime] }
-        struct BlockExpr: AttrsOwner { Label, T![unsafe], Block  }
+        struct BlockExpr: AttrsOwner { Label, T![unsafe], T![async], Block }
         struct ReturnExpr: AttrsOwner { Expr }
         struct CallExpr: ArgListOwner { Expr }
         struct MethodCallExpr: AttrsOwner, ArgListOwner {
@@ -595,7 +593,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             qualifier: Path,
         }
         struct PathSegment {
-            T![::], T![<], NameRef, TypeArgList, ParamList, RetType, PathType, T![>]
+            T![::], T![crate], T![<], NameRef, TypeArgList, ParamList, RetType, PathType, T![>]
         }
         struct TypeArgList {
             T![::],
@@ -722,7 +720,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             FieldExpr,
             AwaitExpr,
             TryExpr,
-            TryBlockExpr,
             CastExpr,
             RefExpr,
             PrefixExpr,
