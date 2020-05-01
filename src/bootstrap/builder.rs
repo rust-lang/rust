@@ -1088,13 +1088,13 @@ impl<'a> Builder<'a> {
 
             if self.config.deny_warnings {
                 rustflags.arg("-Dwarnings");
+            }
 
-                // FIXME(#58633) hide "unused attribute" errors in incremental
-                // builds of the standard library, as the underlying checks are
-                // not yet properly integrated with incremental recompilation.
-                if mode == Mode::Std && compiler.stage == 0 && self.config.incremental {
-                    rustflags.arg("-Aunused-attributes");
-                }
+            // FIXME(#58633) hide "unused attribute" errors in incremental
+            // builds of the standard library, as the underlying checks are
+            // not yet properly integrated with incremental recompilation.
+            if mode == Mode::Std && compiler.stage == 0 && self.config.incremental {
+                rustflags.arg("-Aunused-attributes");
             }
         }
 
