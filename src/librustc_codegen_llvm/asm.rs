@@ -409,7 +409,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass) -> String {
             InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) => "Q",
-            InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) => "r",
+            InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) => "q",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg)
             | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg) => "x",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) => "v",
@@ -558,6 +558,31 @@ fn llvm_fixup_input(
             let indices: Vec<_> = (0..count * 2).map(|x| bx.const_i32(x as i32)).collect();
             bx.shuffle_vector(value, bx.const_undef(vec_ty), bx.const_vector(&indices))
         }
+        (InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd), Abi::Scalar(s))
+            if s.value == Primitive::F64 =>
+        {
+            bx.bitcast(value, bx.cx.type_i64())
+        }
+        (
+            InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
+            Abi::Vector { .. },
+        ) if layout.size.bytes() == 64 => bx.bitcast(value, bx.cx.type_vector(bx.cx.type_f64(), 8)),
+        (
+            InlineAsmRegClass::Arm(
+                ArmInlineAsmRegClass::sreg_low16
+                | ArmInlineAsmRegClass::dreg_low8
+                | ArmInlineAsmRegClass::qreg_low4
+                | ArmInlineAsmRegClass::dreg
+                | ArmInlineAsmRegClass::qreg,
+            ),
+            Abi::Scalar(s),
+        ) => {
+            if let Primitive::Int(Integer::I32, _) = s.value {
+                bx.bitcast(value, bx.cx.type_f32())
+            } else {
+                value
+            }
+        }
         _ => value,
     }
 }
@@ -593,6 +618,31 @@ fn llvm_fixup_output(
             let indices: Vec<_> = (0..*count).map(|x| bx.const_i32(x as i32)).collect();
             bx.shuffle_vector(value, bx.const_undef(vec_ty), bx.const_vector(&indices))
         }
+        (InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd), Abi::Scalar(s))
+            if s.value == Primitive::F64 =>
+        {
+            bx.bitcast(value, bx.cx.type_f64())
+        }
+        (
+            InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
+            Abi::Vector { .. },
+        ) if layout.size.bytes() == 64 => bx.bitcast(value, layout.llvm_type(bx.cx)),
+        (
+            InlineAsmRegClass::Arm(
+                ArmInlineAsmRegClass::sreg_low16
+                | ArmInlineAsmRegClass::dreg_low8
+                | ArmInlineAsmRegClass::qreg_low4
+                | ArmInlineAsmRegClass::dreg
+                | ArmInlineAsmRegClass::qreg,
+            ),
+            Abi::Scalar(s),
+        ) => {
+            if let Primitive::Int(Integer::I32, _) = s.value {
+                bx.bitcast(value, bx.cx.type_i32())
+            } else {
+                value
+            }
+        }
         _ => value,
     }
 }
@@ -622,6 +672,31 @@ fn llvm_fixup_output_type(
         ) if layout.size.bytes() == 8 => {
             let elem_ty = llvm_asm_scalar_type(cx, element);
             cx.type_vector(elem_ty, count * 2)
+        }
+        (InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd), Abi::Scalar(s))
+            if s.value == Primitive::F64 =>
+        {
+            cx.type_i64()
+        }
+        (
+            InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
+            Abi::Vector { .. },
+        ) if layout.size.bytes() == 64 => cx.type_vector(cx.type_f64(), 8),
+        (
+            InlineAsmRegClass::Arm(
+                ArmInlineAsmRegClass::sreg_low16
+                | ArmInlineAsmRegClass::dreg_low8
+                | ArmInlineAsmRegClass::qreg_low4
+                | ArmInlineAsmRegClass::dreg
+                | ArmInlineAsmRegClass::qreg,
+            ),
+            Abi::Scalar(s),
+        ) => {
+            if let Primitive::Int(Integer::I32, _) = s.value {
+                cx.type_f32()
+            } else {
+                layout.llvm_type(cx)
+            }
         }
         _ => layout.llvm_type(cx),
     }
