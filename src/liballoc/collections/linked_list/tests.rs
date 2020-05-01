@@ -182,7 +182,6 @@ fn test_insert_prev() {
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
-#[cfg_attr(miri, ignore)] // Miri does not support threads
 fn test_send() {
     let n = list_from(&[1, 2, 3]);
     thread::spawn(move || {
