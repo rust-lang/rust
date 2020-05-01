@@ -11,6 +11,7 @@ use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
+use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi;
 use std::iter;
 use std::rc::Rc;
@@ -507,6 +508,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
 ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+    debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
     let eagerly_eval = |x: &'tcx ty::Const<'tcx>| {
@@ -561,7 +563,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                     }
                 }
 
-                (a_val @ ConstValue::Slice { .. }, b_val @ ConstValue::Slice { .. }) => {
+                (ConstValue::Slice { .. }, ConstValue::Slice { .. }) => {
                     let a_bytes = get_slice_bytes(&tcx, a_val);
                     let b_bytes = get_slice_bytes(&tcx, b_val);
                     if a_bytes == b_bytes {
@@ -571,7 +573,37 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                     }
                 }
 
-                // FIXME(const_generics): handle `ConstValue::ByRef`.
+                (ConstValue::ByRef { .. }, ConstValue::ByRef { .. }) => {
+                    match a.ty.kind {
+                        ty::Array(..) | ty::Adt(..) | ty::Tuple(..) => {
+                            let a_destructured = tcx.destructure_const(relation.param_env().and(a));
+                            let b_destructured = tcx.destructure_const(relation.param_env().and(b));
+
+                            // Both the variant and each field have to be equal.
+                            if a_destructured.variant == b_destructured.variant {
+                                for (a_field, b_field) in
+                                    a_destructured.fields.iter().zip(b_destructured.fields.iter())
+                                {
+                                    relation.consts(a_field, b_field)?;
+                                }
+
+                                Ok(a_val)
+                            } else {
+                                Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+                            }
+                        }
+                        // FIXME(const_generics): There are probably some `TyKind`s
+                        // which should be handled here.
+                        _ => {
+                            tcx.sess.delay_span_bug(
+                                DUMMY_SP,
+                                &format!("unexpected consts: a: {:?}, b: {:?}", a, b),
+                            );
+                            Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+                        }
+                    }
+                }
+
                 _ => Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
             };
 
