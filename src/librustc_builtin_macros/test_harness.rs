@@ -233,6 +233,7 @@ fn generate_test_harness(
 ///
 /// By default this expands to
 ///
+/// ```
 /// #[main]
 /// pub fn main() {
 ///     extern crate test;
@@ -242,6 +243,7 @@ fn generate_test_harness(
 ///         &test_const3,
 ///     ]);
 /// }
+/// ```
 ///
 /// Most of the Ident have the usual def-site hygiene for the AST pass. The
 /// exception is the `test_const`s. These have a syntax context that has two

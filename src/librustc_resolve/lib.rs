@@ -2669,7 +2669,7 @@ impl<'a> Resolver<'a> {
     /// This function adds a suggestion to change the binding name of a new import that conflicts
     /// with an existing import.
     ///
-    /// ```ignore (diagnostic)
+    /// ```text,ignore (diagnostic)
     /// help: you can use `as` to change the binding name of the import
     ///    |
     /// LL | use foo::bar as other_bar;

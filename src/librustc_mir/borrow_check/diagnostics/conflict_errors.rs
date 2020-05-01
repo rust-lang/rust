@@ -582,8 +582,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ///
     /// This is used when creating error messages like below:
     ///
-    /// >  cannot borrow `a.u` (via `a.u.z.c`) as immutable because it is also borrowed as
-    /// >  mutable (via `a.u.s.b`) [E0502]
+    /// ```text
+    /// cannot borrow `a.u` (via `a.u.z.c`) as immutable because it is also borrowed as
+    /// mutable (via `a.u.s.b`) [E0502]
+    /// ```
     pub(in crate::borrow_check) fn describe_place_for_conflicting_borrow(
         &self,
         first_borrowed_place: Place<'tcx>,
