@@ -1795,6 +1795,10 @@ public:
 private:
   Value* getDifferential(Value *val) {
     assert(val);
+    if (auto arg = dyn_cast<Argument>(val))
+      assert(arg->getParent() == oldFunc);
+    if (auto inst = dyn_cast<Instruction>(val))
+      assert(inst->getParent()->getParent() == oldFunc);
     assert(inversionAllocs);
     if (differentials.find(val) == differentials.end()) {
         IRBuilder<> entryBuilder(inversionAllocs);
@@ -1808,22 +1812,32 @@ private:
 
 public:
   Value* diffe(Value* val, IRBuilder<> &BuilderM) {
-      if (isConstantValue(val)) {
-          llvm::errs() << *newFunc << "\n";
-          llvm::errs() << *val << "\n";
-      }
-      if (val->getType()->isPointerTy()) {
-          llvm::errs() << *newFunc << "\n";
-          llvm::errs() << *val << "\n";
-      }
-      assert(!val->getType()->isPointerTy());
-      assert(!val->getType()->isVoidTy());
-      return BuilderM.CreateLoad(getDifferential(val));
+    if (auto arg = dyn_cast<Argument>(val))
+      assert(arg->getParent() == oldFunc);
+    if (auto inst = dyn_cast<Instruction>(val))
+      assert(inst->getParent()->getParent() == oldFunc);
+
+    if (isConstantValue(getNewFromOriginal(val))) {
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << *val << "\n";
+    }
+    if (val->getType()->isPointerTy()) {
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << *val << "\n";
+    }
+    assert(!val->getType()->isPointerTy());
+    assert(!val->getType()->isVoidTy());
+    return BuilderM.CreateLoad(getDifferential(val));
   }
 
   //Returns created select instructions, if any
   std::vector<SelectInst*> addToDiffe(Value* val, Value* dif, IRBuilder<> &BuilderM, Type* addingType) {
-      std::vector<SelectInst*> addedSelects;
+    if (auto arg = dyn_cast<Argument>(val))
+      assert(arg->getParent() == oldFunc);
+    if (auto inst = dyn_cast<Instruction>(val))
+      assert(inst->getParent()->getParent() == oldFunc);
+
+    std::vector<SelectInst*> addedSelects;
 
 
       auto faddForSelect = [&](Value* old, Value* dif) -> Value* {
@@ -1874,12 +1888,12 @@ public:
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << *val << "\n";
       }
-      if (isConstantValue(val)) {
+      if (isConstantValue(getNewFromOriginal(val))) {
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << *val << "\n";
       }
       assert(!val->getType()->isPointerTy());
-      assert(!isConstantValue(val));
+      assert(!isConstantValue(getNewFromOriginal(val)));
       assert(val->getType() == dif->getType());
       auto old = diffe(val, BuilderM);
       assert(val->getType() == old->getType());
@@ -1948,11 +1962,15 @@ public:
   }
 
   void setDiffe(Value* val, Value* toset, IRBuilder<> &BuilderM) {
-      if (isConstantValue(val)) {
+    if (auto arg = dyn_cast<Argument>(val))
+      assert(arg->getParent() == oldFunc);
+    if (auto inst = dyn_cast<Instruction>(val))
+      assert(inst->getParent()->getParent() == oldFunc);
+    if (isConstantValue(getNewFromOriginal(val))) {
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << *val << "\n";
       }
-      assert(!isConstantValue(val));
+      assert(!isConstantValue(getNewFromOriginal(val)));
       Value* tostore = getDifferential(val);
       if (toset->getType() != cast<PointerType>(tostore->getType())->getElementType()) {
         llvm::errs() << "toset:" << *toset << "\n";
@@ -1963,7 +1981,11 @@ public:
   }
 
   SelectInst* addToDiffeIndexed(Value* val, Value* dif, ArrayRef<Value*> idxs, IRBuilder<> &BuilderM) {
-      assert(!isConstantValue(val));
+    if (auto arg = dyn_cast<Argument>(val))
+      assert(arg->getParent() == oldFunc);
+    if (auto inst = dyn_cast<Instruction>(val))
+      assert(inst->getParent()->getParent() == oldFunc);
+      assert(!isConstantValue(getNewFromOriginal(val)));
       SmallVector<Value*,4> sv;
       sv.push_back(ConstantInt::get(Type::getInt32Ty(val->getContext()), 0));
       for(auto i : idxs)

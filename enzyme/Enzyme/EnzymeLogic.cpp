@@ -86,7 +86,7 @@ bool is_value_mustcache_from_origin(Value* obj, AAResults& AA, GradientUtils* gu
       //llvm::errs() << "OP is uncacheable arg: " << li << "\n";
       mustcache = true;
     }
-    llvm::errs() << " + argument (mustcache=" << mustcache << ") " << " object: " << *obj << " arg: " << *arg << "e\n";
+    //llvm::errs() << " + argument (mustcache=" << mustcache << ") " << " object: " << *obj << " arg: " << *arg << "e\n";
     //TODO this case (alloca goes out of scope/allocation is freed and we dont force it to continue needs to be forcibly cached)
   } else {
 
@@ -116,7 +116,7 @@ bool is_value_mustcache_from_origin(Value* obj, AAResults& AA, GradientUtils* gu
       mustcache = is_load_uncacheable(*sli, AA, gutils, TLI, uncacheable_args);
     } else {
       // In absence of more information, assume that the underlying object for pointer operand is uncacheable in caller.
-      llvm::errs() << "OP is an unknown instruction, needing to cache obj:" << *obj << "\n";
+      //llvm::errs() << "OP is an unknown instruction, needing to cache obj:" << *obj << "\n";
       mustcache = true;
     }
   }
@@ -129,7 +129,7 @@ bool is_load_uncacheable(LoadInst& li, AAResults& AA, GradientUtils* gutils, Tar
   // Find the underlying object for the pointer operand of the load instruction.
   auto obj = GetUnderlyingObject(li.getPointerOperand(), gutils->oldFunc->getParent()->getDataLayout(), 100);
 
-  llvm::errs() << "underlying object for load " << li << " is " << *obj << "\n";
+  //llvm::errs() << "underlying object for load " << li << " is " << *obj << "\n";
 
   bool can_modref = is_value_mustcache_from_origin(obj, AA, gutils, TLI, uncacheable_args);
 
@@ -158,12 +158,12 @@ bool is_load_uncacheable(LoadInst& li, AAResults& AA, GradientUtils* gutils, Tar
 
         if (llvm::isModSet(AA.getModRefInfo(inst2, MemoryLocation::get(&li)))) {
           can_modref = true;
-          llvm::errs() << li << " needs to be cached due to: " << *inst2 << "\n";
+          //llvm::errs() << li << " needs to be cached due to: " << *inst2 << "\n";
           break;
         }
       }
   }
-  llvm::errs() << "F - " << li << " can_modref" << can_modref << "\n";
+  //llvm::errs() << "F - " << li << " can_modref" << can_modref << "\n";
   return can_modref;
 }
 
@@ -596,9 +596,9 @@ public:
 
   void visitLoadInst(llvm::LoadInst &LI) {
     bool constantval = gutils->isConstantValue(&LI);
+    LoadInst* orig = cast<LoadInst>(gutils->getOriginal(&LI));
     auto alignment = LI.getAlignment();
-    Value* ptr  = LI.getPointerOperand();
-    Instruction* orig = gutils->getOriginal(&LI);
+    Value* ptr  = gutils->getNewFromOriginal(orig->getPointerOperand());
     BasicBlock* parent = LI.getParent();
     Type*  type = LI.getType();
 
@@ -657,7 +657,7 @@ public:
     Instruction* inst = &LI;
 
     //! Store loads that need to be cached for use in reverse pass
-    if (cache_reads_always || (!cache_reads_never && gutils->can_modref_map->find(orig)->second && is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(&LI), /*toplevel*/mode == DerivativeMode::Both))) {
+    if (cache_reads_always || (!cache_reads_never && gutils->can_modref_map->find(orig)->second && is_value_needed_in_reverse(TR, gutils, orig, /*toplevel*/mode == DerivativeMode::Both))) {
       IRBuilder<> BuilderZ(LI.getNextNode());
       auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
 
@@ -701,9 +701,9 @@ public:
 
     if (type->isFPOrFPVectorTy() || (type->isIntOrIntVectorTy() && TR.intType(orig).isFloat() )) {
       IRBuilder<> Builder2 = getReverseBuilder(parent);
-      auto prediff = diffe(inst, Builder2);
-      setDiffe(inst, Constant::getNullValue(type), Builder2);
-          //llvm::errs() << "  + doing load propagation: orig:" << *oorig << " inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " << *inverted_operand << "\n";
+      auto prediff = diffe(orig, Builder2);
+      setDiffe(orig, Constant::getNullValue(type), Builder2);
+      //llvm::errs() << "  + doing load propagation: orig:" << *oorig << " inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " << *inverted_operand << "\n";
 
       Value* inverted_operand = gutils->invertPointerM(ptr, Builder2);
       assert(inverted_operand);
@@ -712,9 +712,9 @@ public:
   }
 
   void visitStoreInst(llvm::StoreInst &SI) {
-
-    Value* ptr = SI.getPointerOperand();
-    Value* val = SI.getValueOperand();
+    StoreInst* orig = cast<StoreInst>(gutils->getOriginal(&SI));
+    Value* ptr  = gutils->getNewFromOriginal(orig->getPointerOperand());
+    Value* val  = gutils->getNewFromOriginal(orig->getValueOperand());
     Type* valType = val->getType();
 
     if (gutils->isConstantValue(ptr)) return;
@@ -729,7 +729,7 @@ public:
     if (valType->isFPOrFPVectorTy()) {
       FT = valType->getScalarType();
     } else if (!valType->isPointerTy()) {
-      FT = TR.firstPointer(storeSize, gutils->getOriginal(ptr), /*errifnotfound*/true, /*pointerIntSame*/true).isFloat();
+      FT = TR.firstPointer(storeSize, orig->getPointerOperand(), /*errifnotfound*/true, /*pointerIntSame*/true).isFloat();
     }
 
     if (FT) {
@@ -743,7 +743,7 @@ public:
           auto dif1 = Builder2.CreateLoad(gutils->invertPointerM(ptr, Builder2));
           dif1->setAlignment(SI.getAlignment());
           ts = setPtrDiffe(ptr, Constant::getNullValue(valType), Builder2);
-          addToDiffe(val, dif1, Builder2, FT);
+          addToDiffe(orig->getValueOperand(), dif1, Builder2, FT);
         }
       }
 
@@ -855,10 +855,20 @@ public:
 
   void visitBinaryOperator(llvm::BinaryOperator &BO) {
     if (mode != DerivativeMode::Reverse && mode != DerivativeMode::Both) return;
-
     if (gutils->isConstantValue(&BO)) return;
 
-    if (BO.getType()->isIntOrIntVectorTy() && TR.intType(gutils->getOriginal(&BO), /*errifnotfound*/false) == IntType::Pointer) {
+    auto po = gutils->getOriginal(&BO);
+    if (!isa<BinaryOperator>(po)) {
+      llvm::errs() << " BO: " << BO << " po:" << *po << "\n";
+    }
+    BinaryOperator* orig = cast<BinaryOperator>(gutils->getOriginal(&BO));
+    Value* op0 = gutils->getNewFromOriginal(orig->getOperand(0));
+    Value* op1 = gutils->getNewFromOriginal(orig->getOperand(1));
+    bool constantval0 = gutils->isConstantValue(op0);
+    bool constantval1 = gutils->isConstantValue(op1);
+
+
+    if (BO.getType()->isIntOrIntVectorTy() && TR.intType(orig, /*errifnotfound*/false) == IntType::Pointer) {
       return;
     }
 
@@ -866,47 +876,47 @@ public:
 
     Value* dif0 = nullptr;
     Value* dif1 = nullptr;
-    Value* idiff = diffe(&BO, Builder2);
+    Value* idiff = diffe(orig, Builder2);
 
     Type* addingType = BO.getType();
 
     switch(BO.getOpcode()) {
       case Instruction::FMul:{
-        if (!gutils->isConstantValue(BO.getOperand(0)))
-          dif0 = Builder2.CreateFMul(idiff, lookup(BO.getOperand(1), Builder2), "m0diffe"+BO.getOperand(0)->getName());
-        if (!gutils->isConstantValue(BO.getOperand(1)))
-          dif1 = Builder2.CreateFMul(idiff, lookup(BO.getOperand(0), Builder2), "m1diffe"+BO.getOperand(1)->getName());
+        if (!constantval0)
+          dif0 = Builder2.CreateFMul(idiff, lookup(op1, Builder2), "m0diffe"+op0->getName());
+        if (!constantval1)
+          dif1 = Builder2.CreateFMul(idiff, lookup(op0, Builder2), "m1diffe"+op1->getName());
         break;
       }
       case Instruction::FAdd:{
-        if (!gutils->isConstantValue(BO.getOperand(0)))
+        if (!constantval0)
           dif0 = idiff;
-        if (!gutils->isConstantValue(BO.getOperand(1)))
+        if (!constantval1)
           dif1 = idiff;
         break;
       }
       case Instruction::FSub:{
-        if (!gutils->isConstantValue(BO.getOperand(0)))
+        if (!constantval0)
           dif0 = idiff;
-        if (!gutils->isConstantValue(BO.getOperand(1)))
+        if (!constantval1)
           dif1 = Builder2.CreateFNeg(idiff);
         break;
       }
       case Instruction::FDiv:{
-        if (!gutils->isConstantValue(BO.getOperand(0)))
-          dif0 = Builder2.CreateFDiv(idiff, lookup(BO.getOperand(1), Builder2), "d0diffe"+BO.getOperand(0)->getName());
-        if (!gutils->isConstantValue(BO.getOperand(1)))
+        if (!constantval0)
+          dif0 = Builder2.CreateFDiv(idiff, lookup(op1, Builder2), "d0diffe"+op0->getName());
+        if (!constantval1)
           dif1 = Builder2.CreateFNeg(
             Builder2.CreateFDiv(
               Builder2.CreateFMul(idiff, lookup(&BO, Builder2)),
-              lookup(BO.getOperand(1), Builder2))
+              lookup(op1, Builder2))
           );
         break;
       }
       case Instruction::LShr:{
-        if (!gutils->isConstantValue(BO.getOperand(0))) {
-          if (auto ci = dyn_cast<ConstantInt>(BO.getOperand(1))) {
-            if (Type* flt = TR.intType(gutils->getOriginal(BO.getOperand(0)), /*necessary*/false).isFloat()) {
+        if (!constantval0) {
+          if (auto ci = dyn_cast<ConstantInt>(op1)) {
+            if (Type* flt = TR.intType(orig->getOperand(0), /*necessary*/false).isFloat()) {
               auto bits = gutils->newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(flt);
               if (ci->getSExtValue() >= bits && ci->getSExtValue() % bits == 0) {
                 dif0 = Builder2.CreateShl(idiff, ci);
@@ -925,15 +935,17 @@ public:
     }
 
     done:;
-    if (dif0 || dif1) setDiffe(&BO, Constant::getNullValue(BO.getType()), Builder2);
-    if (dif0) addToDiffe(BO.getOperand(0), dif0, Builder2, addingType);
-    if (dif1) addToDiffe(BO.getOperand(1), dif1, Builder2, addingType);
+    if (dif0 || dif1) setDiffe(orig, Constant::getNullValue(BO.getType()), Builder2);
+    if (dif0) addToDiffe(orig->getOperand(0), dif0, Builder2, addingType);
+    if (dif1) addToDiffe(orig->getOperand(1), dif1, Builder2, addingType);
   }
 
   void visitCallInst(llvm::CallInst &call);
 
   void visitMemSetInst(llvm::MemSetInst &MS) {
     if (gutils->isConstantInstruction(&MS)) return;
+    llvm::MemSetInst* orig = cast<MemSetInst>(gutils->getOriginal(&MS));
+    // TODO THE ORIGIFICATION FROM HERE DOWN
 
     //TODO this should 1) assert that the value being meset is constant
     //                 2) duplicate the memset for the inverted pointer
@@ -1096,13 +1108,15 @@ public:
     }
 
     if (mode == DerivativeMode::Both || mode == DerivativeMode::Reverse) {
+      IntrinsicInst* orig = cast<IntrinsicInst>(gutils->getOriginal(&II));
+
       IRBuilder<> Builder2 = getReverseBuilder(II.getParent());
       Module* M = II.getParent()->getParent()->getParent();
 
       Value* vdiff = nullptr;
       if (!gutils->isConstantValue(&II)) {
-        vdiff = diffe(&II, Builder2);
-        setDiffe(&II, Constant::getNullValue(II.getType()), Builder2);
+        vdiff = diffe(orig, Builder2);
+        setDiffe(orig, Constant::getNullValue(II.getType()), Builder2);
       }
 
       switch(II.getIntrinsicID()) {
@@ -1148,7 +1162,7 @@ public:
               Builder2.CreateFMul(ConstantFP::get(II.getType(), 0.5), vdiff),
               lookup(&II, Builder2)
             );
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1157,7 +1171,7 @@ public:
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value* cmp  = Builder2.CreateFCmpOLT(lookup(II.getOperand(0), Builder2), ConstantFP::get(II.getOperand(0)->getType(), 0));
             Value* dif0 = Builder2.CreateFMul(Builder2.CreateSelect(cmp, ConstantFP::get(II.getOperand(0)->getType(), -1), ConstantFP::get(II.getOperand(0)->getType(), 1)), vdiff);
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1168,12 +1182,12 @@ public:
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value* cmp  = Builder2.CreateFCmpOLT(lookup(II.getOperand(0), Builder2), lookup(II.getOperand(1), Builder2));
             Value* dif0 = Builder2.CreateSelect(cmp, ConstantFP::get(II.getOperand(0)->getType(), 0), vdiff);
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(1))) {
             Value* cmp  = Builder2.CreateFCmpOLT(lookup(II.getOperand(0), Builder2), lookup(II.getOperand(1), Builder2));
             Value* dif1 = Builder2.CreateSelect(cmp, vdiff, ConstantFP::get(II.getOperand(0)->getType(), 0));
-            addToDiffe(II.getOperand(1), dif1, Builder2, II.getType());
+            addToDiffe(orig->getOperand(1), dif1, Builder2, II.getType());
           }
           return;
         }
@@ -1184,12 +1198,12 @@ public:
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value* cmp = Builder2.CreateFCmpOLT(lookup(II.getOperand(0), Builder2), lookup(II.getOperand(1), Builder2));
             Value* dif0 = Builder2.CreateSelect(cmp, vdiff, ConstantFP::get(II.getOperand(0)->getType(), 0));
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(1))) {
             Value* cmp = Builder2.CreateFCmpOLT(lookup(II.getOperand(0), Builder2), lookup(II.getOperand(1), Builder2));
             Value* dif1 = Builder2.CreateSelect(cmp, ConstantFP::get(II.getOperand(0)->getType(), 0), vdiff);
-            addToDiffe(II.getOperand(1), dif1, Builder2, II.getType());
+            addToDiffe(orig->getOperand(1), dif1, Builder2, II.getType());
           }
           return;
         }
@@ -1197,7 +1211,7 @@ public:
         case Intrinsic::log: {
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value* dif0 = Builder2.CreateFDiv(vdiff, lookup(II.getOperand(0), Builder2));
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1207,7 +1221,7 @@ public:
             Value* dif0 = Builder2.CreateFDiv(vdiff,
               Builder2.CreateFMul(ConstantFP::get(II.getType(), 0.6931471805599453), lookup(II.getOperand(0), Builder2))
             );
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1216,7 +1230,7 @@ public:
             Value* dif0 = Builder2.CreateFDiv(vdiff,
               Builder2.CreateFMul(ConstantFP::get(II.getType(), 2.302585092994046), lookup(II.getOperand(0), Builder2))
             );
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1224,7 +1238,7 @@ public:
         case Intrinsic::exp: {
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(0))) {
             Value* dif0 = Builder2.CreateFMul(vdiff, lookup(&II, Builder2));
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1233,7 +1247,7 @@ public:
             Value* dif0 = Builder2.CreateFMul(
               Builder2.CreateFMul(vdiff, lookup(&II, Builder2)), ConstantFP::get(II.getType(), 0.6931471805599453)
             );
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1256,7 +1270,7 @@ public:
               Builder2.CreateFMul(vdiff, cal)
               , lookup(II.getOperand(1), Builder2)
             );
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
 
           if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(II.getOperand(1))) {
@@ -1267,7 +1281,7 @@ public:
               Builder2.CreateFMul(vdiff, lookup(&II, Builder2)),
               Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::log, tys), args)
             );
-            addToDiffe(II.getOperand(1), dif1, Builder2, II.getType());
+            addToDiffe(orig->getOperand(1), dif1, Builder2, II.getType());
           }
 
           return;
@@ -1278,7 +1292,7 @@ public:
             Type *tys[] = {II.getOperand(0)->getType()};
             Value* dif0 = Builder2.CreateFMul(vdiff,
               Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::cos, tys), args) );
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1290,7 +1304,7 @@ public:
               Builder2.CreateFNeg(
                 Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::sin, tys), args) )
             );
-            addToDiffe(II.getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1690,8 +1704,8 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
  // Create the new function...
  Function *NewF = Function::Create(FTy, nf->getLinkage(), "augmented_"+todiff->getName(), nf->getParent());
 
- unsigned ii = 0, jj = 0;
- for (auto i=nf->arg_begin(), j=NewF->arg_begin(); i != nf->arg_end(); ) {
+  unsigned ii = 0, jj = 0;
+  for (auto i=nf->arg_begin(), j=NewF->arg_begin(); i != nf->arg_end(); ) {
     VMap[i] = j;
     if (nf->hasParamAttribute(ii, Attribute::NoCapture)) {
       NewF->addParamAttr(jj, Attribute::NoCapture);
@@ -1700,13 +1714,13 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
        NewF->addParamAttr(jj, Attribute::NoAlias);
     }
 
-     j->setName(i->getName());
-     j++;
-     jj++;
+    j->setName(i->getName());
+    j++;
+    jj++;
 
-     i++;
-     ii++;
- }
+    i++;
+    ii++;
+  }
 
   SmallVector <ReturnInst*,4> Returns;
   CloneFunctionInto(NewF, nf, VMap, nf->getSubprogram() != nullptr, Returns, "",
@@ -1879,7 +1893,7 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, Basic
 
         for (auto& I: gutils->oldFunc->args()) {
           if (!gutils->isConstantValue(gutils->getNewFromOriginal(&I)) && whatType(I.getType()) == DIFFE_TYPE::OUT_DIFF ) {
-            retargs.push_back(gutils->diffe((Value*)gutils->getNewFromOriginal(&I), Builder));
+            retargs.push_back(gutils->diffe(&I, Builder));
           }
         }
 
@@ -1901,62 +1915,64 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, Basic
 
     // Ensure phi values have their derivatives propagated
     for (auto I = BB->begin(), E = BB->end(); I != E; I++) {
-        if(PHINode* PN = dyn_cast<PHINode>(&*I)) {
-            if (gutils->isConstantValue(PN)) continue;
+      if(PHINode* PN = dyn_cast<PHINode>(&*I)) {
+        if (gutils->isConstantValue(PN)) continue;
+        PHINode* orig = cast<PHINode>(gutils->getOriginal(PN));
+        auto PNtype = TR.intType(orig, /*necessary*/false);
 
-            auto PNtype = TR.intType(gutils->getOriginal(PN), /*necessary*/false);
+        //TODO remove explicit type check and only use PNtype
+        if (PNtype == IntType::Pointer || PN->getType()->isPointerTy()) continue;
 
-            //TODO remove explicit type check and only use PNtype
-            if (PNtype == IntType::Pointer || PN->getType()->isPointerTy()) continue;
+        //TODO consider skipping if not a secret float
+        //if (!isIntASecretFloat(PN))) continue;
 
-            //TODO consider skipping if not a secret float
-            //if (!isIntASecretFloat(PN))) continue;
+        auto prediff = gutils->diffe(orig, Builder);
+        gutils->setDiffe(orig, Constant::getNullValue(PN->getType()), Builder);
 
-            auto prediff = gutils->diffe(PN, Builder);
-            gutils->setDiffe(PN, Constant::getNullValue(PN->getType()), Builder);
+        //TODO make the necessary flag just true.
+        //
+        Type* PNfloatType = PNtype.isFloat();
+        if (!PNfloatType)
+          llvm::errs() << " for PN " << *PN << " saw " << TR.intType(orig, /*necessary*/false).str() << "\n";
+        TR.intType(orig, /*necessary*/true);
+        assert(PNfloatType);
 
-            //TODO make the necessary flag just true.
-            //
-            Type* PNfloatType = PNtype.isFloat();
-            if (!PNfloatType)
-              llvm::errs() << " for PN " << *PN << " saw " << TR.intType(gutils->getOriginal(PN), /*necessary*/false).str() << "\n";
-            TR.intType(gutils->getOriginal(PN), /*necessary*/true);
-            assert(PNfloatType);
+        for (BasicBlock* pred : predecessors(BB)) {
+          auto oval = orig->getIncomingValueForBlock(gutils->getOriginal(pred));
+          auto val = gutils->getNewFromOriginal(oval);
+          if (gutils->isConstantValue(val)) {
+            continue;
+          }
 
-            for (BasicBlock* pred : predecessors(BB)) {
-                if (gutils->isConstantValue(PN->getIncomingValueForBlock(pred))) {
-                    continue;
-                }
-
-                if (PN->getNumIncomingValues() == 1) {
-                    gutils->addToDiffe(PN->getIncomingValueForBlock(pred), prediff, Builder, PNfloatType);
-                } else {
-                    if (replacePHIs.find(pred) == replacePHIs.end()) {
-                        replacePHIs[pred] = Builder.CreatePHI(Type::getInt1Ty(pred->getContext()), 1);
-                        if (!setphi) {
-                            phibuilder.SetInsertPoint(replacePHIs[pred]);
-                            setphi = true;
-                        }
-                    }
-                    SelectInst* dif = cast<SelectInst>(Builder.CreateSelect(replacePHIs[pred], prediff, Constant::getNullValue(prediff->getType())));
-                    //llvm::errs() << "creating prediff " << *dif << " for value incoming " << PN->getIncomingValueForBlock(pred) << " for " << *PN << "\n";
-                    auto addedSelects = gutils->addToDiffe(PN->getIncomingValueForBlock(pred), dif, Builder, PNfloatType);
-                    /*if (dif->getNumUses() != 0) {
-                      llvm::errs() << "oldFunc: " << *gutils->oldFunc << "\n";
-                      llvm::errs() << "newFunc: " << *gutils->newFunc << "\n";
-                      for (auto use : dif->users()) {
-                        llvm::errs() << "user: " << *use << "\n";
-                      }
-                      llvm::errs() << "dif: " << *dif << "\n";
-                    }
-                    assert(dif->getNumUses() == 0);
-                    dif->eraseFromParent();
-                    */
-                    for (auto select : addedSelects)
-                        selects.emplace_back(select);
-                }
+          if (PN->getNumIncomingValues() == 1) {
+            gutils->addToDiffe(oval, prediff, Builder, PNfloatType);
+          } else {
+            if (replacePHIs.find(pred) == replacePHIs.end()) {
+              replacePHIs[pred] = Builder.CreatePHI(Type::getInt1Ty(pred->getContext()), 1);
+              if (!setphi) {
+                phibuilder.SetInsertPoint(replacePHIs[pred]);
+                setphi = true;
+              }
             }
-        } else break;
+            SelectInst* dif = cast<SelectInst>(Builder.CreateSelect(replacePHIs[pred], prediff, Constant::getNullValue(prediff->getType())));
+            //llvm::errs() << "creating prediff " << *dif << " for value incoming " << PN->getIncomingValueForBlock(pred) << " for " << *PN << "\n";
+            auto addedSelects = gutils->addToDiffe(oval, dif, Builder, PNfloatType);
+            /*if (dif->getNumUses() != 0) {
+              llvm::errs() << "oldFunc: " << *gutils->oldFunc << "\n";
+              llvm::errs() << "newFunc: " << *gutils->newFunc << "\n";
+              for (auto use : dif->users()) {
+                llvm::errs() << "user: " << *use << "\n";
+              }
+              llvm::errs() << "dif: " << *dif << "\n";
+            }
+            assert(dif->getNumUses() == 0);
+            dif->eraseFromParent();
+            */
+            for (auto select : addedSelects)
+              selects.emplace_back(select);
+          }
+        }
+      } else break;
     }
     if (!setphi) {
         phibuilder.SetInsertPoint(Builder.GetInsertBlock(), Builder.GetInsertPoint());
@@ -2312,7 +2328,227 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         gutils->erase(op);
 }
 
-void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, CacheType)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
+
+bool legalCombinedForwardReverse(CallInst &ci, std::vector<Instruction*> &postCreate, std::vector<Instruction*> &userReplace, DiffeGradientUtils* gutils, TypeResults &TR, const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, const bool subretused) {
+
+  Function* called =  ci.getCalledFunction();
+  CallInst* origop = cast<CallInst>(gutils->getOriginal(&ci));
+
+  if (subretused && isa<PointerType>(ci.getType())) {
+    if (called)
+      llvm::errs() << " [not implemented] pointer return for combined forward/reverse " << called->getName() << "\n";
+    else
+      llvm::errs() << " [not implemented] pointer return for combined forward/reverse " << *ci.getCalledValue() << "\n";
+    return false;
+  }
+
+  auto getMRI = [&](Instruction* inst, Instruction* inst2) {
+    if (auto call = dyn_cast<CallInst>(inst)) {
+      if (call->getCalledFunction() && isCertainMallocOrFree(call->getCalledFunction())) {
+        return ModRefInfo::NoModRef;
+      }
+    }
+
+    if (auto li = dyn_cast<LoadInst>(inst2)) {
+      return gutils->AA.getModRefInfo(inst, MemoryLocation::get(li));
+    }
+    if (auto si = dyn_cast<StoreInst>(inst2)) {
+      return gutils->AA.getModRefInfo(inst, MemoryLocation::get(si));
+    }
+    if (auto rmw = dyn_cast<AtomicRMWInst>(inst2)) {
+      return gutils->AA.getModRefInfo(inst, MemoryLocation::get(rmw));
+    }
+    if (auto xch = dyn_cast<AtomicCmpXchgInst>(inst2)) {
+      return gutils->AA.getModRefInfo(inst, MemoryLocation::get(xch));
+    }
+    if (auto cb = dyn_cast<CallInst>(inst2)) {
+      if (cb->getCalledFunction() && isCertainMallocOrFree(cb->getCalledFunction())) {
+        return ModRefInfo::NoModRef;
+      }
+      return gutils->AA.getModRefInfo(inst, cb);
+    }
+    if (auto cb = dyn_cast<InvokeInst>(inst2)) {
+      if (cb->getCalledFunction() && isCertainMallocOrFree(cb->getCalledFunction())) {
+        return ModRefInfo::NoModRef;
+      }
+      return gutils->AA.getModRefInfo(inst, cb);
+    }
+    llvm::errs() << " inst2: " << *inst2 << "\n";
+    llvm_unreachable("unknown inst2");
+  };
+
+  auto allFollowersOf = [&](Instruction* inst, std::function<void(Instruction*)> f) {
+
+    //llvm::errs() << "all followers of: " << *inst << "\n";
+    for(auto uinst = inst->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
+      //llvm::errs() << " + bb1: " << *uinst << "\n";
+      f(uinst);
+    }
+
+    std::deque<BasicBlock*> todo;
+    std::set<BasicBlock*> done;
+    for(auto suc : successors(inst->getParent())) {
+      todo.push_back(suc);
+    }
+    while(todo.size()) {
+      auto BB = todo.front();
+      todo.pop_front();
+      if (done.count(BB)) continue;
+      done.insert(BB);
+      for(auto &ni : *BB) {
+        f(&ni);
+        if (&ni == inst) break;
+      }
+      for(auto suc : successors(BB)) {
+        todo.push_back(suc);
+      }
+    }
+  };
+
+  // Check any users of the returned value and determine all values that would be needed to be moved to reverse pass
+  //  to ensure the forward pass would remain correct and everything computable
+  SmallPtrSet<Instruction*,4> usetree;
+  std::deque<Instruction*> todo { origop };
+
+
+  bool legal = true;
+
+  //Given a function I we know must be moved to the reverse for legality reasons
+  auto propagate = [&](Instruction* I) {
+    // if only used in unneeded return, don't need to move this to reverse (unless this is the original function)
+    if (usetree.count(I)) return;
+    if (isa<ReturnInst>(I)) return;
+    if (valuesOnlyUsedInUnnecessaryReturns.count(I) && (I != origop) ) {
+      userReplace.push_back(I);
+      return;
+    }
+
+    if (auto op = dyn_cast<CallInst>(I)) {
+      Function *called = op->getCalledFunction();
+
+      if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
+        if (castinst->isCast()) {
+          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+            if (isAllocationFunction(*fn, gutils->TLI) || isDeallocationFunction(*fn, gutils->TLI)) {
+              return;
+            }
+          }
+        }
+      }
+      if (called && isDeallocationFunction(*called, gutils->TLI)) return;
+    }
+
+
+    if (isa<BranchInst>(I)) {
+      legal = false;
+      if (called)
+        llvm::errs() << " [bi] failed to replace function " << (called->getName()) << " due to " << *I << "\n";
+      else
+        llvm::errs() << " [bi] ailed to replace function " << (*ci.getCalledValue()) << " due to " << *I << "\n";
+      return;
+    }
+    if (isa<PHINode>(I)) {
+      legal = false;
+      if (called)
+        llvm::errs() << " [phi] failed to replace function " << (called->getName()) << " due to " << *I << "\n";
+      else
+        llvm::errs() << " [phi] ailed to replace function " << (*ci.getCalledValue()) << " due to " << *I << "\n";
+      return;
+    }
+    if (is_value_needed_in_reverse(TR, gutils, I, /*topLevel*/true)) {
+      legal = false;
+      if (called)
+        llvm::errs() << " [nv] failed to replace function " << (called->getName()) << " due to " << *I << "\n";
+      else
+        llvm::errs() << " [nv] ailed to replace function " << (*ci.getCalledValue()) << " due to " << *I << "\n";
+      return;
+    }
+
+    usetree.insert(I);
+    for(auto use : I->users()) {
+      //llvm::errs() << "I: " << *I << " use: " << *use << "\n";
+      //assert(!isa<BranchInst>(use));
+      todo.push_back(cast<Instruction>(use));
+    }
+  };
+
+  while (!todo.empty()) {
+    auto inst = todo.front();
+    todo.pop_front();
+
+    if (inst->mayWriteToMemory()) {
+      auto consider = [&](Instruction* user) {
+        if (!user->mayReadFromMemory()) return;
+        auto mri = getMRI(user, inst);
+        if (isModSet(mri)) {
+          propagate(user);
+          if (!legal) return;
+          }
+      };
+      allFollowersOf(inst, consider);
+      if (!legal) return false;
+      }
+
+    propagate(inst);
+    if (!legal) return false;
+  }
+
+
+  // Check if any of the unmoved operations will make it illegal to move the instruction
+  for (auto inst : usetree) {
+    if (!inst->mayReadFromMemory()) continue;
+    allFollowersOf(inst, [&](Instruction* post) {
+      if (!post->mayWriteToMemory()) return;
+      auto mri = getMRI(inst, post);
+      if (isModSet(mri)) {
+        if (called)
+          llvm::errs() << " failed to replace function " << (called->getName()) << " due to " << *post << " usetree: " << *inst << "\n";
+        else
+          llvm::errs() << " failed to replace function " << (*ci.getCalledValue()) << " due to " << *post << " usetree: " << *inst << "\n";
+        legal = false;
+      }
+    });
+    if (!legal) break;
+  }
+
+  if (!legal) return false;
+
+
+  allFollowersOf(origop, [&](Instruction* inst) {
+    if (usetree.count(inst) == 0) return;
+    if (inst->getParent() != origop->getParent()) {
+      // Don't move a writing instruction (may change speculatable/etc things)
+      if (inst->mayWriteToMemory()) {
+        if (called)
+          llvm::errs() << " [nonspec] failed to replace function " << (called->getName()) << " due to " << *inst << "\n";
+        else
+          llvm::errs() << " [nonspec] ailed to replace function " << (*ci.getCalledValue()) << " due to " << *inst << "\n";
+        legal = false;
+        return;
+      }
+    }
+    if (isa<CallInst>(inst) && gutils->originalToNewFn.find(inst) == gutils->originalToNewFn.end()) {
+      legal = false;
+      if (called)
+        llvm::errs() << " [premove] failed to replace function " << (called->getName()) << " due to " << *inst << "\n";
+      else
+        llvm::errs() << " [premove] ailed to replace function " << (*ci.getCalledValue()) << " due to " << *inst << "\n";
+      return;
+    }
+    postCreate.push_back(gutils->getNewFromOriginal(inst));
+  });
+
+  if (!legal) return false;
+
+  if (called)
+    llvm::errs() << " choosing to replace function " << (called->getName()) << " and do both forward/reverse\n";
+  else
+    llvm::errs() << " choosing to replace function " << (*ci.getCalledValue()) << " and do both forward/reverse\n";
+
+  return true;
+}
+
+void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, const bool topLevel, const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, CacheType)> getIndex, const AugmentedReturn* subdata) {
   Function *called = op->getCalledFunction();
 
   if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -2337,28 +2573,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
     return;
   }
 
-  bool subretused = op->getNumUses() != 0;
-  bool augmentedsubretused = subretused;
-  // double check for uses that may have been removed by loads from a cache (specifically if this returns a pointer)
-  // Note this is not true: we can safely ignore (and should ignore) return instances, since those are already taken into account by a store if we do need to return them
-  if (!subretused) {
-    for( auto user : gutils->getOriginal(op)->users()) {
-        if (isa<ReturnInst>(user)) {
-            continue;
-        }
-        subretused = true;
-        break;
-    }
-    augmentedsubretused = subretused;
-    for( auto user : gutils->getOriginal(op)->users()) {
-        if (isa<ReturnInst>(user)) {
-            if (metaretused) {
-                augmentedsubretused = true;
-            }
-            continue;
-        }
-    }
-  }
+  bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(gutils->getOriginal(op)) == valuesOnlyUsedInUnnecessaryReturns.end());
 
   //llvm::errs() << "newFunc:" << *gutils->oldFunc << "\n";
   //llvm::errs() << "subretused: " << subretused << " metaretused: " << metaretused << " op: " << *op << "\n";
@@ -2492,6 +2707,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   SmallVector<DIFFE_TYPE, 8> argsInverted;
   IRBuilder<> BuilderZ(op);
   std::vector<Instruction*> postCreate;
+  std::vector<Instruction*> userReplace;
   BuilderZ.setFastMathFlags(getFast());
 
   for(unsigned i=0;i<op->getNumArgOperands(); i++) {
@@ -2527,249 +2743,9 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
 
   bool replaceFunction = false;
 
-  if (topLevel && op->getParent()->getSingleSuccessor() == gutils->reverseBlocks[op->getParent()] && !foreignFunction) {
-      auto origop = cast<CallInst>(gutils->getOriginal(op));
-      auto OBB = cast<BasicBlock>(gutils->getOriginal(op->getParent()));
-                //TODO fix this to be more accurate
-      auto iter = OBB->rbegin();
-      SmallPtrSet<Instruction*,4> usetree;
-      usetree.insert(origop);
-      for(auto uinst = origop->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
-        bool usesInst = false;
-        for(auto &operand : uinst->operands()) {
-          if (auto usedinst = dyn_cast<Instruction>(operand.get())) {
-            if (usetree.find(usedinst) != usetree.end()) {
-              usesInst = true;
-              break;
-            }
-          }
-        }
-        if (usesInst) {
-          usetree.insert(uinst);
-          continue;
-        }
-
-        ModRefInfo mri = ModRefInfo::NoModRef;
-        if (uinst->mayReadOrWriteMemory()) {
-          mri = gutils->AA.getModRefInfo(uinst, origop);
-        }
-
-        if (mri == ModRefInfo::NoModRef) { continue; }
-
-        usetree.insert(uinst);
-
-        if (auto li = dyn_cast<LoadInst>(uinst)) {
-          for(Instruction* it = uinst; it != nullptr; it = it->getNextNode()) {
-              if (auto call = dyn_cast<CallInst>(it)) {
-                 if (isCertainMallocOrFree(call->getCalledFunction())) {
-                   continue;
-                 }
-               }
-               if (gutils->AA.canInstructionRangeModRef(*it, *it, MemoryLocation::get(li), ModRefInfo::Mod)) {
-                  usetree.insert(it);
-               }
-            }
-        }
-
-
-      }
-
-      while(iter != OBB->rend() && &*iter != origop) {
-        //llvm::errs() << " forwardback considering: " << *iter << " origop: " << *origop << "\n";
-
-        if (auto call = dyn_cast<CallInst>(&*iter)) {
-          if (isCertainMallocOrFree(call->getCalledFunction())) {
-            iter++;
-            continue;
-          }
-        }
-
-        if (auto ri = dyn_cast<ReturnInst>(&*iter)) {
-          auto fd = replacedReturns.find(ri);
-          if (fd != replacedReturns.end()) {
-            auto si = fd->second;
-            if (usetree.find(dyn_cast<Instruction>(gutils->getOriginal(si->getValueOperand()))) != usetree.end()) {
-              postCreate.push_back(si);
-            }
-          }
-          iter++;
-          continue;
-        }
-
-        //TODO usesInst has created a bug here
-        // if it is used by the reverse pass before this call creates it
-        // and thus it loads an undef from cache
-        bool usesInst = usetree.find(&*iter) != usetree.end();
-
-        //TODO remove this upon start of more accurate)
-        //if (usesInst) break;
-        if (!usesInst && (!iter->mayReadOrWriteMemory() || isa<BinaryOperator>(&*iter))) {
-          iter++;
-          continue;
-        }
-
-        ModRefInfo mri = ModRefInfo::NoModRef;
-        if (iter->mayReadOrWriteMemory()) {
-          mri = gutils->AA.getModRefInfo(&*iter, origop);
-          /*
-          llvm::errs() << "  **** &AA" << &AA << "\n";
-          for(auto& a : AA.AAs) {
-            llvm::errs() << " subAA: " << a->getName() << " PTR:" << a.get() << "\n";
-          }
-
-          llvm::errs() << " iter: " << *iter << " origop: " << *origop << " mri: ";
-          if (mri == ModRefInfo::NoModRef) llvm::errs() << "nomodref";
-          if (mri == ModRefInfo::ModRef) llvm::errs() << "modref";
-          if (mri == ModRefInfo::Mod) llvm::errs() << "mod";
-          if (mri == ModRefInfo::Ref) llvm::errs() << "ref";
-          if (mri == ModRefInfo::MustModRef) llvm::errs() << "mustmodref";
-          if (mri == ModRefInfo::MustMod) llvm::errs() << "mustmod";
-          if (mri == ModRefInfo::MustRef) llvm::errs() << "mustref";
-          llvm::errs() << "\n";
-          */
-        }
-
-        if (mri == ModRefInfo::NoModRef && !usesInst) {
-          iter++;
-          continue;
-        }
-
-        //load that follows the original
-        if (auto li = dyn_cast<LoadInst>(&*iter)) {
-          bool modref = false;
-          for(Instruction* it = li; it != nullptr; it = it->getNextNode()) {
-            if (auto call = dyn_cast<CallInst>(it)) {
-             if (isCertainMallocOrFree(call->getCalledFunction())) {
-               continue;
-             }
-           }
-           if (gutils->AA.canInstructionRangeModRef(*it, *it, MemoryLocation::get(li), ModRefInfo::Mod)) {
-            modref = true;
-          }
-        }
-
-        if (modref)
-          break;
-        postCreate.push_back(cast<Instruction>(gutils->getNewFromOriginal(&*iter)));
-        iter++;
-        continue;
-      }
-
-                  //call that follows the original
-      if (auto li = dyn_cast<IntrinsicInst>(&*iter)) {
-        if (li->getIntrinsicID() == Intrinsic::memcpy) {
-         auto mem0 = gutils->AA.getModRefInfo(&*iter, li->getOperand(0), MemoryLocation::UnknownSize);
-         auto mem1 = gutils->AA.getModRefInfo(&*iter, li->getOperand(1), MemoryLocation::UnknownSize);
-
-         llvm::errs() << "modrefinfo for mem0 " << *li->getOperand(0) << " " << (unsigned int)mem0 << "\n";
-         llvm::errs() << "modrefinfo for mem1 " << *li->getOperand(1) << " " << (unsigned int)mem1 << "\n";
-
-         if ( !isModSet(mem0) )
-         {
-          bool modref = false;
-          for(Instruction* it = li; it != nullptr; it = it->getNextNode()) {
-            if (auto call = dyn_cast<CallInst>(it)) {
-             if (isCertainMallocOrFree(call->getCalledFunction())) {
-               continue;
-             }
-           }
-           if (gutils->AA.canInstructionRangeModRef(*it, *it, li->getOperand(1), MemoryLocation::UnknownSize, ModRefInfo::Mod)) {
-            modref = true;
-            llvm::errs() << " inst  found mod " << *iter << " " << *it << "\n";
-          }
-        }
-
-        if (modref)
-          break;
-        postCreate.push_back(cast<Instruction>(gutils->getNewFromOriginal(&*iter)));
-        iter++;
-        continue;
-      }
-    }
-  }
-
-  if (usesInst) {
-    bool modref = false;
-                      //auto start = &*iter;
-    if (mri != ModRefInfo::NoModRef) {
-      modref = true;
-                          /*
-                          for(Instruction* it = start; it != nullptr; it = it->getNextNode()) {
-                              if (auto call = dyn_cast<CallInst>(it)) {
-                                   if (isCertainMallocOrFree(call->getCalledFunction())) {
-                                       continue;
-                                   }
-                              }
-                              if ( (isa<StoreInst>(start) || isa<CallInst>(start)) && AA.canInstructionRangeModRef(*it, *it, MemoryLocation::get(start), ModRefInfo::Mod)) {
-                                  modref = true;
-                          llvm::errs() << " inst  found mod " << *iter << " " << *it << "\n";
-                              }
-                          }
-                          */
-    }
-
-    if (modref)
-      break;
-
-    //If already did forward reverse replacement for iter, we cannot put it into post create (since it would have a dependence on our output, making a circular dependency)
-    if (gutils->originalToNewFn.find(&*iter) == gutils->originalToNewFn.end()) {
-      break;
-    }
-
-    postCreate.push_back(cast<Instruction>(gutils->getNewFromOriginal(&*iter)));
-    iter++;
-    continue;
-  }
-
-  break;
-  }
-  if (&*iter == gutils->getOriginal(op)) {
-    User* outsideuse = nullptr;
-    //If we don't post dominate a user, consider what outside use entails?
-    for(auto user : op->users()) {
-      if (gutils->originalInstructions.find(cast<Instruction>(user)) == gutils->originalInstructions.end()) {
-        if (StoreInst* si = dyn_cast<StoreInst>(user)) {
-            bool returned = false;
-            for(auto rep : replacedReturns) {
-                if (rep.second == si) {
-                    returned = true;
-                    break;
-                }
-            }
-            if (returned) continue;
-        }
-        outsideuse = user;
-      }
-    }
-
-    if (subretused && isa<PointerType>(op->getType())) {
-      if (called)
-        llvm::errs() << " [not implemented] pointer return for combined forward/reverse " << called->getName() << "\n";
-      else
-        llvm::errs() << " [not implemented] pointer return for combined forward/reverse " << *op->getCalledValue() << "\n";
-      outsideuse = op;
-    }
-
-    if (!outsideuse) {
-      if (called)
-        llvm::errs() << " choosing to replace function " << (called->getName()) << " and do both forward/reverse\n";
-      else
-        llvm::errs() << " choosing to replace function " << (*op->getCalledValue()) << " and do both forward/reverse\n";
-      replaceFunction = true;
-      modifyPrimal = false;
-    } else {
-      if (called)
-        llvm::errs() << " failed to replace function (cacheuse)" << (called->getName()) << " due to " << *outsideuse << "\n";
-      else
-        llvm::errs() << " failed to replace function (cacheuse)" << (*op->getCalledValue()) << " due to " << *outsideuse << "\n";
-
-    }
-  } else {
-    if (called)
-      llvm::errs() << " failed to replace function " << (called->getName()) << " due to " << *iter << "\n";
-    else
-      llvm::errs() << " failed to replace function " << (*op->getCalledValue()) << " due to " << *iter << "\n";
-  }
+  if (topLevel && !foreignFunction) {
+    replaceFunction = legalCombinedForwardReverse(*op, postCreate, userReplace, gutils, TR, valuesOnlyUsedInUnnecessaryReturns, subretused);
+    if (replaceFunction) modifyPrimal = false;
   }
 
   Value* tape = nullptr;
@@ -2824,7 +2800,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
 
     } else {
         if (topLevel)
-            subdata = &CreateAugmentedPrimal(cast<Function>(called), subconstant_args, gutils->TLI, TR.analysis, gutils->AA, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, nextTypeInfo, uncacheable_args, false);
+            subdata = &CreateAugmentedPrimal(cast<Function>(called), subconstant_args, gutils->TLI, TR.analysis, gutils->AA, /*differentialReturns*/subdifferentialreturn, /*return is used*/subretused, nextTypeInfo, uncacheable_args, false);
         if (!subdata) {
             llvm::errs() << *gutils->oldFunc->getParent() << "\n";
             llvm::errs() << *gutils->oldFunc << "\n";
@@ -3013,7 +2989,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   }
 
   if (subdiffereturn && op->getType()->isFPOrFPVectorTy()) {
-    args.push_back(gutils->diffe(op, Builder2));
+    args.push_back(gutils->diffe(gutils->getOriginal(op), Builder2));
   }
 
   if (tape) {
@@ -3064,15 +3040,15 @@ badfn:;
     if (argsInverted[i] == DIFFE_TYPE::OUT_DIFF) {
       Value* diffeadd = Builder2.CreateExtractValue(diffes, {structidx});
       structidx++;
-      gutils->addToDiffe(op->getArgOperand(i), diffeadd, Builder2, TR.intType(gutils->getOriginal(op->getArgOperand(i)), false).isFloat());
+      gutils->addToDiffe(gutils->getOriginal(op)->getArgOperand(i), diffeadd, Builder2, TR.intType(gutils->getOriginal(op->getArgOperand(i)), false).isFloat());
     }
   }
 
   assert(cast<StructType>(diffes->getType())->getNumElements() == structidx);
 
   //TODO this shouldn't matter because this can't use itself, but setting null should be done before other sets but after load of diffe
-  if (subretused && !gutils->isConstantValue(op))
-    gutils->setDiffe(op, Constant::getNullValue(op->getType()), Builder2);
+  if (!gutils->isConstantValue(op))
+    gutils->setDiffe(gutils->getOriginal(op), Constant::getNullValue(op->getType()), Builder2);
 
   gutils->originalInstructions.insert(diffes);
   gutils->nonconstant.insert(diffes);
@@ -3085,6 +3061,16 @@ badfn:;
   diffes->setMetadata("enzyme_activity_value", MDNode::get(diffes->getContext(), {MDString::get(diffes->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
 
   if (replaceFunction) {
+
+    for(auto usez : userReplace) {
+      auto use = gutils->getNewFromOriginal(usez);
+      for(unsigned i=0; i<use->getNumOperands(); i++) {
+        if (use->getOperand(i) == op || std::find(postCreate.begin(), postCreate.end(), use->getOperand(i)) != postCreate.end()) {
+          llvm::errs() << "replacing op i" << use->getOperand(i) << "\n";
+          use->setOperand(i, UndefValue::get(use->getOperand(i)->getType()));
+        }
+      }
+    }
 
     //if a function is replaced for joint forward/reverse, handle inverted pointers
     if (gutils->invertedPointers.count(op)) {
@@ -3100,7 +3086,8 @@ badfn:;
         gutils->erase(placeholder);
     }
 
-    ValueToValueMapTy mapp;
+    gutils->originalToNewFn[gutils->getOriginal(op)] = diffes;
+
     if (subretused) {
       auto retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
       gutils->originalInstructions.insert(retval);
@@ -3111,22 +3098,14 @@ badfn:;
       }
       retval->setMetadata("enzyme_activity_value", MDNode::get(retval->getContext(), {MDString::get(retval->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
       op->replaceAllUsesWith(retval);
-      mapp[op] = retval;
-    }
-
-    for (auto &a : *op->getParent()) {
-      if (&a != op) {
-        mapp[&a] = &a;
-      }
-    }
-
-    for (auto &a : *gutils->reverseBlocks[op->getParent()]) {
-      mapp[&a] = &a;
     }
 
     std::reverse(postCreate.begin(), postCreate.end());
     for(auto a : postCreate) {
       for(unsigned i=0; i<a->getNumOperands(); i++) {
+        if (a->getOperand(i) == op) continue;
+        if (std::find(postCreate.begin(), postCreate.end(), a->getOperand(i)) != postCreate.end()) continue;
+        ValueToValueMapTy mapp;
         a->setOperand(i, gutils->unwrapM(a->getOperand(i), Builder2, mapp, UnwrapMode::LegalFullUnwrap));
       }
       llvm::errs() << "moving instruction for postcreate: " << *a << "\n";
@@ -3155,27 +3134,37 @@ badfn:;
       }
 
       if (Instruction* inst = dyn_cast<Instruction>(dcall))
-          gutils->originalInstructions.insert(inst);
+        gutils->originalInstructions.insert(inst);
       gutils->nonconstant.insert(dcall);
       if (!gutils->isConstantValue(op))
         gutils->nonconstant_values.insert(dcall);
 
-    if (!gutils->isConstantValue(op)) {
-      if (!op->getType()->isFPOrFPVectorTy() && TR.query(gutils->getOriginal(op))[{}].isPossiblePointer()) {
-        gutils->invertedPointers[dcall] = gutils->invertedPointers[op];
-        gutils->invertedPointers.erase(op);
-      } else {
-        gutils->differentials[dcall] = gutils->differentials[op];
-        gutils->differentials.erase(op);
+      if (!gutils->isConstantValue(op)) {
+        if (!op->getType()->isFPOrFPVectorTy() && TR.query(gutils->getOriginal(op))[{}].isPossiblePointer()) {
+          gutils->invertedPointers[dcall] = gutils->invertedPointers[op];
+          gutils->invertedPointers.erase(op);
+        } else {
+          gutils->differentials[dcall] = gutils->differentials[op];
+          gutils->differentials.erase(op);
+        }
+      }
+      op->replaceAllUsesWith(dcall);
+      auto name = op->getName();
+      op->setName("");
+      if (dcall) {
+        dcall->setName(name);
+      }
+    } else {
+      for(auto inst_orig : valuesOnlyUsedInUnnecessaryReturns) {
+        if (isa<ReturnInst>(inst_orig)) continue;
+        auto inst = gutils->getNewFromOriginal(inst_orig);
+        for(unsigned i=0; i<inst->getNumOperands(); i++) {
+          if (inst->getOperand(i) == op) {
+            inst->setOperand(i, UndefValue::get(inst->getType()));
+          }
+        }
       }
     }
-    op->replaceAllUsesWith(dcall);
-    auto name = op->getName();
-    op->setName("");
-    if (dcall) {
-      dcall->setName(name);
-    }
-  }
 
   gutils->erase(op);
 
@@ -3463,11 +3452,13 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
   for(BasicBlock* BB: gutils->originalBlocks) {
     if(ReturnInst* op = dyn_cast<ReturnInst>(BB->getTerminator())) {
-      Value* retval = op->getReturnValue();
+      ReturnInst* orig = cast<ReturnInst>(gutils->getOriginal(op));
+
       IRBuilder<> rb(op);
       rb.setFastMathFlags(getFast());
 
       if (retAlloca) {
+        Value* retval = gutils->getNewFromOriginal(orig->getReturnValue());
         StoreInst* si = rb.CreateStore(retval, retAlloca);
         replacedReturns[cast<ReturnInst>(gutils->getOriginal(op))] = si;
 
@@ -3489,12 +3480,13 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       }
 
       //returns nonvoid value
-      if (retval != nullptr) {
+      if (orig->getReturnValue() != nullptr) {
+          Value* retval = gutils->getNewFromOriginal(orig->getReturnValue());
 
           //differential float return
           if (differentialReturn && todiff->getReturnType()->isFPOrFPVectorTy() && !gutils->isConstantValue(retval)) {
             IRBuilder <>reverseB(gutils->reverseBlocks[BB]);
-            gutils->setDiffe(retval, differetval, reverseB);
+            gutils->setDiffe(orig->getReturnValue(), differetval, reverseB);
           }
 
       //returns void, should not have a return allocation
@@ -3505,6 +3497,62 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       rb.CreateBr(gutils->reverseBlocks[BB]);
       gutils->erase(op);
     }
+  }
+
+  SmallPtrSet<Instruction*,4> valuesOnlyUsedInUnnecessaryReturns;
+  {
+
+  std::deque<Instruction*> todo;
+  for(auto &BB : *gutils->oldFunc) {
+    if (auto ri = dyn_cast<ReturnInst>(BB.getTerminator())) {
+      if (replacedReturns.find(ri) == replacedReturns.end()) {
+        valuesOnlyUsedInUnnecessaryReturns.insert(ri);
+        if (auto val = dyn_cast_or_null<Instruction>(ri->getReturnValue())) {
+          todo.push_back(val);
+        }
+      }
+    }
+  }
+  while (!todo.empty()) {
+    auto inst = todo.front();
+    todo.pop_front();
+    if (valuesOnlyUsedInUnnecessaryReturns.count(inst)) continue;
+    // TODO this could be changed to only writing to memory, but for now (since not fixed everywhere), we are conservative
+    // bool necessaryUse = inst->mayWriteToMemory();
+    bool necessaryUse = inst->mayReadOrWriteMemory();
+    // TODO make this more robust to phi nodes
+    for(auto user_val : inst->users()) {
+      if (auto val = dyn_cast<Instruction>(user_val)) {
+        if (valuesOnlyUsedInUnnecessaryReturns.count(val)) continue;
+
+        bool bad = val->mayReadOrWriteMemory();
+        for(auto user_dtx : val->users()) {
+          if (!isa<Instruction>(user_dtx)) continue;
+          auto dtx = cast<Instruction>(user_dtx);
+          if (valuesOnlyUsedInUnnecessaryReturns.count(dtx)) continue;
+          if (dtx == inst || dtx == val) continue;
+          bad = true;
+          break;
+        }
+        if (!bad) continue;
+
+        necessaryUse = true;
+        break;
+      }
+    }
+    if (!necessaryUse) {
+      valuesOnlyUsedInUnnecessaryReturns.insert(inst);
+      for(auto &operand : inst->operands()) {
+        if (auto usedinst = dyn_cast<Instruction>(operand.get())) {
+          todo.push_back(usedinst);
+        }
+      }
+    }
+  }
+
+  for(auto v : valuesOnlyUsedInUnnecessaryReturns) {
+    llvm::errs() << "valuesOnlyUsedInUnnecessaryReturns: " << *v << "\n";
+  }
   }
 
   for(BasicBlock* BB: gutils->originalBlocks) {
@@ -3606,40 +3654,43 @@ realcall:
           }
       }
       assert(uncacheable_args_map.find(orig) != uncacheable_args_map.end());
-      handleGradientCallInst(TR, Builder2, op, gutils, topLevel, replacedReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, returnUsed, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
+      handleGradientCallInst(TR, Builder2, op, gutils, topLevel, valuesOnlyUsedInUnnecessaryReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
     } else if(auto op = dyn_cast_or_null<SelectInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;
+      SelectInst* orig = cast<SelectInst>(gutils->getOriginal(op));
 
       Value* dif1 = nullptr;
       Value* dif2 = nullptr;
 
       if (!gutils->isConstantValue(op->getOperand(1)))
-        dif1 = Builder2.CreateSelect(lookup(op->getOperand(0)), diffe(inst), Constant::getNullValue(op->getOperand(1)->getType()), "diffe"+op->getOperand(1)->getName());
+        dif1 = Builder2.CreateSelect(lookup(gutils->getNewFromOriginal(orig->getOperand(0))), diffe(orig), Constant::getNullValue(op->getOperand(1)->getType()), "diffe"+op->getOperand(1)->getName());
       if (!gutils->isConstantValue(op->getOperand(2)))
-        dif2 = Builder2.CreateSelect(lookup(op->getOperand(0)), Constant::getNullValue(op->getOperand(2)->getType()), diffe(inst), "diffe"+op->getOperand(2)->getName());
+        dif2 = Builder2.CreateSelect(lookup(gutils->getNewFromOriginal(orig->getOperand(0))), Constant::getNullValue(op->getOperand(2)->getType()), diffe(orig), "diffe"+op->getOperand(2)->getName());
 
-      setDiffe(inst, Constant::getNullValue(inst->getType()));
-      if (dif1) addToDiffe(op->getOperand(1), dif1, TR.intType(gutils->getOriginal(op->getOperand(1)), false).isFloat());
-      if (dif2) addToDiffe(op->getOperand(2), dif2, TR.intType(gutils->getOriginal(op->getOperand(2)), false).isFloat());
+      setDiffe(orig, Constant::getNullValue(inst->getType()));
+      if (dif1) addToDiffe(orig->getOperand(1), dif1, TR.intType(gutils->getOriginal(op->getOperand(1)), false).isFloat());
+      if (dif2) addToDiffe(orig->getOperand(2), dif2, TR.intType(gutils->getOriginal(op->getOperand(2)), false).isFloat());
     } else if(isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
       maker.visit(*inst);
       Builder2.SetInsertPoint(BB2);
     } else if(auto op = dyn_cast<ExtractValueInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;
+      ExtractValueInst* orig = cast<ExtractValueInst>(gutils->getOriginal(op));
 
-      auto prediff = diffe(inst);
+      auto prediff = diffe(orig);
       //todo const
       if (!gutils->isConstantValue(op->getOperand(0))) {
         SmallVector<Value*,4> sv;
         for(auto i : op->getIndices())
             sv.push_back(ConstantInt::get(Type::getInt32Ty(Context), i));
-        gutils->addToDiffeIndexed(op->getOperand(0), prediff, sv, Builder2);
+        gutils->addToDiffeIndexed(orig->getOperand(0), prediff, sv, Builder2);
       }
-      setDiffe(inst, Constant::getNullValue(inst->getType()));
+      setDiffe(orig, Constant::getNullValue(inst->getType()));
     } else if(auto op = dyn_cast<InsertValueInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
+      InsertValueInst* orig = cast<InsertValueInst>(gutils->getOriginal(op));
       auto st = cast<StructType>(op->getType());
       bool hasNonPointer = false;
       for(unsigned i=0; i<st->getNumElements(); i++) {
@@ -3650,22 +3701,23 @@ realcall:
       if (!hasNonPointer) continue;
 
       if (!gutils->isConstantValue(op->getInsertedValueOperand()) && !op->getInsertedValueOperand()->getType()->isPointerTy()) {
-        auto prediff = gutils->diffe(inst, Builder2);
+        auto prediff = gutils->diffe(orig, Builder2);
         auto dindex = Builder2.CreateExtractValue(prediff, op->getIndices());
-        gutils->addToDiffe(op->getOperand(1), dindex, Builder2, TR.intType(gutils->getOriginal(op->getOperand(1)), false).isFloat());
+        gutils->addToDiffe(orig->getOperand(1), dindex, Builder2, TR.intType(orig->getOperand(1), false).isFloat());
       }
 
       if (!gutils->isConstantValue(op->getAggregateOperand()) && !op->getAggregateOperand()->getType()->isPointerTy()) {
         auto prediff = gutils->diffe(inst, Builder2);
         auto dindex = Builder2.CreateInsertValue(prediff, Constant::getNullValue(op->getInsertedValueOperand()->getType()), op->getIndices());
-        gutils->addToDiffe(op->getAggregateOperand(), dindex, Builder2, TR.intType(gutils->getOriginal(op->getAggregateOperand()), false).isFloat());
+        gutils->addToDiffe(orig->getAggregateOperand(), dindex, Builder2, TR.intType(orig->getAggregateOperand(), false).isFloat());
       }
 
-      gutils->setDiffe(inst, Constant::getNullValue(inst->getType()), Builder2);
+      gutils->setDiffe(orig, Constant::getNullValue(inst->getType()), Builder2);
     } else if (auto op = dyn_cast<ShuffleVectorInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
+      ShuffleVectorInst* orig = cast<ShuffleVectorInst>(gutils->getOriginal(op));
 
-      auto loaded = diffe(inst);
+      auto loaded = diffe(orig);
       size_t l1 = cast<VectorType>(op->getOperand(0)->getType())->getNumElements();
       uint64_t instidx = 0;
       for( size_t idx : op->getShuffleMask()) {
@@ -3674,51 +3726,54 @@ realcall:
         SmallVector<Value*,4> sv;
         sv.push_back(ConstantInt::get(Type::getInt32Ty(Context), opidx));
         if (!gutils->isConstantValue(op->getOperand(opnum)))
-          gutils->addToDiffeIndexed(op->getOperand(opnum), Builder2.CreateExtractElement(loaded, instidx), sv, Builder2);
+          gutils->addToDiffeIndexed(orig->getOperand(opnum), Builder2.CreateExtractElement(loaded, instidx), sv, Builder2);
         instidx++;
       }
-      setDiffe(inst, Constant::getNullValue(inst->getType()));
+      setDiffe(orig, Constant::getNullValue(inst->getType()));
     } else if(auto op = dyn_cast<ExtractElementInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
+      ExtractElementInst* orig = cast<ExtractElementInst>(gutils->getOriginal(op));
 
       if (!gutils->isConstantValue(op->getVectorOperand())) {
         SmallVector<Value*,4> sv;
-        sv.push_back(op->getIndexOperand());
-        gutils->addToDiffeIndexed(op->getVectorOperand(), diffe(inst), sv, Builder2);
+        sv.push_back(gutils->getNewFromOriginal(orig->getIndexOperand()));
+        gutils->addToDiffeIndexed(orig->getVectorOperand(), diffe(orig), sv, Builder2);
       }
-      setDiffe(inst, Constant::getNullValue(inst->getType()));
+      setDiffe(orig, Constant::getNullValue(inst->getType()));
     } else if(auto op = dyn_cast<InsertElementInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
+      InsertElementInst* orig = cast<InsertElementInst>(gutils->getOriginal(op));
 
-      auto dif1 = diffe(inst);
+      auto dif1 = diffe(orig);
 
       if (!gutils->isConstantValue(op->getOperand(0)))
-        addToDiffe(op->getOperand(0), Builder2.CreateInsertElement(dif1, Constant::getNullValue(op->getOperand(1)->getType()), lookup(op->getOperand(2))), TR.intType(gutils->getOriginal(op->getOperand(0)), false).isFloat());
+        addToDiffe(orig->getOperand(0), Builder2.CreateInsertElement(dif1, Constant::getNullValue(op->getOperand(1)->getType()), lookup(gutils->getNewFromOriginal(op->getOperand(2)))), TR.intType(orig->getOperand(0), false).isFloat());
 
       if (!gutils->isConstantValue(op->getOperand(1)))
-        addToDiffe(op->getOperand(1), Builder2.CreateExtractElement(dif1, lookup(op->getOperand(2))), TR.intType(gutils->getOriginal(op->getOperand(1)), false).isFloat());
+        addToDiffe(orig->getOperand(1), Builder2.CreateExtractElement(dif1, lookup(gutils->getNewFromOriginal(orig->getOperand(2)))), TR.intType(orig->getOperand(1), false).isFloat());
 
-      setDiffe(inst, Constant::getNullValue(inst->getType()));
+      setDiffe(orig, Constant::getNullValue(inst->getType()));
     } else if(auto op = dyn_cast<CastInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy() || op->getOpcode() == CastInst::CastOps::PtrToInt) continue;
+      CastInst* orig = cast<CastInst>(gutils->getOriginal(op));
 
-      if (!gutils->isConstantValue(op->getOperand(0))) {
+      if (!gutils->isConstantValue(gutils->getNewFromOriginal(orig->getOperand(0)))) {
         if (op->getOpcode()==CastInst::CastOps::FPTrunc || op->getOpcode()==CastInst::CastOps::FPExt) {
-          addToDiffe(op->getOperand(0), Builder2.CreateFPCast(diffe(inst), op->getOperand(0)->getType()), TR.intType(gutils->getOriginal(op->getOperand(0)), false).isFloat());
+          addToDiffe(orig->getOperand(0), Builder2.CreateFPCast(diffe(orig), op->getOperand(0)->getType()), TR.intType(orig->getOperand(0), false).isFloat());
         } else if (op->getOpcode()==CastInst::CastOps::BitCast) {
-          addToDiffe(op->getOperand(0), Builder2.CreateBitCast(diffe(inst), op->getOperand(0)->getType()), TR.intType(gutils->getOriginal(op->getOperand(0)), false).isFloat());
+          addToDiffe(orig->getOperand(0), Builder2.CreateBitCast(diffe(orig), op->getOperand(0)->getType()), TR.intType(orig->getOperand(0), false).isFloat());
         } else if (op->getOpcode()==CastInst::CastOps::Trunc) {
           //TODO CHECK THIS
-          auto trunced = Builder2.CreateZExt(diffe(inst), op->getOperand(0)->getType());
-          addToDiffe(op->getOperand(0), trunced, TR.intType(gutils->getOriginal(op->getOperand(0)), false).isFloat());
+          auto trunced = Builder2.CreateZExt(diffe(orig), op->getOperand(0)->getType());
+          addToDiffe(orig->getOperand(0), trunced, TR.intType(gutils->getOriginal(op->getOperand(0)), false).isFloat());
         } else {
             llvm::errs() << *inst->getParent()->getParent() << "\n" << *inst->getParent() << "\n";
             llvm::errs() << "cannot handle above cast " << *inst << "\n";
             report_fatal_error("unknown instruction");
         }
       }
-      setDiffe(inst, Constant::getNullValue(inst->getType()));
+      setDiffe(orig, Constant::getNullValue(inst->getType()));
     } else if(isa<CmpInst>(inst) || isa<PHINode>(inst) || isa<BranchInst>(inst) || isa<SwitchInst>(inst) || isa<AllocaInst>(inst) || isa<CastInst>(inst) || isa<GetElementPtrInst>(inst)) {
         continue;
     } else {

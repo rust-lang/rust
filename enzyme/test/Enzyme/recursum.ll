@@ -64,7 +64,7 @@ attributes #2 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal {{(dso_local )?}}double @differecsum.1(double* %x, double* %"x'", i32 %n)
+; CHECK: define internal {{(dso_local )?}}void @differecsum.1(double* %x, double* %"x'", i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   switch i32 %n, label %invertif.end3 [
 ; CHECK-NEXT:     i32 0, label %invertentry
@@ -72,11 +72,9 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   ]
 
 ; CHECK: invertentry: 
-; CHECK-NEXT:   %toreturn.0 = phi double [ %add, %invertif.end3 ], [ %[[xload:.+]], %invertif.then2 ], [ 0.000000e+00, %entry ]
-; CHECK-NEXT:   ret double %toreturn.0
+; CHECK-NEXT:   ret void
 
 ; CHECK: invertif.then2:
-; CHECK-NEXT:   %[[xload]] = load double, double* %x, align 8, !tbaa !2
 ; CHECK-NEXT:   %[[predx:.+]] = load double, double* %"x'", align 8
 ; CHECK-NEXT:   %[[postdx:.+]] = fadd fast double %[[predx]], 1.000000e+00
 ; CHECK-NEXT:   store double %[[postdx]], double* %"x'", align 8
@@ -88,8 +86,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[addptr:.+]] = getelementptr inbounds double, double* %x, i64 %[[idxext]]
 ; CHECK-NEXT:   %[[addptripg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[idxext]]
 ; CHECK-NEXT:   %[[sub:.+]] = sub i32 %n, %[[div]]
-; CHECK-NEXT:   %[[dsum1:.+]] = call double @differecsum.1(double* %[[addptr]], double* %[[addptripg]], i32 %[[sub]])
-; CHECK-NEXT:   %[[dsum2:.+]] = call double @differecsum.1(double* %x, double* %"x'", i32 %[[div]])
-; CHECK-NEXT:   %add = fadd fast double %[[dsum1]], %[[dsum2]]
+; CHECK-NEXT:   call void @differecsum.1(double* %[[addptr]], double* %[[addptripg]], i32 %[[sub]])
+; CHECK-NEXT:   call void @differecsum.1(double* %x, double* %"x'", i32 %[[div]])
 ; CHECK-NEXT:   br label %invertentry
 ; CHECK-NEXT: }

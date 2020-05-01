@@ -39,16 +39,12 @@ declare double @__enzyme_autodiff(double (double)*, ...)
 
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffeadd4(double %x, double %[[differet:.+]])
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { double, double } @diffeadd2(double %x, double %[[differet]])
-; CHECK-NEXT:   %1 = extractvalue { double, double } %0, 1
-; CHECK-NEXT:   %2 = insertvalue { double } undef, double %1, 0
-; CHECK-NEXT:   ret { double } %2
+; CHECK-NEXT:   %0 = call { double } @diffeadd2(double %x, double %[[differet]])
+; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{ double, double } @diffeadd2(double %x, double %[[differet:.+]])
+; CHECK: define internal {{(dso_local )?}}{ double } @diffeadd2(double %x, double %[[differet:.+]])
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %add = fadd fast double %x, 2.000000e+00
-; CHECK-NEXT:   %[[result:.+]] = insertvalue { double, double } undef, double %add, 0
-; CHECK-NEXT:   %[[result2:.+]] = insertvalue { double, double } %[[result]], double %[[differet]], 1
-; CHECK-NEXT:   ret { double, double } %[[result2]]
+; CHECK-NEXT:   %[[result2:.+]] = insertvalue { double } undef, double %[[differet]], 0
+; CHECK-NEXT:   ret { double } %[[result2]]
 ; CHECK-NEXT: }
