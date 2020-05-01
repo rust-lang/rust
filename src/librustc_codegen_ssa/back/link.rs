@@ -1143,9 +1143,10 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
     };
 
     // Adjust the output kind to target capabilities.
-    let pic_exe_supported = sess.target.target.options.position_independent_executables;
-    let static_pic_exe_supported = false; // FIXME: Add this option to target specs.
-    let static_dylib_supported = sess.target.target.options.crt_static_allows_dylibs;
+    let opts = &sess.target.target.options;
+    let pic_exe_supported = opts.position_independent_executables;
+    let static_pic_exe_supported = opts.static_position_independent_executables;
+    let static_dylib_supported = opts.crt_static_allows_dylibs;
     match kind {
         LinkOutputKind::DynamicPicExe if !pic_exe_supported => LinkOutputKind::DynamicNoPicExe,
         LinkOutputKind::StaticPicExe if !static_pic_exe_supported => LinkOutputKind::StaticNoPicExe,
