@@ -133,7 +133,7 @@ fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: 
         let delimiter = match data {
             VariantData::Struct(..) => '{',
             VariantData::Tuple(..) => '(',
-            _ => unreachable!("`VariantData::Unit` is already handled above"),
+            VariantData::Unit(_) => unreachable!("`VariantData::Unit` is already handled above"),
         };
 
         cx.sess.source_map().span_until_char(item.span, delimiter)
