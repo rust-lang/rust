@@ -6,9 +6,9 @@
 //! other phases of the compiler, which are generally required to hold in order
 //! to compile the program at all.
 //!
-//! Most lints can be written as `LintPass` instances. These run after
+//! Most lints can be written as [LintPass] instances. These run after
 //! all other analyses. The `LintPass`es built into rustc are defined
-//! within `rustc_session::lint::builtin`,
+//! within [rustc_session::lint::builtin],
 //! which has further comments on how to add such a lint.
 //! rustc can also load user-defined lint plugins via the plugin mechanism.
 //!
@@ -19,7 +19,7 @@
 //! example) requires more effort. See `emit_lint` and `GatherNodeLevels`
 //! in `context.rs`.
 //!
-//! Some code also exists in `rustc_session::lint`, `rustc_middle::lint`.
+//! Some code also exists in [rustc_session::lint], [rustc_middle::lint].
 //!
 //! ## Note
 //!

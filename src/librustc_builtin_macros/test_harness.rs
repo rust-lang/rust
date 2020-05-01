@@ -233,6 +233,7 @@ fn generate_test_harness(
 ///
 /// By default this expands to
 ///
+/// ```
 /// #[main]
 /// pub fn main() {
 ///     extern crate test;
@@ -242,6 +243,7 @@ fn generate_test_harness(
 ///         &test_const3,
 ///     ]);
 /// }
+/// ```
 ///
 /// Most of the Ident have the usual def-site hygiene for the AST pass. The
 /// exception is the `test_const`s. These have a syntax context that has two
@@ -253,8 +255,8 @@ fn generate_test_harness(
 ///
 /// The expansion here can be controlled by two attributes:
 ///
-/// `reexport_test_harness_main` provides a different name for the `main`
-/// function and `test_runner` provides a path that replaces
+/// [`TestCtxt::reexport_test_harness_main`] provides a different name for the `main`
+/// function and [`TestCtxt::test_runner`] provides a path that replaces
 /// `test::test_main_static`.
 fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let sp = cx.def_site;
