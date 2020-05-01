@@ -2050,7 +2050,7 @@ pub struct Param<'hir> {
 pub struct FnDecl<'hir> {
     /// The types of the function's parameters.
     ///
-    /// Additional argument data is stored in the function's [body](Body::parameters).
+    /// Additional argument data is stored in the function's [body](Body::params).
     pub inputs: &'hir [Ty<'hir>],
     pub output: FnRetTy<'hir>,
     pub c_variadic: bool,
