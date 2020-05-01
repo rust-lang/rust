@@ -1,8 +1,8 @@
 use crate::{Assist, AssistCtx, AssistId};
 
-use ast::LoopBodyOwner;
+use ast::{BlockExpr, Expr, LoopBodyOwner};
 use ra_fmt::unwrap_trivial_block;
-use ra_syntax::{ast, AstNode};
+use ra_syntax::{ast, AstNode, TextRange};
 
 // Assist: unwrap_block
 //
@@ -26,24 +26,14 @@ pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
         // if expression
         let mut expr_to_unwrap: Option<ast::Expr> = None;
         for block_expr in if_expr.blocks() {
-            if let Some(block) = block_expr.block() {
-                let cursor_in_range =
-                    block.l_curly_token()?.text_range().contains_range(ctx.frange.range);
-
-                if cursor_in_range {
-                    let exprto = unwrap_trivial_block(block_expr);
-                    expr_to_unwrap = Some(exprto);
-                    break;
-                }
+            if let Some(expr) = excract_expr(ctx.frange.range, block_expr) {
+                expr_to_unwrap = Some(expr);
+                break;
             }
         }
         let expr_to_unwrap = expr_to_unwrap?;
         // Find if we are in a else if block
-        let ancestor = ctx
-            .sema
-            .ancestors_with_macros(if_expr.syntax().clone())
-            .skip(1)
-            .find_map(ast::IfExpr::cast);
+        let ancestor = if_expr.syntax().ancestors().skip(1).find_map(ast::IfExpr::cast);
 
         if let Some(ancestor) = ancestor {
             Some((ast::Expr::IfExpr(ancestor), expr_to_unwrap))
@@ -53,42 +43,18 @@ pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
     } else if let Some(for_expr) = ctx.find_node_at_offset::<ast::ForExpr>() {
         // for expression
         let block_expr = for_expr.loop_body()?;
-        let block = block_expr.block()?;
-        let cursor_in_range = block.l_curly_token()?.text_range().contains_range(ctx.frange.range);
-
-        if cursor_in_range {
-            let expr_to_unwrap = unwrap_trivial_block(block_expr);
-
-            Some((ast::Expr::ForExpr(for_expr), expr_to_unwrap))
-        } else {
-            None
-        }
+        excract_expr(ctx.frange.range, block_expr)
+            .map(|expr_to_unwrap| (ast::Expr::ForExpr(for_expr), expr_to_unwrap))
     } else if let Some(while_expr) = ctx.find_node_at_offset::<ast::WhileExpr>() {
         // while expression
         let block_expr = while_expr.loop_body()?;
-        let block = block_expr.block()?;
-        let cursor_in_range = block.l_curly_token()?.text_range().contains_range(ctx.frange.range);
-
-        if cursor_in_range {
-            let expr_to_unwrap = unwrap_trivial_block(block_expr);
-
-            Some((ast::Expr::WhileExpr(while_expr), expr_to_unwrap))
-        } else {
-            None
-        }
+        excract_expr(ctx.frange.range, block_expr)
+            .map(|expr_to_unwrap| (ast::Expr::WhileExpr(while_expr), expr_to_unwrap))
     } else if let Some(loop_expr) = ctx.find_node_at_offset::<ast::LoopExpr>() {
         // loop expression
         let block_expr = loop_expr.loop_body()?;
-        let block = block_expr.block()?;
-        let cursor_in_range = block.l_curly_token()?.text_range().contains_range(ctx.frange.range);
-
-        if cursor_in_range {
-            let expr_to_unwrap = unwrap_trivial_block(block_expr);
-
-            Some((ast::Expr::LoopExpr(loop_expr), expr_to_unwrap))
-        } else {
-            None
-        }
+        excract_expr(ctx.frange.range, block_expr)
+            .map(|expr_to_unwrap| (ast::Expr::LoopExpr(loop_expr), expr_to_unwrap))
     } else {
         None
     };
@@ -112,6 +78,17 @@ pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
 
         edit.replace(expr.syntax().text_range(), expr_string);
     })
+}
+
+fn excract_expr(cursor_range: TextRange, block_expr: BlockExpr) -> Option<Expr> {
+    let block = block_expr.block()?;
+    let cursor_in_range = block.l_curly_token()?.text_range().contains_range(cursor_range);
+
+    if cursor_in_range {
+        Some(unwrap_trivial_block(block_expr))
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
