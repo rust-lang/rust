@@ -4654,7 +4654,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // if the block produces a `!` value, that can always be
         // (effectively) coerced to unit.
         if !ty.is_never() {
-            self.demand_suptype(blk.span, unit, ty);
+            let span = self.tcx.hir().span(blk.hir_id);
+            self.demand_suptype(span, unit, ty);
         }
     }
 
@@ -4679,7 +4680,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Some(match &arm.body.kind {
                                     // Point at the tail expression when possible.
                                     hir::ExprKind::Block(block, _) => {
-                                        block.expr.as_ref().map(|e| e.span).unwrap_or(block.span)
+                                        let span = self.tcx.hir().span(block.hir_id);
+                                        block.expr.as_ref().map(|e| e.span).unwrap_or(span)
                                     }
                                     _ => arm.body.span,
                                 })
@@ -4722,7 +4724,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // break 'a 22; }` would not force the type of the block
         // to be `()`).
         let tail_expr = blk.expr.as_ref();
-        let coerce_to_ty = expected.coercion_target_type(self, blk.span);
+        let span = self.tcx.hir().span(blk.hir_id);
+        let coerce_to_ty = expected.coercion_target_type(self, span);
         let coerce = if blk.targeted_by_break {
             CoerceMany::new(coerce_to_ty)
         } else {
@@ -4770,7 +4773,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // `consider_hint_about_removing_semicolon` will point at the last expression
                     // if it were a relevant part of the error. This improves usability in editors
                     // that highlight errors inline.
-                    let mut sp = blk.span;
+                    let mut sp = span;
                     let mut fn_span = None;
                     if let Some((decl, ident)) = self.get_parent_fn_decl(blk.hir_id) {
                         let ret_sp = decl.output.span();
@@ -4778,7 +4781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // HACK: on some cases (`ui/liveness/liveness-issue-2163.rs`) the
                             // output would otherwise be incorrect and even misleading. Make sure
                             // the span we're aiming at correspond to a `fn` body.
-                            if block_sp == blk.span {
+                            if block_sp == span {
                                 sp = ret_sp;
                                 fn_span = Some(ident.span);
                             }
@@ -4830,7 +4833,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body_id), .. }) => {
                 let body = self.tcx.hir().body(body_id);
                 if let ExprKind::Block(block, _) = &body.value.kind {
-                    return Some(block.span);
+                    let span = self.tcx.hir().span(block.hir_id);
+                    return Some(span);
                 }
             }
             _ => {}
@@ -5408,7 +5412,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
         let last_stmt_span = self.tcx.hir().span(last_stmt.hir_id);
-        let original_span = original_sp(last_stmt_span, blk.span);
+        let blk_span = self.tcx.hir().span(blk.hir_id);
+        let original_span = original_sp(last_stmt_span, blk_span);
         Some(original_span.with_lo(original_span.hi() - BytePos(1)))
     }
 

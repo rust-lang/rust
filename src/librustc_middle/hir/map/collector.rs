@@ -486,7 +486,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_block(&mut self, block: &'hir Block<'hir>) {
-        self.insert(block.span, block.hir_id, Node::Block(block));
+        self.insert(DUMMY_SP, block.hir_id, Node::Block(block));
         self.with_parent(block.hir_id, |this| {
             intravisit::walk_block(this, block);
         });

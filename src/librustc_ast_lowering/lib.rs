@@ -2350,7 +2350,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             stmts: self.arena.alloc_from_iter(stmts),
             expr,
             rules: self.lower_block_check_mode(&b.rules),
-            span: b.span,
             targeted_by_break,
         }
     }
@@ -2480,7 +2479,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             expr,
             hir_id: self.next_id(span),
             rules: hir::BlockCheckMode::DefaultBlock,
-            span,
             targeted_by_break: false,
         };
         self.arena.alloc(blk)
