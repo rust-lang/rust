@@ -63,6 +63,10 @@ public:
     DataType(llvm::Type* type) : type(type), typeEnum(IntType::Float) {
         assert(type != nullptr);
         assert(!llvm::isa<llvm::VectorType>(type));
+        if (!type->isFloatingPointTy()) {
+            llvm::errs() << " passing in non FP type: " << *type << "\n";
+        }
+        assert(type->isFloatingPointTy());
     }
 
     DataType(IntType typeEnum) : type(nullptr), typeEnum(typeEnum) {
