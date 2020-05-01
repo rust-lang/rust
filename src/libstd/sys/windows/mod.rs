@@ -61,7 +61,22 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_FILE_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_PATH_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_NO_DATA => return ErrorKind::BrokenPipe,
+        c::ERROR_SEM_TIMEOUT => return ErrorKind::TimedOut,
+        c::WAIT_TIMEOUT => return ErrorKind::TimedOut,
+        c::ERROR_DRIVER_CANCEL_TIMEOUT => return ErrorKind::TimedOut,
         c::ERROR_OPERATION_ABORTED => return ErrorKind::TimedOut,
+        c::ERROR_SERVICE_REQUEST_TIMEOUT => return ErrorKind::TimedOut,
+        c::ERROR_COUNTER_TIMEOUT => return ErrorKind::TimedOut,
+        c::ERROR_TIMEOUT => return ErrorKind::TimedOut,
+        c::ERROR_RESOURCE_CALL_TIMED_OUT => return ErrorKind::TimedOut,
+        c::ERROR_CTX_MODEM_RESPONSE_TIMEOUT => return ErrorKind::TimedOut,
+        c::ERROR_CTX_CLIENT_QUERY_TIMEOUT => return ErrorKind::TimedOut,
+        c::FRS_ERR_SYSVOL_POPULATE_TIMEOUT => return ErrorKind::TimedOut,
+        c::ERROR_DS_TIMELIMIT_EXCEEDED => return ErrorKind::TimedOut,
+        c::DNS_ERROR_RECORD_TIMED_OUT => return ErrorKind::TimedOut,
+        c::ERROR_IPSEC_IKE_TIMED_OUT => return ErrorKind::TimedOut,
+        c::ERROR_RUNLEVEL_SWITCH_TIMEOUT => return ErrorKind::TimedOut,
+        c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return ErrorKind::TimedOut,
         _ => {}
     }
 
