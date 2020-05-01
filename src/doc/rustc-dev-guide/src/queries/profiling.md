@@ -74,7 +74,7 @@ _actual_ output is much longer.
 [View full HTML output][profile-example-html]. Note; it could take up
 to a second to properly render depending on your browser.
 
-Here is the corresponding text output](./example-0.counts.txt).
+Here is the corresponding [text output](./example-0.counts.txt).
 
 [profile-example-html]: ./example-0.html
 
