@@ -51,7 +51,6 @@
 
 use crate::mir;
 use crate::mir::interpret::{GlobalId, LitToConstInput};
-use crate::traits;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
