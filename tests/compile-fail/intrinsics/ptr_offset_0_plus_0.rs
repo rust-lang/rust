@@ -1,4 +1,4 @@
-// error-pattern: invalid use of NULL pointer
+// error-pattern: inbounds test failed: 0x0 is not a valid pointer
 
 fn main() {
     let x = 0 as *mut i32;

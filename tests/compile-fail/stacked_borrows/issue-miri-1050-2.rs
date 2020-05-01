@@ -1,4 +1,4 @@
-// error-pattern: invalid use of 4 as a pointer
+// error-pattern: inbounds test failed: 0x4 is not a valid pointer
 use std::ptr::NonNull;
 
 fn main() { unsafe {

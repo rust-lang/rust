@@ -6,5 +6,5 @@ fn main() {
         std::mem::transmute::<usize, fn(i32)>(42)
     };
 
-    g(42) //~ ERROR invalid use of 42 as a pointer
+    g(42) //~ ERROR inbounds test failed: 0x2a is not a valid pointer
 }
