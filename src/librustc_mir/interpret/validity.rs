@@ -66,6 +66,15 @@ macro_rules! try_validation {
 /// });
 /// ```
 ///
+/// An additional nicety is that both parameters actually take format args, so you can just write
+/// the format string in directly:
+///
+/// ```
+/// let v = try_validation_pat!(some_fn(), some_path, {
+///     Foo | Bar | Baz => { "{:?}", some_failure } expected { "{}", expected_value },
+/// });
+/// ```
+///
 macro_rules! try_validation_pat {
     ($e:expr, $where:expr, { $( $p:pat )|+ =>
         { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? $( , )?}) => {{
