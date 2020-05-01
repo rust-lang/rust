@@ -92,6 +92,8 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
                 T![loop] => loop_expr(p, Some(m)),
                 T![for] => for_expr(p, Some(m)),
                 T![while] => while_expr(p, Some(m)),
+                // test labeled_block
+                // fn f() { 'label: {}; }
                 T!['{'] => {
                     block_expr(p);
                     m.complete(p, EFFECT_EXPR)
@@ -115,6 +117,8 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             m.complete(p, EFFECT_EXPR)
         }
         T![match] => match_expr(p),
+        // test unsafe_block
+        // fn f() { unsafe { } }
         T![unsafe] if la == T!['{'] => {
             let m = p.start();
             p.bump(T![unsafe]);
@@ -466,8 +470,6 @@ fn match_guard(p: &mut Parser) -> CompletedMarker {
 // test block_expr
 // fn foo() {
 //     {};
-//     unsafe {};
-//     'label: {};
 // }
 pub(super) fn block_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T!['{']));

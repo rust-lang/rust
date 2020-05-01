@@ -39,7 +39,7 @@ SOURCE_FILE@0..67
       WHITESPACE@38..43 "\n    "
       EXPR_STMT@43..64
         METHOD_CALL_EXPR@43..63
-          EFFECT_EXPR@43..55
+          TRY_EXPR@43..55
             AWAIT_EXPR@43..54
               CALL_EXPR@43..48
                 FIELD_EXPR@43..46

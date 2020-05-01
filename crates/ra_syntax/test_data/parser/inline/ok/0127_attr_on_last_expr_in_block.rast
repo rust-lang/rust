@@ -15,7 +15,7 @@ SOURCE_FILE@0..47
         BLOCK_EXPR@15..31
           L_CURLY@15..16 "{"
           WHITESPACE@16..17 " "
-          EFFECT_EXPR@17..29
+          TRY_EXPR@17..29
             ATTR@17..21
               POUND@17..18 "#"
               L_BRACK@18..19 "["
