@@ -776,6 +776,7 @@ pub fn provide(providers: &mut Providers<'_>) {
         adt_destructor,
         used_trait_imports,
         user_provided_sigs,
+        upvar_list,
         typeck_has_errors,
         concrete_opaque_types,
         check_item_well_formed,
@@ -865,6 +866,10 @@ fn user_provided_sigs(
     def_id: LocalDefId,
 ) -> &FxHashMap<DefId, ty::CanonicalPolyFnSig<'_>> {
     &tcx.typeck_tables_of(def_id).user_provided_sigs
+}
+
+fn upvar_list(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &ty::UpvarListMap {
+    &tcx.typeck_tables_of(def_id).upvar_list
 }
 
 fn typeck_has_errors(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ErrorReported> {

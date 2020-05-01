@@ -495,6 +495,11 @@ rustc_queries! {
             desc { |tcx| "user_provided_sigs `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
         }
+
+        query upvar_list(key: LocalDefId) -> &'tcx ty::UpvarListMap {
+            desc { |tcx| "upvar_list `{}`", tcx.def_path_str(key.to_def_id()) }
+            cache_on_disk_if { true }
+        }
     }
 
     Other {
