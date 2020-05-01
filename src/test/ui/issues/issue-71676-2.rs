@@ -37,7 +37,6 @@ impl DerefMut for Emm {
     }
 }
 fn main() {
-    // Should not suggest when a is immutable
     let a = Emm(Foo(Bar(0)));
     let _: *mut u8 = &a; //~ ERROR mismatched types
 }
