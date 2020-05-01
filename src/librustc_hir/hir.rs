@@ -2158,7 +2158,6 @@ pub struct Param<'hir> {
     pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
     pub pat: &'hir Pat<'hir>,
-    pub span: Span,
 }
 
 /// Represents the header (not the body) of a function declaration.

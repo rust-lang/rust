@@ -336,7 +336,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_param(&mut self, param: &'hir Param<'hir>) {
         let node = Node::Param(param);
-        self.insert(param.span, param.hir_id, node);
+        self.insert(DUMMY_SP, param.hir_id, node);
         self.with_parent(param.hir_id, |this| {
             intravisit::walk_param(this, param);
         });
