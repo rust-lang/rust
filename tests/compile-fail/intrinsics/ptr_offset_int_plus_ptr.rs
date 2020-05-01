@@ -1,4 +1,4 @@
-// error-pattern: invalid use of 1 as a pointer
+// error-pattern: inbounds test failed: 0x1 is not a valid pointer
 
 fn main() {
     let ptr = Box::into_raw(Box::new(0u32));

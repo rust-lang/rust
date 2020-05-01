@@ -9,5 +9,5 @@ fn main() {
     let mut data = [0u16; 4];
     let ptr = &mut data[0] as *mut u16;
     // Even copying 0 elements from NULL should error.
-    unsafe { copy_nonoverlapping(std::ptr::null(), ptr, 0); } //~ ERROR: invalid use of NULL pointer
+    unsafe { copy_nonoverlapping(std::ptr::null(), ptr, 0); } //~ ERROR: memory access failed: 0x0 is not a valid pointer
 }

@@ -16,7 +16,7 @@ pub enum TerminationInfo {
     Deadlock,
 }
 
-impl fmt::Debug for TerminationInfo {
+impl fmt::Display for TerminationInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TerminationInfo::*;
         match self {
