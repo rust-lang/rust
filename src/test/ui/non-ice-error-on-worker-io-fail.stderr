@@ -1,6 +1,6 @@
 warning: ignoring --out-dir flag due to -o flag
 
-error: io error modifying /dev/
+error: io error modifying /does-not-exist/
 
 error: aborting due to previous error; 1 warning emitted
 
