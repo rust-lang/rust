@@ -32,6 +32,7 @@ fn emit_module<B: Backend>(
     kind: ModuleKind,
     mut module: Module<B>,
     debug: Option<DebugContext<'_>>,
+    unwind_context: UnwindContext<'_>,
 ) -> ModuleCodegenResult
     where B::Product: Emit + WriteDebugInfo,
 {
@@ -41,6 +42,8 @@ fn emit_module<B: Backend>(
     if let Some(mut debug) = debug {
         debug.emit(&mut product);
     }
+
+    unwind_context.emit(&mut product);
 
     let tmp_file = tcx
         .output_filenames(LOCAL_CRATE)
@@ -125,7 +128,9 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
         None
     };
 
-    super::codegen_mono_items(tcx, &mut module, debug.as_mut(), mono_items);
+    let mut unwind_context = UnwindContext::new(tcx, &mut module);
+
+    super::codegen_mono_items(tcx, &mut module, debug.as_mut(), &mut unwind_context, mono_items);
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module);
 
     emit_module(
@@ -134,6 +139,7 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
         ModuleKind::Regular,
         module,
         debug,
+        unwind_context,
     )
 }
 
@@ -190,12 +196,16 @@ pub(super) fn run_aot(
     let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
 
     let allocator_module = if created_alloc_shim {
+        // FIXME create .eh_frame for allocator shim
+        let unwind_context = UnwindContext::new(tcx, &mut allocator_module);
+
         let ModuleCodegenResult(module, work_product) = emit_module(
             tcx,
             "allocator_shim".to_string(),
             ModuleKind::Allocator,
             allocator_module,
             None,
+            unwind_context,
         );
         if let Some((id, product)) = work_product {
             work_products.insert(id, product);

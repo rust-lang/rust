@@ -124,10 +124,12 @@ pub(crate) fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
 
     // Define debuginfo for function
     let isa = cx.module.isa();
+    let unwind_context = &mut cx.unwind_context;
     tcx.sess.time("generate debug info", || {
         debug_context
             .as_mut()
             .map(|x| x.define(context, isa, &source_info_set, local_map));
+        unwind_context.add_function(func_id, &context, isa);
     });
 
     // Clear context to make it usable for the next function

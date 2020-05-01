@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 
-use gimli::write::{Address, AttributeValue, EhFrame, EndianVec, Result, Sections, Writer, Section};
+use gimli::write::{Address, AttributeValue, EndianVec, Result, Sections, Writer};
 use gimli::{RunTimeEndian, SectionId};
 
 use crate::backend::WriteDebugInfo;
@@ -17,11 +17,8 @@ impl DebugContext<'_> {
             AttributeValue::RangeListRef(unit_range_list_id),
         );
 
-        let mut sections = Sections::new(WriterRelocate::new(self));
+        let mut sections = Sections::new(WriterRelocate::new(self.endian));
         self.dwarf.write(&mut sections).unwrap();
-
-        let mut eh_frame = EhFrame::from(WriterRelocate::new(self));
-        self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
         let mut section_map = FxHashMap::default();
         let _: Result<()> = sections.for_each_mut(|id, section| {
@@ -35,21 +32,11 @@ impl DebugContext<'_> {
         let _: Result<()> = sections.for_each(|id, section| {
             if let Some(section_id) = section_map.get(&id) {
                 for reloc in &section.relocs {
-                    product.add_debug_reloc(&section_map, &self.symbols, section_id, reloc);
+                    product.add_debug_reloc(&section_map, section_id, reloc);
                 }
             }
             Ok(())
         });
-
-        if !eh_frame.0.writer.slice().is_empty() {
-            let id = eh_frame.id();
-            let section_id = product.add_debug_section(id, eh_frame.0.writer.into_vec());
-            section_map.insert(id, section_id);
-
-            for reloc in &eh_frame.0.relocs {
-                product.add_debug_reloc(&section_map, &self.symbols, &section_id, reloc);
-            }
-        }
     }
 }
 
@@ -68,16 +55,16 @@ pub(crate) enum DebugRelocName {
 }
 
 #[derive(Clone)]
-struct WriterRelocate {
-    relocs: Vec<DebugReloc>,
-    writer: EndianVec<RunTimeEndian>,
+pub(super) struct WriterRelocate {
+    pub(super) relocs: Vec<DebugReloc>,
+    pub(super) writer: EndianVec<RunTimeEndian>,
 }
 
 impl WriterRelocate {
-    fn new(ctx: &DebugContext<'_>) -> Self {
+    pub(super) fn new(endian: RunTimeEndian) -> Self {
         WriterRelocate {
             relocs: Vec::new(),
-            writer: EndianVec::new(ctx.endian),
+            writer: EndianVec::new(endian),
         }
     }
 }

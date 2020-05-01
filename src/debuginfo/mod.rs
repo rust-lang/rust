@@ -11,12 +11,13 @@ use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::ValueLocRange;
 
 use gimli::write::{
-    self, Address, AttributeValue, CieId, DwarfUnit, Expression, FrameTable, LineProgram,
+    self, Address, AttributeValue, DwarfUnit, Expression, LineProgram,
     LineString, Location, LocationList, Range, RangeList, UnitEntryId, Writer,
 };
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, X86_64};
 
 pub(crate) use emit::{DebugReloc, DebugRelocName};
+pub(crate) use unwind::UnwindContext;
 
 fn target_endian(tcx: TyCtxt<'_>) -> RunTimeEndian {
     use rustc_target::abi::Endian;
@@ -31,13 +32,10 @@ pub(crate) struct DebugContext<'tcx> {
     tcx: TyCtxt<'tcx>,
 
     endian: RunTimeEndian,
-    symbols: indexmap::IndexMap<FuncId, String>,
 
     dwarf: DwarfUnit,
     unit_range_list: RangeList,
-    frame_table: FrameTable,
 
-    cie: CieId,
     clif_types: FxHashMap<Type, UnitEntryId>,
     types: FxHashMap<Ty<'tcx>, UnitEntryId>,
 }
@@ -111,20 +109,14 @@ impl<'tcx> DebugContext<'tcx> {
             );
         }
 
-        let mut frame_table = FrameTable::default();
-        let cie = frame_table.add_cie(isa.create_systemv_cie().expect("SystemV unwind info CIE"));
-
         DebugContext {
             tcx,
 
             endian: target_endian(tcx),
-            symbols: indexmap::IndexMap::new(),
 
             dwarf,
             unit_range_list: RangeList(Vec::new()),
-            frame_table,
 
-            cie,
             clif_types: FxHashMap::default(),
             types: FxHashMap::default(),
         }
@@ -267,8 +259,6 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
     ) -> Self {
         let mir = debug_context.tcx.instance_mir(instance.def);
 
-        let (symbol, _) = debug_context.symbols.insert_full(func_id, name.to_string());
-
         // FIXME: add to appropriate scope intead of root
         let scope = debug_context.dwarf.unit.root();
 
@@ -291,7 +281,7 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         FunctionDebugContext {
             debug_context,
             entry_id,
-            symbol,
+            symbol: func_id.as_u32() as usize,
             instance,
             mir,
         }
@@ -320,8 +310,6 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         source_info_set: &indexmap::IndexSet<SourceInfo>,
         local_map: FxHashMap<mir::Local, CPlace<'tcx>>,
     ) {
-        self.create_unwind_info(context, isa);
-
         let end = self.create_debug_lines(context, isa, source_info_set);
 
         self.debug_context

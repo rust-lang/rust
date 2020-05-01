@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::Session;
@@ -45,7 +45,6 @@ pub(crate) trait WriteDebugInfo {
     fn add_debug_reloc(
         &mut self,
         section_map: &FxHashMap<SectionId, Self::SectionId>,
-        symbol_map: &indexmap::IndexMap<FuncId, String>,
         from: &Self::SectionId,
         reloc: &DebugReloc,
     );
@@ -75,7 +74,6 @@ impl WriteDebugInfo for ObjectProduct {
     fn add_debug_reloc(
         &mut self,
         section_map: &FxHashMap<SectionId, Self::SectionId>,
-        symbol_map: &indexmap::IndexMap<FuncId, String>,
         from: &Self::SectionId,
         reloc: &DebugReloc,
     ) {
@@ -84,7 +82,7 @@ impl WriteDebugInfo for ObjectProduct {
                 (section_map.get(&id).unwrap().1, 0)
             }
             DebugRelocName::Symbol(id) => {
-                let symbol_id = self.function_symbol(*symbol_map.get_index(id).unwrap().0);
+                let symbol_id = self.function_symbol(FuncId::from_u32(id.try_into().unwrap()));
                 self.object.symbol_section_and_offset(symbol_id).expect("Debug reloc for undef sym???")
             }
         };

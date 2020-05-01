@@ -33,9 +33,10 @@ fn codegen_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     module: &mut Module<impl Backend + 'static>,
     debug_context: Option<&mut DebugContext<'tcx>>,
+    unwind_context: &mut UnwindContext<'tcx>,
     mono_items: Vec<(MonoItem<'tcx>, (RLinkage, Visibility))>,
 ) {
-    let mut cx = CodegenCx::new(tcx, module, debug_context);
+    let mut cx = CodegenCx::new(tcx, module, debug_context, unwind_context);
 
     tcx.sess.time("predefine functions", || {
         for &(mono_item, (linkage, visibility)) in &mono_items {

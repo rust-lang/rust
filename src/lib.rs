@@ -106,7 +106,7 @@ mod prelude {
     pub(crate) use crate::base::{trans_operand, trans_place};
     pub(crate) use crate::cast::*;
     pub(crate) use crate::common::*;
-    pub(crate) use crate::debuginfo::{DebugContext, FunctionDebugContext};
+    pub(crate) use crate::debuginfo::{DebugContext, FunctionDebugContext, UnwindContext};
     pub(crate) use crate::pointer::Pointer;
     pub(crate) use crate::trap::*;
     pub(crate) use crate::value_and_place::{CPlace, CPlaceInner, CValue};
@@ -133,6 +133,7 @@ pub(crate) struct CodegenCx<'clif, 'tcx, B: Backend + 'static> {
     cached_context: Context,
     vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
     debug_context: Option<&'clif mut DebugContext<'tcx>>,
+    unwind_context: &'clif mut UnwindContext<'tcx>,
 }
 
 impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
@@ -140,6 +141,7 @@ impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
         tcx: TyCtxt<'tcx>,
         module: &'clif mut Module<B>,
         debug_context: Option<&'clif mut DebugContext<'tcx>>,
+        unwind_context: &'clif mut UnwindContext<'tcx>,
     ) -> Self {
         CodegenCx {
             tcx,
@@ -148,6 +150,7 @@ impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
             cached_context: Context::new(),
             vtables: FxHashMap::default(),
             debug_context,
+            unwind_context,
         }
     }
 
