@@ -142,7 +142,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     id: v.id,
                     attrs: &v.attrs,
                     def: &v.data,
-                    whence: v.span,
+                    whence: self.cx.tcx.hir().span(v.id),
                 })
                 .collect(),
             vis: &it.vis,

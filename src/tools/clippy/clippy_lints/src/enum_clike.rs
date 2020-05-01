@@ -71,7 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                         span_lint(
                             cx,
                             ENUM_CLIKE_UNPORTABLE_VARIANT,
-                            var.span,
+                            cx.tcx.hir().span(var.id),
                             "Clike enum variant discriminant is not portable to 32-bit targets",
                         );
                     };
