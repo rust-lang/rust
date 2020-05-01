@@ -2402,7 +2402,6 @@ impl VisibilityKind<'_> {
 
 #[derive(Debug, HashStable_Generic)]
 pub struct StructField<'hir> {
-    pub span: Span,
     #[stable_hasher(project(name))]
     pub ident: Ident,
     pub vis: Visibility<'hir>,

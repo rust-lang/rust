@@ -782,7 +782,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_ty(&f.ty, ImplTraitContext::disallowed())
         };
         hir::StructField {
-            span: f.span,
             hir_id: self.lower_node_id(f.id, f.span),
             ident: match f.ident {
                 Some(ident) => ident,
