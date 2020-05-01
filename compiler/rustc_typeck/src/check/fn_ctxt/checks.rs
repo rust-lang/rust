@@ -183,7 +183,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(id) = node.body_id() {
                         let body = tcx.hir().body(id);
                         for param in body.params {
-                            spans.push_span_label(param.span, String::new());
+                            let param_span = tcx.hir().span(param.hir_id);
+                            spans.push_span_label(param_span, String::new());
                         }
                     }
 

@@ -1023,7 +1023,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id: self.lower_node_id(param.id, param.span),
             pat: self.lower_pat(&param.pat),
             ty_span: param.ty.span,
-            span: param.span,
         }
     }
 
@@ -1160,7 +1159,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir_id: parameter.hir_id,
                     pat: new_parameter_pat,
                     ty_span: parameter.ty_span,
-                    span: parameter.span,
                 };
 
                 if is_simple_parameter {
