@@ -4126,6 +4126,7 @@ dependencies = [
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
+ "arena",
  "log",
  "parking_lot 0.10.2",
  "rustc-rayon-core",

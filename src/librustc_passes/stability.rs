@@ -480,7 +480,7 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
     *providers = Providers { check_mod_unstable_api_usage, ..*providers };
     providers.stability_index = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        tcx.arena.alloc(new_index(tcx))
+        new_index(tcx)
     };
 }
 

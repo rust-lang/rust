@@ -22,7 +22,7 @@ use rustc_span::symbol::{sym, Symbol};
 
 use std::cmp;
 
-fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
+fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> LintLevelMap {
     assert_eq!(cnum, LOCAL_CRATE);
     let store = unerased_lint_store(tcx);
     let levels = LintLevelsBuilder::new(tcx.sess, false, &store);
@@ -37,7 +37,7 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     intravisit::walk_crate(&mut builder, krate);
     builder.levels.pop(push);
 
-    tcx.arena.alloc(builder.levels.build_map())
+    builder.levels.build_map()
 }
 
 pub struct LintLevelsBuilder<'s> {

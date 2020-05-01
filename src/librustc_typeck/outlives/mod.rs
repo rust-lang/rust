@@ -58,7 +58,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
     }
 }
 
-fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CratePredicatesMap<'_> {
+fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CratePredicatesMap<'_> {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     // Compute a map from each struct/enum/union S to the **explicit**
@@ -105,5 +105,5 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CratePredic
         })
         .collect();
 
-    tcx.arena.alloc(ty::CratePredicatesMap { predicates })
+    ty::CratePredicatesMap { predicates }
 }

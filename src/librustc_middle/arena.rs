@@ -12,36 +12,13 @@ macro_rules! arena_types {
     ($macro:path, $args:tt, $tcx:lifetime) => (
         $macro!($args, [
             [] layouts: rustc_target::abi::Layout,
-            [] generics: rustc_middle::ty::Generics,
-            [] trait_def: rustc_middle::ty::TraitDef,
+            // AdtDef are interned and compared by address
             [] adt_def: rustc_middle::ty::AdtDef,
-            [] steal_mir: rustc_middle::ty::steal::Steal<rustc_middle::mir::Body<$tcx>>,
-            [] mir: rustc_middle::mir::Body<$tcx>,
-            [] steal_promoted: rustc_middle::ty::steal::Steal<
-                rustc_index::vec::IndexVec<
-                    rustc_middle::mir::Promoted,
-                    rustc_middle::mir::Body<$tcx>
-                >
-            >,
-            [] promoted: rustc_index::vec::IndexVec<
-                rustc_middle::mir::Promoted,
-                rustc_middle::mir::Body<$tcx>
-            >,
             [decode] tables: rustc_middle::ty::TypeckTables<$tcx>,
-            [decode] borrowck_result: rustc_middle::mir::BorrowCheckResult<$tcx>,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
-            [] vtable_method: Option<(
-                rustc_hir::def_id::DefId,
-                rustc_middle::ty::subst::SubstsRef<$tcx>
-            )>,
-            [few, decode] collect_and_partition_mono_items: rustc_hir::def_id::DefIdSet,
-            [few, decode] mir_keys: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
-            [decode] specialization_graph: rustc_middle::traits::specialization_graph::Graph,
+            // Required for the incremental on-disk cache
+            [few, decode] mir_keys: rustc_hir::def_id::DefIdSet,
             [] region_scope_tree: rustc_middle::middle::region::ScopeTree,
-            [] item_local_set: rustc_hir::ItemLocalSet,
-            [decode] mir_const_qualif: rustc_index::bit_set::BitSet<rustc_middle::mir::Local>,
-            [] trait_impls_of: rustc_middle::ty::trait_def::TraitImpls,
-            [] associated_items: rustc_middle::ty::AssociatedItems,
             [] dropck_outlives:
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx,
@@ -80,42 +57,10 @@ macro_rules! arena_types {
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Ty<'tcx>>
                 >,
-            [few] crate_inherent_impls: rustc_middle::ty::CrateInherentImpls,
-            [few] upstream_monomorphizations:
-                rustc_hir::def_id::DefIdMap<
-                    rustc_data_structures::fx::FxHashMap<
-                        rustc_middle::ty::subst::SubstsRef<'tcx>,
-                        rustc_hir::def_id::CrateNum
-                    >
-                >,
-            [few] diagnostic_items: rustc_data_structures::fx::FxHashMap<
-                rustc_span::symbol::Symbol,
-                rustc_hir::def_id::DefId,
-            >,
-            [few] resolve_lifetimes: rustc_middle::middle::resolve_lifetime::ResolveLifetimes,
-            [few] lint_levels: rustc_middle::lint::LintLevelMap,
-            [few] stability_index: rustc_middle::middle::stability::Index<'tcx>,
-            [few] features: rustc_feature::Features,
             [few] all_traits: Vec<rustc_hir::def_id::DefId>,
             [few] privacy_access_levels: rustc_middle::middle::privacy::AccessLevels,
-            [few] target_features_whitelist: rustc_data_structures::fx::FxHashMap<
-                String,
-                Option<rustc_span::symbol::Symbol>
-            >,
-            [few] wasm_import_module_map: rustc_data_structures::fx::FxHashMap<
-                rustc_hir::def_id::DefId,
-                String
-            >,
-            [few] get_lib_features: rustc_middle::middle::lib_features::LibFeatures,
-            [few] defined_lib_features: rustc_hir::lang_items::LanguageItems,
-            [few] visible_parent_map: rustc_hir::def_id::DefIdMap<rustc_hir::def_id::DefId>,
             [few] foreign_module: rustc_middle::middle::cstore::ForeignModule,
             [few] foreign_modules: Vec<rustc_middle::middle::cstore::ForeignModule>,
-            [few] reachable_non_generics: rustc_hir::def_id::DefIdMap<
-                rustc_middle::middle::exported_symbols::SymbolExportLevel
-            >,
-            [few] crate_variances: rustc_middle::ty::CrateVariancesMap<'tcx>,
-            [few] inferred_outlives_crate: rustc_middle::ty::CratePredicatesMap<'tcx>,
             [] upvars: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] object_safety_violations: rustc_middle::traits::ObjectSafetyViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<$tcx>,

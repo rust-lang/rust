@@ -939,8 +939,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over the diagnostic items in the given crate.
-    fn get_diagnostic_items(&self, tcx: TyCtxt<'tcx>) -> &'tcx FxHashMap<Symbol, DefId> {
-        tcx.arena.alloc(if self.root.is_proc_macro_crate() {
+    fn get_diagnostic_items(&self) -> FxHashMap<Symbol, DefId> {
+        if self.root.is_proc_macro_crate() {
             // Proc macro crates do not export any diagnostic-items to the target.
             Default::default()
         } else {
@@ -949,7 +949,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .decode(self)
                 .map(|(name, def_index)| (name, self.local_def_id(def_index)))
                 .collect()
-        })
+        }
     }
 
     /// Iterates over each child of the given item.

@@ -23,7 +23,7 @@ use rustc_target::spec::abi::Abi;
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>, attrs: CodegenFnAttrs) -> bool {
+fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>, attrs: &CodegenFnAttrs) -> bool {
     if attrs.requests_inline() {
         return true;
     }

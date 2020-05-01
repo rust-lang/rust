@@ -92,7 +92,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers { mir_borrowck, ..*providers };
 }
 
-fn mir_borrowck(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &BorrowCheckResult<'_> {
+fn mir_borrowck(tcx: TyCtxt<'_>, def_id: LocalDefId) -> BorrowCheckResult<'_> {
     let (input_body, promoted) = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def_id.to_def_id()));
 
@@ -103,7 +103,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &BorrowCheckResult<'_> {
     });
     debug!("mir_borrowck done");
 
-    tcx.arena.alloc(opt_closure_req)
+    opt_closure_req
 }
 
 fn do_mir_borrowck<'a, 'tcx>(

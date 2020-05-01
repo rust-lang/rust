@@ -20,7 +20,8 @@ pub trait QueryConfig<CTX> {
     const CATEGORY: ProfileCategory;
 
     type Key: Eq + Hash + Clone + Debug;
-    type Value: Clone;
+    type Value;
+    type Stored: Clone;
 }
 
 pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
@@ -28,7 +29,7 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig<CTX> {
     const EVAL_ALWAYS: bool;
     const DEP_KIND: CTX::DepKind;
 
-    type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
+    type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX, Self::Cache>;

@@ -60,7 +60,7 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
-fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &FxHashSet<LocalDefId> {
+fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> FxHashSet<LocalDefId> {
     assert_eq!(krate, LOCAL_CRATE);
 
     let mut set = FxHashSet::default();
@@ -97,7 +97,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &FxHashSet<LocalDefId> {
         .krate()
         .visit_all_item_likes(&mut GatherCtors { tcx, set: &mut set }.as_deep_visitor());
 
-    tcx.arena.alloc(set)
+    set
 }
 
 /// Where a specific `mir::Body` comes from.
@@ -211,7 +211,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     validator.qualifs_in_return_place()
 }
 
-fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
+fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> Steal<Body<'_>> {
     let def_id = def_id.expect_local();
 
     // Unsafety check uses the raw mir, so make sure it is run
@@ -241,7 +241,7 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
 fn mir_validated(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
+) -> (Steal<Body<'tcx>>, Steal<IndexVec<Promoted, Body<'tcx>>>) {
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
     let _ = tcx.mir_const_qualif(def_id.to_def_id());
@@ -360,7 +360,7 @@ fn run_optimization_passes<'tcx>(
     );
 }
 
-fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
+fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
     if tcx.is_constructor(def_id) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
@@ -381,12 +381,12 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
 
     debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
 
-    tcx.arena.alloc(body)
+    body
 }
 
-fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, Body<'_>> {
+fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> IndexVec<Promoted, Body<'_>> {
     if tcx.is_constructor(def_id) {
-        return tcx.intern_promoted(IndexVec::new());
+        return IndexVec::new();
     }
 
     let def_id = def_id.expect_local();
@@ -401,5 +401,5 @@ fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, Body<'_>>
 
     debug_assert!(!promoted.has_free_regions(), "Free regions in promoted MIR");
 
-    tcx.intern_promoted(promoted)
+    promoted
 }

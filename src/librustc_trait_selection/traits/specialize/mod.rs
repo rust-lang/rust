@@ -254,7 +254,7 @@ fn fulfill_implication<'a, 'tcx>(
 pub(super) fn specialization_graph_provider(
     tcx: TyCtxt<'_>,
     trait_id: DefId,
-) -> &specialization_graph::Graph {
+) -> specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
 
     let mut trait_impls: Vec<_> = tcx.all_impls(trait_id).collect();
@@ -286,7 +286,7 @@ pub(super) fn specialization_graph_provider(
         }
     }
 
-    tcx.arena.alloc(sg)
+    sg
 }
 
 fn report_overlap_conflict(

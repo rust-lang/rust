@@ -17,13 +17,13 @@ use rustc_ast::ast;
 use rustc_span::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
-pub fn crate_inherent_impls(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CrateInherentImpls {
+pub fn crate_inherent_impls(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateInherentImpls {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     let krate = tcx.hir().krate();
     let mut collect = InherentCollect { tcx, impls_map: Default::default() };
     krate.visit_all_item_likes(&mut collect);
-    tcx.arena.alloc(collect.impls_map)
+    collect.impls_map
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.

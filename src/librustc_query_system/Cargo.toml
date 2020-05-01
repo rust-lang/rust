@@ -10,6 +10,7 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
+arena = { path = "../libarena" }
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc-rayon-core = "0.3.0"
 rustc_data_structures = { path = "../librustc_data_structures" }

@@ -88,15 +88,11 @@ impl IntoArgs for (CrateNum, DefId) {
 
 provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
-    generics_of => {
-        tcx.arena.alloc(cdata.get_generics(def_id.index, tcx.sess))
-    }
+    generics_of => { cdata.get_generics(def_id.index, tcx.sess) }
     explicit_predicates_of => { cdata.get_explicit_predicates(def_id.index, tcx) }
     inferred_outlives_of => { cdata.get_inferred_outlives(def_id.index, tcx) }
     super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
-    trait_def => {
-        tcx.arena.alloc(cdata.get_trait_def(def_id.index, tcx.sess))
-    }
+    trait_def => { cdata.get_trait_def(def_id.index, tcx.sess) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
         let _ = cdata;
@@ -117,8 +113,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
         })
     }
-    optimized_mir => { tcx.arena.alloc(cdata.get_optimized_mir(tcx, def_id.index)) }
-    promoted_mir => { tcx.arena.alloc(cdata.get_promoted_mir(tcx, def_id.index)) }
+    optimized_mir => { cdata.get_optimized_mir(tcx, def_id.index) }
+    promoted_mir => { cdata.get_promoted_mir(tcx, def_id.index) }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
@@ -178,7 +174,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             })
             .collect();
 
-        tcx.arena.alloc(reachable_non_generics)
+        reachable_non_generics
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
     foreign_modules => { cdata.get_foreign_modules(tcx) }
@@ -220,7 +216,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
-    diagnostic_items => { cdata.get_diagnostic_items(tcx) }
+    diagnostic_items => { cdata.get_diagnostic_items() }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {
@@ -363,7 +359,7 @@ pub fn provide(providers: &mut Providers<'_>) {
                 }
             }
 
-            tcx.arena.alloc(visible_parent_map)
+            visible_parent_map
         },
 
         dependency_formats: |tcx, cnum| {

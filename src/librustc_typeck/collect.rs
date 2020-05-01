@@ -1002,7 +1002,7 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
     ty::GenericPredicates { parent: None, predicates: superbounds }
 }
 
-fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
+fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
     let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
     let item = tcx.hir().expect_item(hir_id);
 
@@ -1033,16 +1033,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
         ty::trait_def::TraitSpecializationKind::None
     };
     let def_path_hash = tcx.def_path_hash(def_id);
-    let def = ty::TraitDef::new(
-        def_id,
-        unsafety,
-        paren_sugar,
-        is_auto,
-        is_marker,
-        spec_kind,
-        def_path_hash,
-    );
-    tcx.arena.alloc(def)
+    ty::TraitDef::new(def_id, unsafety, paren_sugar, is_auto, is_marker, spec_kind, def_path_hash)
 }
 
 fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<Span> {
@@ -1158,7 +1149,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     }
 }
 
-fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
+fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     use rustc_hir::*;
 
     let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
@@ -1403,14 +1394,14 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
 
-    tcx.arena.alloc(ty::Generics {
+    ty::Generics {
         parent: parent_def_id,
         parent_count,
         params,
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
-    })
+    }
 }
 
 fn are_suggestable_generic_args(generic_args: &[hir::GenericArg<'_>]) -> bool {

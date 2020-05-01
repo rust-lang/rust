@@ -908,7 +908,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
             .map(|id| &module_map[&id])
             .flat_map(|module| module.foreign_items.iter().cloned())
             .collect();
-        tcx.arena.alloc(dllimports)
+        dllimports
     };
 
     providers.is_dllimport_foreign_item =

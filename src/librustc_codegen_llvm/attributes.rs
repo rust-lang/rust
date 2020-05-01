@@ -253,7 +253,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         inline(cx, llfn, attributes::InlineAttr::Hint);
     }
 
-    inline(cx, llfn, codegen_fn_attrs.inline);
+    inline(cx, llfn, codegen_fn_attrs.inline.clone());
 
     // The `uwtable` attribute according to LLVM is:
     //
@@ -350,15 +350,12 @@ pub fn provide(providers: &mut Providers<'_>) {
         if tcx.sess.opts.actually_rustdoc {
             // rustdoc needs to be able to document functions that use all the features, so
             // whitelist them all
-            tcx.arena
-                .alloc(llvm_util::all_known_features().map(|(a, b)| (a.to_string(), b)).collect())
+            llvm_util::all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
         } else {
-            tcx.arena.alloc(
-                llvm_util::target_feature_whitelist(tcx.sess)
-                    .iter()
-                    .map(|&(a, b)| (a.to_string(), b))
-                    .collect(),
-            )
+            llvm_util::target_feature_whitelist(tcx.sess)
+                .iter()
+                .map(|&(a, b)| (a.to_string(), b))
+                .collect()
         }
     };
 
@@ -390,7 +387,7 @@ pub fn provide_extern(providers: &mut Providers<'_>) {
             }));
         }
 
-        tcx.arena.alloc(ret)
+        ret
     };
 }
 

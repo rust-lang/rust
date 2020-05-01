@@ -187,7 +187,7 @@ pub(super) fn all_local_trait_impls<'tcx>(
 }
 
 // Query provider for `trait_impls_of`.
-pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> &TraitImpls {
+pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> TraitImpls {
     let mut impls = TraitImpls::default();
 
     {
@@ -219,7 +219,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> &Trai
         }
     }
 
-    tcx.arena.alloc(impls)
+    impls
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {

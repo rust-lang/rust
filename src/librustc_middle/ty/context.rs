@@ -991,22 +991,15 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
-        self.arena.alloc(Steal::new(mir))
+    pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> Steal<Body<'tcx>> {
+        Steal::new(mir)
     }
 
     pub fn alloc_steal_promoted(
         self,
         promoted: IndexVec<Promoted, Body<'tcx>>,
-    ) -> &'tcx Steal<IndexVec<Promoted, Body<'tcx>>> {
-        self.arena.alloc(Steal::new(promoted))
-    }
-
-    pub fn intern_promoted(
-        self,
-        promoted: IndexVec<Promoted, Body<'tcx>>,
-    ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
-        self.arena.alloc(promoted)
+    ) -> Steal<IndexVec<Promoted, Body<'tcx>>> {
+        Steal::new(promoted)
     }
 
     pub fn alloc_adt_def(
@@ -1016,8 +1009,7 @@ impl<'tcx> TyCtxt<'tcx> {
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,
     ) -> &'tcx ty::AdtDef {
-        let def = ty::AdtDef::new(self, did, kind, variants, repr);
-        self.arena.alloc(def)
+        self.arena.alloc(ty::AdtDef::new(self, did, kind, variants, repr))
     }
 
     pub fn intern_const_alloc(self, alloc: Allocation) -> &'tcx Allocation {
@@ -2745,7 +2737,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.features_query = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        tcx.arena.alloc(tcx.sess.features_untracked().clone())
+        tcx.sess.features_untracked()
     };
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

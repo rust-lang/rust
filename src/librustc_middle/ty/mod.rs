@@ -256,13 +256,13 @@ impl AssocItem {
 /// it is relatively expensive. Instead, items are indexed by `Symbol` and hygienic comparison is
 /// done only on items with the same name.
 #[derive(Debug, Clone, PartialEq, HashStable)]
-pub struct AssociatedItems {
-    items: SortedIndexMultiMap<u32, Symbol, ty::AssocItem>,
+pub struct AssociatedItems<'tcx> {
+    items: SortedIndexMultiMap<u32, Symbol, &'tcx ty::AssocItem>,
 }
 
-impl AssociatedItems {
+impl<'tcx> AssociatedItems<'tcx> {
     /// Constructs an `AssociatedItems` map from a series of `ty::AssocItem`s in definition order.
-    pub fn new(items_in_def_order: impl IntoIterator<Item = ty::AssocItem>) -> Self {
+    pub fn new(items_in_def_order: impl IntoIterator<Item = &'tcx ty::AssocItem>) -> Self {
         let items = items_in_def_order.into_iter().map(|item| (item.ident.name, item)).collect();
         AssociatedItems { items }
     }
@@ -272,7 +272,7 @@ impl AssociatedItems {
     /// New code should avoid relying on definition order. If you need a particular associated item
     /// for a known trait, make that trait a lang item instead of indexing this array.
     pub fn in_definition_order(&self) -> impl '_ + Iterator<Item = &ty::AssocItem> {
-        self.items.iter().map(|(_, v)| v)
+        self.items.iter().map(|(_, v)| *v)
     }
 
     /// Returns an iterator over all associated items with the given name, ignoring hygiene.
@@ -280,7 +280,7 @@ impl AssociatedItems {
         &self,
         name: Symbol,
     ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
-        self.items.get_by_key(&name)
+        self.items.get_by_key(&name).map(|v| *v)
     }
 
     /// Returns an iterator over all associated items with the given name.
@@ -2671,7 +2671,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .and_then(|def_id| self.hir().get(self.hir().as_local_hir_id(def_id)).ident())
     }
 
-    pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
+    pub fn opt_associated_item(self, def_id: DefId) -> Option<&'tcx AssocItem> {
         let is_associated_item = if let Some(def_id) = def_id.as_local() {
             match self.hir().get(self.hir().as_local_hir_id(def_id)) {
                 Node::TraitItem(_) | Node::ImplItem(_) => true,
