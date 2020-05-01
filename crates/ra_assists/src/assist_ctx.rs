@@ -1,12 +1,12 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
 use hir::Semantics;
-use ra_db::{FileRange, Upcast};
+use ra_db::FileRange;
 use ra_fmt::{leading_indent, reindent};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{self, find_covering_element, find_node_at_offset},
-    ast, AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
-    TextSize, TokenAtOffset,
+    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    TokenAtOffset,
 };
 use ra_text_edit::TextEditBuilder;
 
@@ -135,9 +135,6 @@ impl<'a> AssistCtx<'a> {
     }
     pub(crate) fn covering_node_for_range(&self, range: TextRange) -> SyntaxElement {
         find_covering_element(self.source_file.syntax(), range)
-    }
-    pub(crate) fn lower_path(&self, path: ast::Path) -> Option<hir::Path> {
-        hir::Path::from_src(path, &hir::Hygiene::new(self.db.upcast(), self.frange.file_id.into()))
     }
 }
 

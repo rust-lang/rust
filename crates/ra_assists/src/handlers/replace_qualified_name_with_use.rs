@@ -27,7 +27,7 @@ pub(crate) fn replace_qualified_name_with_use(ctx: AssistCtx) -> Option<Assist> 
         return None;
     }
 
-    let hir_path = ctx.lower_path(path.clone())?;
+    let hir_path = ctx.sema.lower_path(&path)?;
     let segments = collect_hir_path_segments(&hir_path)?;
     if segments.len() < 2 {
         return None;
