@@ -1729,8 +1729,8 @@ struct PrefetchVisitor<'tcx> {
 impl<'tcx> PrefetchVisitor<'tcx> {
     fn prefetch_mir(&self, def_id: LocalDefId) {
         if self.mir_keys.contains(&def_id) {
-            self.tcx.optimized_mir(def_id);
-            self.tcx.promoted_mir(def_id);
+            self.tcx.ensure().optimized_mir(def_id);
+            self.tcx.ensure().promoted_mir(def_id);
         }
     }
 }
