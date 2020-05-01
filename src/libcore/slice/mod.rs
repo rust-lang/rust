@@ -5859,9 +5859,6 @@ where
         if self.len() != other.len() {
             return false;
         }
-        if self.as_ptr() == other.as_ptr() {
-            return true;
-        }
         unsafe {
             let size = mem::size_of_val(self);
             memcmp(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
