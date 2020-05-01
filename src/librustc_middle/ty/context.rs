@@ -16,7 +16,6 @@ use crate::middle::stability;
 use crate::mir::interpret::{Allocation, ConstValue, Scalar};
 use crate::mir::{interpret, Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::traits;
-use crate::traits::{Clause, Clauses, Goal, GoalKind, Goals};
 use crate::ty::query;
 use crate::ty::steal::Steal;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
@@ -92,9 +91,6 @@ pub struct CtxtInterners<'tcx> {
     region: InternedSet<'tcx, RegionKind>,
     existential_predicates: InternedSet<'tcx, List<ExistentialPredicate<'tcx>>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
-    clauses: InternedSet<'tcx, List<Clause<'tcx>>>,
-    goal: InternedSet<'tcx, GoalKind<'tcx>>,
-    goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
@@ -111,9 +107,6 @@ impl<'tcx> CtxtInterners<'tcx> {
             existential_predicates: Default::default(),
             canonical_var_infos: Default::default(),
             predicates: Default::default(),
-            clauses: Default::default(),
-            goal: Default::default(),
-            goal_list: Default::default(),
             projs: Default::default(),
             place_elems: Default::default(),
             const_: Default::default(),
@@ -1573,11 +1566,8 @@ macro_rules! nop_list_lift {
 
 nop_lift! {type_; Ty<'a> => Ty<'tcx>}
 nop_lift! {region; Region<'a> => Region<'tcx>}
-nop_lift! {goal; Goal<'a> => Goal<'tcx>}
 nop_lift! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
 
-nop_list_lift! {goal_list; Goal<'a> => Goal<'tcx>}
-nop_list_lift! {clauses; Clause<'a> => Clause<'tcx>}
 nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {existential_predicates; ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
 nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
@@ -1988,12 +1978,6 @@ impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
     }
 }
 
-impl<'tcx> Borrow<GoalKind<'tcx>> for Interned<'tcx, GoalKind<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a GoalKind<'tcx> {
-        &self.0
-    }
-}
-
 impl<'tcx> Borrow<[ExistentialPredicate<'tcx>]>
     for Interned<'tcx, List<ExistentialPredicate<'tcx>>>
 {
@@ -2011,18 +1995,6 @@ impl<'tcx> Borrow<[Predicate<'tcx>]> for Interned<'tcx, List<Predicate<'tcx>>> {
 impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a Const<'tcx> {
         &self.0
-    }
-}
-
-impl<'tcx> Borrow<[Clause<'tcx>]> for Interned<'tcx, List<Clause<'tcx>>> {
-    fn borrow<'a>(&'a self) -> &'a [Clause<'tcx>] {
-        &self.0[..]
-    }
-}
-
-impl<'tcx> Borrow<[Goal<'tcx>]> for Interned<'tcx, List<Goal<'tcx>>> {
-    fn borrow<'a>(&'a self) -> &'a [Goal<'tcx>] {
-        &self.0[..]
     }
 }
 
@@ -2052,11 +2024,7 @@ macro_rules! direct_interners {
     }
 }
 
-direct_interners!(
-    region: mk_region(RegionKind),
-    goal: mk_goal(GoalKind<'tcx>),
-    const_: mk_const(Const<'tcx>)
-);
+direct_interners!(region: mk_region(RegionKind), const_: mk_const(Const<'tcx>));
 
 macro_rules! slice_interners {
     ($($field:ident: $method:ident($ty:ty)),+) => (
@@ -2076,8 +2044,6 @@ slice_interners!(
     canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo),
     existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
     predicates: _intern_predicates(Predicate<'tcx>),
-    clauses: _intern_clauses(Clause<'tcx>),
-    goal_list: _intern_goals(Goal<'tcx>),
     projs: _intern_projs(ProjectionKind),
     place_elems: _intern_place_elems(PlaceElem<'tcx>)
 );
@@ -2465,14 +2431,6 @@ impl<'tcx> TyCtxt<'tcx> {
         if ts.is_empty() { List::empty() } else { self._intern_canonical_var_infos(ts) }
     }
 
-    pub fn intern_clauses(self, ts: &[Clause<'tcx>]) -> Clauses<'tcx> {
-        if ts.is_empty() { List::empty() } else { self._intern_clauses(ts) }
-    }
-
-    pub fn intern_goals(self, ts: &[Goal<'tcx>]) -> Goals<'tcx> {
-        if ts.is_empty() { List::empty() } else { self._intern_goals(ts) }
-    }
-
     pub fn mk_fn_sig<I>(
         self,
         inputs: I,
@@ -2528,14 +2486,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
-    }
-
-    pub fn mk_clauses<I: InternAs<[Clause<'tcx>], Clauses<'tcx>>>(self, iter: I) -> I::Output {
-        iter.intern_with(|xs| self.intern_clauses(xs))
-    }
-
-    pub fn mk_goals<I: InternAs<[Goal<'tcx>], Goals<'tcx>>>(self, iter: I) -> I::Output {
-        iter.intern_with(|xs| self.intern_goals(xs))
     }
 
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.

@@ -23,7 +23,6 @@
 
 use crate::infer::InferCtxt;
 use crate::infer::{ConstVarValue, ConstVariableValue};
-use crate::traits::DomainGoal;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
@@ -77,10 +76,6 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// be regions from the type or new variables created through the
     /// delegate.
     fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>);
-
-    /// Push a domain goal that will need to be proved for the two types to
-    /// be related. Used for lazy normalization.
-    fn push_domain_goal(&mut self, domain_goal: DomainGoal<'tcx>);
 
     /// Creates a new universe index. Used when instantiating placeholders.
     fn create_next_universe(&mut self) -> ty::UniverseIndex;
@@ -265,7 +260,6 @@ where
         value_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
         use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-        use crate::traits::WhereClause;
         use rustc_span::DUMMY_SP;
 
         match value_ty.kind {
@@ -279,12 +273,7 @@ where
                 var
             }
 
-            _ => {
-                let projection = ty::ProjectionPredicate { projection_ty, ty: value_ty };
-                self.delegate
-                    .push_domain_goal(DomainGoal::Holds(WhereClause::ProjectionEq(projection)));
-                value_ty
-            }
+            _ => bug!("should never be invoked with eager normalization"),
         }
     }
 
