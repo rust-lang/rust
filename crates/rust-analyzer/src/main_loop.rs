@@ -415,8 +415,7 @@ fn loop_turn(
         });
     }
 
-    let show_progress =
-        !loop_state.workspace_loaded && world_state.config.notifications.workspace_loaded;
+    let show_progress = !loop_state.workspace_loaded;
 
     if !loop_state.workspace_loaded
         && loop_state.roots_scanned == loop_state.roots_total

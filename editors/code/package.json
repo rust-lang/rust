@@ -205,11 +205,6 @@
                     "default": [],
                     "description": "Paths to exclude from analysis."
                 },
-                "rust-analyzer.notifications.workspaceLoaded": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Whether to show `workspace loaded` message."
-                },
                 "rust-analyzer.notifications.cargoTomlNotFound": {
                     "type": "boolean",
                     "default": true,
