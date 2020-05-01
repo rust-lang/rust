@@ -404,16 +404,20 @@ impl RawItemsCollector {
         let ast_id = self.source_ast_id_map.ast_id(&m);
 
         // FIXME: cfg_attr
-        let export = attrs.by_key("macro_export").exists();
-        let local_inner =
-            attrs.by_key("macro_export").tt_values().map(|it| &it.token_trees).flatten().any(
-                |it| match it {
-                    tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                        ident.text.contains("local_inner_macros")
-                    }
-                    _ => false,
-                },
-            );
+        let export_attr = attrs.by_key("macro_export");
+
+        let export = export_attr.exists();
+        let local_inner = if export {
+            export_attr.tt_values().map(|it| &it.token_trees).flatten().any(|it| match it {
+                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                    ident.text.contains("local_inner_macros")
+                }
+                _ => false,
+            })
+        } else {
+            false
+        };
+
         let builtin = attrs.by_key("rustc_builtin_macro").exists();
 
         let m = self.raw_items.macros.alloc(MacroData {
