@@ -14,7 +14,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
 
 use log::debug;
@@ -35,8 +35,8 @@ impl ItemLowerer<'_, '_, '_> {
 }
 
 impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
-    fn visit_mod(&mut self, m: &'a Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
-        let hir_id = self.lctx.lower_node_id(n);
+    fn visit_mod(&mut self, m: &'a Mod, span: Span, _attrs: &[Attribute], n: NodeId) {
+        let hir_id = self.lctx.lower_node_id(n, span);
 
         self.lctx.modules.insert(
             hir_id,
@@ -206,7 +206,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         if let ItemKind::MacroDef(MacroDef { ref body, macro_rules }) = i.kind {
             if !macro_rules || attr::contains_name(&i.attrs, sym::macro_export) {
-                let hir_id = self.lower_node_id(i.id);
+                let hir_id = self.lower_node_id(i.id, i.span);
                 let body = P(self.lower_mac_args(body));
                 self.exported_macros.push(hir::MacroDef {
                     ident,
@@ -224,7 +224,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let kind = self.lower_item_kind(i.span, i.id, &mut ident, attrs, &mut vis, &i.kind);
 
-        Some(hir::Item { hir_id: self.lower_node_id(i.id), ident, attrs, kind, vis, span: i.span })
+        Some(hir::Item {
+            hir_id: self.lower_node_id(i.id, i.span),
+            ident,
+            attrs,
+            kind,
+            vis,
+            span: i.span,
+        })
     }
 
     fn lower_item_kind(
@@ -319,14 +326,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_generics(generics, ImplTraitContext::disallowed()),
             ),
             ItemKind::Struct(ref struct_def, ref generics) => {
-                let struct_def = self.lower_variant_data(struct_def);
+                let struct_def = self.lower_variant_data(span, struct_def);
                 hir::ItemKind::Struct(
                     struct_def,
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                 )
             }
             ItemKind::Union(ref vdata, ref generics) => {
-                let vdata = self.lower_variant_data(vdata);
+                let vdata = self.lower_variant_data(span, vdata);
                 hir::ItemKind::Union(
                     vdata,
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
@@ -357,7 +364,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // method, it will not be considered an in-band
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
-                let lowered_trait_impl_id = self.lower_node_id(id);
+                let lowered_trait_impl_id = self.lower_node_id(id, DUMMY_SP);
                 let (generics, (trait_ref, lowered_ty)) = self.add_in_band_defs(
                     ast_generics,
                     def_id,
@@ -499,7 +506,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let span = path.span;
 
                     self.with_hir_id_owner(new_node_id, |this| {
-                        let new_id = this.lower_node_id(new_node_id);
+                        let new_id = this.lower_node_id(new_node_id, span);
                         let res = this.lower_res(res);
                         let path = this.lower_path_extra(res, &path, ParamMode::Explicit, None);
                         let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
@@ -553,7 +560,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
-                    let new_hir_id = self.lower_node_id(id);
+                    let new_hir_id = self.lower_node_id(id, use_tree.span);
 
                     let mut prefix = prefix.clone();
 
@@ -622,7 +629,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let segments =
             self.arena.alloc_from_iter(path.segments.iter().map(|seg| hir::PathSegment {
                 ident: seg.ident,
-                hir_id: seg.hir_id.map(|_| self.next_id()),
+                hir_id: seg.hir_id.map(|_| self.next_id(seg.ident.span)),
                 res: seg.res,
                 args: None,
                 infer_args: seg.infer_args,
@@ -638,7 +645,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::VisibilityKind::Restricted { ref path, hir_id: _ } => {
                 hir::VisibilityKind::Restricted {
                     path: self.rebuild_use_path(path),
-                    hir_id: self.next_id(),
+                    hir_id: self.next_id(vis.span),
                 }
             }
         };
@@ -648,7 +655,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem<'hir> {
         let def_id = self.resolver.definitions().local_def_id(i.id);
         hir::ForeignItem {
-            hir_id: self.lower_node_id(i.id),
+            hir_id: self.lower_node_id(i.id, i.span),
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             kind: match i.kind {
@@ -695,15 +702,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant<'hir> {
         hir::Variant {
             attrs: self.lower_attrs(&v.attrs),
-            data: self.lower_variant_data(&v.data),
+            data: self.lower_variant_data(v.span, &v.data),
             disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
-            id: self.lower_node_id(v.id),
+            id: self.lower_node_id(v.id, v.span),
             ident: v.ident,
             span: v.span,
         }
     }
 
-    fn lower_variant_data(&mut self, vdata: &VariantData) -> hir::VariantData<'hir> {
+    fn lower_variant_data(&mut self, span: Span, vdata: &VariantData) -> hir::VariantData<'hir> {
         match *vdata {
             VariantData::Struct(ref fields, recovered) => hir::VariantData::Struct(
                 self.arena
@@ -713,9 +720,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             VariantData::Tuple(ref fields, id) => hir::VariantData::Tuple(
                 self.arena
                     .alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_struct_field(f))),
-                self.lower_node_id(id),
+                self.lower_node_id(id, span),
             ),
-            VariantData::Unit(id) => hir::VariantData::Unit(self.lower_node_id(id)),
+            VariantData::Unit(id) => hir::VariantData::Unit(self.lower_node_id(id, span)),
         }
     }
 
@@ -734,7 +741,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         hir::StructField {
             span: f.span,
-            hir_id: self.lower_node_id(f.id),
+            hir_id: self.lower_node_id(f.id, f.span),
             ident: match f.ident {
                 Some(ident) => ident,
                 // FIXME(jseyfried): positional field hygiene.
@@ -781,7 +788,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         hir::TraitItem {
-            hir_id: self.lower_node_id(i.id),
+            hir_id: self.lower_node_id(i.id, i.span),
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             generics,
@@ -801,7 +808,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::MacCall(..) => unimplemented!(),
         };
-        let id = hir::TraitItemId { hir_id: self.lower_node_id(i.id) };
+        let id = hir::TraitItemId { hir_id: self.lower_node_id(i.id, i.span) };
         let defaultness = hir::Defaultness::Default { has_value: has_default };
         hir::TraitItemRef { id, ident: i.ident, span: i.span, defaultness, kind }
     }
@@ -865,7 +872,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         hir::ImplItem {
-            hir_id: self.lower_node_id(i.id),
+            hir_id: self.lower_node_id(i.id, i.span),
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             generics,
@@ -881,7 +888,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         hir::ImplItemRef {
-            id: hir::ImplItemId { hir_id: self.lower_node_id(i.id) },
+            id: hir::ImplItemId { hir_id: self.lower_node_id(i.id, i.span) },
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
@@ -913,9 +920,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             VisibilityKind::Restricted { ref path, id } => {
                 debug!("lower_visibility: restricted path id = {:?}", id);
                 let lowered_id = if let Some(owner) = explicit_owner {
-                    self.lower_node_id_with_owner(id, owner)
+                    self.lower_node_id_with_owner(id, owner, v.span)
                 } else {
-                    self.lower_node_id(id)
+                    self.lower_node_id(id, v.span)
                 };
                 let res = self.expect_full_res(id);
                 let res = self.lower_res(res);
@@ -970,7 +977,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         hir::Param {
             attrs: self.lower_attrs(&param.attrs),
-            hir_id: self.lower_node_id(param.id),
+            hir_id: self.lower_node_id(param.id, param.span),
             pat: self.lower_pat(&param.pat),
             span: param.span,
         }
@@ -1413,7 +1420,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }),
             WherePredicate::EqPredicate(WhereEqPredicate { id, ref lhs_ty, ref rhs_ty, span }) => {
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    hir_id: self.lower_node_id(id),
+                    hir_id: self.lower_node_id(id, span),
                     lhs_ty: self.lower_ty(lhs_ty, ImplTraitContext::disallowed()),
                     rhs_ty: self.lower_ty(rhs_ty, ImplTraitContext::disallowed()),
                     span,

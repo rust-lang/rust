@@ -9,7 +9,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
+use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned, DUMMY_SP};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_target::asm;
 use std::collections::hash_map::Entry;
@@ -203,6 +203,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // Include parens in span, but only if it is a super-span.
                     if e.span.contains(ex.span) {
                         ex.span = e.span;
+                        self.spans.insert(ex.hir_id, e.span);
                     }
                     // Merge attributes into the inner expression.
                     let mut attrs = e.attrs.clone();
@@ -220,7 +221,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
 
             hir::Expr {
-                hir_id: self.lower_node_id(e.id),
+                hir_id: self.lower_node_id(e.id, e.span),
                 kind,
                 span: e.span,
                 attrs: e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
@@ -473,7 +474,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         hir::Arm {
-            hir_id: self.next_id(),
+            hir_id: self.next_id(arm.span),
             attrs: self.lower_attrs(&arm.attrs),
             pat: self.lower_pat(&arm.pat),
             guard: match arm.guard {
@@ -510,7 +511,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Resume argument type. We let the compiler infer this to simplify the lowering. It is
         // fully constrained by `future::from_generator`.
-        let input_ty = hir::Ty { hir_id: self.next_id(), kind: hir::TyKind::Infer, span };
+        let input_ty = hir::Ty { hir_id: self.next_id(span), kind: hir::TyKind::Infer, span };
 
         // The closure/generator `FnDecl` takes a single (resume) argument of type `input_ty`.
         let decl = self.arena.alloc(hir::FnDecl {
@@ -526,7 +527,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Ident::with_dummy_span(sym::_task_context),
             hir::BindingAnnotation::Mutable,
         );
-        let param = hir::Param { attrs: &[], hir_id: self.next_id(), pat, span };
+        let param = hir::Param { attrs: &[], hir_id: self.next_id(span), pat, span };
         let params = arena_vec![self; param];
 
         let body_id = self.lower_body(move |this| {
@@ -548,7 +549,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::Movability::Static),
         );
         let generator = hir::Expr {
-            hir_id: self.lower_node_id(closure_node_id),
+            hir_id: self.lower_node_id(closure_node_id, span),
             kind: generator_kind,
             span,
             attrs: ThinVec::new(),
@@ -629,7 +630,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // Use of `await` outside of an async context, we cannot use `task_context` here.
                 self.expr_err(span)
             };
-            let pin_ty_id = self.next_id();
+            let pin_ty_id = self.next_id(span);
             let new_unchecked_expr_kind = self.expr_call_std_assoc_fn(
                 pin_ty_id,
                 span,
@@ -653,7 +654,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `::std::task::Poll::Ready(result) => break result`
         let loop_node_id = self.resolver.next_node_id();
-        let loop_hir_id = self.lower_node_id(loop_node_id);
+        let loop_hir_id = self.lower_node_id(loop_node_id, span);
         let ready_arm = {
             let x_ident = Ident::with_dummy_span(sym::result);
             let (x_pat, x_pat_hid) = self.pat_ident(span, x_ident);
@@ -841,7 +842,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     /// Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.
     fn lower_expr_range_closed(&mut self, span: Span, e1: &Expr, e2: &Expr) -> hir::ExprKind<'hir> {
-        let id = self.next_id();
+        let id = self.next_id(span);
         let e1 = self.lower_expr_mut(e1);
         let e2 = self.lower_expr_mut(e2);
         self.expr_call_std_assoc_fn(
@@ -898,7 +899,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let target_id = match destination {
             Some((id, _)) => {
                 if let Some(loop_id) = self.resolver.get_label_res(id) {
-                    Ok(self.lower_node_id(loop_id))
+                    Ok(self.lower_node_id(loop_id, DUMMY_SP))
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
                 }
@@ -907,7 +908,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .loop_scopes
                 .last()
                 .cloned()
-                .map(|id| Ok(self.lower_node_id(id)))
+                .map(|id| Ok(self.lower_node_id(id, DUMMY_SP)))
                 .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope)),
         };
         hir::Destination { label: destination.map(|(_, label)| label), target_id }
@@ -1304,7 +1305,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_field(&mut self, f: &Field) -> hir::Field<'hir> {
         hir::Field {
-            hir_id: self.next_id(),
+            hir_id: self.next_id(f.span),
             ident: f.ident,
             expr: self.lower_expr(&f.expr),
             span: f.span,
@@ -1364,6 +1365,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut head = self.lower_expr_mut(head);
         let desugared_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
         head.span = desugared_span;
+        self.spans.insert(head.hir_id, desugared_span);
 
         let iter = Ident::with_dummy_span(sym::iter);
 
@@ -1448,7 +1450,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `[opt_ident]: loop { ... }`
         let kind = hir::ExprKind::Loop(loop_block, opt_label, hir::LoopSource::ForLoop);
         let loop_expr = self.arena.alloc(hir::Expr {
-            hir_id: self.lower_node_id(e.id),
+            hir_id: self.lower_node_id(e.id, e.span),
             kind,
             span: e.span,
             attrs: ThinVec::new(),
@@ -1554,7 +1556,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let thin_attrs = ThinVec::from(attrs);
             let catch_scope = self.catch_scopes.last().copied();
             let ret_expr = if let Some(catch_node) = catch_scope {
-                let target_id = Ok(self.lower_node_id(catch_node));
+                let target_id = Ok(self.lower_node_id(catch_node, DUMMY_SP));
                 self.arena.alloc(self.expr(
                     try_span,
                     hir::ExprKind::Break(
@@ -1758,8 +1760,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn expr_unsafe(&mut self, expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
-        let hir_id = self.next_id();
         let span = expr.span;
+        let hir_id = self.next_id(span);
         self.expr(
             span,
             hir::ExprKind::Block(
@@ -1797,16 +1799,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         kind: hir::ExprKind<'hir>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
-        hir::Expr { hir_id: self.next_id(), kind, span, attrs }
+        hir::Expr { hir_id: self.next_id(span), kind, span, attrs }
     }
 
     fn field(&mut self, ident: Ident, expr: &'hir hir::Expr<'hir>, span: Span) -> hir::Field<'hir> {
-        hir::Field { hir_id: self.next_id(), ident, span, expr, is_shorthand: false }
+        hir::Field { hir_id: self.next_id(span), ident, span, expr, is_shorthand: false }
     }
 
     fn arm(&mut self, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {
         hir::Arm {
-            hir_id: self.next_id(),
+            hir_id: self.next_id(expr.span),
             attrs: &[],
             pat,
             guard: None,

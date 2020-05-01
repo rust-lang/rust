@@ -62,7 +62,7 @@ use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use log::{debug, trace};
 use smallvec::{smallvec, SmallVec};
@@ -113,6 +113,9 @@ struct LoweringContext<'a, 'hir: 'a> {
     trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
 
     modules: BTreeMap<hir::HirId, hir::ModuleItems>,
+
+    /// Collected spans from the AST.
+    spans: BTreeMap<hir::HirId, Span>,
 
     generator_kind: Option<hir::GeneratorKind>,
 
@@ -304,6 +307,7 @@ pub fn lower_crate<'a, 'hir>(
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
+        spans: BTreeMap::new(),
         exported_macros: Vec::new(),
         non_exported_macro_attrs: Vec::new(),
         catch_scopes: Vec::new(),
@@ -473,7 +477,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if let PatKind::Paren(..) | PatKind::Rest = p.kind {
                     // Doesn't generate a HIR node
                 } else if let Some(owner) = self.hir_id_owner {
-                    self.lctx.lower_node_id_with_owner(p.id, owner);
+                    self.lctx.lower_node_id_with_owner(p.id, owner, p.span);
                 }
 
                 visit::walk_pat(self, p)
@@ -545,7 +549,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        self.lower_node_id(CRATE_NODE_ID);
+        self.lower_node_id(CRATE_NODE_ID, c.span);
         debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == Some(hir::CRATE_HIR_ID));
 
         visit::walk_crate(&mut MiscCollector { lctx: &mut self, hir_id_owner: None }, c);
@@ -579,6 +583,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             modules: self.modules,
             proc_macros,
             trait_map,
+            spans: self.spans,
         }
     }
 
@@ -594,7 +599,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Set up the counter if needed.
         self.item_local_id_counters.entry(owner).or_insert(0);
         // Always allocate the first `HirId` for the owner itself.
-        let lowered = self.lower_node_id_with_owner(owner, owner);
+        let lowered = self.lower_node_id_with_owner(owner, owner, DUMMY_SP);
         debug_assert_eq!(lowered.local_id.as_u32(), 0);
         lowered
     }
@@ -602,6 +607,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_node_id_generic(
         &mut self,
         ast_node_id: NodeId,
+        span: Span,
         alloc_hir_id: impl FnOnce(&mut Self) -> hir::HirId,
     ) -> hir::HirId {
         assert_ne!(ast_node_id, DUMMY_NODE_ID);
@@ -612,7 +618,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.node_id_to_hir_id.resize(min_size, None);
         }
 
-        if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
+        let hir_id = if let Some(existing_hir_id) = self.node_id_to_hir_id[ast_node_id] {
             existing_hir_id
         } else {
             // Generate a new `HirId`.
@@ -620,7 +626,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.node_id_to_hir_id[ast_node_id] = Some(hir_id);
 
             hir_id
+        };
+
+        let stored_span = self.spans.entry(hir_id).or_insert(span);
+        if *stored_span == DUMMY_SP {
+            *stored_span = span;
+        } else if span != DUMMY_SP {
+            assert_eq!(*stored_span, span);
         }
+
+        hir_id
     }
 
     fn with_hir_id_owner<T>(&mut self, owner: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
@@ -647,8 +662,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// actually used in the HIR, as that would trigger an assertion in the
     /// `HirIdValidator` later on, which makes sure that all `NodeId`s got mapped
     /// properly. Calling the method twice with the same `NodeId` is fine though.
-    fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
-        self.lower_node_id_generic(ast_node_id, |this| {
+    fn lower_node_id(&mut self, ast_node_id: NodeId, span: Span) -> hir::HirId {
+        self.lower_node_id_generic(ast_node_id, span, |this| {
             let &mut (owner, ref mut local_id_counter) =
                 this.current_hir_id_owner.last_mut().unwrap();
             let local_id = *local_id_counter;
@@ -657,8 +672,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    fn lower_node_id_with_owner(&mut self, ast_node_id: NodeId, owner: NodeId) -> hir::HirId {
-        self.lower_node_id_generic(ast_node_id, |this| {
+    fn lower_node_id_with_owner(
+        &mut self,
+        ast_node_id: NodeId,
+        owner: NodeId,
+        span: Span,
+    ) -> hir::HirId {
+        self.lower_node_id_generic(ast_node_id, span, |this| {
             let local_id_counter = this
                 .item_local_id_counters
                 .get_mut(&owner)
@@ -680,14 +700,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    fn next_id(&mut self) -> hir::HirId {
+    fn next_id(&mut self, span: Span) -> hir::HirId {
         let node_id = self.resolver.next_node_id();
-        self.lower_node_id(node_id)
+        self.lower_node_id(node_id, span)
     }
 
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
         res.map_id(|id| {
-            self.lower_node_id_generic(id, |_| {
+            self.lower_node_id_generic(id, DUMMY_SP, |_| {
                 panic!("expected `NodeId` to be lowered already for res {:#?}", res);
             })
         })
@@ -809,7 +829,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
 
         hir::GenericParam {
-            hir_id: self.lower_node_id(node_id),
+            hir_id: self.lower_node_id(node_id, span),
             name: hir_name,
             attrs: &[],
             bounds: &[],
@@ -1120,7 +1140,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         hir::TypeBinding {
-            hir_id: self.lower_node_id(constraint.id),
+            hir_id: self.lower_node_id(constraint.id, constraint.span),
             ident: constraint.ident,
             kind,
             span: constraint.span,
@@ -1170,9 +1190,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 tokens: None,
                             };
 
-                            let ct = self.with_new_scopes(|this| hir::AnonConst {
-                                hir_id: this.lower_node_id(node_id),
-                                body: this.lower_const_body(path_expr.span, Some(&path_expr)),
+                            let ct = self.lower_anon_const(&AnonConst {
+                                id: node_id,
+                                value: rustc_ast::ptr::P(path_expr),
                             });
                             return GenericArg::Const(ConstArg { value: ct, span: ty.span });
                         }
@@ -1199,7 +1219,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param_mode: ParamMode,
         itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::Ty<'hir> {
-        let id = self.lower_node_id(t.id);
+        let id = self.lower_node_id(t.id, t.span);
         let qpath = self.lower_qpath(t.id, qself, path, param_mode, itctx);
         let ty = self.ty_path(id, t.span, qpath);
         if let hir::TyKind::TraitObject(..) = ty.kind {
@@ -1209,7 +1229,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn ty(&mut self, span: Span, kind: hir::TyKind<'hir>) -> hir::Ty<'hir> {
-        hir::Ty { hir_id: self.next_id(), kind, span }
+        hir::Ty { hir_id: self.next_id(span), kind, span }
     }
 
     fn ty_tup(&mut self, span: Span, tys: &'hir [hir::Ty<'hir>]) -> hir::Ty<'hir> {
@@ -1348,7 +1368,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         // Set the name to `impl Bound1 + Bound2`.
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
                         in_band_ty_params.push(hir::GenericParam {
-                            hir_id: self.lower_node_id(def_node_id),
+                            hir_id: self.lower_node_id(def_node_id, span),
                             name: ParamName::Plain(ident),
                             pure_wrt_drop: false,
                             attrs: &[],
@@ -1404,7 +1424,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         };
 
-        hir::Ty { kind, span: t.span, hir_id: self.lower_node_id(t.id) }
+        hir::Ty { kind, span: t.span, hir_id: self.lower_node_id(t.id, t.span) }
     }
 
     fn lower_opaque_impl_trait(
@@ -1476,7 +1496,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         opaque_ty_span: Span,
     ) -> hir::HirId {
         let opaque_ty_item_kind = hir::ItemKind::OpaqueTy(opaque_ty_item);
-        let opaque_ty_id = self.lower_node_id(opaque_ty_node_id);
+        let opaque_ty_id = self.lower_node_id(opaque_ty_node_id, opaque_ty_span);
         // Generate an `type Foo = impl Trait;` declaration.
         trace!("registering opaque type with id {:#?}", opaque_ty_id);
         let opaque_ty_item = hir::Item {
@@ -1612,14 +1632,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.already_defined_lifetimes.insert(name);
 
                     self.output_lifetimes.push(hir::GenericArg::Lifetime(hir::Lifetime {
-                        hir_id: self.context.next_id(),
+                        hir_id: self.context.next_id(lifetime.span),
                         span: lifetime.span,
                         name,
                     }));
 
                     let def_node_id = self.context.resolver.next_node_id();
-                    let hir_id =
-                        self.context.lower_node_id_with_owner(def_node_id, self.opaque_ty_id);
+                    let hir_id = self.context.lower_node_id_with_owner(
+                        def_node_id,
+                        self.opaque_ty_id,
+                        lifetime.span,
+                    );
                     self.context.resolver.definitions().create_def_with_parent(
                         self.parent,
                         def_node_id,
@@ -1703,7 +1726,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let init = l.init.as_ref().map(|e| self.lower_expr(e));
         (
             hir::Local {
-                hir_id: self.lower_node_id(l.id),
+                hir_id: self.lower_node_id(l.id, l.span),
                 ty,
                 pat: self.lower_pat(&l.pat),
                 init,
@@ -2000,7 +2023,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .map(|&(span, hir_name)| {
                 // Input lifetime like `'a` or `'1`:
                 GenericArg::Lifetime(hir::Lifetime {
-                    hir_id: self.next_id(),
+                    hir_id: self.next_id(span),
                     span,
                     name: hir::LifetimeName::Param(hir_name),
                 })
@@ -2009,7 +2032,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         generic_args.extend(lifetime_params[input_lifetimes_count..].iter().map(|&(span, _)|
             // Output lifetime like `'_`.
             GenericArg::Lifetime(hir::Lifetime {
-                hir_id: self.next_id(),
+                hir_id: self.next_id(span),
                 span,
                 name: hir::LifetimeName::Implicit,
             })));
@@ -2059,7 +2082,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         hir::GenericBound::Trait(
             hir::PolyTraitRef {
-                trait_ref: hir::TraitRef { path: future_path, hir_ref_id: self.next_id() },
+                trait_ref: hir::TraitRef { path: future_path, hir_ref_id: self.next_id(span) },
                 bound_generic_params: &[],
                 span,
             },
@@ -2115,7 +2138,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         name: hir::LifetimeName,
     ) -> hir::Lifetime {
-        hir::Lifetime { hir_id: self.lower_node_id(id), span, name }
+        hir::Lifetime { hir_id: self.lower_node_id(id, span), span, name }
     }
 
     fn lower_generic_params_mut<'s>(
@@ -2217,7 +2240,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         hir::GenericParam {
-            hir_id: self.lower_node_id(param.id),
+            hir_id: self.lower_node_id(param.id, param.ident.span),
             name,
             span: param.ident.span,
             pure_wrt_drop: attr::contains_name(&param.attrs, sym::may_dangle),
@@ -2236,7 +2259,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::QPath::Resolved(None, path) => path,
             qpath => panic!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
         };
-        hir::TraitRef { path, hir_ref_id: self.lower_node_id(p.ref_id) }
+        hir::TraitRef { path, hir_ref_id: self.lower_node_id(p.ref_id, path.span) }
     }
 
     fn lower_poly_trait_ref(
@@ -2317,7 +2340,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         hir::Block {
-            hir_id: self.lower_node_id(b.id),
+            hir_id: self.lower_node_id(b.id, b.span),
             stmts: self.arena.alloc_from_iter(stmts),
             expr,
             rules: self.lower_block_check_mode(&b.rules),
@@ -2334,9 +2357,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
-        self.with_new_scopes(|this| hir::AnonConst {
-            hir_id: this.lower_node_id(c.id),
-            body: this.lower_const_body(c.value.span, Some(&c.value)),
+        self.with_new_scopes(|this| {
+            let body = this.lower_const_body(c.value.span, Some(&c.value));
+            let span = this.bodies[&body].value.span;
+            hir::AnonConst { hir_id: this.lower_node_id(c.id, span), body }
         })
     }
 
@@ -2347,13 +2371,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let mut ids: SmallVec<[hir::Stmt<'hir>; 1]> = item_ids
                     .into_iter()
                     .map(|item_id| {
-                        let item_id = hir::ItemId { id: self.lower_node_id(item_id) };
+                        let item_id = hir::ItemId { id: self.lower_node_id(item_id, DUMMY_SP) };
                         self.stmt(s.span, hir::StmtKind::Item(item_id))
                     })
                     .collect();
                 ids.push({
                     hir::Stmt {
-                        hir_id: self.lower_node_id(s.id),
+                        hir_id: self.lower_node_id(s.id, s.span),
                         kind: hir::StmtKind::Local(self.arena.alloc(l)),
                         span: s.span,
                     }
@@ -2369,8 +2393,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     .map(|item_id| {
                         let hir_id = id
                             .take()
-                            .map(|id| self.lower_node_id(id))
-                            .unwrap_or_else(|| self.next_id());
+                            .map(|id| self.lower_node_id(id, s.span))
+                            .unwrap_or_else(|| self.next_id(s.span));
 
                         hir::Stmt { hir_id, kind: hir::StmtKind::Item(item_id), span: s.span }
                     })
@@ -2381,7 +2405,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             StmtKind::Empty => return smallvec![],
             StmtKind::MacCall(..) => panic!("shouldn't exist here"),
         };
-        smallvec![hir::Stmt { hir_id: self.lower_node_id(s.id), kind, span: s.span }]
+        smallvec![hir::Stmt { hir_id: self.lower_node_id(s.id, s.span), kind, span: s.span }]
     }
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
@@ -2416,7 +2440,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // Helper methods for building HIR.
 
     fn stmt(&mut self, span: Span, kind: hir::StmtKind<'hir>) -> hir::Stmt<'hir> {
-        hir::Stmt { span, kind, hir_id: self.next_id() }
+        hir::Stmt { span, kind, hir_id: self.next_id(span) }
     }
 
     fn stmt_expr(&mut self, span: Span, expr: hir::Expr<'hir>) -> hir::Stmt<'hir> {
@@ -2431,7 +2455,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         pat: &'hir hir::Pat<'hir>,
         source: hir::LocalSource,
     ) -> hir::Stmt<'hir> {
-        let local = hir::Local { attrs, hir_id: self.next_id(), init, pat, source, span, ty: None };
+        let local =
+            hir::Local { attrs, hir_id: self.next_id(span), init, pat, source, span, ty: None };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 
@@ -2448,7 +2473,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let blk = hir::Block {
             stmts,
             expr,
-            hir_id: self.next_id(),
+            hir_id: self.next_id(span),
             rules: hir::BlockCheckMode::DefaultBlock,
             span,
             targeted_by_break: false,
@@ -2504,7 +2529,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ident: Ident,
         bm: hir::BindingAnnotation,
     ) -> (&'hir hir::Pat<'hir>, hir::HirId) {
-        let hir_id = self.next_id();
+        let hir_id = self.next_id(span);
 
         (
             self.arena.alloc(hir::Pat {
@@ -2521,7 +2546,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn pat(&mut self, span: Span, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
-        self.arena.alloc(hir::Pat { hir_id: self.next_id(), kind, span })
+        self.arena.alloc(hir::Pat { hir_id: self.next_id(span), kind, span })
     }
 
     /// Given a suffix `["b", "c", "d"]`, returns path `::std::b::c::d` when
@@ -2544,7 +2569,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let res = self.expect_full_res(segment.id);
                 hir::PathSegment {
                     ident: segment.ident,
-                    hir_id: Some(self.lower_node_id(segment.id)),
+                    hir_id: Some(self.lower_node_id(segment.id, segment.ident.span)),
                     res: Some(self.lower_res(res)),
                     infer_args: true,
                     args: None,
@@ -2579,7 +2604,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                         // The original ID is taken by the `PolyTraitRef`,
                         // so the `Ty` itself needs a different one.
-                        hir_id = self.next_id();
+                        hir_id = self.next_id(span);
                         hir::TyKind::TraitObject(
                             arena_vec![self; principal],
                             self.elided_dyn_bound(span),
@@ -2605,7 +2630,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             AnonymousLifetimeMode::CreateParameter => {
                 let fresh_name = self.collect_fresh_in_band_lifetime(span);
                 hir::Lifetime {
-                    hir_id: self.next_id(),
+                    hir_id: self.next_id(span),
                     span,
                     name: hir::LifetimeName::Param(fresh_name),
                 }
@@ -2700,7 +2725,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let r = hir::Lifetime {
-            hir_id: self.next_id(),
+            hir_id: self.next_id(span),
             span,
             name: hir::LifetimeName::ImplicitObjectLifetimeDefault,
         };
@@ -2709,7 +2734,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {
-        hir::Lifetime { hir_id: self.next_id(), span, name: hir::LifetimeName::Implicit }
+        hir::Lifetime { hir_id: self.next_id(span), span, name: hir::LifetimeName::Implicit }
     }
 
     fn maybe_lint_bare_trait(&mut self, span: Span, id: NodeId, is_global: bool) {

@@ -641,6 +641,9 @@ pub struct Crate<'hir> {
     pub proc_macros: Vec<HirId>,
 
     pub trait_map: BTreeMap<HirId, Vec<TraitCandidate>>,
+
+    /// Collected spans from the AST.
+    pub spans: BTreeMap<HirId, Span>,
 }
 
 impl Crate<'hir> {

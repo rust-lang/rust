@@ -54,7 +54,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     );
 
                     let fs = self.arena.alloc_from_iter(fields.iter().map(|f| hir::FieldPat {
-                        hir_id: self.next_id(),
+                        hir_id: self.next_id(f.span),
                         ident: f.ident,
                         pat: self.lower_pat(&f.pat),
                         is_shorthand: f.is_shorthand,
@@ -236,7 +236,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 hir::PatKind::Binding(
                     self.lower_binding_mode(binding_mode),
-                    self.lower_node_id(canonical_id),
+                    self.lower_node_id(canonical_id, rustc_span::DUMMY_SP),
                     ident,
                     lower_sub(self),
                 )
@@ -267,7 +267,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Construct a `Pat` with the `HirId` of `p.id` lowered.
     fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind<'hir>) -> &'hir hir::Pat<'hir> {
-        self.arena.alloc(hir::Pat { hir_id: self.lower_node_id(p.id), kind, span: p.span })
+        self.arena.alloc(hir::Pat { hir_id: self.lower_node_id(p.id, p.span), kind, span: p.span })
     }
 
     /// Emit a friendly error for extra `..` patterns in a tuple/tuple struct/slice pattern.
