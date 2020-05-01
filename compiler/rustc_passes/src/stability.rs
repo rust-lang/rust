@@ -381,10 +381,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>, g: &'tcx Generics<'tcx>, item_id: HirId) {
+        let var_span = self.tcx.hir().span(var.id);
         self.annotate(
             var.id,
             &var.attrs,
-            var.span,
+            var_span,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             |v| {
@@ -392,7 +393,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                     v.annotate(
                         ctor_hir_id,
                         &var.attrs,
-                        var.span,
+                        var_span,
                         AnnotationKind::Required,
                         InheritDeprecation::Yes,
                         |_| {},
@@ -533,7 +534,8 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>, g: &'tcx Generics<'tcx>, item_id: HirId) {
-        self.check_missing_stability(var.id, var.span);
+        let span = self.tcx.hir().span(var.id);
+        self.check_missing_stability(var.id, span);
         intravisit::walk_variant(self, var, g, item_id);
     }
 

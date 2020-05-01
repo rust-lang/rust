@@ -1061,7 +1061,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         g: &'hir hir::Generics<'_>,
         item_id: hir::HirId,
     ) {
-        self.visit_testable(v.ident.to_string(), &v.attrs, v.id, v.span, |this| {
+        self.visit_testable(v.ident.to_string(), &v.attrs, v.id, self.map.span(v.id), |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }

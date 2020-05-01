@@ -749,7 +749,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
             id: self.lower_node_id(v.id, v.span),
             ident: v.ident,
-            span: v.span,
         }
     }
 
