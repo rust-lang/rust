@@ -439,10 +439,10 @@ impl fmt::Display for UndefinedBehaviorInfo {
             DerefFunctionPointer(a) => write!(f, "accessing {} which contains a function", a),
             ValidationFailure(ref err) => write!(f, "type validation failed: {}", err),
             InvalidBool(b) => {
-                write!(f, "interpreting an invalid 8-bit value as a bool: 0x{:2x}", b)
+                write!(f, "interpreting an invalid 8-bit value as a bool: 0x{:02x}", b)
             }
             InvalidChar(c) => {
-                write!(f, "interpreting an invalid 32-bit value as a char: 0x{:8x}", c)
+                write!(f, "interpreting an invalid 32-bit value as a char: 0x{:08x}", c)
             }
             InvalidDiscriminant(val) => write!(f, "enum value has invalid discriminant: {}", val),
             InvalidFunctionPointer(p) => {
