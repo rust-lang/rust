@@ -19,8 +19,7 @@ use lsp_types::{
     TextEdit, Url, WorkspaceEdit,
 };
 use ra_ide::{
-    Assist, AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
-    SearchScope,
+    Assist, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
 };
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextSize};
@@ -702,15 +701,9 @@ fn create_single_code_action(assist: Assist, world: &WorldSnapshot) -> Result<Co
         arguments: Some(vec![arg]),
     };
 
-    let kind = match assist.id {
-        AssistId("introduce_variable") => Some("refactor.extract.variable".to_string()),
-        AssistId("add_custom_impl") => Some("refactor.rewrite.add_custom_impl".to_string()),
-        _ => None,
-    };
-
     Ok(CodeAction {
         title,
-        kind,
+        kind: Some(String::new()),
         diagnostics: None,
         edit: None,
         command: Some(command),
@@ -812,6 +805,23 @@ pub fn handle_code_action(
         }
     }
 
+    // If the client only supports commands then filter the list
+    // and remove and actions that depend on edits.
+    if !world.config.client_caps.code_action_literals {
+        // FIXME: use drain_filter once it hits stable.
+        res = res
+            .into_iter()
+            .filter_map(|it| match it {
+                cmd @ lsp_types::CodeActionOrCommand::Command(_) => Some(cmd),
+                lsp_types::CodeActionOrCommand::CodeAction(action) => match action.command {
+                    Some(cmd) if action.edit.is_none() => {
+                        Some(lsp_types::CodeActionOrCommand::Command(cmd))
+                    }
+                    _ => None,
+                },
+            })
+            .collect();
+    }
     Ok(Some(res))
 }
 

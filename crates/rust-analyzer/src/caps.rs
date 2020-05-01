@@ -3,13 +3,13 @@
 use crate::semantic_tokens;
 
 use lsp_types::{
-    CallHierarchyServerCapability, CodeActionProviderCapability, CodeLensOptions,
-    CompletionOptions, DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability,
-    ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
-    SelectionRangeProviderCapability, SemanticTokensDocumentProvider, SemanticTokensLegend,
-    SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions, TypeDefinitionProviderCapability,
-    WorkDoneProgressOptions,
+    CallHierarchyServerCapability, CodeActionOptions, CodeActionProviderCapability,
+    CodeLensOptions, CompletionOptions, DocumentOnTypeFormattingOptions,
+    FoldingRangeProviderCapability, ImplementationProviderCapability, RenameOptions,
+    RenameProviderCapability, SaveOptions, SelectionRangeProviderCapability,
+    SemanticTokensDocumentProvider, SemanticTokensLegend, SemanticTokensOptions,
+    ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
 };
 
 pub fn server_capabilities() -> ServerCapabilities {
@@ -40,7 +40,20 @@ pub fn server_capabilities() -> ServerCapabilities {
         document_highlight_provider: Some(true),
         document_symbol_provider: Some(true),
         workspace_symbol_provider: Some(true),
-        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+        code_action_provider: Some(CodeActionProviderCapability::Options(CodeActionOptions {
+            // Advertise support for all built-in CodeActionKinds
+            code_action_kinds: Some(vec![
+                String::new(),
+                lsp_types::code_action_kind::QUICKFIX.to_string(),
+                lsp_types::code_action_kind::REFACTOR.to_string(),
+                lsp_types::code_action_kind::REFACTOR_EXTRACT.to_string(),
+                lsp_types::code_action_kind::REFACTOR_INLINE.to_string(),
+                lsp_types::code_action_kind::REFACTOR_REWRITE.to_string(),
+                lsp_types::code_action_kind::SOURCE.to_string(),
+                lsp_types::code_action_kind::SOURCE_ORGANIZE_IMPORTS.to_string(),
+            ]),
+            work_done_progress_options: Default::default(),
+        })),
         code_lens_provider: Some(CodeLensOptions { resolve_provider: Some(true) }),
         document_formatting_provider: Some(true),
         document_range_formatting_provider: None,
