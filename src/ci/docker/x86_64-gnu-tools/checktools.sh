@@ -14,7 +14,6 @@ python3 "$X_PY" test --no-fail-fast \
     src/doc/rust-by-example \
     src/doc/embedded-book \
     src/doc/edition-guide \
-    src/doc/rustc-dev-guide \
     src/tools/clippy \
     src/tools/rls \
     src/tools/rustfmt \
