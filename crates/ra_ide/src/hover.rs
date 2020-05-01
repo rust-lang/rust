@@ -869,4 +869,15 @@ fn func(foo: i32) { if true { <|>foo; }; }
             &[r#"pub(crate) async unsafe extern "C" fn foo()"#],
         );
     }
+
+    #[test]
+    fn test_hover_trait_show_qualifiers() {
+        check_hover_result(
+            "
+            //- /lib.rs
+            unsafe trait foo<|>() {}
+            ",
+            &["unsafe trait foo"],
+        );
+    }
 }
