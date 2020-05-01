@@ -889,7 +889,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let coerce = match source {
             // you can only use break with a value from a normal `loop { }`
             hir::LoopSource::Loop => {
-                let coerce_to = expected.coercion_target_type(self, body.span);
+                let span = self.tcx.hir().span(body.hir_id);
+                let coerce_to = expected.coercion_target_type(self, span);
                 Some(CoerceMany::new(coerce_to))
             }
 
@@ -917,8 +918,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // (which would have type !) are only possible iff we
         // permit break with a value [1].
         if ctxt.coerce.is_none() && !ctxt.may_break {
+            let span = self.tcx.hir().span(body.hir_id);
             // [1]
-            self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
+            self.tcx.sess.delay_span_bug(span, "no coercion, but loop may not break");
         }
         ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.mk_unit())
     }

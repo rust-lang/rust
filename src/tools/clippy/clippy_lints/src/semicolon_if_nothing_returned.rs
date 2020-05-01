@@ -37,7 +37,7 @@ declare_lint_pass!(SemicolonIfNothingReturned => [SEMICOLON_IF_NOTHING_RETURNED]
 impl LateLintPass<'_> for SemicolonIfNothingReturned {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if_chain! {
-            if !in_macro(block.span);
+            if !in_macro(cx.tcx.hir().span(block.hir_id));
             if let Some(expr) = block.expr;
             let t_expr = cx.typeck_results().expr_ty(expr);
             if t_expr.is_unit();

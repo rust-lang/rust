@@ -184,6 +184,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 match destination.target_id {
                     Ok(loop_id) => {
                         if let Node::Block(block) = self.hir_map.find(loop_id).unwrap() {
+                            let block_span = self.hir_map.span(block.hir_id);
                             struct_span_err!(
                                 self.sess,
                                 e.span,
@@ -191,7 +192,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                 "`continue` pointing to a labeled block"
                             )
                             .span_label(e.span, "labeled blocks cannot be `continue`'d")
-                            .span_label(block.span, "labeled block the `continue` points to")
+                            .span_label(block_span, "labeled block the `continue` points to")
                             .emit();
                         }
                     }

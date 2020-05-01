@@ -136,9 +136,9 @@ fn lint_same_then_else(cx: &LateContext<'_>, blocks: &[&Block<'_>]) {
         span_lint_and_note(
             cx,
             IF_SAME_THEN_ELSE,
-            j.span,
+            cx.tcx.hir().span(j.hir_id),
             "this `if` has identical blocks",
-            Some(i.span),
+            Some(cx.tcx.hir().span(i.hir_id)),
             "same as this",
         );
     }

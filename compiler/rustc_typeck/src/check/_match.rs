@@ -582,7 +582,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (span, expected_ty.and_then(|ty| self.could_remove_semicolon(block, ty)))
         } else {
             // empty block; point at its entirety
-            (block.span, None)
+            let block_span = self.tcx.hir().span(block.hir_id);
+            (block_span, None)
         }
     }
 

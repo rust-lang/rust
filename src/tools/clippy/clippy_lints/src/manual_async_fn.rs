@@ -80,9 +80,10 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                                     Applicability::MachineApplicable
                                 );
 
-                                let body_snip = snippet_block(cx, closure_body.value.span, "..", Some(block.span));
+                                let block_span = cx.tcx.hir().span(block.hir_id);
+                                let body_snip = snippet_block(cx, closure_body.value.span, "..", Some(block_span));
                                 diag.span_suggestion(
-                                    block.span,
+                                    block_span,
                                     "move the body of the async block to the enclosing function",
                                     body_snip.to_string(),
                                     Applicability::MachineApplicable

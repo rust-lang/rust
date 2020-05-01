@@ -1320,7 +1320,8 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
     match match_body.kind {
         ExprKind::Block(block, _) => {
             // macro + expr_ty(body) == ()
-            if block.span.from_expansion() && cx.typeck_results().expr_ty(&match_body).is_unit() {
+            let block_span = cx.tcx.hir().span(block.hir_id);
+            if block_span.from_expansion() && cx.typeck_results().expr_ty(&match_body).is_unit() {
                 snippet_body.push(';');
             }
         },

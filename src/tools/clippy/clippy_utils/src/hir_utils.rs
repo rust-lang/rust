@@ -116,8 +116,8 @@ impl HirEqInterExpr<'_, '_, '_> {
                 // For empty blocks, check to see if the tokens are equal. This will catch the case where a macro
                 // expanded to nothing, or the cfg attribute was used.
                 let (left, right) = match (
-                    snippet_opt(self.inner.cx, left.span),
-                    snippet_opt(self.inner.cx, right.span),
+                    snippet_opt(self.inner.cx, self.inner.cx.tcx.hir().span(left.hir_id)),
+                    snippet_opt(self.inner.cx, self.inner.cx.tcx.hir().span(right.hir_id)),
                 ) {
                     (Some(left), Some(right)) => (left, right),
                     _ => return true,
@@ -412,12 +412,13 @@ impl HirEqInterExpr<'_, '_, '_> {
 /// Some simple reductions like `{ return }` => `return`
 fn reduce_exprkind<'hir>(cx: &LateContext<'_>, kind: &'hir ExprKind<'hir>) -> &'hir ExprKind<'hir> {
     if let ExprKind::Block(block, _) = kind {
+        let block_span = cx.tcx.hir().span(block.hir_id);
         match (block.stmts, block.expr) {
             // From an `if let` expression without an `else` block. The arm for the implicit wild pattern is an empty
             // block with an empty span.
-            ([], None) if block.span.is_empty() => &ExprKind::Tup(&[]),
+            ([], None) if block_span.is_empty() => &ExprKind::Tup(&[]),
             // `{}` => `()`
-            ([], None) => match snippet_opt(cx, block.span) {
+            ([], None) => match snippet_opt(cx, block_span) {
                 // Don't reduce if there are any tokens contained in the braces
                 Some(snip)
                     if tokenize(&snip)

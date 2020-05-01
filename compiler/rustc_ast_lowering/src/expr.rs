@@ -2130,7 +2130,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     expr: Some(expr),
                     hir_id,
                     rules: hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated),
-                    span,
                     targeted_by_break: false,
                 }),
                 None,
@@ -2150,7 +2149,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         b: &'hir hir::Block<'hir>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
-        self.expr(b.span, hir::ExprKind::Block(b, None), attrs)
+        let span = self.spans[b.hir_id];
+        self.expr(span, hir::ExprKind::Block(b, None), attrs)
     }
 
     pub(super) fn expr(

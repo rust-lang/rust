@@ -21,7 +21,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                 data: region::ScopeData::Node,
             },
             opt_destruction_scope,
-            span: block.span,
+            span: self.tcx.hir().span(block.hir_id),
             stmts,
             expr: block.expr.map(|expr| self.mirror_expr(expr)),
             safety_mode: match block.rules {

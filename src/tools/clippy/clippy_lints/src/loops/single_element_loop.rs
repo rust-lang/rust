@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(
 
         then {
             let for_span = get_span_of_entire_for_loop(expr);
-            let mut block_str = snippet(cx, block.span, "..").into_owned();
+            let mut block_str = snippet(cx, cx.tcx.hir().span(block.hir_id), "..").into_owned();
             block_str.remove(0);
             block_str.pop();
 

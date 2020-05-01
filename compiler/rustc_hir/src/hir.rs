@@ -797,7 +797,6 @@ pub struct Block<'hir> {
     pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
-    pub span: Span,
     /// If true, then there may exist `break 'a` values that aim to
     /// break out of this block early.
     /// Used by `'label: {}` blocks and by `try {}` blocks.
@@ -3068,7 +3067,7 @@ impl<'hir> Node<'hir> {
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
-    rustc_data_structures::static_assert_size!(super::Block<'static>, 48);
+    rustc_data_structures::static_assert_size!(super::Block<'static>, 40);
     rustc_data_structures::static_assert_size!(super::Expr<'static>, 64);
     rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);

@@ -138,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                                 "let res = {}; if res",
                                 snippet_block_with_applicability(
                                     cx,
-                                    block.span,
+                                    cx.tcx.hir().span(block.hir_id),
                                     "..",
                                     Some(expr.span),
                                     &mut applicability

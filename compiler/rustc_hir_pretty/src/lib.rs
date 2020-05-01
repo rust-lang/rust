@@ -1088,7 +1088,8 @@ impl<'a> State<'a> {
             hir::BlockCheckMode::PopUnsafeBlock(..) => self.word_space("pop_unsafe"),
             hir::BlockCheckMode::DefaultBlock => (),
         }
-        self.maybe_print_comment(blk.span.lo());
+        let span = self.span(blk.hir_id);
+        self.maybe_print_comment(span.lo());
         self.ann.pre(self, AnnNode::Block(blk));
         self.bopen();
 
@@ -1100,9 +1101,9 @@ impl<'a> State<'a> {
         if let Some(ref expr) = blk.expr {
             self.space_if_not_bol();
             self.print_expr(&expr);
-            self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()));
+            self.maybe_print_trailing_comment(expr.span, Some(span.hi()));
         }
-        self.bclose_maybe_open(blk.span, close_box);
+        self.bclose_maybe_open(span, close_box);
         self.ann.post(self, AnnNode::Block(blk))
     }
 
