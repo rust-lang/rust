@@ -93,7 +93,7 @@ rustc_queries! {
         //
         // This can be conveniently accessed by methods on `tcx.hir()`.
         // Avoid calling this query directly.
-        query hir_owner_spans(key: LocalDefId) -> &'tcx IndexVec<ItemLocalId, Option<Span>> {
+        query hir_owner_spans(key: LocalDefId) -> &'tcx IndexVec<ItemLocalId, Span> {
             eval_always
             desc { |tcx| "HIR owner spans in `{}`", tcx.def_path_str(key.to_def_id()) }
         }

@@ -16,7 +16,7 @@ use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use std::iter::repeat;
 
@@ -134,13 +134,14 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             hcx,
             hir_body_nodes,
             map: (0..definitions.def_index_count())
-                .map(|_| HirOwnerData {
-                    spans: IndexVec::new(),
+                .map(|id| HirOwnerData {
+                    spans: krate.spans.get_owner(Idx::new(id)),
                     signature: None,
                     with_bodies: None,
                 })
                 .collect(),
         };
+
         collector.insert_entry(
             krate.item.span,
             hir::CRATE_HIR_ID,
@@ -219,7 +220,12 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let nodes = data.with_bodies.as_mut().unwrap();
 
-        insert_vec_map(&mut data.spans, id.local_id, span);
+        // Verify the consistency of the map from HIR lowering.
+        // Use DUMMY_SP when the span has been removed from the HIR.
+        if span != DUMMY_SP {
+            debug_assert!(id.local_id.index() < data.spans.len());
+            debug_assert_eq!(data.spans[id.local_id], span);
+        }
         if i == 0 {
             // Overwrite the dummy hash with the real HIR owner hash.
             nodes.hash = hash;

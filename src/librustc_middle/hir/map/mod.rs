@@ -87,7 +87,7 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
 }
 
 pub(super) struct HirOwnerData<'hir> {
-    pub(super) spans: IndexVec<ItemLocalId, Option<Span>>,
+    pub(super) spans: &'hir IndexVec<ItemLocalId, Span>,
     pub(super) signature: Option<&'hir Owner<'hir>>,
     pub(super) with_bodies: Option<&'hir mut OwnerNodes<'hir>>,
 }
@@ -828,7 +828,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span(&self, hir_id: HirId) -> Span {
-        self.tcx.hir_owner_spans(hir_id.owner)[hir_id.local_id].unwrap()
+        self.tcx.hir_owner_spans(hir_id.owner)[hir_id.local_id]
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
