@@ -624,10 +624,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let binding_parent = tcx.hir().get(binding_parent_id);
             debug!("inner {:?} pat {:?} parent {:?}", inner, pat, binding_parent);
             match binding_parent {
-                hir::Node::Param(hir::Param { span, .. }) => {
+                hir::Node::Param(hir::Param { hir_id, .. }) => {
+                    let span = tcx.hir().span(*hir_id);
                     if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
                         err.span_suggestion(
-                            *span,
+                            span,
                             &format!("did you mean `{}`", snippet),
                             format!(" &{}", expected),
                             Applicability::MachineApplicable,

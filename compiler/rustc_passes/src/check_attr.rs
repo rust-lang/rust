@@ -1290,7 +1290,12 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        self.check_attributes(param.hir_id, &param.span, Target::Param, None);
+        self.check_attributes(
+            param.hir_id,
+            &self.tcx.hir().span(param.hir_id),
+            Target::Param,
+            None,
+        );
 
         intravisit::walk_param(self, param);
     }

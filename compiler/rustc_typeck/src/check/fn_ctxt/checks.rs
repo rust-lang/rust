@@ -185,7 +185,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .flatten();
 
                     for param in params {
-                        spans.push_span_label(param.span, String::new());
+                        let param_span = tcx.hir().span(param.hir_id);
+                        spans.push_span_label(param_span, String::new());
                     }
 
                     let def_kind = tcx.def_kind(def_id);

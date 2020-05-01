@@ -160,7 +160,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
     let maybe_va_list = if fn_sig.c_variadic {
-        let span = body.params.last().unwrap().span;
+        let span = tcx.hir().span(body.params.last().unwrap().hir_id);
         let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(span));
         let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
 

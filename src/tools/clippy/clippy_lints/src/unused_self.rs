@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
                     span_lint_and_help(
                         cx,
                         UNUSED_SELF,
-                        self_param.span,
+                        cx.tcx.hir().span(self_param.hir_id),
                         "unused `self` argument",
                         None,
                         "consider refactoring to a associated function",
