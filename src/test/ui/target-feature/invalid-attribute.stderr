@@ -22,14 +22,17 @@ error: malformed `target_feature` attribute input
 LL | #[target_feature(disable = "baz")]
    |                  ^^^^^^^^^^^^^^^ help: must be of the form: `enable = ".."`
 
-error: `#[target_feature(..)]` can only be applied to `unsafe` functions
+error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
   --> $DIR/invalid-attribute.rs:27:1
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only be applied to `unsafe` functions
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | fn bar() {}
    | ----------- not an `unsafe` function
+   |
+   = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
+   = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
 error: attribute should be applied to a function
   --> $DIR/invalid-attribute.rs:33:1
@@ -91,23 +94,30 @@ error: cannot use `#[inline(always)]` with `#[target_feature]`
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
-error: `#[target_feature(..)]` can only be applied to `unsafe` functions
+error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
   --> $DIR/invalid-attribute.rs:85:5
    |
 LL |     #[target_feature(enable = "sse2")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only be applied to `unsafe` functions
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     || {};
    |     ----- not an `unsafe` function
+   |
+   = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
+   = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
-error: `#[target_feature(..)]` can only be applied to `unsafe` functions
+error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
   --> $DIR/invalid-attribute.rs:73:5
    |
 LL |     #[target_feature(enable = "sse2")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only be applied to `unsafe` functions
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     fn foo() {}
    |     ----------- not an `unsafe` function
+   |
+   = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
+   = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
 error: aborting due to 14 previous errors
 
+For more information about this error, try `rustc --explain E0658`.
