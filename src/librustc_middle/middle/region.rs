@@ -184,7 +184,7 @@ impl Scope {
                 // (This is the special case alluded to in the
                 // doc-comment for this method)
 
-                let stmt_span = blk.stmts[first_statement_index.index()].span;
+                let stmt_span = tcx.hir().span(blk.stmts[first_statement_index.index()].hir_id);
 
                 // To avoid issues with macro-generated spans, the span
                 // of the statement must be nested in that of the block.

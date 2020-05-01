@@ -603,7 +603,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Local(ref local) = stmt.kind {
             if is_unit(cx.tables.pat_ty(&local.pat)) {
-                if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
+                let stmt_span = cx.tcx.hir().span(stmt.hir_id);
+                if in_external_macro(cx.sess(), stmt_span) || local.pat.span.from_expansion() {
                     return;
                 }
                 if higher::is_from_for_desugar(local) {
@@ -612,13 +613,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
                 span_lint_and_then(
                     cx,
                     LET_UNIT_VALUE,
-                    stmt.span,
+                    stmt_span,
                     "this let-binding has unit value",
                     |diag| {
                         if let Some(expr) = &local.init {
                             let snip = snippet_with_macro_callsite(cx, expr.span, "()");
                             diag.span_suggestion(
-                                stmt.span,
+                                stmt_span,
                                 "omit the `let` binding",
                                 format!("{};", snip),
                                 Applicability::MachineApplicable, // snippet
@@ -826,7 +827,7 @@ fn lint_unit_args(cx: &LateContext<'_, '_>, expr: &Expr<'_>, args_to_recover: &[
                         if let Some(snip) = snippet_opt(cx, last_expr.span);
                         then {
                             Some((
-                                last_stmt.span,
+                                cx.tcx.hir().span(last_stmt.hir_id),
                                 snip,
                             ))
                         }

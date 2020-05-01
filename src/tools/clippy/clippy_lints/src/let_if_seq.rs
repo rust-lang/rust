@@ -71,7 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 if let Some(value) = check_assign(cx, canonical_id, &*then);
                 if !used_in_expr(cx, canonical_id, value);
                 then {
-                    let span = stmt.span.to(if_.span);
+                    let span = cx.tcx.hir().span(stmt.hir_id).to(if_.span);
 
                     let has_interior_mutability = !cx.tables.node_type(canonical_id).is_freeze(
                         cx.tcx,

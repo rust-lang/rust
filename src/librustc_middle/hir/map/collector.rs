@@ -444,7 +444,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_stmt(&mut self, stmt: &'hir Stmt<'hir>) {
-        self.insert(stmt.span, stmt.hir_id, Node::Stmt(stmt));
+        self.insert(DUMMY_SP, stmt.hir_id, Node::Stmt(stmt));
 
         self.with_parent(stmt.hir_id, |this| {
             intravisit::walk_stmt(this, stmt);

@@ -300,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else if let Some(stmt) = block.stmts.last() {
                 // possibly incorrect trailing `;` in the else arm
                 remove_semicolon = self.could_remove_semicolon(block, then_ty);
-                stmt.span
+                self.tcx.hir().span(stmt.hir_id)
             } else {
                 // empty block; point at its entirety
                 // Avoid overlapping spans that aren't as readable:
@@ -347,7 +347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else if let Some(stmt) = block.stmts.last() {
                 // possibly incorrect trailing `;` in the else arm
                 remove_semicolon = remove_semicolon.or(self.could_remove_semicolon(block, else_ty));
-                stmt.span
+                self.tcx.hir().span(stmt.hir_id)
             } else {
                 // empty block; point at its entirety
                 outer_sp = None; // same as in `error_sp`; cleanup output

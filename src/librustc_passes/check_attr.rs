@@ -357,12 +357,14 @@ impl CheckAttrVisitor<'tcx> {
         if let hir::StmtKind::Local(ref l) = stmt.kind {
             for attr in l.attrs.iter() {
                 if attr.check_name(sym::inline) {
-                    self.check_inline(l.hir_id, attr, &stmt.span, Target::Statement);
+                    let span = self.tcx.hir().span(stmt.hir_id);
+                    self.check_inline(l.hir_id, attr, &span, Target::Statement);
                 }
                 if attr.check_name(sym::repr) {
+                    let span = self.tcx.hir().span(stmt.hir_id);
                     self.emit_repr_error(
                         attr.span,
-                        stmt.span,
+                        span,
                         "attribute should not be applied to a statement",
                         "not a struct, enum, or union",
                     );

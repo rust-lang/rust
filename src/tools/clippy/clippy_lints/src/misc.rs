@@ -317,7 +317,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                         "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
                         |diag| {
                             diag.span_suggestion(
-                                stmt.span,
+                                cx.tcx.hir().span(stmt.hir_id),
                                 "try",
                                 format!(
                                     "let {name}{tyopt} = {initref};",
@@ -338,14 +338,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             if binop.node == BinOpKind::And || binop.node == BinOpKind::Or;
             if let Some(sugg) = Sugg::hir_opt(cx, a);
             then {
+                let stmt_span = cx.tcx.hir().span(stmt.hir_id);
                 span_lint_and_then(cx,
                     SHORT_CIRCUIT_STATEMENT,
-                    stmt.span,
+                    stmt_span,
                     "boolean short circuit operator in statement may be clearer using an explicit test",
                     |diag| {
                         let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
                         diag.span_suggestion(
-                            stmt.span,
+                            stmt_span,
                             "replace it with",
                             format!(
                                 "if {} {{ {}; }}",
