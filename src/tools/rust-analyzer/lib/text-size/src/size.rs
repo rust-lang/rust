@@ -33,11 +33,9 @@ impl fmt::Debug for TextSize {
 }
 
 impl TextSize {
-    /// The text size of some text-like object.
+    /// The text size of some primitive text-like object.
     ///
-    /// Accepts `char`, `&str`, and references to any custom string-like type
-    /// that dereferences to `str`. Types that don't dereference to `str` but
-    /// want to be usable in this constructor can implement [`TextLen`].
+    /// Accepts `char`, `&str`, and `&String`.
     ///
     /// # Examples
     ///
