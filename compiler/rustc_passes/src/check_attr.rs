@@ -1280,7 +1280,8 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         generics: &'tcx hir::Generics<'tcx>,
         item_id: HirId,
     ) {
-        self.check_attributes(variant.id, &variant.span, Target::Variant, None);
+        let span = self.tcx.hir().span(variant.id);
+        self.check_attributes(variant.id, &span, Target::Variant, None);
         intravisit::walk_variant(self, variant, generics, item_id)
     }
 

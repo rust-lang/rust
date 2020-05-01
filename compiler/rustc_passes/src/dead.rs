@@ -636,7 +636,8 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         id: hir::HirId,
     ) {
         if self.should_warn_about_variant(&variant) {
-            self.warn_dead_code(variant.id, variant.span, variant.ident.name, "constructed");
+            let span = self.tcx.hir().span(variant.id);
+            self.warn_dead_code(variant.id, span, variant.ident.name, "constructed");
         } else {
             intravisit::walk_variant(self, variant, g, id);
         }

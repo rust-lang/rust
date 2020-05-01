@@ -2544,8 +2544,6 @@ pub struct Variant<'hir> {
     pub data: VariantData<'hir>,
     /// Explicit discriminant (e.g., `Foo = 1`).
     pub disr_expr: Option<AnonConst>,
-    /// Span
-    pub span: Span,
 }
 
 #[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]

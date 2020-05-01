@@ -1379,18 +1379,15 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
             // We only warn if the largest variant is at least thrice as large as
             // the second-largest.
             if largest > slargest * 3 && slargest > 0 {
-                cx.struct_span_lint(
-                    VARIANT_SIZE_DIFFERENCES,
-                    enum_definition.variants[largest_index].span,
-                    |lint| {
-                        lint.build(&format!(
-                            "enum variant is more than three times \
+                let span = cx.tcx.hir().span(enum_definition.variants[largest_index].id);
+                cx.struct_span_lint(VARIANT_SIZE_DIFFERENCES, span, |lint| {
+                    lint.build(&format!(
+                        "enum variant is more than three times \
                                           larger ({} bytes) than the next largest",
-                            largest
-                        ))
-                        .emit()
-                    },
-                );
+                        largest
+                    ))
+                    .emit()
+                });
             }
         }
     }

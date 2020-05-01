@@ -99,15 +99,15 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
                     span_lint_and_then(
                         cx,
                         LARGE_ENUM_VARIANT,
-                        def.variants[i].span,
+                        cx.tcx.hir().span(def.variants[i].id),
                         "large size difference between variants",
                         |diag| {
                             diag.span_label(
-                                def.variants[(largest.1).0].span,
+                                cx.tcx.hir().span(def.variants[(largest.1).0].id),
                                 &format!("this variant is {} bytes", largest.0),
                             );
                             diag.span_note(
-                                def.variants[(second.1).0].span,
+                                cx.tcx.hir().span(def.variants[(second.1).0].id),
                                 &format!("and the second-largest variant is {} bytes:", second.0),
                             );
                             if variant.fields.len() == 1 {
@@ -127,7 +127,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
                                     return;
                                 }
                             }
-                            diag.span_help(def.variants[i].span, help_text);
+                            diag.span_help(cx.tcx.hir().span(def.variants[i].id), help_text);
                         },
                     );
                 }

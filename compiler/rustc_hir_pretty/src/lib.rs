@@ -7,7 +7,7 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
-use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node};
+use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirIdVec, Node};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
@@ -85,6 +85,7 @@ pub struct State<'a> {
     comments: Option<Comments<'a>>,
     attrs: &'a BTreeMap<hir::HirId, &'a [ast::Attribute]>,
     ann: &'a (dyn PpAnn + 'a),
+    spans: &'a HirIdVec<rustc_span::Span>,
 }
 
 impl<'a> State<'a> {
@@ -165,7 +166,7 @@ pub fn print_crate<'a>(
     input: String,
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(sm, filename, input, &krate.attrs, ann);
+    let mut s = State::new_from_input(sm, filename, input, &krate.attrs, &krate.spans, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -181,12 +182,14 @@ impl<'a> State<'a> {
         filename: FileName,
         input: String,
         attrs: &'a BTreeMap<hir::HirId, &[ast::Attribute]>,
+        spans: &'a HirIdVec<rustc_span::Span>,
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
         State {
             s: pp::mk_printer(),
             comments: Some(Comments::new(sm, filename, input)),
             attrs,
+            spans,
             ann,
         }
     }
@@ -194,14 +197,19 @@ impl<'a> State<'a> {
     fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
         self.attrs.get(&id).map_or(&[], |la| *la)
     }
+
+    fn span(&self, hir_id: hir::HirId) -> rustc_span::Span {
+        self.spans.get(hir_id).copied().unwrap_or(rustc_span::DUMMY_SP)
+    }
 }
 
 pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
 where
     F: FnOnce(&mut State<'_>),
 {
+    let spans = &HirIdVec::default();
     let mut printer =
-        State { s: pp::mk_printer(), comments: None, attrs: &BTreeMap::default(), ann };
+        State { s: pp::mk_printer(), comments: None, attrs: &BTreeMap::default(), spans, ann };
     f(&mut printer);
     printer.s.eof()
 }
@@ -834,14 +842,15 @@ impl<'a> State<'a> {
     pub fn print_variants(&mut self, variants: &[hir::Variant<'_>], span: rustc_span::Span) {
         self.bopen();
         for v in variants {
+            let span = self.span(v.id);
             self.space_if_not_bol();
-            self.maybe_print_comment(v.span.lo());
+            self.maybe_print_comment(span.lo());
             self.print_outer_attributes(self.attrs(v.id));
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.s.word(",");
             self.end();
-            self.maybe_print_trailing_comment(v.span, None);
+            self.maybe_print_trailing_comment(span, None);
         }
         self.bclose(span)
     }
@@ -928,7 +937,7 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &hir::Variant<'_>) {
         self.head("");
         let generics = hir::Generics::empty();
-        self.print_struct(&v.data, &generics, v.ident.name, v.span, false);
+        self.print_struct(&v.data, &generics, v.ident.name, self.span(v.id), false);
         if let Some(ref d) = v.disr_expr {
             self.s.space();
             self.word_space("=");

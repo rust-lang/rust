@@ -890,11 +890,9 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::V
             } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
                 Some(discr)
             } else {
-                struct_span_err!(tcx.sess, variant.span, E0370, "enum discriminant overflowed")
-                    .span_label(
-                        variant.span,
-                        format!("overflowed on value after {}", prev_discr.unwrap()),
-                    )
+                let span = tcx.hir().span(variant.id);
+                struct_span_err!(tcx.sess, span, E0370, "enum discriminant overflowed")
+                    .span_label(span, format!("overflowed on value after {}", prev_discr.unwrap()))
                     .note(&format!(
                         "explicitly set `{} = {}` if that is desired outcome",
                         variant.ident, wrapped_discr

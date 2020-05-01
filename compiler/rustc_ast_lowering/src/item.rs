@@ -756,7 +756,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             data: self.lower_variant_data(id, &v.data),
             disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
             ident: v.ident,
-            span: v.span,
         }
     }
 

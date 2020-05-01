@@ -1420,10 +1420,10 @@ fn check_enum<'tcx>(
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => tcx.hir().span(variant_i_hir_id),
             };
-            let span = match v.disr_expr {
-                Some(ref expr) => tcx.hir().span(expr.hir_id),
-                None => v.span,
-            };
+            let span = tcx.hir().span(match v.disr_expr {
+                Some(ref expr) => expr.hir_id,
+                None => v.id,
+            });
             struct_span_err!(
                 tcx.sess,
                 span,
