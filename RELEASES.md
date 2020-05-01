@@ -1,3 +1,15 @@
+Version 1.43.1 (2020-05-07)
+===========================
+
+* [Updated openssl-src to 1.1.1g for CVE-2020-1967.][71430]
+* [Fixed the stabilization of AVX-512 features.][71473]
+* [Fixed `cargo package --list` not working with unpublished dependencies.][cargo/8151]
+
+[71430]: https://github.com/rust-lang/rust/pull/71430
+[71473]: https://github.com/rust-lang/rust/issues/71473
+[cargo/8151]: https://github.com/rust-lang/cargo/issues/8151
+
+
 Version 1.43.0 (2020-04-23)
 ==========================
 
@@ -14,7 +26,7 @@ Language
 - [Merge `fn` syntax + cleanup item parsing.][68728]
 - [`item` macro fragments can be interpolated into `trait`s, `impl`s, and `extern` blocks.][69366]
   For example, you may now write:
-  ```rust 
+  ```rust
   macro_rules! mac_trait {
       ($i:item) => {
           trait T { $i }
@@ -82,7 +94,7 @@ Misc
 - [Certain checks in the `const_err` lint were deemed unrelated to const
   evaluation][69185], and have been moved to the `unconditional_panic` and
   `arithmetic_overflow` lints.
-  
+
 Compatibility Notes
 -------------------
 
@@ -173,7 +185,7 @@ Language
      (e.g. `type Foo: Ord;`).
    - `...` (the C-variadic type) may occur syntactically directly as the type of
       any function parameter.
-  
+
   These are still rejected *semantically*, so you will likely receive an error
   but these changes can be seen and parsed by procedural macros and
   conditional compilation.
@@ -465,7 +477,7 @@ Compatibility Notes
 - [Using `#[inline]` on function prototypes and consts now emits a warning under
   `unused_attribute` lint.][65294] Using `#[inline]` anywhere else inside traits
   or `extern` blocks now correctly emits a hard error.
-  
+
 [65294]: https://github.com/rust-lang/rust/pull/65294/
 [66103]: https://github.com/rust-lang/rust/pull/66103/
 [65843]: https://github.com/rust-lang/rust/pull/65843/
