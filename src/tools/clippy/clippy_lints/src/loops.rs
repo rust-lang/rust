@@ -1928,7 +1928,8 @@ fn check_for_single_element_loop<'tcx>(
 
         then {
             let for_span = get_span_of_entire_for_loop(expr);
-            let mut block_str = snippet(cx, block.span, "..").into_owned();
+            let block_span = cx.tcx.hir().span(block.hir_id);
+            let mut block_str = snippet(cx, block_span, "..").into_owned();
             block_str.remove(0);
             block_str.pop();
 

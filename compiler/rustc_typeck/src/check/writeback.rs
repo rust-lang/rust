@@ -288,7 +288,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
-        self.visit_node_id(b.span, b.hir_id);
+        let span = self.tcx().hir().span(b.hir_id);
+        self.visit_node_id(span, b.hir_id);
         intravisit::walk_block(self, b);
     }
 

@@ -2391,7 +2391,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let rules = self.lower_block_check_mode(&b.rules);
         let hir_id = self.lower_node_id(b.id, b.span);
 
-        hir::Block { hir_id, stmts, expr, rules, span: b.span, targeted_by_break }
+        hir::Block { hir_id, stmts, expr, rules, targeted_by_break }
     }
 
     /// Lowers a block directly to an expression, presuming that it
@@ -2519,7 +2519,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             expr,
             hir_id: self.next_id(span),
             rules: hir::BlockCheckMode::DefaultBlock,
-            span,
             targeted_by_break: false,
         };
         self.arena.alloc(blk)

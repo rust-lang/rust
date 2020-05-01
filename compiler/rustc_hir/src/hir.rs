@@ -756,7 +756,6 @@ pub struct Block<'hir> {
     pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
-    pub span: Span,
     /// If true, then there may exist `break 'a` values that aim to
     /// break out of this block early.
     /// Used by `'label: {}` blocks and by `try {}` blocks.

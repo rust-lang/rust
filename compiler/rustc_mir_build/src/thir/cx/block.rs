@@ -17,11 +17,12 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block<'tcx> {
         let stmts = mirror_stmts(cx, self.hir_id.local_id, &*self.stmts);
         let opt_destruction_scope =
             cx.region_scope_tree.opt_destruction_scope(self.hir_id.local_id);
+        let span = cx.tcx.hir().span(self.hir_id);
         Block {
             targeted_by_break: self.targeted_by_break,
             region_scope: region::Scope { id: self.hir_id.local_id, data: region::ScopeData::Node },
             opt_destruction_scope,
-            span: self.span,
+            span,
             stmts,
             expr: self.expr.to_ref(),
             safety_mode: match self.rules {
@@ -106,12 +107,8 @@ crate fn to_expr_ref<'a, 'tcx>(
     block: &'tcx hir::Block<'tcx>,
 ) -> ExprRef<'tcx> {
     let block_ty = cx.typeck_results().node_type(block.hir_id);
+    let span = cx.tcx.hir().span(block.hir_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(block.hir_id.local_id);
-    let expr = Expr {
-        ty: block_ty,
-        temp_lifetime,
-        span: block.span,
-        kind: ExprKind::Block { body: block },
-    };
+    let expr = Expr { ty: block_ty, temp_lifetime, span, kind: ExprKind::Block { body: block } };
     expr.to_ref()
 }
