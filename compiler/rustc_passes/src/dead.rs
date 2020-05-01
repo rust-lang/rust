@@ -652,7 +652,8 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
 
     fn visit_struct_field(&mut self, field: &'tcx hir::StructField<'tcx>) {
         if self.should_warn_about_field(&field) {
-            self.warn_dead_code(field.hir_id, field.span, field.ident.name, "read");
+            let span = self.tcx.hir().span(field.hir_id);
+            self.warn_dead_code(field.hir_id, span, field.ident.name, "read");
         }
         intravisit::walk_struct_field(self, field);
     }

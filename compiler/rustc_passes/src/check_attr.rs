@@ -1230,7 +1230,8 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_struct_field(&mut self, struct_field: &'tcx hir::StructField<'tcx>) {
-        self.check_attributes(struct_field.hir_id, &struct_field.span, Target::Field, None);
+        let span = self.tcx.hir().span(struct_field.hir_id);
+        self.check_attributes(struct_field.hir_id, &span, Target::Field, None);
         intravisit::walk_struct_field(self, struct_field);
     }
 

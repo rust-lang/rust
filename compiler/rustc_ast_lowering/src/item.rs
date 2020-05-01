@@ -804,7 +804,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let hir_id = self.lower_node_id(f.id, f.span);
         self.lower_attrs(hir_id, &f.attrs);
         hir::StructField {
-            span: f.span,
             hir_id,
             ident: match f.ident {
                 Some(ident) => ident,
@@ -1037,11 +1036,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         let hir_id = self.lower_node_id(param.id, param.span);
         self.lower_attrs(hir_id, &param.attrs);
-        hir::Param {
-            hir_id,
-            pat: self.lower_pat(&param.pat),
-            ty_span: param.ty.span,
-        }
+        hir::Param { hir_id, pat: self.lower_pat(&param.pat), ty_span: param.ty.span }
     }
 
     pub(super) fn lower_fn_body(

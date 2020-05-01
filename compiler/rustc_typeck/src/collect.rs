@@ -934,15 +934,16 @@ fn convert_variant(
         .iter()
         .map(|f| {
             let fid = tcx.hir().local_def_id(f.hir_id);
+            let span = tcx.hir().span(f.hir_id);
             let dup_span = seen_fields.get(&f.ident.normalize_to_macros_2_0()).cloned();
             if let Some(prev_span) = dup_span {
                 tcx.sess.emit_err(errors::FieldAlreadyDeclared {
                     field_name: f.ident,
-                    span: f.span,
+                    span,
                     prev_span,
                 });
             } else {
-                seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
+                seen_fields.insert(f.ident.normalize_to_macros_2_0(), span);
             }
 
             ty::FieldDef { did: fid.to_def_id(), ident: f.ident, vis: tcx.visibility(fid) }
