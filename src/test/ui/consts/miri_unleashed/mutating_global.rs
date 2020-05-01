@@ -1,4 +1,3 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
 #![allow(const_err)]
 
 // Make sure we cannot mutate globals.

@@ -1,5 +1,4 @@
 // run-pass
-// compile-flags: -Zunleash-the-miri-inside-of-you
 #![feature(const_mut_refs)]
 #![allow(const_err)]
 

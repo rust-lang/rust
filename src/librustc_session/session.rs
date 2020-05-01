@@ -142,6 +142,10 @@ pub struct Session {
     /// and immediately printing the backtrace to stderr.
     pub ctfe_backtrace: Lock<CtfeBacktrace>,
 
+    /// This is used to ensure that not all "skipping const checks" from
+    /// `-Zunleash-the-miri-inside-of-you` are because of feature gates being skipped.
+    seen_non_feature_skip: Lock<bool>,
+
     /// Base directory containing the `src/` for the Rust standard library, and
     /// potentially `rustc` as well, if we can can find it. Right now it's always
     /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
@@ -188,7 +192,29 @@ impl From<&'static lint::Lint> for DiagnosticMessageId {
     }
 }
 
+impl Drop for Session {
+    fn drop(&mut self) {
+        // We've only seen feature gate related skips or no skips at all
+        if !*self.seen_non_feature_skip.get_mut() {
+            // And we have unleash enabled.
+            if self.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                // Then that unleash is not necessary
+                panic!(
+                    "`-Zunleash-the-miri-inside-of-you` unnecessary because it only unleashes
+                    feature gates that could have been enabled via attributes.
+                    Remove `-Zunleash-the-miri-inside-of-you` in order to let rustc tell you which
+                    features you need.",
+                );
+            }
+        }
+    }
+}
+
 impl Session {
+    pub fn register_non_feature_unleash_skip(&self) {
+        *self.seen_non_feature_skip.lock() = true;
+    }
+
     pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
         *self.crate_disambiguator.get()
     }
@@ -1081,6 +1107,8 @@ pub fn build_session_with_source_map(
         _ => CtfeBacktrace::Disabled,
     });
 
+    let seen_non_feature_skip = Lock::new(false);
+
     // Try to find a directory containing the Rust `src`, for more details see
     // the doc comment on the `real_rust_source_base_dir` field.
     let real_rust_source_base_dir = {
@@ -1139,6 +1167,7 @@ pub fn build_session_with_source_map(
         confused_type_with_std_module: Lock::new(Default::default()),
         system_library_path: OneThread::new(RefCell::new(Default::default())),
         ctfe_backtrace,
+        seen_non_feature_skip,
         real_rust_source_base_dir,
     };
 

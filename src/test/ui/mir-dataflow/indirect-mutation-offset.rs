@@ -1,5 +1,3 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
-
 // This test demonstrates a shortcoming of the `MaybeMutBorrowedLocals` analysis. It does not
 // handle code that takes a reference to one field of a struct, then use pointer arithmetic to
 // transform it to another field of that same struct that may have interior mutability. For now,
@@ -18,14 +16,11 @@ struct PartialInteriorMut {
     cell: UnsafeCell<i32>,
 }
 
-#[rustc_mir(rustc_peek_indirectly_mutable,stop_after_dataflow)]
+#[rustc_mir(rustc_peek_indirectly_mutable, stop_after_dataflow)]
 const BOO: i32 = {
-    let x = PartialInteriorMut {
-        zst: [],
-        cell: UnsafeCell::new(0),
-    };
+    let x = PartialInteriorMut { zst: [], cell: UnsafeCell::new(0) };
 
-    let p_zst: *const _ = &x.zst ; // Doesn't cause `x` to get marked as indirectly mutable.
+    let p_zst: *const _ = &x.zst; // Doesn't cause `x` to get marked as indirectly mutable.
 
     let rmut_cell = unsafe {
         // Take advantage of the fact that `zst` and `cell` are at the same location in memory.
@@ -36,7 +31,7 @@ const BOO: i32 = {
         &mut *pmut_cell
     };
 
-    *rmut_cell = 42;  // Mutates `x` indirectly even though `x` is not marked indirectly mutable!!!
+    *rmut_cell = 42; // Mutates `x` indirectly even though `x` is not marked indirectly mutable!!!
     let val = *rmut_cell;
     unsafe { rustc_peek(x) }; //~ ERROR rustc_peek: bit not set
 
