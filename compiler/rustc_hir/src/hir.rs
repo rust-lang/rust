@@ -2,6 +2,7 @@
 use crate::def::{CtorKind, DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
+use crate::hir_id::HirIdVec;
 use crate::{itemlikevisit, LangItem};
 
 use rustc_ast::util::parser::ExprPrecedence;
@@ -676,6 +677,9 @@ pub struct Crate<'hir> {
 
     /// Collected attributes from HIR nodes.
     pub attrs: BTreeMap<HirId, &'hir [Attribute]>,
+
+    /// Collected spans from the AST.
+    pub spans: HirIdVec<Span>,
 }
 
 impl Crate<'hir> {

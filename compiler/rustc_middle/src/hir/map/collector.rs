@@ -117,6 +117,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 proc_macros: _,
                 trait_map: _,
                 attrs: _,
+                spans: _,
             } = *krate;
 
             hash_body(&mut hcx, root_mod_def_path_hash, item, &mut hir_body_nodes)
