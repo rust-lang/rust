@@ -1,4 +1,4 @@
-use crate::utils::{is_type_diagnostic_item, match_type, snippet, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{self, is_type_diagnostic_item, match_type, snippet, span_lint_and_sugg, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource};
@@ -96,5 +96,5 @@ fn is_vector(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
 fn is_full_range(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     let ty = cx.tables.expr_ty(expr);
     let ty = walk_ptrs_ty(ty);
-    match_type(cx, ty, &["core", "ops", "range", "RangeFull"])
+    match_type(cx, ty, &utils::paths::RANGE_FULL)
 }
