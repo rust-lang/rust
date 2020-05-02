@@ -46,11 +46,11 @@ use crate::{
 pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
     let _p = profile("handle_analyzer_status");
     let mut buf = world.status();
-    format_to!(buf, "\n\nrequests:");
+    format_to!(buf, "\n\nrequests:\n");
     let requests = world.latest_requests.read();
     for (is_last, r) in requests.iter() {
         let mark = if is_last { "*" } else { " " };
-        format_to!(buf, "{}{:4} {:<36}{}ms", mark, r.id, r.method, r.duration.as_millis());
+        format_to!(buf, "{}{:4} {:<36}{}ms\n", mark, r.id, r.method, r.duration.as_millis());
     }
     Ok(buf)
 }
