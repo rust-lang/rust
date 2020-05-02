@@ -89,8 +89,9 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             if !last_statement_borrows(cx, initexpr);
             if !in_external_macro(cx.sess(), initexpr.span);
             if !in_external_macro(cx.sess(), retexpr.span);
-            if !in_external_macro(cx.sess(), local.span);
-            if !in_macro(local.span);
+            let local_span = cx.tcx.hir().span(local.hir_id);
+            if !in_external_macro(cx.sess(), local_span);
+            if !in_macro(local_span);
             then {
                 span_lint_and_then(
                     cx,
@@ -98,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                     retexpr.span,
                     "returning the result of a `let` binding from a block",
                     |err| {
-                        err.span_label(local.span, "unnecessary `let` binding");
+                        err.span_label(local_span, "unnecessary `let` binding");
 
                         if let Some(mut snippet) = snippet_opt(cx, initexpr.span) {
                             if !cx.typeck_results().expr_adjustments(&retexpr).is_empty() {
@@ -107,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                             err.multipart_suggestion(
                                 "return the expression directly",
                                 vec![
-                                    (local.span, String::new()),
+                                    (local_span, String::new()),
                                     (retexpr.span, snippet),
                                 ],
                                 Applicability::MachineApplicable,

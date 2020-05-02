@@ -319,8 +319,9 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
     fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
         intravisit::walk_local(self, l);
-        let var_ty = self.fcx.local_ty(l.span, l.hir_id).decl_ty;
-        let var_ty = self.resolve(var_ty, &l.span);
+        let span = self.tcx().hir().span(l.hir_id);
+        let var_ty = self.fcx.local_ty(span, l.hir_id).decl_ty;
+        let var_ty = self.resolve(var_ty, &span);
         self.write_ty_to_typeck_results(l.hir_id, var_ty);
     }
 

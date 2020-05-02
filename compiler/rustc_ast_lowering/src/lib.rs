@@ -1848,7 +1848,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ty,
                 pat: self.lower_pat(&l.pat),
                 init,
-                span: l.span,
                 source: hir::LocalSource::Normal,
             },
             ids,
@@ -2568,7 +2567,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug_assert!(!a.is_empty());
             self.attrs.insert(hir_id, a);
         }
-        let local = hir::Local { hir_id, init, pat, source, span, ty: None };
+        let local = hir::Local { hir_id, init, pat, source, ty: None };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 

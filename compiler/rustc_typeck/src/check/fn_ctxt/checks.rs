@@ -518,7 +518,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Type check a `let` statement.
     pub fn check_decl_local(&self, local: &'tcx hir::Local<'tcx>) {
         // Determine and write the type which we'll check the pattern against.
-        let ty = self.local_ty(local.span, local.hir_id).decl_ty;
+        let local_span = self.tcx().hir().span(local.hir_id);
+        let ty = self.local_ty(local_span, local.hir_id).decl_ty;
         self.write_ty(local.hir_id, ty);
 
         // Type check the initializer.

@@ -311,7 +311,8 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                 if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
                     // use the macro callsite when the init span (but not the whole local span)
                     // comes from an expansion like `vec![1, 2, 3]` in `let ref _ = vec![1, 2, 3];`
-                    let sugg_init = if init.span.from_expansion() && !local.span.from_expansion() {
+                    let local_span = cx.tcx.hir().span(local.hir_id);
+                    let sugg_init = if init.span.from_expansion() && !local_span.from_expansion() {
                         Sugg::hir_with_macro_callsite(cx, init, "..")
                     } else {
                         Sugg::hir(cx, init, "..")

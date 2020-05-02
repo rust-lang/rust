@@ -89,7 +89,8 @@ impl LateLintPass<'_> for VecInitThenPush {
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         if_chain! {
-            if !in_external_macro(cx.sess(), local.span);
+            let local_span = cx.tcx.hir().span(local.hir_id);
+            if !in_external_macro(cx.sess(), local_span);
             if let Some(init) = local.init;
             if let PatKind::Binding(BindingAnnotation::Mutable, id, _, None) = local.pat.kind;
             if let Some(init_kind) = get_vec_init_kind(cx, init);
@@ -99,7 +100,7 @@ impl LateLintPass<'_> for VecInitThenPush {
                         init: init_kind,
                         lhs_is_local: true,
                         lhs_span: local.ty.map_or(local.pat.span, |t| local.pat.span.to(t.span)),
-                        err_span: local.span,
+                        err_span: local_span,
                         found: 0,
                     });
             }

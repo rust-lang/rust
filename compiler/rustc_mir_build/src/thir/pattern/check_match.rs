@@ -65,7 +65,7 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
         intravisit::walk_local(self, loc);
 
         let (msg, sp) = match loc.source {
-            hir::LocalSource::Normal => ("local binding", Some(loc.span)),
+            hir::LocalSource::Normal => ("local binding", Some(self.tcx.hir().span(loc.hir_id))),
             hir::LocalSource::ForLoopDesugar => ("`for` loop binding", None),
             hir::LocalSource::AsyncFn => ("async fn binding", None),
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),

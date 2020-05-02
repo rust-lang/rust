@@ -109,7 +109,8 @@ const SYNC_GUARD_PATHS: [&[&str]; 3] = [
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
     fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
-        if in_external_macro(cx.tcx.sess, local.span) {
+        let local_span = cx.tcx.hir().span(local.hir_id);
+        if in_external_macro(cx.tcx.sess, local_span) {
             return;
         }
 
@@ -129,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     span_lint_and_help(
                         cx,
                         LET_UNDERSCORE_LOCK,
-                        local.span,
+                        local_span,
                         "non-binding let on a synchronization lock",
                         None,
                         "consider using an underscore-prefixed named \
@@ -139,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     span_lint_and_help(
                         cx,
                         LET_UNDERSCORE_DROP,
-                        local.span,
+                        local_span,
                         "non-binding `let` on a type that implements `Drop`",
                         None,
                         "consider using an underscore-prefixed named \
@@ -149,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     span_lint_and_help(
                         cx,
                         LET_UNDERSCORE_MUST_USE,
-                        local.span,
+                        local_span,
                         "non-binding let on an expression with `#[must_use]` type",
                         None,
                         "consider explicitly using expression value"
@@ -158,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     span_lint_and_help(
                         cx,
                         LET_UNDERSCORE_MUST_USE,
-                        local.span,
+                        local_span,
                         "non-binding let on a result of a `#[must_use]` function",
                         None,
                         "consider explicitly using function result"
