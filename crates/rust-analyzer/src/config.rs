@@ -49,7 +49,6 @@ pub enum FilesWatcher {
 
 #[derive(Debug, Clone)]
 pub struct NotificationsConfig {
-    pub workspace_loaded: bool,
     pub cargo_toml_not_found: bool,
 }
 
@@ -83,10 +82,7 @@ impl Default for Config {
             lru_capacity: None,
             proc_macro_srv: None,
             files: FilesConfig { watcher: FilesWatcher::Notify, exclude: Vec::new() },
-            notifications: NotificationsConfig {
-                workspace_loaded: true,
-                cargo_toml_not_found: true,
-            },
+            notifications: NotificationsConfig { cargo_toml_not_found: true },
 
             cargo: CargoConfig::default(),
             rustfmt: RustfmtConfig::Rustfmt { extra_args: Vec::new() },
@@ -129,7 +125,6 @@ impl Config {
             Some("client") => FilesWatcher::Client,
             Some("notify") | _ => FilesWatcher::Notify
         };
-        set(value, "/notifications/workspaceLoaded", &mut self.notifications.workspace_loaded);
         set(value, "/notifications/cargoTomlNotFound", &mut self.notifications.cargo_toml_not_found);
 
         set(value, "/cargo/noDefaultFeatures", &mut self.cargo.no_default_features);

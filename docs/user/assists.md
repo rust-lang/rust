@@ -697,3 +697,21 @@ use std::┃collections::HashMap;
 // AFTER
 use std::{collections::HashMap};
 ```
+
+## `unwrap_block`
+
+This assist removes if...else, for, while and loop control statements to just keep the body.
+
+```rust
+// BEFORE
+fn foo() {
+    if true {┃
+        println!("foo");
+    }
+}
+
+// AFTER
+fn foo() {
+    println!("foo");
+}
+```

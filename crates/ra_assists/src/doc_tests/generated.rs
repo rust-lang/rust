@@ -728,3 +728,22 @@ use std::{collections::HashMap};
 "#####,
     )
 }
+
+#[test]
+fn doctest_unwrap_block() {
+    check(
+        "unwrap_block",
+        r#####"
+fn foo() {
+    if true {<|>
+        println!("foo");
+    }
+}
+"#####,
+        r#####"
+fn foo() {
+    println!("foo");
+}
+"#####,
+    )
+}
