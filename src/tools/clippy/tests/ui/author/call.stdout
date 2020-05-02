@@ -1,0 +1,16 @@
+if_chain! {
+    if let StmtKind::Local(ref local) = stmt.kind;
+    if let Some(ref init) = local.init;
+    if let ExprKind::Call(ref func, ref args) = init.kind;
+    if let ExprKind::Path(ref path) = func.kind;
+    if match_qpath(path, &["{{root}}", "std", "cmp", "min"]);
+    if args.len() == 2;
+    if let ExprKind::Lit(ref lit) = args[0].kind;
+    if let LitKind::Int(3, _) = lit.node;
+    if let ExprKind::Lit(ref lit1) = args[1].kind;
+    if let LitKind::Int(4, _) = lit1.node;
+    if let PatKind::Wild = local.pat.kind;
+    then {
+        // report your lint here
+    }
+}

@@ -1,0 +1,63 @@
+error: mutable borrow from immutable input(s)
+  --> $DIR/mut_from_ref.rs:7:39
+   |
+LL |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
+   |                                       ^^^^^^^^
+   |
+   = note: `-D clippy::mut-from-ref` implied by `-D warnings`
+note: immutable borrow here
+  --> $DIR/mut_from_ref.rs:7:29
+   |
+LL |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
+   |                             ^^^^^
+
+error: mutable borrow from immutable input(s)
+  --> $DIR/mut_from_ref.rs:13:25
+   |
+LL |     fn ouch(x: &Foo) -> &mut Foo;
+   |                         ^^^^^^^^
+   |
+note: immutable borrow here
+  --> $DIR/mut_from_ref.rs:13:16
+   |
+LL |     fn ouch(x: &Foo) -> &mut Foo;
+   |                ^^^^
+
+error: mutable borrow from immutable input(s)
+  --> $DIR/mut_from_ref.rs:22:21
+   |
+LL | fn fail(x: &u32) -> &mut u16 {
+   |                     ^^^^^^^^
+   |
+note: immutable borrow here
+  --> $DIR/mut_from_ref.rs:22:12
+   |
+LL | fn fail(x: &u32) -> &mut u16 {
+   |            ^^^^
+
+error: mutable borrow from immutable input(s)
+  --> $DIR/mut_from_ref.rs:26:50
+   |
+LL | fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
+   |                                                  ^^^^^^^^^^^
+   |
+note: immutable borrow here
+  --> $DIR/mut_from_ref.rs:26:25
+   |
+LL | fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
+   |                         ^^^^^^^
+
+error: mutable borrow from immutable input(s)
+  --> $DIR/mut_from_ref.rs:30:67
+   |
+LL | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
+   |                                                                   ^^^^^^^^^^^
+   |
+note: immutable borrow here
+  --> $DIR/mut_from_ref.rs:30:27
+   |
+LL | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
+   |                           ^^^^^^^     ^^^^^^^
+
+error: aborting due to 5 previous errors
+

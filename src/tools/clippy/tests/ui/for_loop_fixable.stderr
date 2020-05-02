@@ -1,0 +1,152 @@
+error: this range is empty so this for loop will never run
+  --> $DIR/for_loop_fixable.rs:38:14
+   |
+LL |     for i in 10..0 {
+   |              ^^^^^
+   |
+   = note: `-D clippy::reverse-range-loop` implied by `-D warnings`
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in (0..10).rev() {
+   |              ^^^^^^^^^^^^^
+
+error: this range is empty so this for loop will never run
+  --> $DIR/for_loop_fixable.rs:42:14
+   |
+LL |     for i in 10..=0 {
+   |              ^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in (0..=10).rev() {
+   |              ^^^^^^^^^^^^^^
+
+error: this range is empty so this for loop will never run
+  --> $DIR/for_loop_fixable.rs:46:14
+   |
+LL |     for i in MAX_LEN..0 {
+   |              ^^^^^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in (0..MAX_LEN).rev() {
+   |              ^^^^^^^^^^^^^^^^^^
+
+error: this range is empty so this for loop will never run
+  --> $DIR/for_loop_fixable.rs:71:14
+   |
+LL |     for i in 10..5 + 4 {
+   |              ^^^^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in (5 + 4..10).rev() {
+   |              ^^^^^^^^^^^^^^^^^
+
+error: this range is empty so this for loop will never run
+  --> $DIR/for_loop_fixable.rs:75:14
+   |
+LL |     for i in (5 + 2)..(3 - 1) {
+   |              ^^^^^^^^^^^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for i in ((3 - 1)..(5 + 2)).rev() {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:97:15
+   |
+LL |     for _v in vec.iter() {}
+   |               ^^^^^^^^^^ help: to write this more concisely, try: `&vec`
+   |
+   = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:99:15
+   |
+LL |     for _v in vec.iter_mut() {}
+   |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut vec`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:102:15
+   |
+LL |     for _v in out_vec.into_iter() {}
+   |               ^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `out_vec`
+   |
+   = note: `-D clippy::explicit-into-iter-loop` implied by `-D warnings`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:107:15
+   |
+LL |     for _v in [1, 2, 3].iter() {}
+   |               ^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[1, 2, 3]`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:111:15
+   |
+LL |     for _v in [0; 32].iter() {}
+   |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[0; 32]`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:116:15
+   |
+LL |     for _v in ll.iter() {}
+   |               ^^^^^^^^^ help: to write this more concisely, try: `&ll`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:119:15
+   |
+LL |     for _v in vd.iter() {}
+   |               ^^^^^^^^^ help: to write this more concisely, try: `&vd`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:122:15
+   |
+LL |     for _v in bh.iter() {}
+   |               ^^^^^^^^^ help: to write this more concisely, try: `&bh`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:125:15
+   |
+LL |     for _v in hm.iter() {}
+   |               ^^^^^^^^^ help: to write this more concisely, try: `&hm`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:128:15
+   |
+LL |     for _v in bt.iter() {}
+   |               ^^^^^^^^^ help: to write this more concisely, try: `&bt`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:131:15
+   |
+LL |     for _v in hs.iter() {}
+   |               ^^^^^^^^^ help: to write this more concisely, try: `&hs`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:134:15
+   |
+LL |     for _v in bs.iter() {}
+   |               ^^^^^^^^^ help: to write this more concisely, try: `&bs`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:309:18
+   |
+LL |         for i in iterator.into_iter() {
+   |                  ^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `iterator`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:329:18
+   |
+LL |         for _ in t.into_iter() {}
+   |                  ^^^^^^^^^^^^^ help: to write this more concisely, try: `&t`
+
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:331:18
+   |
+LL |         for _ in r.into_iter() {}
+   |                  ^^^^^^^^^^^^^ help: to write this more concisely, try: `r`
+
+error: aborting due to 20 previous errors
+

@@ -1,0 +1,80 @@
+error: redundant closure found
+  --> $DIR/eta.rs:20:27
+   |
+LL |     let a = Some(1u8).map(|a| foo(a));
+   |                           ^^^^^^^^^^ help: remove closure as shown: `foo`
+   |
+   = note: `-D clippy::redundant-closure` implied by `-D warnings`
+
+error: redundant closure found
+  --> $DIR/eta.rs:21:10
+   |
+LL |     meta(|a| foo(a));
+   |          ^^^^^^^^^^ help: remove closure as shown: `foo`
+
+error: this expression borrows a reference that is immediately dereferenced by the compiler
+  --> $DIR/eta.rs:24:21
+   |
+LL |     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
+   |                     ^^^ help: change this to: `&2`
+   |
+   = note: `-D clippy::needless-borrow` implied by `-D warnings`
+
+error: redundant closure found
+  --> $DIR/eta.rs:31:27
+   |
+LL |     let e = Some(1u8).map(|a| generic(a));
+   |                           ^^^^^^^^^^^^^^ help: remove closure as shown: `generic`
+
+error: redundant closure found
+  --> $DIR/eta.rs:74:51
+   |
+LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.foo());
+   |                                                   ^^^^^^^^^^^ help: remove closure as shown: `TestStruct::foo`
+   |
+   = note: `-D clippy::redundant-closure-for-method-calls` implied by `-D warnings`
+
+error: redundant closure found
+  --> $DIR/eta.rs:76:51
+   |
+LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.trait_foo());
+   |                                                   ^^^^^^^^^^^^^^^^^ help: remove closure as shown: `TestTrait::trait_foo`
+
+error: redundant closure found
+  --> $DIR/eta.rs:79:42
+   |
+LL |     let e = Some(&mut vec![1, 2, 3]).map(|v| v.clear());
+   |                                          ^^^^^^^^^^^^^ help: remove closure as shown: `std::vec::Vec::clear`
+
+error: redundant closure found
+  --> $DIR/eta.rs:84:29
+   |
+LL |     let e = Some("str").map(|s| s.to_string());
+   |                             ^^^^^^^^^^^^^^^^^ help: remove closure as shown: `std::string::ToString::to_string`
+
+error: redundant closure found
+  --> $DIR/eta.rs:86:27
+   |
+LL |     let e = Some('a').map(|s| s.to_uppercase());
+   |                           ^^^^^^^^^^^^^^^^^^^^ help: remove closure as shown: `char::to_uppercase`
+
+error: redundant closure found
+  --> $DIR/eta.rs:89:65
+   |
+LL |     let e: std::vec::Vec<char> = vec!['a', 'b', 'c'].iter().map(|c| c.to_ascii_uppercase()).collect();
+   |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove closure as shown: `char::to_ascii_uppercase`
+
+error: redundant closure found
+  --> $DIR/eta.rs:172:27
+   |
+LL |     let a = Some(1u8).map(|a| foo_ptr(a));
+   |                           ^^^^^^^^^^^^^^ help: remove closure as shown: `foo_ptr`
+
+error: redundant closure found
+  --> $DIR/eta.rs:177:27
+   |
+LL |     let a = Some(1u8).map(|a| closure(a));
+   |                           ^^^^^^^^^^^^^^ help: remove closure as shown: `closure`
+
+error: aborting due to 12 previous errors
+

@@ -1,0 +1,77 @@
+error: this could be a `const fn`
+  --> $DIR/could_be_const.rs:13:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         Self { guess: 42 }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
+
+error: this could be a `const fn`
+  --> $DIR/could_be_const.rs:17:5
+   |
+LL | /     fn const_generic_params<'a, T, const N: usize>(&self, b: &'a [T; N]) -> &'a [T; N] {
+LL | |         b
+LL | |     }
+   | |_____^
+
+error: this could be a `const fn`
+  --> $DIR/could_be_const.rs:23:1
+   |
+LL | / fn one() -> i32 {
+LL | |     1
+LL | | }
+   | |_^
+
+error: this could be a `const fn`
+  --> $DIR/could_be_const.rs:28:1
+   |
+LL | / fn two() -> i32 {
+LL | |     let abc = 2;
+LL | |     abc
+LL | | }
+   | |_^
+
+error: this could be a `const fn`
+  --> $DIR/could_be_const.rs:34:1
+   |
+LL | / fn string() -> String {
+LL | |     String::new()
+LL | | }
+   | |_^
+
+error: this could be a `const fn`
+  --> $DIR/could_be_const.rs:39:1
+   |
+LL | / unsafe fn four() -> i32 {
+LL | |     4
+LL | | }
+   | |_^
+
+error: this could be a `const fn`
+  --> $DIR/could_be_const.rs:44:1
+   |
+LL | / fn generic<T>(t: T) -> T {
+LL | |     t
+LL | | }
+   | |_^
+
+error: this could be a `const fn`
+  --> $DIR/could_be_const.rs:48:1
+   |
+LL | / fn sub(x: u32) -> usize {
+LL | |     unsafe { transmute(&x) }
+LL | | }
+   | |_^
+
+error: this could be a `const fn`
+  --> $DIR/could_be_const.rs:67:9
+   |
+LL | /         pub fn b(self, a: &A) -> B {
+LL | |             B
+LL | |         }
+   | |_________^
+
+error: aborting due to 9 previous errors
+

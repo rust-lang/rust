@@ -1,0 +1,38 @@
+error: this `.filter_map` can be written more simply using `.filter`
+  --> $DIR/unnecessary_filter_map.rs:2:13
+   |
+LL |     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-filter-map` implied by `-D warnings`
+
+error: this `.filter_map` can be written more simply using `.filter`
+  --> $DIR/unnecessary_filter_map.rs:3:13
+   |
+LL |       let _ = (0..4).filter_map(|x| {
+   |  _____________^
+LL | |         if x > 1 {
+LL | |             return Some(x);
+LL | |         };
+LL | |         None
+LL | |     });
+   | |______^
+
+error: this `.filter_map` can be written more simply using `.filter`
+  --> $DIR/unnecessary_filter_map.rs:9:13
+   |
+LL |       let _ = (0..4).filter_map(|x| match x {
+   |  _____________^
+LL | |         0 | 1 => None,
+LL | |         _ => Some(x),
+LL | |     });
+   | |______^
+
+error: this `.filter_map` can be written more simply using `.map`
+  --> $DIR/unnecessary_filter_map.rs:14:13
+   |
+LL |     let _ = (0..4).filter_map(|x| Some(x + 1));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

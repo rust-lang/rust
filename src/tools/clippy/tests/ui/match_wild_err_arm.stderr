@@ -1,0 +1,35 @@
+error: `Err(_)` matches all errors
+  --> $DIR/match_wild_err_arm.rs:11:9
+   |
+LL |         Err(_) => panic!("err"),
+   |         ^^^^^^
+   |
+   = note: `-D clippy::match-wild-err-arm` implied by `-D warnings`
+   = note: match each error separately or use the error output
+
+error: `Err(_)` matches all errors
+  --> $DIR/match_wild_err_arm.rs:17:9
+   |
+LL |         Err(_) => panic!(),
+   |         ^^^^^^
+   |
+   = note: match each error separately or use the error output
+
+error: `Err(_)` matches all errors
+  --> $DIR/match_wild_err_arm.rs:23:9
+   |
+LL |         Err(_) => {
+   |         ^^^^^^
+   |
+   = note: match each error separately or use the error output
+
+error: `Err(_e)` matches all errors
+  --> $DIR/match_wild_err_arm.rs:31:9
+   |
+LL |         Err(_e) => panic!(),
+   |         ^^^^^^^
+   |
+   = note: match each error separately or use the error output
+
+error: aborting due to 4 previous errors
+

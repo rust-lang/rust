@@ -1,0 +1,27 @@
+error: integer division
+  --> $DIR/integer_division.rs:5:13
+   |
+LL |     let n = 1 / 2;
+   |             ^^^^^
+   |
+   = note: `-D clippy::integer-division` implied by `-D warnings`
+   = help: division of integers may cause loss of precision. consider using floats.
+
+error: integer division
+  --> $DIR/integer_division.rs:6:13
+   |
+LL |     let o = 1 / two;
+   |             ^^^^^^^
+   |
+   = help: division of integers may cause loss of precision. consider using floats.
+
+error: integer division
+  --> $DIR/integer_division.rs:7:13
+   |
+LL |     let p = two / 4;
+   |             ^^^^^^^
+   |
+   = help: division of integers may cause loss of precision. consider using floats.
+
+error: aborting due to 3 previous errors
+

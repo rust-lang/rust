@@ -1,0 +1,111 @@
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:10:13
+   |
+LL |     let _ = !true;
+   |             ^^^^^ help: try: `false`
+   |
+   = note: `-D clippy::nonminimal-bool` implied by `-D warnings`
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:11:13
+   |
+LL |     let _ = !false;
+   |             ^^^^^^ help: try: `true`
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:12:13
+   |
+LL |     let _ = !!a;
+   |             ^^^ help: try: `a`
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:13:13
+   |
+LL |     let _ = false || a;
+   |             ^^^^^^^^^^ help: try: `a`
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:17:13
+   |
+LL |     let _ = !(!a && b);
+   |             ^^^^^^^^^^ help: try: `a || !b`
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:18:13
+   |
+LL |     let _ = !(!a || b);
+   |             ^^^^^^^^^^ help: try: `a && !b`
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:19:13
+   |
+LL |     let _ = !a && !(b && c);
+   |             ^^^^^^^^^^^^^^^ help: try: `!(a || b && c)`
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:27:13
+   |
+LL |     let _ = a == b && c == 5 && a == b;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _ = a == b && c == 5;
+   |             ^^^^^^^^^^^^^^^^
+LL |     let _ = !(a != b || c != 5);
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:28:13
+   |
+LL |     let _ = a == b || c == 5 || a == b;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _ = a == b || c == 5;
+   |             ^^^^^^^^^^^^^^^^
+LL |     let _ = !(a != b && c != 5);
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:29:13
+   |
+LL |     let _ = a == b && c == 5 && b == a;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _ = a == b && c == 5;
+   |             ^^^^^^^^^^^^^^^^
+LL |     let _ = !(a != b || c != 5);
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:30:13
+   |
+LL |     let _ = a != b || !(a != b || c == d);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _ = a != b || c != d;
+   |             ^^^^^^^^^^^^^^^^
+LL |     let _ = !(a == b && c == d);
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: this boolean expression can be simplified
+  --> $DIR/nonminimal_bool.rs:31:13
+   |
+LL |     let _ = a != b && !(a != b && c == d);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL |     let _ = a != b && c != d;
+   |             ^^^^^^^^^^^^^^^^
+LL |     let _ = !(a == b || c == d);
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

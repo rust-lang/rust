@@ -1,0 +1,28 @@
+error: use of `#[inline]` on trait method `default_inline` which has no body
+  --> $DIR/inline_fn_without_body.rs:7:5
+   |
+LL |       #[inline]
+   |  _____-^^^^^^^^
+LL | |     fn default_inline();
+   | |____- help: remove
+   |
+   = note: `-D clippy::inline-fn-without-body` implied by `-D warnings`
+
+error: use of `#[inline]` on trait method `always_inline` which has no body
+  --> $DIR/inline_fn_without_body.rs:10:5
+   |
+LL |       #[inline(always)]
+   |  _____-^^^^^^^^^^^^^^^^
+LL | |     fn always_inline();
+   | |____- help: remove
+
+error: use of `#[inline]` on trait method `never_inline` which has no body
+  --> $DIR/inline_fn_without_body.rs:13:5
+   |
+LL |       #[inline(never)]
+   |  _____-^^^^^^^^^^^^^^^
+LL | |     fn never_inline();
+   | |____- help: remove
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,31 @@
+if_chain! {
+    if let StmtKind::Local(ref local) = stmt.kind;
+    if let Some(ref init) = local.init;
+    if let Some((ref cond, ref then, Some(else_))) = higher::if_block(&init);
+    if let ExprKind::Block(ref block) = else_.kind;
+    if let Some(trailing_expr) = &block.expr;
+    if block.stmts.len() == 1;
+    if let StmtKind::Semi(ref e, _) = block.stmts[0].kind
+    if let ExprKind::Binary(ref op, ref left, ref right) = e.kind;
+    if BinOpKind::Eq == op.node;
+    if let ExprKind::Lit(ref lit) = left.kind;
+    if let LitKind::Int(2, _) = lit.node;
+    if let ExprKind::Lit(ref lit1) = right.kind;
+    if let LitKind::Int(2, _) = lit1.node;
+    if let ExprKind::Lit(ref lit2) = cond.kind;
+    if let LitKind::Bool(true) = lit2.node;
+    if let ExprKind::Block(ref block1) = then.kind;
+    if let Some(trailing_expr1) = &block1.expr;
+    if block1.stmts.len() == 1;
+    if let StmtKind::Semi(ref e1, _) = block1.stmts[0].kind
+    if let ExprKind::Binary(ref op1, ref left1, ref right1) = e1.kind;
+    if BinOpKind::Eq == op1.node;
+    if let ExprKind::Lit(ref lit3) = left1.kind;
+    if let LitKind::Int(1, _) = lit3.node;
+    if let ExprKind::Lit(ref lit4) = right1.kind;
+    if let LitKind::Int(1, _) = lit4.node;
+    if let PatKind::Wild = local.pat.kind;
+    then {
+        // report your lint here
+    }
+}

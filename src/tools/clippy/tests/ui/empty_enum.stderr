@@ -1,0 +1,11 @@
+error: enum with no variants
+  --> $DIR/empty_enum.rs:4:1
+   |
+LL | enum Empty {}
+   | ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::empty-enum` implied by `-D warnings`
+   = help: consider using the uninhabited type `!` (never type) or a wrapper around it to introduce a type which can't be instantiated
+
+error: aborting due to previous error
+

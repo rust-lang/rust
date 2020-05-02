@@ -1,0 +1,111 @@
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+  --> $DIR/forget_ref.rs:9:5
+   |
+LL |     forget(&SomeStruct);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::forget-ref` implied by `-D warnings`
+note: argument has type `&SomeStruct`
+  --> $DIR/forget_ref.rs:9:12
+   |
+LL |     forget(&SomeStruct);
+   |            ^^^^^^^^^^^
+
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+  --> $DIR/forget_ref.rs:12:5
+   |
+LL |     forget(&owned);
+   |     ^^^^^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/forget_ref.rs:12:12
+   |
+LL |     forget(&owned);
+   |            ^^^^^^
+
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+  --> $DIR/forget_ref.rs:13:5
+   |
+LL |     forget(&&owned);
+   |     ^^^^^^^^^^^^^^^
+   |
+note: argument has type `&&SomeStruct`
+  --> $DIR/forget_ref.rs:13:12
+   |
+LL |     forget(&&owned);
+   |            ^^^^^^^
+
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+  --> $DIR/forget_ref.rs:14:5
+   |
+LL |     forget(&mut owned);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&mut SomeStruct`
+  --> $DIR/forget_ref.rs:14:12
+   |
+LL |     forget(&mut owned);
+   |            ^^^^^^^^^^
+
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+  --> $DIR/forget_ref.rs:18:5
+   |
+LL |     forget(&*reference1);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/forget_ref.rs:18:12
+   |
+LL |     forget(&*reference1);
+   |            ^^^^^^^^^^^^
+
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+  --> $DIR/forget_ref.rs:21:5
+   |
+LL |     forget(reference2);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&mut SomeStruct`
+  --> $DIR/forget_ref.rs:21:12
+   |
+LL |     forget(reference2);
+   |            ^^^^^^^^^^
+
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+  --> $DIR/forget_ref.rs:24:5
+   |
+LL |     forget(reference3);
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/forget_ref.rs:24:12
+   |
+LL |     forget(reference3);
+   |            ^^^^^^^^^^
+
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+  --> $DIR/forget_ref.rs:29:5
+   |
+LL |     forget(&val);
+   |     ^^^^^^^^^^^^
+   |
+note: argument has type `&T`
+  --> $DIR/forget_ref.rs:29:12
+   |
+LL |     forget(&val);
+   |            ^^^^
+
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+  --> $DIR/forget_ref.rs:37:5
+   |
+LL |     std::mem::forget(&SomeStruct);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&SomeStruct`
+  --> $DIR/forget_ref.rs:37:22
+   |
+LL |     std::mem::forget(&SomeStruct);
+   |                      ^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

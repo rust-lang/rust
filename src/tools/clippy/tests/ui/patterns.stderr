@@ -1,0 +1,22 @@
+error: the `y @ _` pattern can be written as just `y`
+  --> $DIR/patterns.rs:10:9
+   |
+LL |         y @ _ => (),
+   |         ^^^^^ help: try: `y`
+   |
+   = note: `-D clippy::redundant-pattern` implied by `-D warnings`
+
+error: the `x @ _` pattern can be written as just `x`
+  --> $DIR/patterns.rs:25:9
+   |
+LL |         ref mut x @ _ => {
+   |         ^^^^^^^^^^^^^ help: try: `ref mut x`
+
+error: the `x @ _` pattern can be written as just `x`
+  --> $DIR/patterns.rs:33:9
+   |
+LL |         ref x @ _ => println!("vec: {:?}", x),
+   |         ^^^^^^^^^ help: try: `ref x`
+
+error: aborting due to 3 previous errors
+
