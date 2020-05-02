@@ -80,7 +80,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
             }
             None => None,
         };
-        self.assign(local.span, local.hir_id, local_ty);
+        let local_span = self.fcx.tcx.hir().span(local.hir_id);
+        self.assign(local_span, local.hir_id, local_ty);
 
         debug!(
             "local variable {:?} is assigned type {}",

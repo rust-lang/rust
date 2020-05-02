@@ -607,9 +607,10 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
+        let local_span = cx.tcx.hir().span(local.hir_id);
         if_chain! {
-            if !in_external_macro(cx.sess(), local.span);
-            if !in_macro(local.span);
+            if !in_external_macro(cx.sess(), local_span);
+            if !in_macro(local_span);
             if let Some(ref expr) = local.init;
             if let ExprKind::Match(ref target, ref arms, MatchSource::Normal) = expr.kind;
             if arms.len() == 1 && arms[0].guard.is_none();
@@ -626,7 +627,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 span_lint_and_sugg(
                     cx,
                     INFALLIBLE_DESTRUCTURING_MATCH,
-                    local.span,
+                    local_span,
                     "you seem to be trying to use `match` to destructure a single infallible pattern. \
                     Consider using `let`",
                     "try this",
@@ -1245,7 +1246,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
     // a macro. See PR #6435
     if_chain! {
         if let Some(match_snippet) = snippet_opt(cx, expr.span);
-        if let Some(arm_snippet) = snippet_opt(cx, arms[0].span);
+        if let Some(arm_snippet) = snippet_opt(cx, cx.tcx.hir().span(arms[0].hir_id));
         if let Some(ex_snippet) = snippet_opt(cx, ex.span);
         let rest_snippet = match_snippet.replace(&arm_snippet, "").replace(&ex_snippet, "");
         if rest_snippet.contains("=>");
@@ -1288,7 +1289,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
             // If this match is in a local (`let`) stmt
             let (target_span, sugg) = if let Some(parent_let_node) = opt_parent_let(cx, ex) {
                 (
-                    parent_let_node.span,
+                    cx.tcx.hir().span(parent_let_node.hir_id),
                     format!(
                         "let {} = {};\n{}let {} = {};",
                         snippet_with_applicability(cx, bind_names, "..", &mut applicability),

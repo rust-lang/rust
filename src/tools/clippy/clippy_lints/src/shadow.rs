@@ -139,7 +139,8 @@ fn check_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'_>, bindings: &
 }
 
 fn check_local<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>, bindings: &mut Vec<(Symbol, Span)>) {
-    if in_external_macro(cx.sess(), local.span) {
+    let span = cx.tcx.hir().span(local.hir_id);
+    if in_external_macro(cx.sess(), span) {
         return;
     }
     if higher::is_from_for_desugar(local) {
@@ -149,7 +150,6 @@ fn check_local<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>, bindings: &
         ref pat,
         ref ty,
         ref init,
-        span,
         ..
     } = *local;
     if let Some(ref t) = *ty {

@@ -1135,7 +1135,6 @@ pub struct Local<'hir> {
     /// Initializer expression to set the value, if any.
     pub init: Option<&'hir Expr<'hir>>,
     pub hir_id: HirId,
-    pub span: Span,
     pub attrs: AttrVec,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
     /// desugaring. Otherwise will be `Normal`.

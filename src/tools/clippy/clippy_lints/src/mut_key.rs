@@ -79,7 +79,8 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
         if let hir::PatKind::Wild = local.pat.kind {
             return;
         }
-        check_ty(cx, local.span, cx.typeck_results().pat_ty(&*local.pat));
+        let local_span = cx.tcx.hir().span(local.hir_id);
+        check_ty(cx, local_span, cx.typeck_results().pat_ty(&*local.pat));
     }
 }
 
