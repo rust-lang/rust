@@ -1123,11 +1123,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         match self.kind(id) {
             EntryKind::Const(qualif, _)
             | EntryKind::AssocConst(
-                AssocContainer::ImplDefault | AssocContainer::ImplFinal,
+                AssocContainer::ImplDefault
+                | AssocContainer::ImplFinal
+                | AssocContainer::TraitWithDefault,
                 qualif,
                 _,
             ) => qualif,
-            _ => bug!(),
+            _ => bug!("mir_const_qualif: unexpected kind"),
         }
     }
 
