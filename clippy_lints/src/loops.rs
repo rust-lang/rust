@@ -10,7 +10,6 @@ use crate::utils::{
 };
 use crate::utils::{is_type_diagnostic_item, qpath_res, same_tys, sext, sugg};
 use if_chain::if_chain;
-use itertools::Itertools;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -772,40 +771,48 @@ fn check_for_loop<'a, 'tcx>(
 
 fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -> bool {
     if_chain! {
-        if let ExprKind::Path(ref qpath) = expr.kind;
-        if let QPath::Resolved(None, ref path) = *qpath;
+        if let ExprKind::Path(qpath) = &expr.kind;
+        if let QPath::Resolved(None, path) = qpath;
         if path.segments.len() == 1;
         if let Res::Local(local_id) = qpath_res(cx, qpath, expr.hir_id);
-        // our variable!
-        if local_id == var;
         then {
-            return true;
+            // our variable!
+            local_id == var
+        } else {
+            false
         }
     }
+}
 
-    false
+#[derive(Clone, Copy)]
+enum OffsetSign {
+    Positive,
+    Negative,
 }
 
 struct Offset {
     value: String,
-    negate: bool,
+    sign: OffsetSign,
 }
 
 impl Offset {
-    fn negative(s: String) -> Self {
-        Self { value: s, negate: true }
+    fn negative(value: String) -> Self {
+        Self {
+            value,
+            sign: OffsetSign::Negative,
+        }
     }
 
-    fn positive(s: String) -> Self {
+    fn positive(value: String) -> Self {
         Self {
-            value: s,
-            negate: false,
+            value,
+            sign: OffsetSign::Positive,
         }
     }
 }
 
-struct FixedOffsetVar {
-    var_name: String,
+struct FixedOffsetVar<'hir> {
+    var: &'hir Expr<'hir>,
     offset: Offset,
 }
 
@@ -819,10 +826,20 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
     is_slice || is_type_diagnostic_item(cx, ty, sym!(vec_type)) || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
 }
 
-fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, var: HirId) -> Option<FixedOffsetVar> {
+fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
+    if_chain! {
+        if let ExprKind::MethodCall(method, _, args) = expr.kind;
+        if method.ident.name == sym!(clone);
+        if args.len() == 1;
+        if let Some(arg) = args.get(0);
+        then { arg } else { expr }
+    }
+}
+
+fn get_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, idx: &Expr<'_>, var: HirId) -> Option<Offset> {
     fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr<'_>, var: HirId) -> Option<String> {
-        match e.kind {
-            ExprKind::Lit(ref l) => match l.node {
+        match &e.kind {
+            ExprKind::Lit(l) => match l.node {
                 ast::LitKind::Int(x, _ty) => Some(x.to_string()),
                 _ => None,
             },
@@ -831,115 +848,139 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr<'_>, v
         }
     }
 
-    if let ExprKind::Index(ref seqexpr, ref idx) = expr.kind {
-        let ty = cx.tables.expr_ty(seqexpr);
-        if !is_slice_like(cx, ty) {
-            return None;
-        }
-
-        let offset = match idx.kind {
-            ExprKind::Binary(op, ref lhs, ref rhs) => match op.node {
-                BinOpKind::Add => {
-                    let offset_opt = if same_var(cx, lhs, var) {
-                        extract_offset(cx, rhs, var)
-                    } else if same_var(cx, rhs, var) {
-                        extract_offset(cx, lhs, var)
-                    } else {
-                        None
-                    };
-
-                    offset_opt.map(Offset::positive)
-                },
-                BinOpKind::Sub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
-                _ => None,
-            },
-            ExprKind::Path(..) => {
-                if same_var(cx, idx, var) {
-                    Some(Offset::positive("0".into()))
+    match idx.kind {
+        ExprKind::Binary(op, lhs, rhs) => match op.node {
+            BinOpKind::Add => {
+                let offset_opt = if same_var(cx, lhs, var) {
+                    extract_offset(cx, rhs, var)
+                } else if same_var(cx, rhs, var) {
+                    extract_offset(cx, lhs, var)
                 } else {
                     None
-                }
+                };
+
+                offset_opt.map(Offset::positive)
             },
+            BinOpKind::Sub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
             _ => None,
-        };
-
-        offset.map(|o| FixedOffsetVar {
-            var_name: snippet_opt(cx, seqexpr.span).unwrap_or_else(|| "???".into()),
-            offset: o,
-        })
-    } else {
-        None
+        },
+        ExprKind::Path(..) if same_var(cx, idx, var) => Some(Offset::positive("0".into())),
+        _ => None,
     }
 }
 
-fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &Expr<'_>,
-    var: HirId,
-) -> Option<FixedOffsetVar> {
-    if_chain! {
-        if let ExprKind::MethodCall(ref method, _, ref args) = expr.kind;
-        if method.ident.name == sym!(clone);
-        if args.len() == 1;
-        if let Some(arg) = args.get(0);
-        then {
-            return get_fixed_offset_var(cx, arg, var);
-        }
-    }
-
-    get_fixed_offset_var(cx, expr, var)
-}
-
-fn get_indexed_assignments<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    body: &Expr<'_>,
-    var: HirId,
-) -> Vec<(FixedOffsetVar, FixedOffsetVar)> {
-    fn get_assignment<'a, 'tcx>(
-        cx: &LateContext<'a, 'tcx>,
-        e: &Expr<'_>,
-        var: HirId,
-    ) -> Option<(FixedOffsetVar, FixedOffsetVar)> {
-        if let ExprKind::Assign(ref lhs, ref rhs, _) = e.kind {
-            match (
-                get_fixed_offset_var(cx, lhs, var),
-                fetch_cloned_fixed_offset_var(cx, rhs, var),
-            ) {
-                (Some(offset_left), Some(offset_right)) => {
-                    // Source and destination must be different
-                    if offset_left.var_name == offset_right.var_name {
-                        None
-                    } else {
-                        Some((offset_left, offset_right))
-                    }
-                },
-                _ => None,
-            }
+fn get_assignments<'tcx>(body: &'tcx Expr<'tcx>) -> impl Iterator<Item = Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>> {
+    fn get_assignment<'tcx>(e: &'tcx Expr<'tcx>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
+        if let ExprKind::Assign(lhs, rhs, _) = e.kind {
+            Some((lhs, rhs))
         } else {
             None
         }
     }
 
-    if let ExprKind::Block(ref b, _) = body.kind {
-        let Block {
-            ref stmts, ref expr, ..
-        } = **b;
+    // This is one of few ways to return different iterators
+    // derived from: https://stackoverflow.com/questions/29760668/conditionally-iterate-over-one-of-several-possible-iterators/52064434#52064434
+    let mut iter_a = None;
+    let mut iter_b = None;
 
-        stmts
+    if let ExprKind::Block(b, _) = body.kind {
+        let Block { stmts, expr, .. } = *b;
+
+        iter_a = stmts
             .iter()
-            .map(|stmt| match stmt.kind {
+            .filter_map(|stmt| match stmt.kind {
                 StmtKind::Local(..) | StmtKind::Item(..) => None,
-                StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => Some(get_assignment(cx, e, var)),
+                StmtKind::Expr(e) | StmtKind::Semi(e) => Some(e),
             })
-            .chain(expr.as_ref().into_iter().map(|e| Some(get_assignment(cx, &*e, var))))
-            .filter_map(|op| op)
-            .collect::<Option<Vec<_>>>()
-            .unwrap_or_default()
+            .chain(expr.into_iter())
+            .map(get_assignment)
+            .into()
     } else {
-        get_assignment(cx, body, var).into_iter().collect()
+        iter_b = Some(get_assignment(body))
     }
+
+    iter_a.into_iter().flatten().chain(iter_b.into_iter())
 }
 
+fn build_manual_memcpy_suggestion<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    start: &Expr<'_>,
+    end: &Expr<'_>,
+    limits: ast::RangeLimits,
+    dst_var: FixedOffsetVar<'_>,
+    src_var: FixedOffsetVar<'_>,
+) -> String {
+    fn print_sum(arg1: &str, arg2: &Offset) -> String {
+        match (arg1, &arg2.value[..], arg2.sign) {
+            ("0", "0", _) => "0".into(),
+            ("0", x, OffsetSign::Positive) | (x, "0", _) => x.into(),
+            ("0", x, OffsetSign::Negative) => format!("-{}", x),
+            (x, y, OffsetSign::Positive) => format!("({} + {})", x, y),
+            (x, y, OffsetSign::Negative) => {
+                if x == y {
+                    "0".into()
+                } else {
+                    format!("({} - {})", x, y)
+                }
+            },
+        }
+    }
+
+    fn print_offset(start_str: &str, inline_offset: &Offset) -> String {
+        let offset = print_sum(start_str, inline_offset);
+        if offset.as_str() == "0" {
+            "".into()
+        } else {
+            offset
+        }
+    }
+
+    let print_limit = |end: &Expr<'_>, offset: Offset, var: &Expr<'_>| {
+        if_chain! {
+            if let ExprKind::MethodCall(method, _, len_args) = end.kind;
+            if method.ident.name == sym!(len);
+            if len_args.len() == 1;
+            if let Some(arg) = len_args.get(0);
+            if var_def_id(cx, arg) == var_def_id(cx, var);
+            then {
+                match offset.sign {
+                    OffsetSign::Negative => format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value),
+                    OffsetSign::Positive => "".into(),
+                }
+            } else {
+                let end_str = match limits {
+                    ast::RangeLimits::Closed => {
+                        let end = sugg::Sugg::hir(cx, end, "<count>");
+                        format!("{}", end + sugg::ONE)
+                    },
+                    ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
+                };
+
+                print_sum(&end_str, &offset)
+            }
+        }
+    };
+
+    let start_str = snippet(cx, start.span, "").to_string();
+    let dst_offset = print_offset(&start_str, &dst_var.offset);
+    let dst_limit = print_limit(end, dst_var.offset, dst_var.var);
+    let src_offset = print_offset(&start_str, &src_var.offset);
+    let src_limit = print_limit(end, src_var.offset, src_var.var);
+
+    let dst_var_name = snippet_opt(cx, dst_var.var.span).unwrap_or_else(|| "???".into());
+    let src_var_name = snippet_opt(cx, src_var.var.span).unwrap_or_else(|| "???".into());
+
+    let dst = if dst_offset == "" && dst_limit == "" {
+        dst_var_name
+    } else {
+        format!("{}[{}..{}]", dst_var_name, dst_offset, dst_limit)
+    };
+
+    format!(
+        "{}.clone_from_slice(&{}[{}..{}])",
+        dst, src_var_name, src_offset, src_limit
+    )
+}
 /// Checks for for loops that sequentially copy items from one slice-like
 /// object to another.
 fn detect_manual_memcpy<'a, 'tcx>(
@@ -951,93 +992,43 @@ fn detect_manual_memcpy<'a, 'tcx>(
 ) {
     if let Some(higher::Range {
         start: Some(start),
-        ref end,
+        end: Some(end),
         limits,
     }) = higher::range(cx, arg)
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.kind {
-            let print_sum = |arg1: &Offset, arg2: &Offset| -> String {
-                match (&arg1.value[..], arg1.negate, &arg2.value[..], arg2.negate) {
-                    ("0", _, "0", _) => "".into(),
-                    ("0", _, x, false) | (x, false, "0", false) => x.into(),
-                    ("0", _, x, true) | (x, false, "0", true) => format!("-{}", x),
-                    (x, false, y, false) => format!("({} + {})", x, y),
-                    (x, false, y, true) => {
-                        if x == y {
-                            "0".into()
-                        } else {
-                            format!("({} - {})", x, y)
-                        }
-                    },
-                    (x, true, y, false) => {
-                        if x == y {
-                            "0".into()
-                        } else {
-                            format!("({} - {})", y, x)
-                        }
-                    },
-                    (x, true, y, true) => format!("-({} + {})", x, y),
-                }
-            };
-
-            let print_limit = |end: &Option<&Expr<'_>>, offset: Offset, var_name: &str| {
-                if let Some(end) = *end {
-                    if_chain! {
-                        if let ExprKind::MethodCall(ref method, _, ref len_args) = end.kind;
-                        if method.ident.name == sym!(len);
-                        if len_args.len() == 1;
-                        if let Some(arg) = len_args.get(0);
-                        if snippet(cx, arg.span, "??") == var_name;
-                        then {
-                            return if offset.negate {
-                                format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
-                            } else {
-                                String::new()
-                            };
-                        }
-                    }
-
-                    let end_str = match limits {
-                        ast::RangeLimits::Closed => {
-                            let end = sugg::Sugg::hir(cx, end, "<count>");
-                            format!("{}", end + sugg::ONE)
-                        },
-                        ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
-                    };
-
-                    print_sum(&Offset::positive(end_str), &offset)
-                } else {
-                    "..".into()
-                }
-            };
-
             // The only statements in the for loops can be indexed assignments from
             // indexed retrievals.
-            let manual_copies = get_indexed_assignments(cx, body, canonical_id);
+            let big_sugg = get_assignments(body)
+                .map(|o| {
+                    o.and_then(|(lhs, rhs)| {
+                        let rhs = fetch_cloned_expr(rhs);
+                        if_chain! {
+                            if let ExprKind::Index(seqexpr_left, idx_left) = lhs.kind;
+                            if let ExprKind::Index(seqexpr_right, idx_right) = rhs.kind;
+                            if is_slice_like(cx, cx.tables.expr_ty(seqexpr_left))
+                                && is_slice_like(cx, cx.tables.expr_ty(seqexpr_right));
+                            if let Some(offset_left) = get_offset(cx, &idx_left, canonical_id);
+                            if let Some(offset_right) = get_offset(cx, &idx_right, canonical_id);
 
-            let big_sugg = manual_copies
-                .into_iter()
-                .map(|(dst_var, src_var)| {
-                    let start_str = Offset::positive(snippet(cx, start.span, "").to_string());
-                    let dst_offset = print_sum(&start_str, &dst_var.offset);
-                    let dst_limit = print_limit(end, dst_var.offset, &dst_var.var_name);
-                    let src_offset = print_sum(&start_str, &src_var.offset);
-                    let src_limit = print_limit(end, src_var.offset, &src_var.var_name);
-                    let dst = if dst_offset == "" && dst_limit == "" {
-                        dst_var.var_name
-                    } else {
-                        format!("{}[{}..{}]", dst_var.var_name, dst_offset, dst_limit)
-                    };
-
-                    format!(
-                        "{}.clone_from_slice(&{}[{}..{}])",
-                        dst, src_var.var_name, src_offset, src_limit
-                    )
+                            // Source and destination must be different
+                            if var_def_id(cx, seqexpr_left) != var_def_id(cx, seqexpr_right);
+                            then {
+                                Some((FixedOffsetVar { var: seqexpr_left, offset: offset_left },
+                                    FixedOffsetVar { var: seqexpr_right, offset: offset_right }))
+                            } else {
+                                None
+                            }
+                        }
+                    })
                 })
-                .join("\n    ");
+                .map(|o| o.map(|(dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, dst, src)))
+                .collect::<Option<Vec<_>>>()
+                .filter(|v| !v.is_empty())
+                .map(|v| v.join("\n    "));
 
-            if !big_sugg.is_empty() {
+            if let Some(big_sugg) = big_sugg {
                 span_lint_and_sugg(
                     cx,
                     MANUAL_MEMCPY,
