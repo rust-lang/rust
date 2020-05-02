@@ -1671,15 +1671,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 intravisit::NestedVisitorMap::None
             }
 
-            fn visit_generic_args(&mut self, span: Span, parameters: &'v hir::GenericArgs<'v>) {
+            fn visit_generic_args(&mut self, parameters: &'v hir::GenericArgs<'v>) {
                 // Don't collect elided lifetimes used inside of `Fn()` syntax.
                 if parameters.parenthesized {
                     let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
                     self.collect_elided_lifetimes = false;
-                    intravisit::walk_generic_args(self, span, parameters);
+                    intravisit::walk_generic_args(self, parameters);
                     self.collect_elided_lifetimes = old_collect_elided_lifetimes;
                 } else {
-                    intravisit::walk_generic_args(self, span, parameters);
+                    intravisit::walk_generic_args(self, parameters);
                 }
             }
 

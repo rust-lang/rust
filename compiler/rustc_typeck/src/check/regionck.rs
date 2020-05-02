@@ -350,7 +350,6 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         fk: intravisit::FnKind<'tcx>,
         _: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
-        span: Span,
         hir_id: hir::HirId,
     ) {
         assert!(
@@ -365,6 +364,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         let env_snapshot = self.outlives_environment.push_snapshot_pre_closure();
 
         let body = self.tcx.hir().body(body_id);
+        let span = self.tcx.hir().span(hir_id);
         self.visit_fn_body(hir_id, body, span);
 
         // Restore state from previous function.

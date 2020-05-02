@@ -10,7 +10,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
-use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for private functions that only return `Ok` or `Some`.
@@ -61,7 +60,6 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         fn_kind: FnKind<'tcx>,
         fn_decl: &FnDecl<'tcx>,
         body: &Body<'tcx>,
-        span: Span,
         hir_id: HirId,
     ) {
         // Abort if public function/method or closure.
@@ -150,6 +148,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 )
             };
 
+            let span = cx.tcx.hir().span(hir_id);
             span_lint_and_then(cx, UNNECESSARY_WRAPS, span, lint_msg.as_str(), |diag| {
                 diag.span_suggestion(
                     fn_decl.output.span(),

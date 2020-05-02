@@ -649,7 +649,7 @@ struct ContainsName {
 impl<'tcx> Visitor<'tcx> for ContainsName {
     type Map = Map<'tcx>;
 
-    fn visit_name(&mut self, _: Span, name: Symbol) {
+    fn visit_name(&mut self, name: Symbol) {
         if self.name == name {
             self.result = true;
         }

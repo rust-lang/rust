@@ -459,11 +459,11 @@ impl<'hir> Map<'hir> {
         self.attrs(CRATE_HIR_ID)
     }
 
-    pub fn get_module(&self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
+    pub fn get_module(&self, module: LocalDefId) -> (&'hir Mod<'hir>, HirId) {
         let hir_id = self.local_def_id_to_hir_id(module);
         match self.get_entry(hir_id).node {
-            Node::Item(&Item { span, kind: ItemKind::Mod(ref m), .. }) => (m, span, hir_id),
-            Node::Crate(item) => (&item.module, item.span, hir_id),
+            Node::Item(&Item { kind: ItemKind::Mod(ref m), .. }) => (m, hir_id),
+            Node::Crate(item) => (&item.module, hir_id),
             node => panic!("not a module: {:?}", node),
         }
     }

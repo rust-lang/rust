@@ -4,7 +4,6 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
 use rustc_span::symbol::kw;
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
@@ -65,7 +64,6 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         fn_kind: intravisit::FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        _: Span,
         hir_id: HirId,
     ) {
         if let Some(header) = fn_kind.header() {

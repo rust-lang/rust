@@ -449,11 +449,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'hir PathSegment<'hir>) {
+    fn visit_path_segment(&mut self, path_segment: &'hir PathSegment<'hir>) {
         if let Some(hir_id) = path_segment.hir_id {
-            self.insert(path_span, hir_id, Node::PathSegment(path_segment));
+            self.insert(DUMMY_SP, hir_id, Node::PathSegment(path_segment));
         }
-        intravisit::walk_path_segment(self, path_span, path_segment);
+        intravisit::walk_path_segment(self, path_segment);
     }
 
     fn visit_ty(&mut self, ty: &'hir Ty<'hir>) {
@@ -477,11 +477,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         fk: intravisit::FnKind<'hir>,
         fd: &'hir FnDecl<'hir>,
         b: BodyId,
-        s: Span,
         id: HirId,
     ) {
         assert_eq!(self.parent_node, id);
-        intravisit::walk_fn(self, fk, fd, b, s, id);
+        intravisit::walk_fn(self, fk, fd, b, id);
     }
 
     fn visit_block(&mut self, block: &'hir Block<'hir>) {

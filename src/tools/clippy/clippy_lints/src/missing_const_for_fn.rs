@@ -9,7 +9,6 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::Span;
 use rustc_typeck::hir_ty_to_ty;
 
 const MISSING_CONST_FOR_FN_MSRV: RustcVersion = RustcVersion::new(1, 37, 0);
@@ -94,7 +93,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
         kind: FnKind<'_>,
         _: &FnDecl<'_>,
         _: &Body<'_>,
-        span: Span,
         hir_id: HirId,
     ) {
         if !meets_msrv(self.msrv.as_ref(), &MISSING_CONST_FOR_FN_MSRV) {
@@ -102,6 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
         }
 
         let def_id = cx.tcx.hir().local_def_id(hir_id);
+        let span = cx.tcx.hir().span(hir_id);
 
         if in_external_macro(cx.tcx.sess, span) || is_entrypoint_fn(cx, def_id.to_def_id()) {
             return;

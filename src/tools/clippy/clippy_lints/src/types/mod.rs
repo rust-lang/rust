@@ -260,7 +260,7 @@ pub struct Types {
 impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
-    fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
+    fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, id: HirId) {
         // Skip trait implementations; see issue #605.
         if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id)) {
             if let ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
@@ -815,7 +815,6 @@ impl<'tcx> LateLintPass<'tcx> for TypeComplexity {
         _: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         _: &'tcx Body<'_>,
-        _: Span,
         _: HirId,
     ) {
         self.check_fndecl(cx, decl);

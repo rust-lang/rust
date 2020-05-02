@@ -388,7 +388,7 @@ struct UnsafeVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     type Map = Map<'tcx>;
 
-    fn visit_fn(&mut self, kind: FnKind<'tcx>, decl: &'tcx FnDecl<'_>, body_id: BodyId, span: Span, id: HirId) {
+    fn visit_fn(&mut self, kind: FnKind<'tcx>, decl: &'tcx FnDecl<'_>, body_id: BodyId, id: HirId) {
         if self.has_unsafe {
             return;
         }
@@ -401,7 +401,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
             }
         }
 
-        walk_fn(self, kind, decl, body_id, span, id);
+        walk_fn(self, kind, decl, body_id, id);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {

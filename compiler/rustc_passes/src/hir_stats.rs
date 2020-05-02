@@ -174,11 +174,10 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         fk: hir_visit::FnKind<'v>,
         fd: &'v hir::FnDecl<'v>,
         b: hir::BodyId,
-        s: Span,
         id: hir::HirId,
     ) {
         self.record("FnDecl", Id::None, fd);
-        hir_visit::walk_fn(self, fk, fd, b, s, id)
+        hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
     fn visit_where_predicate(&mut self, predicate: &'v hir::WherePredicate<'v>) {
@@ -221,9 +220,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId, span: Span) {
+    fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId) {
         self.record("QPath", Id::None, qpath);
-        hir_visit::walk_qpath(self, qpath, id, span)
+        hir_visit::walk_qpath(self, qpath, id)
     }
 
     fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
@@ -231,9 +230,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_path(self, path)
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v hir::PathSegment<'v>) {
+    fn visit_path_segment(&mut self, path_segment: &'v hir::PathSegment<'v>) {
         self.record("PathSegment", Id::None, path_segment);
-        hir_visit::walk_path_segment(self, path_span, path_segment)
+        hir_visit::walk_path_segment(self, path_segment)
     }
 
     fn visit_assoc_type_binding(&mut self, type_binding: &'v hir::TypeBinding<'v>) {

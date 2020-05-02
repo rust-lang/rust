@@ -10,7 +10,6 @@ use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -63,7 +62,6 @@ impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
         _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        _: Span,
         _: HirId,
     ) {
         NonminimalBoolVisitor { cx }.visit_body(body)

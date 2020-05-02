@@ -2897,7 +2897,7 @@ fn insert_late_bound_lifetimes(
                     // is, those would be potentially inputs to
                     // projections
                     if let Some(last_segment) = path.segments.last() {
-                        self.visit_path_segment(path.span, last_segment);
+                        self.visit_path_segment(last_segment);
                     }
                 }
 

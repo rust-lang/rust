@@ -130,10 +130,9 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
         _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        span: Span,
-        _: HirId,
+        hir_id: HirId,
     ) {
-        if span.from_expansion() {
+        if cx.tcx.hir().span(hir_id).from_expansion() {
             return;
         }
         let body = cx.tcx.hir().body(body.id());

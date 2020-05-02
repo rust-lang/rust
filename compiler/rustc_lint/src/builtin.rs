@@ -1398,36 +1398,42 @@ impl TypeAliasBounds {
         }
     }
 
-    fn suggest_changing_assoc_types(ty: &hir::Ty<'_>, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_changing_assoc_types(
+        tcx: TyCtxt<'_>,
+        ty: &hir::Ty<'_>,
+        err: &mut DiagnosticBuilder<'_>,
+    ) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
         // bound.  Let's see if this type does that.
 
         // We use a HIR visitor to walk the type.
         use rustc_hir::intravisit::{self, Visitor};
-        struct WalkAssocTypes<'a, 'db> {
+        struct WalkAssocTypes<'a, 'db, 'tcx> {
             err: &'a mut DiagnosticBuilder<'db>,
+            tcx: TyCtxt<'tcx>,
         }
-        impl<'a, 'db, 'v> Visitor<'v> for WalkAssocTypes<'a, 'db> {
+        impl<'a, 'db, 'tcx, 'v> Visitor<'v> for WalkAssocTypes<'a, 'db, 'tcx> {
             type Map = intravisit::ErasedMap<'v>;
 
             fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
                 intravisit::NestedVisitorMap::None
             }
 
-            fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId, span: Span) {
+            fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
+                    let span = self.tcx.hir().span(id);
                     self.err.span_help(
                         span,
                         "use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to \
                          associated types in type aliases",
                     );
                 }
-                intravisit::walk_qpath(self, qpath, id, span)
+                intravisit::walk_qpath(self, qpath, id)
             }
         }
 
         // Let's go for a walk!
-        let mut visitor = WalkAssocTypes { err };
+        let mut visitor = WalkAssocTypes { err, tcx };
         visitor.visit_ty(ty);
     }
 }
@@ -1463,7 +1469,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                         Applicability::MachineApplicable,
                     );
                     if !suggested_changing_assoc_types {
-                        TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
+                        TypeAliasBounds::suggest_changing_assoc_types(cx.tcx, ty, &mut err);
                         suggested_changing_assoc_types = true;
                     }
                     err.emit();
@@ -1488,7 +1494,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                                    and should be removed";
                     err.multipart_suggestion(&msg, suggestion, Applicability::MachineApplicable);
                     if !suggested_changing_assoc_types {
-                        TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
+                        TypeAliasBounds::suggest_changing_assoc_types(cx.tcx, ty, &mut err);
                         suggested_changing_assoc_types = true;
                     }
                     err.emit();

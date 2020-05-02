@@ -10,7 +10,7 @@ use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
-use rustc_span::{Span, Symbol};
+use rustc_span::Symbol;
 use std::borrow::Cow;
 
 pub mod add_call_guards;
@@ -122,7 +122,6 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> FxHashSet<LocalDefId> {
             _: Symbol,
             _: &'tcx hir::Generics<'tcx>,
             _: hir::HirId,
-            _: Span,
         ) {
             if let hir::VariantData::Tuple(_, hir_id) = *v {
                 self.set.insert(self.tcx.hir().local_def_id(hir_id));

@@ -133,7 +133,6 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         _: intravisit::FnKind<'tcx>,
         _: &'tcx hir::FnDecl<'tcx>,
         _: hir::BodyId,
-        _: Span,
         _: hir::HirId,
     ) {
     }

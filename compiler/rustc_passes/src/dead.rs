@@ -255,7 +255,6 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         _: Symbol,
         _: &hir::Generics<'_>,
         _: hir::HirId,
-        _: rustc_span::Span,
     ) {
         let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;

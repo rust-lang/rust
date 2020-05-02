@@ -1438,7 +1438,7 @@ impl UsePlacementFinder<'tcx> {
 }
 
 impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
-    fn visit_mod(&mut self, module: &'tcx hir::Mod<'tcx>, _: Span, hir_id: hir::HirId) {
+    fn visit_mod(&mut self, module: &'tcx hir::Mod<'tcx>, hir_id: hir::HirId) {
         if self.span.is_some() {
             return;
         }

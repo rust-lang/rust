@@ -72,9 +72,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        span: Span,
         hir_id: HirId,
     ) {
+        let span = cx.tcx.hir().span(hir_id);
         if span.from_expansion() {
             return;
         }

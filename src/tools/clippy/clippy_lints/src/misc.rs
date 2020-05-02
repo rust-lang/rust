@@ -276,13 +276,13 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
         k: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        span: Span,
-        _: HirId,
+        hir_id: HirId,
     ) {
         if let FnKind::Closure = k {
             // Does not apply to closures
             return;
         }
+        let span = cx.tcx.hir().span(hir_id);
         if in_external_macro(cx.tcx.sess, span) {
             return;
         }

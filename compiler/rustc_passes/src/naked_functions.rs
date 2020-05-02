@@ -39,7 +39,6 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
         fk: FnKind<'v>,
         _fd: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
-        span: Span,
         hir_id: HirId,
     ) {
         let ident_span;
@@ -69,7 +68,7 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
             check_abi(self.tcx, hir_id, fn_header.abi, ident_span);
             check_no_patterns(self.tcx, body.params);
             check_no_parameters_use(self.tcx, body);
-            check_asm(self.tcx, hir_id, body, span);
+            check_asm(self.tcx, hir_id, body);
         }
     }
 }
@@ -147,12 +146,13 @@ impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
 }
 
 /// Checks that function body contains a single inline assembly block.
-fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId, body: &'tcx hir::Body<'tcx>, fn_span: Span) {
+fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId, body: &'tcx hir::Body<'tcx>) {
     let mut this = CheckInlineAssembly { tcx, items: Vec::new() };
     this.visit_body(body);
     if let [(ItemKind::Asm, _)] = this.items[..] {
         // Ok.
     } else {
+        let fn_span = tcx.hir().span_with_body(hir_id);
         tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, fn_span, |lint| {
             let mut diag = lint.build("naked functions must contain a single asm block");
             let mut has_asm = false;

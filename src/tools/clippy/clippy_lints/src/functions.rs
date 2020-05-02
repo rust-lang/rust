@@ -247,7 +247,6 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         kind: intravisit::FnKind<'tcx>,
         decl: &'tcx hir::FnDecl<'_>,
         body: &'tcx hir::Body<'_>,
-        span: Span,
         hir_id: hir::HirId,
     ) {
         let unsafety = match kind {
@@ -255,6 +254,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
             intravisit::FnKind::Method(_, sig, _) => sig.header.unsafety,
             intravisit::FnKind::Closure => return,
         };
+
+        let span = cx.tcx.hir().span(hir_id);
 
         // don't warn for implementations, it's not their fault
         if !is_trait_impl_item(cx, hir_id) {
