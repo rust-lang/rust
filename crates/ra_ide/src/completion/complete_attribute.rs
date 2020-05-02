@@ -130,11 +130,8 @@ const ATTRIBUTES: &[AttrCompletion] = &[
 ];
 
 fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input: ast::TokenTree) {
-    // TODO kb autodetect derive macros
-    // https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0/topic/Find.20all.20possible.20derive.20macro.20values.3F/near/195955580
-
     if let Ok(existing_derives) = parse_derive_input(derive_input) {
-        for derive_completion in DERIVE_COMPLETIONS
+        for derive_completion in DEFAULT_DERIVE_COMPLETIONS
             .into_iter()
             .filter(|completion| !existing_derives.contains(completion.label))
         {
@@ -147,9 +144,21 @@ fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input:
                 label.push_str(", ");
                 label.push_str(dependency);
             }
-            let item = CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label)
-                .kind(CompletionItemKind::Attribute);
-            acc.add(item);
+            acc.add(
+                CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label)
+                    .kind(CompletionItemKind::Attribute),
+            );
+        }
+
+        for custom_derive_name in get_derive_names_in_scope(ctx).difference(&existing_derives) {
+            acc.add(
+                CompletionItem::new(
+                    CompletionKind::Attribute,
+                    ctx.source_range(),
+                    custom_derive_name,
+                )
+                .kind(CompletionItemKind::Attribute),
+            );
         }
     }
 }
@@ -174,12 +183,27 @@ fn parse_derive_input(derive_input: ast::TokenTree) -> Result<FxHashSet<String>,
     }
 }
 
+fn get_derive_names_in_scope(ctx: &CompletionContext) -> FxHashSet<String> {
+    let mut result = FxHashSet::default();
+    ctx.scope().process_all_names(&mut |name, scope_def| {
+        if let hir::ScopeDef::MacroDef(mac) = scope_def {
+            if mac.is_derive_macro() {
+                let name_string = name.to_string();
+                result.insert(name_string);
+            }
+        }
+    });
+    result
+}
+
 struct DeriveCompletion {
     label: &'static str,
     dependencies: &'static [&'static str],
 }
 
-const DERIVE_COMPLETIONS: &[DeriveCompletion] = &[
+/// Standard Rust derives and the information about their dependencies
+/// (the dependencies are needed so that the main derive don't break the compilation when added)
+const DEFAULT_DERIVE_COMPLETIONS: &[DeriveCompletion] = &[
     DeriveCompletion { label: "Clone", dependencies: &[] },
     DeriveCompletion { label: "Copy", dependencies: &["Clone"] },
     DeriveCompletion { label: "Debug", dependencies: &[] },

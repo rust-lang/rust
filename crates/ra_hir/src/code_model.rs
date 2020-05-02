@@ -19,7 +19,7 @@ use hir_def::{
 use hir_expand::{
     diagnostics::DiagnosticSink,
     name::{name, AsName},
-    MacroDefId,
+    MacroDefId, MacroDefKind,
 };
 use hir_ty::{
     autoderef, display::HirFormatter, expr::ExprValidator, method_resolution, ApplicationTy,
@@ -762,13 +762,12 @@ impl MacroDef {
 
     /// Indicate it is a proc-macro
     pub fn is_proc_macro(&self) -> bool {
-        match self.id.kind {
-            hir_expand::MacroDefKind::Declarative => false,
-            hir_expand::MacroDefKind::BuiltIn(_) => false,
-            hir_expand::MacroDefKind::BuiltInDerive(_) => false,
-            hir_expand::MacroDefKind::BuiltInEager(_) => false,
-            hir_expand::MacroDefKind::CustomDerive(_) => true,
-        }
+        matches!(self.id.kind, MacroDefKind::CustomDerive(_))
+    }
+
+    /// Indicate it is a derive macro
+    pub fn is_derive_macro(&self) -> bool {
+        matches!(self.id.kind, MacroDefKind::CustomDerive(_) | MacroDefKind::BuiltInDerive(_))
     }
 }
 
