@@ -2555,7 +2555,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ident: Ident::new(sym::integer(0), span),
             is_shorthand: false,
             pat,
-            span,
         };
         arena_vec![self; field]
     }
