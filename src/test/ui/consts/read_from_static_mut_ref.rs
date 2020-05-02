@@ -1,9 +1,8 @@
 // run-pass
-// compile-flags: -Zunleash-the-miri-inside-of-you
+#![feature(const_mut_refs)]
 #![allow(const_err)]
 
 static OH_YES: &mut i32 = &mut 42;
-//~^ WARN skipping const checks
 
 fn main() {
     // Make sure `OH_YES` can be read.

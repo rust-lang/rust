@@ -1,6 +1,8 @@
 // build-fail
 // compile-flags: -Zunleash-the-miri-inside-of-you -Zdeduplicate-diagnostics
 #![allow(const_err)]
+#![feature(const_raw_ptr_deref)] // FIXME: cannot remove because then rustc thinks there is no error
+#![crate_type = "lib"]
 
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
@@ -24,7 +26,7 @@ static mut MUTABLE: u32 = 0;
 const READ_MUT: u32 = unsafe { MUTABLE };
 //~^ WARN skipping const checks
 
-fn main() {
+pub fn main() {
     MUTATE_INTERIOR_MUT;
     //~^ ERROR: erroneous constant used
     READ_INTERIOR_MUT;

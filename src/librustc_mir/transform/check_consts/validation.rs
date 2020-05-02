@@ -254,6 +254,9 @@ impl Validator<'mir, 'tcx> {
 
         if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.span_warn(self.tcx.def_span(self.def_id), "skipping const checks");
+            if let Some(feature) = O::feature_gate() {
+                self.tcx.sess.miri_unleashed_feature(feature);
+            }
             return;
         }
 

@@ -21,11 +21,12 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{self, FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
-use rustc_span::SourceFileHashAlgorithm;
+use rustc_span::{SourceFileHashAlgorithm, Symbol};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target, TargetTriple, TlsModel};
 
 use std::cell::{self, RefCell};
 use std::env;
+use std::fmt::Write as _;
 use std::io::Write;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
@@ -142,6 +143,10 @@ pub struct Session {
     /// and immediately printing the backtrace to stderr.
     pub ctfe_backtrace: Lock<CtfeBacktrace>,
 
+    /// This tracks whether `-Zunleash-the-miri-inside-of-you` was used to get around a
+    /// feature gate.  If yes, this file must fail to compile.
+    miri_unleashed_features: Lock<FxHashSet<Symbol>>,
+
     /// Base directory containing the `src/` for the Rust standard library, and
     /// potentially `rustc` as well, if we can can find it. Right now it's always
     /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
@@ -188,7 +193,36 @@ impl From<&'static lint::Lint> for DiagnosticMessageId {
     }
 }
 
+impl Drop for Session {
+    fn drop(&mut self) {
+        if !self.has_errors_or_delayed_span_bugs() {
+            let unleashed_features = self.miri_unleashed_features.get_mut();
+            if !unleashed_features.is_empty() {
+                // Join the strings (itertools has it but libstd does not...)
+                let mut list = String::new();
+                for feature in unleashed_features.iter() {
+                    if !list.is_empty() {
+                        list.push_str(", ");
+                    }
+                    write!(&mut list, "{}", feature).unwrap();
+                }
+                // We have skipped a feature gate, and not run into other errors... reject.
+                panic!(
+                    "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
+                    gates, except when testing error paths in the CTFE engine.\n\
+                    The following feature flags are missing from this crate: {}",
+                    list,
+                );
+            }
+        }
+    }
+}
+
 impl Session {
+    pub fn miri_unleashed_feature(&self, s: Symbol) {
+        self.miri_unleashed_features.lock().insert(s);
+    }
+
     pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
         *self.crate_disambiguator.get()
     }
@@ -1139,6 +1173,7 @@ pub fn build_session_with_source_map(
         confused_type_with_std_module: Lock::new(Default::default()),
         system_library_path: OneThread::new(RefCell::new(Default::default())),
         ctfe_backtrace,
+        miri_unleashed_features: Lock::new(Default::default()),
         real_rust_source_base_dir,
     };
 
