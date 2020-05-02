@@ -354,10 +354,10 @@ fn typeck_with_fallback<'tcx>(
     }
 
     let id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
     let (body_id, body_ty, fn_sig) = primary_body_of(tcx, id).unwrap_or_else(|| {
+        let span = tcx.hir().span(id);
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
     let body = tcx.hir().body(body_id);
@@ -381,7 +381,7 @@ fn typeck_with_fallback<'tcx>(
                 tcx.fn_sig(def_id)
             };
 
-            check_abi(tcx, id, span, fn_sig.abi());
+            check_abi(tcx, id, fn_sig.abi());
 
             // When normalizing the function signature, we assume all types are
             // well-formed. So, we don't need to worry about the obligations
@@ -403,6 +403,7 @@ fn typeck_with_fallback<'tcx>(
             let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None, true).0;
             (fcx, wf_tys)
         } else {
+            let span = tcx.hir().span(id);
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
             let expected_type = body_ty
                 .and_then(|ty| match ty.kind {
@@ -475,7 +476,7 @@ fn typeck_with_fallback<'tcx>(
         fcx.select_all_obligations_or_error();
 
         if fn_sig.is_some() {
-            fcx.regionck_fn(id, body, span, wf_tys);
+            fcx.regionck_fn(id, body, wf_tys);
         } else {
             fcx.regionck_expr(body);
         }
@@ -535,7 +536,7 @@ fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
     }
 }
 
-fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: Span) {
+fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // Only restricted on wasm target for now
     if !tcx.sess.target.is_like_wasm {
         return;
@@ -560,6 +561,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: S
             let msg = "statics with a custom `#[link_section]` must be a \
                            simple list of bytes on the wasm target with no \
                            extra levels of indirection such as references";
+            let span = tcx.def_span(id);
             tcx.sess.span_err(span, msg);
         }
     }
