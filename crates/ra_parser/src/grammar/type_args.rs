@@ -48,7 +48,7 @@ fn type_arg(p: &mut Parser) {
             m.complete(p, ASSOC_TYPE_ARG);
         }
         T!['{'] => {
-            expressions::block(p);
+            expressions::block_expr(p);
             m.complete(p, CONST_ARG);
         }
         k if k.is_literal() => {

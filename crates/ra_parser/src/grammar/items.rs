@@ -329,7 +329,7 @@ fn fn_def(p: &mut Parser) {
     if p.at(T![;]) {
         p.bump(T![;]);
     } else {
-        expressions::block(p)
+        expressions::block_expr(p)
     }
 }
 
