@@ -242,7 +242,8 @@ fn def_id_visibility<'tcx>(
                 Node::ForeignItem(foreign_item) => &foreign_item.vis,
                 Node::MacroDef(macro_def) => {
                     if attr::contains_name(&macro_def.attrs, sym::macro_export) {
-                        return (ty::Visibility::Public, macro_def.span, "public");
+                        let span = tcx.hir().span(macro_def.hir_id);
+                        return (ty::Visibility::Public, span, "public");
                     } else {
                         &macro_def.vis
                     }

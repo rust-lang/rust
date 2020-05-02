@@ -515,12 +515,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_macro_def(&mut self, macro_def: &'hir MacroDef<'hir>) {
         self.with_dep_node_owner(macro_def.hir_id.owner, macro_def, |this, hash| {
-            this.insert_with_hash(
-                macro_def.span,
-                macro_def.hir_id,
-                Node::MacroDef(macro_def),
-                hash,
-            );
+            this.insert_with_hash(DUMMY_SP, macro_def.hir_id, Node::MacroDef(macro_def), hash);
         });
     }
 

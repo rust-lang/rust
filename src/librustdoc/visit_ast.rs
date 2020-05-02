@@ -618,7 +618,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             def_id: self.cx.tcx.hir().local_def_id(def.hir_id).to_def_id(),
             attrs: &def.attrs,
             name: renamed.unwrap_or(def.ident.name),
-            whence: def.span,
+            whence: self.cx.tcx.hir().span(def.hir_id),
             matchers,
             imported_from: None,
         }

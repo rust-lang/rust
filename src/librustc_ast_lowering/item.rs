@@ -213,7 +213,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     vis,
                     attrs,
                     hir_id,
-                    span: i.span,
                     ast: MacroDef { body, macro_rules },
                 });
             } else {
