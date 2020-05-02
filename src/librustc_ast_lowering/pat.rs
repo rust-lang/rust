@@ -58,7 +58,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         ident: f.ident,
                         pat: self.lower_pat(&f.pat),
                         is_shorthand: f.is_shorthand,
-                        span: f.span,
                     }));
                     hir::PatKind::Struct(qpath, fs, etc)
                 }

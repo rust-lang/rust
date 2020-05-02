@@ -1048,7 +1048,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut inexistent_fields = vec![];
         // Typecheck each field.
         for field in fields {
-            let span = field.span;
+            let span = tcx.hir().span(field.hir_id);
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {
