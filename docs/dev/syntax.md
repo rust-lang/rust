@@ -287,7 +287,7 @@ In other words, one needs *one* arc bump when initiating a traversal.
 To get rid of allocations, `rowan` takes advantage of `SyntaxNode: !Sync` and uses a thread-local free list of `SyntaxNode`s.
 In a typical traversal, you only directly hold a few `SyntaxNode`s at a time (and their ancestors indirectly), so a free list proportional to the depth of the tree removes all allocations in a typical case.
 
-So, while traversal is not exactly incrementing a pointer, it's still pretty cheep: tls + rc bump!
+So, while traversal is not exactly incrementing a pointer, it's still pretty cheap: TLS + rc bump!
 
 Traversal also yields (cheap) owned nodes, which improves ergonomics quite a bit.
 
@@ -309,7 +309,7 @@ struct SyntaxData {
 ```
 
 This allows using true pointer equality for comparison of identities of `SyntaxNodes`.
-rust-analyzer used to have this design as well, but since we've switch to cursors.
+rust-analyzer used to have this design as well, but we've since switched to cursors.
 The main problem with memoizing the red nodes is that it more than doubles the memory requirements for fully realized syntax trees.
 In contrast, cursors generally retain only a path to the root.
 C# combats increased memory usage by using weak references.
