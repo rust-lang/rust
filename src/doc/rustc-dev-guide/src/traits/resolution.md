@@ -191,12 +191,16 @@ trait Get {
     fn get(&self) -> Self;
 }
 
-impl<T:Copy> Get for T {
-    fn get(&self) -> T { *self }
+impl<T: Copy> Get for T {
+    fn get(&self) -> T {
+        *self
+    }
 }
 
-impl<T:Get> Get for Box<T> {
-    fn get(&self) -> Box<T> { Box::new(get_it(&**self)) }
+impl<T: Get> Get for Box<T> {
+    fn get(&self) -> Box<T> {
+        Box::new(<T>::get(self))
+    }
 }
 ```
 
