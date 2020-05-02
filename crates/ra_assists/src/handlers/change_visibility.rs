@@ -5,8 +5,10 @@ use ra_syntax::{
         ATTR, COMMENT, CONST_DEF, ENUM_DEF, FN_DEF, MODULE, STRUCT_DEF, TRAIT_DEF, VISIBILITY,
         WHITESPACE,
     },
-    SyntaxNode, TextSize, T,
+    SyntaxNode, TextRange, TextSize, T,
 };
+
+use hir::{db::HirDatabase, HasSource, PathResolution};
 use test_utils::tested_by;
 
 use crate::{AssistContext, AssistId, Assists};
@@ -70,6 +72,88 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         edit.insert(offset, "pub(crate) ");
         edit.set_cursor(offset);
     })
+}
+
+fn add_missing_vis(ctx: AssistCtx) -> Option<Assist> {
+    let path: ast::Path = ctx.find_node_at_offset()?;
+    let path_res = dbg!(ctx.sema.resolve_path(&path))?;
+    let def = match path_res {
+        PathResolution::Def(def) => def,
+        _ => return None,
+    };
+    dbg!(&def);
+
+    let current_module = dbg!(ctx.sema.scope(&path.syntax()).module())?;
+    let target_module = dbg!(def.module(ctx.db))?;
+
+    let vis = dbg!(target_module.visibility_of(ctx.db, &def))?;
+    if vis.is_visible_from(ctx.db, current_module.into()) {
+        return None;
+    };
+    let target_name;
+
+    let (offset, target) = match def {
+        hir::ModuleDef::Function(f) => {
+            target_name = Some(f.name(ctx.db));
+            offset_and_target(ctx.db, f)
+        }
+        hir::ModuleDef::Adt(adt) => {
+            target_name = Some(adt.name(ctx.db));
+            match adt {
+                hir::Adt::Struct(s) => offset_and_target(ctx.db, s),
+                hir::Adt::Union(u) => offset_and_target(ctx.db, u),
+                hir::Adt::Enum(e) => offset_and_target(ctx.db, e),
+            }
+        }
+        hir::ModuleDef::Const(c) => {
+            target_name = c.name(ctx.db);
+            offset_and_target(ctx.db, c)
+        }
+        hir::ModuleDef::Static(s) => {
+            target_name = s.name(ctx.db);
+            offset_and_target(ctx.db, s)
+        }
+        hir::ModuleDef::Trait(t) => {
+            target_name = Some(t.name(ctx.db));
+            offset_and_target(ctx.db, t)
+        }
+        hir::ModuleDef::TypeAlias(t) => {
+            target_name = Some(t.name(ctx.db));
+            offset_and_target(ctx.db, t)
+        }
+        hir::ModuleDef::Module(m) => {
+            target_name = m.name(ctx.db);
+            let source = dbg!(m.declaration_source(ctx.db))?.value;
+            let syntax = source.syntax();
+            (vis_offset(syntax), syntax.text_range())
+        }
+        // Enum variants can't be private, we can't modify builtin types
+        hir::ModuleDef::EnumVariant(_) | hir::ModuleDef::BuiltinType(_) => return None,
+    };
+
+    // FIXME if target is in another crate, add `pub` instead of `pub(crate)`
+
+    let assist_label = match target_name {
+        None => "Change visibility to pub(crate)".to_string(),
+        Some(name) => format!("Change visibility of {} to pub(crate)", name),
+    };
+    let target_file = target_module.definition_source(ctx.db).file_id.original_file(ctx.db);
+
+    ctx.add_assist(AssistId("change_visibility"), assist_label, target, |edit| {
+        edit.set_file(target_file);
+        edit.insert(offset, "pub(crate) ");
+        edit.set_cursor(offset);
+    })
+}
+
+fn offset_and_target<S, Ast>(db: &dyn HirDatabase, x: S) -> (TextSize, TextRange)
+where
+    S: HasSource<Ast = Ast>,
+    Ast: AstNode,
+{
+    let source = x.source(db);
+    let syntax = source.syntax().value;
+    (vis_offset(syntax), syntax.text_range())
 }
 
 fn vis_offset(node: &SyntaxNode) -> TextSize {
@@ -189,6 +273,249 @@ mod tests {
             <|>pub(crate) struct Foo;
             ",
         )
+    }
+
+    #[test]
+    fn change_visibility_of_fn_via_path() {
+        check_assist(
+            change_visibility,
+            r"mod foo { fn foo() {} }
+              fn main() { foo::foo<|>() } ",
+            r"mod foo { <|>pub(crate) fn foo() {} }
+              fn main() { foo::foo() } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub fn foo() {} }
+              fn main() { foo::foo<|>() } ",
+        )
+    }
+
+    #[test]
+    fn change_visibility_of_adt_in_submodule_via_path() {
+        check_assist(
+            change_visibility,
+            r"mod foo { struct Foo; }
+              fn main() { foo::Foo<|> } ",
+            r"mod foo { <|>pub(crate) struct Foo; }
+              fn main() { foo::Foo } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub struct Foo; }
+              fn main() { foo::Foo<|> } ",
+        );
+        check_assist(
+            change_visibility,
+            r"mod foo { enum Foo; }
+              fn main() { foo::Foo<|> } ",
+            r"mod foo { <|>pub(crate) enum Foo; }
+              fn main() { foo::Foo } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub enum Foo; }
+              fn main() { foo::Foo<|> } ",
+        );
+        check_assist(
+            change_visibility,
+            r"mod foo { union Foo; }
+              fn main() { foo::Foo<|> } ",
+            r"mod foo { <|>pub(crate) union Foo; }
+              fn main() { foo::Foo } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub union Foo; }
+              fn main() { foo::Foo<|> } ",
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_adt_in_other_file_via_path() {
+        check_assist(
+            change_visibility,
+            r"
+              //- /main.rs
+              mod foo;
+              fn main() { foo::Foo<|> }
+
+              //- /foo.rs
+              struct Foo;
+              ",
+            r"<|>pub(crate) struct Foo;
+
+",
+        );
+    }
+
+    #[test]
+    // FIXME this requires a separate implementation, struct fields are not a ast::Path
+    fn change_visibility_of_struct_field_via_path() {
+        check_assist(
+            change_visibility,
+            r"mod foo { pub struct Foo { bar: (), } }
+              fn main() { foo::Foo { <|>bar: () }; } ",
+            r"mod foo { pub struct Foo { <|>pub(crate) bar: (), } }
+              fn main() { foo::Foo { bar: () }; } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub struct Foo { pub bar: (), } }
+              fn main() { foo::Foo { <|>bar: () }; } ",
+        );
+    }
+
+    #[test]
+    fn not_applicable_for_enum_variants() {
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub enum Foo {Foo1} }
+              fn main() { foo::Foo::Foo1<|> } ",
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_const_via_path() {
+        check_assist(
+            change_visibility,
+            r"mod foo { const FOO: () = (); }
+              fn main() { foo::FOO<|> } ",
+            r"mod foo { <|>pub(crate) const FOO: () = (); }
+              fn main() { foo::FOO } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub const FOO: () = (); }
+              fn main() { foo::FOO<|> } ",
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_static_via_path() {
+        check_assist(
+            change_visibility,
+            r"mod foo { static FOO: () = (); }
+              fn main() { foo::FOO<|> } ",
+            r"mod foo { <|>pub(crate) static FOO: () = (); }
+              fn main() { foo::FOO } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub static FOO: () = (); }
+              fn main() { foo::FOO<|> } ",
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_trait_via_path() {
+        check_assist(
+            change_visibility,
+            r"mod foo { trait Foo { fn foo(&self) {} } }
+              fn main() { let x: &dyn foo::<|>Foo; } ",
+            r"mod foo { <|>pub(crate) trait Foo { fn foo(&self) {} } }
+              fn main() { let x: &dyn foo::Foo; } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub trait Foo { fn foo(&self) {} } }
+              fn main() { let x: &dyn foo::Foo<|>; } ",
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_type_alias_via_path() {
+        check_assist(
+            change_visibility,
+            r"mod foo { type Foo = (); }
+              fn main() { let x: foo::Foo<|>; } ",
+            r"mod foo { <|>pub(crate) type Foo = (); }
+              fn main() { let x: foo::Foo; } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub type Foo = (); }
+              fn main() { let x: foo::Foo<|>; } ",
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_module_via_path() {
+        check_assist(
+            change_visibility,
+            r"mod foo { mod bar { fn bar() {} } }
+              fn main() { foo::bar<|>::bar(); } ",
+            r"mod foo { <|>pub(crate) mod bar { fn bar() {} } }
+              fn main() { foo::bar::bar(); } ",
+        );
+
+        check_assist(
+            change_visibility,
+            r"
+            //- /main.rs
+            mod foo;
+            fn main() { foo::bar<|>::baz(); }
+
+            //- /foo.rs
+            mod bar {
+                pub fn baz() {}
+            }
+            ",
+            r"<|>pub(crate) mod bar {
+    pub fn baz() {}
+}
+
+",
+        );
+
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub mod bar { pub fn bar() {} } }
+              fn main() { foo::bar<|>::bar(); } ",
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_inline_module_in_other_file_via_path() {
+        check_assist(
+            change_visibility,
+            r"
+            //- /main.rs
+            mod foo;
+            fn main() { foo::bar<|>::baz(); }
+
+            //- /foo.rs
+            mod bar;
+
+            //- /foo/bar.rs
+            pub fn baz() {}
+            }
+            ",
+            r"<|>pub(crate) mod bar;
+",
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_module_declaration_in_other_file_via_path() {
+        check_assist(
+            change_visibility,
+            r"
+            //- /main.rs
+            mod foo;
+            fn main() { foo::bar<|>>::baz(); }
+
+            //- /foo.rs
+            mod bar {
+                pub fn baz() {}
+            }
+            ",
+            r"<|>pub(crate) mod bar {
+    pub fn baz() {}
+}
+
+",
+        );
     }
 
     #[test]
