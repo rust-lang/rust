@@ -18,6 +18,7 @@ use rustc_data_structures::sync::{
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
+use rustc_errors::registry::Registry;
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{self, FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
@@ -193,10 +194,14 @@ impl From<&'static lint::Lint> for DiagnosticMessageId {
     }
 }
 
-impl Drop for Session {
-    fn drop(&mut self) {
+impl Session {
+    pub fn miri_unleashed_feature(&self, s: Symbol) {
+        self.miri_unleashed_features.lock().insert(s);
+    }
+
+    fn check_miri_unleashed_features(&self) {
         if !self.has_errors_or_delayed_span_bugs() {
-            let unleashed_features = self.miri_unleashed_features.get_mut();
+            let unleashed_features = self.miri_unleashed_features.lock();
             if !unleashed_features.is_empty() {
                 // Join the strings (itertools has it but libstd does not...)
                 let mut list = String::new();
@@ -207,20 +212,20 @@ impl Drop for Session {
                     write!(&mut list, "{}", feature).unwrap();
                 }
                 // We have skipped a feature gate, and not run into other errors... reject.
-                panic!(
+                self.err(&format!(
                     "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
                     gates, except when testing error paths in the CTFE engine.\n\
                     The following feature flags are missing from this crate: {}",
                     list,
-                );
+                ));
             }
         }
     }
-}
 
-impl Session {
-    pub fn miri_unleashed_feature(&self, s: Symbol) {
-        self.miri_unleashed_features.lock().insert(s);
+    /// Invoked all the way at the end to finish off diagnostics printing.
+    pub fn finish_diagnostics(&self, registry: &Registry) {
+        self.check_miri_unleashed_features();
+        self.diagnostic().print_error_count(registry);
     }
 
     pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {

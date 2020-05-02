@@ -1,5 +1,5 @@
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:13:1
+  --> $DIR/const_refers_to_static.rs:11:1
    |
 LL | / const MUTATE_INTERIOR_MUT: usize = {
 LL | |
@@ -9,7 +9,7 @@ LL | | };
    | |__^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:19:1
+  --> $DIR/const_refers_to_static.rs:17:1
    |
 LL | / const READ_INTERIOR_MUT: usize = {
 LL | |
@@ -19,25 +19,25 @@ LL | | };
    | |__^
 
 warning: skipping const checks
-  --> $DIR/const_refers_to_static.rs:26:1
+  --> $DIR/const_refers_to_static.rs:24:1
    |
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: erroneous constant used
-  --> $DIR/const_refers_to_static.rs:30:5
+  --> $DIR/const_refers_to_static.rs:28:5
    |
 LL |     MUTATE_INTERIOR_MUT;
    |     ^^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: erroneous constant used
-  --> $DIR/const_refers_to_static.rs:32:5
+  --> $DIR/const_refers_to_static.rs:30:5
    |
 LL |     READ_INTERIOR_MUT;
    |     ^^^^^^^^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: erroneous constant used
-  --> $DIR/const_refers_to_static.rs:34:5
+  --> $DIR/const_refers_to_static.rs:32:5
    |
 LL |     READ_MUT;
    |     ^^^^^^^^ referenced constant has errors

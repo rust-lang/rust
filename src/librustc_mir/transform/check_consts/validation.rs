@@ -256,6 +256,8 @@ impl Validator<'mir, 'tcx> {
             // Use `def_span` to deduplicate all warnings for the same const.
             self.tcx.sess.span_warn(self.tcx.def_span(self.def_id), "skipping const checks");
             if let Some(feature) = O::feature_gate() {
+                // We'd like to use `delay_span_bug` here, but we cannot as that ICEs
+                // before codegen has the chance to emit errors.  So we use a custom system instead.
                 self.tcx.sess.miri_unleashed_feature(feature);
             }
             return;
