@@ -45,7 +45,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
         for param in body.params {
-            wbcx.visit_node_id(param.pat.span, param.hir_id);
+            let span = self.tcx.hir().span(param.pat.hir_id);
+            wbcx.visit_node_id(span, param.hir_id);
         }
         // Type only exists for constants and statics, not functions.
         match self.tcx.hir().body_owner_kind(item_id) {
@@ -287,10 +288,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
+        let span = self.tcx().hir().span(p.hir_id);
         match p.kind {
             hir::PatKind::Binding(..) => {
                 let tables = self.fcx.tables.borrow();
-                if let Some(bm) = tables.extract_binding_mode(self.tcx().sess, p.hir_id, p.span) {
+                if let Some(bm) = tables.extract_binding_mode(self.tcx().sess, p.hir_id, span) {
                     self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);
                 }
             }
@@ -302,9 +304,9 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             _ => {}
         };
 
-        self.visit_pat_adjustments(p.span, p.hir_id);
+        self.visit_pat_adjustments(span, p.hir_id);
 
-        self.visit_node_id(p.span, p.hir_id);
+        self.visit_node_id(span, p.hir_id);
         intravisit::walk_pat(self, p);
     }
 

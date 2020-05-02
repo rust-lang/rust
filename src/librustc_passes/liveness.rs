@@ -376,7 +376,7 @@ fn visit_fn<'tcx>(
             rustc_hir::PatKind::Struct(..) => true,
             _ => false,
         };
-        param.pat.each_binding(|_bm, hir_id, _x, ident| {
+        param.pat.each_binding(|_bm, hir_id, ident| {
             debug!("adding parameters {:?}", hir_id);
             let var = if is_shorthand {
                 Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })
@@ -433,7 +433,7 @@ fn add_from_pat(ir: &mut IrMaps<'_>, pat: &hir::Pat<'_>) {
         }
     }
 
-    pat.each_binding(|_, hir_id, _, ident| {
+    pat.each_binding(|_, hir_id, ident| {
         ir.add_live_node_for_node(hir_id, VarDefNode(ident.span));
         ir.add_variable(Local(LocalInfo {
             id: hir_id,
@@ -707,7 +707,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // In an or-pattern, only consider the first pattern; any later patterns
         // must have the same bindings, and we also consider the first pattern
         // to be the "authoritative" set of ids.
-        pat.each_binding_or_first(&mut |_, hir_id, pat_sp, ident| {
+        pat.each_binding_or_first(&mut |_, hir_id, ident| {
+            let pat_sp = self.ir.tcx.hir().span(hir_id);
             let ln = self.live_node(hir_id, pat_sp);
             let var = self.variable(hir_id, ident.span);
             self.init_from_succ(ln, succ);
@@ -967,7 +968,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         loop {
             self.init_from_succ(self.s.closure_ln, succ);
             for param in body.params {
-                param.pat.each_binding(|_bm, hir_id, _x, ident| {
+                param.pat.each_binding(|_bm, hir_id, ident| {
                     let var = self.variable(hir_id, ident.span);
                     self.define(self.s.closure_ln, var);
                 })
@@ -1669,7 +1670,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
         // patterns so the suggestions to prefix with underscores will apply to those too.
         let mut vars: FxIndexMap<String, (LiveNode, Variable, Vec<(HirId, Span)>)> = <_>::default();
 
-        pat.each_binding(|_, hir_id, pat_sp, ident| {
+        pat.each_binding(|_, hir_id, ident| {
+            let pat_sp = self.ir.tcx.hir().span(hir_id);
             let ln = entry_ln.unwrap_or_else(|| self.live_node(hir_id, pat_sp));
             let var = self.variable(hir_id, ident.span);
             let id_and_sp = (hir_id, pat_sp);

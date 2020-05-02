@@ -285,8 +285,8 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr<'_>) {
                     // span for the whole pattern, the suggestion is only shown when there is only
                     // one pattern. The user should know about `|` if they are already using it…
 
-                    let lhs = snippet(cx, i.pat.span, "<pat1>");
-                    let rhs = snippet(cx, j.pat.span, "<pat2>");
+                    let lhs = snippet(cx, cx.tcx.hir().span(i.pat.hir_id), "<pat1>");
+                    let rhs = snippet(cx, cx.tcx.hir().span(j.pat.hir_id), "<pat2>");
 
                     if let PatKind::Wild = j.pat.kind {
                         // if the last arm is _, then i could be integrated into _
@@ -300,7 +300,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr<'_>) {
                             ),
                         );
                     } else {
-                        diag.span_help(i.pat.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+                        diag.span_help(cx.tcx.hir().span(i.pat.hir_id), &format!("consider refactoring into `{} | {}`", lhs, rhs));
                     }
                 },
             );

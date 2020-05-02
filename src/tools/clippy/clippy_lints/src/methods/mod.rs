@@ -1524,7 +1524,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                         span_lint(
                             cx,
                             lint,
-                            first_arg.pat.span,
+                            cx.tcx.hir().span(first_arg.pat.hir_id),
                             &format!("methods called `{}` usually take {}; consider choosing a less ambiguous name",
                                 conv,
                                 &self_kinds

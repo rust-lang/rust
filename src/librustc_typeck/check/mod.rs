@@ -1221,10 +1221,11 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         if let PatKind::Binding(_, _, ident, _) = p.kind {
-            let var_ty = self.assign(p.span, p.hir_id, None);
+            let span = self.fcx.tcx.hir().span(p.hir_id);
+            let var_ty = self.assign(span, p.hir_id, None);
 
             if !self.fcx.tcx.features().unsized_locals {
-                self.fcx.require_type_is_sized(var_ty, p.span, traits::VariableType(p.hir_id));
+                self.fcx.require_type_is_sized(var_ty, span, traits::VariableType(p.hir_id));
             }
 
             debug!(
@@ -1349,7 +1350,8 @@ fn check_fn<'a, 'tcx>(
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
         if param.pat.simple_ident().is_none() && !tcx.features().unsized_locals {
-            fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType);
+            let pat_span = fcx.tcx.hir().span(param.pat.hir_id);
+            fcx.require_type_is_sized(param_ty, pat_span, traits::SizedArgumentType);
         }
 
         fcx.write_ty(param.hir_id, param_ty);
@@ -1833,7 +1835,10 @@ fn binding_opaque_type_cycle_error(
                 source: hir::LocalSource::Normal,
                 ..
             }) => {
-                err.span_label(pat.span, "this binding might not have a concrete type");
+                err.span_label(
+                    tcx.hir().span(pat.hir_id),
+                    "this binding might not have a concrete type",
+                );
                 err.span_suggestion_verbose(
                     ty.span.shrink_to_hi(),
                     "set the binding to a value for a concrete type to be resolved",

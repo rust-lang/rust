@@ -189,7 +189,7 @@ fn check_pat<'a, 'tcx>(
                 let mut new_binding = true;
                 for tup in bindings.iter_mut() {
                     if tup.0 == name {
-                        lint_shadow(cx, name, span, pat.span, init, tup.1);
+                        lint_shadow(cx, name, span, cx.tcx.hir().span(pat.hir_id), init, tup.1);
                         tup.1 = ident.span;
                         new_binding = false;
                         break;
@@ -228,7 +228,7 @@ fn check_pat<'a, 'tcx>(
             if let Some(init_tup) = init {
                 if let ExprKind::Tup(ref tup) = init_tup.kind {
                     for (i, p) in inner.iter().enumerate() {
-                        check_pat(cx, p, Some(&tup[i]), p.span, bindings);
+                        check_pat(cx, p, Some(&tup[i]), cx.tcx.hir().span(p.hir_id), bindings);
                     }
                 } else {
                     for p in inner {
@@ -346,7 +346,7 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, bindin
             check_expr(cx, init, bindings);
             let len = bindings.len();
             for arm in arms {
-                check_pat(cx, &arm.pat, Some(&**init), arm.pat.span, bindings);
+                check_pat(cx, &arm.pat, Some(&**init), cx.tcx.hir().span(arm.pat.hir_id), bindings);
                 // This is ugly, but needed to get the right type
                 if let Some(ref guard) = arm.guard {
                     match guard {

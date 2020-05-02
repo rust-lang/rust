@@ -178,7 +178,8 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
     fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         if self.const_kind.is_some() {
             if let hir::PatKind::Or { .. } = p.kind {
-                self.const_check_violated(NonConstExpr::OrPattern, p.span);
+                let span = self.tcx.hir().span(p.hir_id);
+                self.const_check_violated(NonConstExpr::OrPattern, span);
             }
         }
         intravisit::walk_pat(self, p)

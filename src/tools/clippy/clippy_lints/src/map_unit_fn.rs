@@ -236,7 +236,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::
                 let suggestion = format!(
                     "if let {0}({1}) = {2} {{ {3} }}",
                     variant,
-                    snippet(cx, binding.pat.span, "_"),
+                    snippet(cx, cx.tcx.hir().span(binding.pat.hir_id), "_"),
                     snippet(cx, var_arg.span, "_"),
                     snippet(cx, reduced_expr_span, "_")
                 );
@@ -250,7 +250,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::
                 let suggestion = format!(
                     "if let {0}({1}) = {2} {{ ... }}",
                     variant,
-                    snippet(cx, binding.pat.span, "_"),
+                    snippet(cx, cx.tcx.hir().span(binding.pat.hir_id), "_"),
                     snippet(cx, var_arg.span, "_"),
                 );
                 diag.span_suggestion(stmt_span, "try this", suggestion, Applicability::HasPlaceholders);

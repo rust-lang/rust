@@ -744,7 +744,6 @@ pub struct Pat<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: PatKind<'hir>,
-    pub span: Span,
 }
 
 impl Pat<'_> {

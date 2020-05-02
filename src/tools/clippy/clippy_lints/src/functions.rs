@@ -499,7 +499,7 @@ fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, tys: &mut FxHash
         is_mutable_ty(
             cx,
             &cx.tcx.typeck_tables_of(def_id.expect_local()).pat_ty(pat),
-            pat.span,
+            cx.tcx.hir().span(pat.hir_id),
             tys,
         )
     } else {

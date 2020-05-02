@@ -100,7 +100,7 @@ fn find_sugg_for_if_let<'a, 'tcx>(
     span_lint_and_then(
         cx,
         REDUNDANT_PATTERN_MATCHING,
-        arms[0].pat.span,
+        cx.tcx.hir().span(arms[0].pat.hir_id),
         &format!("redundant pattern matching, consider using `{}`", good_method),
         |diag| {
             // while let ... = ... { ... }

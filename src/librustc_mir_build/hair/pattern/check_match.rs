@@ -142,7 +142,8 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         let pattern: &_ = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
         if !patcx.errors.is_empty() {
             *have_errors = true;
-            patcx.report_inlining_errors(pat.span);
+            let pat_span = self.tcx.hir().span(pat.hir_id);
+            patcx.report_inlining_errors(pat_span);
         }
         (pattern, pattern_ty)
     }
@@ -206,9 +207,10 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         };
 
         let joined_patterns = joined_uncovered_patterns(&witnesses);
+        let pat_span = self.tcx.hir().span(pat.hir_id);
         let mut err = struct_span_err!(
             self.tcx.sess,
-            pat.span,
+            pat_span,
             E0005,
             "refutable pattern in {}: {} not covered",
             origin,
@@ -222,7 +224,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 false
             }
             _ => {
-                err.span_label(pat.span, pattern_not_covered_label(&witnesses, &joined_patterns));
+                err.span_label(pat_span, pattern_not_covered_label(&witnesses, &joined_patterns));
                 true
             }
         };
@@ -261,13 +263,14 @@ fn const_not_var(
     path: &hir::Path<'_>,
 ) {
     let descr = path.res.descr();
+    let pat_span = tcx.hir().span(pat.hir_id);
     err.span_label(
-        pat.span,
+        pat_span,
         format!("interpreted as {} {} pattern, not a new variable", path.res.article(), descr,),
     );
 
     err.span_suggestion(
-        pat.span,
+        pat_span,
         "introduce a variable instead",
         format!("{}_var", path.segments[0].ident).to_lowercase(),
         // Cannot use `MachineApplicable` as it's not really *always* correct
@@ -284,8 +287,9 @@ fn const_not_var(
 fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_>) {
     pat.walk_always(|p| {
         if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
+            let span = cx.tcx.hir().span(p.hir_id);
             if let Some(ty::BindByValue(hir::Mutability::Not)) =
-                cx.tables.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
+                cx.tables.extract_binding_mode(cx.tcx.sess, p.hir_id, span)
             {
                 let pat_ty = cx.tables.pat_ty(p).peel_refs();
                 if let ty::Adt(edef, _) = pat_ty.kind {
@@ -297,7 +301,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                         cx.tcx.struct_span_lint_hir(
                             BINDINGS_WITH_VARIANT_NAME,
                             p.hir_id,
-                            p.span,
+                            span,
                             |lint| {
                                 let ty_path = cx.tcx.def_path_str(edef.did);
                                 lint.build(&format!(
@@ -307,7 +311,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                                 ))
                                 .code(error_code!(E0170))
                                 .span_suggestion(
-                                    p.span,
+                                    span,
                                     "to match on the variant, qualify the path",
                                     format!("{}::{}", ty_path, ident),
                                     Applicability::MachineApplicable,
@@ -589,7 +593,8 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
 
     // Find all by-ref spans.
     let mut by_ref_spans = Vec::new();
-    pat.each_binding(|_, hir_id, span, _| {
+    pat.each_binding(|_, hir_id, _| {
+        let span = cx.tcx.hir().span(hir_id);
         if let Some(ty::BindByReference(_)) = tables.extract_binding_mode(sess, hir_id, span) {
             by_ref_spans.push(span);
         }
@@ -602,17 +607,20 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
         //
         // `x @ Foo(..)` is legal, but `x @ Foo(y)` isn't.
         if sub.map_or(false, |p| p.contains_bindings()) {
-            struct_span_err!(sess, p.span, E0007, "cannot bind by-move with sub-bindings")
-                .span_label(p.span, "binds an already bound by-move value by moving it")
+            let span = cx.tcx.hir().span(p.hir_id);
+            struct_span_err!(sess, span, E0007, "cannot bind by-move with sub-bindings")
+                .span_label(span, "binds an already bound by-move value by moving it")
                 .emit();
         } else if !has_guard && !by_ref_spans.is_empty() {
-            by_move_spans.push(p.span);
+            let span = cx.tcx.hir().span(p.hir_id);
+            by_move_spans.push(span);
         }
     };
     pat.walk_always(|p| {
         if let hir::PatKind::Binding(.., sub) = &p.kind {
-            if let Some(ty::BindByValue(_)) = tables.extract_binding_mode(sess, p.hir_id, p.span) {
-                if is_binding_by_move(cx, p.hir_id, p.span) {
+            let span = cx.tcx.hir().span(p.hir_id);
+            if let Some(ty::BindByValue(_)) = tables.extract_binding_mode(sess, p.hir_id, span) {
+                if is_binding_by_move(cx, p.hir_id, span) {
                     check_move(p, sub.as_deref());
                 }
             }
@@ -653,17 +661,19 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
         hir::PatKind::Binding(.., name, Some(sub)) => (*name, sub),
         _ => return,
     };
-    let binding_span = pat.span.with_hi(name.span.hi());
+    let pat_span = cx.tcx.hir().span(pat.hir_id);
+    let binding_span = pat_span.with_hi(name.span.hi());
 
     let tables = cx.tables;
     let sess = cx.tcx.sess;
 
     // Get the binding move, extract the mutability if by-ref.
-    let mut_outer = match tables.extract_binding_mode(sess, pat.hir_id, pat.span) {
-        Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id, pat.span) => {
+    let mut_outer = match tables.extract_binding_mode(sess, pat.hir_id, pat_span) {
+        Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id, pat_span) => {
             // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             let mut conflicts_ref = Vec::new();
-            sub.each_binding(|_, hir_id, span, _| {
+            sub.each_binding(|_, hir_id, _| {
+                let span = cx.tcx.hir().span(hir_id);
                 match tables.extract_binding_mode(sess, hir_id, span) {
                     Some(ty::BindByValue(_)) | None => {}
                     Some(ty::BindByReference(_)) => conflicts_ref.push(span),
@@ -675,7 +685,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
                     name,
                     tables.node_type(pat.hir_id),
                 );
-                sess.struct_span_err(pat.span, "borrow of moved value")
+                sess.struct_span_err(pat_span, "borrow of moved value")
                     .span_label(binding_span, format!("value moved into `{}` here", name))
                     .span_label(binding_span, occurs_because)
                     .span_labels(conflicts_ref, "value borrowed here after move")
@@ -692,7 +702,8 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
     let mut conflicts_move = Vec::new();
     let mut conflicts_mut_mut = Vec::new();
     let mut conflicts_mut_ref = Vec::new();
-    sub.each_binding(|_, hir_id, span, name| {
+    sub.each_binding(|_, hir_id, name| {
+        let span = cx.tcx.hir().span(hir_id);
         match tables.extract_binding_mode(sess, hir_id, span) {
             Some(ty::BindByReference(mut_inner)) => match (mut_outer, mut_inner) {
                 (Mutability::Not, Mutability::Not) => {} // Both sides are `ref`.
@@ -710,7 +721,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
     if !conflicts_mut_mut.is_empty() {
         // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
         let mut err = sess
-            .struct_span_err(pat.span, "cannot borrow value as mutable more than once at a time");
+            .struct_span_err(pat_span, "cannot borrow value as mutable more than once at a time");
         err.span_label(binding_span, format!("first mutable borrow, by `{}`, occurs here", name));
         for (span, name) in conflicts_mut_mut {
             err.span_label(span, format!("another mutable borrow, by `{}`, occurs here", name));
@@ -730,7 +741,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
         };
         let msg =
             format!("cannot borrow value as {} because it is also borrowed as {}", also, primary);
-        let mut err = sess.struct_span_err(pat.span, &msg);
+        let mut err = sess.struct_span_err(pat_span, &msg);
         err.span_label(binding_span, format!("{} borrow, by `{}`, occurs here", primary, name));
         for (span, name) in conflicts_mut_ref {
             err.span_label(span, format!("{} borrow, by `{}`, occurs here", also, name));
@@ -742,7 +753,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
     } else if !conflicts_move.is_empty() {
         // Report by-ref and by-move conflicts, e.g. `ref x @ y`.
         let mut err =
-            sess.struct_span_err(pat.span, "cannot move out of value because it is borrowed");
+            sess.struct_span_err(pat_span, "cannot move out of value because it is borrowed");
         err.span_label(binding_span, format!("value borrowed, by `{}`, here", name));
         for (span, name) in conflicts_move {
             err.span_label(span, format!("value moved into `{}` here", name));
@@ -772,10 +783,11 @@ fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pa
             match pat.kind {
                 hir::PatKind::Binding(.., ref subpat) => {
                     if !self.bindings_allowed {
+                        let pat_span = self.cx.tcx.hir().span(pat.hir_id);
                         feature_err(
                             &self.cx.tcx.sess.parse_sess,
                             sym::bindings_after_at,
-                            pat.span,
+                            pat_span,
                             "pattern bindings after an `@` are unstable",
                         )
                         .emit();

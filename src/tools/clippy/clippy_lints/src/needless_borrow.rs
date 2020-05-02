@@ -80,7 +80,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         }
     }
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
-        if pat.span.from_expansion() || self.derived_item.is_some() {
+        let pat_span = cx.tcx.hir().span(pat.hir_id);
+        if pat_span.from_expansion() || self.derived_item.is_some() {
             return;
         }
         if_chain! {
@@ -94,12 +95,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
                 span_lint_and_then(
                     cx,
                     NEEDLESS_BORROW,
-                    pat.span,
+                    pat_span,
                     "this pattern creates a reference to a reference",
                     |diag| {
                         if let Some(snippet) = snippet_opt(cx, name.span) {
                             diag.span_suggestion(
-                                pat.span,
+                                pat_span,
                                 "change this to",
                                 snippet,
                                 Applicability::MachineApplicable,

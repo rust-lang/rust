@@ -510,7 +510,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
                                     "try",
                                     format!(
                                         "while let {} = {} {{ .. }}",
-                                        snippet_with_applicability(cx, arms[0].pat.span, "..", &mut applicability),
+                                        snippet_with_applicability(cx, cx.tcx.hir().span(arms[0].pat.hir_id), "..", &mut applicability),
                                         snippet_with_applicability(cx, matchexpr.span, "..", &mut applicability),
                                     ),
                                     applicability,
@@ -556,7 +556,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
                     let loop_var = if pat_args.is_empty() {
                         "_".to_string()
                     } else {
-                        snippet_with_applicability(cx, pat_args[0].span, "_", &mut applicability).into_owned()
+                        snippet_with_applicability(cx, cx.tcx.hir().span(pat_args[0].hir_id), "_", &mut applicability).into_owned()
                     };
                     span_lint_and_sugg(
                         cx,
@@ -1150,7 +1150,7 @@ fn check_for_loop_range<'a, 'tcx>(
                                 diag,
                                 "consider using an iterator",
                                 vec![
-                                    (pat.span, format!("({}, <item>)", ident.name)),
+                                    (cx.tcx.hir().span(pat.hir_id), format!("({}, <item>)", ident.name)),
                                     (
                                         arg.span,
                                         format!("{}.{}().enumerate(){}{}", indexed, method, method_1, method_2),
@@ -1178,7 +1178,7 @@ fn check_for_loop_range<'a, 'tcx>(
                             multispan_sugg(
                                 diag,
                                 "consider using an iterator",
-                                vec![(pat.span, "<item>".to_string()), (arg.span, repl)],
+                                vec![(cx.tcx.hir().span(pat.hir_id), "<item>".to_string()), (arg.span, repl)],
                             );
                         },
                     );
@@ -1314,7 +1314,7 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>) {
             None,
             &format!(
                 "consider replacing `for {0} in {1}` with `if let Some({0}) = {1}`",
-                snippet(cx, pat.span, "_"),
+                snippet(cx, cx.tcx.hir().span(pat.hir_id), "_"),
                 snippet(cx, arg.span, "_")
             ),
         );
@@ -1331,7 +1331,7 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>) {
             None,
             &format!(
                 "consider replacing `for {0} in {1}` with `if let Ok({0}) = {1}`",
-                snippet(cx, pat.span, "_"),
+                snippet(cx, cx.tcx.hir().span(pat.hir_id), "_"),
                 snippet(cx, arg.span, "_")
             ),
         );
@@ -1390,7 +1390,7 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
                         format!(
                             "for ({}, {}) in {}.enumerate()",
                             name,
-                            snippet_with_applicability(cx, pat.span, "item", &mut applicability),
+                            snippet_with_applicability(cx, cx.tcx.hir().span(pat.hir_id), "item", &mut applicability),
                             make_iterator_snippet(cx, arg, &mut applicability),
                         ),
                         applicability,
@@ -1444,15 +1444,15 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
 ) {
-    let pat_span = pat.span;
+    let pat_span = cx.tcx.hir().span(pat.hir_id);
 
     if let PatKind::Tuple(ref pat, _) = pat.kind {
         if pat.len() == 2 {
             let arg_span = arg.span;
             let (new_pat_span, kind, ty, mutbl) = match cx.tables.expr_ty(arg).kind {
                 ty::Ref(_, ty, mutbl) => match (&pat[0].kind, &pat[1].kind) {
-                    (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", ty, mutbl),
-                    (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", ty, Mutability::Not),
+                    (key, _) if pat_is_wild(key, body) => (cx.tcx.hir().span(pat[1].hir_id), "value", ty, mutbl),
+                    (_, value) if pat_is_wild(value, body) => (cx.tcx.hir().span(pat[0].hir_id), "key", ty, Mutability::Not),
                     _ => return,
                 },
                 _ => return,

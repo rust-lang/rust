@@ -278,7 +278,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                 span_lint(
                     cx,
                     TOPLEVEL_REF_ARG,
-                    arg.pat.span,
+                    cx.tcx.hir().span(arg.pat.hir_id),
                     "`ref` directly on a function argument is ignored. \
                     Consider using a reference type instead.",
                 );
@@ -313,7 +313,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                         cx,
                         TOPLEVEL_REF_ARG,
                         init.hir_id,
-                        local.pat.span,
+                        cx.tcx.hir().span(local.pat.hir_id),
                         "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
                         |diag| {
                             diag.span_suggestion(

@@ -483,8 +483,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
                     format!(
                         "let {}({}) = {};",
                         snippet_with_applicability(cx, variant_name.span, "..", &mut applicability),
-                        snippet_with_applicability(cx, local.pat.span, "..", &mut applicability),
-                        snippet_with_applicability(cx, target.span, "..", &mut applicability),
+                        snippet_with_applicability(cx, cx.tcx.hir().span(local.pat.hir_id), "..", &mut applicability),
+                        snippet_with_applicability(cx, cx.tcx.hir().span(target.hir_id), "..", &mut applicability),
                     ),
                     applicability,
                 );
@@ -493,9 +493,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
+        let pat_span = cx.tcx.hir().span(pat.hir_id);
         if_chain! {
-            if !in_external_macro(cx.sess(), pat.span);
-            if !in_macro(pat.span);
+            if !in_external_macro(cx.sess(), pat_span);
+            if !in_macro(pat_span);
             if let PatKind::Struct(ref qpath, fields, true) = pat.kind;
             if let QPath::Resolved(_, ref path) = qpath;
             if let Some(def_id) = path.res.opt_def_id();
@@ -508,7 +509,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
                 span_lint_and_help(
                     cx,
                     REST_PAT_IN_FULLY_BOUND_STRUCTS,
-                    pat.span,
+                    pat_span,
                     "unnecessary use of `..` pattern in struct binding. All fields were already bound",
                     None,
                     "consider removing `..` from this binding",
@@ -581,7 +582,7 @@ fn report_single_match_single_pattern(
         "try this",
         format!(
             "if let {} = {} {}{}",
-            snippet(cx, arms[0].pat.span, ".."),
+            snippet(cx, cx.tcx.hir().span(arms[0].pat.hir_id), ".."),
             snippet(cx, ex.span, ".."),
             expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
             els_str,
@@ -742,7 +743,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
                             // `Err(_)` or `Err(_e)` arm with `panic!` found
                             span_lint_and_note(cx,
                                 MATCH_WILD_ERR_ARM,
-                                arm.pat.span,
+                                cx.tcx.hir().span(arm.pat.hir_id),
                                 &format!("`Err({})` matches all errors", &ident_bind_name),
                                 None,
                                 "match each error separately or use the error output, or use `.except(msg)` if the error case is unreachable",
@@ -769,9 +770,9 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
     let mut wildcard_ident = None;
     for arm in arms {
         if let PatKind::Wild = arm.pat.kind {
-            wildcard_span = Some(arm.pat.span);
+            wildcard_span = Some(cx.tcx.hir().span(arm.pat.hir_id));
         } else if let PatKind::Binding(_, _, ident, None) = arm.pat.kind {
-            wildcard_span = Some(arm.pat.span);
+            wildcard_span = Some(cx.tcx.hir().span(arm.pat.hir_id));
             wildcard_ident = Some(ident);
         }
     }
@@ -907,7 +908,7 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>
 
         suggs.extend(arms.iter().filter_map(|a| {
             if let PatKind::Ref(ref refp, _) = a.pat.kind {
-                Some((a.pat.span, snippet(cx, refp.span, "..").to_string()))
+                Some((cx.tcx.hir().span(a.pat.hir_id), snippet(cx, cx.tcx.hir().span(refp.hir_id), "..").to_string()))
             } else {
                 None
             }
@@ -981,7 +982,7 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
                 span_lint_and_help(
                     cx,
                     WILDCARD_IN_OR_PATTERNS,
-                    arm.pat.span,
+                    cx.tcx.hir().span(arm.pat.hir_id),
                     "wildcard pattern covers any other pattern as it will match anyway.",
                     None,
                     "Consider handling `_` separately.",
@@ -996,7 +997,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms:
         return;
     }
     let matched_vars = ex.span;
-    let bind_names = arms[0].pat.span;
+    let bind_names = cx.tcx.hir().span(arms[0].pat.hir_id);
     let match_body = remove_blocks(&arms[0].body);
     let mut snippet_body = if match_body.span.from_expansion() {
         Sugg::hir_with_macro_callsite(cx, match_body, "..").to_string()
@@ -1032,7 +1033,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms:
                         snippet_with_applicability(cx, bind_names, "..", &mut applicability),
                         snippet_with_applicability(cx, matched_vars, "..", &mut applicability),
                         " ".repeat(indent_of(cx, expr.span).unwrap_or(0)),
-                        snippet_with_applicability(cx, parent_let_node.pat.span, "..", &mut applicability),
+                        snippet_with_applicability(cx, cx.tcx.hir().span(parent_let_node.pat.hir_id), "..", &mut applicability),
                         snippet_body
                     ),
                 )
@@ -1125,7 +1126,7 @@ fn all_ranges<'a, 'tcx>(
                         RangeEnd::Excluded => Bound::Excluded(rhs),
                     };
                     return Some(SpannedRange {
-                        span: pat.span,
+                        span: cx.tcx.hir().span(pat.hir_id),
                         node: (lhs, rhs),
                     });
                 }
@@ -1133,7 +1134,7 @@ fn all_ranges<'a, 'tcx>(
                 if let PatKind::Lit(ref value) = pat.kind {
                     let value = constant(cx, cx.tables, value)?.0;
                     return Some(SpannedRange {
-                        span: pat.span,
+                        span: cx.tcx.hir().span(pat.hir_id),
                         node: (value.clone(), Bound::Included(value)),
                     });
                 }

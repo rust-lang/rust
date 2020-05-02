@@ -142,24 +142,17 @@ impl<'tcx> Place<'tcx> {
 
 crate trait HirNode {
     fn hir_id(&self) -> hir::HirId;
-    fn span(&self) -> Span;
 }
 
 impl HirNode for hir::Expr<'_> {
     fn hir_id(&self) -> hir::HirId {
         self.hir_id
     }
-    fn span(&self) -> Span {
-        self.span
-    }
 }
 
 impl HirNode for hir::Pat<'_> {
     fn hir_id(&self) -> hir::HirId {
         self.hir_id
-    }
-    fn span(&self) -> Span {
-        self.span
     }
 }
 
