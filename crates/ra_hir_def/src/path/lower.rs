@@ -9,10 +9,7 @@ use hir_expand::{
     hygiene::Hygiene,
     name::{name, AsName},
 };
-use ra_syntax::{
-    ast::{self, AstNode, TypeAscriptionOwner, TypeBoundsOwner},
-    T,
-};
+use ra_syntax::ast::{self, AstNode, TypeAscriptionOwner, TypeBoundsOwner};
 
 use super::AssociatedTypeBinding;
 use crate::{
@@ -122,10 +119,11 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
     // https://github.com/rust-lang/rust/blob/614f273e9388ddd7804d5cbc80b8865068a3744e/src/librustc_resolve/macros.rs#L456
     // We follow what it did anyway :)
     if segments.len() == 1 && kind == PathKind::Plain {
-        let next = path.syntax().last_token().and_then(|it| it.next_token());
-        if next.map_or(false, |it| it.kind() == T![!]) {
-            if let Some(crate_id) = hygiene.local_inner_macros() {
-                kind = PathKind::DollarCrate(crate_id);
+        if let Some(macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
+            if macro_call.is_bang() {
+                if let Some(crate_id) = hygiene.local_inner_macros() {
+                    kind = PathKind::DollarCrate(crate_id);
+                }
             }
         }
     }

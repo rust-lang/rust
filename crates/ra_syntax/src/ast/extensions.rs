@@ -423,6 +423,10 @@ impl ast::MacroCall {
             None
         }
     }
+
+    pub fn is_bang(&self) -> bool {
+        self.is_macro_rules().is_none()
+    }
 }
 
 impl ast::LifetimeParam {
