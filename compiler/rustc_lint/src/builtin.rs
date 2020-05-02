@@ -248,7 +248,8 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                 if fieldpat.is_shorthand {
                     continue;
                 }
-                if fieldpat.span.from_expansion() {
+                let fieldpat_span = cx.tcx.hir().span(fieldpat.hir_id);
+                if fieldpat_span.from_expansion() {
                     // Don't lint if this is a macro expansion: macro authors
                     // shouldn't have to worry about this kind of style issue
                     // (Issue #49588)
@@ -258,7 +259,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                     if cx.tcx.find_field_index(ident, &variant)
                         == Some(cx.tcx.field_index(fieldpat.hir_id, cx.typeck_results()))
                     {
-                        cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span, |lint| {
+                        cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat_span, |lint| {
                             let mut err = lint
                                 .build(&format!("the `{}:` in this pattern is redundant", ident));
                             let binding = match binding_annot {
@@ -273,7 +274,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                                 ident.to_string()
                             };
                             err.span_suggestion(
-                                fieldpat.span,
+                                fieldpat_span,
                                 "use shorthand field pattern",
                                 ident,
                                 Applicability::MachineApplicable,

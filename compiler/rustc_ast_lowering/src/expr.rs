@@ -1122,7 +1122,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ident: f.ident,
                         pat,
                         is_shorthand: f.is_shorthand,
-                        span: f.span,
                     }
                 }));
                 let qpath = self.lower_qpath(

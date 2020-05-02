@@ -1179,7 +1179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut inexistent_fields = vec![];
         // Typecheck each field.
         for field in fields {
-            let span = field.span;
+            let span = tcx.hir().span(field.hir_id);
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {
@@ -1537,8 +1537,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
 
         if let Some(field) = fields.last() {
+            let field_span = self.tcx.hir().span(field.hir_id);
             err.span_suggestion_verbose(
-                field.span.shrink_to_hi(),
+                field_span.shrink_to_hi(),
                 "ignore the inaccessible and unused fields",
                 ", ..".to_string(),
                 Applicability::MachineApplicable,
@@ -1606,7 +1607,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             [.., field] => {
                 // Account for last field having a trailing comma or parse recovery at the tail of
                 // the pattern to avoid invalid suggestion (#78511).
-                let tail = field.span.shrink_to_hi().with_hi(pat.span.hi());
+                let field_span = self.tcx.hir().span(field.hir_id);
+                let pat_span = self.tcx.hir().span(pat.hir_id);
+                let tail = field_span.shrink_to_hi().with_hi(pat_span.hi());
                 match &pat.kind {
                     PatKind::Struct(..) => (", ", " }", tail),
                     _ => return err,

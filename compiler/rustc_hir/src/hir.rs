@@ -884,7 +884,6 @@ pub struct FieldPat<'hir> {
     /// The pattern the field is destructured to.
     pub pat: &'hir Pat<'hir>,
     pub is_shorthand: bool,
-    pub span: Span,
 }
 
 /// Explicit binding annotations given in the HIR for a binding. Note

@@ -1101,7 +1101,8 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             for field in fields {
                 let use_ctxt = field.ident.span;
                 let index = self.tcx.field_index(field.hir_id, self.typeck_results());
-                self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
+                let field_span = self.tcx.hir().span(field.hir_id);
+                self.check_field(use_ctxt, field_span, adt, &variant.fields[index], false);
             }
         }
 
