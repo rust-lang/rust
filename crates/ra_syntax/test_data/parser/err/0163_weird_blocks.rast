@@ -1,0 +1,71 @@
+SOURCE_FILE@0..83
+  FN_DEF@0..82
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..7
+      IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    BLOCK_EXPR@10..82
+      L_CURLY@10..11 "{"
+      WHITESPACE@11..16 "\n    "
+      EXPR_STMT@16..29
+        BLOCK_EXPR@16..29
+          L_CURLY@16..17 "{"
+          WHITESPACE@17..18 " "
+          ERROR@18..24
+            UNSAFE_KW@18..24 "unsafe"
+          WHITESPACE@24..25 " "
+          LITERAL@25..27
+            INT_NUMBER@25..27 "92"
+          WHITESPACE@27..28 " "
+          R_CURLY@28..29 "}"
+      WHITESPACE@29..34 "\n    "
+      EXPR_STMT@34..46
+        BLOCK_EXPR@34..46
+          L_CURLY@34..35 "{"
+          WHITESPACE@35..36 " "
+          ERROR@36..41
+            ASYNC_KW@36..41 "async"
+          WHITESPACE@41..42 " "
+          LITERAL@42..44
+            INT_NUMBER@42..44 "92"
+          WHITESPACE@44..45 " "
+          R_CURLY@45..46 "}"
+      WHITESPACE@46..51 "\n    "
+      EXPR_STMT@51..61
+        BLOCK_EXPR@51..61
+          L_CURLY@51..52 "{"
+          WHITESPACE@52..53 " "
+          EXPR_STMT@53..56
+            EFFECT_EXPR@53..56
+              TRY_KW@53..56 "try"
+          WHITESPACE@56..57 " "
+          LITERAL@57..59
+            INT_NUMBER@57..59 "92"
+          WHITESPACE@59..60 " "
+          R_CURLY@60..61 "}"
+      WHITESPACE@61..66 "\n    "
+      BLOCK_EXPR@66..80
+        L_CURLY@66..67 "{"
+        WHITESPACE@67..68 " "
+        EXPR_STMT@68..75
+          ERROR@68..75
+            LABEL@68..75
+              LIFETIME@68..74 "\'label"
+              COLON@74..75 ":"
+        WHITESPACE@75..76 " "
+        LITERAL@76..78
+          INT_NUMBER@76..78 "92"
+        WHITESPACE@78..79 " "
+        R_CURLY@79..80 "}"
+      WHITESPACE@80..81 "\n"
+      R_CURLY@81..82 "}"
+  WHITESPACE@82..83 "\n"
+error 24..24: expected existential, fn, trait or impl
+error 41..41: expected existential, fn, trait or impl
+error 56..56: expected a block
+error 75..75: expected a loop
+error 75..75: expected SEMICOLON
