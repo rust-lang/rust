@@ -22,16 +22,27 @@ pub fn obligations<'a, 'tcx>(
     ty: Ty<'tcx>,
     span: Span,
 ) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
-    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
-    if wf.compute(ty) {
-        debug!("wf::obligations({:?}, body_id={:?}) = {:?}", ty, body_id, wf.out);
+    // Handle the "livelock" case (see comment above) by bailing out if necessary.
+    let ty = match ty.kind {
+        ty::Infer(ty::TyVar(_)) => {
+            let resolved_ty = infcx.shallow_resolve(ty);
+            if resolved_ty == ty {
+                // No progress, bail out to prevent "livelock".
+                return None;
+            }
 
-        let result = wf.normalize();
-        debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", ty, body_id, result);
-        Some(result)
-    } else {
-        None // no progress made, return None
-    }
+            resolved_ty
+        }
+        _ => ty,
+    };
+
+    let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
+    wf.compute(ty);
+    debug!("wf::obligations({:?}, body_id={:?}) = {:?}", ty, body_id, wf.out);
+
+    let result = wf.normalize();
+    debug!("wf::obligations({:?}, body_id={:?}) ~~> {:?}", ty, body_id, result);
+    Some(result)
 }
 
 /// Returns the obligations that make this trait reference
@@ -311,12 +322,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
     }
 
-    /// Pushes new obligations into `out`. Returns `true` if it was able
-    /// to generate all the predicates needed to validate that `ty0`
-    /// is WF. Returns false if `ty0` is an unresolved type variable,
-    /// in which case we are not able to simplify at all.
-    fn compute(&mut self, ty0: Ty<'tcx>) -> bool {
-        let mut walker = ty0.walk();
+    /// Pushes all the predicates needed to validate that `ty` is WF into `out`.
+    fn compute(&mut self, ty: Ty<'tcx>) {
+        let mut walker = ty.walk();
         let param_env = self.param_env;
         while let Some(arg) = walker.next() {
             let ty = match arg.unpack() {
@@ -347,6 +355,12 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 | ty::Foreign(..) => {
                     // WfScalar, WfParameter, etc
                 }
+
+                // Can only infer to `ty::Int(_) | ty::Uint(_)`.
+                ty::Infer(ty::IntVar(_)) => {}
+
+                // Can only infer to `ty::Float(_)`.
+                ty::Infer(ty::FloatVar(_)) => {}
 
                 ty::Slice(subty) => {
                     self.require_sized(subty, traits::SliceOrArrayElem);
@@ -442,8 +456,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // are not directly inspecting closure types
                     // anyway, except via auto trait matching (which
                     // only inspects the upvar types).
-                    walker.skip_current_subtree(); // subtree handled by compute_projection
+                    walker.skip_current_subtree(); // subtree handled below
                     for upvar_ty in substs.as_closure().upvar_tys() {
+                        // FIXME(eddyb) add the type to `walker` instead of recursing.
                         self.compute(upvar_ty);
                     }
                 }
@@ -496,44 +511,31 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 //
                 // 1. Check if they have been resolved, and if so proceed with
                 //    THAT type.
-                // 2. If not, check whether this is the type that we
-                //    started with (ty0). In that case, we've made no
-                //    progress at all, so return false. Otherwise,
-                //    we've at least simplified things (i.e., we went
-                //    from `Vec<$0>: WF` to `$0: WF`, so we can
+                // 2. If not, we've at least simplified things (e.g., we went
+                //    from `Vec<$0>: WF` to `$0: WF`), so we can
                 //    register a pending obligation and keep
                 //    moving. (Goal is that an "inductive hypothesis"
                 //    is satisfied to ensure termination.)
+                // See also the comment on `fn obligations`, describing "livelock"
+                // prevention, which happens before this can be reached.
                 ty::Infer(_) => {
                     let ty = self.infcx.shallow_resolve(ty);
-                    if let ty::Infer(_) = ty.kind {
-                        // not yet resolved...
-                        if ty == ty0 {
-                            // ...this is the type we started from! no progress.
-                            return false;
-                        }
-
+                    if let ty::Infer(ty::TyVar(_)) = ty.kind {
+                        // Not yet resolved, but we've made progress.
                         let cause = self.cause(traits::MiscObligation);
-                        self.out.push(
-                            // ...not the type we started from, so we made progress.
-                            traits::Obligation::new(
-                                cause,
-                                self.param_env,
-                                ty::Predicate::WellFormed(ty),
-                            ),
-                        );
+                        self.out.push(traits::Obligation::new(
+                            cause,
+                            param_env,
+                            ty::Predicate::WellFormed(ty),
+                        ));
                     } else {
-                        // Yes, resolved, proceed with the
-                        // result. Should never return false because
-                        // `ty` is not a Infer.
-                        assert!(self.compute(ty));
+                        // Yes, resolved, proceed with the result.
+                        // FIXME(eddyb) add the type to `walker` instead of recursing.
+                        self.compute(ty);
                     }
                 }
             }
         }
-
-        // if we made it through that loop above, we made progress!
-        true
     }
 
     fn nominal_obligations(
