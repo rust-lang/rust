@@ -1428,7 +1428,7 @@ pub struct Stack {
 ///
 /// As an example, `StackElement::Key("foo")`, `StackElement::Key("bar")`,
 /// `StackElement::Index(3)`, and `StackElement::Key("x")` are the
-/// StackElements compositing the stack that represents `foo.bar[3].x`.
+/// StackElements composing the stack that represents `foo.bar[3].x`.
 #[derive(PartialEq, Clone, Debug)]
 pub enum StackElement<'l> {
     Index(u32),
