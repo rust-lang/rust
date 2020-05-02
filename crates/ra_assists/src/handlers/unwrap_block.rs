@@ -1,8 +1,8 @@
 use crate::{Assist, AssistCtx, AssistId};
 
-use ast::{BlockExpr, Expr, LoopBodyOwner};
+use ast::{BlockExpr, Expr, ForExpr, IfExpr, LoopBodyOwner, LoopExpr, WhileExpr};
 use ra_fmt::unwrap_trivial_block;
-use ra_syntax::{ast, AstNode, TextRange};
+use ra_syntax::{ast, AstNode, TextRange, T};
 
 // Assist: unwrap_block
 //
@@ -22,15 +22,11 @@ use ra_syntax::{ast, AstNode, TextRange};
 // }
 // ```
 pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
-    let res = if let Some(if_expr) = ctx.find_node_at_offset::<ast::IfExpr>() {
+    let l_curly_token = ctx.find_token_at_offset(T!['{'])?;
+
+    let res = if let Some(if_expr) = l_curly_token.ancestors().find_map(IfExpr::cast) {
         // if expression
-        let mut expr_to_unwrap: Option<ast::Expr> = None;
-        for block_expr in if_expr.blocks() {
-            if let Some(expr) = excract_expr(ctx.frange.range, block_expr) {
-                expr_to_unwrap = Some(expr);
-                break;
-            }
-        }
+        let expr_to_unwrap = if_expr.blocks().find_map(|expr| extract_expr(ctx.frange.range, expr));
         let expr_to_unwrap = expr_to_unwrap?;
         // Find if we are in a else if block
         let ancestor = if_expr.syntax().ancestors().skip(1).find_map(ast::IfExpr::cast);
@@ -40,20 +36,20 @@ pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
         } else {
             Some((ast::Expr::IfExpr(if_expr), expr_to_unwrap))
         }
-    } else if let Some(for_expr) = ctx.find_node_at_offset::<ast::ForExpr>() {
+    } else if let Some(for_expr) = l_curly_token.ancestors().find_map(ForExpr::cast) {
         // for expression
         let block_expr = for_expr.loop_body()?;
-        excract_expr(ctx.frange.range, block_expr)
+        extract_expr(ctx.frange.range, block_expr)
             .map(|expr_to_unwrap| (ast::Expr::ForExpr(for_expr), expr_to_unwrap))
-    } else if let Some(while_expr) = ctx.find_node_at_offset::<ast::WhileExpr>() {
+    } else if let Some(while_expr) = l_curly_token.ancestors().find_map(WhileExpr::cast) {
         // while expression
         let block_expr = while_expr.loop_body()?;
-        excract_expr(ctx.frange.range, block_expr)
+        extract_expr(ctx.frange.range, block_expr)
             .map(|expr_to_unwrap| (ast::Expr::WhileExpr(while_expr), expr_to_unwrap))
-    } else if let Some(loop_expr) = ctx.find_node_at_offset::<ast::LoopExpr>() {
+    } else if let Some(loop_expr) = l_curly_token.ancestors().find_map(LoopExpr::cast) {
         // loop expression
         let block_expr = loop_expr.loop_body()?;
-        excract_expr(ctx.frange.range, block_expr)
+        extract_expr(ctx.frange.range, block_expr)
             .map(|expr_to_unwrap| (ast::Expr::LoopExpr(loop_expr), expr_to_unwrap))
     } else {
         None
@@ -80,7 +76,7 @@ pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
     })
 }
 
-fn excract_expr(cursor_range: TextRange, block_expr: BlockExpr) -> Option<Expr> {
+fn extract_expr(cursor_range: TextRange, block_expr: BlockExpr) -> Option<Expr> {
     let block = block_expr.block()?;
     let cursor_in_range = block.l_curly_token()?.text_range().contains_range(cursor_range);
 
@@ -194,65 +190,6 @@ mod tests {
                     bar();
                 } else {
                     println!("bar");
-                }
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn issue_example_with_if() {
-        check_assist(
-            unwrap_block,
-            r#"
-            fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &Type) {
-                if let Some(ty) = &ctx.expected_type {<|>
-                    if let Some(Adt::Enum(enum_data)) = ty.as_adt() {
-                        let variants = enum_data.variants(ctx.db);
-
-                        let module = if let Some(module) = ctx.scope().module() {
-                            // Compute path from the completion site if available.
-                            module
-                        } else {
-                            // Otherwise fall back to the enum's definition site.
-                            enum_data.module(ctx.db)
-                        };
-
-                        for variant in variants {
-                            if let Some(path) = module.find_use_path(ctx.db, ModuleDef::from(variant)) {
-                                // Variants with trivial paths are already added by the existing completion logic,
-                                // so we should avoid adding these twice
-                                if path.segments.len() > 1 {
-                                    acc.add_enum_variant(ctx, variant, Some(path.to_string()));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            "#,
-            r#"
-            fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &Type) {
-                <|>if let Some(Adt::Enum(enum_data)) = ty.as_adt() {
-                    let variants = enum_data.variants(ctx.db);
-
-                    let module = if let Some(module) = ctx.scope().module() {
-                        // Compute path from the completion site if available.
-                        module
-                    } else {
-                        // Otherwise fall back to the enum's definition site.
-                        enum_data.module(ctx.db)
-                    };
-
-                    for variant in variants {
-                        if let Some(path) = module.find_use_path(ctx.db, ModuleDef::from(variant)) {
-                            // Variants with trivial paths are already added by the existing completion logic,
-                            // so we should avoid adding these twice
-                            if path.segments.len() > 1 {
-                                acc.add_enum_variant(ctx, variant, Some(path.to_string()));
-                            }
-                        }
-                    }
                 }
             }
             "#,
