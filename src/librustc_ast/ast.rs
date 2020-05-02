@@ -14,9 +14,9 @@
 //! - [`Generics`], [`GenericParam`], [`WhereClause`]: Metadata associated with generic parameters.
 //! - [`EnumDef`] and [`Variant`]: Enum declaration.
 //! - [`Lit`] and [`LitKind`]: Literal expressions.
-//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimeter`]: Macro definition and invocation.
+//! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`], [`MacDelimiter`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.
-//! - [`UnOp`], [`UnOpKind`], [`BinOp`], [`BinOpKind`]: Unary and binary operators.
+//! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 pub use crate::util::parser::ExprPrecedence;
 pub use GenericArgs::*;

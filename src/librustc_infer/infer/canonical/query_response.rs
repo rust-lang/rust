@@ -16,7 +16,7 @@ use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelating
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{InferCtxt, InferOk, InferResult, NLLRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
-use crate::traits::{DomainGoal, TraitEngine};
+use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
@@ -669,10 +669,6 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
             ))),
             recursion_depth: 0,
         });
-    }
-
-    fn push_domain_goal(&mut self, _: DomainGoal<'tcx>) {
-        bug!("should never be invoked with eager normalization")
     }
 
     fn normalization() -> NormalizationStrategy {

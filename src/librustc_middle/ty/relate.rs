@@ -5,12 +5,12 @@
 //! subtyping, type equality, etc.
 
 use crate::mir::interpret::{get_slice_bytes, ConstValue};
-use crate::traits;
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
+use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi;
 use std::iter;
 use std::rc::Rc;
@@ -507,6 +507,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
 ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+    debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
     let eagerly_eval = |x: &'tcx ty::Const<'tcx>| {
@@ -561,7 +562,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                     }
                 }
 
-                (a_val @ ConstValue::Slice { .. }, b_val @ ConstValue::Slice { .. }) => {
+                (ConstValue::Slice { .. }, ConstValue::Slice { .. }) => {
                     let a_bytes = get_slice_bytes(&tcx, a_val);
                     let b_bytes = get_slice_bytes(&tcx, b_val);
                     if a_bytes == b_bytes {
@@ -571,7 +572,37 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                     }
                 }
 
-                // FIXME(const_generics): handle `ConstValue::ByRef`.
+                (ConstValue::ByRef { .. }, ConstValue::ByRef { .. }) => {
+                    match a.ty.kind {
+                        ty::Array(..) | ty::Adt(..) | ty::Tuple(..) => {
+                            let a_destructured = tcx.destructure_const(relation.param_env().and(a));
+                            let b_destructured = tcx.destructure_const(relation.param_env().and(b));
+
+                            // Both the variant and each field have to be equal.
+                            if a_destructured.variant == b_destructured.variant {
+                                for (a_field, b_field) in
+                                    a_destructured.fields.iter().zip(b_destructured.fields.iter())
+                                {
+                                    relation.consts(a_field, b_field)?;
+                                }
+
+                                Ok(a_val)
+                            } else {
+                                Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+                            }
+                        }
+                        // FIXME(const_generics): There are probably some `TyKind`s
+                        // which should be handled here.
+                        _ => {
+                            tcx.sess.delay_span_bug(
+                                DUMMY_SP,
+                                &format!("unexpected consts: a: {:?}, b: {:?}", a, b),
+                            );
+                            Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+                        }
+                    }
+                }
+
                 _ => Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
             };
 
@@ -750,229 +781,6 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
         Ok(ty::ProjectionPredicate {
             projection_ty: relation.relate(&a.projection_ty, &b.projection_ty)?,
             ty: relation.relate(&a.ty, &b.ty)?,
-        })
-    }
-}
-
-impl<'tcx> Relate<'tcx> for traits::WhereClause<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::WhereClause<'tcx>,
-        b: &traits::WhereClause<'tcx>,
-    ) -> RelateResult<'tcx, traits::WhereClause<'tcx>> {
-        use crate::traits::WhereClause::*;
-        match (a, b) {
-            (Implemented(a_pred), Implemented(b_pred)) => {
-                Ok(Implemented(relation.relate(a_pred, b_pred)?))
-            }
-
-            (ProjectionEq(a_pred), ProjectionEq(b_pred)) => {
-                Ok(ProjectionEq(relation.relate(a_pred, b_pred)?))
-            }
-
-            (RegionOutlives(a_pred), RegionOutlives(b_pred)) => {
-                Ok(RegionOutlives(ty::OutlivesPredicate(
-                    relation.relate(&a_pred.0, &b_pred.0)?,
-                    relation.relate(&a_pred.1, &b_pred.1)?,
-                )))
-            }
-
-            (TypeOutlives(a_pred), TypeOutlives(b_pred)) => {
-                Ok(TypeOutlives(ty::OutlivesPredicate(
-                    relation.relate(&a_pred.0, &b_pred.0)?,
-                    relation.relate(&a_pred.1, &b_pred.1)?,
-                )))
-            }
-
-            _ => Err(TypeError::Mismatch),
-        }
-    }
-}
-
-impl<'tcx> Relate<'tcx> for traits::WellFormed<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::WellFormed<'tcx>,
-        b: &traits::WellFormed<'tcx>,
-    ) -> RelateResult<'tcx, traits::WellFormed<'tcx>> {
-        use crate::traits::WellFormed::*;
-        match (a, b) {
-            (Trait(a_pred), Trait(b_pred)) => Ok(Trait(relation.relate(a_pred, b_pred)?)),
-            (Ty(a_ty), Ty(b_ty)) => Ok(Ty(relation.relate(a_ty, b_ty)?)),
-            _ => Err(TypeError::Mismatch),
-        }
-    }
-}
-
-impl<'tcx> Relate<'tcx> for traits::FromEnv<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::FromEnv<'tcx>,
-        b: &traits::FromEnv<'tcx>,
-    ) -> RelateResult<'tcx, traits::FromEnv<'tcx>> {
-        use crate::traits::FromEnv::*;
-        match (a, b) {
-            (Trait(a_pred), Trait(b_pred)) => Ok(Trait(relation.relate(a_pred, b_pred)?)),
-            (Ty(a_ty), Ty(b_ty)) => Ok(Ty(relation.relate(a_ty, b_ty)?)),
-            _ => Err(TypeError::Mismatch),
-        }
-    }
-}
-
-impl<'tcx> Relate<'tcx> for traits::DomainGoal<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::DomainGoal<'tcx>,
-        b: &traits::DomainGoal<'tcx>,
-    ) -> RelateResult<'tcx, traits::DomainGoal<'tcx>> {
-        use crate::traits::DomainGoal::*;
-        match (a, b) {
-            (Holds(a_wc), Holds(b_wc)) => Ok(Holds(relation.relate(a_wc, b_wc)?)),
-            (WellFormed(a_wf), WellFormed(b_wf)) => Ok(WellFormed(relation.relate(a_wf, b_wf)?)),
-            (FromEnv(a_fe), FromEnv(b_fe)) => Ok(FromEnv(relation.relate(a_fe, b_fe)?)),
-
-            (Normalize(a_pred), Normalize(b_pred)) => {
-                Ok(Normalize(relation.relate(a_pred, b_pred)?))
-            }
-
-            _ => Err(TypeError::Mismatch),
-        }
-    }
-}
-
-impl<'tcx> Relate<'tcx> for traits::Goal<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::Goal<'tcx>,
-        b: &traits::Goal<'tcx>,
-    ) -> RelateResult<'tcx, traits::Goal<'tcx>> {
-        use crate::traits::GoalKind::*;
-        match (a, b) {
-            (Implies(a_clauses, a_goal), Implies(b_clauses, b_goal)) => {
-                let clauses = relation.relate(a_clauses, b_clauses)?;
-                let goal = relation.relate(a_goal, b_goal)?;
-                Ok(relation.tcx().mk_goal(Implies(clauses, goal)))
-            }
-
-            (And(a_left, a_right), And(b_left, b_right)) => {
-                let left = relation.relate(a_left, b_left)?;
-                let right = relation.relate(a_right, b_right)?;
-                Ok(relation.tcx().mk_goal(And(left, right)))
-            }
-
-            (Not(a_goal), Not(b_goal)) => {
-                let goal = relation.relate(a_goal, b_goal)?;
-                Ok(relation.tcx().mk_goal(Not(goal)))
-            }
-
-            (DomainGoal(a_goal), DomainGoal(b_goal)) => {
-                let goal = relation.relate(a_goal, b_goal)?;
-                Ok(relation.tcx().mk_goal(DomainGoal(goal)))
-            }
-
-            (Quantified(a_qkind, a_goal), Quantified(b_qkind, b_goal)) if a_qkind == b_qkind => {
-                let goal = relation.relate(a_goal, b_goal)?;
-                Ok(relation.tcx().mk_goal(Quantified(*a_qkind, goal)))
-            }
-
-            (CannotProve, CannotProve) => Ok(*a),
-
-            _ => Err(TypeError::Mismatch),
-        }
-    }
-}
-
-impl<'tcx> Relate<'tcx> for traits::Goals<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::Goals<'tcx>,
-        b: &traits::Goals<'tcx>,
-    ) -> RelateResult<'tcx, traits::Goals<'tcx>> {
-        if a.len() != b.len() {
-            return Err(TypeError::Mismatch);
-        }
-
-        let tcx = relation.tcx();
-        let goals = a.iter().zip(b.iter()).map(|(a, b)| relation.relate(a, b));
-        Ok(tcx.mk_goals(goals)?)
-    }
-}
-
-impl<'tcx> Relate<'tcx> for traits::Clause<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::Clause<'tcx>,
-        b: &traits::Clause<'tcx>,
-    ) -> RelateResult<'tcx, traits::Clause<'tcx>> {
-        use crate::traits::Clause::*;
-        match (a, b) {
-            (Implies(a_clause), Implies(b_clause)) => {
-                let clause = relation.relate(a_clause, b_clause)?;
-                Ok(Implies(clause))
-            }
-
-            (ForAll(a_clause), ForAll(b_clause)) => {
-                let clause = relation.relate(a_clause, b_clause)?;
-                Ok(ForAll(clause))
-            }
-
-            _ => Err(TypeError::Mismatch),
-        }
-    }
-}
-
-impl<'tcx> Relate<'tcx> for traits::Clauses<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::Clauses<'tcx>,
-        b: &traits::Clauses<'tcx>,
-    ) -> RelateResult<'tcx, traits::Clauses<'tcx>> {
-        if a.len() != b.len() {
-            return Err(TypeError::Mismatch);
-        }
-
-        let tcx = relation.tcx();
-        let clauses = a.iter().zip(b.iter()).map(|(a, b)| relation.relate(a, b));
-        Ok(tcx.mk_clauses(clauses)?)
-    }
-}
-
-impl<'tcx> Relate<'tcx> for traits::ProgramClause<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::ProgramClause<'tcx>,
-        b: &traits::ProgramClause<'tcx>,
-    ) -> RelateResult<'tcx, traits::ProgramClause<'tcx>> {
-        Ok(traits::ProgramClause {
-            goal: relation.relate(&a.goal, &b.goal)?,
-            hypotheses: relation.relate(&a.hypotheses, &b.hypotheses)?,
-            category: traits::ProgramClauseCategory::Other,
-        })
-    }
-}
-
-impl<'tcx> Relate<'tcx> for traits::Environment<'tcx> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::Environment<'tcx>,
-        b: &traits::Environment<'tcx>,
-    ) -> RelateResult<'tcx, traits::Environment<'tcx>> {
-        Ok(traits::Environment { clauses: relation.relate(&a.clauses, &b.clauses)? })
-    }
-}
-
-impl<'tcx, G> Relate<'tcx> for traits::InEnvironment<'tcx, G>
-where
-    G: Relate<'tcx>,
-{
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: &traits::InEnvironment<'tcx, G>,
-        b: &traits::InEnvironment<'tcx, G>,
-    ) -> RelateResult<'tcx, traits::InEnvironment<'tcx, G>> {
-        Ok(traits::InEnvironment {
-            environment: relation.relate(&a.environment, &b.environment)?,
-            goal: relation.relate(&a.goal, &b.goal)?,
         })
     }
 }

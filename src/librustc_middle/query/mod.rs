@@ -1,7 +1,6 @@
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::mir;
 use crate::mir::interpret::{GlobalId, LitToConstInput};
-use crate::traits;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
@@ -223,19 +222,6 @@ rustc_queries! {
             // may save a bit of time.
             anon
             desc { "erasing regions from `{:?}`", ty }
-        }
-
-        query program_clauses_for(_: DefId) -> Clauses<'tcx> {
-            desc { "generating chalk-style clauses" }
-        }
-
-        query program_clauses_for_env(_: traits::Environment<'tcx>) -> Clauses<'tcx> {
-            desc { "generating chalk-style clauses for environment" }
-        }
-
-        // Get the chalk-style environment of the given item.
-        query environment(_: DefId) -> traits::Environment<'tcx> {
-            desc { "return a chalk-style environment" }
         }
     }
 

@@ -107,6 +107,7 @@ fn coerce_mutbls<'tcx>(
     }
 }
 
+/// Do not require any adjustments, i.e. coerce `x -> x`.
 fn identity(_: Ty<'_>) -> Vec<Adjustment<'_>> {
     vec![]
 }
@@ -115,6 +116,7 @@ fn simple(kind: Adjust<'tcx>) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>> 
     move |target| vec![Adjustment { kind, target }]
 }
 
+/// This always returns `Ok(...)`.
 fn success<'tcx>(
     adj: Vec<Adjustment<'tcx>>,
     target: Ty<'tcx>,
@@ -133,6 +135,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     pub fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
+        debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
             if self.use_lub {
                 self.at(&self.cause, self.fcx.param_env).lub(b, a)
