@@ -575,7 +575,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.spans.push_owner(Idx::new(self.resolver.definitions().def_index_count() - 1));
 
         hir::Crate {
-            item: hir::CrateItem { module, attrs, span: c.span },
+            item: hir::CrateItem { module, attrs },
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             items: self.items,
@@ -1507,7 +1507,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             attrs: Default::default(),
             kind: opaque_ty_item_kind,
             vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
-            span: opaque_ty_span,
         };
 
         // Insert the item into the global item list. This usually happens

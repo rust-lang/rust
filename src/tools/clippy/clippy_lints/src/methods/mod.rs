@@ -1472,7 +1472,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
-        if in_external_macro(cx.sess(), impl_item.span) {
+        if in_external_macro(cx.sess(), cx.tcx.hir().span(impl_item.hir_id)) {
             return;
         }
         let name = impl_item.ident.name.as_str();
@@ -1503,7 +1503,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                             out_type.matches(cx, &sig.decl.output) &&
                             self_kind.matches(cx, self_ty, first_arg_ty) &&
                             fn_header_equals(*fn_header, sig.header) {
-                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
+                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, cx.tcx.hir().span(impl_item.hir_id), &format!(
                                 "defining a method called `{}` on this type; consider implementing \
                                 the `{}` trait or choosing a less ambiguous name", name, trait_name));
                         }
@@ -1575,7 +1575,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
-                    impl_item.span,
+                    cx.tcx.hir().span(impl_item.hir_id),
                     "methods called `new` usually return `Self`",
                 );
             }

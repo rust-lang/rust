@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {
                 span_lint_and_help(
                     cx,
                     EMPTY_ENUM,
-                    item.span,
+                    cx.tcx.hir().span(item.hir_id),
                     "enum with no variants",
                     None,
                     "consider using the uninhabited type `!` (never type) or a wrapper \

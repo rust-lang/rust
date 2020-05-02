@@ -431,8 +431,9 @@ impl DirtyCleanVisitor<'tcx> {
         }
     }
 
-    fn check_item(&mut self, item_id: hir::HirId, item_span: Span) {
+    fn check_item(&mut self, item_id: hir::HirId) {
         let def_id = self.tcx.hir().local_def_id(item_id);
+        let item_span = self.tcx.hir().span(item_id);
         for attr in self.tcx.get_attrs(def_id.to_def_id()).iter() {
             let assertion = match self.assertion_maybe(item_id, attr) {
                 Some(a) => a,
@@ -451,15 +452,15 @@ impl DirtyCleanVisitor<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.check_item(item.hir_id, item.span);
+        self.check_item(item.hir_id);
     }
 
     fn visit_trait_item(&mut self, item: &hir::TraitItem<'_>) {
-        self.check_item(item.hir_id, item.span);
+        self.check_item(item.hir_id);
     }
 
     fn visit_impl_item(&mut self, item: &hir::ImplItem<'_>) {
-        self.check_item(item.hir_id, item.span);
+        self.check_item(item.hir_id);
     }
 }
 

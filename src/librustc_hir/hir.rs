@@ -581,7 +581,6 @@ pub struct ModuleItems {
 pub struct CrateItem<'hir> {
     pub module: Mod<'hir>,
     pub attrs: &'hir [Attribute],
-    pub span: Span,
 }
 
 /// The top-level data structure that stores the entire contents of
@@ -1846,7 +1845,6 @@ pub struct TraitItem<'hir> {
     pub attrs: &'hir [Attribute],
     pub generics: Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
-    pub span: Span,
 }
 
 /// Represents a trait method's body (or just argument names).
@@ -1889,7 +1887,6 @@ pub struct ImplItem<'hir> {
     pub attrs: &'hir [Attribute],
     pub generics: Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
-    pub span: Span,
 }
 
 /// Represents various kinds of content within an `impl`.
@@ -2424,7 +2421,6 @@ pub struct Item<'hir> {
     pub attrs: &'hir [Attribute],
     pub kind: ItemKind<'hir>,
     pub vis: Visibility<'hir>,
-    pub span: Span,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -2597,7 +2593,6 @@ pub struct ForeignItem<'hir> {
     pub attrs: &'hir [Attribute],
     pub kind: ForeignItemKind<'hir>,
     pub hir_id: HirId,
-    pub span: Span,
     pub vis: Visibility<'hir>,
 }
 

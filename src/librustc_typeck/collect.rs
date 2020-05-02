@@ -529,8 +529,9 @@ fn type_param_predicates(
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
                         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
+                        let item_span = tcx.hir().span(item.hir_id);
                         extend =
-                            Some((identity_trait_ref.without_const().to_predicate(tcx), item.span));
+                            Some((identity_trait_ref.without_const().to_predicate(tcx), item_span));
                     }
                     generics
                 }
@@ -660,14 +661,16 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
             tcx.ensure().predicates_of(def_id);
         }
         hir::ItemKind::Trait(..) => {
+            let it_span = tcx.hir().span(it.hir_id);
             tcx.ensure().generics_of(def_id);
             tcx.ensure().trait_def(def_id);
-            tcx.at(it.span).super_predicates_of(def_id);
+            tcx.at(it_span).super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }
         hir::ItemKind::TraitAlias(..) => {
+            let it_span = tcx.hir().span(it.hir_id);
             tcx.ensure().generics_of(def_id);
-            tcx.at(it.span).super_predicates_of(def_id);
+            tcx.at(it_span).super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }
         hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
@@ -959,15 +962,16 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
     let (generics, bounds) = match item.kind {
         hir::ItemKind::Trait(.., ref generics, ref supertraits, _) => (generics, supertraits),
         hir::ItemKind::TraitAlias(ref generics, ref supertraits) => (generics, supertraits),
-        _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
+        _ => span_bug!(tcx.hir().span(item.hir_id), "super_predicates invoked on non-trait"),
     };
 
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
     let self_param_ty = tcx.types.self_param;
+    let item_span = tcx.hir().span(item.hir_id);
     let superbounds1 =
-        AstConv::compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
+        AstConv::compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item_span);
 
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
@@ -1002,18 +1006,19 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
     let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
     let item = tcx.hir().expect_item(hir_id);
+    let item_span = tcx.hir().span(item.hir_id);
 
     let (is_auto, unsafety) = match item.kind {
         hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
         hir::ItemKind::TraitAlias(..) => (false, hir::Unsafety::Normal),
-        _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
+        _ => span_bug!(item_span, "trait_def_of_item invoked on non-trait"),
     };
 
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
         tcx.sess
             .struct_span_err(
-                item.span,
+                item_span,
                 "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
                  which traits can use parenthetical notation",
             )
@@ -1564,7 +1569,8 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
         }
         hir::ItemKind::Impl { polarity: hir::ImplPolarity::Positive, of_trait: None, .. } => {
             if is_rustc_reservation {
-                tcx.sess.span_err(item.span, "reservation impls can't be inherent");
+                let item_span = tcx.hir().span(item.hir_id);
+                tcx.sess.span_err(item_span, "reservation impls can't be inherent");
             }
             ty::ImplPolarity::Positive
         }
@@ -1702,7 +1708,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     let ast_generics = match node {
         Node::TraitItem(item) => {
             if let hir::TraitItemKind::Type(bounds, _) = item.kind {
-                is_trait_associated_type = Some((bounds, item.span));
+                is_trait_associated_type = Some((bounds, item.hir_id));
             }
             &item.generics
         }
@@ -1934,11 +1940,11 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     if tcx.features().generic_associated_types {
         // New behavior: bounds declared on associate type are predicates of that
         // associated type. Not the default because it needs more testing.
-        if let Some((bounds, span)) = is_trait_associated_type {
+        if let Some((bounds, hir_id)) = is_trait_associated_type {
             let projection_ty =
                 tcx.mk_projection(def_id, InternalSubsts::identity_for_item(tcx, def_id));
 
-            predicates.extend(associated_item_bounds(tcx, def_id, bounds, projection_ty, span))
+            predicates.extend(associated_item_bounds(tcx, def_id, bounds, projection_ty, hir_id))
         }
     } else if let Some((self_trait_ref, trait_items)) = is_trait {
         // Current behavior: bounds declared on associate type are predicates
@@ -1991,7 +1997,8 @@ fn trait_associated_item_predicates(
         // For GATs the substs provided to the mk_projection call below are
         // wrong. We should emit a feature gate error if we get here so skip
         // this type.
-        tcx.sess.delay_span_bug(trait_item.span, "gats used without feature gate");
+        tcx.sess
+            .delay_span_bug(tcx.hir().span(trait_item.hir_id), "gats used without feature gate");
         return Vec::new();
     }
 
@@ -2000,7 +2007,7 @@ fn trait_associated_item_predicates(
         self_trait_ref.substs,
     );
 
-    associated_item_bounds(tcx, def_id, bounds, assoc_ty, trait_item.span)
+    associated_item_bounds(tcx, def_id, bounds, assoc_ty, trait_item.hir_id)
 }
 
 fn associated_item_bounds(
@@ -2008,14 +2015,14 @@ fn associated_item_bounds(
     def_id: DefId,
     bounds: &'tcx [hir::GenericBound<'tcx>],
     projection_ty: Ty<'tcx>,
-    span: Span,
+    hir_id: hir::HirId,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     let bounds = AstConv::compute_bounds(
         &ItemCtxt::new(tcx, def_id),
         projection_ty,
         bounds,
         SizedByDefault::Yes,
-        span,
+        tcx.hir().span(hir_id),
     );
 
     let predicates = bounds.predicates(tcx, projection_ty);

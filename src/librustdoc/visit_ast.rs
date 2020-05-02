@@ -64,7 +64,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     pub fn visit(mut self, krate: &'tcx hir::Crate) -> Module<'tcx> {
         let mut module = self.visit_mod_contents(
-            krate.item.span,
+            self.cx.tcx.hir().span(hir::CRATE_HIR_ID),
             krate.item.attrs,
             &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
@@ -99,7 +99,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             attrs: &item.attrs,
             generics,
             fields: sd.fields(),
-            whence: item.span,
+            whence: self.cx.tcx.hir().span(item.hir_id),
         }
     }
 
@@ -120,7 +120,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             attrs: &item.attrs,
             generics,
             fields: sd.fields(),
-            whence: item.span,
+            whence: self.cx.tcx.hir().span(item.hir_id),
         }
     }
 
@@ -149,7 +149,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             generics,
             attrs: &it.attrs,
             id: it.hir_id,
-            whence: it.span,
+            whence: self.cx.tcx.hir().span(it.hir_id),
         }
     }
 
@@ -208,7 +208,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     kind,
                     helpers,
                     attrs: &item.attrs,
-                    whence: item.span,
+                    whence: self.cx.tcx.hir().span(item.hir_id),
                 });
             }
             None => {
@@ -218,7 +218,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     attrs: &item.attrs,
                     decl,
                     name,
-                    whence: item.span,
+                    whence: self.cx.tcx.hir().span(item.hir_id),
                     generics,
                     header,
                     body,
@@ -401,7 +401,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     path: orig_name.map(|x| x.to_string()),
                     vis: &item.vis,
                     attrs: &item.attrs,
-                    whence: item.span,
+                    whence: self.cx.tcx.hir().span(item.hir_id),
                 })
             }
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
@@ -443,12 +443,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     attrs: &item.attrs,
                     path,
                     glob: is_glob,
-                    whence: item.span,
+                    whence: self.cx.tcx.hir().span(item.hir_id),
                 });
             }
             hir::ItemKind::Mod(ref m) => {
                 om.mods.push(self.visit_mod_contents(
-                    item.span,
+                    self.cx.tcx.hir().span(item.hir_id),
                     &item.attrs,
                     &item.vis,
                     item.hir_id,
@@ -475,7 +475,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     name: ident.name,
                     id: item.hir_id,
                     attrs: &item.attrs,
-                    whence: item.span,
+                    whence: self.cx.tcx.hir().span(item.hir_id),
                     vis: &item.vis,
                 };
                 om.typedefs.push(t);
@@ -486,7 +486,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     name: ident.name,
                     id: item.hir_id,
                     attrs: &item.attrs,
-                    whence: item.span,
+                    whence: self.cx.tcx.hir().span(item.hir_id),
                     vis: &item.vis,
                 };
                 om.opaque_tys.push(t);
@@ -499,7 +499,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     id: item.hir_id,
                     name: ident.name,
                     attrs: &item.attrs,
-                    whence: item.span,
+                    whence: self.cx.tcx.hir().span(item.hir_id),
                     vis: &item.vis,
                 };
                 om.statics.push(s);
@@ -514,7 +514,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         id: item.hir_id,
                         name: ident.name,
                         attrs: &item.attrs,
-                        whence: item.span,
+                        whence: self.cx.tcx.hir().span(item.hir_id),
                         vis: &item.vis,
                     };
                     om.constants.push(s);
@@ -531,7 +531,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     bounds,
                     id: item.hir_id,
                     attrs: &item.attrs,
-                    whence: item.span,
+                    whence: self.cx.tcx.hir().span(item.hir_id),
                     vis: &item.vis,
                 };
                 om.traits.push(t);
@@ -543,7 +543,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     bounds,
                     id: item.hir_id,
                     attrs: &item.attrs,
-                    whence: item.span,
+                    whence: self.cx.tcx.hir().span(item.hir_id),
                     vis: &item.vis,
                 };
                 om.trait_aliases.push(t);
@@ -576,7 +576,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         items,
                         attrs: &item.attrs,
                         id: item.hir_id,
-                        whence: item.span,
+                        whence: self.cx.tcx.hir().span(item.hir_id),
                         vis: &item.vis,
                     };
                     om.impls.push(i);
@@ -602,7 +602,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             kind: &item.kind,
             vis: &item.vis,
             attrs: &item.attrs,
-            whence: item.span,
+            whence: self.cx.tcx.hir().span(item.hir_id),
         });
     }
 

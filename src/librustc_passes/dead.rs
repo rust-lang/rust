@@ -577,6 +577,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if self.should_warn_about_item(item) {
             // For most items, we want to highlight its identifier
+            let span = self.tcx.hir().span(item.hir_id);
             let span = match item.kind {
                 hir::ItemKind::Fn(..)
                 | hir::ItemKind::Mod(..)
@@ -591,13 +592,13 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                     // (and thus has a source_callee set).
                     // We should probably annotate ident.span with the macro
                     // context, but that's a larger change.
-                    if item.span.source_callee().is_some() {
-                        self.tcx.sess.source_map().guess_head_span(item.span)
+                    if span.source_callee().is_some() {
+                        self.tcx.sess.source_map().guess_head_span(span)
                     } else {
                         item.ident.span
                     }
                 }
-                _ => item.span,
+                _ => span,
             };
             let participle = match item.kind {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
@@ -626,7 +627,8 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem<'tcx>) {
         if self.should_warn_about_foreign_item(fi) {
-            self.warn_dead_code(fi.hir_id, fi.span, fi.ident.name, "used");
+            let span = self.tcx.hir().span(fi.hir_id);
+            self.warn_dead_code(fi.hir_id, span, fi.ident.name, "used");
         }
         intravisit::walk_foreign_item(self, fi);
     }
@@ -643,25 +645,22 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         match impl_item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
                 if !self.symbol_is_live(impl_item.hir_id) {
-                    self.warn_dead_code(
-                        impl_item.hir_id,
-                        impl_item.span,
-                        impl_item.ident.name,
-                        "used",
-                    );
+                    let span = self.tcx.hir().span(impl_item.hir_id);
+                    self.warn_dead_code(impl_item.hir_id, span, impl_item.ident.name, "used");
                 }
                 self.visit_nested_body(body_id)
             }
             hir::ImplItemKind::Fn(_, body_id) => {
                 if !self.symbol_is_live(impl_item.hir_id) {
-                    // FIXME(66095): Because impl_item.span is annotated with things
+                    // FIXME(66095): Because impl_item's span is annotated with things
                     // like expansion data, and ident.span isn't, we use the
                     // def_span method if it's part of a macro invocation
                     // (and thus has a source_callee set).
                     // We should probably annotate ident.span with the macro
                     // context, but that's a larger change.
-                    let span = if impl_item.span.source_callee().is_some() {
-                        self.tcx.sess.source_map().guess_head_span(impl_item.span)
+                    let span = self.tcx.hir().span(impl_item.hir_id);
+                    let span = if span.source_callee().is_some() {
+                        self.tcx.sess.source_map().guess_head_span(span)
                     } else {
                         impl_item.ident.span
                     };

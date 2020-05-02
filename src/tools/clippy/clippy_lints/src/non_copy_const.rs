@@ -145,7 +145,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx Item<'_>) {
         if let ItemKind::Const(hir_ty, ..) = &it.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            verify_ty_bound(cx, ty, Source::Item { item: it.span });
+            verify_ty_bound(cx, ty, Source::Item { item: cx.tcx.hir().span(it.hir_id) });
         }
     }
 
@@ -157,7 +157,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                 ty,
                 Source::Assoc {
                     ty: hir_ty.span,
-                    item: trait_item.span,
+                    item: cx.tcx.hir().span(trait_item.hir_id),
                 },
             );
         }
@@ -175,7 +175,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                     ty,
                     Source::Assoc {
                         ty: hir_ty.span,
-                        item: impl_item.span,
+                        item: cx.tcx.hir().span(impl_item.hir_id),
                     },
                 );
             }

@@ -12,7 +12,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
 
 struct Context<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -72,7 +71,7 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
 }
 
 impl<'a, 'tcx> Context<'a, 'tcx> {
-    fn register(&mut self, name: Symbol, span: Span, hir_id: hir::HirId) {
+    fn register(&mut self, name: Symbol, hir_id: hir::HirId) {
         if let Some(&item) = WEAK_ITEMS_REFS.get(&name) {
             if self.items.require(item).is_err() {
                 self.items.missing.push(item);
@@ -88,6 +87,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                 }
             }
         } else {
+            let span = self.tcx.hir().span(hir_id);
             struct_span_err!(self.tcx.sess, span, E0264, "unknown external lang item: `{}`", name)
                 .emit();
         }
@@ -103,7 +103,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem<'_>) {
         if let Some((lang_item, _)) = hir::lang_items::extract(&i.attrs) {
-            self.register(lang_item, i.span, i.hir_id);
+            self.register(lang_item, i.hir_id);
         }
         intravisit::walk_foreign_item(self, i)
     }

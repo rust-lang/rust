@@ -51,11 +51,11 @@ impl CheckAttrVisitor<'tcx> {
         &self,
         hir_id: HirId,
         attrs: &'hir [Attribute],
-        span: &Span,
         target: Target,
         item: Option<&Item<'_>>,
     ) {
         let mut is_valid = true;
+        let span = &self.tcx.hir().span(hir_id);
         for attr in attrs {
             is_valid &= if attr.check_name(sym::inline) {
                 self.check_inline(hir_id, attr, span, target)
@@ -416,25 +416,25 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let target = Target::from_item(item);
-        self.check_attributes(item.hir_id, item.attrs, &item.span, target, Some(item));
+        self.check_attributes(item.hir_id, item.attrs, target, Some(item));
         intravisit::walk_item(self, item)
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) {
         let target = Target::from_trait_item(trait_item);
-        self.check_attributes(trait_item.hir_id, &trait_item.attrs, &trait_item.span, target, None);
+        self.check_attributes(trait_item.hir_id, &trait_item.attrs, target, None);
         intravisit::walk_trait_item(self, trait_item)
     }
 
     fn visit_foreign_item(&mut self, f_item: &'tcx hir::ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
-        self.check_attributes(f_item.hir_id, &f_item.attrs, &f_item.span, target, None);
+        self.check_attributes(f_item.hir_id, &f_item.attrs, target, None);
         intravisit::walk_foreign_item(self, f_item)
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let target = target_from_impl_item(self.tcx, impl_item);
-        self.check_attributes(impl_item.hir_id, &impl_item.attrs, &impl_item.span, target, None);
+        self.check_attributes(impl_item.hir_id, &impl_item.attrs, target, None);
         intravisit::walk_impl_item(self, impl_item)
     }
 

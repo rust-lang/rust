@@ -223,14 +223,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let kind = self.lower_item_kind(i.span, i.id, &mut ident, attrs, &mut vis, &i.kind);
 
-        Some(hir::Item {
-            hir_id: self.lower_node_id(i.id, i.span),
-            ident,
-            attrs,
-            kind,
-            vis,
-            span: i.span,
-        })
+        Some(hir::Item { hir_id: self.lower_node_id(i.id, i.span), ident, attrs, kind, vis })
     }
 
     fn lower_item_kind(
@@ -511,14 +504,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
                         let vis = this.rebuild_vis(&vis);
 
-                        this.insert_item(hir::Item {
-                            hir_id: new_id,
-                            ident,
-                            attrs,
-                            kind,
-                            vis,
-                            span,
-                        });
+                        this.insert_item(hir::Item { hir_id: new_id, ident, attrs, kind, vis });
                     });
                 }
 
@@ -580,14 +566,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let kind =
                             this.lower_use_tree(use_tree, &prefix, id, &mut vis, &mut ident, attrs);
 
-                        this.insert_item(hir::Item {
-                            hir_id: new_hir_id,
-                            ident,
-                            attrs,
-                            kind,
-                            vis,
-                            span: use_tree.span,
-                        });
+                        this.insert_item(hir::Item { hir_id: new_hir_id, ident, attrs, kind, vis });
                     });
                 }
 
@@ -683,7 +662,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),
             },
             vis: self.lower_visibility(&i.vis, None),
-            span: i.span,
         }
     }
 
@@ -790,7 +768,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             attrs: self.lower_attrs(&i.attrs),
             generics,
             kind,
-            span: i.span,
         }
     }
 
@@ -876,7 +853,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             vis: self.lower_visibility(&i.vis, None),
             defaultness,
             kind,
-            span: i.span,
         }
     }
 

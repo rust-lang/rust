@@ -496,10 +496,11 @@ impl Visitor<'tcx> for Checker<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+        let item_span = self.tcx.hir().span(item.hir_id);
         match item.kind {
             hir::ItemKind::ExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
-                if item.span.is_dummy() {
+                if item_span.is_dummy() {
                     return;
                 }
 
@@ -509,7 +510,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     None => return,
                 };
                 let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-                self.tcx.check_stability(def_id, Some(item.hir_id), item.span);
+                self.tcx.check_stability(def_id, Some(item.hir_id), item_span);
             }
 
             // For implementations of traits, check the stability of each item
@@ -519,6 +520,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                 if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
                     for impl_item_ref in items {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
+                        let impl_item_span = self.tcx.hir().span(impl_item.hir_id);
                         let trait_item_def_id = self
                             .tcx
                             .associated_items(trait_did)
@@ -527,7 +529,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                             .map(|item| item.def_id);
                         if let Some(def_id) = trait_item_def_id {
                             // Pass `None` to skip deprecation warnings.
-                            self.tcx.check_stability(def_id, None, impl_item.span);
+                            self.tcx.check_stability(def_id, None, impl_item_span);
                         }
                     }
                 }
@@ -544,7 +546,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     feature_err(
                         &self.tcx.sess.parse_sess,
                         sym::untagged_unions,
-                        item.span,
+                        item_span,
                         "unions with `Drop` implementations are unstable",
                     )
                     .emit();
@@ -554,7 +556,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                         feature_err(
                             &self.tcx.sess.parse_sess,
                             sym::untagged_unions,
-                            item.span,
+                            item_span,
                             "unions with non-`Copy` fields are unstable",
                         )
                         .emit();

@@ -214,10 +214,13 @@ impl CodegenCx<'ll, 'tcx> {
             let llty = self.layout_of(ty).llvm_type(self);
             // FIXME: refactor this to work without accessing the HIR
             let (g, attrs) = match self.tcx.hir().get(id) {
-                Node::Item(&hir::Item { attrs, span, kind: hir::ItemKind::Static(..), .. }) => {
+                Node::Item(&hir::Item {
+                    attrs, hir_id, kind: hir::ItemKind::Static(..), ..
+                }) => {
                     let sym_str = sym.as_str();
                     if let Some(g) = self.get_declared_value(&sym_str) {
                         if self.val_ty(g) != self.type_ptr_to(llty) {
+                            let span = self.tcx.hir().span(hir_id);
                             span_bug!(span, "Conflicting types for static");
                         }
                     }
@@ -235,11 +238,12 @@ impl CodegenCx<'ll, 'tcx> {
 
                 Node::ForeignItem(&hir::ForeignItem {
                     ref attrs,
-                    span,
+                    hir_id,
                     kind: hir::ForeignItemKind::Static(..),
                     ..
                 }) => {
                     let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
+                    let span = self.tcx.hir().span(hir_id);
                     (check_and_apply_linkage(&self, &fn_attrs, ty, sym, span), &**attrs)
                 }
 

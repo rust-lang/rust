@@ -837,12 +837,13 @@ impl EncodeContext<'tcx> {
 
         let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
         let ast_item = tcx.hir().expect_trait_item(hir_id);
+        let ast_item_span = tcx.hir().span(hir_id);
         let trait_item = tcx.associated_item(def_id);
 
         let container = match trait_item.defaultness {
             hir::Defaultness::Default { has_value: true } => AssocContainer::TraitWithDefault,
             hir::Defaultness::Default { has_value: false } => AssocContainer::TraitRequired,
-            hir::Defaultness::Final => span_bug!(ast_item.span, "traits cannot have final items"),
+            hir::Defaultness::Final => span_bug!(ast_item_span, "traits cannot have final items"),
         };
 
         record!(self.tables.kind[def_id] <- match trait_item.kind {
@@ -886,7 +887,7 @@ impl EncodeContext<'tcx> {
             ty::AssocKind::Type => EntryKind::AssocType(container),
         });
         record!(self.tables.visibility[def_id] <- trait_item.vis);
-        record!(self.tables.span[def_id] <- ast_item.span);
+        record!(self.tables.span[def_id] <- ast_item_span);
         record!(self.tables.attributes[def_id] <- ast_item.attrs);
         self.encode_ident_span(def_id, ast_item.ident);
         self.encode_stability(def_id);
@@ -926,20 +927,21 @@ impl EncodeContext<'tcx> {
 
         let hir_id = self.tcx.hir().as_local_hir_id(def_id.expect_local());
         let ast_item = self.tcx.hir().expect_impl_item(hir_id);
+        let ast_item_span = self.tcx.hir().span(hir_id);
         let impl_item = self.tcx.associated_item(def_id);
 
         let container = match impl_item.defaultness {
             hir::Defaultness::Default { has_value: true } => AssocContainer::ImplDefault,
             hir::Defaultness::Final => AssocContainer::ImplFinal,
             hir::Defaultness::Default { has_value: false } => {
-                span_bug!(ast_item.span, "impl items always have values (currently)")
+                span_bug!(ast_item_span, "impl items always have values (currently)")
             }
         };
 
         record!(self.tables.kind[def_id] <- match impl_item.kind {
             ty::AssocKind::Const => {
                 if let hir::ImplItemKind::Const(_, body_id) = ast_item.kind {
-                    let qualifs = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
+                    let qualifs = self.tcx.at(ast_item_span).mir_const_qualif(def_id);
 
                     EntryKind::AssocConst(
                         container,
@@ -968,7 +970,7 @@ impl EncodeContext<'tcx> {
             ty::AssocKind::Type => EntryKind::AssocType(container)
         });
         record!(self.tables.visibility[def_id] <- impl_item.vis);
-        record!(self.tables.span[def_id] <- ast_item.span);
+        record!(self.tables.span[def_id] <- ast_item_span);
         record!(self.tables.attributes[def_id] <- ast_item.attrs);
         self.encode_ident_span(def_id, impl_item.ident);
         self.encode_stability(def_id);
@@ -1081,12 +1083,13 @@ impl EncodeContext<'tcx> {
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
 
         self.encode_ident_span(def_id, item.ident);
+        let item_span = tcx.hir().span(item.hir_id);
 
         record!(self.tables.kind[def_id] <- match item.kind {
             hir::ItemKind::Static(_, hir::Mutability::Mut, _) => EntryKind::MutStatic,
             hir::ItemKind::Static(_, hir::Mutability::Not, _) => EntryKind::ImmStatic,
             hir::ItemKind::Const(_, body_id) => {
-                let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
+                let qualifs = self.tcx.at(item_span).mir_const_qualif(def_id);
                 EntryKind::Const(
                     qualifs,
                     self.encode_rendered_const_for_body(body_id)
@@ -1157,7 +1160,7 @@ impl EncodeContext<'tcx> {
                 let coerce_unsized_info =
                     trait_ref.and_then(|t| {
                         if Some(t.def_id) == self.tcx.lang_items().coerce_unsized_trait() {
-                            Some(self.tcx.at(item.span).coerce_unsized_info(def_id))
+                            Some(self.tcx.at(item_span).coerce_unsized_info(def_id))
                         } else {
                             None
                         }
@@ -1190,7 +1193,7 @@ impl EncodeContext<'tcx> {
         });
         record!(self.tables.visibility[def_id] <-
             ty::Visibility::from_hir(&item.vis, item.hir_id, tcx));
-        record!(self.tables.span[def_id] <- item.span);
+        record!(self.tables.span[def_id] <- item_span);
         record!(self.tables.attributes[def_id] <- item.attrs);
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
@@ -1530,6 +1533,7 @@ impl EncodeContext<'tcx> {
 
     fn encode_info_for_foreign_item(&mut self, def_id: DefId, nitem: &hir::ForeignItem<'_>) {
         let tcx = self.tcx;
+        let nitem_span = tcx.hir().span(nitem.hir_id);
 
         debug!("EncodeContext::encode_info_for_foreign_item({:?})", def_id);
 
@@ -1552,7 +1556,7 @@ impl EncodeContext<'tcx> {
         });
         record!(self.tables.visibility[def_id] <-
             ty::Visibility::from_hir(&nitem.vis, nitem.hir_id, self.tcx));
-        record!(self.tables.span[def_id] <- nitem.span);
+        record!(self.tables.span[def_id] <- nitem_span);
         record!(self.tables.attributes[def_id] <- nitem.attrs);
         self.encode_ident_span(def_id, nitem.ident);
         self.encode_stability(def_id);

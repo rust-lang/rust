@@ -81,7 +81,7 @@ declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item<'_>) {
-        if rustc_middle::lint::in_external_macro(cx.sess(), it.span) || is_executable(cx) {
+        if rustc_middle::lint::in_external_macro(cx.sess(), cx.tcx.hir().span(it.hir_id)) || is_executable(cx) {
             return;
         }
 
@@ -91,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         match it.kind {
             hir::ItemKind::Fn(..) => {
                 let desc = "a function";
-                check_missing_inline_attrs(cx, &it.attrs, it.span, desc);
+                check_missing_inline_attrs(cx, &it.attrs, cx.tcx.hir().span(it.hir_id), desc);
             },
             hir::ItemKind::Trait(ref _is_auto, ref _unsafe, ref _generics, ref _bounds, trait_items) => {
                 // note: we need to check if the trait is exported so we can't use
@@ -106,7 +106,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                                 // an impl is not provided
                                 let desc = "a default trait method";
                                 let item = cx.tcx.hir().expect_trait_item(tit.id.hir_id);
-                                check_missing_inline_attrs(cx, &item.attrs, item.span, desc);
+                                check_missing_inline_attrs(cx, &item.attrs, cx.tcx.hir().span(item.hir_id), desc);
                             }
                         },
                     }
@@ -131,7 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         use rustc_middle::ty::{ImplContainer, TraitContainer};
-        if rustc_middle::lint::in_external_macro(cx.sess(), impl_item.span) || is_executable(cx) {
+        if rustc_middle::lint::in_external_macro(cx.sess(), cx.tcx.hir().span(impl_item.hir_id)) || is_executable(cx) {
             return;
         }
 
@@ -159,6 +159,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             }
         }
 
-        check_missing_inline_attrs(cx, &impl_item.attrs, impl_item.span, desc);
+        check_missing_inline_attrs(cx, &impl_item.attrs, cx.tcx.hir().span(impl_item.hir_id), desc);
     }
 }

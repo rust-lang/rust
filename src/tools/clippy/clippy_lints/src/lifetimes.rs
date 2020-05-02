@@ -79,7 +79,7 @@ declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, ref generics, id) = item.kind {
-            check_fn_inner(cx, &sig.decl, Some(id), generics, item.span, true);
+            check_fn_inner(cx, &sig.decl, Some(id), generics, cx.tcx.hir().span(item.hir_id), true);
         }
     }
 
@@ -91,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
                 &sig.decl,
                 Some(id),
                 &item.generics,
-                item.span,
+                cx.tcx.hir().span(item.hir_id),
                 report_extra_lifetimes,
             );
         }
@@ -103,7 +103,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
                 TraitFn::Required(_) => None,
                 TraitFn::Provided(id) => Some(id),
             };
-            check_fn_inner(cx, &sig.decl, body, &item.generics, item.span, true);
+            check_fn_inner(cx, &sig.decl, body, &item.generics, cx.tcx.hir().span(item.hir_id), true);
         }
     }
 }

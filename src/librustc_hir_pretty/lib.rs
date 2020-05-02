@@ -466,8 +466,9 @@ impl<'a> State<'a> {
     }
 
     pub fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
+        let item_span = self.span(item.hir_id);
         self.hardbreak_if_not_bol();
-        self.maybe_print_comment(item.span.lo());
+        self.maybe_print_comment(item_span.lo());
         self.print_outer_attributes(&item.attrs);
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, ref arg_names, ref generics) => {
@@ -574,8 +575,9 @@ impl<'a> State<'a> {
 
     /// Pretty-print an item
     pub fn print_item(&mut self, item: &hir::Item<'_>) {
+        let span = self.span(item.hir_id);
         self.hardbreak_if_not_bol();
-        self.maybe_print_comment(item.span.lo());
+        self.maybe_print_comment(span.lo());
         self.print_outer_attributes(&item.attrs);
         self.ann.pre(self, AnnNode::Item(item));
         match item.kind {
@@ -662,14 +664,14 @@ impl<'a> State<'a> {
                 self.nbsp();
                 self.bopen();
                 self.print_mod(_mod, &item.attrs);
-                self.bclose(item.span);
+                self.bclose(span);
             }
             hir::ItemKind::ForeignMod(ref nmod) => {
                 self.head("extern");
                 self.word_nbsp(nmod.abi.to_string());
                 self.bopen();
                 self.print_foreign_mod(nmod, &item.attrs);
-                self.bclose(item.span);
+                self.bclose(span);
             }
             hir::ItemKind::GlobalAsm(ref ga) => {
                 self.head(visibility_qualified(&item.vis, "global asm"));
@@ -698,15 +700,15 @@ impl<'a> State<'a> {
                 });
             }
             hir::ItemKind::Enum(ref enum_definition, ref params) => {
-                self.print_enum_def(enum_definition, params, item.ident.name, item.span, &item.vis);
+                self.print_enum_def(enum_definition, params, item.ident.name, span, &item.vis);
             }
             hir::ItemKind::Struct(ref struct_def, ref generics) => {
                 self.head(visibility_qualified(&item.vis, "struct"));
-                self.print_struct(struct_def, generics, item.ident.name, item.span, true);
+                self.print_struct(struct_def, generics, item.ident.name, span, true);
             }
             hir::ItemKind::Union(ref struct_def, ref generics) => {
                 self.head(visibility_qualified(&item.vis, "union"));
-                self.print_struct(struct_def, generics, item.ident.name, item.span, true);
+                self.print_struct(struct_def, generics, item.ident.name, span, true);
             }
             hir::ItemKind::Impl {
                 unsafety,
@@ -753,7 +755,7 @@ impl<'a> State<'a> {
                 for impl_item in items {
                     self.ann.nested(self, Nested::ImplItem(impl_item.id));
                 }
-                self.bclose(item.span);
+                self.bclose(span);
             }
             hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, trait_items) => {
                 self.head("");
@@ -780,7 +782,7 @@ impl<'a> State<'a> {
                 for trait_item in trait_items {
                     self.ann.nested(self, Nested::TraitItem(trait_item.id));
                 }
-                self.bclose(item.span);
+                self.bclose(span);
             }
             hir::ItemKind::TraitAlias(ref generics, ref bounds) => {
                 self.head("");
@@ -961,9 +963,10 @@ impl<'a> State<'a> {
     }
 
     pub fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
+        let span = self.span(ti.hir_id);
         self.ann.pre(self, AnnNode::SubItem(ti.hir_id));
         self.hardbreak_if_not_bol();
-        self.maybe_print_comment(ti.span.lo());
+        self.maybe_print_comment(span.lo());
         self.print_outer_attributes(&ti.attrs);
         match ti.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
@@ -1000,9 +1003,10 @@ impl<'a> State<'a> {
     }
 
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem<'_>) {
+        let span = self.span(ii.hir_id);
         self.ann.pre(self, AnnNode::SubItem(ii.hir_id));
         self.hardbreak_if_not_bol();
-        self.maybe_print_comment(ii.span.lo());
+        self.maybe_print_comment(span.lo());
         self.print_outer_attributes(&ii.attrs);
         self.print_defaultness(ii.defaultness);
 

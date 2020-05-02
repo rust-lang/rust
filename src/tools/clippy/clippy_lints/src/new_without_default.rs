@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
             for assoc_item in items {
                 if let hir::AssocItemKind::Fn { has_self: false } = assoc_item.kind {
                     let impl_item = cx.tcx.hir().impl_item(assoc_item.id);
-                    if in_external_macro(cx.sess(), impl_item.span) {
+                    if in_external_macro(cx.sess(), cx.tcx.hir().span(impl_item.hir_id)) {
                         return;
                     }
                     if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
@@ -126,7 +126,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                         cx,
                                         NEW_WITHOUT_DEFAULT,
                                         id,
-                                        impl_item.span,
+                                        cx.tcx.hir().span(impl_item.hir_id),
                                         &format!(
                                             "you should consider adding a `Default` implementation for `{}`",
                                             self_ty
@@ -134,7 +134,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                         |diag| {
                                             diag.suggest_prepend_item(
                                                 cx,
-                                                item.span,
+                                                cx.tcx.hir().span(item.hir_id),
                                                 "try this",
                                                 &create_new_without_default_suggest_msg(self_ty),
                                                 Applicability::MaybeIncorrect,

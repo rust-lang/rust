@@ -1989,6 +1989,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                 for item in m.items {
                     let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
                     let own_counts = generics.own_counts();
+                    let item_span = tcx.hir().span(item.hir_id);
                     if generics.params.len() - own_counts.lifetimes != 0 {
                         let (kinds, kinds_pl, egs) = match (own_counts.types, own_counts.consts) {
                             (_, 0) => ("type", "types", Some("u32")),
@@ -1999,12 +2000,12 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                         };
                         struct_span_err!(
                             tcx.sess,
-                            item.span,
+                            item_span,
                             E0044,
                             "foreign items may not have {} parameters",
                             kinds,
                         )
-                        .span_label(item.span, &format!("can't have {} parameters", kinds))
+                        .span_label(item_span, &format!("can't have {} parameters", kinds))
                         .help(
                             // FIXME: once we start storing spans for type arguments, turn this
                             // into a suggestion.
@@ -2019,7 +2020,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                     }
 
                     if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.kind {
-                        require_c_abi_if_c_variadic(tcx, fn_decl, m.abi, item.span);
+                        require_c_abi_if_c_variadic(tcx, fn_decl, m.abi, item_span);
                     }
                 }
             }
@@ -2076,15 +2077,16 @@ fn report_forbidden_specialization(
     impl_item: &hir::ImplItem<'_>,
     parent_impl: DefId,
 ) {
+    let impl_item_span = tcx.hir().span(impl_item.hir_id);
     let mut err = struct_span_err!(
         tcx.sess,
-        impl_item.span,
+        impl_item_span,
         E0520,
         "`{}` specializes an item from a parent `impl`, but \
          that item is not marked `default`",
         impl_item.ident
     );
-    err.span_label(impl_item.span, format!("cannot specialize default item `{}`", impl_item.ident));
+    err.span_label(impl_item_span, format!("cannot specialize default item `{}`", impl_item.ident));
 
     match tcx.span_of_impl(parent_impl) {
         Ok(span) => {
@@ -2187,7 +2189,7 @@ fn check_impl_items_against_trait<'tcx>(
         ty::ImplPolarity::Reservation | ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
             if let [first_item_ref, ..] = impl_item_refs {
-                let first_item_span = tcx.hir().impl_item(first_item_ref.id).span;
+                let first_item_span = tcx.hir().span(tcx.hir().impl_item(first_item_ref.id).hir_id);
                 struct_span_err!(
                     tcx.sess,
                     first_item_span,
@@ -2222,6 +2224,7 @@ fn check_impl_items_against_trait<'tcx>(
 
         // Check that impl definition matches trait definition
         if let Some(ty_trait_item) = ty_trait_item {
+            let impl_item_span = tcx.hir().span(impl_item.hir_id);
             match impl_item.kind {
                 hir::ImplItemKind::Const(..) => {
                     // Find associated const definition.
@@ -2229,21 +2232,21 @@ fn check_impl_items_against_trait<'tcx>(
                         compare_const_impl(
                             tcx,
                             &ty_impl_item,
-                            impl_item.span,
+                            impl_item_span,
                             &ty_trait_item,
                             impl_trait_ref,
                         );
                     } else {
                         let mut err = struct_span_err!(
                             tcx.sess,
-                            impl_item.span,
+                            impl_item_span,
                             E0323,
                             "item `{}` is an associated const, \
                              which doesn't match its trait `{}`",
                             ty_impl_item.ident,
                             impl_trait_ref.print_only_trait_path()
                         );
-                        err.span_label(impl_item.span, "does not match trait");
+                        err.span_label(impl_item_span, "does not match trait");
                         // We can only get the spans from local trait definition
                         // Same for E0324 and E0325
                         if let Some(trait_span) = tcx.hir().span_if_local(ty_trait_item.def_id) {
@@ -2258,7 +2261,7 @@ fn check_impl_items_against_trait<'tcx>(
                         compare_impl_method(
                             tcx,
                             &ty_impl_item,
-                            impl_item.span,
+                            impl_item_span,
                             &ty_trait_item,
                             impl_trait_ref,
                             opt_trait_span,
@@ -2266,14 +2269,14 @@ fn check_impl_items_against_trait<'tcx>(
                     } else {
                         let mut err = struct_span_err!(
                             tcx.sess,
-                            impl_item.span,
+                            impl_item_span,
                             E0324,
                             "item `{}` is an associated method, \
                              which doesn't match its trait `{}`",
                             ty_impl_item.ident,
                             impl_trait_ref.print_only_trait_path()
                         );
-                        err.span_label(impl_item.span, "does not match trait");
+                        err.span_label(impl_item_span, "does not match trait");
                         if let Some(trait_span) = opt_trait_span {
                             err.span_label(trait_span, "item in trait");
                         }
@@ -2286,7 +2289,7 @@ fn check_impl_items_against_trait<'tcx>(
                         compare_ty_impl(
                             tcx,
                             &ty_impl_item,
-                            impl_item.span,
+                            impl_item_span,
                             &ty_trait_item,
                             impl_trait_ref,
                             opt_trait_span,
@@ -2294,14 +2297,14 @@ fn check_impl_items_against_trait<'tcx>(
                     } else {
                         let mut err = struct_span_err!(
                             tcx.sess,
-                            impl_item.span,
+                            impl_item_span,
                             E0325,
                             "item `{}` is an associated type, \
                              which doesn't match its trait `{}`",
                             ty_impl_item.ident,
                             impl_trait_ref.print_only_trait_path()
                         );
-                        err.span_label(impl_item.span, "does not match trait");
+                        err.span_label(impl_item_span, "does not match trait");
                         if let Some(trait_span) = opt_trait_span {
                             err.span_label(trait_span, "item in trait");
                         }

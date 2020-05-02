@@ -48,7 +48,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 .unwrap_or_else(|| icx.to_ty(ty)),
             TraitItemKind::Type(_, Some(ref ty)) => icx.to_ty(ty),
             TraitItemKind::Type(_, None) => {
-                span_bug!(item.span, "associated type missing default");
+                let item_span = tcx.hir().span(item.hir_id);
+                span_bug!(item_span, "associated type missing default");
             }
         },
 
@@ -66,7 +67,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             ImplItemKind::TyAlias(ref ty) => {
                 if tcx.impl_trait_ref(tcx.hir().get_parent_did(hir_id).to_def_id()).is_none() {
-                    report_assoc_ty_on_inherent_impl(tcx, item.span);
+                    let item_span = tcx.hir().span(item.hir_id);
+                    report_assoc_ty_on_inherent_impl(tcx, item_span);
                 }
 
                 icx.to_ty(ty)
@@ -148,8 +150,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 | ItemKind::GlobalAsm(..)
                 | ItemKind::ExternCrate(..)
                 | ItemKind::Use(..) => {
+                    let item_span = tcx.hir().span(item.hir_id);
                     span_bug!(
-                        item.span,
+                        item_span,
                         "compute_type_of_item: unexpected item type: {:?}",
                         item.kind
                     );

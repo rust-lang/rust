@@ -50,6 +50,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
         };
 
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
+        let item_span = self.tcx.hir().span(item.hir_id);
         let self_ty = self.tcx.type_of(def_id);
         let lang_items = self.tcx.lang_items();
         match self_ty.kind {
@@ -69,7 +70,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "bool",
                     "bool",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Char => {
@@ -79,7 +80,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "char",
                     "char",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Str => {
@@ -89,7 +90,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     lang_items.str_alloc_impl(),
                     "str",
                     "str",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Slice(slice_item) if slice_item == self.tcx.types.u8 => {
@@ -99,7 +100,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     lang_items.slice_u8_alloc_impl(),
                     "slice_u8",
                     "[u8]",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Slice(_) => {
@@ -109,7 +110,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     lang_items.slice_alloc_impl(),
                     "slice",
                     "[T]",
-                    item.span,
+                    item_span,
                 );
             }
             ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Not })
@@ -121,7 +122,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "const_slice_ptr",
                     "*const [T]",
-                    item.span,
+                    item_span,
                 );
             }
             ty::RawPtr(ty::TypeAndMut { ty: inner, mutbl: hir::Mutability::Mut })
@@ -133,7 +134,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "mut_slice_ptr",
                     "*mut [T]",
-                    item.span,
+                    item_span,
                 );
             }
             ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Not }) => {
@@ -143,7 +144,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "const_ptr",
                     "*const T",
-                    item.span,
+                    item_span,
                 );
             }
             ty::RawPtr(ty::TypeAndMut { ty: _, mutbl: hir::Mutability::Mut }) => {
@@ -153,7 +154,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "mut_ptr",
                     "*mut T",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Int(ast::IntTy::I8) => {
@@ -163,7 +164,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "i8",
                     "i8",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Int(ast::IntTy::I16) => {
@@ -173,7 +174,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "i16",
                     "i16",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Int(ast::IntTy::I32) => {
@@ -183,7 +184,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "i32",
                     "i32",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Int(ast::IntTy::I64) => {
@@ -193,7 +194,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "i64",
                     "i64",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Int(ast::IntTy::I128) => {
@@ -203,7 +204,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "i128",
                     "i128",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Int(ast::IntTy::Isize) => {
@@ -213,7 +214,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "isize",
                     "isize",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Uint(ast::UintTy::U8) => {
@@ -223,7 +224,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "u8",
                     "u8",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Uint(ast::UintTy::U16) => {
@@ -233,7 +234,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "u16",
                     "u16",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Uint(ast::UintTy::U32) => {
@@ -243,7 +244,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "u32",
                     "u32",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Uint(ast::UintTy::U64) => {
@@ -253,7 +254,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "u64",
                     "u64",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Uint(ast::UintTy::U128) => {
@@ -263,7 +264,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "u128",
                     "u128",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Uint(ast::UintTy::Usize) => {
@@ -273,7 +274,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "usize",
                     "usize",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Float(ast::FloatTy::F32) => {
@@ -283,7 +284,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     lang_items.f32_runtime_impl(),
                     "f32",
                     "f32",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Float(ast::FloatTy::F64) => {
@@ -293,7 +294,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     lang_items.f64_runtime_impl(),
                     "f64",
                     "f64",
-                    item.span,
+                    item_span,
                 );
             }
             ty::Error(_) => {}
@@ -329,14 +330,15 @@ impl InherentCollect<'tcx> {
             let vec = self.impls_map.inherent_impls.entry(def_id).or_default();
             vec.push(impl_def_id.to_def_id());
         } else {
+            let item_span = self.tcx.hir().span(item.hir_id);
             struct_span_err!(
                 self.tcx.sess,
-                item.span,
+                item_span,
                 E0116,
                 "cannot define inherent `impl` for a type outside of the crate \
                               where the type is defined"
             )
-            .span_label(item.span, "impl for type defined outside of crate.")
+            .span_label(item_span, "impl for type defined outside of crate.")
             .note("define and implement a trait or new type instead")
             .emit();
         }

@@ -234,9 +234,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
         let attr = must_use_attr(&item.attrs);
         if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
+            let item_span = cx.tcx.hir().span(item.hir_id);
             if let Some(attr) = attr {
-                let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
+                let fn_header_span = item_span.with_hi(sig.decl.output.span().hi());
+                check_needless_must_use(cx, &sig.decl, item.hir_id, item_span, fn_header_span, attr);
                 return;
             }
             if cx.access_levels.is_exported(item.hir_id)
@@ -247,9 +248,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
                     cx,
                     &sig.decl,
                     cx.tcx.hir().body(*body_id),
-                    item.span,
+                    item_span,
                     item.hir_id,
-                    item.span.with_hi(sig.decl.output.span().hi()),
+                    item_span.with_hi(sig.decl.output.span().hi()),
                     "this function could have a `#[must_use]` attribute",
                 );
             }
@@ -259,9 +260,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
             let attr = must_use_attr(&item.attrs);
+            let item_span = cx.tcx.hir().span(item.hir_id);
             if let Some(attr) = attr {
-                let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
+                let fn_header_span = item_span.with_hi(sig.decl.output.span().hi());
+                check_needless_must_use(cx, &sig.decl, item.hir_id, item_span, fn_header_span, attr);
             } else if cx.access_levels.is_exported(item.hir_id)
                 && !is_proc_macro(&item.attrs)
                 && trait_ref_of_method(cx, item.hir_id).is_none()
@@ -270,9 +272,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
                     cx,
                     &sig.decl,
                     cx.tcx.hir().body(*body_id),
-                    item.span,
+                    item_span,
                     item.hir_id,
-                    item.span.with_hi(sig.decl.output.span().hi()),
+                    item_span.with_hi(sig.decl.output.span().hi()),
                     "this method could have a `#[must_use]` attribute",
                 );
             }
@@ -281,15 +283,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'_>) {
         if let hir::TraitItemKind::Fn(ref sig, ref eid) = item.kind {
+            let item_span = cx.tcx.hir().span(item.hir_id);
+
             // don't lint extern functions decls, it's not their fault
             if sig.header.abi == Abi::Rust {
-                self.check_arg_number(cx, &sig.decl, item.span.with_hi(sig.decl.output.span().hi()));
+                self.check_arg_number(cx, &sig.decl, item_span.with_hi(sig.decl.output.span().hi()));
             }
 
             let attr = must_use_attr(&item.attrs);
             if let Some(attr) = attr {
-                let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
+                let fn_header_span = item_span.with_hi(sig.decl.output.span().hi());
+                check_needless_must_use(cx, &sig.decl, item.hir_id, item_span, fn_header_span, attr);
             }
             if let hir::TraitFn::Provided(eid) = *eid {
                 let body = cx.tcx.hir().body(eid);
@@ -300,9 +304,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
                         cx,
                         &sig.decl,
                         body,
-                        item.span,
+                        item_span,
                         item.hir_id,
-                        item.span.with_hi(sig.decl.output.span().hi()),
+                        item_span.with_hi(sig.decl.output.span().hi()),
                         "this method could have a `#[must_use]` attribute",
                     );
                 }

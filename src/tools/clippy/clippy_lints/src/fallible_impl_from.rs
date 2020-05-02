@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id);
             if match_def_path(cx, impl_trait_ref.def_id, &FROM_TRAIT);
             then {
-                lint_impl_body(cx, item.span, impl_items);
+                lint_impl_body(cx, cx.tcx.hir().span(item.hir_id), impl_items);
             }
         }
     }

@@ -155,10 +155,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
+                let item_span = cx.tcx.hir().span(item.hir_id);
                 if !(is_entrypoint_fn(cx, cx.tcx.hir().local_def_id(item.hir_id).to_def_id())
-                    || in_external_macro(cx.tcx.sess, item.span))
+                    || in_external_macro(cx.tcx.sess, item_span))
                 {
-                    lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id));
+                    lint_for_missing_headers(cx, item.hir_id, item_span, sig, headers, Some(body_id));
                 }
             },
             hir::ItemKind::Impl {
@@ -180,19 +181,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DocMarkdown {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'_>) {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
-            if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, None);
+            let item_span = cx.tcx.hir().span(item.hir_id);
+            if !in_external_macro(cx.tcx.sess, item_span) {
+                lint_for_missing_headers(cx, item.hir_id, item_span, sig, headers, None);
             }
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem<'_>) {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
-        if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
+        let item_span = cx.tcx.hir().span(item.hir_id);
+        if self.in_trait_impl || in_external_macro(cx.tcx.sess, item_span) {
             return;
         }
         if let hir::ImplItemKind::Fn(ref sig, body_id) = item.kind {
-            lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id));
+            lint_for_missing_headers(cx, item.hir_id, item_span, sig, headers, Some(body_id));
         }
     }
 }

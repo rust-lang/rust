@@ -85,7 +85,8 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
             enforce_impl_params_are_constrained(self.tcx, impl_def_id, items);
             enforce_impl_items_are_distinct(self.tcx, items);
             if self.min_specialization {
-                check_min_specialization(self.tcx, impl_def_id.to_def_id(), item.span);
+                let item_span = self.tcx.hir().span(item.hir_id);
+                check_min_specialization(self.tcx, impl_def_id.to_def_id(), item_span);
             }
         }
     }
@@ -226,6 +227,7 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
     let mut seen_value_items = FxHashMap::default();
     for impl_item_ref in impl_item_refs {
         let impl_item = tcx.hir().impl_item(impl_item_ref.id);
+        let impl_item_span = tcx.hir().span(impl_item.hir_id);
         let seen_items = match impl_item.kind {
             hir::ImplItemKind::TyAlias(_) => &mut seen_type_items,
             _ => &mut seen_value_items,
@@ -234,7 +236,7 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
             Occupied(entry) => {
                 let mut err = struct_span_err!(
                     tcx.sess,
-                    impl_item.span,
+                    impl_item_span,
                     E0201,
                     "duplicate definitions with name `{}`:",
                     impl_item.ident
@@ -243,11 +245,11 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
                     *entry.get(),
                     format!("previous definition of `{}` here", impl_item.ident),
                 );
-                err.span_label(impl_item.span, "duplicate definition");
+                err.span_label(impl_item_span, "duplicate definition");
                 err.emit();
             }
             Vacant(entry) => {
-                entry.insert(impl_item.span);
+                entry.insert(impl_item_span);
             }
         }
     }

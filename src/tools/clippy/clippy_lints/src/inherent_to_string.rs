@@ -94,7 +94,7 @@ declare_lint_pass!(InherentToString => [INHERENT_TO_STRING, INHERENT_TO_STRING_S
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InherentToString {
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem<'_>) {
-        if impl_item.span.from_expansion() {
+        if cx.tcx.hir().span(impl_item.hir_id).from_expansion() {
             return;
         }
 
@@ -132,7 +132,7 @@ fn show_lint(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) {
         span_lint_and_help(
             cx,
             INHERENT_TO_STRING_SHADOW_DISPLAY,
-            item.span,
+            cx.tcx.hir().span(item.hir_id),
             &format!(
                 "type `{}` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`",
                 self_type.to_string()
@@ -144,7 +144,7 @@ fn show_lint(cx: &LateContext<'_, '_>, item: &ImplItem<'_>) {
         span_lint_and_help(
             cx,
             INHERENT_TO_STRING,
-            item.span,
+            cx.tcx.hir().span(item.hir_id),
             &format!(
                 "implementation of inherent method `to_string(&self) -> String` for type `{}`",
                 self_type.to_string()

@@ -55,7 +55,7 @@ fn method_might_be_inlined(
     }
     match tcx.hir().find(tcx.hir().as_local_hir_id(impl_src)) {
         Some(Node::Item(item)) => item_might_be_inlined(tcx, &item, codegen_fn_attrs),
-        Some(..) | None => span_bug!(impl_item.span, "impl did is not an item"),
+        Some(..) | None => span_bug!(tcx.hir().span(impl_item.hir_id), "impl did is not an item"),
     }
 }
 

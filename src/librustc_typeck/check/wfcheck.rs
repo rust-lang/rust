@@ -110,7 +110,8 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 .impl_trait_ref(tcx.hir().local_def_id(item.hir_id))
                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
             if let (hir::Defaultness::Default { .. }, true) = (defaultness, is_auto) {
-                let sp = of_trait.as_ref().map(|t| t.path.span).unwrap_or(item.span);
+                let item_span = tcx.hir().span(item.hir_id);
+                let sp = of_trait.as_ref().map(|t| t.path.span).unwrap_or(item_span);
                 let mut err =
                     tcx.sess.struct_span_err(sp, "impls of auto traits cannot be default");
                 err.span_labels(defaultness_span, "default because of this");
@@ -186,13 +187,14 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id);
     let trait_item = tcx.hir().expect_trait_item(hir_id);
+    let trait_item_span = tcx.hir().span(trait_item.hir_id);
 
     let method_sig = match trait_item.kind {
         hir::TraitItemKind::Fn(ref sig, _) => Some(sig),
         _ => None,
     };
     check_object_unsafe_self_trait_by_name(tcx, &trait_item);
-    check_associated_item(tcx, trait_item.hir_id, trait_item.span, method_sig);
+    check_associated_item(tcx, trait_item.hir_id, trait_item_span, method_sig);
 }
 
 fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
@@ -260,13 +262,14 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
 pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let hir_id = tcx.hir().as_local_hir_id(def_id);
     let impl_item = tcx.hir().expect_impl_item(hir_id);
+    let impl_item_span = tcx.hir().span(impl_item.hir_id);
 
     let method_sig = match impl_item.kind {
         hir::ImplItemKind::Fn(ref sig, _) => Some(sig),
         _ => None,
     };
 
-    check_associated_item(tcx, impl_item.hir_id, impl_item.span, method_sig);
+    check_associated_item(tcx, impl_item.hir_id, impl_item_span, method_sig);
 }
 
 fn check_associated_item(
@@ -323,7 +326,8 @@ fn check_associated_item(
 }
 
 fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>) -> CheckWfFcxBuilder<'tcx> {
-    for_id(tcx, item.hir_id, item.span)
+    let item_span = tcx.hir().span(item.hir_id);
+    for_id(tcx, item.hir_id, item_span)
 }
 
 fn for_id(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'_> {
@@ -354,6 +358,7 @@ fn check_type_defn<'tcx, F>(
 ) where
     F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx>) -> Vec<AdtVariant<'tcx>>,
 {
+    let item_span = tcx.hir().span(item.hir_id);
     for_item(tcx, item).with_fcx(|fcx, fcx_tcx| {
         let variants = lookup_fields(fcx);
         let def_id = fcx.tcx.hir().local_def_id(item.hir_id);
@@ -369,7 +374,7 @@ fn check_type_defn<'tcx, F>(
                     if ty.needs_infer() {
                         fcx_tcx
                             .sess
-                            .delay_span_bug(item.span, &format!("inference variables in {:?}", ty));
+                            .delay_span_bug(item_span, &format!("inference variables in {:?}", ty));
                         // Just treat unresolved type expression as if it needs drop.
                         true
                     } else {
@@ -428,7 +433,7 @@ fn check_type_defn<'tcx, F>(
             }
         }
 
-        check_where_clauses(tcx, fcx, item.span, def_id.to_def_id(), None);
+        check_where_clauses(tcx, fcx, item_span, def_id.to_def_id(), None);
 
         // No implied bounds in a struct definition.
         vec![]
@@ -455,8 +460,9 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
         }
     }
 
+    let item_span = tcx.hir().span(item.hir_id);
     for_item(tcx, item).with_fcx(|fcx, _| {
-        check_where_clauses(tcx, fcx, item.span, trait_def_id.to_def_id(), None);
+        check_where_clauses(tcx, fcx, item_span, trait_def_id.to_def_id(), None);
         check_associated_type_defaults(fcx, trait_def_id.to_def_id());
 
         vec![]
@@ -561,10 +567,11 @@ fn check_associated_type_defaults(fcx: &FnCtxt<'_, '_>, trait_def_id: DefId) {
 }
 
 fn check_item_fn(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
+    let item_span = tcx.hir().span(item.hir_id);
     for_item(tcx, item).with_fcx(|fcx, tcx| {
         let def_id = fcx.tcx.hir().local_def_id(item.hir_id);
         let sig = fcx.tcx.fn_sig(def_id);
-        let sig = fcx.normalize_associated_types_in(item.span, &sig);
+        let sig = fcx.normalize_associated_types_in(item_span, &sig);
         let mut implied_bounds = vec![];
         let hir_sig = match &item.kind {
             ItemKind::Fn(sig, ..) => sig,
@@ -620,6 +627,7 @@ fn check_impl<'tcx>(
 ) {
     debug!("check_impl: {:?}", item);
 
+    let item_span = tcx.hir().span(item.hir_id);
     for_item(tcx, item).with_fcx(|fcx, tcx| {
         let item_def_id = fcx.tcx.hir().local_def_id(item.hir_id);
 
@@ -645,7 +653,7 @@ fn check_impl<'tcx>(
             }
             None => {
                 let self_ty = fcx.tcx.type_of(item_def_id);
-                let self_ty = fcx.normalize_associated_types_in(item.span, &self_ty);
+                let self_ty = fcx.normalize_associated_types_in(item_span, &self_ty);
                 fcx.register_wf_obligation(
                     self_ty.into(),
                     ast_self_ty.span,
@@ -654,9 +662,9 @@ fn check_impl<'tcx>(
             }
         }
 
-        check_where_clauses(tcx, fcx, item.span, item_def_id.to_def_id(), None);
+        check_where_clauses(tcx, fcx, item_span, item_def_id.to_def_id(), None);
 
-        fcx.impl_implied_bounds(item_def_id.to_def_id(), item.span)
+        fcx.impl_implied_bounds(item_def_id.to_def_id(), item_span)
     });
 }
 

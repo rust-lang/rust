@@ -143,7 +143,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         };
 
         collector.insert_entry(
-            krate.item.span,
+            DUMMY_SP,
             hir::CRATE_HIR_ID,
             Entry { parent: hir::CRATE_HIR_ID, node: Node::Crate(&krate.item) },
             hash,
@@ -349,12 +349,12 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             self.definitions.opt_hir_id_to_local_def_id(i.hir_id).unwrap()
         );
         self.with_dep_node_owner(i.hir_id.owner, i, |this, hash| {
-            this.insert_with_hash(i.span, i.hir_id, Node::Item(i), hash);
+            this.insert_with_hash(DUMMY_SP, i.hir_id, Node::Item(i), hash);
             this.with_parent(i.hir_id, |this| {
                 if let ItemKind::Struct(ref struct_def, _) = i.kind {
                     // If this is a tuple or unit-like struct, register the constructor.
                     if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
-                        this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
+                        this.insert(DUMMY_SP, ctor_hir_id, Node::Ctor(struct_def));
                     }
                 }
                 intravisit::walk_item(this, i);
@@ -363,7 +363,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {
-        self.insert(foreign_item.span, foreign_item.hir_id, Node::ForeignItem(foreign_item));
+        self.insert(DUMMY_SP, foreign_item.hir_id, Node::ForeignItem(foreign_item));
 
         self.with_parent(foreign_item.hir_id, |this| {
             intravisit::walk_foreign_item(this, foreign_item);
@@ -381,7 +381,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             self.definitions.opt_hir_id_to_local_def_id(ti.hir_id).unwrap()
         );
         self.with_dep_node_owner(ti.hir_id.owner, ti, |this, hash| {
-            this.insert_with_hash(ti.span, ti.hir_id, Node::TraitItem(ti), hash);
+            this.insert_with_hash(DUMMY_SP, ti.hir_id, Node::TraitItem(ti), hash);
 
             this.with_parent(ti.hir_id, |this| {
                 intravisit::walk_trait_item(this, ti);
@@ -395,7 +395,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             self.definitions.opt_hir_id_to_local_def_id(ii.hir_id).unwrap()
         );
         self.with_dep_node_owner(ii.hir_id.owner, ii, |this, hash| {
-            this.insert_with_hash(ii.span, ii.hir_id, Node::ImplItem(ii), hash);
+            this.insert_with_hash(DUMMY_SP, ii.hir_id, Node::ImplItem(ii), hash);
 
             this.with_parent(ii.hir_id, |this| {
                 intravisit::walk_impl_item(this, ii);

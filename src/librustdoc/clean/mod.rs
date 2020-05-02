@@ -1114,7 +1114,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
         Item {
             name: Some(self.ident.name.clean(cx)),
             attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
+            source: cx.tcx.hir().span(self.hir_id).clean(cx),
             def_id: local_did.to_def_id(),
             visibility: Visibility::Inherited,
             stability: get_stability(cx, local_did.to_def_id()),
@@ -1142,7 +1142,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
         let local_did = cx.tcx.hir().local_def_id(self.hir_id);
         Item {
             name: Some(self.ident.name.clean(cx)),
-            source: self.span.clean(cx),
+            source: cx.tcx.hir().span(self.hir_id).clean(cx),
             attrs: self.attrs.clean(cx),
             def_id: local_did.to_def_id(),
             visibility: self.vis.clean(cx),

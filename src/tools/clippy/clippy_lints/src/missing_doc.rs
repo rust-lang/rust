@@ -125,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &LateContext<'a, 'tcx>, krate: &'tcx hir::Crate<'_>) {
-        self.check_missing_docs_attrs(cx, &krate.item.attrs, krate.item.span, "crate");
+        self.check_missing_docs_attrs(cx, &krate.item.attrs, cx.tcx.hir().span(hir::CRATE_HIR_ID), "crate");
     }
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item<'_>) {
@@ -158,7 +158,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             | hir::ItemKind::Use(..) => return,
         };
 
-        self.check_missing_docs_attrs(cx, &it.attrs, it.span, desc);
+        self.check_missing_docs_attrs(cx, &it.attrs, cx.tcx.hir().span(it.hir_id), desc);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
@@ -168,7 +168,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::TraitItemKind::Type(..) => "an associated type",
         };
 
-        self.check_missing_docs_attrs(cx, &trait_item.attrs, trait_item.span, desc);
+        self.check_missing_docs_attrs(cx, &trait_item.attrs, cx.tcx.hir().span(trait_item.hir_id), desc);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
@@ -188,7 +188,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ImplItemKind::Fn(..) => "a method",
             hir::ImplItemKind::TyAlias(_) => "an associated type",
         };
-        self.check_missing_docs_attrs(cx, &impl_item.attrs, impl_item.span, desc);
+        self.check_missing_docs_attrs(cx, &impl_item.attrs, cx.tcx.hir().span(impl_item.hir_id), desc);
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, sf: &'tcx hir::StructField<'_>) {

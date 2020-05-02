@@ -127,7 +127,7 @@ impl_lint_pass!(TriviallyCopyPassByRef => [TRIVIALLY_COPY_PASS_BY_REF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'_>) {
-        if item.span.from_expansion() {
+        if cx.tcx.hir().span(item.hir_id).from_expansion() {
             return;
         }
 

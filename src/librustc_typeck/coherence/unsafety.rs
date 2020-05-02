@@ -25,6 +25,7 @@ impl UnsafetyChecker<'tcx> {
         polarity: hir::ImplPolarity,
     ) {
         let local_did = self.tcx.hir().local_def_id(item.hir_id);
+        let item_span = self.tcx.hir().span(item.hir_id);
         if let Some(trait_ref) = self.tcx.impl_trait_ref(local_did) {
             let trait_def = self.tcx.trait_def(trait_ref.def_id);
             let unsafe_attr = impl_generics.and_then(|generics| {
@@ -34,7 +35,7 @@ impl UnsafetyChecker<'tcx> {
                 (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
                     struct_span_err!(
                         self.tcx.sess,
-                        item.span,
+                        item_span,
                         E0199,
                         "implementing the trait `{}` is not unsafe",
                         trait_ref.print_only_trait_path()
@@ -45,7 +46,7 @@ impl UnsafetyChecker<'tcx> {
                 (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
                     struct_span_err!(
                         self.tcx.sess,
-                        item.span,
+                        item_span,
                         E0200,
                         "the trait `{}` requires an `unsafe impl` declaration",
                         trait_ref.print_only_trait_path()
@@ -61,7 +62,7 @@ impl UnsafetyChecker<'tcx> {
                 ) => {
                     struct_span_err!(
                         self.tcx.sess,
-                        item.span,
+                        item_span,
                         E0569,
                         "requires an `unsafe impl` declaration due to `#[{}]` attribute",
                         attr_name
@@ -71,7 +72,7 @@ impl UnsafetyChecker<'tcx> {
 
                 (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {
                     // Reported in AST validation
-                    self.tcx.sess.delay_span_bug(item.span, "unsafe negative impl");
+                    self.tcx.sess.delay_span_bug(item_span, "unsafe negative impl");
                 }
                 (_, _, Unsafety::Normal, hir::ImplPolarity::Negative(_))
                 | (Unsafety::Unsafe, _, Unsafety::Unsafe, hir::ImplPolarity::Positive)
