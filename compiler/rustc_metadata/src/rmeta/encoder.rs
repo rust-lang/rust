@@ -1427,9 +1427,10 @@ impl EncodeContext<'a, 'tcx> {
     /// Serialize the text of exported macros
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef<'_>) {
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id).to_def_id();
+        let span = self.tcx.hir().span(macro_def.hir_id);
         record!(self.tables.kind[def_id] <- EntryKind::MacroDef(self.lazy(macro_def.ast.clone())));
         record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
-        record!(self.tables.span[def_id] <- macro_def.span);
+        record!(self.tables.span[def_id] <- span);
         record!(self.tables.attributes[def_id] <- macro_def.attrs);
         self.encode_ident_span(def_id, macro_def.ident);
         self.encode_stability(def_id);

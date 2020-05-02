@@ -1078,7 +1078,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
             macro_def.ident.to_string(),
             &macro_def.attrs,
             macro_def.hir_id,
-            macro_def.span,
+            self.map.span(macro_def.hir_id),
             |_| (),
         );
     }
