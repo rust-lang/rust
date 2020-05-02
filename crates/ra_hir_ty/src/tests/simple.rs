@@ -1755,3 +1755,35 @@ fn main() {
     "###
     );
 }
+
+#[test]
+fn effects_smoke_test() {
+    assert_snapshot!(
+        infer(r#"
+fn main() {
+    let x = unsafe { 92 };
+    let y = async { async { () }.await };
+    let z = try { () };
+    let t = 'a: { 92 };
+}
+"#),
+        @r###"
+    11..131 '{     ...2 }; }': ()
+    21..22 'x': i32
+    32..38 '{ 92 }': i32
+    34..36 '92': i32
+    48..49 'y': {unknown}
+    58..80 '{ asyn...wait }': {unknown}
+    60..78 'async ....await': {unknown}
+    66..72 '{ () }': ()
+    68..70 '()': ()
+    90..91 'z': {unknown}
+    94..104 'try { () }': {unknown}
+    98..104 '{ () }': ()
+    100..102 '()': ()
+    114..115 't': i32
+    122..128 '{ 92 }': i32
+    124..126 '92': i32
+    "###
+    )
+}
