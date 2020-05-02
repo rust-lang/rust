@@ -49,12 +49,13 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub const_cstr_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
-    /// Key is a Value holding a *T,
-    /// Val is a Value holding a *[T].
+    ///
+    /// Key is a Value holding a `*T`,
+    /// Val is a Value holding a `*[T]`.
     ///
     /// Needed because LLVM loses pointer->pointee association
     /// when we ptrcast, and we have to ptrcast during codegen
-    /// of a [T] const because we form a slice, a (*T,usize) pair, not
+    /// of a `[T]` const because we form a slice, a `(*T,usize)` pair, not
     /// a pointer to an LLVM array type. Similar for trait objects.
     pub const_unsized: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 

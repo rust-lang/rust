@@ -30,7 +30,7 @@
 //! - `ty`: the type of data found at the address `A`.
 //!
 //! The resulting categorization tree differs somewhat from the expressions
-//! themselves. For example, auto-derefs are explicit. Also, an index a[b] is
+//! themselves. For example, auto-derefs are explicit. Also, an index `a[b]` is
 //! decomposed into two operations: a dereference to reach the array data and
 //! then an index to jump forward to the relevant item.
 //!
