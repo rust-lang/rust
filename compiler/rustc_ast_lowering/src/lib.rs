@@ -865,7 +865,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             name: hir_name,
             attrs: &[],
             bounds: &[],
-            span,
             pure_wrt_drop: false,
             kind: hir::GenericParamKind::Lifetime { kind },
         }
@@ -1423,7 +1422,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             pure_wrt_drop: false,
                             attrs: &[],
                             bounds: hir_bounds,
-                            span,
                             kind: hir::GenericParamKind::Type {
                                 default: None,
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
@@ -1714,7 +1712,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     self.output_lifetime_params.push(hir::GenericParam {
                         hir_id,
                         name,
-                        span: lifetime.span,
                         pure_wrt_drop: false,
                         attrs: &[],
                         bounds: &[],
@@ -2286,7 +2283,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::GenericParam {
             hir_id: self.lower_node_id(param.id, param.ident.span),
             name,
-            span: param.ident.span,
             pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
             attrs: self.lower_attrs(&param.attrs),
             bounds: self.arena.alloc_from_iter(bounds),

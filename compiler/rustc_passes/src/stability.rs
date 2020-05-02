@@ -453,7 +453,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             _ => AnnotationKind::Prohibited,
         };
 
-        self.annotate(p.hir_id, &p.attrs, p.span, kind, InheritDeprecation::No, |v| {
+        let span = self.tcx.hir().span(p.hir_id);
+        self.annotate(p.hir_id, &p.attrs, span, kind, InheritDeprecation::No, |v| {
             intravisit::walk_generic_param(v, p);
         });
     }

@@ -898,7 +898,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         self.check_attributes(
             generic_param.hir_id,
             generic_param.attrs,
-            &generic_param.span,
+            &self.tcx.hir().span(generic_param.hir_id),
             target,
             None,
         );

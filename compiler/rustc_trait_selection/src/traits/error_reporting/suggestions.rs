@@ -259,7 +259,7 @@ fn suggest_restriction(
             match generics
                 .params
                 .iter()
-                .map(|p| p.bounds_span().unwrap_or(p.span))
+                .map(|p| p.bounds_span().unwrap_or(tcx.hir().span(p.hir_id)))
                 .filter(|&span| generics.span.contains(span) && span.desugaring_kind().is_none())
                 .max_by_key(|span| span.hi())
             {

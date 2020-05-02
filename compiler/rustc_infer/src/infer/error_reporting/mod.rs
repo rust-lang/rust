@@ -162,7 +162,7 @@ fn msg_span_from_early_bound_and_free_regions(
             if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
             {
-                sp = param.span;
+                sp = tcx.hir().span(param.hir_id);
             }
             (format!("the lifetime `{}` as defined on", br.name), sp)
         }
@@ -173,7 +173,7 @@ fn msg_span_from_early_bound_and_free_regions(
             if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
             {
-                sp = param.span;
+                sp = tcx.hir().span(param.hir_id);
             }
             (format!("the lifetime `{}` as defined on", name), sp)
         }
