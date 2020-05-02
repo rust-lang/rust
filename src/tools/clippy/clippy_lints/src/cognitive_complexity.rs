@@ -119,11 +119,11 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        span: Span,
         hir_id: HirId,
     ) {
         let def_id = cx.tcx.hir().local_def_id(hir_id);
         if !cx.tcx.has_attr(def_id.to_def_id(), sym::test) {
+            let span = cx.tcx.hir().span(hir_id);
             self.check(cx, kind, decl, body, span);
         }
     }

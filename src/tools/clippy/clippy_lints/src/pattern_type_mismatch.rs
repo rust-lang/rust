@@ -129,7 +129,6 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
         _: intravisit::FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        _: Span,
         hir_id: HirId,
     ) {
         if let Some(fn_sig) = cx.typeck_results().liberated_fn_sigs().get(hir_id) {

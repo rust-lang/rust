@@ -10,7 +10,6 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -217,9 +216,9 @@ impl<'tcx> LateLintPass<'tcx> for Unwrap {
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        span: Span,
         fn_id: HirId,
     ) {
+        let span = cx.tcx.hir().span(fn_id);
         if span.from_expansion() {
             return;
         }
@@ -229,6 +228,6 @@ impl<'tcx> LateLintPass<'tcx> for Unwrap {
             unwrappables: Vec::new(),
         };
 
-        walk_fn(&mut v, kind, decl, body.id(), span, fn_id);
+        walk_fn(&mut v, kind, decl, body.id(), fn_id);
     }
 }

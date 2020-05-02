@@ -72,7 +72,7 @@ use rustc_session::lint::builtin::{
     EXPLICIT_OUTLIVES_REQUIREMENTS, INVALID_CODEBLOCK_ATTRIBUTES, INVALID_HTML_TAGS,
     MISSING_DOC_CODE_EXAMPLES, NON_AUTOLINKS, PRIVATE_DOC_TESTS,
 };
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;

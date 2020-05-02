@@ -1266,7 +1266,6 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
         kind: hir::intravisit::FnKind<'tcx>,
         decl: &'tcx hir::FnDecl<'_>,
         _: &'tcx hir::Body<'_>,
-        _: Span,
         hir_id: hir::HirId,
     ) {
         use hir::intravisit::FnKind;

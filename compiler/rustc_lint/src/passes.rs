@@ -5,7 +5,7 @@ use rustc_data_structures::sync;
 use rustc_hir as hir;
 use rustc_session::lint::builtin::HardwiredLints;
 use rustc_session::lint::LintPass;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 #[macro_export]
@@ -15,11 +15,10 @@ macro_rules! late_lint_methods {
             fn check_param(a: &$hir hir::Param<$hir>);
             fn check_body(a: &$hir hir::Body<$hir>);
             fn check_body_post(a: &$hir hir::Body<$hir>);
-            fn check_name(a: Span, b: Symbol);
             fn check_crate(a: &$hir hir::Crate<$hir>);
             fn check_crate_post(a: &$hir hir::Crate<$hir>);
-            fn check_mod(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
-            fn check_mod_post(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
+            fn check_mod(a: &$hir hir::Mod<$hir>, c: hir::HirId);
+            fn check_mod_post(a: &$hir hir::Mod<$hir>, c: hir::HirId);
             fn check_foreign_item(a: &$hir hir::ForeignItem<$hir>);
             fn check_foreign_item_post(a: &$hir hir::ForeignItem<$hir>);
             fn check_item(a: &$hir hir::Item<$hir>);
@@ -42,13 +41,11 @@ macro_rules! late_lint_methods {
                 a: rustc_hir::intravisit::FnKind<$hir>,
                 b: &$hir hir::FnDecl<$hir>,
                 c: &$hir hir::Body<$hir>,
-                d: Span,
                 e: hir::HirId);
             fn check_fn_post(
                 a: rustc_hir::intravisit::FnKind<$hir>,
                 b: &$hir hir::FnDecl<$hir>,
                 c: &$hir hir::Body<$hir>,
-                d: Span,
                 e: hir::HirId
             );
             fn check_trait_item(a: &$hir hir::TraitItem<$hir>);

@@ -127,7 +127,6 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         kind: FnKind<'tcx>,
         _: &'tcx FnDecl<'tcx>,
         body: &'tcx Body<'tcx>,
-        _: Span,
         _: HirId,
     ) {
         match kind {
