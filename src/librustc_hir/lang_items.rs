@@ -256,4 +256,6 @@ language_item_table! {
     AlignOffsetLangItem,         "align_offset",       align_offset_fn,         Target::Fn;
 
     TerminationTraitLangItem,    "termination",        termination,             Target::Trait;
+
+    MustUseTraitLangItem,        "must_use",           must_use_trait,          Target::Trait;
 }

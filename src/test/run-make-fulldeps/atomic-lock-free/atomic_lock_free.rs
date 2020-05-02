@@ -12,6 +12,10 @@ trait Sized {}
 trait Copy {}
 #[lang = "freeze"]
 trait Freeze {}
+#[lang = "must_use"]
+trait MustUse {
+    const REASON: &'static str = "";
+}
 
 impl<T: ?Sized> Copy for *mut T {}
 

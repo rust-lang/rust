@@ -11,14 +11,26 @@ use rustc_feature::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::adjustment;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::{
+    mir::interpret::ConstValue,
+    traits::{specialization_graph, ObligationCause, Vtable},
+    ty::{self, Ty},
+};
 use rustc_session::lint::builtin::UNUSED_ATTRIBUTES;
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_trait_selection::{
+    infer::TyCtxtInferExt,
+    traits::{FulfillmentContext, Obligation, SelectionContext, TraitEngine},
+};
+use ty::{AssocKind, Binder, TraitPredicate};
 
+use ast::Ident;
 use log::debug;
+use std::str;
 
 declare_lint! {
     pub UNUSED_MUST_USE,
@@ -131,6 +143,103 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     cx.param_env,
                 )
             {
+                return true;
+            }
+
+            let must_use_trait = match cx.tcx.lang_items().require(LangItem::MustUseTraitLangItem) {
+                Ok(def_id) => def_id,
+                Err(s) => {
+                    cx.tcx.sess.fatal(&s);
+                }
+            };
+            let did = cx.tcx.hir().get_parent_did(expr.hir_id);
+            let param_env = cx.tcx.param_env(did);
+            let must_use_reason = cx.tcx.infer_ctxt().enter(|infcx| {
+                // If `MustUse` is implemented, we want to know the `REASON` value, so we have to
+                // use the selection context directly and obtain a `VtableImpl`.
+                let substs = infcx.tcx.mk_substs_trait(ty, &[]);
+                let trait_ref = ty::TraitRef { def_id: must_use_trait, substs };
+                let pred = TraitPredicate { trait_ref };
+                let obl = Obligation::new(ObligationCause::dummy(), param_env, Binder::bind(pred));
+
+                let mut selcx = SelectionContext::new(&infcx);
+                let vtable = if let Ok(Some(vtable)) = selcx.select(&obl) {
+                    vtable
+                } else {
+                    // Not implemented.
+                    return None;
+                };
+
+                // There is an impl that *might* apply. Make sure it does.
+                let mut fulfillcx = FulfillmentContext::new();
+                fulfillcx.register_bound(
+                    &infcx,
+                    param_env,
+                    ty,
+                    must_use_trait,
+                    ObligationCause::dummy(),
+                );
+                if !fulfillcx.select_all_or_error(&infcx).is_ok() {
+                    // It does not hold.
+                    return None;
+                }
+
+                let data = match vtable {
+                    // When a concrete impl is known to apply, use its `REASON` value (or any
+                    // parent's in the specialization graph).
+                    Vtable::VtableImpl(data) => data,
+
+                    // We might get a `VtableParam` if we have a `T: MustUse` bound. We do lint in
+                    // this case, but cannot know the message.
+                    Vtable::VtableParam(_) => return Some(String::new()),
+
+                    // `MustUse` isn't object safe, but could be if assoc. consts were object safe.
+                    // In case that ever happens, don't lint on `dyn MustUse`.
+                    Vtable::VtableObject(_) => return None,
+
+                    _ => {
+                        bug!("unexpected vtable for MustUse selection: {:?}", vtable);
+                    }
+                };
+
+                let reason_const = if let Ok(ancestors) =
+                    specialization_graph::ancestors(infcx.tcx, must_use_trait, data.impl_def_id)
+                {
+                    ancestors
+                        .leaf_def(infcx.tcx, Ident::with_dummy_span(sym::REASON), AssocKind::Const)
+                        .expect("could not find MustUse::REASON")
+                        .item
+                } else {
+                    // Error building the specialization graph. Don't warn.
+                    return None;
+                };
+
+                let const_val = if let Ok(const_val) =
+                    infcx.const_eval_resolve(param_env, reason_const.def_id, substs, None, None)
+                {
+                    const_val
+                } else {
+                    return None;
+                };
+
+                if let ConstValue::Slice { data, start, end } = const_val {
+                    let bytes = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
+                    Some(String::from_utf8(bytes.to_vec()).unwrap())
+                } else {
+                    bug!("unexpected ConstValue for MustUse::REASON: {:?}", const_val);
+                }
+            });
+
+            if let Some(reason) = must_use_reason {
+                cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
+                    let msg =
+                        format!("unused {}`{}`{} that must be used", descr_pre, ty, descr_post);
+                    let mut err = lint.build(&msg);
+                    if !reason.is_empty() {
+                        err.note(&reason);
+                    }
+                    err.emit();
+                });
                 return true;
             }
 

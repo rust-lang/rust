@@ -1,0 +1,15 @@
+error: unused `Box<St>` that must be used
+  --> $DIR/must-use-trait-blanket.rs:27:5
+   |
+LL |     Box::new(St);
+   |     ^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/must-use-trait-blanket.rs:4:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+   = note: because I said so
+
+error: aborting due to previous error
+

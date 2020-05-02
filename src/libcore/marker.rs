@@ -757,6 +757,16 @@ impl<T: ?Sized> Unpin for *const T {}
 #[stable(feature = "pin_raw", since = "1.38.0")]
 impl<T: ?Sized> Unpin for *mut T {}
 
+/// Indicates that a type must be consumed explicitly.
+///
+/// cf. `#[must_use]`
+#[unstable(feature = "must_use_trait", issue = "none")]
+#[cfg_attr(not(bootstrap), lang = "must_use")]
+pub trait MustUse {
+    /// An explanation for why values of this type must be used.
+    const REASON: &'static str = "";
+}
+
 /// Implementations of `Copy` for primitive types.
 ///
 /// Implementations that cannot be described in Rust

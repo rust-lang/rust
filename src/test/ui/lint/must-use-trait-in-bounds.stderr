@@ -1,0 +1,14 @@
+error: unused `T` that must be used
+  --> $DIR/must-use-trait-in-bounds.rs:14:5
+   |
+LL |     t;
+   |     ^^
+   |
+note: the lint level is defined here
+  --> $DIR/must-use-trait-in-bounds.rs:7:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,14 @@
+error: unused `St` that must be used
+  --> $DIR/must-use-trait-simple.rs:17:5
+   |
+LL |     St::new();
+   |     ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/must-use-trait-simple.rs:2:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -588,6 +588,7 @@ symbols! {
         Rc,
         Ready,
         reason,
+        REASON,
         recursion_limit,
         reexport_test_harness_main,
         reflect,
