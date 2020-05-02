@@ -7,8 +7,8 @@ use rustc_hir::{HirId, ImplItem, Item, ItemKind, TraitItem};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::EntryFnType;
-use rustc_session::{config, Session};
+use rustc_session::config::{CrateType, EntryFnType};
+use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -51,8 +51,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
 fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)> {
     assert_eq!(cnum, LOCAL_CRATE);
 
-    let any_exe =
-        tcx.sess.crate_types.borrow().iter().any(|ty| *ty == config::CrateType::Executable);
+    let any_exe = tcx.sess.crate_types.borrow().iter().any(|ty| *ty == CrateType::Executable);
     if !any_exe {
         // No need to find a main function.
         return None;

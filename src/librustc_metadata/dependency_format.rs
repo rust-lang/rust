@@ -59,7 +59,7 @@ use rustc_middle::middle::cstore::LinkagePreference::{self, RequireDynamic, Requ
 use rustc_middle::middle::cstore::{self, DepKind};
 use rustc_middle::middle::dependency_format::{Dependencies, DependencyList, Linkage};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config;
+use rustc_session::config::CrateType;
 use rustc_target::spec::PanicStrategy;
 
 crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
@@ -75,7 +75,7 @@ crate fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
         .collect::<Vec<_>>()
 }
 
-fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
+fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     let sess = &tcx.sess;
 
     if !sess.opts.output_types.should_codegen() {
@@ -90,29 +90,25 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
         // Treat cdylibs similarly. If `-C prefer-dynamic` is set, the caller may
         // be code-size conscious, but without it, it makes sense to statically
         // link a cdylib.
-        config::CrateType::Dylib | config::CrateType::Cdylib if !sess.opts.cg.prefer_dynamic => {
-            Linkage::Static
-        }
-        config::CrateType::Dylib | config::CrateType::Cdylib => Linkage::Dynamic,
+        CrateType::Dylib | CrateType::Cdylib if !sess.opts.cg.prefer_dynamic => Linkage::Static,
+        CrateType::Dylib | CrateType::Cdylib => Linkage::Dynamic,
 
         // If the global prefer_dynamic switch is turned off, or the final
         // executable will be statically linked, prefer static crate linkage.
-        config::CrateType::Executable
-            if !sess.opts.cg.prefer_dynamic || sess.crt_static(Some(ty)) =>
-        {
+        CrateType::Executable if !sess.opts.cg.prefer_dynamic || sess.crt_static(Some(ty)) => {
             Linkage::Static
         }
-        config::CrateType::Executable => Linkage::Dynamic,
+        CrateType::Executable => Linkage::Dynamic,
 
         // proc-macro crates are mostly cdylibs, but we also need metadata.
-        config::CrateType::ProcMacro => Linkage::Static,
+        CrateType::ProcMacro => Linkage::Static,
 
         // No linkage happens with rlibs, we just needed the metadata (which we
         // got long ago), so don't bother with anything.
-        config::CrateType::Rlib => Linkage::NotLinked,
+        CrateType::Rlib => Linkage::NotLinked,
 
         // staticlibs must have all static dependencies.
-        config::CrateType::Staticlib => Linkage::Static,
+        CrateType::Staticlib => Linkage::Static,
     };
 
     if preferred_linkage == Linkage::NotLinked {
@@ -129,8 +125,8 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: config::CrateType) -> DependencyList {
 
         // Staticlibs and static executables must have all static dependencies.
         // If any are not found, generate some nice pretty errors.
-        if ty == config::CrateType::Staticlib
-            || (ty == config::CrateType::Executable
+        if ty == CrateType::Staticlib
+            || (ty == CrateType::Executable
                 && sess.crt_static(Some(ty))
                 && !sess.target.target.options.crt_static_allows_dylibs)
         {

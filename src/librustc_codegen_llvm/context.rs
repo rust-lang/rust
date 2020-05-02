@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_session::config::{self, CFGuard, DebugInfo};
+use rustc_session::config::{CFGuard, CrateType, DebugInfo};
 use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::Symbol;
@@ -101,9 +101,10 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
 /// If the list of crate types is not yet known we conservatively return `false`.
 pub fn all_outputs_are_pic_executables(sess: &Session) -> bool {
     sess.relocation_model() == RelocModel::Pic
-        && sess.crate_types.try_get().map_or(false, |crate_types| {
-            crate_types.iter().all(|ty| *ty == config::CrateType::Executable)
-        })
+        && sess
+            .crate_types
+            .try_get()
+            .map_or(false, |crate_types| crate_types.iter().all(|ty| *ty == CrateType::Executable))
 }
 
 fn strip_function_ptr_alignment(data_layout: String) -> String {
