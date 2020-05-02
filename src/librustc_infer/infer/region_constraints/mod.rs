@@ -810,7 +810,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         )
     }
 
-    /// See [`RegionInference::region_constraints_added_in_snapshot`].
+    /// See `InferCtxt::region_constraints_added_in_snapshot`.
     pub fn region_constraints_added_in_snapshot(&self, mark: &RegionSnapshot) -> Option<bool> {
         self.undo_log[mark.length..]
             .iter()

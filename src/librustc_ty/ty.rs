@@ -307,7 +307,7 @@ fn instance_def_size_estimate<'tcx>(
 
 /// If `def_id` is an issue 33140 hack impl, returns its self type; otherwise, returns `None`.
 ///
-/// See [`ImplOverlapKind::Issue33140`] for more details.
+/// See [`ty::ImplOverlapKind::Issue33140`] for more details.
 fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
     debug!("issue33140_self_ty({:?})", def_id);
 

@@ -1051,7 +1051,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
     /// Suggests a missing `crate::` if that resolves to an correct module.
     ///
-    /// ```
+    /// ```text
     ///    |
     /// LL | use foo::Bar;
     ///    |     ^^^ did you mean `crate::foo`?
@@ -1147,7 +1147,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// Suggests importing a macro from the root of the crate rather than a module within
     /// the crate.
     ///
-    /// ```
+    /// ```text
     /// help: a macro with this name exists at the root of the crate
     ///    |
     /// LL | use issue_59764::makro;

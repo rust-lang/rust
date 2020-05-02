@@ -31,7 +31,7 @@ pub trait DeclareMethods<'tcx>: BackendTypes {
     /// Use this function when you intend to define a global. This function will
     /// return `None` if the name already has a definition associated with it. In that
     /// case an error should be reported to the user, because it usually happens due
-    /// to user’s fault (e.g., misuse of #[no_mangle] or #[export_name] attributes).
+    /// to user’s fault (e.g., misuse of `#[no_mangle]` or `#[export_name]` attributes).
     fn define_global(&self, name: &str, ty: Self::Type) -> Option<Self::Value>;
 
     /// Declare a private global

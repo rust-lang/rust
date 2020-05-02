@@ -1482,7 +1482,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.tcx.replace_bound_vars(value, fld_r, fld_t, fld_c)
     }
 
-    /// See the [`region_constraints::verify_generic_bound`] method.
+    /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.
     pub fn verify_generic_bound(
         &self,
         origin: SubregionOrigin<'tcx>,
