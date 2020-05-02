@@ -783,7 +783,7 @@ fn convert_arm<'tcx>(cx: &mut Cx<'_, 'tcx>, arm: &'tcx hir::Arm<'tcx>) -> Arm<'t
         body: arm.body.to_ref(),
         lint_level: LintLevel::Explicit(arm.hir_id),
         scope: region::Scope { id: arm.hir_id.local_id, data: region::ScopeData::Node },
-        span: arm.span,
+        span: cx.tcx.hir().span(arm.hir_id),
     }
 }
 

@@ -1149,7 +1149,6 @@ pub struct Local<'hir> {
 pub struct Arm<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
-    pub span: Span,
     pub attrs: &'hir [Attribute],
     /// If this pattern and the optional guard matches, then `body` is evaluated.
     pub pat: &'hir Pat<'hir>,

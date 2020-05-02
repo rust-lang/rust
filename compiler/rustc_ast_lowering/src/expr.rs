@@ -520,7 +520,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             pat,
             guard,
             body: self.lower_expr(&arm.body),
-            span: arm.span,
         }
     }
 
@@ -2054,13 +2053,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn arm(&mut self, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {
-        hir::Arm {
-            hir_id: self.next_id(expr.span),
-            attrs: &[],
-            pat,
-            guard: None,
-            span: expr.span,
-            body: expr,
-        }
+        hir::Arm { hir_id: self.next_id(expr.span), attrs: &[], pat, guard: None, body: expr }
     }
 }
