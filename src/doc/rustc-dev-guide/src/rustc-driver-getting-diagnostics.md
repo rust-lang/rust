@@ -8,7 +8,9 @@ NOTE: For the example to compile, you will need to first run the following:
 
     rustup component add rustc-dev
 
-To get diagnostics from the compiler, configure `rustc_interface::Config` to output diagnostic to a buffer, and run `TyCtxt.analysis`:
+To get diagnostics from the compiler, 
+configure `rustc_interface::Config` to output diagnostic to a buffer, 
+and run `TyCtxt.analysis`:
 
 ```rust
 #![feature(rustc_private)]
