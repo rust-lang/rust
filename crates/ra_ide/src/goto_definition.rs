@@ -249,8 +249,23 @@ mod tests {
         check_goto(
             "
             //- /lib.rs
-            use foo as <|>bar;
+            use foo as bar<|>;
 
+
+            //- /foo/lib.rs
+            #[macro_export]
+            macro_rules! foo { () => { () } }",
+            "SOURCE_FILE FileId(2) 0..50",
+            "#[macro_export]\nmacro_rules! foo { () => { () } }\n",
+        );
+    }
+
+    #[test]
+    fn goto_def_for_use_alias_foo_macro() {
+        check_goto(
+            "
+            //- /lib.rs
+            use foo::foo as bar<|>;
 
             //- /foo/lib.rs
             #[macro_export]
