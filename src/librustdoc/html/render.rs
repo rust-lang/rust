@@ -2131,6 +2131,8 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
             clean::ExternCrateItem(ref name, ref src) => {
                 use crate::html::format::anchor;
 
+                document(w, cx, myitem);
+
                 match *src {
                     Some(ref src) => write!(
                         w,
