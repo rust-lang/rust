@@ -209,6 +209,7 @@ pub fn specialized_encode_alloc_id<'tcx, E: Encoder>(
             fn_instance.encode(encoder)?;
         }
         GlobalAlloc::Static(did) => {
+            assert!(!tcx.is_thread_local_static(did));
             // References to statics doesn't need to know about their allocations,
             // just about its `DefId`.
             AllocDiscriminant::Static.encode(encoder)?;

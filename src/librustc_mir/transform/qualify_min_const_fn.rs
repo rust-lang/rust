@@ -156,6 +156,9 @@ fn check_rvalue(
     span: Span,
 ) -> McfResult {
     match rvalue {
+        Rvalue::ThreadLocalRef(_) => {
+            Err((span, "cannot access thread local storage in const fn".into()))
+        }
         Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
             check_operand(tcx, operand, span, def_id, body)
         }

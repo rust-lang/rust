@@ -600,6 +600,8 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(value, location);
                     }
 
+                    Rvalue::ThreadLocalRef(_) => {}
+
                     Rvalue::Ref(r, bk, path) => {
                         self.visit_region(r, location);
                         let ctx = match bk {

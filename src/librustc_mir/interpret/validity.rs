@@ -418,6 +418,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // Skip validation entirely for some external statics
                 let alloc_kind = self.ecx.tcx.get_global_alloc(ptr.alloc_id);
                 if let Some(GlobalAlloc::Static(did)) = alloc_kind {
+                    assert!(!self.ecx.tcx.is_thread_local_static(did));
                     // See const_eval::machine::MemoryExtra::can_access_statics for why
                     // this check is so important.
                     // This check is reachable when the const just referenced the static,
