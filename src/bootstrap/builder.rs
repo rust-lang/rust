@@ -765,9 +765,17 @@ impl<'a> Builder<'a> {
         }
 
         // Set a flag for `check`/`clippy`/`fix`, so that certain build
-        // scripts can do less work (e.g. not building/requiring LLVM).
+        // scripts can do less work (i.e. not building/requiring LLVM).
         if cmd == "check" || cmd == "clippy" || cmd == "fix" {
-            cargo.env("RUST_CHECK", "1");
+            // If we've not yet built LLVM, or it's stale, then bust
+            // the librustc_llvm cache. That will always work, even though it
+            // may mean that on the next non-check build we'll need to rebuild
+            // librustc_llvm. But if LLVM is stale, that'll be a tiny amount
+            // of work comparitively, and we'd likely need to rebuild it anyway,
+            // so that's okay.
+            if crate::native::prebuilt_llvm_config(self, target).is_err() {
+                cargo.env("RUST_CHECK", "1");
+            }
         }
 
         let stage = if compiler.stage == 0 && self.local_rebuild {
