@@ -20,9 +20,9 @@ use super::{
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
 /// Information required for the sound usage of a `MemPlace`.
-pub enum MemPlaceMeta<Tag = (), Id = AllocId> {
+pub enum MemPlaceMeta<Tag = ()> {
     /// The unsized payload (e.g. length for slices or vtable pointer for trait objects).
-    Meta(Scalar<Tag, Id>),
+    Meta(Scalar<Tag>),
     /// `Sized` types or unsized `extern type`
     None,
     /// The address of this place may not be taken. This protects the `MemPlace` from coming from
@@ -32,8 +32,8 @@ pub enum MemPlaceMeta<Tag = (), Id = AllocId> {
     Poison,
 }
 
-impl<Tag, Id> MemPlaceMeta<Tag, Id> {
-    pub fn unwrap_meta(self) -> Scalar<Tag, Id> {
+impl<Tag> MemPlaceMeta<Tag> {
+    pub fn unwrap_meta(self) -> Scalar<Tag> {
         match self {
             Self::Meta(s) => s,
             Self::None | Self::Poison => {
@@ -47,9 +47,7 @@ impl<Tag, Id> MemPlaceMeta<Tag, Id> {
             Self::None | Self::Poison => false,
         }
     }
-}
 
-impl<Tag> MemPlaceMeta<Tag> {
     pub fn erase_tag(self) -> MemPlaceMeta<()> {
         match self {
             Self::Meta(s) => MemPlaceMeta::Meta(s.erase_tag()),
@@ -60,22 +58,22 @@ impl<Tag> MemPlaceMeta<Tag> {
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
-pub struct MemPlace<Tag = (), Id = AllocId> {
+pub struct MemPlace<Tag = ()> {
     /// A place may have an integral pointer for ZSTs, and since it might
     /// be turned back into a reference before ever being dereferenced.
     /// However, it may never be undef.
-    pub ptr: Scalar<Tag, Id>,
+    pub ptr: Scalar<Tag>,
     pub align: Align,
     /// Metadata for unsized places. Interpretation is up to the type.
     /// Must not be present for sized types, but can be missing for unsized types
     /// (e.g., `extern type`).
-    pub meta: MemPlaceMeta<Tag, Id>,
+    pub meta: MemPlaceMeta<Tag>,
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
-pub enum Place<Tag = (), Id = AllocId> {
+pub enum Place<Tag = ()> {
     /// A place referring to a value allocated in the `Memory` system.
-    Ptr(MemPlace<Tag, Id>),
+    Ptr(MemPlace<Tag>),
 
     /// To support alloc-free locals, we are able to write directly to a local.
     /// (Without that optimization, we'd just always be a `MemPlace`.)
