@@ -2496,7 +2496,7 @@ impl<'tcx> UserTypeProjections {
         self.map_projections(|pat_ty_proj| pat_ty_proj.index())
     }
 
-    pub fn subslice(self, from: u32, to: u32) -> Self {
+    pub fn subslice(self, from: u64, to: u64) -> Self {
         self.map_projections(|pat_ty_proj| pat_ty_proj.subslice(from, to))
     }
 
@@ -2542,7 +2542,7 @@ impl UserTypeProjection {
         self
     }
 
-    pub(crate) fn subslice(mut self, from: u32, to: u32) -> Self {
+    pub(crate) fn subslice(mut self, from: u64, to: u64) -> Self {
         self.projs.push(ProjectionElem::Subslice { from, to, from_end: true });
         self
     }

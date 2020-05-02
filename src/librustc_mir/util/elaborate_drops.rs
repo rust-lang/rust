@@ -88,7 +88,7 @@ pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
     fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path>;
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path>;
     fn downcast_subpath(&self, path: Self::Path, variant: VariantIdx) -> Option<Self::Path>;
-    fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path>;
+    fn array_subpath(&self, path: Self::Path, index: u64, size: u64) -> Option<Self::Path>;
 }
 
 #[derive(Debug)]
@@ -676,7 +676,7 @@ where
 
         if let Some(size) = opt_size {
             let size: u64 = size.try_into().unwrap_or_else(|_| {
-                bug!("move out check isn't implemented for array sizes bigger than u32::MAX");
+                bug!("move out check isn't implemented for array sizes bigger than u64::MAX");
             });
             let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size)
                 .map(|i| {
