@@ -269,10 +269,10 @@ Definite bugs found:
 * [The Unix allocator calling `posix_memalign` in an invalid way](https://github.com/rust-lang/rust/issues/62251)
 * [`getrandom` calling the `getrandom` syscall in an invalid way](https://github.com/rust-random/getrandom/pull/73)
 * [`Vec`](https://github.com/rust-lang/rust/issues/69770) and [`BTreeMap`](https://github.com/rust-lang/rust/issues/69769) leaking memory under some (panicky) conditions
-* [Memory leak in `beef`](https://github.com/maciejhirsz/beef/issues/12)
-* [Invalid use of undefined memory in `EbrCell`](https://github.com/Firstyear/concread/commit/b15be53b6ec076acb295a5c0483cdb4bf9be838f#diff-6282b2fc8e98bd089a1f0c86f648157cR229)
-* [Unaligned pointer access in TiKV](https://github.com/tikv/tikv/issues/7613)
-* [Dangling shared reference in `servo_arc`](https://github.com/servo/servo/issues/26357)
+* [`beef` leaking memory](https://github.com/maciejhirsz/beef/issues/12)
+* [`EbrCell` using uninitialized memory incorrectly](https://github.com/Firstyear/concread/commit/b15be53b6ec076acb295a5c0483cdb4bf9be838f#diff-6282b2fc8e98bd089a1f0c86f648157cR229)
+* [TiKV performing an unaligned pointer access](https://github.com/tikv/tikv/issues/7613)
+* [`servo_arc` creating a dangling shared reference](https://github.com/servo/servo/issues/26357)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
@@ -281,7 +281,7 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [`LinkedList` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/60072)
 * [`Vec::push` invalidating existing references into the vector](https://github.com/rust-lang/rust/issues/60847)
 * [`align_to_mut` violating uniqueness of mutable references](https://github.com/rust-lang/rust/issues/68549)
-* [Aliasing mutable references in `sized-chunks`](https://github.com/bodil/sized-chunks/issues/8)
+* [`sized-chunks` creating aliasing mutable references](https://github.com/bodil/sized-chunks/issues/8)
 * [`String::push_str` invalidating existing references into the string](https://github.com/rust-lang/rust/issues/70301)
 * [`ryu` using raw pointers outside their valid memory area](https://github.com/dtolnay/ryu/issues/24)
 * [ink! creating overlapping mutable references](https://github.com/rust-lang/miri/issues/1364)
