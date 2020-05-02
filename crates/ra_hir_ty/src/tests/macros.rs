@@ -339,6 +339,46 @@ pub fn baz() -> usize { 31usize }
 }
 
 #[test]
+fn infer_macro_with_dollar_crate_is_correct_in_trait_associate_type() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:foo
+use foo::Trait;
+
+fn test() {
+    let msg = foo::Message(foo::MessageRef);
+    let r = msg.deref();
+    r<|>;
+}
+
+//- /lib.rs crate:foo
+pub struct MessageRef;
+pub struct Message(MessageRef);
+
+pub trait Trait {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+#[macro_export]
+macro_rules! expand {
+    () => {
+        impl Trait for Message {
+            type Target = $crate::MessageRef;
+            fn deref(&self) ->  &Self::Target {
+                &self.0
+            }
+        }
+    }
+}
+
+expand!();
+"#,
+    );
+    assert_eq!("&MessageRef", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_type_value_non_legacy_macro_use_as() {
     assert_snapshot!(
         infer(r#"

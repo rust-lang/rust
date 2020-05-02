@@ -407,7 +407,7 @@ impl ast::Visibility {
         } else if self.super_token().is_some() {
             VisibilityKind::PubSuper
         } else if self.self_token().is_some() {
-            VisibilityKind::PubSuper
+            VisibilityKind::PubSelf
         } else {
             VisibilityKind::Pub
         }

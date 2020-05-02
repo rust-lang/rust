@@ -70,6 +70,7 @@ pub struct ClientCapsConfig {
     pub location_link: bool,
     pub line_folding_only: bool,
     pub hierarchical_symbols: bool,
+    pub code_action_literals: bool,
 }
 
 impl Default for Config {
@@ -220,6 +221,11 @@ impl Config {
             caps.document_symbol.as_ref().and_then(|it| it.hierarchical_document_symbol_support)
         {
             self.client_caps.hierarchical_symbols = value
+        }
+        if let Some(value) =
+            caps.code_action.as_ref().and_then(|it| Some(it.code_action_literal_support.is_some()))
+        {
+            self.client_caps.code_action_literals = value;
         }
         self.completion.allow_snippets(false);
         if let Some(completion) = &caps.completion {

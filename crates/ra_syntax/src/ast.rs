@@ -16,9 +16,7 @@ use crate::{
 };
 
 pub use self::{
-    expr_extensions::{
-        ArrayExprKind, BinOp, BlockModifier, ElseBranch, LiteralKind, PrefixOp, RangeOp,
-    },
+    expr_extensions::{ArrayExprKind, BinOp, Effect, ElseBranch, LiteralKind, PrefixOp, RangeOp},
     extensions::{
         AttrKind, FieldKind, NameOrNameRef, PathSegmentKind, SelfParamKind, SlicePatComponents,
         StructKind, TypeBoundKind, VisibilityKind,

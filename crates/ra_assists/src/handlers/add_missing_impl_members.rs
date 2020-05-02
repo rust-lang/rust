@@ -1,6 +1,10 @@
 use hir::HasSource;
 use ra_syntax::{
-    ast::{self, edit, make, AstNode, NameOwner},
+    ast::{
+        self,
+        edit::{self, IndentLevel},
+        make, AstNode, NameOwner,
+    },
     SmolStr,
 };
 
@@ -40,7 +44,9 @@ enum AddMissingImplMembersMode {
 // }
 //
 // impl Trait<u32> for () {
-//     fn foo(&self) -> u32 { todo!() }
+//     fn foo(&self) -> u32 {
+//         todo!()
+//     }
 //
 // }
 // ```
@@ -165,7 +171,9 @@ fn add_missing_impl_members_inner(
 
 fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
     if fn_def.body().is_none() {
-        fn_def.with_body(make::block_from_expr(make::expr_todo()))
+        let body = make::block_expr(None, Some(make::expr_todo()));
+        let body = IndentLevel(1).increase_indent(body);
+        fn_def.with_body(body)
     } else {
         fn_def
     }
@@ -181,7 +189,7 @@ mod tests {
     fn test_add_missing_impl_members() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 trait Foo {
     type Output;
 
@@ -197,8 +205,8 @@ struct S;
 impl Foo for S {
     fn bar(&self) {}
 <|>
-}",
-            "
+}"#,
+            r#"
 trait Foo {
     type Output;
 
@@ -215,10 +223,14 @@ impl Foo for S {
     fn bar(&self) {}
     <|>type Output;
     const CONST: usize = 42;
-    fn foo(&self) { todo!() }
-    fn baz(&self) { todo!() }
+    fn foo(&self) {
+        todo!()
+    }
+    fn baz(&self) {
+        todo!()
+    }
 
-}",
+}"#,
         );
     }
 
@@ -226,7 +238,7 @@ impl Foo for S {
     fn test_copied_overriden_members() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 trait Foo {
     fn foo(&self);
     fn bar(&self) -> bool { true }
@@ -238,8 +250,8 @@ struct S;
 impl Foo for S {
     fn bar(&self) {}
 <|>
-}",
-            "
+}"#,
+            r#"
 trait Foo {
     fn foo(&self);
     fn bar(&self) -> bool { true }
@@ -250,9 +262,11 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    <|>fn foo(&self) { todo!() }
+    <|>fn foo(&self) {
+        todo!()
+    }
 
-}",
+}"#,
         );
     }
 
@@ -260,16 +274,18 @@ impl Foo for S {
     fn test_empty_impl_def() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 trait Foo { fn foo(&self); }
 struct S;
-impl Foo for S { <|> }",
-            "
+impl Foo for S { <|> }"#,
+            r#"
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
-    <|>fn foo(&self) { todo!() }
-}",
+    <|>fn foo(&self) {
+        todo!()
+    }
+}"#,
         );
     }
 
@@ -277,16 +293,18 @@ impl Foo for S {
     fn fill_in_type_params_1() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
-impl Foo<u32> for S { <|> }",
-            "
+impl Foo<u32> for S { <|> }"#,
+            r#"
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
 impl Foo<u32> for S {
-    <|>fn foo(&self, t: u32) -> &u32 { todo!() }
-}",
+    <|>fn foo(&self, t: u32) -> &u32 {
+        todo!()
+    }
+}"#,
         );
     }
 
@@ -294,16 +312,18 @@ impl Foo<u32> for S {
     fn fill_in_type_params_2() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
-impl<U> Foo<U> for S { <|> }",
-            "
+impl<U> Foo<U> for S { <|> }"#,
+            r#"
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
 impl<U> Foo<U> for S {
-    <|>fn foo(&self, t: U) -> &U { todo!() }
-}",
+    <|>fn foo(&self, t: U) -> &U {
+        todo!()
+    }
+}"#,
         );
     }
 
@@ -311,16 +331,18 @@ impl<U> Foo<U> for S {
     fn test_cursor_after_empty_impl_def() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 trait Foo { fn foo(&self); }
 struct S;
-impl Foo for S {}<|>",
-            "
+impl Foo for S {}<|>"#,
+            r#"
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
-    <|>fn foo(&self) { todo!() }
-}",
+    <|>fn foo(&self) {
+        todo!()
+    }
+}"#,
         )
     }
 
@@ -328,22 +350,24 @@ impl Foo for S {
     fn test_qualify_path_1() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 mod foo {
     pub struct Bar;
     trait Foo { fn foo(&self, bar: Bar); }
 }
 struct S;
-impl foo::Foo for S { <|> }",
-            "
+impl foo::Foo for S { <|> }"#,
+            r#"
 mod foo {
     pub struct Bar;
     trait Foo { fn foo(&self, bar: Bar); }
 }
 struct S;
 impl foo::Foo for S {
-    <|>fn foo(&self, bar: foo::Bar) { todo!() }
-}",
+    <|>fn foo(&self, bar: foo::Bar) {
+        todo!()
+    }
+}"#,
         );
     }
 
@@ -351,22 +375,24 @@ impl foo::Foo for S {
     fn test_qualify_path_generic() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 mod foo {
     pub struct Bar<T>;
     trait Foo { fn foo(&self, bar: Bar<u32>); }
 }
 struct S;
-impl foo::Foo for S { <|> }",
-            "
+impl foo::Foo for S { <|> }"#,
+            r#"
 mod foo {
     pub struct Bar<T>;
     trait Foo { fn foo(&self, bar: Bar<u32>); }
 }
 struct S;
 impl foo::Foo for S {
-    <|>fn foo(&self, bar: foo::Bar<u32>) { todo!() }
-}",
+    <|>fn foo(&self, bar: foo::Bar<u32>) {
+        todo!()
+    }
+}"#,
         );
     }
 
@@ -374,22 +400,24 @@ impl foo::Foo for S {
     fn test_qualify_path_and_substitute_param() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 mod foo {
     pub struct Bar<T>;
     trait Foo<T> { fn foo(&self, bar: Bar<T>); }
 }
 struct S;
-impl foo::Foo<u32> for S { <|> }",
-            "
+impl foo::Foo<u32> for S { <|> }"#,
+            r#"
 mod foo {
     pub struct Bar<T>;
     trait Foo<T> { fn foo(&self, bar: Bar<T>); }
 }
 struct S;
 impl foo::Foo<u32> for S {
-    <|>fn foo(&self, bar: foo::Bar<u32>) { todo!() }
-}",
+    <|>fn foo(&self, bar: foo::Bar<u32>) {
+        todo!()
+    }
+}"#,
         );
     }
 
@@ -398,15 +426,15 @@ impl foo::Foo<u32> for S {
         // when substituting params, the substituted param should not be qualified!
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 mod foo {
     trait Foo<T> { fn foo(&self, bar: T); }
     pub struct Param;
 }
 struct Param;
 struct S;
-impl foo::Foo<Param> for S { <|> }",
-            "
+impl foo::Foo<Param> for S { <|> }"#,
+            r#"
 mod foo {
     trait Foo<T> { fn foo(&self, bar: T); }
     pub struct Param;
@@ -414,8 +442,10 @@ mod foo {
 struct Param;
 struct S;
 impl foo::Foo<Param> for S {
-    <|>fn foo(&self, bar: Param) { todo!() }
-}",
+    <|>fn foo(&self, bar: Param) {
+        todo!()
+    }
+}"#,
         );
     }
 
@@ -423,15 +453,15 @@ impl foo::Foo<Param> for S {
     fn test_qualify_path_associated_item() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 mod foo {
     pub struct Bar<T>;
     impl Bar<T> { type Assoc = u32; }
     trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
 }
 struct S;
-impl foo::Foo for S { <|> }",
-            "
+impl foo::Foo for S { <|> }"#,
+            r#"
 mod foo {
     pub struct Bar<T>;
     impl Bar<T> { type Assoc = u32; }
@@ -439,8 +469,10 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    <|>fn foo(&self, bar: foo::Bar<u32>::Assoc) { todo!() }
-}",
+    <|>fn foo(&self, bar: foo::Bar<u32>::Assoc) {
+        todo!()
+    }
+}"#,
         );
     }
 
@@ -448,15 +480,15 @@ impl foo::Foo for S {
     fn test_qualify_path_nested() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 mod foo {
     pub struct Bar<T>;
     pub struct Baz;
     trait Foo { fn foo(&self, bar: Bar<Baz>); }
 }
 struct S;
-impl foo::Foo for S { <|> }",
-            "
+impl foo::Foo for S { <|> }"#,
+            r#"
 mod foo {
     pub struct Bar<T>;
     pub struct Baz;
@@ -464,8 +496,10 @@ mod foo {
 }
 struct S;
 impl foo::Foo for S {
-    <|>fn foo(&self, bar: foo::Bar<foo::Baz>) { todo!() }
-}",
+    <|>fn foo(&self, bar: foo::Bar<foo::Baz>) {
+        todo!()
+    }
+}"#,
         );
     }
 
@@ -473,22 +507,24 @@ impl foo::Foo for S {
     fn test_qualify_path_fn_trait_notation() {
         check_assist(
             add_missing_impl_members,
-            "
+            r#"
 mod foo {
     pub trait Fn<Args> { type Output; }
     trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
 }
 struct S;
-impl foo::Foo for S { <|> }",
-            "
+impl foo::Foo for S { <|> }"#,
+            r#"
 mod foo {
     pub trait Fn<Args> { type Output; }
     trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
 }
 struct S;
 impl foo::Foo for S {
-    <|>fn foo(&self, bar: dyn Fn(u32) -> i32) { todo!() }
-}",
+    <|>fn foo(&self, bar: dyn Fn(u32) -> i32) {
+        todo!()
+    }
+}"#,
         );
     }
 
@@ -496,10 +532,10 @@ impl foo::Foo for S {
     fn test_empty_trait() {
         check_assist_not_applicable(
             add_missing_impl_members,
-            "
+            r#"
 trait Foo;
 struct S;
-impl Foo for S { <|> }",
+impl Foo for S { <|> }"#,
         )
     }
 
@@ -507,13 +543,13 @@ impl Foo for S { <|> }",
     fn test_ignore_unnamed_trait_members_and_default_methods() {
         check_assist_not_applicable(
             add_missing_impl_members,
-            "
+            r#"
 trait Foo {
     fn (arg: u32);
     fn valid(some: u32) -> bool { false }
 }
 struct S;
-impl Foo for S { <|> }",
+impl Foo for S { <|> }"#,
         )
     }
 
@@ -544,7 +580,9 @@ trait Foo {
 struct S;
 impl Foo for S {
     <|>type Output;
-    fn foo(&self) { todo!() }
+    fn foo(&self) {
+        todo!()
+    }
 }"#,
         )
     }
@@ -553,7 +591,7 @@ impl Foo for S {
     fn test_default_methods() {
         check_assist(
             add_missing_default_members,
-            "
+            r#"
 trait Foo {
     type Output;
 
@@ -563,8 +601,8 @@ trait Foo {
     fn foo(some: u32) -> bool;
 }
 struct S;
-impl Foo for S { <|> }",
-            "
+impl Foo for S { <|> }"#,
+            r#"
 trait Foo {
     type Output;
 
@@ -576,7 +614,7 @@ trait Foo {
 struct S;
 impl Foo for S {
     <|>fn valid(some: u32) -> bool { false }
-}",
+}"#,
         )
     }
 }

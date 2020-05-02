@@ -149,7 +149,7 @@ fn main() {}
               "cwd": server.path().join("foo")
             },
             {
-              "args": [ "check", "--package", "foo", "--test", "spam" ],
+              "args": [ "check", "--package", "foo" ],
               "extraArgs": [],
               "bin": "cargo",
               "env": {},
@@ -161,7 +161,7 @@ fn main() {}
               "cwd": server.path().join("foo")
             },
             {
-              "args": [ "test", "--package", "foo", "--test", "spam" ],
+              "args": [ "test", "--package", "foo" ],
               "extraArgs": [],
               "bin": "cargo",
               "env": {},

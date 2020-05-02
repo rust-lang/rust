@@ -19,8 +19,7 @@ use lsp_types::{
     TextEdit, Url, WorkspaceEdit,
 };
 use ra_ide::{
-    Assist, AssistId, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind,
-    SearchScope,
+    Assist, FileId, FilePosition, FileRange, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
 };
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextSize};
@@ -47,11 +46,11 @@ use crate::{
 pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
     let _p = profile("handle_analyzer_status");
     let mut buf = world.status();
-    format_to!(buf, "\n\nrequests:");
+    format_to!(buf, "\n\nrequests:\n");
     let requests = world.latest_requests.read();
     for (is_last, r) in requests.iter() {
         let mark = if is_last { "*" } else { " " };
-        format_to!(buf, "{}{:4} {:<36}{}ms", mark, r.id, r.method, r.duration.as_millis());
+        format_to!(buf, "{}{:4} {:<36}{}ms\n", mark, r.id, r.method, r.duration.as_millis());
     }
     Ok(buf)
 }
@@ -401,11 +400,7 @@ pub fn handle_runnables(
                     range: Default::default(),
                     label: format!("cargo {} -p {}", cmd, spec.package),
                     bin: "cargo".to_string(),
-                    args: {
-                        let mut args = vec![cmd.to_string()];
-                        spec.clone().push_to(&mut args);
-                        args
-                    },
+                    args: vec![cmd.to_string(), "--package".to_string(), spec.package.clone()],
                     extra_args: Vec::new(),
                     env: FxHashMap::default(),
                     cwd: workspace_root.map(|root| root.to_owned()),
@@ -702,15 +697,9 @@ fn create_single_code_action(assist: Assist, world: &WorldSnapshot) -> Result<Co
         arguments: Some(vec![arg]),
     };
 
-    let kind = match assist.id {
-        AssistId("introduce_variable") => Some("refactor.extract.variable".to_string()),
-        AssistId("add_custom_impl") => Some("refactor.rewrite.add_custom_impl".to_string()),
-        _ => None,
-    };
-
     Ok(CodeAction {
         title,
-        kind,
+        kind: Some(String::new()),
         diagnostics: None,
         edit: None,
         command: Some(command),
@@ -812,6 +801,23 @@ pub fn handle_code_action(
         }
     }
 
+    // If the client only supports commands then filter the list
+    // and remove and actions that depend on edits.
+    if !world.config.client_caps.code_action_literals {
+        // FIXME: use drain_filter once it hits stable.
+        res = res
+            .into_iter()
+            .filter_map(|it| match it {
+                cmd @ lsp_types::CodeActionOrCommand::Command(_) => Some(cmd),
+                lsp_types::CodeActionOrCommand::CodeAction(action) => match action.command {
+                    Some(cmd) if action.edit.is_none() => {
+                        Some(lsp_types::CodeActionOrCommand::Command(cmd))
+                    }
+                    _ => None,
+                },
+            })
+            .collect();
+    }
     Ok(Some(res))
 }
 

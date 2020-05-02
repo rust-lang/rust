@@ -162,6 +162,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "RECORD_LIT",
         "RECORD_FIELD_LIST",
         "RECORD_FIELD",
+        "EFFECT_EXPR",
         "BOX_EXPR",
         // postfix
         "CALL_EXPR",
@@ -176,7 +177,6 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "PREFIX_EXPR",
         "RANGE_EXPR", // just weird
         "BIN_EXPR",
-        "BLOCK",
         "EXTERN_BLOCK",
         "EXTERN_ITEM_LIST",
         "ENUM_VARIANT",
@@ -439,6 +439,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
         struct IfExpr: AttrsOwner { T![if], Condition }
         struct LoopExpr: AttrsOwner, LoopBodyOwner { T![loop] }
+        struct EffectExpr: AttrsOwner { Label, T![try], T![unsafe], T![async], BlockExpr }
         struct ForExpr: AttrsOwner, LoopBodyOwner {
             T![for],
             Pat,
@@ -449,7 +450,9 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct ContinueExpr: AttrsOwner { T![continue], T![lifetime] }
         struct BreakExpr: AttrsOwner { T![break], T![lifetime], Expr }
         struct Label { T![lifetime] }
-        struct BlockExpr: AttrsOwner { Label, T![unsafe], T![async], Block }
+        struct BlockExpr: AttrsOwner, ModuleItemOwner {
+            T!['{'], statements: [Stmt], Expr, T!['}'],
+        }
         struct ReturnExpr: AttrsOwner { Expr }
         struct CallExpr: ArgListOwner { Expr }
         struct MethodCallExpr: AttrsOwner, ArgListOwner {
@@ -458,7 +461,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         struct IndexExpr: AttrsOwner { T!['['], T![']'] }
         struct FieldExpr: AttrsOwner { Expr, T![.], NameRef }
         struct AwaitExpr: AttrsOwner { Expr, T![.], T![await] }
-        struct TryExpr: AttrsOwner { T![try], Expr }
+        struct TryExpr: AttrsOwner { Expr, T![?] }
         struct CastExpr: AttrsOwner { Expr, T![as], TypeRef }
         struct RefExpr: AttrsOwner { T![&], T![raw], T![mut], Expr }
         struct PrefixExpr: AttrsOwner { /*PrefixOp,*/ Expr }
@@ -554,12 +557,6 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![;],
         }
         struct Condition { T![let], Pat, T![=], Expr }
-        struct Block: AttrsOwner, ModuleItemOwner {
-            T!['{'],
-            statements: [Stmt],
-            Expr,
-            T!['}'],
-        }
         struct ParamList {
             T!['('],
             SelfParam,
@@ -593,7 +590,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             qualifier: Path,
         }
         struct PathSegment {
-            T![::], T![crate], T![<], NameRef, TypeArgList, ParamList, RetType, PathType, T![>]
+            T![::], T![crate], T![self], T![super], T![<], NameRef, TypeArgList, ParamList, RetType, PathType, T![>]
         }
         struct TypeArgList {
             T![::],
@@ -720,6 +717,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             FieldExpr,
             AwaitExpr,
             TryExpr,
+            EffectExpr,
             CastExpr,
             RefExpr,
             PrefixExpr,

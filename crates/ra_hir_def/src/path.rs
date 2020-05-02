@@ -7,6 +7,7 @@ use std::{
     sync::Arc,
 };
 
+use crate::body::LowerCtx;
 use hir_expand::{
     hygiene::Hygiene,
     name::{AsName, Name},
@@ -244,8 +245,8 @@ impl<'a> PathSegments<'a> {
 }
 
 impl GenericArgs {
-    pub(crate) fn from_ast(node: ast::TypeArgList) -> Option<GenericArgs> {
-        lower::lower_generic_args(node)
+    pub(crate) fn from_ast(lower_ctx: &LowerCtx, node: ast::TypeArgList) -> Option<GenericArgs> {
+        lower::lower_generic_args(lower_ctx, node)
     }
 
     pub(crate) fn empty() -> GenericArgs {
