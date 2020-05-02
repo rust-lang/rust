@@ -836,7 +836,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
-    pub fn is_representable(&'tcx self, tcx: TyCtxt<'tcx>, sp: Span) -> Representability {
+    pub fn is_representable(&'tcx self, tcx: TyCtxt<'tcx>, hir_id: hir::HirId) -> Representability {
         // Iterate until something non-representable is found
         fn fold_repr<It: Iterator<Item = Representability>>(iter: It) -> Representability {
             iter.fold(Representability::Representable, |r1, r2| match (r1, r2) {
@@ -995,6 +995,7 @@ impl<'tcx> ty::TyS<'tcx> {
         }
 
         debug!("is_type_representable: {:?}", self);
+        let sp = tcx.hir().span(hir_id);
 
         // To avoid a stack overflow when checking an enum variant or struct that
         // contains a different, structurally recursive type, maintain a stack

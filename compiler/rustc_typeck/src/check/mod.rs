@@ -108,7 +108,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{HirIdMap, ImplicitSelfKind, Node};
+use rustc_hir::{HirId, HirIdMap, ImplicitSelfKind, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -482,10 +482,10 @@ fn typeck_with_fallback<'tcx>(
     }
 
     let id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let span = tcx.hir().span(id);
 
     // Figure out what primary body this item has.
     let (body_id, body_ty, fn_header, fn_decl) = primary_body_of(tcx, id).unwrap_or_else(|| {
+        let span = tcx.hir().span(id);
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
     let body = tcx.hir().body(body_id);
@@ -508,7 +508,7 @@ fn typeck_with_fallback<'tcx>(
                 tcx.fn_sig(def_id)
             };
 
-            check_abi(tcx, span, fn_sig.abi());
+            check_abi(tcx, id, fn_sig.abi());
 
             // Compute the fty from point of view of inside the fn.
             let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
@@ -524,6 +524,7 @@ fn typeck_with_fallback<'tcx>(
             let fcx = check_fn(&inh, param_env, fn_sig, decl, id, body, None).0;
             fcx
         } else {
+            let span = tcx.hir().span(id);
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
             let expected_type = body_ty
                 .and_then(|ty| match ty.kind {
@@ -681,10 +682,11 @@ fn get_owner_return_paths(
 /// Emit an error for recursive opaque types in a `let` binding.
 fn binding_opaque_type_cycle_error(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-    span: Span,
+    id: HirId,
     partially_expanded_type: Ty<'tcx>,
 ) {
+    let def_id = tcx.hir().local_def_id(id);
+    let span = tcx.hir().span(id);
     let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
     err.span_label(span, "cannot resolve opaque type");
     // Find the owner that declared this `impl Trait` type.
@@ -747,7 +749,8 @@ fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
     }
 }
 
-fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: Span) {
+fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
+    let span = tcx.def_span(id);
     // Only restricted on wasm32 target for now
     if !tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
         return;
