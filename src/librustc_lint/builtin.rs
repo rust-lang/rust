@@ -1144,7 +1144,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
             let suggestion = spans
                 .iter()
                 .map(|sp| {
-                    let start = param.span.between(*sp); // Include the `:` in `T: Bound`.
+                    let param_span = cx.tcx.hir().span(param.hir_id);
+                    let start = param_span.between(*sp); // Include the `:` in `T: Bound`.
                     (start.to(*sp), String::new())
                 })
                 .collect();
@@ -1684,8 +1685,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                     infer_static,
                 );
                 bound_count += bound_spans.len();
+                let param_span = cx.tcx.hir().span(param.hir_id);
                 lint_spans.extend(self.consolidate_outlives_bound_spans(
-                    param.span.shrink_to_hi(),
+                    param_span.shrink_to_hi(),
                     &param.bounds,
                     bound_spans,
                 ));

@@ -1220,7 +1220,7 @@ fn check_variances_for_type_defn<'tcx>(
 
         match param.name {
             hir::ParamName::Error => {}
-            _ => report_bivariance(tcx, param.span, param.name.ident().name),
+            _ => report_bivariance(tcx, tcx.hir().span(param.hir_id), param.name.ident().name),
         }
     }
 }

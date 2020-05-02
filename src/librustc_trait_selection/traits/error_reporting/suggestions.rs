@@ -274,7 +274,7 @@ fn suggest_restriction(
                 // `fn foo<A>(t: impl Trait)`
                 //        ^^^ suggest `<A, T: Trait>` here
                 Some(param) => (
-                    param.bounds_span().unwrap_or(param.span).shrink_to_hi(),
+                    param.bounds_span().unwrap_or(tcx.hir().span(param.hir_id)).shrink_to_hi(),
                     format!(", {}", type_param),
                 ),
             },

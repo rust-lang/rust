@@ -371,7 +371,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_generic_param(&mut self, param: &'hir GenericParam<'hir>) {
-        self.insert(param.span, param.hir_id, Node::GenericParam(param));
+        self.insert(DUMMY_SP, param.hir_id, Node::GenericParam(param));
         intravisit::walk_generic_param(self, param);
     }
 

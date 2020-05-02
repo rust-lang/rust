@@ -322,7 +322,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         .emit();
                     };
                 }
-                if traits::search_for_structural_match_violation(param.hir_id, param.span, tcx, ty)
+                let param_span = tcx.hir().span(param.hir_id);
+                if traits::search_for_structural_match_violation(param.hir_id, param_span, tcx, ty)
                     .is_some()
                 {
                     // We use the same error code in both branches, because this is really the same
