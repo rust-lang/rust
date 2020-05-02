@@ -204,6 +204,7 @@ impl DefCollector<'_> {
                 ast_id: None,
                 krate: Some(krate),
                 kind: MacroDefKind::CustomDerive(expander),
+                local_inner: false,
             };
 
             self.define_proc_macro(name.clone(), macro_id);
@@ -941,6 +942,7 @@ impl ModCollector<'_, '_> {
                     ast_id: Some(ast_id.ast_id),
                     krate: Some(self.def_collector.def_map.krate),
                     kind: MacroDefKind::Declarative,
+                    local_inner: mac.local_inner,
                 };
                 self.def_collector.define_macro(self.module_id, name.clone(), macro_id, mac.export);
             }

@@ -466,6 +466,7 @@ impl ExprCollector<'_> {
                         krate: Some(self.expander.module.krate),
                         ast_id: Some(self.expander.ast_id(&e)),
                         kind: MacroDefKind::Declarative,
+                        local_inner: false,
                     };
                     self.body.item_scope.define_legacy_macro(name, mac);
 

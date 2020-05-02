@@ -136,6 +136,43 @@ fn macro_rules_export_with_local_inner_macros_are_visible() {
 }
 
 #[test]
+fn local_inner_macros_makes_local_macros_usable() {
+    let map = def_map(
+        "
+        //- /main.rs crate:main deps:foo
+        foo::structs!(Foo, Bar);
+        mod bar;
+        //- /bar.rs
+        use crate::*;
+        //- /lib.rs crate:foo
+        #[macro_export(local_inner_macros)]
+        macro_rules! structs {
+            ($($i:ident),*) => {
+                inner!($($i),*);
+            }
+        }
+        #[macro_export]
+        macro_rules! inner {
+            ($($i:ident),*) => {
+                $(struct $i { field: u32 } )*
+            }
+        }
+        ",
+    );
+    assert_snapshot!(map, @r###"
+   ⋮crate
+   ⋮Bar: t v
+   ⋮Foo: t v
+   ⋮bar: t
+   ⋮
+   ⋮crate::bar
+   ⋮Bar: t v
+   ⋮Foo: t v
+   ⋮bar: t
+    "###);
+}
+
+#[test]
 fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
     let map = def_map(
         "

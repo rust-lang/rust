@@ -428,6 +428,32 @@ fn main() {
 }
 
 #[test]
+fn infer_local_inner_macros() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:foo
+fn test() {
+    let x = foo::foo!(1);
+    x<|>;
+}
+
+//- /lib.rs crate:foo
+#[macro_export(local_inner_macros)]
+macro_rules! foo {
+    (1) => { bar!() };
+}
+
+#[macro_export]
+macro_rules! bar {
+    () => { 42 }
+}
+
+"#,
+    );
+    assert_eq!("i32", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_builtin_macros_line() {
     assert_snapshot!(
         infer(r#"
