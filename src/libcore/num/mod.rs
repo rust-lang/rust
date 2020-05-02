@@ -1242,7 +1242,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
                 intrinsics::wrapping_add(self, rhs)
             }
@@ -1266,7 +1266,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
                 intrinsics::wrapping_sub(self, rhs)
             }
@@ -1289,7 +1289,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_mul(self, rhs: Self) -> Self {
                 intrinsics::wrapping_mul(self, rhs)
             }
@@ -1320,7 +1320,7 @@ $EndFeature, "
             #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_div(self, rhs: Self) -> Self {
                 self.overflowing_div(rhs).0
             }
@@ -1350,7 +1350,7 @@ assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
                 self.overflowing_div_euclid(rhs).0
             }
@@ -1381,7 +1381,7 @@ $EndFeature, "
             #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_rem(self, rhs: Self) -> Self {
                 self.overflowing_rem(rhs).0
             }
@@ -1410,7 +1410,7 @@ assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
                 self.overflowing_rem_euclid(rhs).0
             }
@@ -1436,7 +1436,7 @@ $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_neg(self) -> Self {
                 self.overflowing_neg().0
             }
@@ -1464,7 +1464,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_shl(self, rhs: u32) -> Self {
                 // SAFETY: the masking by the bitsize of the type ensures that we do not shift
                 // out of bounds
@@ -1496,7 +1496,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_shr(self, rhs: u32) -> Self {
                 // SAFETY: the masking by the bitsize of the type ensures that we do not shift
                 // out of bounds
@@ -1530,7 +1530,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[allow(unused_attributes)]
             #[allow_internal_unstable(const_if_match)]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_abs(self) -> Self {
                  if self.is_negative() {
                      self.wrapping_neg()
@@ -3315,7 +3315,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
                 intrinsics::wrapping_add(self, rhs)
             }
@@ -3338,7 +3338,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
                 intrinsics::wrapping_sub(self, rhs)
             }
@@ -3362,7 +3362,7 @@ $EndFeature, "
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
             intrinsics::wrapping_mul(self, rhs)
         }
@@ -3385,7 +3385,7 @@ Basic usage:
             #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_div(self, rhs: Self) -> Self {
                 self / rhs
             }
@@ -3412,7 +3412,7 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
                 self / rhs
             }
@@ -3437,7 +3437,7 @@ Basic usage:
             #[rustc_const_unstable(feature = "const_wrapping_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_rem(self, rhs: Self) -> Self {
                 self % rhs
             }
@@ -3465,7 +3465,7 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
             #[rustc_const_unstable(feature = "const_euclidean_int_methods", issue = "53718")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
                 self % rhs
             }
@@ -3494,7 +3494,7 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_neg(self) -> Self {
             self.overflowing_neg().0
         }
@@ -3523,7 +3523,7 @@ assert_eq!(1", stringify!($SelfT), ".wrapping_shl(128), 1);", $EndFeature, "
             #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_shl(self, rhs: u32) -> Self {
                 // SAFETY: the masking by the bitsize of the type ensures that we do not shift
                 // out of bounds
@@ -3557,7 +3557,7 @@ assert_eq!(128", stringify!($SelfT), ".wrapping_shr(128), 128);", $EndFeature, "
             #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[inline]
+            #[inline(always)]
             pub const fn wrapping_shr(self, rhs: u32) -> Self {
                 // SAFETY: the masking by the bitsize of the type ensures that we do not shift
                 // out of bounds
