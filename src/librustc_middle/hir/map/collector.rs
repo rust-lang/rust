@@ -416,7 +416,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_arm(&mut self, arm: &'hir Arm<'hir>) {
         let node = Node::Arm(arm);
 
-        self.insert(arm.span, arm.hir_id, node);
+        self.insert(DUMMY_SP, arm.hir_id, node);
 
         self.with_parent(arm.hir_id, |this| {
             intravisit::walk_arm(this, arm);
