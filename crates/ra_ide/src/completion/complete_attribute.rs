@@ -169,15 +169,30 @@ fn parse_derive_input(derive_input: ast::TokenTree) -> Result<FxHashSet<String>,
             if left_paren.kind() == SyntaxKind::L_PAREN
                 && right_paren.kind() == SyntaxKind::R_PAREN =>
         {
-            Ok(derive_input
+            let mut input_derives = FxHashSet::default();
+            let mut current_derive = String::new();
+            for token in derive_input
                 .syntax()
                 .children_with_tokens()
-                .filter_map(|child| child.into_token())
-                .skip_while(|child| child != &left_paren)
-                .take_while(|child| child != &right_paren)
-                .filter(|child| child.kind() == SyntaxKind::IDENT)
-                .map(|child| child.to_string())
-                .collect())
+                .filter_map(|token| token.into_token())
+                .skip_while(|token| token != &left_paren)
+                .skip(1)
+                .take_while(|token| token != &right_paren)
+            {
+                if SyntaxKind::COMMA == token.kind() {
+                    if !current_derive.is_empty() {
+                        input_derives.insert(current_derive);
+                        current_derive = String::new();
+                    }
+                } else {
+                    current_derive.push_str(token.to_string().trim());
+                }
+            }
+
+            if !current_derive.is_empty() {
+                input_derives.insert(current_derive);
+            }
+            Ok(input_derives)
         }
         _ => Err(()),
     }
@@ -188,8 +203,7 @@ fn get_derive_names_in_scope(ctx: &CompletionContext) -> FxHashSet<String> {
     ctx.scope().process_all_names(&mut |name, scope_def| {
         if let hir::ScopeDef::MacroDef(mac) = scope_def {
             if mac.is_derive_macro() {
-                let name_string = name.to_string();
-                result.insert(name_string);
+                result.insert(name.to_string());
             }
         }
     });
@@ -321,7 +335,7 @@ mod tests {
         assert_debug_snapshot!(
             do_attr_completion(
                     r"
-                    #[derive(Whatever, PartialEq, <|>)]
+                    #[derive(serde::Serialize, PartialEq, <|>)]
                     struct Test {}
                     ",
             ),
@@ -329,57 +343,57 @@ mod tests {
         [
             CompletionItem {
                 label: "Clone",
-                source_range: 51..51,
-                delete: 51..51,
+                source_range: 59..59,
+                delete: 59..59,
                 insert: "Clone",
                 kind: Attribute,
             },
             CompletionItem {
                 label: "Copy, Clone",
-                source_range: 51..51,
-                delete: 51..51,
+                source_range: 59..59,
+                delete: 59..59,
                 insert: "Copy, Clone",
                 kind: Attribute,
             },
             CompletionItem {
                 label: "Debug",
-                source_range: 51..51,
-                delete: 51..51,
+                source_range: 59..59,
+                delete: 59..59,
                 insert: "Debug",
                 kind: Attribute,
             },
             CompletionItem {
                 label: "Default",
-                source_range: 51..51,
-                delete: 51..51,
+                source_range: 59..59,
+                delete: 59..59,
                 insert: "Default",
                 kind: Attribute,
             },
             CompletionItem {
                 label: "Eq",
-                source_range: 51..51,
-                delete: 51..51,
+                source_range: 59..59,
+                delete: 59..59,
                 insert: "Eq",
                 kind: Attribute,
             },
             CompletionItem {
                 label: "Hash",
-                source_range: 51..51,
-                delete: 51..51,
+                source_range: 59..59,
+                delete: 59..59,
                 insert: "Hash",
                 kind: Attribute,
             },
             CompletionItem {
                 label: "Ord, PartialOrd, Eq",
-                source_range: 51..51,
-                delete: 51..51,
+                source_range: 59..59,
+                delete: 59..59,
                 insert: "Ord, PartialOrd, Eq",
                 kind: Attribute,
             },
             CompletionItem {
                 label: "PartialOrd",
-                source_range: 51..51,
-                delete: 51..51,
+                source_range: 59..59,
+                delete: 59..59,
                 insert: "PartialOrd",
                 kind: Attribute,
             },
