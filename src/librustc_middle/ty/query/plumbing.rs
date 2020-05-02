@@ -424,6 +424,7 @@ macro_rules! define_queries_inner {
 
             $($(#[$attr])*
             #[inline(always)]
+            #[must_use]
             pub fn $name(self, key: query_helper_param_ty!($($K)*))
                 -> <queries::$name<$tcx> as QueryConfig<TyCtxt<$tcx>>>::Stored
             {

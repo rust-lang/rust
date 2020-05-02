@@ -156,7 +156,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
     // Trigger building the specialization graph for the trait. This will detect and report any
     // overlap errors.
-    tcx.specialization_graph_of(def_id);
+    tcx.ensure().specialization_graph_of(def_id);
 
     let impls = tcx.hir().trait_impls(def_id);
     for &hir_id in impls {
