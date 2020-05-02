@@ -2,6 +2,7 @@
 
 #![warn(clippy::while_let_on_iterator)]
 #![allow(clippy::never_loop, unreachable_code, unused_mut)]
+#![feature(or_patterns)]
 
 fn base() {
     let mut iter = 1..20;
@@ -75,6 +76,62 @@ fn refutable() {
     for &(1, 2, 3) in b {}
     for &Option::None in b.next() {}
     // */
+}
+
+fn refutable2() {
+    // Issue 3780
+    {
+        let v = vec![1, 2, 3];
+        let mut it = v.windows(2);
+        while let Some([x, y]) = it.next() {
+            println!("x: {}", x);
+            println!("y: {}", y);
+        }
+
+        let mut it = v.windows(2);
+        while let Some([x, ..]) = it.next() {
+            println!("x: {}", x);
+        }
+
+        let mut it = v.windows(2);
+        while let Some([.., y]) = it.next() {
+            println!("y: {}", y);
+        }
+
+        let mut it = v.windows(2);
+        while let Some([..]) = it.next() {}
+
+        let v = vec![[1], [2], [3]];
+        let mut it = v.iter();
+        while let Some([1]) = it.next() {}
+
+        let mut it = v.iter();
+        while let Some([_x]) = it.next() {}
+    }
+
+    // binding
+    {
+        let v = vec![1, 2, 3];
+        let mut it = v.iter();
+        while let Some(x @ 1) = it.next() {
+            println!("{}", x);
+        }
+
+        let v = vec![[1], [2], [3]];
+        let mut it = v.iter();
+        while let Some(x @ [_]) = it.next() {
+            println!("{:?}", x);
+        }
+    }
+
+    // false negative
+    {
+        let v = vec![1, 2, 3];
+        let mut it = v.iter().map(Some);
+        while let Some(Some(_) | None) = it.next() {
+            println!("1");
+        }
+    }
 }
 
 fn nested_loops() {
@@ -152,6 +209,7 @@ fn issue1654() {
 fn main() {
     base();
     refutable();
+    refutable2();
     nested_loops();
     issue1121();
     issue2965();
