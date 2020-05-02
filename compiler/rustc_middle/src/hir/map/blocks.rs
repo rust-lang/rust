@@ -16,7 +16,6 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Expr, FnDecl, Node};
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
 /// and a body (as well as a NodeId, a span, etc).
@@ -103,7 +102,6 @@ struct ItemFnParts<'a> {
     generics: &'a hir::Generics<'a>,
     body: hir::BodyId,
     id: hir::HirId,
-    span: Span,
 }
 
 /// These are all the components one can extract from a closure expr
@@ -112,12 +110,11 @@ struct ClosureParts<'a> {
     decl: &'a FnDecl<'a>,
     body: hir::BodyId,
     id: hir::HirId,
-    span: Span,
 }
 
 impl<'a> ClosureParts<'a> {
-    fn new(d: &'a FnDecl<'a>, b: hir::BodyId, id: hir::HirId, s: Span) -> Self {
-        ClosureParts { decl: d, body: b, id, span: s }
+    fn new(d: &'a FnDecl<'a>, b: hir::BodyId, id: hir::HirId) -> Self {
+        ClosureParts { decl: d, body: b, id }
     }
 }
 
@@ -137,7 +134,7 @@ impl<'a> FnLikeNode<'a> {
     pub fn body(self) -> hir::BodyId {
         self.handle(
             |i: ItemFnParts<'a>| i.body,
-            |_, _, _: &'a hir::FnSig<'a>, _, body: hir::BodyId, _| body,
+            |_, _, _: &'a hir::FnSig<'a>, _, body: hir::BodyId| body,
             |c: ClosureParts<'a>| c.body,
         )
     }
@@ -145,23 +142,15 @@ impl<'a> FnLikeNode<'a> {
     pub fn decl(self) -> &'a FnDecl<'a> {
         self.handle(
             |i: ItemFnParts<'a>| &*i.decl,
-            |_, _, sig: &'a hir::FnSig<'a>, _, _, _| &sig.decl,
+            |_, _, sig: &'a hir::FnSig<'a>, _, _| &sig.decl,
             |c: ClosureParts<'a>| c.decl,
-        )
-    }
-
-    pub fn span(self) -> Span {
-        self.handle(
-            |i: ItemFnParts<'_>| i.span,
-            |_, _, _: &'a hir::FnSig<'a>, _, _, span| span,
-            |c: ClosureParts<'_>| c.span,
         )
     }
 
     pub fn id(self) -> hir::HirId {
         self.handle(
             |i: ItemFnParts<'_>| i.id,
-            |id, _, _: &'a hir::FnSig<'a>, _, _, _| id,
+            |id, _, _: &'a hir::FnSig<'a>, _, _| id,
             |c: ClosureParts<'_>| c.id,
         )
     }
@@ -184,7 +173,7 @@ impl<'a> FnLikeNode<'a> {
         };
         let closure = |_: ClosureParts<'a>| FnKind::Closure;
         let method =
-            |_, ident: Ident, sig: &'a hir::FnSig<'a>, vis, _, _| FnKind::Method(ident, sig, vis);
+            |_, ident: Ident, sig: &'a hir::FnSig<'a>, vis, _| FnKind::Method(ident, sig, vis);
         self.handle(item, method, closure)
     }
 
@@ -197,7 +186,6 @@ impl<'a> FnLikeNode<'a> {
             &'a hir::FnSig<'a>,
             Option<&'a hir::Visibility<'a>>,
             hir::BodyId,
-            Span,
         ) -> A,
         C: FnOnce(ClosureParts<'a>) -> A,
     {
@@ -209,7 +197,6 @@ impl<'a> FnLikeNode<'a> {
                     decl: &sig.decl,
                     body: block,
                     vis: &i.vis,
-                    span: i.span,
                     header: sig.header,
                     generics,
                 }),
@@ -217,19 +204,19 @@ impl<'a> FnLikeNode<'a> {
             },
             Node::TraitItem(ti) => match ti.kind {
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                    method(ti.hir_id(), ti.ident, sig, None, body, ti.span)
+                    method(ti.hir_id(), ti.ident, sig, None, body)
                 }
                 _ => bug!("trait method FnLikeNode that is not fn-like"),
             },
             Node::ImplItem(ii) => match ii.kind {
                 hir::ImplItemKind::Fn(ref sig, body) => {
-                    method(ii.hir_id(), ii.ident, sig, Some(&ii.vis), body, ii.span)
+                    method(ii.hir_id(), ii.ident, sig, Some(&ii.vis), body)
                 }
                 _ => bug!("impl method FnLikeNode that is not fn-like"),
             },
             Node::Expr(e) => match e.kind {
                 hir::ExprKind::Closure(_, ref decl, block, _fn_decl_span, _gen) => {
-                    closure(ClosureParts::new(&decl, block, e.hir_id, e.span))
+                    closure(ClosureParts::new(&decl, block, e.hir_id))
                 }
                 _ => bug!("expr FnLikeNode that is not fn-like"),
             },
