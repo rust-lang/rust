@@ -400,11 +400,7 @@ pub fn handle_runnables(
                     range: Default::default(),
                     label: format!("cargo {} -p {}", cmd, spec.package),
                     bin: "cargo".to_string(),
-                    args: {
-                        let mut args = vec![cmd.to_string()];
-                        spec.clone().push_to(&mut args);
-                        args
-                    },
+                    args: vec![cmd.to_string(), "--package".to_string(), spec.package.clone()],
                     extra_args: Vec::new(),
                     env: FxHashMap::default(),
                     cwd: workspace_root.map(|root| root.to_owned()),
