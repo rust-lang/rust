@@ -368,12 +368,15 @@ impl TcpListener {
 
         let sock = Socket::new(addr, c::SOCK_STREAM)?;
 
-        // On platforms with Berkeley-derived sockets, this allows
-        // to quickly rebind a socket, without needing to wait for
-        // the OS to clean up the previous one.
-        if !cfg!(windows) {
-            setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
-        }
+        // On platforms with Berkeley-derived sockets, this allows to quickly
+        // rebind a socket, without needing to wait for the OS to clean up the
+        // previous one.
+        //
+        // On Windows, this allows rebinding sockets which are actively in use,
+        // which allows “socket hijacking”, so we explicitly don't set it here.
+        // https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
+        #[cfg(not(windows))]
+        setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR, 1 as c_int)?;
 
         // Bind our new socket
         let (addrp, len) = addr.into_inner();
