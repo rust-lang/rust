@@ -17,7 +17,7 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_session::config::{self, Lto};
+use rustc_session::config::{self, CrateType, Lto};
 
 use std::ffi::{CStr, CString};
 use std::fs::File;
@@ -33,13 +33,10 @@ use std::sync::Arc;
 /// compilation session.
 pub const THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-imports.bin";
 
-pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
+pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
-        config::CrateType::Executable
-        | config::CrateType::Staticlib
-        | config::CrateType::Cdylib => true,
-
-        config::CrateType::Dylib | config::CrateType::Rlib | config::CrateType::ProcMacro => false,
+        CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => true,
+        CrateType::Dylib | CrateType::Rlib | CrateType::ProcMacro => false,
     }
 }
 

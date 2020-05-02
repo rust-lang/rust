@@ -28,9 +28,8 @@ use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
-use rustc_session::config::{
-    self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
-};
+use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
+use rustc_session::config::{Passes, Sanitizer, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::SourceMap;
@@ -288,7 +287,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub fewer_names: bool,
     pub exported_symbols: Option<Arc<ExportedSymbols>>,
     pub opts: Arc<config::Options>,
-    pub crate_types: Vec<config::CrateType>,
+    pub crate_types: Vec<CrateType>,
     pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
     pub output_filenames: Arc<OutputFilenames>,
     pub regular_module_config: Arc<ModuleConfig>,
@@ -375,7 +374,7 @@ pub struct CompiledModules {
 
 fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
     sess.opts.cg.embed_bitcode
-        && sess.crate_types.borrow().contains(&config::CrateType::Rlib)
+        && sess.crate_types.borrow().contains(&CrateType::Rlib)
         && sess.opts.output_types.contains_key(&OutputType::Exe)
 }
 
@@ -760,7 +759,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     // require LTO so the request for LTO is always unconditionally
     // passed down to the backend, but we don't actually want to do
     // anything about it yet until we've got a final product.
-    let is_rlib = cgcx.crate_types.len() == 1 && cgcx.crate_types[0] == config::CrateType::Rlib;
+    let is_rlib = cgcx.crate_types.len() == 1 && cgcx.crate_types[0] == CrateType::Rlib;
 
     // Metadata modules never participate in LTO regardless of the lto
     // settings.
@@ -1813,7 +1812,7 @@ fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
     );
 
     tcx.sess.target.target.options.is_like_msvc &&
-        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateType::Rlib) &&
+        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == CrateType::Rlib) &&
     // ThinLTO can't handle this workaround in all cases, so we don't
     // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing
     // dynamic linking when linker plugin LTO is enabled.

@@ -27,9 +27,7 @@ use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_resolve::{Resolver, ResolverArenas};
-use rustc_session::config::{
-    self, CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode,
-};
+use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode};
 use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
@@ -361,7 +359,7 @@ fn configure_and_expand_inner<'a>(
     });
 
     let crate_types = sess.crate_types.borrow();
-    let is_proc_macro_crate = crate_types.contains(&config::CrateType::ProcMacro);
+    let is_proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
 
     // For backwards compatibility, we don't try to run proc macro injection
     // if rustdoc is run on a proc macro crate without '--crate-type proc-macro' being

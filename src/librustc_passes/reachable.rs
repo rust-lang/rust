@@ -17,7 +17,7 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::middle::privacy;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config;
+use rustc_session::config::CrateType;
 use rustc_target::spec::abi::Abi;
 
 // Returns true if the given item must be inlined because it may be
@@ -375,11 +375,10 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet
 
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
-    let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
-        *ty == config::CrateType::Rlib
-            || *ty == config::CrateType::Dylib
-            || *ty == config::CrateType::ProcMacro
-    });
+    let any_library =
+        tcx.sess.crate_types.borrow().iter().any(|ty| {
+            *ty == CrateType::Rlib || *ty == CrateType::Dylib || *ty == CrateType::ProcMacro
+        });
     let mut reachable_context = ReachableContext {
         tcx,
         tables: &ty::TypeckTables::empty(None),

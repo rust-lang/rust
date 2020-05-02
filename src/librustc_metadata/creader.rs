@@ -17,7 +17,7 @@ use rustc_middle::middle::cstore::{
     CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config;
+use rustc_session::config::{self, CrateType};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CrateDisambiguator, Session};
@@ -615,8 +615,7 @@ impl<'a> CrateLoader<'a> {
     fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
-        let any_non_rlib =
-            self.sess.crate_types.borrow().iter().any(|ct| *ct != config::CrateType::Rlib);
+        let any_non_rlib = self.sess.crate_types.borrow().iter().any(|ct| *ct != CrateType::Rlib);
         if !any_non_rlib {
             info!("panic runtime injection skipped, only generating rlib");
             return;
@@ -736,7 +735,7 @@ impl<'a> CrateLoader<'a> {
         // if our compilation session actually needs an allocator based on what
         // we're emitting.
         let all_rlib = self.sess.crate_types.borrow().iter().all(|ct| match *ct {
-            config::CrateType::Rlib => true,
+            CrateType::Rlib => true,
             _ => false,
         });
         if all_rlib {
