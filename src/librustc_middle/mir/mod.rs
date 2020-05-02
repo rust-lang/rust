@@ -1861,7 +1861,7 @@ impl<'tcx> Copy for PlaceElem<'tcx> {}
 
 // At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PlaceElem<'_>, 16);
+static_assert_size!(PlaceElem<'_>, 24);
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
