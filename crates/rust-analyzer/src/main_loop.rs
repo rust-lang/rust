@@ -6,9 +6,12 @@ mod subscriptions;
 pub(crate) mod pending_requests;
 
 use std::{
+    borrow::Cow,
     env,
     error::Error,
-    fmt, panic,
+    fmt,
+    ops::Range,
+    panic,
     path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
@@ -18,11 +21,12 @@ use crossbeam_channel::{never, select, unbounded, RecvError, Sender};
 use itertools::Itertools;
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
-    NumberOrString, WorkDoneProgress, WorkDoneProgressBegin, WorkDoneProgressCreateParams,
-    WorkDoneProgressEnd, WorkDoneProgressReport,
+    DidChangeTextDocumentParams, NumberOrString, TextDocumentContentChangeEvent, WorkDoneProgress,
+    WorkDoneProgressBegin, WorkDoneProgressCreateParams, WorkDoneProgressEnd,
+    WorkDoneProgressReport,
 };
 use ra_flycheck::{url_from_path_with_drive_lowercasing, CheckTask};
-use ra_ide::{Canceled, FileId, LibraryData, SourceRootId};
+use ra_ide::{Canceled, FileId, LibraryData, LineIndex, SourceRootId};
 use ra_prof::profile;
 use ra_project_model::{PackageRoot, ProjectWorkspace};
 use ra_vfs::{VfsFile, VfsTask, Watch};
@@ -33,6 +37,7 @@ use threadpool::ThreadPool;
 
 use crate::{
     config::{Config, FilesWatcher},
+    conv::{ConvWith, TryConvWith},
     diagnostics::DiagnosticTask,
     main_loop::{
         pending_requests::{PendingRequest, PendingRequests},
@@ -410,8 +415,7 @@ fn loop_turn(
         });
     }
 
-    let show_progress =
-        !loop_state.workspace_loaded && world_state.config.notifications.workspace_loaded;
+    let show_progress = !loop_state.workspace_loaded;
 
     if !loop_state.workspace_loaded
         && loop_state.roots_scanned == loop_state.roots_total
@@ -579,12 +583,16 @@ fn on_notification(
         Err(not) => not,
     };
     let not = match notification_cast::<req::DidChangeTextDocument>(not) {
-        Ok(mut params) => {
-            let uri = params.text_document.uri;
+        Ok(params) => {
+            let DidChangeTextDocumentParams { text_document, content_changes } = params;
+            let world = state.snapshot();
+            let file_id = text_document.try_conv_with(&world)?;
+            let line_index = world.analysis().file_line_index(file_id)?;
+            let uri = text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
-            let text =
-                params.content_changes.pop().ok_or_else(|| "empty changes".to_string())?.text;
-            state.vfs.write().change_file_overlay(path.as_path(), text);
+            state.vfs.write().change_file_overlay(&path, |old_text| {
+                apply_document_changes(old_text, Cow::Borrowed(&line_index), content_changes);
+            });
             return Ok(());
         }
         Err(not) => not,
@@ -651,6 +659,48 @@ fn on_notification(
     }
     log::error!("unhandled notification: {:?}", not);
     Ok(())
+}
+
+fn apply_document_changes(
+    old_text: &mut String,
+    mut line_index: Cow<'_, LineIndex>,
+    content_changes: Vec<TextDocumentContentChangeEvent>,
+) {
+    // The changes we got must be applied sequentially, but can cross lines so we
+    // have to keep our line index updated.
+    // Some clients (e.g. Code) sort the ranges in reverse. As an optimization, we
+    // remember the last valid line in the index and only rebuild it if needed.
+    enum IndexValid {
+        All,
+        UpToLine(u64),
+    }
+
+    impl IndexValid {
+        fn covers(&self, line: u64) -> bool {
+            match *self {
+                IndexValid::UpToLine(to) => to >= line,
+                _ => true,
+            }
+        }
+    }
+
+    let mut index_valid = IndexValid::All;
+    for change in content_changes {
+        match change.range {
+            Some(range) => {
+                if !index_valid.covers(range.start.line) {
+                    line_index = Cow::Owned(LineIndex::new(&old_text));
+                }
+                index_valid = IndexValid::UpToLine(range.start.line);
+                let range = range.conv_with(&line_index);
+                old_text.replace_range(Range::<usize>::from(range), &change.text);
+            }
+            None => {
+                *old_text = change.text;
+                index_valid = IndexValid::UpToLine(0);
+            }
+        }
+    }
 }
 
 fn on_check_task(
@@ -957,4 +1007,65 @@ where
     R::Params: Serialize,
 {
     Request::new(id, R::METHOD.to_string(), params)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::borrow::Cow;
+
+    use lsp_types::{Position, Range, TextDocumentContentChangeEvent};
+    use ra_ide::LineIndex;
+
+    #[test]
+    fn apply_document_changes() {
+        fn run(text: &mut String, changes: Vec<TextDocumentContentChangeEvent>) {
+            let line_index = Cow::Owned(LineIndex::new(&text));
+            super::apply_document_changes(text, line_index, changes);
+        }
+
+        macro_rules! c {
+            [$($sl:expr, $sc:expr; $el:expr, $ec:expr => $text:expr),+] => {
+                vec![$(TextDocumentContentChangeEvent {
+                    range: Some(Range {
+                        start: Position { line: $sl, character: $sc },
+                        end: Position { line: $el, character: $ec },
+                    }),
+                    range_length: None,
+                    text: String::from($text),
+                }),+]
+            };
+        }
+
+        let mut text = String::new();
+        run(&mut text, vec![]);
+        assert_eq!(text, "");
+        run(
+            &mut text,
+            vec![TextDocumentContentChangeEvent {
+                range: None,
+                range_length: None,
+                text: String::from("the"),
+            }],
+        );
+        assert_eq!(text, "the");
+        run(&mut text, c![0, 3; 0, 3 => " quick"]);
+        assert_eq!(text, "the quick");
+        run(&mut text, c![0, 0; 0, 4 => "", 0, 5; 0, 5 => " foxes"]);
+        assert_eq!(text, "quick foxes");
+        run(&mut text, c![0, 11; 0, 11 => "\ndream"]);
+        assert_eq!(text, "quick foxes\ndream");
+        run(&mut text, c![1, 0; 1, 0 => "have "]);
+        assert_eq!(text, "quick foxes\nhave dream");
+        run(&mut text, c![0, 0; 0, 0 => "the ", 1, 4; 1, 4 => " quiet", 1, 16; 1, 16 => "s\n"]);
+        assert_eq!(text, "the quick foxes\nhave quiet dreams\n");
+        run(&mut text, c![0, 15; 0, 15 => "\n", 2, 17; 2, 17 => "\n"]);
+        assert_eq!(text, "the quick foxes\n\nhave quiet dreams\n\n");
+        run(
+            &mut text,
+            c![1, 0; 1, 0 => "DREAM", 2, 0; 2, 0 => "they ", 3, 0; 3, 0 => "DON'T THEY?"],
+        );
+        assert_eq!(text, "the quick foxes\nDREAM\nthey have quiet dreams\nDON'T THEY?\n");
+        run(&mut text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
+        assert_eq!(text, "the quick \nthey have quiet dreams\n");
+    }
 }

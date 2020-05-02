@@ -250,6 +250,44 @@ mod tests {
     }
 
     #[test]
+    fn test_union_field_completion() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+            union Un {
+                field: u8,
+                other: u16,
+            }
+
+            fn foo(u: Un) {
+                u.<|>
+            }
+            ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "field",
+                source_range: 140..140,
+                delete: 140..140,
+                insert: "field",
+                kind: Field,
+                detail: "u8",
+            },
+            CompletionItem {
+                label: "other",
+                source_range: 140..140,
+                delete: 140..140,
+                insert: "other",
+                kind: Field,
+                detail: "u16",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn test_method_completion() {
         assert_debug_snapshot!(
         do_ref_completion(

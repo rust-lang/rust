@@ -4,8 +4,8 @@ use std::{collections::HashMap, path::PathBuf, time::Instant};
 
 use lsp_types::{
     CodeActionContext, DidOpenTextDocumentParams, DocumentFormattingParams, FormattingOptions,
-    PartialResultParams, Position, Range, TextDocumentItem, TextDocumentPositionParams,
-    WorkDoneProgressParams,
+    GotoDefinitionParams, HoverParams, PartialResultParams, Position, Range, TextDocumentItem,
+    TextDocumentPositionParams, WorkDoneProgressParams,
 };
 use rust_analyzer::req::{
     CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
@@ -149,7 +149,7 @@ fn main() {}
               "cwd": server.path().join("foo")
             },
             {
-              "args": [ "check", "--package", "foo", "--test", "spam" ],
+              "args": [ "check", "--package", "foo" ],
               "extraArgs": [],
               "bin": "cargo",
               "env": {},
@@ -161,7 +161,7 @@ fn main() {}
               "cwd": server.path().join("foo")
             },
             {
-              "args": [ "test", "--package", "foo", "--test", "spam" ],
+              "args": [ "test", "--package", "foo" ],
               "extraArgs": [],
               "bin": "cargo",
               "env": {},
@@ -610,10 +610,14 @@ fn main() { message(); }
     })
     .server();
     server.wait_until_workspace_is_loaded();
-    let res = server.send_request::<GotoDefinition>(TextDocumentPositionParams::new(
-        server.doc_id("src/main.rs"),
-        Position::new(2, 15),
-    ));
+    let res = server.send_request::<GotoDefinition>(GotoDefinitionParams {
+        text_document_position_params: TextDocumentPositionParams::new(
+            server.doc_id("src/main.rs"),
+            Position::new(2, 15),
+        ),
+        work_done_progress_params: Default::default(),
+        partial_result_params: Default::default(),
+    });
     assert!(format!("{}", res).contains("hello.rs"));
 }
 
@@ -692,10 +696,13 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     .root("bar")
     .server();
     server.wait_until_workspace_is_loaded();
-    let res = server.send_request::<HoverRequest>(TextDocumentPositionParams::new(
-        server.doc_id("foo/src/main.rs"),
-        Position::new(7, 9),
-    ));
+    let res = server.send_request::<HoverRequest>(HoverParams {
+        text_document_position_params: TextDocumentPositionParams::new(
+            server.doc_id("foo/src/main.rs"),
+            Position::new(7, 9),
+        ),
+        work_done_progress_params: Default::default(),
+    });
 
     let value = res.get("contents").unwrap().get("value").unwrap().to_string();
     assert_eq!(value, r#""```rust\nfoo::Bar\nfn bar()\n```""#)

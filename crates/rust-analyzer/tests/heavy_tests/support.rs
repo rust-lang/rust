@@ -77,7 +77,11 @@ impl<'a> Project<'a> {
         let roots = self.roots.into_iter().map(|root| tmp_dir.path().join(root)).collect();
 
         let mut config = Config {
-            client_caps: ClientCapsConfig { location_link: true, ..Default::default() },
+            client_caps: ClientCapsConfig {
+                location_link: true,
+                code_action_literals: true,
+                ..Default::default()
+            },
             with_sysroot: self.with_sysroot,
             ..Config::default()
         };

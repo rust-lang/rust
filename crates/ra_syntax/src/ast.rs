@@ -16,7 +16,7 @@ use crate::{
 };
 
 pub use self::{
-    expr_extensions::{ArrayExprKind, BinOp, ElseBranch, LiteralKind, PrefixOp, RangeOp},
+    expr_extensions::{ArrayExprKind, BinOp, Effect, ElseBranch, LiteralKind, PrefixOp, RangeOp},
     extensions::{
         AttrKind, FieldKind, NameOrNameRef, PathSegmentKind, SelfParamKind, SlicePatComponents,
         StructKind, TypeBoundKind, VisibilityKind,
@@ -240,6 +240,21 @@ fn test_comments_preserve_trailing_whitespace() {
         "Representation of a Realm.   \nIn the specification these are called Realm Records.",
         def.doc_comment_text().unwrap()
     );
+}
+
+#[test]
+fn test_four_slash_line_comment() {
+    let file = SourceFile::parse(
+        r#"
+        //// too many slashes to be a doc comment
+        /// doc comment
+        mod foo {}
+        "#,
+    )
+    .ok()
+    .unwrap();
+    let module = file.syntax().descendants().find_map(Module::cast).unwrap();
+    assert_eq!("doc comment", module.doc_comment_text().unwrap());
 }
 
 #[test]

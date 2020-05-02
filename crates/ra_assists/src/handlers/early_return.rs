@@ -2,7 +2,7 @@ use std::{iter::once, ops::RangeInclusive};
 
 use ra_syntax::{
     algo::replace_children,
-    ast::{self, edit::IndentLevel, make, Block, Pat::TupleStructPat},
+    ast::{self, edit::IndentLevel, make},
     AstNode,
     SyntaxKind::{FN_DEF, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
     SyntaxNode,
@@ -47,7 +47,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
     // Check if there is an IfLet that we can handle.
     let if_let_pat = match cond.pat() {
         None => None, // No IfLet, supported.
-        Some(TupleStructPat(pat)) if pat.args().count() == 1 => {
+        Some(ast::Pat::TupleStructPat(pat)) if pat.args().count() == 1 => {
             let path = pat.path()?;
             match path.qualifier() {
                 None => {
@@ -61,9 +61,9 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
     };
 
     let cond_expr = cond.expr()?;
-    let then_block = if_expr.then_branch()?.block()?;
+    let then_block = if_expr.then_branch()?;
 
-    let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::Block::cast)?;
+    let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::BlockExpr::cast)?;
 
     if parent_block.expr()? != if_expr.clone().into() {
         return None;
@@ -80,7 +80,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    let parent_container = parent_block.syntax().parent()?.parent()?;
+    let parent_container = parent_block.syntax().parent()?;
 
     let early_expression: ast::Expr = match parent_container.kind() {
         WHILE_EXPR | LOOP_EXPR => make::expr_continue(),
@@ -144,13 +144,13 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
             }
         };
         edit.target(if_expr.syntax().text_range());
-        edit.replace_ast(parent_block, ast::Block::cast(new_block).unwrap());
+        edit.replace_ast(parent_block, ast::BlockExpr::cast(new_block).unwrap());
         edit.set_cursor(cursor_position);
 
         fn replace(
             new_expr: &SyntaxNode,
-            then_block: &Block,
-            parent_block: &Block,
+            then_block: &ast::BlockExpr,
+            parent_block: &ast::BlockExpr,
             if_expr: &ast::IfExpr,
         ) -> SyntaxNode {
             let then_block_items = IndentLevel::from(1).decrease_indent(then_block.clone());

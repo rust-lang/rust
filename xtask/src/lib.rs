@@ -10,23 +10,19 @@ pub mod pre_commit;
 pub mod codegen;
 mod ast_src;
 
-use anyhow::Context;
 use std::{
     env,
-    io::Write,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
 };
+
 use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     codegen::Mode,
-    not_bash::{date_iso, fs2, pushd, rm_rf, run},
+    not_bash::{date_iso, fs2, pushd, pushenv, rm_rf, run},
 };
 
-pub use anyhow::Result;
-
-const TOOLCHAIN: &str = "stable";
+pub use anyhow::{bail, Context as _, Result};
 
 pub fn project_root() -> PathBuf {
     Path::new(
@@ -55,54 +51,44 @@ pub fn rust_files(path: &Path) -> impl Iterator<Item = PathBuf> {
 
 pub fn run_rustfmt(mode: Mode) -> Result<()> {
     let _dir = pushd(project_root());
+    let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
     ensure_rustfmt()?;
-
-    let check = if mode == Mode::Verify { "--check" } else { "" };
-    run!("rustup run {} -- cargo fmt -- {}", TOOLCHAIN, check)?;
+    match mode {
+        Mode::Overwrite => run!("cargo fmt"),
+        Mode::Verify => run!("cargo fmt -- --check"),
+    }?;
     Ok(())
 }
 
 fn reformat(text: impl std::fmt::Display) -> Result<String> {
+    let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
     ensure_rustfmt()?;
-    let mut rustfmt = Command::new("rustup")
-        .args(&["run", TOOLCHAIN, "--", "rustfmt", "--config-path"])
-        .arg(project_root().join("rustfmt.toml"))
-        .args(&["--config", "fn_single_line=true"])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()?;
-    write!(rustfmt.stdin.take().unwrap(), "{}", text)?;
-    let output = rustfmt.wait_with_output()?;
-    let stdout = String::from_utf8(output.stdout)?;
+    let stdout = run!(
+        "rustfmt --config-path {} --config fn_single_line=true", project_root().join("rustfmt.toml").display();
+        <text.to_string().as_bytes()
+    )?;
     let preamble = "Generated file, do not edit by hand, see `xtask/src/codegen`";
-    Ok(format!("//! {}\n\n{}", preamble, stdout))
+    Ok(format!("//! {}\n\n{}\n", preamble, stdout))
 }
 
 fn ensure_rustfmt() -> Result<()> {
-    match Command::new("rustup")
-        .args(&["run", TOOLCHAIN, "--", "cargo", "fmt", "--version"])
-        .stderr(Stdio::null())
-        .stdout(Stdio::null())
-        .status()
-    {
-        Ok(status) if status.success() => return Ok(()),
-        _ => (),
-    };
-    run!("rustup toolchain install {}", TOOLCHAIN)?;
-    run!("rustup component add rustfmt --toolchain {}", TOOLCHAIN)?;
+    let out = run!("rustfmt --version")?;
+    if !out.contains("stable") {
+        bail!(
+            "Failed to run rustfmt from toolchain 'stable'. \
+             Please run `rustup component add rustfmt --toolchain stable` to install it.",
+        )
+    }
     Ok(())
 }
 
 pub fn run_clippy() -> Result<()> {
-    match Command::new("rustup")
-        .args(&["run", TOOLCHAIN, "--", "cargo", "clippy", "--version"])
-        .stderr(Stdio::null())
-        .stdout(Stdio::null())
-        .status()
-    {
-        Ok(status) if status.success() => (),
-        _ => install_clippy().context("install clippy")?,
-    };
+    if run!("cargo clippy --version").is_err() {
+        bail!(
+            "Failed run cargo clippy. \
+            Please run `rustup component add clippy` to install it.",
+        )
+    }
 
     let allowed_lints = [
         "clippy::collapsible_if",
@@ -110,27 +96,24 @@ pub fn run_clippy() -> Result<()> {
         "clippy::nonminimal_bool",
         "clippy::redundant_pattern_matching",
     ];
-    run!(
-        "rustup run {} -- cargo clippy --all-features --all-targets -- -A {}",
-        TOOLCHAIN,
-        allowed_lints.join(" -A ")
-    )?;
-    Ok(())
-}
-
-fn install_clippy() -> Result<()> {
-    run!("rustup toolchain install {}", TOOLCHAIN)?;
-    run!("rustup component add clippy --toolchain {}", TOOLCHAIN)?;
+    run!("cargo clippy --all-features --all-targets -- -A {}", allowed_lints.join(" -A "))?;
     Ok(())
 }
 
 pub fn run_fuzzer() -> Result<()> {
     let _d = pushd("./crates/ra_syntax");
+    let _e = pushenv("RUSTUP_TOOLCHAIN", "nightly");
     if run!("cargo fuzz --help").is_err() {
         run!("cargo install cargo-fuzz")?;
     };
 
-    run!("rustup run nightly -- cargo fuzz run parser")?;
+    // Expecting nightly rustc
+    let out = run!("rustc --version")?;
+    if !out.contains("nightly") {
+        bail!("fuzz tests require nightly rustc")
+    }
+
+    run!("cargo fuzz run parser")?;
     Ok(())
 }
 

@@ -1,0 +1,26 @@
+SOURCE_FILE@0..23
+  FN_DEF@0..22
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    PARAM_LIST@4..6
+      L_PAREN@4..5 "("
+      R_PAREN@5..6 ")"
+    WHITESPACE@6..7 " "
+    BLOCK_EXPR@7..22
+      L_CURLY@7..8 "{"
+      WHITESPACE@8..9 " "
+      EXPR_STMT@9..20
+        EFFECT_EXPR@9..19
+          LABEL@9..16
+            LIFETIME@9..15 "\'label"
+            COLON@15..16 ":"
+          WHITESPACE@16..17 " "
+          BLOCK_EXPR@17..19
+            L_CURLY@17..18 "{"
+            R_CURLY@18..19 "}"
+        SEMICOLON@19..20 ";"
+      WHITESPACE@20..21 " "
+      R_CURLY@21..22 "}"
+  WHITESPACE@22..23 "\n"

@@ -129,8 +129,10 @@ fn has_comma_after(node: &SyntaxNode) -> bool {
 }
 
 fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Option<()> {
-    let block = ast::Block::cast(token.parent())?;
-    let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
+    let block_expr = ast::BlockExpr::cast(token.parent())?;
+    if !block_expr.is_standalone() {
+        return None;
+    }
     let expr = extract_trivial_expression(&block_expr)?;
 
     let block_range = block_expr.syntax().text_range();
@@ -661,5 +663,68 @@ fn main() {
 }
         ",
         )
+    }
+
+    #[test]
+    fn join_lines_mandatory_blocks_block() {
+        check_join_lines(
+            r"
+<|>fn foo() {
+    92
+}
+        ",
+            r"
+<|>fn foo() { 92
+}
+        ",
+        );
+
+        check_join_lines(
+            r"
+fn foo() {
+    <|>if true {
+        92
+    }
+}
+        ",
+            r"
+fn foo() {
+    <|>if true { 92
+    }
+}
+        ",
+        );
+
+        check_join_lines(
+            r"
+fn foo() {
+    <|>loop {
+        92
+    }
+}
+        ",
+            r"
+fn foo() {
+    <|>loop { 92
+    }
+}
+        ",
+        );
+
+        check_join_lines(
+            r"
+fn foo() {
+    <|>unsafe {
+        92
+    }
+}
+        ",
+            r"
+fn foo() {
+    <|>unsafe { 92
+    }
+}
+        ",
+        );
     }
 }

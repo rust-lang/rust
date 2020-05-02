@@ -89,6 +89,7 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
             | (ast::Expr::ParenExpr(_), _)
             | (ast::Expr::PathExpr(_), _)
             | (ast::Expr::BlockExpr(_), _)
+            | (ast::Expr::EffectExpr(_), _)
             | (_, ast::Expr::CallExpr(_))
             | (_, ast::Expr::TupleExpr(_))
             | (_, ast::Expr::ArrayExpr(_))

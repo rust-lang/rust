@@ -1,0 +1,70 @@
+SOURCE_FILE@0..67
+  USE_ITEM@0..12
+    USE_KW@0..3 "use"
+    WHITESPACE@3..4 " "
+    USE_TREE@4..11
+      PATH@4..11
+        PATH_SEGMENT@4..11
+          COLON2@4..6 "::"
+          SUPER_KW@6..11 "super"
+    SEMICOLON@11..12 ";"
+  WHITESPACE@12..13 "\n"
+  USE_ITEM@13..26
+    USE_KW@13..16 "use"
+    WHITESPACE@16..17 " "
+    USE_TREE@17..25
+      PATH@17..25
+        PATH@17..18
+          PATH_SEGMENT@17..18
+            NAME_REF@17..18
+              IDENT@17..18 "a"
+        COLON2@18..20 "::"
+        PATH_SEGMENT@20..25
+          SUPER_KW@20..25 "super"
+    SEMICOLON@25..26 ";"
+  WHITESPACE@26..27 "\n"
+  USE_ITEM@27..47
+    USE_KW@27..30 "use"
+    WHITESPACE@30..31 " "
+    USE_TREE@31..46
+      PATH@31..46
+        PATH@31..39
+          PATH@31..36
+            PATH_SEGMENT@31..36
+              SUPER_KW@31..36 "super"
+          COLON2@36..38 "::"
+          PATH_SEGMENT@38..39
+            NAME_REF@38..39
+              IDENT@38..39 "a"
+        COLON2@39..41 "::"
+        PATH_SEGMENT@41..46
+          SUPER_KW@41..46 "super"
+    SEMICOLON@46..47 ";"
+  WHITESPACE@47..48 "\n"
+  USE_ITEM@48..66
+    USE_KW@48..51 "use"
+    WHITESPACE@51..52 " "
+    USE_TREE@52..65
+      PATH@52..53
+        PATH_SEGMENT@52..53
+          NAME_REF@52..53
+            IDENT@52..53 "a"
+      COLON2@53..55 "::"
+      USE_TREE_LIST@55..65
+        L_CURLY@55..56 "{"
+        USE_TREE@56..64
+          PATH@56..64
+            PATH@56..61
+              PATH_SEGMENT@56..61
+                SUPER_KW@56..61 "super"
+            COLON2@61..63 "::"
+            PATH_SEGMENT@63..64
+              NAME_REF@63..64
+                IDENT@63..64 "b"
+        R_CURLY@64..65 "}"
+    SEMICOLON@65..66 ";"
+  WHITESPACE@66..67 "\n"
+error 6..11: The `super` keyword may only be preceded by other `super`s
+error 20..25: The `super` keyword may only be preceded by other `super`s
+error 41..46: The `super` keyword may only be preceded by other `super`s
+error 56..61: The `super` keyword may only be preceded by other `super`s

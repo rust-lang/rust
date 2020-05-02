@@ -180,7 +180,9 @@ trait Trait<T> {
 }
 
 impl Trait<u32> for () {
-    fn foo(&self) -> u32 { todo!() }
+    fn foo(&self) -> u32 {
+        todo!()
+    }
 
 }
 "#####,
@@ -723,6 +725,25 @@ use std::<|>collections::HashMap;
 "#####,
         r#####"
 use std::{collections::HashMap};
+"#####,
+    )
+}
+
+#[test]
+fn doctest_unwrap_block() {
+    check(
+        "unwrap_block",
+        r#####"
+fn foo() {
+    if true {<|>
+        println!("foo");
+    }
+}
+"#####,
+        r#####"
+fn foo() {
+    println!("foo");
+}
 "#####,
     )
 }

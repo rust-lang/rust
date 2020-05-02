@@ -3,7 +3,7 @@
 
 use ra_syntax::ast::{self, TypeAscriptionOwner, TypeBoundsOwner};
 
-use crate::path::Path;
+use crate::{body::LowerCtx, path::Path};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Mutability {
@@ -64,30 +64,34 @@ pub enum TypeBound {
 
 impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
-    pub(crate) fn from_ast(node: ast::TypeRef) -> Self {
+    pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::TypeRef) -> Self {
         match node {
-            ast::TypeRef::ParenType(inner) => TypeRef::from_ast_opt(inner.type_ref()),
+            ast::TypeRef::ParenType(inner) => TypeRef::from_ast_opt(&ctx, inner.type_ref()),
             ast::TypeRef::TupleType(inner) => {
-                TypeRef::Tuple(inner.fields().map(TypeRef::from_ast).collect())
+                TypeRef::Tuple(inner.fields().map(|it| TypeRef::from_ast(ctx, it)).collect())
             }
             ast::TypeRef::NeverType(..) => TypeRef::Never,
             ast::TypeRef::PathType(inner) => {
                 // FIXME: Use `Path::from_src`
-                inner.path().and_then(Path::from_ast).map(TypeRef::Path).unwrap_or(TypeRef::Error)
+                inner
+                    .path()
+                    .and_then(|it| ctx.lower_path(it))
+                    .map(TypeRef::Path)
+                    .unwrap_or(TypeRef::Error)
             }
             ast::TypeRef::PointerType(inner) => {
-                let inner_ty = TypeRef::from_ast_opt(inner.type_ref());
+                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.type_ref());
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
             }
             ast::TypeRef::ArrayType(inner) => {
-                TypeRef::Array(Box::new(TypeRef::from_ast_opt(inner.type_ref())))
+                TypeRef::Array(Box::new(TypeRef::from_ast_opt(&ctx, inner.type_ref())))
             }
             ast::TypeRef::SliceType(inner) => {
-                TypeRef::Slice(Box::new(TypeRef::from_ast_opt(inner.type_ref())))
+                TypeRef::Slice(Box::new(TypeRef::from_ast_opt(&ctx, inner.type_ref())))
             }
             ast::TypeRef::ReferenceType(inner) => {
-                let inner_ty = TypeRef::from_ast_opt(inner.type_ref());
+                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.type_ref());
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::Reference(Box::new(inner_ty), mutability)
             }
@@ -96,10 +100,13 @@ impl TypeRef {
                 let ret_ty = inner
                     .ret_type()
                     .and_then(|rt| rt.type_ref())
-                    .map(TypeRef::from_ast)
+                    .map(|it| TypeRef::from_ast(ctx, it))
                     .unwrap_or_else(|| TypeRef::Tuple(Vec::new()));
                 let mut params = if let Some(pl) = inner.param_list() {
-                    pl.params().map(|p| p.ascribed_type()).map(TypeRef::from_ast_opt).collect()
+                    pl.params()
+                        .map(|p| p.ascribed_type())
+                        .map(|it| TypeRef::from_ast_opt(&ctx, it))
+                        .collect()
                 } else {
                     Vec::new()
                 };
@@ -107,19 +114,19 @@ impl TypeRef {
                 TypeRef::Fn(params)
             }
             // for types are close enough for our purposes to the inner type for now...
-            ast::TypeRef::ForType(inner) => TypeRef::from_ast_opt(inner.type_ref()),
+            ast::TypeRef::ForType(inner) => TypeRef::from_ast_opt(&ctx, inner.type_ref()),
             ast::TypeRef::ImplTraitType(inner) => {
-                TypeRef::ImplTrait(type_bounds_from_ast(inner.type_bound_list()))
+                TypeRef::ImplTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
             ast::TypeRef::DynTraitType(inner) => {
-                TypeRef::DynTrait(type_bounds_from_ast(inner.type_bound_list()))
+                TypeRef::DynTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
         }
     }
 
-    pub(crate) fn from_ast_opt(node: Option<ast::TypeRef>) -> Self {
+    pub(crate) fn from_ast_opt(ctx: &LowerCtx, node: Option<ast::TypeRef>) -> Self {
         if let Some(node) = node {
-            TypeRef::from_ast(node)
+            TypeRef::from_ast(ctx, node)
         } else {
             TypeRef::Error
         }
@@ -180,24 +187,27 @@ impl TypeRef {
     }
 }
 
-pub(crate) fn type_bounds_from_ast(type_bounds_opt: Option<ast::TypeBoundList>) -> Vec<TypeBound> {
+pub(crate) fn type_bounds_from_ast(
+    lower_ctx: &LowerCtx,
+    type_bounds_opt: Option<ast::TypeBoundList>,
+) -> Vec<TypeBound> {
     if let Some(type_bounds) = type_bounds_opt {
-        type_bounds.bounds().map(TypeBound::from_ast).collect()
+        type_bounds.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
     } else {
         vec![]
     }
 }
 
 impl TypeBound {
-    pub(crate) fn from_ast(node: ast::TypeBound) -> Self {
+    pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::TypeBound) -> Self {
         match node.kind() {
             ast::TypeBoundKind::PathType(path_type) => {
                 let path = match path_type.path() {
                     Some(p) => p,
                     None => return TypeBound::Error,
                 };
-                // FIXME: Use `Path::from_src`
-                let path = match Path::from_ast(path) {
+
+                let path = match ctx.lower_path(path) {
                     Some(p) => p,
                     None => return TypeBound::Error,
                 };

@@ -12,9 +12,15 @@ use ra_prof::profile;
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
 
 use crate::{
-    body::CfgExpander, db::DefDatabase, src::HasChildSource, src::HasSource, trace::Trace,
-    type_ref::TypeRef, visibility::RawVisibility, EnumId, HasModule, LocalEnumVariantId,
-    LocalFieldId, Lookup, ModuleId, StructId, UnionId, VariantId,
+    body::{CfgExpander, LowerCtx},
+    db::DefDatabase,
+    src::HasChildSource,
+    src::HasSource,
+    trace::Trace,
+    type_ref::TypeRef,
+    visibility::RawVisibility,
+    EnumId, HasModule, LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StructId, UnionId,
+    VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -198,6 +204,8 @@ fn lower_struct(
     trace: &mut Trace<FieldData, Either<ast::TupleFieldDef, ast::RecordFieldDef>>,
     ast: &InFile<ast::StructKind>,
 ) -> StructKind {
+    let ctx = LowerCtx::new(db, ast.file_id);
+
     match &ast.value {
         ast::StructKind::Tuple(fl) => {
             for (i, fd) in fl.fields().enumerate() {
@@ -210,7 +218,7 @@ fn lower_struct(
                     || Either::Left(fd.clone()),
                     || FieldData {
                         name: Name::new_tuple_field(i),
-                        type_ref: TypeRef::from_ast_opt(fd.type_ref()),
+                        type_ref: TypeRef::from_ast_opt(&ctx, fd.type_ref()),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
                     },
                 );
@@ -228,7 +236,7 @@ fn lower_struct(
                     || Either::Right(fd.clone()),
                     || FieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
-                        type_ref: TypeRef::from_ast_opt(fd.ascribed_type()),
+                        type_ref: TypeRef::from_ast_opt(&ctx, fd.ascribed_type()),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
                     },
                 );

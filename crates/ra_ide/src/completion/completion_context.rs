@@ -344,7 +344,7 @@ impl<'a> CompletionContext<'a> {
                                 stmt.syntax().text_range() == name_ref.syntax().text_range(),
                             );
                         }
-                        if let Some(block) = ast::Block::cast(node) {
+                        if let Some(block) = ast::BlockExpr::cast(node) {
                             return Some(
                                 block.expr().map(|e| e.syntax().text_range())
                                     == Some(name_ref.syntax().text_range()),

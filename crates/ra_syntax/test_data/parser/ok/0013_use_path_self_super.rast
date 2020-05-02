@@ -1,4 +1,4 @@
-SOURCE_FILE@0..65
+SOURCE_FILE@0..38
   USE_ITEM@0..14
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
@@ -31,27 +31,3 @@ SOURCE_FILE@0..65
             IDENT@33..36 "bar"
     SEMICOLON@36..37 ";"
   WHITESPACE@37..38 "\n"
-  USE_ITEM@38..64
-    USE_KW@38..41 "use"
-    WHITESPACE@41..42 " "
-    USE_TREE@42..63
-      PATH@42..63
-        PATH@42..58
-          PATH@42..51
-            PATH@42..48
-              PATH_SEGMENT@42..48
-                COLON2@42..44 "::"
-                SELF_KW@44..48 "self"
-            COLON2@48..50 "::"
-            PATH_SEGMENT@50..51
-              NAME_REF@50..51
-                IDENT@50..51 "a"
-          COLON2@51..53 "::"
-          PATH_SEGMENT@53..58
-            SUPER_KW@53..58 "super"
-        COLON2@58..60 "::"
-        PATH_SEGMENT@60..63
-          NAME_REF@60..63
-            IDENT@60..63 "bar"
-    SEMICOLON@63..64 ";"
-  WHITESPACE@64..65 "\n"

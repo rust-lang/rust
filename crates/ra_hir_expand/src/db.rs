@@ -330,7 +330,7 @@ fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
             FragmentKind::Expr
         }
         // FIXME: Expand to statements in appropriate positions; HIR lowering needs to handle that
-        EXPR_STMT | BLOCK => FragmentKind::Expr,
+        EXPR_STMT | BLOCK_EXPR => FragmentKind::Expr,
         ARG_LIST => FragmentKind::Expr,
         TRY_EXPR => FragmentKind::Expr,
         TUPLE_EXPR => FragmentKind::Expr,
@@ -342,7 +342,6 @@ fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
         CONDITION => FragmentKind::Expr,
         BREAK_EXPR => FragmentKind::Expr,
         RETURN_EXPR => FragmentKind::Expr,
-        BLOCK_EXPR => FragmentKind::Expr,
         MATCH_EXPR => FragmentKind::Expr,
         MATCH_ARM => FragmentKind::Expr,
         MATCH_GUARD => FragmentKind::Expr,

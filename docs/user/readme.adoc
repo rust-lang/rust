@@ -111,7 +111,7 @@ Here are some useful self-diagnostic commands:
 === rust-analyzer Language Server Binary
 
 Other editors generally require the `rust-analyzer` binary to be in `$PATH`.
-You can download the pre-built binary from the https://github.com/rust-analyzer/rust-analyzer/releases[releases] page. Typically, you then need to rename the binary for your platform, e.g. `rust-analyzer-mac` if you're on Mac OS, to `rust-analzyer` and make it executable in addition to moving it into a directory in your `$PATH`.
+You can download the pre-built binary from the https://github.com/rust-analyzer/rust-analyzer/releases[releases] page. Typically, you then need to rename the binary for your platform, e.g. `rust-analyzer-mac` if you're on Mac OS, to `rust-analyzer` and make it executable in addition to moving it into a directory in your `$PATH`.
 
 On Linux to install the `rust-analyzer` binary into `~/.local/bin`, this commands could be used
 
@@ -169,13 +169,15 @@ The are several LSP client implementations for vim:
 
 1. Install coc.nvim by following the instructions at
    https://github.com/neoclide/coc.nvim[coc.nvim]
-   (nodejs required)
+   (Node.js required)
 2. Run `:CocInstall coc-rust-analyzer` to install
    https://github.com/fannheyward/coc-rust-analyzer[coc-rust-analyzer],
    this extension implements _most_ of the features supported in the VSCode extension:
+   * automatically install and upgrade stable/nightly releases
    * same configurations as VSCode extension, `rust-analyzer.serverPath`, `rust-analyzer.cargo.features` etc.
    * same commands too, `rust-analyzer.analyzerStatus`, `rust-analyzer.ssr` etc.
-   * highlighting and inlay_hints are not implemented yet
+   * inlay hints for method chaining support, _Neovim Only_
+   * semantic highlighting is not implemented yet
 
 ==== LanguageClient-neovim
 
@@ -195,11 +197,11 @@ let g:LanguageClient_serverCommands = {
 ==== YouCompleteMe
 
 1. Install YouCompleteMe by following the instructions
-  https://ycm-core.github.io/YouCompleteMe/#rust-semantic-completion[here]
+  https://github.com/ycm-core/lsp-examples#rust-rust-analyzer[here]
 
 2. Configure by adding this to your vim/neovim config file (replacing the existing Rust-specific line if it exists):
 +
-[source,vim]   
+[source,vim]
 ----
 let g:ycm_language_server =
 \ [
@@ -210,6 +212,21 @@ let g:ycm_language_server =
 \     'project_root_files': ['Cargo.toml']
 \   }
 \ ]
+----
+
+==== ALE
+
+To add the LSP server to https://github.com/dense-analysis/ale[ale]:
+
+[source,vim]
+----
+call ale#linter#Define('rust', {
+\   'name': 'rust-analyzer',
+\   'lsp': 'stdio',
+\   'executable': 'rust-analyzer',
+\   'command': '%e',
+\   'project_root': '.',
+\})
 ----
 
 ==== nvim-lsp
@@ -229,11 +246,20 @@ You also need the `LSP` package. To install it:
    * Type `Install Package Control`, press enter
 2. In the command palette, run `Package control: Install package`, and in the list that pops up, type `LSP` and press enter.
 
-Finally, with your Rust project open, in the command palette, run `LSP: Enable Language Server In Project` or `LSP: Enable Language Server Globally`, then select `rust-analyzer` in the list that pops up to enable the rust-analyzer LSP. The latter means that rust-analzyer is enabled by default in Rust projects.
+Finally, with your Rust project open, in the command palette, run `LSP: Enable Language Server In Project` or `LSP: Enable Language Server Globally`, then select `rust-analyzer` in the list that pops up to enable the rust-analyzer LSP. The latter means that rust-analyzer is enabled by default in Rust projects.
 
-If it worked, you should see "rust-analzyer, Line X, Column Y" on the left side of the bottom bar, and after waiting a bit, functionality like tooltips on hovering over variables should become available.
+If it worked, you should see "rust-analyzer, Line X, Column Y" on the left side of the bottom bar, and after waiting a bit, functionality like tooltips on hovering over variables should become available.
 
 If you get an error saying `No such file or directory: 'rust-analyzer'`, see the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>> section on installing the language server binary.
+
+=== Gnome Builder
+
+Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
+
+Gnome Builder currently has support for RLS, and there's no way to configure the language server executable. A future version might support `rust-analyzer` out of the box.
+
+1. Rename, symlink or copy the `rust-analyzer` binary to `rls` and place it somewhere Builder can find (in `PATH`, or under `~/.cargo/bin`).
+2. Enable the Rust Builder plugin.
 
 == Usage
 

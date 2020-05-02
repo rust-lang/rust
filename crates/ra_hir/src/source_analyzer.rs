@@ -224,7 +224,8 @@ impl SourceAnalyzer {
             }
         }
         // This must be a normal source file rather than macro file.
-        let hir_path = crate::Path::from_ast(path.clone())?;
+        let hir_path =
+            crate::Path::from_src(path.clone(), &Hygiene::new(db.upcast(), self.file_id))?;
         resolve_hir_path(db, &self.resolver, &hir_path)
     }
 

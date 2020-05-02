@@ -407,7 +407,7 @@ impl ast::Visibility {
         } else if self.super_token().is_some() {
             VisibilityKind::PubSuper
         } else if self.self_token().is_some() {
-            VisibilityKind::PubSuper
+            VisibilityKind::PubSelf
         } else {
             VisibilityKind::Pub
         }
@@ -422,6 +422,10 @@ impl ast::MacroCall {
         } else {
             None
         }
+    }
+
+    pub fn is_bang(&self) -> bool {
+        self.is_macro_rules().is_none()
     }
 }
 

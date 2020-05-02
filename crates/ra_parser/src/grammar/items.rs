@@ -329,7 +329,7 @@ fn fn_def(p: &mut Parser) {
     if p.at(T![;]) {
         p.bump(T![;]);
     } else {
-        expressions::block(p)
+        expressions::block_expr(p)
     }
 }
 
@@ -415,6 +415,17 @@ pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
     if p.at(IDENT) {
         name(p);
     }
+    // Special-case `macro_rules! try`.
+    // This is a hack until we do proper edition support
+
+    // test try_macro_rules
+    // macro_rules! try { () => {} }
+    if p.at(T![try]) {
+        let m = p.start();
+        p.bump_remap(IDENT);
+        m.complete(p, NAME);
+    }
+
     match p.current() {
         T!['{'] => {
             token_tree(p);

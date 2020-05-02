@@ -46,7 +46,7 @@ can be quickly updated for small modifications.
 
 Some of the components of this repository are generated through automatic
 processes. `cargo xtask codegen` runs all generation tasks. Generated code is
-commited to the git repository.
+committed to the git repository.
 
 In particular, `cargo xtask codegen` generates:
 
@@ -114,7 +114,7 @@ is responsible for guessing a HIR for a particular source position.
 Underneath, HIR works on top of salsa, using a `HirDatabase` trait.
 
 `ra_hir_xxx` crates have a strong ECS flavor, in that they work with raw ids and
-directly query the databse.
+directly query the database.
 
 The top-level `ra_hir` façade crate wraps ids into a more OO-flavored API.
 

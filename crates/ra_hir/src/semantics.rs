@@ -8,7 +8,8 @@ use hir_def::{
     resolver::{self, HasResolver, Resolver},
     AsMacroCall, TraitId,
 };
-use hir_expand::ExpansionInfo;
+use hir_expand::{hygiene::Hygiene, ExpansionInfo};
+use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
 use ra_prof::profile;
@@ -24,8 +25,9 @@ use crate::{
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     AssocItem, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef,
-    Name, Origin, Path, ScopeDef, Trait, Type, TypeParam,
+    Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam,
 };
+use resolver::TypeNs;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathResolution {
@@ -38,6 +40,44 @@ pub enum PathResolution {
     SelfType(ImplDef),
     Macro(MacroDef),
     AssocItem(AssocItem),
+}
+
+impl PathResolution {
+    fn in_type_ns(&self) -> Option<TypeNs> {
+        match self {
+            PathResolution::Def(ModuleDef::Adt(adt)) => Some(TypeNs::AdtId((*adt).into())),
+            PathResolution::Def(ModuleDef::BuiltinType(builtin)) => {
+                Some(TypeNs::BuiltinType(*builtin))
+            }
+            PathResolution::Def(ModuleDef::Const(_))
+            | PathResolution::Def(ModuleDef::EnumVariant(_))
+            | PathResolution::Def(ModuleDef::Function(_))
+            | PathResolution::Def(ModuleDef::Module(_))
+            | PathResolution::Def(ModuleDef::Static(_))
+            | PathResolution::Def(ModuleDef::Trait(_)) => None,
+            PathResolution::Def(ModuleDef::TypeAlias(alias)) => {
+                Some(TypeNs::TypeAliasId((*alias).into()))
+            }
+            PathResolution::Local(_) | PathResolution::Macro(_) => None,
+            PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
+            PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
+            PathResolution::AssocItem(AssocItem::Const(_))
+            | PathResolution::AssocItem(AssocItem::Function(_)) => None,
+            PathResolution::AssocItem(AssocItem::TypeAlias(alias)) => {
+                Some(TypeNs::TypeAliasId((*alias).into()))
+            }
+        }
+    }
+
+    /// Returns an iterator over associated types that may be specified after this path (using
+    /// `Ty::Assoc` syntax).
+    pub fn assoc_type_shorthand_candidates<R>(
+        &self,
+        db: &dyn HirDatabase,
+        mut cb: impl FnMut(TypeAlias) -> Option<R>,
+    ) -> Option<R> {
+        associated_type_shorthand_candidates(db, self.in_type_ns()?, |_, _, id| cb(id.into()))
+    }
 }
 
 /// Primary API to get semantic information, like types, from syntax trees.
@@ -204,6 +244,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
+    }
+
+    pub fn lower_path(&self, path: &ast::Path) -> Option<Path> {
+        let src = self.find_file(path.syntax().clone());
+        Path::from_src(path.clone(), &Hygiene::new(self.db.upcast(), src.file_id.into()))
     }
 
     pub fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {

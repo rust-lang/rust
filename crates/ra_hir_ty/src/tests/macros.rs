@@ -339,6 +339,46 @@ pub fn baz() -> usize { 31usize }
 }
 
 #[test]
+fn infer_macro_with_dollar_crate_is_correct_in_trait_associate_type() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:foo
+use foo::Trait;
+
+fn test() {
+    let msg = foo::Message(foo::MessageRef);
+    let r = msg.deref();
+    r<|>;
+}
+
+//- /lib.rs crate:foo
+pub struct MessageRef;
+pub struct Message(MessageRef);
+
+pub trait Trait {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+#[macro_export]
+macro_rules! expand {
+    () => {
+        impl Trait for Message {
+            type Target = $crate::MessageRef;
+            fn deref(&self) ->  &Self::Target {
+                &self.0
+            }
+        }
+    }
+}
+
+expand!();
+"#,
+    );
+    assert_eq!("&MessageRef", type_at_pos(&db, pos));
+}
+
+#[test]
 fn infer_type_value_non_legacy_macro_use_as() {
     assert_snapshot!(
         infer(r#"
@@ -385,6 +425,32 @@ fn main() {
         75..77 '_a': usize
     "###
     );
+}
+
+#[test]
+fn infer_local_inner_macros() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:foo
+fn test() {
+    let x = foo::foo!(1);
+    x<|>;
+}
+
+//- /lib.rs crate:foo
+#[macro_export(local_inner_macros)]
+macro_rules! foo {
+    (1) => { bar!() };
+}
+
+#[macro_export]
+macro_rules! bar {
+    () => { 42 }
+}
+
+"#,
+    );
+    assert_eq!("i32", type_at_pos(&db, pos));
 }
 
 #[test]

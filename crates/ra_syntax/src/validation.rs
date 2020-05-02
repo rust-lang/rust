@@ -96,6 +96,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
                 ast::RecordField(it) => validate_numeric_name(it.name_ref(), &mut errors),
                 ast::Visibility(it) => validate_visibility(it, &mut errors),
                 ast::RangeExpr(it) => validate_range_expr(it, &mut errors),
+                ast::PathSegment(it) => validate_path_keywords(it, &mut errors),
                 _ => (),
             }
         }
@@ -220,5 +221,85 @@ fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxError>) {
             "An inclusive range must have an end expression",
             expr.syntax().text_range(),
         ));
+    }
+}
+
+fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxError>) {
+    use ast::PathSegmentKind;
+
+    let path = segment.parent_path();
+    let is_path_start = segment.coloncolon_token().is_none() && path.qualifier().is_none();
+
+    if let Some(token) = segment.self_token() {
+        if !is_path_start {
+            errors.push(SyntaxError::new(
+                "The `self` keyword is only allowed as the first segment of a path",
+                token.text_range(),
+            ));
+        }
+    } else if let Some(token) = segment.crate_token() {
+        if !is_path_start || use_prefix(path).is_some() {
+            errors.push(SyntaxError::new(
+                "The `crate` keyword is only allowed as the first segment of a path",
+                token.text_range(),
+            ));
+        }
+    } else if let Some(token) = segment.super_token() {
+        if !all_supers(&path) {
+            errors.push(SyntaxError::new(
+                "The `super` keyword may only be preceded by other `super`s",
+                token.text_range(),
+            ));
+            return;
+        }
+
+        let mut curr_path = path;
+        while let Some(prefix) = use_prefix(curr_path) {
+            if !all_supers(&prefix) {
+                errors.push(SyntaxError::new(
+                    "The `super` keyword may only be preceded by other `super`s",
+                    token.text_range(),
+                ));
+                return;
+            }
+            curr_path = prefix;
+        }
+    }
+
+    fn use_prefix(mut path: ast::Path) -> Option<ast::Path> {
+        for node in path.syntax().ancestors().skip(1) {
+            match_ast! {
+                match node {
+                    ast::UseTree(it) => if let Some(tree_path) = it.path() {
+                        // Even a top-level path exists within a `UseTree` so we must explicitly
+                        // allow our path but disallow anything else
+                        if tree_path != path {
+                            return Some(tree_path);
+                        }
+                    },
+                    ast::UseTreeList(_it) => continue,
+                    ast::Path(parent) => path = parent,
+                    _ => return None,
+                }
+            };
+        }
+        return None;
+    }
+
+    fn all_supers(path: &ast::Path) -> bool {
+        let segment = match path.segment() {
+            Some(it) => it,
+            None => return false,
+        };
+
+        if segment.kind() != Some(PathSegmentKind::SuperKw) {
+            return false;
+        }
+
+        if let Some(ref subpath) = path.qualifier() {
+            return all_supers(subpath);
+        }
+
+        return true;
     }
 }

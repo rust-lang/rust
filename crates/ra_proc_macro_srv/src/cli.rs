@@ -1,15 +1,17 @@
 //! Driver for proc macro server
 
-use crate::{expand_task, list_macros};
+use crate::ProcMacroSrv;
 use ra_proc_macro::msg::{self, Message};
 use std::io;
 
 pub fn run() -> io::Result<()> {
+    let mut srv = ProcMacroSrv::default();
+
     while let Some(req) = read_request()? {
         let res = match req {
-            msg::Request::ListMacro(task) => Ok(msg::Response::ListMacro(list_macros(&task))),
+            msg::Request::ListMacro(task) => srv.list_macros(&task).map(msg::Response::ListMacro),
             msg::Request::ExpansionMacro(task) => {
-                expand_task(&task).map(msg::Response::ExpansionMacro)
+                srv.expand(&task).map(msg::Response::ExpansionMacro)
             }
         };
 

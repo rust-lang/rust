@@ -844,4 +844,40 @@ fn func(foo: i32) { if true { <|>foo; }; }
             &["fn foo()\n```\n\n<- `\u{3000}` here"],
         );
     }
+
+    #[test]
+    fn test_hover_function_show_qualifiers() {
+        check_hover_result(
+            "
+            //- /lib.rs
+            async fn foo<|>() {}
+            ",
+            &["async fn foo()"],
+        );
+        check_hover_result(
+            "
+            //- /lib.rs
+            pub const unsafe fn foo<|>() {}
+            ",
+            &["pub const unsafe fn foo()"],
+        );
+        check_hover_result(
+            r#"
+            //- /lib.rs
+            pub(crate) async unsafe extern "C" fn foo<|>() {}
+            "#,
+            &[r#"pub(crate) async unsafe extern "C" fn foo()"#],
+        );
+    }
+
+    #[test]
+    fn test_hover_trait_show_qualifiers() {
+        check_hover_result(
+            "
+            //- /lib.rs
+            unsafe trait foo<|>() {}
+            ",
+            &["unsafe trait foo"],
+        );
+    }
 }

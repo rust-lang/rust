@@ -54,7 +54,7 @@ pub(crate) mod fragments {
     use super::*;
 
     pub(crate) use super::{
-        expressions::block, paths::type_path as path, patterns::pattern, types::type_,
+        expressions::block_expr, paths::type_path as path, patterns::pattern, types::type_,
     };
 
     pub(crate) fn expr(p: &mut Parser) {
@@ -143,7 +143,7 @@ pub(crate) fn reparser(
     parent: Option<SyntaxKind>,
 ) -> Option<fn(&mut Parser)> {
     let res = match node {
-        BLOCK => expressions::naked_block,
+        BLOCK_EXPR => expressions::block_expr,
         RECORD_FIELD_DEF_LIST => items::record_field_def_list,
         RECORD_FIELD_LIST => items::record_field_list,
         ENUM_VARIANT_LIST => items::enum_variant_list,
