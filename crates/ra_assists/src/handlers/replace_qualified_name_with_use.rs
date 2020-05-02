@@ -38,7 +38,7 @@ pub(crate) fn replace_qualified_name_with_use(ctx: AssistCtx) -> Option<Assist> 
         "Replace qualified path with use",
         |edit| {
             let path_to_import = hir_path.mod_path().clone();
-            insert_use_statement(path.syntax(), &path_to_import, edit.text_edit_builder());
+            insert_use_statement(path.syntax(), &path_to_import, edit);
 
             if let Some(last) = path.segment() {
                 // Here we are assuming the assist will provide a correct use statement

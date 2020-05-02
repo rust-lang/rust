@@ -2,6 +2,7 @@
 // FIXME: rewrite according to the plan, outlined in
 // https://github.com/rust-analyzer/rust-analyzer/issues/3301#issuecomment-592931553
 
+use crate::assist_ctx::ActionBuilder;
 use hir::{self, ModPath};
 use ra_syntax::{
     ast::{self, NameOwner},
@@ -14,14 +15,14 @@ use ra_text_edit::TextEditBuilder;
 /// Creates and inserts a use statement for the given path to import.
 /// The use statement is inserted in the scope most appropriate to the
 /// the cursor position given, additionally merged with the existing use imports.
-pub fn insert_use_statement(
+pub(crate) fn insert_use_statement(
     // Ideally the position of the cursor, used to
     position: &SyntaxNode,
     path_to_import: &ModPath,
-    edit: &mut TextEditBuilder,
+    edit: &mut ActionBuilder,
 ) {
     let target = path_to_import.to_string().split("::").map(SmolStr::new).collect::<Vec<_>>();
-    let container = position.ancestors().find_map(|n| {
+    let container = edit.ctx().sema.ancestors_with_macros(position.clone()).find_map(|n| {
         if let Some(module) = ast::Module::cast(n.clone()) {
             return module.item_list().map(|it| it.syntax().clone());
         }
@@ -30,7 +31,7 @@ pub fn insert_use_statement(
 
     if let Some(container) = container {
         let action = best_action_for_target(container, position.clone(), &target);
-        make_assist(&action, &target, edit);
+        make_assist(&action, &target, edit.text_edit_builder());
     }
 }
 
