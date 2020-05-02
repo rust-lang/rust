@@ -30,7 +30,7 @@ use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::{self as ty_codec, TyEncoder};
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
-use rustc_session::config::{self, CrateType};
+use rustc_session::config::CrateType;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span};
@@ -1499,7 +1499,7 @@ impl EncodeContext<'tcx> {
     fn encode_dylib_dependency_formats(&mut self) -> Lazy<[Option<LinkagePreference>]> {
         let formats = self.tcx.dependency_formats(LOCAL_CRATE);
         for (ty, arr) in formats.iter() {
-            if *ty != config::CrateType::Dylib {
+            if *ty != CrateType::Dylib {
                 continue;
             }
             return self.lazy(arr.iter().map(|slot| match *slot {
@@ -1729,8 +1729,8 @@ struct PrefetchVisitor<'tcx> {
 impl<'tcx> PrefetchVisitor<'tcx> {
     fn prefetch_mir(&self, def_id: LocalDefId) {
         if self.mir_keys.contains(&def_id) {
-            self.tcx.optimized_mir(def_id);
-            self.tcx.promoted_mir(def_id);
+            self.tcx.ensure().optimized_mir(def_id);
+            self.tcx.ensure().promoted_mir(def_id);
         }
     }
 }

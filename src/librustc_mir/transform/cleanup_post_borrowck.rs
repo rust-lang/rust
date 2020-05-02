@@ -7,13 +7,15 @@
 //!
 //! The `CleanFakeReadsAndBorrows` "pass" is actually implemented as two
 //! traversals (aka visits) of the input MIR. The first traversal,
-//! [`DeleteAndRecordFakeReads`], deletes the fake reads and finds the
-//! temporaries read by [`ForMatchGuard`] reads, and [`DeleteFakeBorrows`]
+//! `DeleteAndRecordFakeReads`, deletes the fake reads and finds the
+//! temporaries read by [`ForMatchGuard`] reads, and `DeleteFakeBorrows`
 //! deletes the initialization of those temporaries.
 //!
 //! [`AscribeUserType`]: rustc_middle::mir::StatementKind::AscribeUserType
 //! [`Shallow`]: rustc_middle::mir::BorrowKind::Shallow
 //! [`FakeRead`]: rustc_middle::mir::StatementKind::FakeRead
+//! [`Assign`]: rustc_middle::mir::StatementKind::Assign
+//! [`ForMatchGuard`]: rustc_middle::mir::FakeReadCause::ForMatchGuard
 //! [`Nop`]: rustc_middle::mir::StatementKind::Nop
 
 use crate::transform::{MirPass, MirSource};

@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_session::config::{self, CFGuard, DebugInfo};
+use rustc_session::config::{CFGuard, CrateType, DebugInfo};
 use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::Symbol;
@@ -49,12 +49,13 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub const_cstr_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
-    /// Key is a Value holding a *T,
-    /// Val is a Value holding a *[T].
+    ///
+    /// Key is a Value holding a `*T`,
+    /// Val is a Value holding a `*[T]`.
     ///
     /// Needed because LLVM loses pointer->pointee association
     /// when we ptrcast, and we have to ptrcast during codegen
-    /// of a [T] const because we form a slice, a (*T,usize) pair, not
+    /// of a `[T]` const because we form a slice, a `(*T,usize)` pair, not
     /// a pointer to an LLVM array type. Similar for trait objects.
     pub const_unsized: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 
@@ -101,9 +102,10 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
 /// If the list of crate types is not yet known we conservatively return `false`.
 pub fn all_outputs_are_pic_executables(sess: &Session) -> bool {
     sess.relocation_model() == RelocModel::Pic
-        && sess.crate_types.try_get().map_or(false, |crate_types| {
-            crate_types.iter().all(|ty| *ty == config::CrateType::Executable)
-        })
+        && sess
+            .crate_types
+            .try_get()
+            .map_or(false, |crate_types| crate_types.iter().all(|ty| *ty == CrateType::Executable))
 }
 
 fn strip_function_ptr_alignment(data_layout: String) -> String {

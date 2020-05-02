@@ -2696,7 +2696,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns `true` if the impls are the same polarity and the trait either
-    /// has no items or is annotated #[marker] and prevents item overrides.
+    /// has no items or is annotated `#[marker]` and prevents item overrides.
     pub fn impls_are_allowed_to_overlap(
         self,
         def_id1: DefId,

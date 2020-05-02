@@ -1748,11 +1748,11 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
         // Consts can play a role in type-checking, so they are included here.
         hir::ItemKind::Static(..) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
-            tcx.typeck_tables_of(def_id);
+            tcx.ensure().typeck_tables_of(def_id);
             maybe_check_static_with_link_section(tcx, def_id, it.span);
         }
         hir::ItemKind::Const(..) => {
-            tcx.typeck_tables_of(tcx.hir().local_def_id(it.hir_id));
+            tcx.ensure().typeck_tables_of(tcx.hir().local_def_id(it.hir_id));
         }
         hir::ItemKind::Enum(ref enum_definition, _) => {
             check_enum(tcx, it.span, &enum_definition.variants, it.hir_id);
@@ -2670,7 +2670,7 @@ pub fn check_enum<'tcx>(
 
     for v in vs {
         if let Some(ref e) = v.disr_expr {
-            tcx.typeck_tables_of(tcx.hir().local_def_id(e.hir_id));
+            tcx.ensure().typeck_tables_of(tcx.hir().local_def_id(e.hir_id));
         }
     }
 

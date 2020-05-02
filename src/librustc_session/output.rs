@@ -1,5 +1,5 @@
 //! Related to out filenames of compilation (e.g. save analysis, binaries).
-use crate::config::{self, Input, OutputFilenames, OutputType};
+use crate::config::{CrateType, Input, OutputFilenames, OutputType};
 use crate::Session;
 use rustc_ast::{ast, attr};
 use rustc_span::symbol::sym;
@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 pub fn out_filename(
     sess: &Session,
-    crate_type: config::CrateType,
+    crate_type: CrateType,
     outputs: &OutputFilenames,
     crate_name: &str,
 ) -> PathBuf {
@@ -146,27 +146,27 @@ pub fn filename_for_metadata(
 
 pub fn filename_for_input(
     sess: &Session,
-    crate_type: config::CrateType,
+    crate_type: CrateType,
     crate_name: &str,
     outputs: &OutputFilenames,
 ) -> PathBuf {
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
 
     match crate_type {
-        config::CrateType::Rlib => outputs.out_directory.join(&format!("lib{}.rlib", libname)),
-        config::CrateType::Cdylib | config::CrateType::ProcMacro | config::CrateType::Dylib => {
+        CrateType::Rlib => outputs.out_directory.join(&format!("lib{}.rlib", libname)),
+        CrateType::Cdylib | CrateType::ProcMacro | CrateType::Dylib => {
             let (prefix, suffix) =
                 (&sess.target.target.options.dll_prefix, &sess.target.target.options.dll_suffix);
             outputs.out_directory.join(&format!("{}{}{}", prefix, libname, suffix))
         }
-        config::CrateType::Staticlib => {
+        CrateType::Staticlib => {
             let (prefix, suffix) = (
                 &sess.target.target.options.staticlib_prefix,
                 &sess.target.target.options.staticlib_suffix,
             );
             outputs.out_directory.join(&format!("{}{}{}", prefix, libname, suffix))
         }
-        config::CrateType::Executable => {
+        CrateType::Executable => {
             let suffix = &sess.target.target.options.exe_suffix;
             let out_filename = outputs.path(OutputType::Exe);
             if suffix.is_empty() { out_filename } else { out_filename.with_extension(&suffix[1..]) }
@@ -183,18 +183,18 @@ pub fn filename_for_input(
 /// way to run iOS binaries anyway without jailbreaking and
 /// interaction with Rust code through static library is the only
 /// option for now
-pub fn default_output_for_target(sess: &Session) -> config::CrateType {
+pub fn default_output_for_target(sess: &Session) -> CrateType {
     if !sess.target.target.options.executables {
-        config::CrateType::Staticlib
+        CrateType::Staticlib
     } else {
-        config::CrateType::Executable
+        CrateType::Executable
     }
 }
 
 /// Checks if target supports crate_type as output
-pub fn invalid_output_for_target(sess: &Session, crate_type: config::CrateType) -> bool {
+pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool {
     match crate_type {
-        config::CrateType::Cdylib | config::CrateType::Dylib | config::CrateType::ProcMacro => {
+        CrateType::Cdylib | CrateType::Dylib | CrateType::ProcMacro => {
             if !sess.target.target.options.dynamic_linking {
                 return true;
             }
@@ -208,12 +208,12 @@ pub fn invalid_output_for_target(sess: &Session, crate_type: config::CrateType) 
     }
     if sess.target.target.options.only_cdylib {
         match crate_type {
-            config::CrateType::ProcMacro | config::CrateType::Dylib => return true,
+            CrateType::ProcMacro | CrateType::Dylib => return true,
             _ => {}
         }
     }
     if !sess.target.target.options.executables {
-        if crate_type == config::CrateType::Executable {
+        if crate_type == CrateType::Executable {
             return true;
         }
     }

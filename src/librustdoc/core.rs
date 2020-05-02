@@ -1,6 +1,7 @@
 use rustc_ast::ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::{self, Lrc};
 use rustc_driver::abort_on_err;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
@@ -13,15 +14,14 @@ use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_resolve as resolve;
-use rustc_session::config::ErrorOutputType;
+use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::lint;
 use rustc_session::DiagnosticOutput;
-use rustc_session::{config, Session};
+use rustc_session::Session;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 
-use rustc_data_structures::sync::{self, Lrc};
 use std::cell::RefCell;
 use std::mem;
 use std::rc::Rc;
@@ -30,7 +30,6 @@ use crate::clean;
 use crate::clean::{AttributesExt, MAX_DEF_ID};
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::html::render::RenderInfo;
-
 use crate::passes::{self, Condition::*, ConditionalPass};
 
 pub use rustc_session::config::{CodegenOptions, DebuggingOptions, Input, Options};
@@ -301,11 +300,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         })
         .collect();
 
-    let crate_types = if proc_macro_crate {
-        vec![config::CrateType::ProcMacro]
-    } else {
-        vec![config::CrateType::Rlib]
-    };
+    let crate_types =
+        if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
     // plays with error output here!
     let sessopts = config::Options {
         maybe_sysroot,

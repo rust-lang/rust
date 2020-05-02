@@ -8,7 +8,7 @@ use rustc_hir::lang_items;
 use rustc_hir::weak_lang_items::WEAK_ITEMS_REFS;
 use rustc_middle::middle::lang_items::whitelisted;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config;
+use rustc_session::config::CrateType;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -38,12 +38,12 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
     // We only need to check for the presence of weak lang items if we're
     // emitting something that's not an rlib.
     let needs_check = tcx.sess.crate_types.borrow().iter().any(|kind| match *kind {
-        config::CrateType::Dylib
-        | config::CrateType::ProcMacro
-        | config::CrateType::Cdylib
-        | config::CrateType::Executable
-        | config::CrateType::Staticlib => true,
-        config::CrateType::Rlib => false,
+        CrateType::Dylib
+        | CrateType::ProcMacro
+        | CrateType::Cdylib
+        | CrateType::Executable
+        | CrateType::Staticlib => true,
+        CrateType::Rlib => false,
     });
     if !needs_check {
         return;
