@@ -50,6 +50,7 @@
     - [The Rustc Driver and Interface](./rustc-driver.md)
         - [Rustdoc](./rustdoc.md)
         - [Ex: Type checking through `rustc_interface`](./rustc-driver-interacting-with-the-ast.md)
+        - [Ex: Getting diagnostics through `rustc_interface`](./rustc-driver-getting-diagnostics.md)
     - [Syntax and the AST](./syntax-intro.md)
         - [Lexing and Parsing](./the-parser.md)
         - [`#[test]` Implementation](./test-implementation.md)
