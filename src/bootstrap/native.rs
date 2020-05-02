@@ -24,6 +24,72 @@ use crate::util::{self, exe};
 use crate::GitRepo;
 use build_helper::up_to_date;
 
+pub struct Meta {
+    stamp: HashStamp,
+    build_llvm_config: PathBuf,
+    out_dir: PathBuf,
+    root: String,
+}
+
+// This returns whether we've already previously built LLVM.
+//
+// It's used to avoid busting caches during x.py check -- if we've already built
+// LLVM, it's fine for us to not try to avoid doing so.
+//
+// This will return the llvm-config if it can get it (but it will not build it
+// if not).
+pub fn prebuilt_llvm_config(
+    builder: &Builder<'_>,
+    target: Interned<String>,
+) -> Result<PathBuf, Meta> {
+    // If we're using a custom LLVM bail out here, but we can only use a
+    // custom LLVM for the build triple.
+    if let Some(config) = builder.config.target_config.get(&target) {
+        if let Some(ref s) = config.llvm_config {
+            check_llvm_version(builder, s);
+            return Ok(s.to_path_buf());
+        }
+    }
+
+    let root = "src/llvm-project/llvm";
+    let out_dir = builder.llvm_out(target);
+    let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
+    if !builder.config.build.contains("msvc") || builder.config.ninja {
+        llvm_config_ret_dir.push("build");
+    }
+    llvm_config_ret_dir.push("bin");
+
+    let build_llvm_config = llvm_config_ret_dir.join(exe("llvm-config", &*builder.config.build));
+
+    let stamp = out_dir.join("llvm-finished-building");
+    let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
+
+    if builder.config.llvm_skip_rebuild && stamp.path.exists() {
+        builder.info(
+            "Warning: \
+                Using a potentially stale build of LLVM; \
+                This may not behave well.",
+        );
+        return Ok(build_llvm_config);
+    }
+
+    if stamp.is_done() {
+        if stamp.hash.is_none() {
+            builder.info(
+                "Could not determine the LLVM submodule commit hash. \
+                     Assuming that an LLVM rebuild is not necessary.",
+            );
+            builder.info(&format!(
+                "To force LLVM to rebuild, remove the file `{}`",
+                stamp.path.display()
+            ));
+        }
+        return Ok(build_llvm_config);
+    }
+
+    Err(Meta { stamp, build_llvm_config, out_dir, root: root.into() })
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: Interned<String>,
@@ -46,51 +112,11 @@ impl Step for Llvm {
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let target = self.target;
 
-        // If we're using a custom LLVM bail out here, but we can only use a
-        // custom LLVM for the build triple.
-        if let Some(config) = builder.config.target_config.get(&target) {
-            if let Some(ref s) = config.llvm_config {
-                check_llvm_version(builder, s);
-                return s.to_path_buf();
-            }
-        }
-
-        let root = "src/llvm-project/llvm";
-        let out_dir = builder.llvm_out(target);
-        let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
-        if !builder.config.build.contains("msvc") || builder.config.ninja {
-            llvm_config_ret_dir.push("build");
-        }
-        llvm_config_ret_dir.push("bin");
-
-        let build_llvm_config =
-            llvm_config_ret_dir.join(exe("llvm-config", &*builder.config.build));
-
-        let stamp = out_dir.join("llvm-finished-building");
-        let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
-
-        if builder.config.llvm_skip_rebuild && stamp.path.exists() {
-            builder.info(
-                "Warning: \
-                Using a potentially stale build of LLVM; \
-                This may not behave well.",
-            );
-            return build_llvm_config;
-        }
-
-        if stamp.is_done() {
-            if stamp.hash.is_none() {
-                builder.info(
-                    "Could not determine the LLVM submodule commit hash. \
-                     Assuming that an LLVM rebuild is not necessary.",
-                );
-                builder.info(&format!(
-                    "To force LLVM to rebuild, remove the file `{}`",
-                    stamp.path.display()
-                ));
-            }
-            return build_llvm_config;
-        }
+        let Meta { stamp, build_llvm_config, out_dir, root } =
+            match prebuilt_llvm_config(builder, target) {
+                Ok(p) => return p,
+                Err(m) => m,
+            };
 
         builder.info(&format!("Building LLVM for {}", target));
         t!(stamp.remove());
