@@ -253,6 +253,7 @@ impl Validator<'mir, 'tcx> {
         let is_unleashable = O::IS_SUPPORTED_IN_MIRI;
 
         if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+            // Use `def_span` to deduplicate all warnings for the same const.
             self.tcx.sess.span_warn(self.tcx.def_span(self.def_id), "skipping const checks");
             if let Some(feature) = O::feature_gate() {
                 self.tcx.sess.miri_unleashed_feature(feature);
