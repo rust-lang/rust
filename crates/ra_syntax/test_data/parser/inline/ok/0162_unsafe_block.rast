@@ -1,0 +1,23 @@
+SOURCE_FILE@0..22
+  FN_DEF@0..21
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    PARAM_LIST@4..6
+      L_PAREN@4..5 "("
+      R_PAREN@5..6 ")"
+    WHITESPACE@6..7 " "
+    BLOCK_EXPR@7..21
+      L_CURLY@7..8 "{"
+      WHITESPACE@8..9 " "
+      EFFECT_EXPR@9..19
+        UNSAFE_KW@9..15 "unsafe"
+        WHITESPACE@15..16 " "
+        BLOCK_EXPR@16..19
+          L_CURLY@16..17 "{"
+          WHITESPACE@17..18 " "
+          R_CURLY@18..19 "}"
+      WHITESPACE@19..20 " "
+      R_CURLY@20..21 "}"
+  WHITESPACE@21..22 "\n"

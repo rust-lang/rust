@@ -203,10 +203,16 @@ impl ExprCollector<'_> {
 
                 self.alloc_expr(Expr::If { condition, then_branch, else_branch }, syntax_ptr)
             }
-            ast::Expr::TryBlockExpr(e) => {
-                let body = self.collect_block_opt(e.body());
-                self.alloc_expr(Expr::TryBlock { body }, syntax_ptr)
-            }
+            ast::Expr::EffectExpr(e) => match e.effect() {
+                ast::Effect::Try(_) => {
+                    let body = self.collect_block_opt(e.block_expr());
+                    self.alloc_expr(Expr::TryBlock { body }, syntax_ptr)
+                }
+                // FIXME: we need to record these effects somewhere...
+                ast::Effect::Async(_) | ast::Effect::Label(_) | ast::Effect::Unsafe(_) => {
+                    self.collect_block_opt(e.block_expr())
+                }
+            },
             ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
                 let body = self.collect_block_opt(e.loop_body());
@@ -494,12 +500,8 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn collect_block(&mut self, expr: ast::BlockExpr) -> ExprId {
-        let syntax_node_ptr = AstPtr::new(&expr.clone().into());
-        let block = match expr.block() {
-            Some(block) => block,
-            None => return self.alloc_expr(Expr::Missing, syntax_node_ptr),
-        };
+    fn collect_block(&mut self, block: ast::BlockExpr) -> ExprId {
+        let syntax_node_ptr = AstPtr::new(&block.clone().into());
         self.collect_block_items(&block);
         let statements = block
             .statements()
@@ -517,7 +519,7 @@ impl ExprCollector<'_> {
         self.alloc_expr(Expr::Block { statements, tail }, syntax_node_ptr)
     }
 
-    fn collect_block_items(&mut self, block: &ast::Block) {
+    fn collect_block_items(&mut self, block: &ast::BlockExpr) {
         let container = ContainerId::DefWithBodyId(self.def);
         for item in block.items() {
             let (def, name): (ModuleDefId, Option<ast::Name>) = match item {

@@ -237,8 +237,7 @@ fn api_walkthrough() {
 
     // Let's get the `1 + 1` expression!
     let body: ast::BlockExpr = func.body().unwrap();
-    let block = body.block().unwrap();
-    let expr: ast::Expr = block.expr().unwrap();
+    let expr: ast::Expr = body.expr().unwrap();
 
     // Enums are used to group related ast nodes together, and can be used for
     // matching. However, because there are no public fields, it's possible to
@@ -274,8 +273,8 @@ fn api_walkthrough() {
     assert_eq!(text.to_string(), "1 + 1");
 
     // There's a bunch of traversal methods on `SyntaxNode`:
-    assert_eq!(expr_syntax.parent().as_ref(), Some(block.syntax()));
-    assert_eq!(block.syntax().first_child_or_token().map(|it| it.kind()), Some(T!['{']));
+    assert_eq!(expr_syntax.parent().as_ref(), Some(body.syntax()));
+    assert_eq!(body.syntax().first_child_or_token().map(|it| it.kind()), Some(T!['{']));
     assert_eq!(
         expr_syntax.next_sibling_or_token().map(|it| it.kind()),
         Some(SyntaxKind::WHITESPACE)

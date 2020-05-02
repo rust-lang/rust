@@ -180,7 +180,9 @@ trait Trait<T> {
 }
 
 impl Trait<u32> for () {
-    fn foo(&self) -> u32 { todo!() }
+    fn foo(&self) -> u32 {
+        todo!()
+    }
 
 }
 "#####,

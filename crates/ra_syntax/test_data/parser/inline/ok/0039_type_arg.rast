@@ -32,13 +32,12 @@ SOURCE_FILE@0..46
             WHITESPACE@27..28 " "
             CONST_ARG@28..33
               BLOCK_EXPR@28..33
-                BLOCK@28..33
-                  L_CURLY@28..29 "{"
-                  WHITESPACE@29..30 " "
-                  LITERAL@30..31
-                    INT_NUMBER@30..31 "2"
-                  WHITESPACE@31..32 " "
-                  R_CURLY@32..33 "}"
+                L_CURLY@28..29 "{"
+                WHITESPACE@29..30 " "
+                LITERAL@30..31
+                  INT_NUMBER@30..31 "2"
+                WHITESPACE@31..32 " "
+                R_CURLY@32..33 "}"
             COMMA@33..34 ","
             WHITESPACE@34..35 " "
             ASSOC_TYPE_ARG@35..43

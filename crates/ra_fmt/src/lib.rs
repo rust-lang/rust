@@ -42,7 +42,6 @@ pub fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
 }
 
 pub fn extract_trivial_expression(block: &ast::BlockExpr) -> Option<ast::Expr> {
-    let block = block.block()?;
     let has_anything_else = |thing: &SyntaxNode| -> bool {
         let mut non_trivial_children =
             block.syntax().children_with_tokens().filter(|it| match it.kind() {
