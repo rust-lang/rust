@@ -798,10 +798,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         argument_scope: region::Scope,
         ast_body: &'tcx hir::Expr<'tcx>,
     ) -> BlockAnd<()> {
+        let tcx = self.hir.tcx();
+
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
             let source_info =
-                SourceInfo::outermost(arg_opt.map_or(self.fn_span, |arg| arg.pat.span));
+                SourceInfo::outermost(arg_opt.map_or(self.fn_span, |arg| tcx.hir().span(arg.pat.hir_id)));
             let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
@@ -859,8 +861,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if let Some(Node::Binding(pat)) = tcx_hir.find(var_id) {
                         if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                             name = ident.name;
+                            let pat_span = tcx_hir.span(pat.hir_id);
                             match hir_typeck_results
-                                .extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
+                                .extract_binding_mode(tcx.sess, pat.hir_id, pat_span)
                             {
                                 Some(ty::BindByValue(hir::Mutability::Mut)) => {
                                     mutability = Mutability::Mut;
@@ -904,7 +907,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
-                arg_opt.as_ref().map_or(ast_body.span, |arg| arg.pat.span),
+                arg_opt.as_ref().map_or(ast_body.span, |arg| tcx_hir.span(arg.pat.hir_id)),
                 argument_scope,
                 local,
                 DropKind::Value,

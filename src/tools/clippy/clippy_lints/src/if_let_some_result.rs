@@ -50,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for OkIfLet {
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
-                let some_expr_string = snippet_with_applicability(cx, y[0].span, "", &mut applicability);
+                let some_expr_string = snippet_with_applicability(cx, cx.tcx.hir().span(y[0].hir_id), "", &mut applicability);
                 let trimmed_ok = snippet_with_applicability(cx, op.span.until(ok_span), "", &mut applicability);
                 let sugg = format!(
                     "if let Ok({}) = {}",

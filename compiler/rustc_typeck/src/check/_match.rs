@@ -348,7 +348,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         if let Local(hir::Local { ty: Some(_), pat, .. }) = node {
-            return Some((pat.span, "expected because of this assignment".to_string()));
+            let span = self.tcx.hir().span(pat.hir_id);
+            return Some((span, "expected because of this assignment".to_string()));
         }
         None
     }

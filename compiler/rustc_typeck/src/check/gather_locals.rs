@@ -100,19 +100,20 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         if let PatKind::Binding(_, _, ident, _) = p.kind {
-            let var_ty = self.assign(p.span, p.hir_id, None);
+            let span = self.fcx.tcx.hir().span(p.hir_id);
+            let var_ty = self.assign(span, p.hir_id, None);
 
             if self.outermost_fn_param_pat {
                 if !self.fcx.tcx.features().unsized_fn_params {
                     self.fcx.require_type_is_sized(
                         var_ty,
-                        p.span,
-                        traits::SizedArgumentType(Some(p.span)),
+                        span,
+                        traits::SizedArgumentType(Some(span)),
                     );
                 }
             } else {
                 if !self.fcx.tcx.features().unsized_locals {
-                    self.fcx.require_type_is_sized(var_ty, p.span, traits::VariableType(p.hir_id));
+                    self.fcx.require_type_is_sized(var_ty, span, traits::VariableType(p.hir_id));
                 }
             }
 

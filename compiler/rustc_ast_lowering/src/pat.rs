@@ -275,7 +275,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::Pat {
             hir_id: self.lower_node_id(p.id, p.span),
             kind,
-            span: p.span,
             default_binding_modes: true,
         })
     }

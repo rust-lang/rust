@@ -89,7 +89,8 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
             if let Some(init) = &local.init {
                 if let Some(init_ty) = cx.typeck_results().node_type_opt(init.hir_id) {
                     let pat = &local.pat;
-                    if in_external_macro(cx.sess(), pat.span) {
+                    let pat_span = cx.tcx.hir().span(pat.hir_id);
+                    if in_external_macro(cx.sess(), pat_span) {
                         return;
                     }
                     let deref_possible = match local.source {
@@ -109,7 +110,8 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
                     if let Some(expr_ty) = cx.typeck_results().node_type_opt(expr.hir_id) {
                         'pattern_checks: for arm in arms {
                             let pat = &arm.pat;
-                            if in_external_macro(cx.sess(), pat.span) {
+                            let pat_span = cx.tcx.hir().span(pat.hir_id);
+                            if in_external_macro(cx.sess(), pat_span) {
                                 continue 'pattern_checks;
                             }
                             if apply_lint(cx, pat, expr_ty, DerefPossible::Possible) {
@@ -193,7 +195,8 @@ fn find_first_mismatch<'tcx>(
 
     if let TyKind::Ref(_, _, mutability) = *ty.kind() {
         if is_non_ref_pattern(&pat.kind) {
-            return Some((pat.span, mutability, level));
+            let pat_span = cx.tcx.hir().span(pat.hir_id);
+            return Some((pat_span, mutability, level));
         }
     }
 
