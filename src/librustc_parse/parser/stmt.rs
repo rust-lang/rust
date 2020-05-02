@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
         }
 
         let expr = if self.check(&token::OpenDelim(token::Brace)) {
-            self.parse_struct_expr(lo, path, AttrVec::new())?
+            self.parse_struct_expr(path, AttrVec::new())?
         } else {
             let hi = self.prev_token.span;
             self.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())
