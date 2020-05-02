@@ -76,12 +76,11 @@ pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
     })
 }
 
-fn extract_expr(cursor_range: TextRange, block_expr: BlockExpr) -> Option<Expr> {
-    let block = block_expr.block()?;
+fn extract_expr(cursor_range: TextRange, block: BlockExpr) -> Option<Expr> {
     let cursor_in_range = block.l_curly_token()?.text_range().contains_range(cursor_range);
 
     if cursor_in_range {
-        Some(unwrap_trivial_block(block_expr))
+        Some(unwrap_trivial_block(block))
     } else {
         None
     }
