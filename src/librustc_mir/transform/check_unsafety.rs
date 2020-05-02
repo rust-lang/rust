@@ -19,6 +19,7 @@ use crate::util;
 
 pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
+    body_did: LocalDefId,
     const_context: bool,
     min_const_fn: bool,
     violations: Vec<UnsafetyViolation>,
@@ -35,6 +36,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         const_context: bool,
         min_const_fn: bool,
         body: &'a Body<'tcx>,
+        body_did: LocalDefId,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
@@ -44,6 +46,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         }
         Self {
             body,
+            body_did,
             const_context,
             min_const_fn,
             violations: vec![],
@@ -86,6 +89,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                          undefined behavior",
                         UnsafetyViolationKind::GeneralAndConstFn,
                     )
+                }
+
+                if let ty::FnDef(func_id, _) = func_ty.kind {
+                    self.check_target_features(func_id);
                 }
             }
         }
@@ -436,6 +443,22 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             }
         }
     }
+
+    /// Checks whether calling `func_did` needs an `unsafe` context or not, i.e. whether
+    /// the called function has target features the calling function hasn't.
+    fn check_target_features(&mut self, func_did: DefId) {
+        let callee_features = &self.tcx.codegen_fn_attrs(func_did).target_features;
+        let self_features = &self.tcx.codegen_fn_attrs(self.body_did).target_features;
+
+        // Is `callee_features` a subset of `calling_features`?
+        if !callee_features.iter().all(|feature| self_features.contains(feature)) {
+            self.require_unsafe(
+                "call to function with `#[target_feature]`",
+                "can only be called if the required target features are available",
+                UnsafetyViolationKind::GeneralAndConstFn,
+            )
+        }
+    }
 }
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
@@ -502,7 +525,8 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: LocalDefId) -> UnsafetyCheckRe
         }
         hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => (true, false),
     };
-    let mut checker = UnsafetyChecker::new(const_context, min_const_fn, body, tcx, param_env);
+    let mut checker =
+        UnsafetyChecker::new(const_context, min_const_fn, body, def_id, tcx, param_env);
     checker.visit_body(&body);
 
     check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);

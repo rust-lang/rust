@@ -29,7 +29,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::weak_lang_items;
-use rustc_hir::{GenericParamKind, Node, Unsafety};
+use rustc_hir::{GenericParamKind, Node};
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -2404,13 +2404,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.export_name = Some(s);
             }
         } else if attr.check_name(sym::target_feature) {
-            if tcx.is_closure(id) || tcx.fn_sig(id).unsafety() == Unsafety::Normal {
-                let msg = "`#[target_feature(..)]` can only be applied to `unsafe` functions";
-                tcx.sess
-                    .struct_span_err(attr.span, msg)
-                    .span_label(attr.span, "can only be applied to `unsafe` functions")
-                    .span_label(tcx.def_span(id), "not an `unsafe` function")
-                    .emit();
+            if !tcx.features().target_feature_11 {
+                check_target_feature_safe_fn(tcx, id, attr.span);
+            } else if let Some(local_id) = id.as_local() {
+                if tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
+                    check_target_feature_trait_unsafe(tcx, local_id, attr.span);
+                }
             }
             from_target_feature(tcx, id, attr, &whitelist, &mut codegen_fn_attrs.target_features);
         } else if attr.check_name(sym::linkage) {
@@ -2655,5 +2654,41 @@ fn check_link_name_xor_ordinal(
         tcx.sess.span_err(span, msg);
     } else {
         tcx.sess.err(msg);
+    }
+}
+
+/// Checks the function annotated with `#[target_feature]` is unsafe,
+/// reporting an error if it isn't.
+fn check_target_feature_safe_fn(tcx: TyCtxt<'_>, id: DefId, attr_span: Span) {
+    if tcx.is_closure(id) || tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
+        let mut err = feature_err(
+            &tcx.sess.parse_sess,
+            sym::target_feature_11,
+            attr_span,
+            "`#[target_feature(..)]` can only be applied to `unsafe` functions",
+        );
+        err.span_label(tcx.def_span(id), "not an `unsafe` function");
+        err.emit();
+    }
+}
+
+/// Checks the function annotated with `#[target_feature]` is not a safe
+/// trait method implementation, reporting an error if it is.
+fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
+    let hir_id = tcx.hir().as_local_hir_id(id);
+    let node = tcx.hir().get(hir_id);
+    if let Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) = node {
+        let parent_id = tcx.hir().get_parent_item(hir_id);
+        let parent_item = tcx.hir().expect_item(parent_id);
+        if let hir::ItemKind::Impl { of_trait: Some(_), .. } = parent_item.kind {
+            tcx.sess
+                .struct_span_err(
+                    attr_span,
+                    "`#[target_feature(..)]` cannot be applied to safe trait method",
+                )
+                .span_label(attr_span, "cannot be applied to safe trait method")
+                .span_label(tcx.def_span(id), "not an `unsafe` function")
+                .emit();
+        }
     }
 }

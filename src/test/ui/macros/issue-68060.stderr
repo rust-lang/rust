@@ -1,11 +1,14 @@
-error: `#[target_feature(..)]` can only be applied to `unsafe` functions
+error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
   --> $DIR/issue-68060.rs:6:13
    |
 LL |             #[target_feature(enable = "")]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only be applied to `unsafe` functions
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |             |_| (),
    |             ------ not an `unsafe` function
+   |
+   = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
+   = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
 error: the feature named `` is not valid for this target
   --> $DIR/issue-68060.rs:6:30
@@ -21,4 +24,5 @@ LL |             #[track_caller]
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0737`.
+Some errors have detailed explanations: E0658, E0737.
+For more information about an error, try `rustc --explain E0658`.
