@@ -148,7 +148,7 @@ impl ModuleConfig {
             || sess.opts.cg.linker_plugin_lto.enabled()
         {
             EmitObj::Bitcode
-        } else if sess.opts.debugging_opts.embed_bitcode || need_crate_bitcode_for_rlib(sess) {
+        } else if need_crate_bitcode_for_rlib(sess) {
             let force_full = need_crate_bitcode_for_rlib(sess);
             match sess.opts.optimize {
                 config::OptLevel::No | config::OptLevel::Less if !force_full => {
@@ -374,7 +374,7 @@ pub struct CompiledModules {
 }
 
 fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
-    sess.opts.cg.bitcode_in_rlib
+    sess.opts.cg.embed_bitcode
         && sess.crate_types.borrow().contains(&config::CrateType::Rlib)
         && sess.opts.output_types.contains_key(&OutputType::Exe)
 }

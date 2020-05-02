@@ -232,8 +232,8 @@ pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, stage: u32, ca
         }
     }
 
-    // By default, rustc uses `-Cbitcode-in-rlib=yes`, and Cargo overrides that
-    // with `-Cbitcode-in-rlib=no` for non-LTO builds. However, libstd must be
+    // By default, rustc uses `-Cembed-bitcode=yes`, and Cargo overrides that
+    // with `-Cembed-bitcode=no` for non-LTO builds. However, libstd must be
     // built with bitcode so that the produced rlibs can be used for both LTO
     // builds (which use bitcode) and non-LTO builds (which use object code).
     // So we override the override here!
@@ -241,7 +241,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: Interned<String>, stage: u32, ca
     // But we don't bother for the stage 0 compiler because it's never used
     // with LTO.
     if stage >= 1 {
-        cargo.rustflag("-Cbitcode-in-rlib=yes");
+        cargo.rustflag("-Cembed-bitcode=yes");
     }
 }
 

@@ -1677,12 +1677,12 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
-    if !cg.bitcode_in_rlib {
+    if !cg.embed_bitcode {
         match cg.lto {
             LtoCli::No | LtoCli::Unspecified => {}
             LtoCli::Yes | LtoCli::NoParam | LtoCli::Thin | LtoCli::Fat => early_error(
                 error_format,
-                "options `-C bitcode-in-rlib=no` and `-C lto` are incompatible",
+                "options `-C embed-bitcode=no` and `-C lto` are incompatible",
             ),
         }
     }
