@@ -1240,7 +1240,7 @@ impl<'a> State<'a> {
                 s.print_expr(&field.expr);
                 s.end()
             },
-            |_, f| f.span,
+            |s, f| s.span(f.hir_id),
         );
         match *wth {
             Some(ref expr) => {

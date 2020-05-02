@@ -1196,7 +1196,6 @@ pub struct Field<'hir> {
     pub hir_id: HirId,
     pub ident: Ident,
     pub expr: &'hir Expr<'hir>,
-    pub span: Span,
     pub is_shorthand: bool,
 }
 

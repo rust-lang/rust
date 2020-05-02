@@ -1666,7 +1666,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id: self.next_id(f.span),
             ident: f.ident,
             expr: self.lower_expr(&f.expr),
-            span: f.span,
             is_shorthand: f.is_shorthand,
         }
     }
@@ -2164,7 +2163,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn field(&mut self, ident: Ident, expr: &'hir hir::Expr<'hir>, span: Span) -> hir::Field<'hir> {
-        hir::Field { hir_id: self.next_id(span), ident, span, expr, is_shorthand: false }
+        hir::Field { hir_id: self.next_id(span), ident, expr, is_shorthand: false }
     }
 
     fn arm(&mut self, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {

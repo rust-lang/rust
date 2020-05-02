@@ -1266,17 +1266,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for field in ast_fields {
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
-                seen_fields.insert(ident, field.span);
+                let field_span = self.tcx.hir().span(field.hir_id);
+                seen_fields.insert(ident, field_span);
                 self.write_field_index(field.hir_id, i);
 
                 // We don't look at stability attributes on
                 // struct-like enums (yet...), but it's definitely not
                 // a bug to have constructed one.
                 if adt_kind != AdtKind::Enum {
-                    tcx.check_stability(v_field.did, Some(expr_id), field.span);
+                    tcx.check_stability(v_field.did, Some(expr_id), field_span);
                 }
 
-                self.field_ty(field.span, v_field, substs)
+                self.field_ty(field_span, v_field, substs)
             } else {
                 error_happened = true;
                 if let Some(prev_span) = seen_fields.get(&ident) {
