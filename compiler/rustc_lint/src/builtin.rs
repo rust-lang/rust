@@ -152,10 +152,11 @@ declare_lint! {
 declare_lint_pass!(BoxPointers => [BOX_POINTERS]);
 
 impl BoxPointers {
-    fn check_heap_type(&self, cx: &LateContext<'_>, span: Span, ty: Ty<'_>) {
+    fn check_heap_type(&self, cx: &LateContext<'_>, hir_id: HirId, ty: Ty<'_>) {
         for leaf in ty.walk() {
             if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
                 if leaf_ty.is_box() {
+                    let span = cx.tcx.hir().span(hir_id);
                     cx.struct_span_lint(BOX_POINTERS, span, |lint| {
                         lint.build(&format!("type uses owned (Box type) pointers: {}", ty)).emit()
                     });
@@ -173,7 +174,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..) => {
-                self.check_heap_type(cx, it.span, cx.tcx.type_of(it.def_id))
+                self.check_heap_type(cx, it.hir_id(), cx.tcx.type_of(it.def_id))
             }
             _ => (),
         }
@@ -183,8 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
             hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
                     let def_id = cx.tcx.hir().local_def_id(struct_field.hir_id);
-                    let span = cx.tcx.hir().span(struct_field.hir_id);
-                    self.check_heap_type(cx, span, cx.tcx.type_of(def_id));
+                    self.check_heap_type(cx, struct_field.hir_id, cx.tcx.type_of(def_id));
                 }
             }
             _ => (),
@@ -193,7 +193,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
 
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
         let ty = cx.typeck_results().node_type(e.hir_id);
-        self.check_heap_type(cx, e.span, ty);
+        self.check_heap_type(cx, e.hir_id, ty);
     }
 }
 
@@ -511,7 +511,6 @@ impl MissingDoc {
         &self,
         cx: &LateContext<'_>,
         id: hir::HirId,
-        sp: Span,
         article: &'static str,
         desc: &'static str,
     ) {
@@ -538,6 +537,7 @@ impl MissingDoc {
         let attrs = cx.tcx.hir().attrs(id);
         let has_doc = attrs.iter().any(|a| has_doc(cx.sess(), a));
         if !has_doc {
+            let sp = cx.tcx.hir().span(id);
             cx.struct_span_lint(
                 MISSING_DOCS,
                 cx.tcx.sess.source_map().guess_head_span(sp),
@@ -567,8 +567,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &LateContext<'_>, krate: &hir::Crate<'_>) {
-        let span = cx.tcx.hir().span(hir::CRATE_HIR_ID);
-        self.check_missing_docs_attrs(cx, hir::CRATE_HIR_ID, span, "the", "crate");
+        self.check_missing_docs_attrs(cx, hir::CRATE_HIR_ID, "the", "crate");
 
         for macro_def in krate.exported_macros {
             let attrs = cx.tcx.hir().attrs(macro_def.hir_id());
@@ -627,7 +626,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
         let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, it.hir_id(), it.span, article, desc);
+        self.check_missing_docs_attrs(cx, it.hir_id(), article, desc);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, trait_item: &hir::TraitItem<'_>) {
@@ -637,7 +636,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
         let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, trait_item.hir_id(), trait_item.span, article, desc);
+        self.check_missing_docs_attrs(cx, trait_item.hir_id(), article, desc);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
@@ -647,24 +646,22 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         }
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
-        self.check_missing_docs_attrs(cx, impl_item.hir_id(), impl_item.span, article, desc);
+        self.check_missing_docs_attrs(cx, impl_item.hir_id(), article, desc);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'_>) {
         let (article, desc) = cx.tcx.article_and_description(foreign_item.def_id.to_def_id());
-        self.check_missing_docs_attrs(cx, foreign_item.hir_id(), foreign_item.span, article, desc);
+        self.check_missing_docs_attrs(cx, foreign_item.hir_id(), article, desc);
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'_>, sf: &hir::StructField<'_>) {
         if !sf.is_positional() {
-            let span = cx.tcx.hir().span(sf.hir_id);
-            self.check_missing_docs_attrs(cx, sf.hir_id, span, "a", "struct field")
+            self.check_missing_docs_attrs(cx, sf.hir_id, "a", "struct field")
         }
     }
 
     fn check_variant(&mut self, cx: &LateContext<'_>, v: &hir::Variant<'_>) {
-        let span = cx.tcx.hir().span(v.id);
-        self.check_missing_docs_attrs(cx, v.id, span, "a", "variant");
+        self.check_missing_docs_attrs(cx, v.id, "a", "variant");
     }
 }
 
@@ -1299,12 +1296,12 @@ impl UnreachablePub {
         what: &str,
         id: hir::HirId,
         vis: &hir::Visibility<'_>,
-        span: Span,
         exportable: bool,
     ) {
         let mut applicability = Applicability::MachineApplicable;
         match vis.node {
             hir::VisibilityKind::Public if !cx.access_levels.is_reachable(id) => {
+                let span = cx.tcx.hir().span(id);
                 if span.from_expansion() {
                     applicability = Applicability::MaybeIncorrect;
                 }
@@ -1337,27 +1334,19 @@ impl UnreachablePub {
 
 impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        self.perform_lint(cx, "item", item.hir_id(), &item.vis, item.span, true);
+        self.perform_lint(cx, "item", item.hir_id(), &item.vis, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'tcx>) {
-        self.perform_lint(
-            cx,
-            "item",
-            foreign_item.hir_id(),
-            &foreign_item.vis,
-            foreign_item.span,
-            true,
-        );
+        self.perform_lint(cx, "item", foreign_item.hir_id(), &foreign_item.vis, true);
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'_>, field: &hir::StructField<'_>) {
-        let span = cx.tcx.hir().span(field.hir_id);
-        self.perform_lint(cx, "field", field.hir_id, &field.vis, span, false);
+        self.perform_lint(cx, "field", field.hir_id, &field.vis, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        self.perform_lint(cx, "item", impl_item.hir_id(), &impl_item.vis, impl_item.span, false);
+        self.perform_lint(cx, "item", impl_item.hir_id(), &impl_item.vis, false);
     }
 }
 
