@@ -496,9 +496,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
+        let span = self.tcx.hir().span(md.hir_id());
         self.annotate(
             md.hir_id(),
-            md.span,
+            span,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -625,7 +626,8 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
-        self.check_missing_stability(md.hir_id(), md.span);
+        let span = self.tcx.hir().span(md.hir_id());
+        self.check_missing_stability(md.hir_id(), span);
     }
 
     // Note that we don't need to `check_missing_stability` for default generic parameters,

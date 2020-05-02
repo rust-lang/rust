@@ -572,9 +572,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             let attrs = cx.tcx.hir().attrs(macro_def.hir_id());
             let has_doc = attrs.iter().any(|a| has_doc(cx.sess(), a));
             if !has_doc {
+                let span = cx.tcx.hir().span(macro_def.hir_id());
                 cx.struct_span_lint(
                     MISSING_DOCS,
-                    cx.tcx.sess.source_map().guess_head_span(macro_def.span),
+                    cx.tcx.sess.source_map().guess_head_span(span),
                     |lint| lint.build("missing documentation for macro").emit(),
                 );
             }

@@ -772,7 +772,6 @@ pub struct MacroDef<'hir> {
     pub ident: Ident,
     pub vis: Visibility<'hir>,
     pub def_id: LocalDefId,
-    pub span: Span,
     pub ast: ast::MacroDef,
 }
 

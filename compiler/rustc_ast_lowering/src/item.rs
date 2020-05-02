@@ -226,7 +226,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ident,
                     vis,
                     def_id: hir_id.expect_owner(),
-                    span: i.span,
                     ast: MacroDef { body, macro_rules },
                 });
             } else {

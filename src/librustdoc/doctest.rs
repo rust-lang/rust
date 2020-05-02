@@ -1100,7 +1100,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         self.visit_testable(
             macro_def.ident.to_string(),
             macro_def.hir_id(),
-            macro_def.span,
+            self.map.span(macro_def.hir_id()),
             |_| (),
         );
     }
