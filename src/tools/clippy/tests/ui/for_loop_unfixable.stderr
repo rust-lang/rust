@@ -1,0 +1,9 @@
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/for_loop_unfixable.rs:36:12
+   |
+LL |         if f(&vec[i], &vec[i]) {
+   |            ^ help: a local variable with a similar name exists: `i`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

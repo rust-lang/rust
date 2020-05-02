@@ -1,0 +1,64 @@
+error: transmute from a pointer type (`*const T`) to a reference type (`&T`)
+  --> $DIR/transmute_ptr_to_ref.rs:4:17
+   |
+LL |     let _: &T = std::mem::transmute(p);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*p`
+   |
+   = note: `-D clippy::transmute-ptr-to-ref` implied by `-D warnings`
+
+error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
+  --> $DIR/transmute_ptr_to_ref.rs:7:21
+   |
+LL |     let _: &mut T = std::mem::transmute(m);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *m`
+
+error: transmute from a pointer type (`*mut T`) to a reference type (`&T`)
+  --> $DIR/transmute_ptr_to_ref.rs:10:17
+   |
+LL |     let _: &T = std::mem::transmute(m);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*m`
+
+error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
+  --> $DIR/transmute_ptr_to_ref.rs:13:21
+   |
+LL |     let _: &mut T = std::mem::transmute(p as *mut T);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(p as *mut T)`
+
+error: transmute from a pointer type (`*const U`) to a reference type (`&T`)
+  --> $DIR/transmute_ptr_to_ref.rs:16:17
+   |
+LL |     let _: &T = std::mem::transmute(o);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(o as *const T)`
+
+error: transmute from a pointer type (`*mut U`) to a reference type (`&mut T`)
+  --> $DIR/transmute_ptr_to_ref.rs:19:21
+   |
+LL |     let _: &mut T = std::mem::transmute(om);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(om as *mut T)`
+
+error: transmute from a pointer type (`*mut U`) to a reference type (`&T`)
+  --> $DIR/transmute_ptr_to_ref.rs:22:17
+   |
+LL |     let _: &T = std::mem::transmute(om);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(om as *const T)`
+
+error: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<u8>`)
+  --> $DIR/transmute_ptr_to_ref.rs:32:32
+   |
+LL |     let _: &Foo<u8> = unsafe { std::mem::transmute::<_, &Foo<_>>(raw) };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const Foo<_>)`
+
+error: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<&u8>`)
+  --> $DIR/transmute_ptr_to_ref.rs:34:33
+   |
+LL |     let _: &Foo<&u8> = unsafe { std::mem::transmute::<_, &Foo<&_>>(raw) };
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const Foo<&_>)`
+
+error: transmute from a pointer type (`*const i32`) to a reference type (`&u8`)
+  --> $DIR/transmute_ptr_to_ref.rs:38:14
+   |
+LL |     unsafe { std::mem::transmute::<_, Bar>(raw) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const u8)`
+
+error: aborting due to 10 previous errors
+

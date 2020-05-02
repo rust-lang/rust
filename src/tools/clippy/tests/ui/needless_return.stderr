@@ -1,0 +1,76 @@
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:18:5
+   |
+LL |     return true;
+   |     ^^^^^^^^^^^^ help: remove `return`: `true`
+   |
+   = note: `-D clippy::needless-return` implied by `-D warnings`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:22:5
+   |
+LL |     return true;
+   |     ^^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:27:9
+   |
+LL |         return true;
+   |         ^^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:29:9
+   |
+LL |         return false;
+   |         ^^^^^^^^^^^^^ help: remove `return`: `false`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:35:17
+   |
+LL |         true => return false,
+   |                 ^^^^^^^^^^^^ help: remove `return`: `false`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:37:13
+   |
+LL |             return true;
+   |             ^^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:44:9
+   |
+LL |         return true;
+   |         ^^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:46:16
+   |
+LL |     let _ = || return true;
+   |                ^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:54:5
+   |
+LL |     return;
+   |     ^^^^^^^ help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:59:9
+   |
+LL |         return;
+   |         ^^^^^^^ help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:61:9
+   |
+LL |         return;
+   |         ^^^^^^^ help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:68:14
+   |
+LL |         _ => return,
+   |              ^^^^^^ help: replace `return` with an empty block: `{}`
+
+error: aborting due to 12 previous errors
+

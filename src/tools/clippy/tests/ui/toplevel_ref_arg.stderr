@@ -1,0 +1,34 @@
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> $DIR/toplevel_ref_arg.rs:10:9
+   |
+LL |     let ref _x = 1;
+   |     ----^^^^^^----- help: try: `let _x = &1;`
+   |
+   = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> $DIR/toplevel_ref_arg.rs:12:9
+   |
+LL |     let ref _y: (&_, u8) = (&1, 2);
+   |     ----^^^^^^--------------------- help: try: `let _y: &(&_, u8) = &(&1, 2);`
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> $DIR/toplevel_ref_arg.rs:14:9
+   |
+LL |     let ref _z = 1 + 2;
+   |     ----^^^^^^--------- help: try: `let _z = &(1 + 2);`
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> $DIR/toplevel_ref_arg.rs:16:9
+   |
+LL |     let ref mut _z = 1 + 2;
+   |     ----^^^^^^^^^^--------- help: try: `let _z = &mut (1 + 2);`
+
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> $DIR/toplevel_ref_arg.rs:21:9
+   |
+LL |     let ref _x = vec![1, 2, 3];
+   |     ----^^^^^^----------------- help: try: `let _x = &vec![1, 2, 3];`
+
+error: aborting due to 5 previous errors
+

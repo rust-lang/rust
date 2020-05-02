@@ -1,0 +1,98 @@
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:51:11
+   |
+LL | fn bad(x: &u32, y: &Foo, z: &Baz) {}
+   |           ^^^^ help: consider passing by value instead: `u32`
+   |
+note: the lint level is defined here
+  --> $DIR/trivially_copy_pass_by_ref.rs:4:9
+   |
+LL | #![deny(clippy::trivially_copy_pass_by_ref)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:51:20
+   |
+LL | fn bad(x: &u32, y: &Foo, z: &Baz) {}
+   |                    ^^^^ help: consider passing by value instead: `Foo`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:51:29
+   |
+LL | fn bad(x: &u32, y: &Foo, z: &Baz) {}
+   |                             ^^^^ help: consider passing by value instead: `Baz`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:58:12
+   |
+LL |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {}
+   |            ^^^^^ help: consider passing by value instead: `self`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:58:22
+   |
+LL |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {}
+   |                      ^^^^ help: consider passing by value instead: `u32`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:58:31
+   |
+LL |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {}
+   |                               ^^^^ help: consider passing by value instead: `Foo`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:58:40
+   |
+LL |     fn bad(&self, x: &u32, y: &Foo, z: &Baz) {}
+   |                                        ^^^^ help: consider passing by value instead: `Baz`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:60:16
+   |
+LL |     fn bad2(x: &u32, y: &Foo, z: &Baz) {}
+   |                ^^^^ help: consider passing by value instead: `u32`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:60:25
+   |
+LL |     fn bad2(x: &u32, y: &Foo, z: &Baz) {}
+   |                         ^^^^ help: consider passing by value instead: `Foo`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:60:34
+   |
+LL |     fn bad2(x: &u32, y: &Foo, z: &Baz) {}
+   |                                  ^^^^ help: consider passing by value instead: `Baz`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:72:16
+   |
+LL |     fn bad2(x: &u32, y: &Foo, z: &Baz) {}
+   |                ^^^^ help: consider passing by value instead: `u32`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:72:25
+   |
+LL |     fn bad2(x: &u32, y: &Foo, z: &Baz) {}
+   |                         ^^^^ help: consider passing by value instead: `Foo`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:72:34
+   |
+LL |     fn bad2(x: &u32, y: &Foo, z: &Baz) {}
+   |                                  ^^^^ help: consider passing by value instead: `Baz`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:76:34
+   |
+LL |     fn trait_method(&self, _foo: &Foo);
+   |                                  ^^^^ help: consider passing by value instead: `Foo`
+
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/trivially_copy_pass_by_ref.rs:80:37
+   |
+LL |     fn trait_method2(&self, _color: &Color);
+   |                                     ^^^^^^ help: consider passing by value instead: `Color`
+
+error: aborting due to 15 previous errors
+

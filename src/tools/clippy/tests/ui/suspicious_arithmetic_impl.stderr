@@ -1,0 +1,24 @@
+error: Suspicious use of binary operator in `Add` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:11:20
+   |
+LL |         Foo(self.0 - other.0)
+   |                    ^
+   |
+   = note: `-D clippy::suspicious-arithmetic-impl` implied by `-D warnings`
+
+error: Suspicious use of binary operator in `AddAssign` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:17:23
+   |
+LL |         *self = *self - other;
+   |                       ^
+   |
+   = note: `#[deny(clippy::suspicious_op_assign_impl)]` on by default
+
+error: Suspicious use of binary operator in `MulAssign` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:30:16
+   |
+LL |         self.0 /= other.0;
+   |                ^^
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,71 @@
+// run-rustfix
+#![warn(clippy::redundant_field_names)]
+#![allow(clippy::no_effect, dead_code, unused_variables)]
+
+#[macro_use]
+extern crate derive_new;
+
+use std::ops::{Range, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
+
+mod foo {
+    pub const BAR: u8 = 0;
+}
+
+struct Person {
+    gender: u8,
+    age: u8,
+    name: u8,
+    buzz: u64,
+    foo: u8,
+}
+
+#[derive(new)]
+pub struct S {
+    v: String,
+}
+
+fn main() {
+    let gender: u8 = 42;
+    let age = 0;
+    let fizz: u64 = 0;
+    let name: u8 = 0;
+
+    let me = Person {
+        gender,
+        age,
+
+        name,          //should be ok
+        buzz: fizz,    //should be ok
+        foo: foo::BAR, //should be ok
+    };
+
+    // Range expressions
+    let (start, end) = (0, 0);
+
+    let _ = start..;
+    let _ = ..end;
+    let _ = start..end;
+
+    let _ = ..=end;
+    let _ = start..=end;
+
+    // Issue #2799
+    let _: Vec<_> = (start..end).collect();
+
+    // hand-written Range family structs are linted
+    let _ = RangeFrom { start };
+    let _ = RangeTo { end };
+    let _ = Range { start, end };
+    let _ = RangeInclusive::new(start, end);
+    let _ = RangeToInclusive { end };
+}
+
+fn issue_3476() {
+    fn foo<T>() {}
+
+    struct S {
+        foo: fn(),
+    }
+
+    S { foo: foo::<i32> };
+}

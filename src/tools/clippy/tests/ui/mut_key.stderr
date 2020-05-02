@@ -1,0 +1,28 @@
+error: mutable key type
+  --> $DIR/mut_key.rs:27:32
+   |
+LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::mutable_key_type)]` on by default
+
+error: mutable key type
+  --> $DIR/mut_key.rs:27:72
+   |
+LL | fn should_not_take_this_arg(m: &mut HashMap<Key, usize>, _n: usize) -> HashSet<Key> {
+   |                                                                        ^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:28:5
+   |
+LL |     let _other: HashMap<Key, bool> = HashMap::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: mutable key type
+  --> $DIR/mut_key.rs:47:22
+   |
+LL | fn tuples_bad<U>(_m: &mut HashMap<(Key, U), bool>) {}
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

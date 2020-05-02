@@ -1,0 +1,13 @@
+if_chain! {
+    if let ExprKind::Block(ref block) = expr.kind;
+    if let Some(trailing_expr) = &block.expr;
+    if block.stmts.len() == 0;
+    then {
+        // report your lint here
+    }
+}
+if_chain! {
+    then {
+        // report your lint here
+    }
+}

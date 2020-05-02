@@ -652,14 +652,12 @@ tool_extended!((self, builder),
     Miri, miri, "src/tools/miri", "miri", {};
     CargoMiri, miri, "src/tools/miri", "cargo-miri", {};
     Rls, rls, "src/tools/rls", "rls", {
-        let clippy = builder.ensure(Clippy {
+        builder.ensure(Clippy {
             compiler: self.compiler,
             target: self.target,
             extra_features: Vec::new(),
         });
-        if clippy.is_some() {
-            self.extra_features.push("clippy".to_owned());
-        }
+        self.extra_features.push("clippy".to_owned());
     };
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", {};
 );

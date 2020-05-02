@@ -1,0 +1,16 @@
+error: This function has a large number of lines.
+  --> $DIR/functions_maxlines.rs:58:1
+   |
+LL | / fn bad_lines() {
+LL | |     println!("Dont get confused by braces: {{}}");
+LL | |     println!("This is bad.");
+LL | |     println!("This is bad.");
+...  |
+LL | |     println!("This is bad.");
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::too-many-lines` implied by `-D warnings`
+
+error: aborting due to previous error
+

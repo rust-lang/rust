@@ -1,0 +1,10 @@
+error: use of `writeln!(stderr(), ...).unwrap()`. Consider using `eprintln!` instead
+  --> $DIR/explicit_write_non_rustfix.rs:7:5
+   |
+LL |     writeln!(std::io::stderr(), "foo {}", bar).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::explicit-write` implied by `-D warnings`
+
+error: aborting due to previous error
+

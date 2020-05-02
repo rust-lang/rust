@@ -1,0 +1,74 @@
+name: Clippy Dev Test
+
+on:
+  push:
+    branches:
+      - auto
+      - try
+  pull_request:
+    # Only run on paths, that get checked by the clippy_dev tool
+    paths:
+    - 'CHANGELOG.md'
+    - 'README.md'
+    - '**.stderr'
+    - '**.rs'
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  clippy_dev:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Setup
+    - name: rust-toolchain
+      uses: actions-rs/toolchain@v1.0.3
+      with:
+        toolchain: nightly
+        target: x86_64-unknown-linux-gnu
+        profile: minimal
+        components: rustfmt
+
+    - name: Checkout
+      uses: actions/checkout@v2.0.0
+
+    # Run
+    - name: Build
+      run: cargo build --features deny-warnings
+      working-directory: clippy_dev
+
+    - name: Test limit_stderr_length
+      run: cargo dev limit_stderr_length
+
+    - name: Test update_lints
+      run: cargo dev update_lints --check
+
+    - name: Test fmt
+      run: cargo dev fmt --check
+
+  # These jobs doesn't actually test anything, but they're only used to tell
+  # bors the build completed, as there is no practical way to detect when a
+  # workflow is successful listening to webhooks only.
+  #
+  # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+
+  end-success:
+    name: bors dev test finished
+    if: github.event.pusher.name == 'bors' && success()
+    runs-on: ubuntu-latest
+    needs: [clippy_dev]
+
+    steps:
+      - name: Mark the job as successful
+        run: exit 0
+
+  end-failure:
+    name: bors dev test finished
+    if: github.event.pusher.name == 'bors' && (failure() || cancelled())
+    runs-on: ubuntu-latest
+    needs: [clippy_dev]
+
+    steps:
+      - name: Mark the job as a failure
+        run: exit 1

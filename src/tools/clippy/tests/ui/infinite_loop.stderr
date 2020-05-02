@@ -1,0 +1,95 @@
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:21:11
+   |
+LL |     while y < 10 {
+   |           ^^^^^^
+   |
+   = note: `#[deny(clippy::while_immutable_condition)]` on by default
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:26:11
+   |
+LL |     while y < 10 && x < 3 {
+   |           ^^^^^^^^^^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:33:11
+   |
+LL |     while !cond {
+   |           ^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:77:11
+   |
+LL |     while i < 3 {
+   |           ^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:82:11
+   |
+LL |     while i < 3 && j > 0 {
+   |           ^^^^^^^^^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:86:11
+   |
+LL |     while i < 3 {
+   |           ^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:101:11
+   |
+LL |     while i < 3 {
+   |           ^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:106:11
+   |
+LL |     while i < 3 {
+   |           ^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:172:15
+   |
+LL |         while self.count < n {
+   |               ^^^^^^^^^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:180:11
+   |
+LL |     while y < 10 {
+   |           ^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+   = note: this loop contains `return`s or `break`s
+   = help: rewrite it as `if cond { loop { } }`
+
+error: variables in the condition are not mutated in the loop body
+  --> $DIR/infinite_loop.rs:187:11
+   |
+LL |     while y < 10 {
+   |           ^^^^^^
+   |
+   = note: this may lead to an infinite or to a never running loop
+   = note: this loop contains `return`s or `break`s
+   = help: rewrite it as `if cond { loop { } }`
+
+error: aborting due to 11 previous errors
+

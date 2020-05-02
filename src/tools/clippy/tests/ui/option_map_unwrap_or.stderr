@@ -1,0 +1,138 @@
+error: called `map(f).unwrap_or(a)` on an `Option` value. This can be done more directly by calling `map_or(a, f)` instead
+  --> $DIR/option_map_unwrap_or.rs:20:13
+   |
+LL |       let _ = opt.map(|x| x + 1)
+   |  _____________^
+LL | |         // Should lint even though this call is on a separate line.
+LL | |         .unwrap_or(0);
+   | |_____________________^
+   |
+   = note: `-D clippy::option-map-unwrap-or` implied by `-D warnings`
+help: use `map_or(a, f)` instead
+   |
+LL |     let _ = opt.map_or(0, |x| x + 1);
+   |                 ^^^^^^ ^^          --
+
+error: called `map(f).unwrap_or(a)` on an `Option` value. This can be done more directly by calling `map_or(a, f)` instead
+  --> $DIR/option_map_unwrap_or.rs:24:13
+   |
+LL |       let _ = opt.map(|x| {
+   |  _____________^
+LL | |         x + 1
+LL | |     }
+LL | |     ).unwrap_or(0);
+   | |__________________^
+   |
+help: use `map_or(a, f)` instead
+   |
+LL |     let _ = opt.map_or(0, |x| {
+LL |         x + 1
+LL |     }
+LL |     );
+   |
+
+error: called `map(f).unwrap_or(a)` on an `Option` value. This can be done more directly by calling `map_or(a, f)` instead
+  --> $DIR/option_map_unwrap_or.rs:28:13
+   |
+LL |       let _ = opt.map(|x| x + 1)
+   |  _____________^
+LL | |         .unwrap_or({
+LL | |             0
+LL | |         });
+   | |__________^
+   |
+help: use `map_or(a, f)` instead
+   |
+LL |     let _ = opt.map_or({
+LL |             0
+LL |         }, |x| x + 1);
+   |
+
+error: called `map(f).unwrap_or(None)` on an `Option` value. This can be done more directly by calling `and_then(f)` instead
+  --> $DIR/option_map_unwrap_or.rs:33:13
+   |
+LL |     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `and_then(f)` instead
+   |
+LL |     let _ = opt.and_then(|x| Some(x + 1));
+   |                 ^^^^^^^^                --
+
+error: called `map(f).unwrap_or(None)` on an `Option` value. This can be done more directly by calling `and_then(f)` instead
+  --> $DIR/option_map_unwrap_or.rs:35:13
+   |
+LL |       let _ = opt.map(|x| {
+   |  _____________^
+LL | |         Some(x + 1)
+LL | |     }
+LL | |     ).unwrap_or(None);
+   | |_____________________^
+   |
+help: use `and_then(f)` instead
+   |
+LL |     let _ = opt.and_then(|x| {
+LL |         Some(x + 1)
+LL |     }
+LL |     );
+   |
+
+error: called `map(f).unwrap_or(None)` on an `Option` value. This can be done more directly by calling `and_then(f)` instead
+  --> $DIR/option_map_unwrap_or.rs:39:13
+   |
+LL |       let _ = opt
+   |  _____________^
+LL | |         .map(|x| Some(x + 1))
+LL | |         .unwrap_or(None);
+   | |________________________^
+   |
+help: use `and_then(f)` instead
+   |
+LL |         .and_then(|x| Some(x + 1));
+   |          ^^^^^^^^                --
+
+error: called `map(f).unwrap_or(a)` on an `Option` value. This can be done more directly by calling `map_or(a, f)` instead
+  --> $DIR/option_map_unwrap_or.rs:50:13
+   |
+LL |     let _ = Some("prefix").map(|p| format!("{}.", p)).unwrap_or(id);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_or(a, f)` instead
+   |
+LL |     let _ = Some("prefix").map_or(id, |p| format!("{}.", p));
+   |                            ^^^^^^ ^^^                      --
+
+error: called `map(f).unwrap_or_else(g)` on an `Option` value. This can be done more directly by calling `map_or_else(g, f)` instead
+  --> $DIR/option_map_unwrap_or.rs:54:13
+   |
+LL |       let _ = opt.map(|x| x + 1)
+   |  _____________^
+LL | |         // Should lint even though this call is on a separate line.
+LL | |         .unwrap_or_else(|| 0);
+   | |_____________________________^
+   |
+   = note: `-D clippy::option-map-unwrap-or-else` implied by `-D warnings`
+   = note: replace `map(|x| x + 1).unwrap_or_else(|| 0)` with `map_or_else(|| 0, |x| x + 1)`
+
+error: called `map(f).unwrap_or_else(g)` on an `Option` value. This can be done more directly by calling `map_or_else(g, f)` instead
+  --> $DIR/option_map_unwrap_or.rs:58:13
+   |
+LL |       let _ = opt.map(|x| {
+   |  _____________^
+LL | |         x + 1
+LL | |     }
+LL | |     ).unwrap_or_else(|| 0);
+   | |__________________________^
+
+error: called `map(f).unwrap_or_else(g)` on an `Option` value. This can be done more directly by calling `map_or_else(g, f)` instead
+  --> $DIR/option_map_unwrap_or.rs:62:13
+   |
+LL |       let _ = opt.map(|x| x + 1)
+   |  _____________^
+LL | |         .unwrap_or_else(||
+LL | |             0
+LL | |         );
+   | |_________^
+
+error: aborting due to 10 previous errors
+

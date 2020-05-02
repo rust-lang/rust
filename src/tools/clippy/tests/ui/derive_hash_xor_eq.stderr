@@ -1,0 +1,67 @@
+error: you are deriving `Hash` but have implemented `PartialEq` explicitly
+  --> $DIR/derive_hash_xor_eq.rs:10:10
+   |
+LL | #[derive(Hash)]
+   |          ^^^^
+   |
+   = note: `#[deny(clippy::derive_hash_xor_eq)]` on by default
+note: `PartialEq` implemented here
+  --> $DIR/derive_hash_xor_eq.rs:13:1
+   |
+LL | / impl PartialEq for Bar {
+LL | |     fn eq(&self, _: &Bar) -> bool {
+LL | |         true
+LL | |     }
+LL | | }
+   | |_^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: you are deriving `Hash` but have implemented `PartialEq` explicitly
+  --> $DIR/derive_hash_xor_eq.rs:19:10
+   |
+LL | #[derive(Hash)]
+   |          ^^^^
+   |
+note: `PartialEq` implemented here
+  --> $DIR/derive_hash_xor_eq.rs:22:1
+   |
+LL | / impl PartialEq<Baz> for Baz {
+LL | |     fn eq(&self, _: &Baz) -> bool {
+LL | |         true
+LL | |     }
+LL | | }
+   | |_^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: you are implementing `Hash` explicitly but have derived `PartialEq`
+  --> $DIR/derive_hash_xor_eq.rs:31:1
+   |
+LL | / impl std::hash::Hash for Bah {
+LL | |     fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
+LL | | }
+   | |_^
+   |
+note: `PartialEq` implemented here
+  --> $DIR/derive_hash_xor_eq.rs:28:10
+   |
+LL | #[derive(PartialEq)]
+   |          ^^^^^^^^^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: you are implementing `Hash` explicitly but have derived `PartialEq`
+  --> $DIR/derive_hash_xor_eq.rs:49:5
+   |
+LL | /     impl Hash for Foo3 {
+LL | |         fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
+LL | |     }
+   | |_____^
+   |
+note: `PartialEq` implemented here
+  --> $DIR/derive_hash_xor_eq.rs:46:14
+   |
+LL |     #[derive(PartialEq)]
+   |              ^^^^^^^^^
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+

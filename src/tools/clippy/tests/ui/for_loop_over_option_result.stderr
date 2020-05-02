@@ -1,0 +1,72 @@
+error: for loop over `option`, which is an `Option`. This is more readably written as an `if let` statement.
+  --> $DIR/for_loop_over_option_result.rs:11:14
+   |
+LL |     for x in option {
+   |              ^^^^^^
+   |
+   = note: `-D clippy::for-loop-over-option` implied by `-D warnings`
+   = help: consider replacing `for x in option` with `if let Some(x) = option`
+
+error: for loop over `result`, which is a `Result`. This is more readably written as an `if let` statement.
+  --> $DIR/for_loop_over_option_result.rs:16:14
+   |
+LL |     for x in result {
+   |              ^^^^^^
+   |
+   = note: `-D clippy::for-loop-over-result` implied by `-D warnings`
+   = help: consider replacing `for x in result` with `if let Ok(x) = result`
+
+error: for loop over `option.ok_or("x not found")`, which is a `Result`. This is more readably written as an `if let` statement.
+  --> $DIR/for_loop_over_option_result.rs:20:14
+   |
+LL |     for x in option.ok_or("x not found") {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider replacing `for x in option.ok_or("x not found")` with `if let Ok(x) = option.ok_or("x not found")`
+
+error: you are iterating over `Iterator::next()` which is an Option; this will compile but is probably not what you want
+  --> $DIR/for_loop_over_option_result.rs:26:14
+   |
+LL |     for x in v.iter().next() {
+   |              ^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::iter_next_loop)]` on by default
+
+error: for loop over `v.iter().next().and(Some(0))`, which is an `Option`. This is more readably written as an `if let` statement.
+  --> $DIR/for_loop_over_option_result.rs:31:14
+   |
+LL |     for x in v.iter().next().and(Some(0)) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider replacing `for x in v.iter().next().and(Some(0))` with `if let Some(x) = v.iter().next().and(Some(0))`
+
+error: for loop over `v.iter().next().ok_or("x not found")`, which is a `Result`. This is more readably written as an `if let` statement.
+  --> $DIR/for_loop_over_option_result.rs:35:14
+   |
+LL |     for x in v.iter().next().ok_or("x not found") {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider replacing `for x in v.iter().next().ok_or("x not found")` with `if let Ok(x) = v.iter().next().ok_or("x not found")`
+
+error: this loop never actually loops
+  --> $DIR/for_loop_over_option_result.rs:47:5
+   |
+LL | /     while let Some(x) = option {
+LL | |         println!("{}", x);
+LL | |         break;
+LL | |     }
+   | |_____^
+   |
+   = note: `#[deny(clippy::never_loop)]` on by default
+
+error: this loop never actually loops
+  --> $DIR/for_loop_over_option_result.rs:53:5
+   |
+LL | /     while let Ok(x) = result {
+LL | |         println!("{}", x);
+LL | |         break;
+LL | |     }
+   | |_____^
+
+error: aborting due to 8 previous errors
+

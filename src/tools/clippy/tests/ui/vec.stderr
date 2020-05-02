@@ -1,0 +1,40 @@
+error: useless use of `vec!`
+  --> $DIR/vec.rs:23:14
+   |
+LL |     on_slice(&vec![]);
+   |              ^^^^^^^ help: you can use a slice directly: `&[]`
+   |
+   = note: `-D clippy::useless-vec` implied by `-D warnings`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:26:14
+   |
+LL |     on_slice(&vec![1, 2]);
+   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:29:14
+   |
+LL |     on_slice(&vec![1, 2]);
+   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:32:14
+   |
+LL |     on_slice(&vec!(1, 2));
+   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:35:14
+   |
+LL |     on_slice(&vec![1; 2]);
+   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1; 2]`
+
+error: useless use of `vec!`
+  --> $DIR/vec.rs:48:14
+   |
+LL |     for a in vec![1, 2, 3] {
+   |              ^^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2, 3]`
+
+error: aborting due to 6 previous errors
+

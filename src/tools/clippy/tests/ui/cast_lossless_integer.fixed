@@ -1,0 +1,47 @@
+// run-rustfix
+
+#![allow(clippy::no_effect, clippy::unnecessary_operation, dead_code)]
+#![warn(clippy::cast_lossless)]
+
+fn main() {
+    // Test clippy::cast_lossless with casts to integer types
+    i16::from(1i8);
+    i32::from(1i8);
+    i64::from(1i8);
+    i16::from(1u8);
+    i32::from(1u8);
+    i64::from(1u8);
+    u16::from(1u8);
+    u32::from(1u8);
+    u64::from(1u8);
+    i32::from(1i16);
+    i64::from(1i16);
+    i32::from(1u16);
+    i64::from(1u16);
+    u32::from(1u16);
+    u64::from(1u16);
+    i64::from(1i32);
+    i64::from(1u32);
+    u64::from(1u32);
+
+    // Test with an expression wrapped in parens
+    u16::from(1u8 + 1u8);
+}
+
+// The lint would suggest using `f64::from(input)` here but the `XX::from` function is not const,
+// so we skip the lint if the expression is in a const fn.
+// See #3656
+const fn abc(input: u16) -> u32 {
+    input as u32
+}
+
+// Same as the above issue. We can't suggest `::from` in const fns in impls
+mod cast_lossless_in_impl {
+    struct A;
+
+    impl A {
+        pub const fn convert(x: u32) -> u64 {
+            x as u64
+        }
+    }
+}

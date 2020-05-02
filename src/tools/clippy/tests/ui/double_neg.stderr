@@ -1,0 +1,10 @@
+error: `--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op
+  --> $DIR/double_neg.rs:6:5
+   |
+LL |     --x;
+   |     ^^^
+   |
+   = note: `-D clippy::double-neg` implied by `-D warnings`
+
+error: aborting due to previous error
+

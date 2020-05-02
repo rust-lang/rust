@@ -1,0 +1,10 @@
+error: this pattern takes a reference on something that is being de-referenced
+  --> $DIR/needless_borrowed_ref.rs:7:34
+   |
+LL |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+   |                                  ^^^^^^ help: try removing the `&ref` part and just keep: `a`
+   |
+   = note: `-D clippy::needless-borrowed-reference` implied by `-D warnings`
+
+error: aborting due to previous error
+

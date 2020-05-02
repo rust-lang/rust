@@ -1,0 +1,26 @@
+error: called `map_or(None, f)` on an `Option` value. This can be done more directly by calling `and_then(f)` instead
+  --> $DIR/option_map_or_none.rs:10:13
+   |
+LL |     let _ = opt.map_or(None, |x| Some(x + 1));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `and_then` instead: `opt.and_then(|x| Some(x + 1))`
+   |
+   = note: `-D clippy::option-map-or-none` implied by `-D warnings`
+
+error: called `map_or(None, f)` on an `Option` value. This can be done more directly by calling `and_then(f)` instead
+  --> $DIR/option_map_or_none.rs:13:13
+   |
+LL |       let _ = opt.map_or(None, |x| {
+   |  _____________^
+LL | |                         Some(x + 1)
+LL | |                        });
+   | |_________________________^
+   |
+help: try using `and_then` instead
+   |
+LL |     let _ = opt.and_then(|x| {
+LL |                         Some(x + 1)
+LL |                        });
+   |
+
+error: aborting due to 2 previous errors
+
