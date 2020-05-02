@@ -137,8 +137,9 @@ pub fn is_from_for_desugar(local: &hir::Local<'_>) -> bool {
 /// Recover the essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Return `(pat, arg, body, span)`.
 pub fn for_loop<'tcx>(
+    cx: &LateContext<'_>,
     expr: &'tcx hir::Expr<'tcx>,
-) -> Option<(&hir::Pat<'_>, &'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>, Span)> {
+) -> Option<(&'tcx hir::Pat<'tcx>, &'tcx hir::Expr<'tcx>, &'tcx hir::Expr<'tcx>, Span)> {
     if_chain! {
         if let hir::ExprKind::Match(ref iterexpr, ref arms, hir::MatchSource::ForLoopDesugar) = expr.kind;
         if let hir::ExprKind::Call(_, ref iterargs) = iterexpr.kind;
@@ -149,7 +150,7 @@ pub fn for_loop<'tcx>(
         if let hir::StmtKind::Local(ref local) = let_stmt.kind;
         if let hir::StmtKind::Expr(ref expr) = body.kind;
         then {
-            return Some((&*local.pat, &iterargs[0], expr, arms[0].span));
+            return Some((&*local.pat, &iterargs[0], expr, cx.tcx.hir().span(arms[0].hir_id)));
         }
     }
     None

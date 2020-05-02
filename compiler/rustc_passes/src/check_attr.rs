@@ -1238,7 +1238,8 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
-        self.check_attributes(arm.hir_id, &arm.span, Target::Arm, None);
+        let span = self.tcx.hir().span(arm.hir_id);
+        self.check_attributes(arm.hir_id, &span, Target::Arm, None);
         intravisit::walk_arm(self, arm);
     }
 

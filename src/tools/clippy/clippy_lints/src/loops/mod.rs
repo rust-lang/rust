@@ -541,7 +541,7 @@ declare_lint_pass!(Loops => [
 impl<'tcx> LateLintPass<'tcx> for Loops {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some((pat, arg, body, span)) = higher::for_loop(expr) {
+        if let Some((pat, arg, body, span)) = higher::for_loop(cx, expr) {
             // we don't want to check expanded macros
             // this check is not at the top of the function
             // since higher::for_loop expressions are marked as expansions

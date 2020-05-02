@@ -839,7 +839,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
             body: self.mirror_expr(arm.body),
             lint_level: LintLevel::Explicit(arm.hir_id),
             scope: region::Scope { id: arm.hir_id.local_id, data: region::ScopeData::Node },
-            span: arm.span,
+            span: self.tcx.hir().span(arm.hir_id),
         }
     }
 

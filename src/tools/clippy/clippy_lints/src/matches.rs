@@ -1296,7 +1296,8 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
     // a macro. See PR #6435
     if_chain! {
         if let Some(match_snippet) = snippet_opt(cx, expr.span);
-        if let Some(arm_snippet) = snippet_opt(cx, arms[0].span);
+        let arm_span = cx.tcx.hir().span(arms[0].hir_id);
+        if let Some(arm_snippet) = snippet_opt(cx, arm_span);
         if let Some(ex_snippet) = snippet_opt(cx, ex.span);
         let rest_snippet = match_snippet.replace(&arm_snippet, "").replace(&ex_snippet, "");
         if rest_snippet.contains("=>");

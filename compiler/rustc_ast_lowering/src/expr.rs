@@ -627,7 +627,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
         let hir_id = self.next_id(arm.span);
         self.lower_attrs(hir_id, &arm.attrs);
-        hir::Arm { hir_id, pat, guard, body: self.lower_expr(&arm.body), span: arm.span }
+        hir::Arm { hir_id, pat, guard, body: self.lower_expr(&arm.body) }
     }
 
     /// Lower an `async` construct to a generator that is then wrapped so it implements `Future`.
@@ -2169,6 +2169,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn arm(&mut self, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {
-        hir::Arm { hir_id: self.next_id(expr.span), pat, guard: None, span: expr.span, body: expr }
+        hir::Arm { hir_id: self.next_id(expr.span), pat, guard: None, body: expr }
     }
 }

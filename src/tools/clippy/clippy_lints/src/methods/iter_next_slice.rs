@@ -17,7 +17,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, ite
     // since it is already covered by `&loops::ITER_NEXT_LOOP`
     let mut parent_expr_opt = get_parent_expr(cx, expr);
     while let Some(parent_expr) = parent_expr_opt {
-        if higher::for_loop(parent_expr).is_some() {
+        if higher::for_loop(cx, parent_expr).is_some() {
             return;
         }
         parent_expr_opt = get_parent_expr(cx, parent_expr);
