@@ -4,8 +4,12 @@
 //
 // An attempt to `-o` into a directory we cannot write into should indeed
 // be an error; but not an ICE.
+//
+// However, some folks run tests as root, which can write `/dev/` and end
+// up clobbering `/dev/null`. Instead we'll use a non-existent path, which
+// also used to ICE, but even root can't magically write there.
 
-// compile-flags: -o /dev/null
+// compile-flags: -o /does-not-exist/output
 
 // The error-pattern check occurs *before* normalization, and the error patterns
 // are wildly different between build environments. So this is a cop-out (and we
@@ -15,10 +19,10 @@
 // error-pattern: error
 
 // On Mac OS X, we get an error like the below
-// normalize-stderr-test "failed to write bytecode to /dev/null.non_ice_error_on_worker_io_fail.*" -> "io error modifying /dev/"
+// normalize-stderr-test "failed to write bytecode to /does-not-exist/output.non_ice_error_on_worker_io_fail.*" -> "io error modifying /does-not-exist/"
 
 // On Linux, we get an error like the below
-// normalize-stderr-test "couldn't create a temp dir.*" -> "io error modifying /dev/"
+// normalize-stderr-test "couldn't create a temp dir.*" -> "io error modifying /does-not-exist/"
 
 // ignore-tidy-linelength
 // ignore-windows - this is a unix-specific test
