@@ -11,19 +11,26 @@ fn foo<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> 
     x //~ ERROR mismatched types
 }
 
-// FIXME: uncomment these once this commit is in Beta and we can rely on `rustc_on_unimplemented`
-//        having filtering for `Self` being a trait.
-//
-// fn bar<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
-//     Box::new(x)
-// }
-//
-// fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
-//     Pin::new(x)
-// }
-//
-// fn qux<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
-//     Pin::new(Box::new(x))
-// }
+// This case is still subpar:
+// `Pin::new(x)`: store this in the heap by calling `Box::new`: `Box::new(x)`
+// Should suggest changing the code from `Pin::new` to `Box::pin`.
+fn bar<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
+    Box::new(x) //~ ERROR mismatched types
+}
+
+fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
+    Pin::new(x) //~ ERROR mismatched types
+    //~^ ERROR E0277
+}
+
+fn qux<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
+    Pin::new(Box::new(x)) //~ ERROR E0277
+}
+
+fn zap() -> BoxFuture<'static, i32> {
+    async { //~ ERROR mismatched types
+        42
+    }
+}
 
 fn main() {}
