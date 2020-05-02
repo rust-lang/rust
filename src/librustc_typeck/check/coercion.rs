@@ -691,12 +691,22 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
         match b.kind {
-            ty::FnPtr(_) => {
+            ty::FnPtr(b_sig) => {
                 let a_sig = a.fn_sig(self.tcx);
                 // Intrinsics are not coercible to function pointers
                 if a_sig.abi() == Abi::RustIntrinsic || a_sig.abi() == Abi::PlatformIntrinsic {
                     return Err(TypeError::IntrinsicCast);
                 }
+
+                // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
+                if let ty::FnDef(def_id, _) = a.kind {
+                    if b_sig.unsafety() == hir::Unsafety::Normal
+                        && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                    {
+                        return Err(TypeError::TargetFeatureCast(def_id));
+                    }
+                }
+
                 let InferOk { value: a_sig, mut obligations } =
                     self.normalize_associated_types_in_as_infer_ok(self.cause.span, &a_sig);
 

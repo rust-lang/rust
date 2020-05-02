@@ -3,11 +3,13 @@ use rustc_ast::ast;
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi;
 
 use std::borrow::Cow;
 use std::fmt;
+use std::ops::Deref;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
 pub struct ExpectedFound<T> {
@@ -58,6 +60,8 @@ pub enum TypeError<'tcx> {
     ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
 
     IntrinsicCast,
+    /// Safe `#[target_feature]` functions are not assignable to safe function pointers.
+    TargetFeatureCast(DefId),
 }
 
 pub enum UnconstrainedNumeric {
@@ -183,6 +187,10 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 write!(f, "expected `{}`, found `{}`", values.expected, values.found)
             }
             IntrinsicCast => write!(f, "cannot coerce intrinsics to function pointers"),
+            TargetFeatureCast(_) => write!(
+                f,
+                "cannot coerce functions with `#[target_feature]` to safe function pointers"
+            ),
             ObjectUnsafeCoercion(_) => write!(f, "coercion to object-unsafe trait object"),
         }
     }
@@ -193,7 +201,8 @@ impl<'tcx> TypeError<'tcx> {
         use self::TypeError::*;
         match self {
             CyclicTy(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_) | FixedArraySize(_)
-            | Sorts(_) | IntMismatch(_) | FloatMismatch(_) | VariadicMismatch(_) => false,
+            | Sorts(_) | IntMismatch(_) | FloatMismatch(_) | VariadicMismatch(_)
+            | TargetFeatureCast(_) => false,
 
             Mutability
             | TupleSize(_)
@@ -488,6 +497,18 @@ impl Trait for X {
                          for more information",
                     );
                 }
+            }
+            TargetFeatureCast(def_id) => {
+                let attrs = self.get_attrs(*def_id);
+                let target_spans = attrs
+                    .deref()
+                    .iter()
+                    .filter(|attr| attr.has_name(sym::target_feature))
+                    .map(|attr| attr.span);
+                db.note(
+                    "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
+                );
+                db.span_labels(target_spans, "`#[target_feature]` added here");
             }
             _ => {}
         }

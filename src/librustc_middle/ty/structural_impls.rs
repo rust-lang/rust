@@ -645,6 +645,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch),
             ConstMismatch(ref x) => return tcx.lift(x).map(ConstMismatch),
             IntrinsicCast => IntrinsicCast,
+            TargetFeatureCast(ref x) => TargetFeatureCast(*x),
             ObjectUnsafeCoercion(ref x) => return tcx.lift(x).map(ObjectUnsafeCoercion),
         })
     }
