@@ -106,6 +106,7 @@ use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::print::characteristic_def_id_of_type;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, InstanceDef, TyCtxt};
+use rustc_session::config::OptLevel;
 use rustc_span::symbol::{Symbol, SymbolStr};
 
 use crate::monomorphize::collector::InliningMap;
@@ -137,6 +138,8 @@ where
 
     initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
 
+    initial_partitioning.codegen_units.sort_by_key(|cgu| cgu.name().as_str());
+
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
     // Merge until we have at most `max_cgu_count` codegen units.
@@ -152,7 +155,8 @@ where
     // local functions the definition of which is marked with `#[inline]`.
     let mut post_inlining = {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_place_inline_items");
-        place_inlined_mono_items(initial_partitioning, inlining_map)
+        let is_debug_incremental = tcx.sess.opts.optimize == OptLevel::No && tcx.sess.opts.incremental.is_some();
+        place_inlined_mono_items(initial_partitioning, inlining_map, is_debug_incremental)
     };
 
     post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
@@ -226,15 +230,19 @@ where
         let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, mono_item);
         let is_volatile = is_incremental_build && mono_item.is_generic_fn();
 
-        let codegen_unit_name = match characteristic_def_id {
-            Some(def_id) => compute_codegen_unit_name(
+        let codegen_unit_name = match (characteristic_def_id, mono_item.is_local()) {
+            (Some(def_id), false) if is_incremental_build && tcx.sess.opts.optimize == OptLevel::No => {
+                let crate_name = tcx.crate_name(def_id.krate);
+                cgu_name_builder.build_cgu_name(LOCAL_CRATE, &[&*crate_name.as_str(), if mono_item.has_closure_generic_argument() { "has_closure" } else { "" }], Some("cgu"))
+            },
+            (Some(def_id), _) => compute_codegen_unit_name(
                 tcx,
                 cgu_name_builder,
                 def_id,
                 is_volatile,
                 cgu_name_cache,
             ),
-            None => fallback_cgu_name(cgu_name_builder),
+            (None, _) => fallback_cgu_name(cgu_name_builder),
         };
 
         let codegen_unit = codegen_units
@@ -459,7 +467,7 @@ fn merge_codegen_units<'tcx>(
     assert!(target_cgu_count >= 1);
     let codegen_units = &mut initial_partitioning.codegen_units;
 
-    if tcx.is_compiler_builtins(LOCAL_CRATE) {
+    if tcx.is_compiler_builtins(LOCAL_CRATE) || (tcx.dep_graph.is_fully_enabled() && tcx.sess.opts.optimize == OptLevel::No) {
         // Compiler builtins require some degree of control over how mono items
         // are partitioned into compilation units. Provide it by keeping the
         // original partitioning when compiling the compiler builtins crate.
@@ -555,6 +563,7 @@ fn merge_codegen_units<'tcx>(
 fn place_inlined_mono_items<'tcx>(
     initial_partitioning: PreInliningPartitioning<'tcx>,
     inlining_map: &InliningMap<'tcx>,
+    is_debug_incremental: bool,
 ) -> PostInliningPartitioning<'tcx> {
     let mut new_partitioning = Vec::new();
     let mut mono_item_placements = FxHashMap::default();
@@ -587,10 +596,14 @@ fn place_inlined_mono_items<'tcx>(
                     );
                 }
 
-                // This is a CGU-private copy.
-                new_codegen_unit
-                    .items_mut()
-                    .insert(mono_item, (Linkage::Internal, Visibility::Default));
+                // In debug-incremental, do not create CGU-private copies unless it's for an external symbol
+                // FIXME: put external symbols in a separate codegen unit
+                if !is_debug_incremental || !mono_item.is_local() {
+                    // This is a CGU-private copy.
+                    new_codegen_unit
+                        .items_mut()
+                        .insert(mono_item, (Linkage::Internal, Visibility::Default));
+                }
             }
 
             if !single_codegen_unit {
