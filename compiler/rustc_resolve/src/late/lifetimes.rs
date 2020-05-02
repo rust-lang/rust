@@ -505,7 +505,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.is_in_fn_syntax = true;
                 let lifetime_span: Option<Span> =
                     c.generic_params.iter().rev().find_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => Some(param.span),
+                        GenericParamKind::Lifetime { .. } => {
+                            Some(self.tcx.hir().span(param.hir_id))
+                        }
                         _ => None,
                     });
                 let (span, span_type) = if let Some(span) = lifetime_span {
@@ -1073,8 +1075,9 @@ fn shadower_label(span: Span) -> Shadower {
 fn original_lifetime(span: Span) -> Original {
     Original { kind: ShadowKind::Lifetime, span }
 }
-fn shadower_lifetime(param: &hir::GenericParam<'_>) -> Shadower {
-    Shadower { kind: ShadowKind::Lifetime, span: param.span }
+fn shadower_lifetime(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Shadower {
+    let span = tcx.hir().span(param.hir_id);
+    Shadower { kind: ShadowKind::Lifetime, span }
 }
 
 impl ShadowKind {
@@ -1090,7 +1093,7 @@ fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_>, params: &[hir::Generic
     let lifetime_params: Vec<_> = params
         .iter()
         .filter_map(|param| match param.kind {
-            GenericParamKind::Lifetime { kind, .. } => Some((kind, param.span)),
+            GenericParamKind::Lifetime { kind, .. } => Some((kind, tcx.hir().span(param.hir_id))),
             _ => None,
         })
         .collect();
@@ -1415,8 +1418,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     param.kind,
                     hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::InBand }
                 );
+                let param_span = self.tcx.hir().span(param.hir_id);
                 if in_band {
-                    Some(param.span)
+                    Some(param_span)
                 } else if generics.params.len() == 1 {
                     // if sole lifetime, remove the entire `<>` brackets
                     Some(generics.span)
@@ -1424,9 +1428,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     // if removing within `<>` brackets, we also want to
                     // delete a leading or trailing comma as appropriate
                     if i >= generics.params.len() - 1 {
-                        Some(generics.params[i - 1].span.shrink_to_hi().to(param.span))
+                        let generic_span = self.tcx.hir().span(generics.params[i - 1].hir_id);
+                        Some(generic_span.shrink_to_hi().to(param_span))
                     } else {
-                        Some(param.span.to(generics.params[i + 1].span.shrink_to_lo()))
+                        let generic_span = self.tcx.hir().span(generics.params[i + 1].hir_id);
+                        Some(param_span.to(generic_span.shrink_to_lo()))
                     }
                 }
             } else {
@@ -1583,7 +1589,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             hir_lifetime.name.ident(),
                         )),
                         Node::GenericParam(param) => {
-                            Some((param.hir_id, param.span, param.name.ident()))
+                            let span = self.tcx.hir().span(param.hir_id);
+                            Some((param.hir_id, span, param.name.ident()))
                         }
                         _ => None,
                     } {
@@ -1640,7 +1647,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             hir_lifetime.name.ident(),
                         )),
                         Node::GenericParam(param) => {
-                            Some((param.hir_id, param.span, param.name.ident()))
+                            let span = self.tcx.hir().span(param.hir_id);
+                            Some((param.hir_id, span, param.name.ident()))
                         }
                         _ => None,
                     } {
@@ -2580,17 +2588,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             if let hir::ParamName::Plain(_) = lifetime_i_name {
                 let name = lifetime_i_name.ident().name;
                 if name == kw::UnderscoreLifetime || name == kw::StaticLifetime {
+                    let span_i = self.tcx.hir().span(lifetime_i.hir_id);
                     let mut err = struct_span_err!(
                         self.tcx.sess,
-                        lifetime_i.span,
+                        span_i,
                         E0262,
                         "invalid lifetime parameter name: `{}`",
                         lifetime_i.name.ident(),
                     );
-                    err.span_label(
-                        lifetime_i.span,
-                        format!("{} is a reserved lifetime name", name),
-                    );
+                    err.span_label(span_i, format!("{} is a reserved lifetime name", name));
                     err.emit();
                 }
             }
@@ -2598,15 +2604,17 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             // It is a hard error to shadow a lifetime within the same scope.
             for (lifetime_j, lifetime_j_name) in lifetimes.iter().skip(i + 1) {
                 if lifetime_i_name == lifetime_j_name {
+                    let span_i = self.tcx.hir().span(lifetime_i.hir_id);
+                    let span_j = self.tcx.hir().span(lifetime_j.hir_id);
                     struct_span_err!(
                         self.tcx.sess,
-                        lifetime_j.span,
+                        span_j,
                         E0263,
                         "lifetime name `{}` declared twice in the same scope",
                         lifetime_j.name.ident()
                     )
-                    .span_label(lifetime_j.span, "declared twice")
-                    .span_label(lifetime_i.span, "previous declaration here")
+                    .span_label(span_j, "declared twice")
+                    .span_label(span_i, "previous declaration here")
                     .emit();
                 }
             }
@@ -2623,10 +2631,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         ),
                         hir::LifetimeName::Static => {
                             self.insert_lifetime(lt, Region::Static);
+                            let span_i = self.tcx.hir().span(lifetime_i.hir_id);
                             self.tcx
                                 .sess
                                 .struct_span_warn(
-                                    lifetime_i.span.to(lt.span),
+                                    span_i.to(lt.span),
                                     &format!(
                                         "unnecessary lifetime parameter `{}`",
                                         lifetime_i.name.ident(),
@@ -2670,7 +2679,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     self.tcx,
                     label.name,
                     original_label(label.span),
-                    shadower_lifetime(&param),
+                    shadower_lifetime(self.tcx, &param),
                 );
                 return;
             }
@@ -2697,7 +2706,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             self.tcx,
                             param.name.ident().name,
                             original_lifetime(self.tcx.hir().span(hir_id)),
-                            shadower_lifetime(&param),
+                            shadower_lifetime(self.tcx, &param),
                         );
                         return;
                     }

@@ -16,7 +16,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{def_id::LocalDefId, BytePos};
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 
@@ -471,7 +471,6 @@ pub struct GenericParam<'hir> {
     pub hir_id: HirId,
     pub name: ParamName,
     pub bounds: GenericBounds<'hir>,
-    pub span: Span,
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind<'hir>,
 }
@@ -518,14 +517,6 @@ impl Generics<'hir> {
             }
         }
         None
-    }
-
-    pub fn spans(&self) -> MultiSpan {
-        if self.params.is_empty() {
-            self.span.into()
-        } else {
-            self.params.iter().map(|p| p.span).collect::<Vec<Span>>().into()
-        }
     }
 }
 

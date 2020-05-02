@@ -1670,7 +1670,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                             }
                         )
                     }) {
-                        (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
+                        let span = self.tcx.hir().span(param.hir_id);
+                        (span.shrink_to_lo(), format!("{}, ", lifetime_ref))
                     } else {
                         suggests_in_band = true;
                         (generics.span, format!("<{}>", lifetime_ref))
@@ -1754,7 +1755,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             {
                 let (span, span_type) = match &trait_ref.bound_generic_params {
                     [] => (trait_ref.span.shrink_to_lo(), ForLifetimeSpanType::BoundEmpty),
-                    [.., bound] => (bound.span.shrink_to_hi(), ForLifetimeSpanType::BoundTail),
+                    [.., bound] => (
+                        self.tcx.hir().span(bound.hir_id).shrink_to_hi(),
+                        ForLifetimeSpanType::BoundTail,
+                    ),
                 };
                 self.missing_named_lifetime_spots
                     .push(MissingLifetimeSpot::HigherRanked { span, span_type });
@@ -1868,7 +1872,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                                 }
                             )
                         }) {
-                            (param.span.shrink_to_lo(), "'a, ".to_string())
+                            let span = self.tcx.hir().span(param.hir_id);
+                            (span.shrink_to_lo(), "'a, ".to_string())
                         } else {
                             (generics.span, "<'a>".to_string())
                         }

@@ -585,8 +585,12 @@ fn compare_number_of_generics<'tcx>(
                 if trait_item.generics.params.is_empty() {
                     (Some(vec![trait_item.generics.span]), vec![])
                 } else {
-                    let arg_spans: Vec<Span> =
-                        trait_item.generics.params.iter().map(|p| p.span).collect();
+                    let arg_spans: Vec<Span> = trait_item
+                        .generics
+                        .params
+                        .iter()
+                        .map(|p| tcx.hir().span(p.hir_id))
+                        .collect();
                     let impl_trait_spans: Vec<Span> = trait_item
                         .generics
                         .params
@@ -595,7 +599,7 @@ fn compare_number_of_generics<'tcx>(
                             GenericParamKind::Type {
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
                                 ..
-                            } => Some(p.span),
+                            } => Some(tcx.hir().span(p.hir_id)),
                             _ => None,
                         })
                         .collect();
@@ -615,11 +619,21 @@ fn compare_number_of_generics<'tcx>(
                     GenericParamKind::Type {
                         synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
                         ..
-                    } => Some(p.span),
+                    } => Some(tcx.hir().span(p.hir_id)),
                     _ => None,
                 })
                 .collect();
-            let spans = impl_item.generics.spans();
+            let spans: rustc_span::MultiSpan = if impl_item.generics.params.is_empty() {
+                impl_item.generics.span.into()
+            } else {
+                impl_item
+                    .generics
+                    .params
+                    .iter()
+                    .map(|p| tcx.hir().span(p.hir_id))
+                    .collect::<Vec<_>>()
+                    .into()
+            };
             let span = spans.primary_span();
 
             let mut err = tcx.sess.struct_span_err_with_code(

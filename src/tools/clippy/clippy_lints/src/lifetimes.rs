@@ -475,7 +475,7 @@ fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, 
         .params
         .iter()
         .filter_map(|par| match par.kind {
-            GenericParamKind::Lifetime { .. } => Some((par.name.ident().name, par.span)),
+            GenericParamKind::Lifetime { .. } => Some((par.name.ident().name, cx.tcx.hir().span(par.hir_id))),
             _ => None,
         })
         .collect();

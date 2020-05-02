@@ -843,6 +843,7 @@ impl CheckAttrVisitor<'tcx> {
             match param.kind {
                 hir::GenericParamKind::Const { .. } => {}
                 _ => {
+                    let param_span = self.tcx.hir().span(param.hir_id);
                     self.tcx
                         .sess
                         .struct_span_err(
@@ -850,7 +851,7 @@ impl CheckAttrVisitor<'tcx> {
                             "#[rustc_legacy_const_generics] functions must \
                              only have const generics",
                         )
-                        .span_label(param.span, "non-const generic parameter")
+                        .span_label(param_span, "non-const generic parameter")
                         .emit();
                     return false;
                 }
@@ -1219,7 +1220,8 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_generic_param(&mut self, generic_param: &'tcx hir::GenericParam<'tcx>) {
         let target = Target::from_generic_param(generic_param);
-        self.check_attributes(generic_param.hir_id, &generic_param.span, target, None);
+        let span = self.tcx.hir().span(generic_param.hir_id);
+        self.check_attributes(generic_param.hir_id, &span, target, None);
         intravisit::walk_generic_param(self, generic_param)
     }
 

@@ -87,7 +87,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                     let mut sp = sp;
                     for param in generics.params {
                         if param.name.ident().to_string() == param_ty.to_string() {
-                            sp = param.span;
+                            sp = self.tcx.hir().span(param.hir_id);
                         }
                     }
 

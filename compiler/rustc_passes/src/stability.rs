@@ -517,9 +517,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             _ => AnnotationKind::Prohibited,
         };
 
+        let span = self.tcx.hir().span(p.hir_id);
         self.annotate(
             p.hir_id,
-            p.span,
+            span,
             kind,
             InheritDeprecation::No,
             InheritConstStability::No,

@@ -129,7 +129,10 @@ pub fn suggest_constraining_type_param(
 
     if def_id == tcx.lang_items().sized_trait() {
         // Type parameters are already `Sized` by default.
-        err.span_label(param.span, &format!("this type parameter needs to be `{}`", constraint));
+        err.span_label(
+            tcx.hir().span(param.hir_id),
+            &format!("this type parameter needs to be `{}`", constraint),
+        );
         return true;
     }
     let mut suggest_restrict = |span| {
@@ -157,7 +160,7 @@ pub fn suggest_constraining_type_param(
         //             |
         //             replace with: `impl Foo + Bar`
 
-        suggest_restrict(param.span.shrink_to_hi());
+        suggest_restrict(tcx.hir().span(param.hir_id).shrink_to_hi());
         return true;
     }
 
@@ -187,7 +190,7 @@ pub fn suggest_constraining_type_param(
             //   fn foo<T>(t: T) { ... }
             //          - help: consider restricting this type parameter with `T: Foo`
             err.span_suggestion_verbose(
-                param.span.shrink_to_hi(),
+                tcx.hir().span(param.hir_id).shrink_to_hi(),
                 &msg_restrict_type,
                 format!(": {}", constraint),
                 Applicability::MachineApplicable,

@@ -163,12 +163,14 @@ crate fn placeholder_type_error(
     {
         // Account for `_` already present in cases like `struct S<_>(_);` and suggest
         // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
-        sugg.push((arg.span, (*type_name).to_string()));
+        let arg_span = tcx.hir().span(arg.hir_id);
+        sugg.push((arg_span, (*type_name).to_string()));
     } else {
         let last = generics.iter().last().unwrap();
+        let last_span = tcx.hir().span(last.hir_id);
         sugg.push((
             // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
-            last.bounds_span().unwrap_or(last.span).shrink_to_hi(),
+            last.bounds_span().unwrap_or(last_span).shrink_to_hi(),
             format!(", {}", type_name),
         ));
     }
@@ -418,7 +420,8 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                             let (lt_sp, sugg) = match generics.params {
                                 [] => (generics.span, format!("<{}>", lt_name)),
                                 [bound, ..] => {
-                                    (bound.span.shrink_to_lo(), format!("{}, ", lt_name))
+                                    let bound_span = self.tcx.hir().span(bound.hir_id);
+                                    (bound_span.shrink_to_lo(), format!("{}, ", lt_name))
                                 }
                             };
                             let suggestions = vec![
@@ -1258,7 +1261,8 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
         for param in generics.params {
             if let GenericParamKind::Lifetime { .. } = param.kind {
                 if tcx.is_late_bound(param.hir_id) {
-                    return Some(param.span);
+                    let span = tcx.hir().span(param.hir_id);
+                    return Some(span);
                 }
             }
         }
@@ -1509,10 +1513,11 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         GenericParamKind::Type { ref default, synthetic, .. } => {
             if !allow_defaults && default.is_some() {
                 if !tcx.features().default_type_parameter_fallback {
+                    let param_span = tcx.hir().span(param.hir_id);
                     tcx.struct_span_lint_hir(
                         lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                         param.hir_id,
-                        param.span,
+                        param_span,
                         |lint| {
                             lint.build(
                                 "defaults for type parameters are only allowed in \
@@ -2040,8 +2045,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 index += 1;
 
                 let sized = SizedByDefault::Yes;
-                let bounds =
-                    AstConv::compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
+                let span = tcx.hir().span(param.hir_id);
+                let bounds = AstConv::compute_bounds(&icx, param_ty, &param.bounds, sized, span);
                 predicates.extend(bounds.predicates(tcx, param_ty));
             }
             GenericParamKind::Const { .. } => {

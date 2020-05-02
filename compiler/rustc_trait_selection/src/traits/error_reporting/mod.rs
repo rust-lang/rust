@@ -1739,7 +1739,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
             None => return,
         };
         for param in generics.params {
-            if param.span != span
+            let param_span = self.tcx.hir().span(param.hir_id);
+            if param_span != span
                 || param.bounds.iter().any(|bound| {
                     bound.trait_ref().and_then(|trait_ref| trait_ref.trait_def_id())
                         == self.tcx.lang_items().sized_trait()
@@ -1769,9 +1770,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     };
                     visitor.visit_item(item);
                     if !visitor.invalid_spans.is_empty() {
-                        let mut multispan: MultiSpan = param.span.into();
+                        let mut multispan: MultiSpan = param_span.into();
                         multispan.push_span_label(
-                            param.span,
+                            param_span,
                             format!("this could be changed to `{}: ?Sized`...", param.name.ident()),
                         );
                         for sp in visitor.invalid_spans {

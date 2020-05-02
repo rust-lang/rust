@@ -283,6 +283,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
         // FIXME(const_generics_defaults): we also need to check that the `default` is wf.
         hir::GenericParamKind::Const { ty: hir_ty, default: _ } => {
             let ty = tcx.type_of(tcx.hir().local_def_id(param.hir_id));
+            let param_span = tcx.hir().span(param.hir_id);
 
             let err_ty_str;
             let mut is_ptr = true;
@@ -328,7 +329,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                 }
             };
 
-            if traits::search_for_structural_match_violation(param.hir_id, param.span, tcx, ty)
+            if traits::search_for_structural_match_violation(param.hir_id, param_span, tcx, ty)
                 .is_some()
             {
                 // We use the same error code in both branches, because this is really the same
@@ -1260,7 +1261,7 @@ fn check_variances_for_type_defn<'tcx>(
 
         match param.name {
             hir::ParamName::Error => {}
-            _ => report_bivariance(tcx, param.span, param.name.ident().name),
+            _ => report_bivariance(tcx, tcx.hir().span(param.hir_id), param.name.ident().name),
         }
     }
 }
