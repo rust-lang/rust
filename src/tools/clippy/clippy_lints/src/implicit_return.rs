@@ -129,8 +129,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
         _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        span: Span,
-        _: HirId,
+        hir_id: HirId,
     ) {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
 
@@ -140,6 +139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
         }
 
         let mir = cx.tcx.optimized_mir(def_id.to_def_id());
+        let span = cx.tcx.hir().span(hir_id);
 
         // checking return type through MIR, HIR is not able to determine inferred closure return types
         // make sure it's not a macro

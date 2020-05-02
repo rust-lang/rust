@@ -6,7 +6,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
@@ -78,10 +77,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
         kind: FnKind<'_>,
         _: &FnDecl<'_>,
         _: &Body<'_>,
-        span: Span,
         hir_id: HirId,
     ) {
         let def_id = cx.tcx.hir().local_def_id(hir_id);
+        let span = cx.tcx.hir().span(hir_id);
 
         if in_external_macro(cx.tcx.sess, span) || is_entrypoint_fn(cx, def_id.to_def_id()) {
             return;

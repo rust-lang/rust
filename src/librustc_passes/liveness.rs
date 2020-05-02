@@ -155,10 +155,9 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         fk: FnKind<'tcx>,
         fd: &'tcx hir::FnDecl<'tcx>,
         b: hir::BodyId,
-        s: Span,
         id: HirId,
     ) {
-        visit_fn(self, fk, fd, b, s, id);
+        visit_fn(self, fk, fd, b, id);
     }
 
     fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
@@ -342,7 +341,6 @@ fn visit_fn<'tcx>(
     fk: FnKind<'tcx>,
     decl: &'tcx hir::FnDecl<'tcx>,
     body_id: hir::BodyId,
-    sp: Span,
     id: hir::HirId,
 ) {
     debug!("visit_fn {:?}", id);
@@ -391,11 +389,11 @@ fn visit_fn<'tcx>(
 
     // gather up the various local variables, significant expressions,
     // and so forth:
-    intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, sp, id);
+    intravisit::walk_fn(&mut fn_maps, fk, decl, body_id, id);
 
     // compute liveness
     let mut lsets = Liveness::new(&mut fn_maps, def_id);
-    let entry_ln = lsets.compute(fk, &body, sp, id);
+    let entry_ln = lsets.compute(fk, &body, id);
     lsets.log_liveness(entry_ln, id);
 
     // check for various error conditions
@@ -907,13 +905,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.rwu_table.assign_unpacked(idx, rwu);
     }
 
-    fn compute(
-        &mut self,
-        fk: FnKind<'_>,
-        body: &hir::Body<'_>,
-        span: Span,
-        id: hir::HirId,
-    ) -> LiveNode {
+    fn compute(&mut self, fk: FnKind<'_>, body: &hir::Body<'_>, id: hir::HirId) -> LiveNode {
         debug!("compute: using id for body, {:?}", body.value);
 
         // # Liveness of captured variables
@@ -965,6 +957,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             },
             ty::Generator(..) => return succ,
             _ => {
+                let span = self.ir.tcx.hir().span(id);
                 span_bug!(span, "type of closure expr {:?} is not a closure {:?}", id, ty,);
             }
         };

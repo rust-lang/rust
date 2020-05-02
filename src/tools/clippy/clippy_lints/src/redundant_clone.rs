@@ -17,7 +17,7 @@ use rustc_middle::ty::{self, fold::TypeVisitor, Ty};
 use rustc_mir::dataflow::BottomValue;
 use rustc_mir::dataflow::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::{BytePos, Span};
+use rustc_span::source_map::BytePos;
 use std::convert::TryFrom;
 
 macro_rules! unwrap_or_continue {
@@ -74,7 +74,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        _: Span,
         _: HirId,
     ) {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());

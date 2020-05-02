@@ -4,7 +4,6 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
 use rustc_target::abi::LayoutOf;
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceWithHirId, PlaceBase};
 
@@ -63,7 +62,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
         _: intravisit::FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        _: Span,
         hir_id: HirId,
     ) {
         // If the method is an impl for a trait, don't warn.

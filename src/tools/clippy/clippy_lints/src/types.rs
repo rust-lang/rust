@@ -225,7 +225,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Types {
         _: FnKind<'_>,
         decl: &FnDecl<'_>,
         _: &Body<'_>,
-        _: Span,
         id: HirId,
     ) {
         // Skip trait implementations; see issue #605.
@@ -1644,7 +1643,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
         _: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         _: &'tcx Body<'_>,
-        _: Span,
         _: HirId,
     ) {
         self.check_fndecl(cx, decl);

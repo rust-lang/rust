@@ -10,7 +10,6 @@ use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for boolean expressions that can be written more
@@ -62,7 +61,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
         _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        _: Span,
         _: HirId,
     ) {
         NonminimalBoolVisitor { cx }.visit_body(body)

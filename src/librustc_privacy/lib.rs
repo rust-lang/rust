@@ -911,7 +911,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         self.prev_level = orig_level;
     }
 
-    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _sp: Span, id: hir::HirId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, id: hir::HirId) {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_level.is_some() {
@@ -1081,7 +1081,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
         NestedVisitorMap::All(self.tcx.hir())
     }
 
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _n: hir::HirId) {
         // Don't visit nested modules, since we run a separate visitor walk
         // for each module in `privacy_access_levels`
     }
@@ -1223,7 +1223,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         NestedVisitorMap::All(self.tcx.hir())
     }
 
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _n: hir::HirId) {
         // Don't visit nested modules, since we run a separate visitor walk
         // for each module in `privacy_access_levels`
     }
@@ -1326,7 +1326,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     // we prohibit access to private statics from other crates, this allows to give
     // more code internal visibility at link time. (Access to private functions
     // is already prohibited by type privacy for function types.)
-    fn visit_qpath(&mut self, qpath: &'tcx hir::QPath<'tcx>, id: hir::HirId, span: Span) {
+    fn visit_qpath(&mut self, qpath: &'tcx hir::QPath<'tcx>, id: hir::HirId) {
         let def = match self.tables.qpath_res(qpath, id) {
             Res::Def(kind, def_id) => Some((kind, def_id)),
             _ => None,
@@ -1350,6 +1350,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                     Some(name) => format!("{} `{}` is private", kind, name),
                     None => format!("{} is private", kind),
                 };
+                let span = self.tcx.hir().span(id);
                 sess.struct_span_err(span, &msg)
                     .span_label(span, &format!("private {}", kind))
                     .emit();
@@ -1357,7 +1358,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             }
         }
 
-        intravisit::walk_qpath(self, qpath, id, span);
+        intravisit::walk_qpath(self, qpath, id);
     }
 
     // Check types of patterns.
@@ -2075,7 +2076,8 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
         current_item: None,
         empty_tables: &empty_tables,
     };
-    let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
+    let (module, hir_id) = tcx.hir().get_module(module_def_id);
+    let span = tcx.hir().span(hir_id);
 
     intravisit::walk_mod(&mut visitor, module, hir_id);
 

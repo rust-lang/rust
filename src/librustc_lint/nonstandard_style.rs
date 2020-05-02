@@ -8,7 +8,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{GenericParamKind, PatKind};
 use rustc_middle::ty;
 use rustc_span::symbol::sym;
-use rustc_span::{symbol::Ident, BytePos, Span};
+use rustc_span::{symbol::Ident, BytePos};
 use rustc_target::spec::abi::Abi;
 
 #[derive(PartialEq)]
@@ -249,13 +249,7 @@ impl NonSnakeCase {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
-    fn check_mod(
-        &mut self,
-        cx: &LateContext<'_, '_>,
-        _: &'tcx hir::Mod<'tcx>,
-        _: Span,
-        id: hir::HirId,
-    ) {
+    fn check_mod(&mut self, cx: &LateContext<'_, '_>, _: &'tcx hir::Mod<'tcx>, id: hir::HirId) {
         if id != hir::CRATE_HIR_ID {
             return;
         }
@@ -312,7 +306,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         fk: FnKind<'_>,
         _: &hir::FnDecl<'_>,
         _: &hir::Body<'_>,
-        _: Span,
         id: hir::HirId,
     ) {
         match &fk {

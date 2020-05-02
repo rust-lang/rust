@@ -1370,7 +1370,7 @@ impl<'l, 'tcx> Visitor<'tcx> for DumpVisitor<'l, 'tcx> {
                 if let hir::QPath::Resolved(_, path) = path {
                     self.write_sub_paths_truncated(path);
                 }
-                intravisit::walk_qpath(self, path, t.hir_id, t.span);
+                intravisit::walk_qpath(self, path, t.hir_id);
             }
             hir::TyKind::Array(ref ty, ref anon_const) => {
                 self.visit_ty(ty);
@@ -1462,7 +1462,7 @@ impl<'l, 'tcx> Visitor<'tcx> for DumpVisitor<'l, 'tcx> {
         self.visit_expr(&arm.body);
     }
 
-    fn visit_qpath(&mut self, path: &'tcx hir::QPath<'tcx>, id: hir::HirId, _: Span) {
+    fn visit_qpath(&mut self, path: &'tcx hir::QPath<'tcx>, id: hir::HirId) {
         self.process_path(id, path);
     }
 

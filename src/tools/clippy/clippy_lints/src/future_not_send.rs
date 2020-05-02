@@ -5,7 +5,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{Opaque, PredicateKind::Trait, ToPolyTraitRef};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, Span};
+use rustc_span::sym;
 use rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt;
 use rustc_trait_selection::traits::{self, FulfillmentError, TraitEngine};
 
@@ -54,7 +54,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FutureNotSend {
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'tcx>,
         _: &'tcx Body<'tcx>,
-        _: Span,
         hir_id: HirId,
     ) {
         if let FnKind::Closure(_) = kind {

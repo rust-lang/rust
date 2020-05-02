@@ -103,7 +103,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Shadow {
         _: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        _: Span,
         _: HirId,
     ) {
         if in_external_macro(cx.sess(), body.value.span) {

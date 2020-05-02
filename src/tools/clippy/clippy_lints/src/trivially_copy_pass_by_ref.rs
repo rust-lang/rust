@@ -142,9 +142,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         _body: &'tcx Body<'_>,
-        span: Span,
         hir_id: HirId,
     ) {
+        let span = cx.tcx.hir().span(hir_id);
         if span.from_expansion() {
             return;
         }

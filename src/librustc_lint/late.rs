@@ -26,7 +26,6 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::LintPass;
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
 
 use log::debug;
 use std::any::Any;
@@ -75,10 +74,10 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
         self.context.param_env = old_param_env;
     }
 
-    fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, s: Span, n: hir::HirId) {
-        lint_callback!(self, check_mod, m, s, n);
+    fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, n: hir::HirId) {
+        lint_callback!(self, check_mod, m, n);
         hir_visit::walk_mod(self, m, n);
-        lint_callback!(self, check_mod_post, m, s, n);
+        lint_callback!(self, check_mod_post, m, n);
     }
 
     fn enter_attrs(&mut self, attrs: &'tcx [ast::Attribute]) {
@@ -176,7 +175,6 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         fk: hir_visit::FnKind<'tcx>,
         decl: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
-        span: Span,
         id: hir::HirId,
     ) {
         // Wrap in tables here, not just in visit_nested_body,
@@ -184,9 +182,9 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         let old_tables = self.context.tables;
         self.context.tables = self.context.tcx.body_tables(body_id);
         let body = self.context.tcx.hir().body(body_id);
-        lint_callback!(self, check_fn, fk, decl, body, span, id);
-        hir_visit::walk_fn(self, fk, decl, body_id, span, id);
-        lint_callback!(self, check_fn_post, fk, decl, body, span, id);
+        lint_callback!(self, check_fn, fk, decl, body, id);
+        hir_visit::walk_fn(self, fk, decl, body_id, id);
+        lint_callback!(self, check_fn_post, fk, decl, body, id);
         self.context.tables = old_tables;
     }
 
@@ -196,7 +194,6 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         _: Symbol,
         _: &'tcx hir::Generics<'tcx>,
         _: hir::HirId,
-        _: Span,
     ) {
         lint_callback!(self, check_struct_def, s);
         hir_visit::walk_struct_def(self, s);
@@ -228,13 +225,9 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         hir_visit::walk_ty(self, t);
     }
 
-    fn visit_name(&mut self, sp: Span, name: Symbol) {
-        lint_callback!(self, check_name, sp, name);
-    }
-
-    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, s: Span, n: hir::HirId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, n: hir::HirId) {
         if !self.context.only_module {
-            self.process_mod(m, s, n);
+            self.process_mod(m, n);
         }
     }
 
@@ -372,8 +365,8 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
 
     let mut cx = LateContextAndPass { context, pass };
 
-    let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
-    cx.process_mod(module, span, hir_id);
+    let (module, hir_id) = tcx.hir().get_module(module_def_id);
+    cx.process_mod(module, hir_id);
 
     // Visit the crate attributes
     if hir_id == hir::CRATE_HIR_ID {

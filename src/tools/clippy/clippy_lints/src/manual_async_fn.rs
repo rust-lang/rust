@@ -9,7 +9,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** It checks for manual implementations of `async` functions.
@@ -45,8 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ManualAsyncFn {
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
-        span: Span,
-        _: HirId,
+        hir_id: HirId,
     ) {
         if_chain! {
             if let Some(header) = kind.header();
@@ -60,6 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ManualAsyncFn {
             if block.stmts.is_empty();
             if let Some(closure_body) = desugared_async_block(cx, block);
             then {
+                let span = cx.tcx.hir().span(hir_id);
                 let header_span = span.with_hi(ret_ty.span.hi());
 
                 span_lint_and_then(
