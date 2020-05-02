@@ -140,7 +140,9 @@ fn lint_overflowing_range_endpoint<'tcx>(
         if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
             cx.struct_span_lint(OVERFLOWING_LITERALS, parent_expr.span, |lint| {
                 let mut err = lint.build(&format!("range endpoint is out of range for `{}`", ty));
-                if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
+                if let Ok(start) =
+                    cx.sess().source_map().span_to_snippet(cx.tcx.hir().span(eps[0].hir_id))
+                {
                     use ast::{LitIntType, LitKind};
                     // We need to preserve the literal's suffix,
                     // as it may determine typing information.
