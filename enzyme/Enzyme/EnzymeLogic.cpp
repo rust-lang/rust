@@ -2328,8 +2328,19 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         gutils->erase(op);
 }
 
+static inline llvm::raw_ostream& operator<<(llvm::raw_ostream& os, ModRefInfo mri) {
+  if (mri == ModRefInfo::NoModRef) return os << "nomodref";
+  else if (mri == ModRefInfo::ModRef) return os << "modref";
+  else if (mri == ModRefInfo::Mod) return os << "mod";
+  else if (mri == ModRefInfo::Ref) return os << "ref";
+  else if (mri == ModRefInfo::MustModRef) return os << "mustmodref";
+  else if (mri == ModRefInfo::MustMod) return os << "mustmod";
+  else if (mri == ModRefInfo::MustRef) return os << "mustref";
+  else llvm_unreachable("unknown modref");
+  return os;
+}
 
-bool legalCombinedForwardReverse(CallInst &ci, std::vector<Instruction*> &postCreate, std::vector<Instruction*> &userReplace, DiffeGradientUtils* gutils, TypeResults &TR, const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, const bool subretused) {
+bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreInst*> &replacedReturns, std::vector<Instruction*> &postCreate, std::vector<Instruction*> &userReplace, DiffeGradientUtils* gutils, TypeResults &TR, const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, const bool subretused) {
 
   Function* called =  ci.getCalledFunction();
   CallInst* origop = cast<CallInst>(gutils->getOriginal(&ci));
@@ -2415,10 +2426,17 @@ bool legalCombinedForwardReverse(CallInst &ci, std::vector<Instruction*> &postCr
 
   //Given a function I we know must be moved to the reverse for legality reasons
   auto propagate = [&](Instruction* I) {
+    llvm::errs() << " propating: " << *I << "\n";
     // if only used in unneeded return, don't need to move this to reverse (unless this is the original function)
     if (usetree.count(I)) return;
-    if (isa<ReturnInst>(I)) return;
-    if (valuesOnlyUsedInUnnecessaryReturns.count(I) && (I != origop) ) {
+    if (auto ri = dyn_cast<ReturnInst>(I)) {
+      auto find = replacedReturns.find(ri);
+      if (find != replacedReturns.end()) {
+        usetree.insert(ri);
+      }
+      return;
+    }
+    if (valuesOnlyUsedInUnnecessaryReturns.count(I) && !is_value_needed_in_reverse(TR, gutils, I, /*topLevel*/true) && !(isa<CallInst>(I)) && (I != origop) ) {
       userReplace.push_back(I);
       return;
     }
@@ -2463,7 +2481,25 @@ bool legalCombinedForwardReverse(CallInst &ci, std::vector<Instruction*> &postCr
         llvm::errs() << " [nv] ailed to replace function " << (*ci.getCalledValue()) << " due to " << *I << "\n";
       return;
     }
+    if (I != origop && !isa<IntrinsicInst>(I) && isa<CallInst>(I)) {
+      legal = false;
+      if (called)
+        llvm::errs() << " [ci] failed to replace function " << (called->getName()) << " due to " << *I << "\n";
+      else
+        llvm::errs() << " [ci] ailed to replace function " << (*ci.getCalledValue()) << " due to " << *I << "\n";
+      return;
+    }
+    // Do not try moving an instruction that modifies memory, if we already moved it
+    if (I->mayReadOrWriteMemory() && gutils->getNewFromOriginal(I)->getParent() != gutils->getNewFromOriginal(I->getParent())) {
+      legal = false;
+      if (called)
+        llvm::errs() << " [am] failed to replace function " << (called->getName()) << " due to " << *I << "\n";
+      else
+        llvm::errs() << " [am] ailed to replace function " << (*ci.getCalledValue()) << " due to " << *I << "\n";
+      return;
+    }
 
+    llvm::errs() << " inserting: " << *I << "\n";
     usetree.insert(I);
     for(auto use : I->users()) {
       //llvm::errs() << "I: " << *I << " use: " << *use << "\n";
@@ -2480,7 +2516,8 @@ bool legalCombinedForwardReverse(CallInst &ci, std::vector<Instruction*> &postCr
       auto consider = [&](Instruction* user) {
         if (!user->mayReadFromMemory()) return;
         auto mri = getMRI(user, inst);
-        if (isModSet(mri)) {
+        llvm::errs() << " checking if need follower of " << *inst << " - " << *user << " : mri " << mri << "\n";
+        if (isRefSet(mri)) {
           propagate(user);
           if (!legal) return;
           }
@@ -2493,12 +2530,16 @@ bool legalCombinedForwardReverse(CallInst &ci, std::vector<Instruction*> &postCr
     if (!legal) return false;
   }
 
+  llvm::errs() << " found usetree for: " << ci << "\n";
+  for(auto u : usetree)
+    llvm::errs() << " + " << *u << "\n";
 
   // Check if any of the unmoved operations will make it illegal to move the instruction
   for (auto inst : usetree) {
     if (!inst->mayReadFromMemory()) continue;
     allFollowersOf(inst, [&](Instruction* post) {
       if (!post->mayWriteToMemory()) return;
+      //llvm::errs() << " checking if illegal move of " << *inst << " due to " << *post << "\n";
       auto mri = getMRI(inst, post);
       if (isModSet(mri)) {
         if (called)
@@ -2515,6 +2556,14 @@ bool legalCombinedForwardReverse(CallInst &ci, std::vector<Instruction*> &postCr
 
 
   allFollowersOf(origop, [&](Instruction* inst) {
+    if (auto ri = dyn_cast<ReturnInst>(inst)) {
+      auto find = replacedReturns.find(ri);
+      if (find != replacedReturns.end()) {
+        postCreate.push_back(find->second);
+        return;
+      }
+    }
+
     if (usetree.count(inst) == 0) return;
     if (inst->getParent() != origop->getParent()) {
       // Don't move a writing instruction (may change speculatable/etc things)
@@ -2548,7 +2597,7 @@ bool legalCombinedForwardReverse(CallInst &ci, std::vector<Instruction*> &postCr
   return true;
 }
 
-void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, const bool topLevel, const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, CacheType)> getIndex, const AugmentedReturn* subdata) {
+void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, CacheType)> getIndex, const AugmentedReturn* subdata) {
   Function *called = op->getCalledFunction();
 
   if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -2573,7 +2622,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
     return;
   }
 
-  bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(gutils->getOriginal(op)) == valuesOnlyUsedInUnnecessaryReturns.end());
+  bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(gutils->getOriginal(op)) == valuesOnlyUsedInUnnecessaryReturns.end() || is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), topLevel));
 
   //llvm::errs() << "newFunc:" << *gutils->oldFunc << "\n";
   //llvm::errs() << "subretused: " << subretused << " metaretused: " << metaretused << " op: " << *op << "\n";
@@ -2744,7 +2793,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   bool replaceFunction = false;
 
   if (topLevel && !foreignFunction) {
-    replaceFunction = legalCombinedForwardReverse(*op, postCreate, userReplace, gutils, TR, valuesOnlyUsedInUnnecessaryReturns, subretused);
+    replaceFunction = legalCombinedForwardReverse(*op, replacedReturns, postCreate, userReplace, gutils, TR, valuesOnlyUsedInUnnecessaryReturns, subretused);
     if (replaceFunction) modifyPrimal = false;
   }
 
@@ -2769,7 +2818,6 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
       nextTypeInfo.second = TR.query(gutils->getOriginal(op));
   }
 
-  //TODO consider what to do if called == nullptr for augmentation
   //llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>> sub_index_map;
   unsigned tapeIdx = 0xDEADBEEF;
   unsigned returnIdx = 0xDEADBEEF;
@@ -3066,7 +3114,7 @@ badfn:;
       auto use = gutils->getNewFromOriginal(usez);
       for(unsigned i=0; i<use->getNumOperands(); i++) {
         if (use->getOperand(i) == op || std::find(postCreate.begin(), postCreate.end(), use->getOperand(i)) != postCreate.end()) {
-          llvm::errs() << "replacing op i" << use->getOperand(i) << "\n";
+          //llvm::errs() << "replacing op i" << use->getOperand(i) << "\n";
           use->setOperand(i, UndefValue::get(use->getOperand(i)->getType()));
         }
       }
@@ -3088,6 +3136,7 @@ badfn:;
 
     gutils->originalToNewFn[gutils->getOriginal(op)] = diffes;
 
+    ValueToValueMapTy mapp;
     if (subretused) {
       auto retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
       gutils->originalInstructions.insert(retval);
@@ -3097,20 +3146,32 @@ badfn:;
         gutils->nonconstant_values.insert(retval);
       }
       retval->setMetadata("enzyme_activity_value", MDNode::get(retval->getContext(), {MDString::get(retval->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
+
+      if (gutils->scopeMap.find(op) != gutils->scopeMap.end()) {
+        AllocaInst* cache = cast<AllocaInst>(gutils->scopeMap[op]);
+        for(auto st : gutils->scopeStores[cache])
+          cast<StoreInst>(st)->eraseFromParent();
+        gutils->scopeStores.clear();
+        gutils->storeInstructionInCache(op->getParent(), retval, cache);
+      }
       op->replaceAllUsesWith(retval);
+      mapp[op] = retval;
+    }
+
+    for (auto &a : *gutils->reverseBlocks[op->getParent()]) {
+      mapp[&a] = &a;
     }
 
     std::reverse(postCreate.begin(), postCreate.end());
     for(auto a : postCreate) {
       for(unsigned i=0; i<a->getNumOperands(); i++) {
-        if (a->getOperand(i) == op) continue;
-        if (std::find(postCreate.begin(), postCreate.end(), a->getOperand(i)) != postCreate.end()) continue;
-        ValueToValueMapTy mapp;
         a->setOperand(i, gutils->unwrapM(a->getOperand(i), Builder2, mapp, UnwrapMode::LegalFullUnwrap));
       }
-      llvm::errs() << "moving instruction for postcreate: " << *a << "\n";
       a->moveBefore(*Builder2.GetInsertBlock(), Builder2.GetInsertPoint());
+      mapp[a] = a;
     }
+
+    //llvm::errs() << "newFunc postrep: " << *gutils->newFunc << "\n";
 
     gutils->erase(op);
 
@@ -3465,18 +3526,6 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         if (dretAlloca && !gutils->isConstantValue(retval)) {
             rb.CreateStore(gutils->invertPointerM(retval, rb), dretAlloca);
         }
-      } else {
-        /*
-         TODO should do DCE ideally
-        if (auto inst = dyn_cast<Instruction>(retval)) {
-            SmallSetVector<Instruction *, 16> WorkList;
-            DCEInstruction(inst, WorkList, TLI);
-            while (!WorkList.empty()) {
-                Instruction *I = WorkList.pop_back_val();
-                MadeChange |= DCEInstruction(I, WorkList, TLI);
-            }
-        }
-        */
       }
 
       //returns nonvoid value
@@ -3518,14 +3567,14 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     todo.pop_front();
     if (valuesOnlyUsedInUnnecessaryReturns.count(inst)) continue;
     // TODO this could be changed to only writing to memory, but for now (since not fixed everywhere), we are conservative
-    // bool necessaryUse = inst->mayWriteToMemory();
-    bool necessaryUse = inst->mayReadOrWriteMemory();
+    bool necessaryUse = inst->mayWriteToMemory();
+    //bool necessaryUse = inst->mayReadOrWriteMemory();
     // TODO make this more robust to phi nodes
     for(auto user_val : inst->users()) {
       if (auto val = dyn_cast<Instruction>(user_val)) {
         if (valuesOnlyUsedInUnnecessaryReturns.count(val)) continue;
-
-        bool bad = val->mayReadOrWriteMemory();
+        bool bad = val->mayWriteToMemory();
+        //bool bad = val->mayReadOrWriteMemory();
         for(auto user_dtx : val->users()) {
           if (!isa<Instruction>(user_dtx)) continue;
           auto dtx = cast<Instruction>(user_dtx);
@@ -3550,9 +3599,11 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     }
   }
 
+  /*
   for(auto v : valuesOnlyUsedInUnnecessaryReturns) {
     llvm::errs() << "valuesOnlyUsedInUnnecessaryReturns: " << *v << "\n";
   }
+  */
   }
 
   for(BasicBlock* BB: gutils->originalBlocks) {
@@ -3654,7 +3705,7 @@ realcall:
           }
       }
       assert(uncacheable_args_map.find(orig) != uncacheable_args_map.end());
-      handleGradientCallInst(TR, Builder2, op, gutils, topLevel, valuesOnlyUsedInUnnecessaryReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
+      handleGradientCallInst(TR, Builder2, op, gutils, topLevel, replacedReturns, valuesOnlyUsedInUnnecessaryReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
     } else if(auto op = dyn_cast_or_null<SelectInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;

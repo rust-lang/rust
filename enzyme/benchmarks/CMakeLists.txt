@@ -40,7 +40,7 @@ set(ENZYME_BENCH_DEPS LLVMEnzyme-${LLVM_VERSION_MAJOR} adept2 tapenade)
 add_lit_testsuite(bench-enzyme "Running enzyme benchmarks tests"
     ${CMAKE_CURRENT_BINARY_DIR}
     DEPENDS ${ENZYME_BENCH_DEPS}
-    ARGS -v
+    ARGS -v -j 1
 )
 
 set_target_properties(bench-enzyme PROPERTIES FOLDER "bench Tests")

@@ -1682,10 +1682,17 @@ endCheck:
         // we must ensure that we load the allocation after the store ensuring memory exists
         // to simplify things and ensure we always store after a potential realloc occurs in this loop
         // This is okay as there should be no load to the cache in the same block where this instruction is defined (since we will just use this instruction)
+        // TODO check that the store is actually aliasing/related
+        if (BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end())
         for (auto I = BuilderM.GetInsertBlock()->rbegin(), E = BuilderM.GetInsertBlock()->rend(); I != E; I++) {
             if (&*I == &*BuilderM.GetInsertPoint()) break;
             if (auto si = dyn_cast<StoreInst>(&*I)) {
-                v.SetInsertPoint(getNextNonDebugInstruction(si));
+                auto ni = getNextNonDebugInstructionOrNull(si);
+                if (ni != nullptr) {
+                  v.SetInsertPoint(ni);
+                } else {
+                  v.SetInsertPoint(si->getParent());
+                }
             }
         }
         Value* loc = getCachePointer(v, ctx, cache, /*storeinstorecache*/true);

@@ -96,13 +96,13 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   ret { double } %1
 
 ; CHECK: invertif.true:                                    ; preds = %invertend
-; CHECK-NEXT:   %2 = call { double } @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %8)
+; CHECK-NEXT:   %2 = call {} @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %8)
 ; CHECK-NEXT:   %3 = load double, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertif.false:                                   ; preds = %invertend
-; CHECK-NEXT:   %4 = call { double } @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %7)
+; CHECK-NEXT:   %4 = call {} @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %7)
 ; CHECK-NEXT:   %5 = load double, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   %m0diffea = fmul fast double %5, %a
@@ -111,7 +111,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertend:                                        ; preds = %if.true, %if.false
-; CHECK-NEXT:   %7 = select i1 %cmp, double 0.000000e+00, double %differeturn
-; CHECK-NEXT:   %8 = select i1 %cmp, double %differeturn, double 0.000000e+00
+; CHECK-NEXT:   %7 = select{{( fast)?}} i1 %cmp, double 0.000000e+00, double %differeturn
+; CHECK-NEXT:   %8 = select{{( fast)?}} i1 %cmp, double %differeturn, double 0.000000e+00
 ; CHECK-NEXT:   br i1 %cmp, label %invertif.true, label %invertif.false
 ; CHECK-NEXT: }

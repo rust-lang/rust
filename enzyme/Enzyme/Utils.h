@@ -69,10 +69,16 @@ static inline void dumpSet(const llvm::SmallPtrSetImpl<T*> &o) {
     llvm::errs() << "</end dump>\n";
 }
 
-static inline llvm::Instruction *getNextNonDebugInstruction(llvm::Instruction* Z) {
+static inline llvm::Instruction *getNextNonDebugInstructionOrNull(llvm::Instruction* Z) {
    for (llvm::Instruction *I = Z->getNextNode(); I; I = I->getNextNode())
      if (!llvm::isa<llvm::DbgInfoIntrinsic>(I))
        return I;
+   return nullptr;
+}
+
+static inline llvm::Instruction *getNextNonDebugInstruction(llvm::Instruction* Z) {
+   auto z = getNextNonDebugInstructionOrNull(Z);
+   if (z) return z;
    llvm::errs() << *Z->getParent() << "\n";
    llvm::errs() << *Z << "\n";
    llvm_unreachable("No valid subsequent non debug instruction");

@@ -98,11 +98,11 @@ attributes #8 = { noreturn nounwind }
 ; CHECK: invertfor.cond:                                   ; preds = %for.cond, %incinvertfor.cond
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %6, %incinvertfor.cond ], [ %iv, %for.cond ]
 ; CHECK-NEXT:   %4 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %5 = select i1 %4, double 0.000000e+00, double %differeturn
+; CHECK-NEXT:   %5 = select{{( fast)?}} i1 %4, double 0.000000e+00, double %differeturn
 ; CHECK-NEXT:   br i1 %4, label %invertentry, label %incinvertfor.cond
 
 ; CHECK: incinvertfor.cond:                                ; preds = %invertfor.cond
 ; CHECK-NEXT:   %6 = sub nuw nsw i64 %"iv'ac.0", 1
-; CHECK-NEXT:   %7 = call { double } @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %5)
+; CHECK-NEXT:   %7 = call {} @diffemetasin(double* nonnull %a.addr, double* nonnull %"a.addr'ipa", double %5)
 ; CHECK-NEXT:   br label %invertfor.cond
 ; CHECK-NEXT: }
