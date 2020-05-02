@@ -1146,7 +1146,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "match_on_vec_items",
-        group: "correctness",
+        group: "pedantic",
         desc: "matching on vector elements can panic",
         deprecation: None,
         module: "match_on_vec_items",
