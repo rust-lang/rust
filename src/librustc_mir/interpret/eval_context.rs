@@ -11,7 +11,7 @@ use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{
-    sign_extend, truncate, AllocId, FrameInfo, GlobalId, InterpResult, Pointer, Scalar,
+    sign_extend, truncate, FrameInfo, GlobalId, InterpResult, Pointer, Scalar,
 };
 use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
@@ -103,8 +103,8 @@ pub enum StackPopCleanup {
 
 /// State of a local variable including a memoized layout
 #[derive(Clone, PartialEq, Eq, HashStable)]
-pub struct LocalState<'tcx, Tag = (), Id = AllocId> {
-    pub value: LocalValue<Tag, Id>,
+pub struct LocalState<'tcx, Tag = ()> {
+    pub value: LocalValue<Tag>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
     #[stable_hasher(ignore)]
     pub layout: Cell<Option<TyAndLayout<'tcx>>>,
@@ -112,7 +112,7 @@ pub struct LocalState<'tcx, Tag = (), Id = AllocId> {
 
 /// Current value of a local variable
 #[derive(Copy, Clone, PartialEq, Eq, Debug, HashStable)] // Miri debug-prints these
-pub enum LocalValue<Tag = (), Id = AllocId> {
+pub enum LocalValue<Tag = ()> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
     /// This local is alive but not yet initialized. It can be written to
@@ -125,7 +125,7 @@ pub enum LocalValue<Tag = (), Id = AllocId> {
     /// This is an optimization over just always having a pointer here;
     /// we can thus avoid doing an allocation when the local just stores
     /// immediate values *and* never has its address taken.
-    Live(Operand<Tag, Id>),
+    Live(Operand<Tag>),
 }
 
 impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {

@@ -23,6 +23,7 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![feature(backtrace)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]

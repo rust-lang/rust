@@ -6,7 +6,6 @@ use crate::ty::query::TyCtxtAt;
 use crate::ty::tls;
 use crate::ty::{self, layout, Ty};
 
-use backtrace::Backtrace;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
@@ -15,7 +14,7 @@ use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::{def_id::DefId, Pos, Span};
 use rustc_target::abi::{Align, Size};
-use std::{any::Any, fmt, mem};
+use std::{any::Any, backtrace::Backtrace, fmt, mem};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -219,16 +218,15 @@ impl fmt::Display for InterpErrorInfo<'_> {
 }
 
 impl InterpErrorInfo<'_> {
-    pub fn print_backtrace(&mut self) {
-        if let Some(ref mut backtrace) = self.backtrace {
-            print_backtrace(&mut *backtrace);
+    pub fn print_backtrace(&self) {
+        if let Some(backtrace) = self.backtrace.as_ref() {
+            print_backtrace(backtrace);
         }
     }
 }
 
-fn print_backtrace(backtrace: &mut Backtrace) {
-    backtrace.resolve();
-    eprintln!("\n\nAn error occurred in miri:\n{:?}", backtrace);
+fn print_backtrace(backtrace: &Backtrace) {
+    eprintln!("\n\nAn error occurred in miri:\n{}", backtrace);
 }
 
 impl From<ErrorHandled> for InterpErrorInfo<'_> {
@@ -255,11 +253,11 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
 
         let backtrace = match capture_backtrace {
             CtfeBacktrace::Disabled => None,
-            CtfeBacktrace::Capture => Some(Box::new(Backtrace::new_unresolved())),
+            CtfeBacktrace::Capture => Some(Box::new(Backtrace::force_capture())),
             CtfeBacktrace::Immediate => {
                 // Print it now.
-                let mut backtrace = Backtrace::new_unresolved();
-                print_backtrace(&mut backtrace);
+                let backtrace = Backtrace::force_capture();
+                print_backtrace(&backtrace);
                 None
             }
         };
