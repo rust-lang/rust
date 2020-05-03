@@ -1,0 +1,132 @@
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:1:7
+   |
+LL | #[cfg(version("1.44"))]
+   |       ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:4:11
+   |
+LL | #[cfg(not(version("1.44")))]
+   |           ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:8:7
+   |
+LL | #[cfg(version("1.43", "1.44", "1.45"))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error: expected single version literal
+  --> $DIR/feature-gate-cfg-version.rs:8:7
+   |
+LL | #[cfg(version("1.43", "1.44", "1.45"))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:11:7
+   |
+LL | #[cfg(version(false))]
+   |       ^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error: expected a version literal
+  --> $DIR/feature-gate-cfg-version.rs:11:15
+   |
+LL | #[cfg(version(false))]
+   |               ^^^^^
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:14:7
+   |
+LL | #[cfg(version("foo"))]
+   |       ^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error: invalid version literal
+  --> $DIR/feature-gate-cfg-version.rs:14:15
+   |
+LL | #[cfg(version("foo"))]
+   |               ^^^^^
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:17:7
+   |
+LL | #[cfg(version("999"))]
+   |       ^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:20:7
+   |
+LL | #[cfg(version("-1"))]
+   |       ^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error: invalid version literal
+  --> $DIR/feature-gate-cfg-version.rs:20:15
+   |
+LL | #[cfg(version("-1"))]
+   |               ^^^^
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:23:7
+   |
+LL | #[cfg(version("65536"))]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error: invalid version literal
+  --> $DIR/feature-gate-cfg-version.rs:23:15
+   |
+LL | #[cfg(version("65536"))]
+   |               ^^^^^^^
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:26:7
+   |
+LL | #[cfg(version("0"))]
+   |       ^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:30:7
+   |
+LL | #[cfg(version("1.65536.2"))]
+   |       ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error[E0658]: `cfg(version)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-version.rs:40:18
+   |
+LL |     assert!(cfg!(version("1.42")));
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #64796 <https://github.com/rust-lang/rust/issues/64796> for more information
+   = help: add `#![feature(cfg_version)]` to the crate attributes to enable
+
+error: aborting due to 16 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

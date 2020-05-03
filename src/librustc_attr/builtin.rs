@@ -2,7 +2,7 @@
 
 use super::{find_by_name, mark_used};
 
-use rustc_ast::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem};
+use rustc_ast::ast::{self, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, Handler};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
@@ -11,6 +11,7 @@ use rustc_session::parse::{feature_err, ParseSess};
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
 use std::num::NonZeroU32;
+use version_check::Version;
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
@@ -568,11 +569,8 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
 
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
-    eval_condition(cfg, sess, &mut |cfg| {
-        let gate = find_gated_cfg(|sym| cfg.check_name(sym));
-        if let (Some(feats), Some(gated_cfg)) = (features, gate) {
-            gate_cfg(&gated_cfg, cfg.span, sess, feats);
-        }
+    eval_condition(cfg, sess, features, &mut |cfg| {
+        try_gate_cfg(cfg, sess, features);
         let error = |span, msg| {
             sess.span_diagnostic.span_err(span, msg);
             true
@@ -603,6 +601,13 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
     })
 }
 
+fn try_gate_cfg(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) {
+    let gate = find_gated_cfg(|sym| cfg.check_name(sym));
+    if let (Some(feats), Some(gated_cfg)) = (features, gate) {
+        gate_cfg(&gated_cfg, cfg.span, sess, feats);
+    }
+}
+
 fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &Features) {
     let (cfg, feature, has_feature) = gated_cfg;
     if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
@@ -616,9 +621,41 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &F
 pub fn eval_condition(
     cfg: &ast::MetaItem,
     sess: &ParseSess,
+    features: Option<&Features>,
     eval: &mut impl FnMut(&ast::MetaItem) -> bool,
 ) -> bool {
     match cfg.kind {
+        ast::MetaItemKind::List(ref mis) if cfg.name_or_empty() == sym::version => {
+            try_gate_cfg(cfg, sess, features);
+            let (min_version, span) = match &mis[..] {
+                [NestedMetaItem::Literal(Lit { kind: LitKind::Str(sym, ..), span, .. })] => {
+                    (sym, span)
+                }
+                [NestedMetaItem::Literal(Lit { span, .. })
+                | NestedMetaItem::MetaItem(MetaItem { span, .. })] => {
+                    sess.span_diagnostic
+                        .struct_span_err(*span, &*format!("expected a version literal"))
+                        .emit();
+                    return false;
+                }
+                [..] => {
+                    sess.span_diagnostic
+                        .struct_span_err(cfg.span, "expected single version literal")
+                        .emit();
+                    return false;
+                }
+            };
+            let min_version = match Version::parse(&min_version.as_str()) {
+                Some(ver) => ver,
+                None => {
+                    sess.span_diagnostic.struct_span_err(*span, "invalid version literal").emit();
+                    return false;
+                }
+            };
+            let version = Version::parse(env!("CFG_VERSION")).unwrap();
+
+            version >= min_version
+        }
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
@@ -634,12 +671,12 @@ pub fn eval_condition(
             // The unwraps below may look dangerous, but we've already asserted
             // that they won't fail with the loop above.
             match cfg.name_or_empty() {
-                sym::any => {
-                    mis.iter().any(|mi| eval_condition(mi.meta_item().unwrap(), sess, eval))
-                }
-                sym::all => {
-                    mis.iter().all(|mi| eval_condition(mi.meta_item().unwrap(), sess, eval))
-                }
+                sym::any => mis
+                    .iter()
+                    .any(|mi| eval_condition(mi.meta_item().unwrap(), sess, features, eval)),
+                sym::all => mis
+                    .iter()
+                    .all(|mi| eval_condition(mi.meta_item().unwrap(), sess, features, eval)),
                 sym::not => {
                     if mis.len() != 1 {
                         struct_span_err!(
@@ -652,7 +689,7 @@ pub fn eval_condition(
                         return false;
                     }
 
-                    !eval_condition(mis[0].meta_item().unwrap(), sess, eval)
+                    !eval_condition(mis[0].meta_item().unwrap(), sess, features, eval)
                 }
                 _ => {
                     struct_span_err!(
