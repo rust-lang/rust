@@ -515,6 +515,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "expect_used",
+        group: "restriction",
+        desc: "using `.expect()` on `Result` or `Option`, which might be better handled",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "expl_impl_clone_on_copy",
         group: "pedantic",
         desc: "implementing `Clone` explicitly on `Copy` types",
@@ -1600,13 +1607,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "option_env_unwrap",
     },
     Lint {
-        name: "option_expect_used",
-        group: "restriction",
-        desc: "using `Option.expect()`, which might be better handled",
-        deprecation: None,
-        module: "methods",
-    },
-    Lint {
         name: "option_map_or_none",
         group: "style",
         desc: "using `Option.map_or(None, f)`, which is more succinctly expressed as `and_then(f)`",
@@ -1864,13 +1864,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "a match on a struct that binds all fields but still uses the wildcard pattern",
         deprecation: None,
         module: "matches",
-    },
-    Lint {
-        name: "result_expect_used",
-        group: "restriction",
-        desc: "using `Result.expect()`, which might be better handled",
-        deprecation: None,
-        module: "methods",
     },
     Lint {
         name: "result_map_or_into_option",

@@ -78,61 +78,45 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `.expect()` calls on `Option`s.
+    /// **What it does:** Checks for `.expect()` calls on `Option`s and `Result`s.
     ///
-    /// **Why is this bad?** Usually it is better to handle the `None` case. Still,
-    ///  for a lot of quick-and-dirty code, `expect` is a good choice, which is why
-    ///  this lint is `Allow` by default.
+    /// **Why is this bad?** Usually it is better to handle the `None` or `Err` case.
+    /// Still, for a lot of quick-and-dirty code, `expect` is a good choice, which is why
+    /// this lint is `Allow` by default.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
-    /// Using expect on an `Option`:
-    ///
-    /// ```rust
-    /// let opt = Some(1);
-    /// opt.expect("one");
-    /// ```
-    ///
-    /// Better:
-    ///
-    /// ```rust,ignore
-    /// let opt = Some(1);
-    /// opt?;
-    /// ```
-    pub OPTION_EXPECT_USED,
-    restriction,
-    "using `Option.expect()`, which might be better handled"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for `.expect()` calls on `Result`s.
-    ///
-    /// **Why is this bad?** `result.expect()` will let the thread panic on `Err`
+    /// `result.expect()` will let the thread panic on `Err`
     /// values. Normally, you want to implement more sophisticated error handling,
     /// and propagate errors upwards with `?` operator.
     ///
     /// **Known problems:** None.
     ///
-    /// **Example:**
-    /// Using expect on an `Result`:
+    /// **Examples:**
+    /// ```rust,ignore
+    /// # let opt = Some(1);
     ///
-    /// ```rust
-    /// let res: Result<usize, ()> = Ok(1);
-    /// res.expect("one");
+    /// // Bad
+    /// opt.expect("one");
+    ///
+    /// // Good
+    /// let opt = Some(1);
+    /// opt?;
     /// ```
     ///
-    /// Better:
+    /// // or
     ///
     /// ```rust
-    /// let res: Result<usize, ()> = Ok(1);
+    /// # let res: Result<usize, ()> = Ok(1);
+    ///
+    /// // Bad
+    /// res.expect("one");
+    ///
+    /// // Good
     /// res?;
     /// # Ok::<(), ()>(())
     /// ```
-    pub RESULT_EXPECT_USED,
+    pub EXPECT_USED,
     restriction,
-    "using `Result.expect()`, which might be better handled"
+    "using `.expect()` on `Result` or `Option`, which might be better handled"
 }
 
 declare_clippy_lint! {
@@ -1251,8 +1235,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Methods => [
     UNWRAP_USED,
-    OPTION_EXPECT_USED,
-    RESULT_EXPECT_USED,
+    EXPECT_USED,
     SHOULD_IMPLEMENT_TRAIT,
     WRONG_SELF_CONVENTION,
     WRONG_PUB_SELF_CONVENTION,
@@ -2407,9 +2390,9 @@ fn lint_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, expect_args: &[hi
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&expect_args[0]));
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
-        Some((OPTION_EXPECT_USED, "an Option", "None"))
+        Some((EXPECT_USED, "an Option", "None"))
     } else if is_type_diagnostic_item(cx, obj_ty, sym!(result_type)) {
-        Some((RESULT_EXPECT_USED, "a Result", "Err"))
+        Some((EXPECT_USED, "a Result", "Err"))
     } else {
         None
     };

@@ -1337,6 +1337,7 @@ Released 2018-09-13
 [`excessive_precision`]: https://rust-lang.github.io/rust-clippy/master/index.html#excessive_precision
 [`exit`]: https://rust-lang.github.io/rust-clippy/master/index.html#exit
 [`expect_fun_call`]: https://rust-lang.github.io/rust-clippy/master/index.html#expect_fun_call
+[`expect_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
 [`expl_impl_clone_on_copy`]: https://rust-lang.github.io/rust-clippy/master/index.html#expl_impl_clone_on_copy
 [`explicit_counter_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#explicit_counter_loop
 [`explicit_deref_methods`]: https://rust-lang.github.io/rust-clippy/master/index.html#explicit_deref_methods
@@ -1497,7 +1498,6 @@ Released 2018-09-13
 [`option_and_then_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_and_then_some
 [`option_as_ref_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_as_ref_deref
 [`option_env_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_env_unwrap
-[`option_expect_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_expect_used
 [`option_map_or_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_or_none
 [`option_map_unit_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_unit_fn
 [`option_option`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_option
@@ -1537,7 +1537,6 @@ Released 2018-09-13
 [`regex_macro`]: https://rust-lang.github.io/rust-clippy/master/index.html#regex_macro
 [`replace_consts`]: https://rust-lang.github.io/rust-clippy/master/index.html#replace_consts
 [`rest_pat_in_fully_bound_structs`]: https://rust-lang.github.io/rust-clippy/master/index.html#rest_pat_in_fully_bound_structs
-[`result_expect_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_expect_used
 [`result_map_or_into_option`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_map_or_into_option
 [`result_map_unit_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_map_unit_fn
 [`result_unwrap_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_unwrap_used
