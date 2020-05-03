@@ -517,9 +517,13 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: Interne
     // librustc_llvm and librustc_codegen_llvm.
     //
     // Note that this is disabled if LLVM itself is disabled or we're in a check
-    // build, where if we're in a check build there's no need to build all of
-    // LLVM and such.
-    if builder.config.llvm_enabled() && builder.kind != Kind::Check {
+    // build. If we are in a check build we still go ahead here presuming we've
+    // detected that LLVM is alreay built and good to go which helps prevent
+    // busting caches (e.g. like #71152).
+    if builder.config.llvm_enabled()
+        && (builder.kind != Kind::Check
+            || crate::native::prebuilt_llvm_config(builder, target).is_ok())
+    {
         if builder.is_rust_llvm(target) {
             cargo.env("LLVM_RUSTLLVM", "1");
         }

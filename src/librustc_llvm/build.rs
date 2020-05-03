@@ -15,9 +15,9 @@ fn detect_llvm_link() -> (&'static str, &'static str) {
 }
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=RUST_CHECK");
     if env::var_os("RUST_CHECK").is_some() {
         // If we're just running `check`, there's no need for LLVM to be built.
-        println!("cargo:rerun-if-env-changed=RUST_CHECK");
         return;
     }
 
