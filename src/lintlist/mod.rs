@@ -74,16 +74,9 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "blacklisted_name",
     },
     Lint {
-        name: "block_in_if_condition_expr",
+        name: "block_in_if_condition",
         group: "style",
-        desc: "braces that can be eliminated in conditions, e.g., `if { true } ...`",
-        deprecation: None,
-        module: "block_in_if_condition",
-    },
-    Lint {
-        name: "block_in_if_condition_stmt",
-        group: "style",
-        desc: "complex blocks in conditions, e.g., `if { let x = true; x } ...`",
+        desc: "useless or complex blocks that can be eliminated in conditions",
         deprecation: None,
         module: "block_in_if_condition",
     },
