@@ -81,7 +81,7 @@ impl<'tcx> OnUnimplementedDirective {
                         None,
                     )
                 })?;
-            attr::eval_condition(cond, &tcx.sess.parse_sess, &mut |_| true);
+            attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |_| true);
             Some(cond.clone())
         };
 
@@ -208,11 +208,16 @@ impl<'tcx> OnUnimplementedDirective {
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
-                if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
-                    c.ident().map_or(false, |ident| {
-                        options.contains(&(ident.name, c.value_str().map(|s| s.to_string())))
-                    })
-                }) {
+                if !attr::eval_condition(
+                    condition,
+                    &tcx.sess.parse_sess,
+                    Some(tcx.features()),
+                    &mut |c| {
+                        c.ident().map_or(false, |ident| {
+                            options.contains(&(ident.name, c.value_str().map(|s| s.to_string())))
+                        })
+                    },
+                ) {
                     debug!("evaluate: skipping {:?} due to condition", command);
                     continue;
                 }

@@ -3,6 +3,7 @@ authors = ["The Rust Project Developers"]
 name = "rustc_attr"
 version = "0.0.0"
 edition = "2018"
+build = "build.rs"
 
 [lib]
 name = "rustc_attr"
@@ -19,3 +20,4 @@ rustc_feature = { path = "../librustc_feature" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_session = { path = "../librustc_session" }
 rustc_ast = { path = "../librustc_ast" }
+version_check = "0.9"
