@@ -8,5 +8,6 @@ fn main() {
     let bad = unsafe {
         std::mem::transmute::<u64, &[u8]>(42)
     };
+    // This created a slice with length 0, so the following will fail the bounds check.
     bad[0];
 }
