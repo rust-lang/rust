@@ -60,6 +60,20 @@ impl GatedSpans {
     }
 }
 
+#[derive(Default)]
+pub struct SymbolGallery {
+    /// All symbols occurred and their first occurrance span.
+    pub symbols: Lock<FxHashMap<Symbol, Span>>,
+}
+
+impl SymbolGallery {
+    /// Insert a symbol and its span into symbol gallery.
+    /// If the symbol has occurred before, ignore the new occurance.
+    pub fn insert(&self, symbol: Symbol, span: Span) {
+        self.symbols.lock().entry(symbol).or_insert(span);
+    }
+}
+
 /// Construct a diagnostic for a language feature error due to the given `span`.
 /// The `feature`'s `Symbol` is the one you used in `active.rs` and `rustc_span::symbols`.
 pub fn feature_err<'a>(
@@ -118,6 +132,7 @@ pub struct ParseSess {
     pub ambiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
     pub injected_crate_name: Once<Symbol>,
     pub gated_spans: GatedSpans,
+    pub symbol_gallery: SymbolGallery,
     /// The parser has reached `Eof` due to an unclosed brace. Used to silence unnecessary errors.
     pub reached_eof: Lock<bool>,
 }
@@ -143,6 +158,7 @@ impl ParseSess {
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             injected_crate_name: Once::new(),
             gated_spans: GatedSpans::default(),
+            symbol_gallery: SymbolGallery::default(),
             reached_eof: Lock::new(false),
         }
     }
