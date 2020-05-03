@@ -1,3 +1,4 @@
 warning: thread support is experimental. For example, Miri does not detect data races yet.
 
 thread '<unnamed>' panicked at 'Hello!', $DIR/simple.rs:54:9
+thread 'childthread' panicked at 'Hello, world!', $DIR/simple.rs:64:9

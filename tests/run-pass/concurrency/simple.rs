@@ -59,6 +59,15 @@ fn panic() {
     assert_eq!(*msg, "Hello!");
 }
 
+fn panic_named() {
+    thread::Builder::new().name("childthread".to_string()).spawn(move || {
+        panic!("Hello, world!");
+    })
+    .unwrap()
+    .join()
+    .unwrap_err();
+}
+
 fn main() {
     create_and_detach();
     create_and_join();
@@ -69,4 +78,5 @@ fn main() {
     create_move_in();
     create_move_out();
     panic();
+    panic_named();
 }
