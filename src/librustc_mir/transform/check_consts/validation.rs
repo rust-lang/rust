@@ -562,6 +562,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             // projections that cannot be `NeedsDrop`.
             TerminatorKind::Drop { location: dropped_place, .. }
             | TerminatorKind::DropAndReplace { location: dropped_place, .. } => {
+                // If we are checking live drops after drop-elaboration, don't emit duplicate
+                // errors here.
+                if super::post_drop_elaboration::checking_enabled(self.tcx) {
+                    return;
+                }
+
                 let mut err_span = self.span;
 
                 // Check to see if the type of this place can ever have a drop impl. If not, this
