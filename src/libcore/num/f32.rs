@@ -45,6 +45,7 @@ pub const RADIX: u32 = f32::RADIX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
+
 /// Approximate number of significant digits in base 10.
 /// Use [`f32::DIGITS`](../../std/primitive.f32.html#associatedconstant.DIGITS) instead.
 ///
@@ -93,6 +94,7 @@ pub const EPSILON: f32 = f32::EPSILON;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN: f32 = f32::MIN;
+
 /// Smallest positive normal `f32` value.
 /// Use [`f32::MIN_POSITIVE`](../../std/primitive.f32.html#associatedconstant.MIN_POSITIVE) instead.
 ///
@@ -107,6 +109,7 @@ pub const MIN: f32 = f32::MIN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
+
 /// Largest finite `f32` value.
 /// Use [`f32::MAX`](../../std/primitive.f32.html#associatedconstant.MAX) instead.
 ///
@@ -136,6 +139,7 @@ pub const MAX: f32 = f32::MAX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_EXP: i32 = f32::MIN_EXP;
+
 /// Maximum possible power of 2 exponent.
 /// Use [`f32::MAX_EXP`](../../std/primitive.f32.html#associatedconstant.MAX_EXP) instead.
 ///
@@ -165,6 +169,7 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
+
 /// Maximum possible power of 10 exponent.
 /// Use [`f32::MAX_10_EXP`](../../std/primitive.f32.html#associatedconstant.MAX_10_EXP) instead.
 ///
@@ -194,6 +199,7 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NAN: f32 = f32::NAN;
+
 /// Infinity (∞).
 /// Use [`f32::INFINITY`](../../std/primitive.f32.html#associatedconstant.INFINITY) instead.
 ///
@@ -208,6 +214,7 @@ pub const NAN: f32 = f32::NAN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const INFINITY: f32 = f32::INFINITY;
+
 /// Negative infinity (−∞).
 /// Use [`f32::NEG_INFINITY`](../../std/primitive.f32.html#associatedconstant.NEG_INFINITY) instead.
 ///
