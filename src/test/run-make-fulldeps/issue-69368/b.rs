@@ -3,6 +3,6 @@
 #![no_std]
 
 #[alloc_error_handler]
-pub fn error_handler(_: core::alloc::Layout) -> ! {
+pub fn error_handler(_: core::mem::Layout) -> ! {
     panic!();
 }

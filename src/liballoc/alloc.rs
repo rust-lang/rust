@@ -9,24 +9,24 @@ use core::ptr::{NonNull, Unique};
 #[doc(inline)]
 pub use core::alloc::*;
 
-#[stable(feature = "alloc_layout", since = "1.28.0")]
-#[doc(no_inline)]
 /// **This alias is soft-deprecated.**
 ///
 /// Although using it won’t cause compilation warning, new code should use [`mem::Layout`] directly
 /// instead.
 ///
 /// [`mem::Layout`]: core::mem::Layout
-pub use core::mem::Layout;
-
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[doc(no_inline)]
+pub use core::mem::Layout;
+
 /// **This alias is soft-deprecated.**
 ///
 /// Although using it won’t cause compilation warning, new code should use [`mem::LayoutError`]
 /// directly instead.
 ///
 /// [`mem::LayoutError`]: core::mem::LayoutError
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[doc(no_inline)]
 pub use core::mem::LayoutError as LayoutErr;
 
 #[cfg(test)]
@@ -82,7 +82,8 @@ pub struct Global;
 /// # Examples
 ///
 /// ```
-/// use std::alloc::{alloc, dealloc, Layout};
+/// use std::alloc::{alloc, dealloc};
+/// use std::mem::Layout;
 ///
 /// unsafe {
 ///     let layout = Layout::new::<u16>();
@@ -164,7 +165,8 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// # Examples
 ///
 /// ```
-/// use std::alloc::{alloc_zeroed, dealloc, Layout};
+/// use std::alloc::{alloc_zeroed, dealloc};
+/// use std::mem::Layout;
 ///
 /// unsafe {
 ///     let layout = Layout::new::<u16>();

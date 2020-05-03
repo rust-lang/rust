@@ -3,7 +3,7 @@
 #![no_std]
 #![no_main]
 
-use core::alloc::Layout;
+use core::mem::Layout;
 
 #[alloc_error_handler] //~ ERROR the `#[alloc_error_handler]` attribute is an experimental feature
 fn oom(info: Layout) -> ! {

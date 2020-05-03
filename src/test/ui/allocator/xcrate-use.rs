@@ -9,7 +9,8 @@
 extern crate custom;
 extern crate helper;
 
-use std::alloc::{AllocInit, AllocRef, Global, Layout, System};
+use std::alloc::{AllocInit, AllocRef, Global, System};
+use std::mem::Layout;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[global_allocator]

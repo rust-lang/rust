@@ -18,6 +18,7 @@
 //!
 //! ```rust
 //! use std::alloc::*;
+//! use std::mem::Layout;
 //!
 //! #[global_allocator]
 //! static ALLOC: A = A;

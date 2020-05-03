@@ -11,7 +11,7 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 }
 
 #[alloc_error_handler]
-fn oom(_: core::alloc::Layout) -> ! {
+fn oom(_: core::mem::Layout) -> ! {
     loop {}
 }
 

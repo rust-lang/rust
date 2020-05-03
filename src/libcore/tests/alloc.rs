@@ -1,4 +1,4 @@
-use core::alloc::Layout;
+use core::mem::Layout;
 use core::ptr::NonNull;
 
 #[test]

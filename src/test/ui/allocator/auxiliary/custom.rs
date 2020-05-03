@@ -3,7 +3,8 @@
 #![feature(allocator_api)]
 #![crate_type = "rlib"]
 
-use std::alloc::{GlobalAlloc, System, Layout};
+use std::alloc::{GlobalAlloc, System};
+use std::mem::Layout;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct A(pub AtomicUsize);

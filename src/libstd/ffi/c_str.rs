@@ -757,7 +757,7 @@ impl From<Vec<NonZeroU8>> for CString {
             let v: Vec<u8> = {
                 // Safety:
                 //   - transmuting between `NonZeroU8` and `u8` is sound;
-                //   - `alloc::Layout<NonZeroU8> == alloc::Layout<u8>`.
+                //   - `mem::Layout<NonZeroU8> == mem::Layout<u8>`.
                 let (ptr, len, cap): (*mut NonZeroU8, _, _) = Vec::into_raw_parts(v);
                 Vec::from_raw_parts(ptr.cast::<u8>(), len, cap)
             };

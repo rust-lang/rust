@@ -1,4 +1,5 @@
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, System};
+use crate::mem::Layout;
 use crate::sys::c;
 use crate::sys_common::alloc::{realloc_fallback, MIN_ALIGN};
 

@@ -4,7 +4,7 @@
 #![no_std]
 #![no_main]
 
-use core::alloc::Layout;
+use core::mem::Layout;
 
 #[alloc_error_handler]
 fn oom(

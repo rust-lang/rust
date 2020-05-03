@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, System};
 use crate::cmp;
+use crate::mem::Layout;
 use crate::ptr;
 
 // The minimum alignment guaranteed by the architecture. This value is used to

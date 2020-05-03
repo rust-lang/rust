@@ -33,11 +33,11 @@
 
 use core::cmp::Ordering;
 use core::marker::PhantomData;
-use core::mem::{self, MaybeUninit};
+use core::mem::{self, Layout, MaybeUninit};
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
-use crate::alloc::{AllocRef, Global, Layout};
+use crate::alloc::{AllocRef, Global};
 use crate::boxed::Box;
 
 const B: usize = 6;

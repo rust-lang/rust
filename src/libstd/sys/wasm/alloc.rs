@@ -16,7 +16,8 @@
 //! The crate itself provides a global allocator which on wasm has no
 //! synchronization as there are no threads!
 
-use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, System};
+use crate::mem::Layout;
 
 static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::DLMALLOC_INIT;
 

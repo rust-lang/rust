@@ -3,7 +3,7 @@
 #![no_main]
 #![no_std]
 
-use core::alloc::Layout;
+use core::mem::Layout;
 use core::panic::PanicInfo;
 
 #[panic_handler]

@@ -16,7 +16,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
-use core::mem::{self, align_of, align_of_val, size_of_val};
+use core::mem::{self, align_of, align_of_val, size_of_val, Layout};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -24,7 +24,7 @@ use core::slice::{self, from_raw_parts_mut};
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
-use crate::alloc::{box_free, handle_alloc_error, AllocInit, AllocRef, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocInit, AllocRef, Global};
 use crate::boxed::Box;
 use crate::rc::is_dangling;
 use crate::string::String;

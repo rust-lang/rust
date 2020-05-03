@@ -1,5 +1,5 @@
-use crate::alloc::Layout;
 use crate::cmp;
+use crate::mem::Layout;
 use crate::ptr;
 
 /// A memory allocator that can be registered as the standard library’s default
@@ -21,7 +21,8 @@ use crate::ptr;
 /// # Example
 ///
 /// ```no_run
-/// use std::alloc::{GlobalAlloc, Layout, alloc};
+/// use std::alloc::{GlobalAlloc, alloc};
+/// use std::mem::Layout;
 /// use std::ptr::null_mut;
 ///
 /// struct MyAllocator;

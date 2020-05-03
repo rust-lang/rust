@@ -3,7 +3,7 @@
 
 use core::alloc::MemoryBlock;
 use core::cmp;
-use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::mem::{self, Layout, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
 use core::ptr::{NonNull, Unique};
 use core::slice;
@@ -11,7 +11,7 @@ use core::slice;
 use crate::alloc::{
     handle_alloc_error, AllocErr,
     AllocInit::{self, *},
-    AllocRef, Global, Layout,
+    AllocRef, Global,
     ReallocPlacement::{self, *},
 };
 use crate::boxed::Box;

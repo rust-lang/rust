@@ -122,8 +122,8 @@
 //! [`Box::<T>::from_raw(value)`]: struct.Box.html#method.from_raw
 //! [`Box::<T>::into_raw`]: struct.Box.html#method.into_raw
 //! [`Global`]: ../alloc/struct.Global.html
-//! [`Layout`]: ../alloc/struct.Layout.html
-//! [`Layout::for_value(&*value)`]: ../alloc/struct.Layout.html#method.for_value
+//! [`Layout`]: ../../core/mem/struct.Layout.html
+//! [`Layout::for_value(&*value)`]: ../../core/mem/struct.Layout.html#method.for_value
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -137,7 +137,7 @@ use core::future::Future;
 use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, FusedIterator, Iterator};
 use core::marker::{Unpin, Unsize};
-use core::mem;
+use core::mem::{self, Layout};
 use core::ops::{
     CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,
 };
@@ -194,7 +194,7 @@ impl<T> Box<T> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
-        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
+        let layout = Layout::new::<mem::MaybeUninit<T>>();
         let ptr = Global
             .alloc(layout, AllocInit::Uninitialized)
             .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
@@ -223,7 +223,7 @@ impl<T> Box<T> {
     /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
-        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
+        let layout = Layout::new::<mem::MaybeUninit<T>>();
         let ptr = Global
             .alloc(layout, AllocInit::Zeroed)
             .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
@@ -377,7 +377,8 @@ impl<T: ?Sized> Box<T> {
     /// ```
     /// Manually create a `Box` from scratch by using the global allocator:
     /// ```
-    /// use std::alloc::{alloc, Layout};
+    /// use std::alloc::alloc;
+    /// use std::mem::Layout;
     ///
     /// unsafe {
     ///     let ptr = alloc(Layout::new::<i32>()) as *mut i32;
@@ -387,7 +388,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: index.html#memory-layout
-    /// [`Layout`]: ../alloc/struct.Layout.html
+    /// [`Layout`]: core::mem::Layout
     /// [`Box::into_raw`]: struct.Box.html#method.into_raw
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
@@ -422,7 +423,8 @@ impl<T: ?Sized> Box<T> {
     /// Manual cleanup by explicitly running the destructor and deallocating
     /// the memory:
     /// ```
-    /// use std::alloc::{dealloc, Layout};
+    /// use std::alloc::dealloc;
+    /// use std::mem::Layout;
     /// use std::ptr;
     ///
     /// let x = Box::new(String::from("Hello"));

@@ -1,4 +1,5 @@
-use std::alloc::{GlobalAlloc, Layout};
+use std::alloc::GlobalAlloc;
+use std::mem::Layout;
 
 struct A;
 

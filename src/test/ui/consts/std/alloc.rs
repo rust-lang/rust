@@ -1,4 +1,4 @@
-use std::alloc::Layout;
+use std::mem::Layout;
 
 // ok
 const LAYOUT_VALID: Layout = unsafe { Layout::from_size_align_unchecked(0x1000, 0x08) };

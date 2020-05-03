@@ -41,8 +41,8 @@ pub use linked_list::LinkedList;
 #[doc(no_inline)]
 pub use vec_deque::VecDeque;
 
-use crate::alloc::{Layout, LayoutErr};
 use core::fmt::Display;
+use core::mem::{Layout, LayoutError};
 
 /// The error type for `try_reserve` methods.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -71,9 +71,9 @@ pub enum TryReserveError {
 }
 
 #[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
-impl From<LayoutErr> for TryReserveError {
+impl From<LayoutError> for TryReserveError {
     #[inline]
-    fn from(_: LayoutErr) -> Self {
+    fn from(_: LayoutError) -> Self {
         TryReserveError::CapacityOverflow
     }
 }

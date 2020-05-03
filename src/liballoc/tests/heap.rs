@@ -1,4 +1,5 @@
-use std::alloc::{AllocInit, AllocRef, Global, Layout, System};
+use std::alloc::{AllocInit, AllocRef, Global, System};
+use std::mem::Layout;
 
 /// Issue #45955 and #62251.
 #[test]

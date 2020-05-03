@@ -25,7 +25,7 @@ pub extern fn foo(a: u32) -> u32 {
 }
 
 #[alloc_error_handler]
-fn a(_: core::alloc::Layout) -> ! {
+fn a(_: core::mem::Layout) -> ! {
     loop {}
 }
 

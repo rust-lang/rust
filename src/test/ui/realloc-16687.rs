@@ -6,7 +6,8 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout, ReallocPlacement};
+use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global, ReallocPlacement};
+use std::mem::Layout;
 use std::ptr::{self, NonNull};
 
 fn main() {

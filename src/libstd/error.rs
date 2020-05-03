@@ -15,14 +15,14 @@
 
 use core::array;
 
-use crate::alloc::{AllocErr, LayoutErr};
+use crate::alloc::AllocErr;
 use crate::any::TypeId;
 use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
 use crate::cell;
 use crate::char;
 use crate::fmt::{self, Debug, Display};
-use crate::mem::transmute;
+use crate::mem::{transmute, LayoutError};
 use crate::num;
 use crate::str;
 use crate::string;
@@ -407,7 +407,7 @@ impl Error for AllocErr {}
     reason = "the precise API and guarantees it provides may be tweaked.",
     issue = "32838"
 )]
-impl Error for LayoutErr {}
+impl Error for LayoutError {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {

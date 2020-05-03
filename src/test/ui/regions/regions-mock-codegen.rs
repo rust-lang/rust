@@ -4,7 +4,8 @@
 // pretty-expanded FIXME #23616
 #![feature(allocator_api)]
 
-use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout};
+use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global};
+use std::mem::Layout;
 use std::ptr::NonNull;
 
 struct arena(());

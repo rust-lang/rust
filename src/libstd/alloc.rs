@@ -16,7 +16,8 @@
 //! to route all default allocation requests to a custom object.
 //!
 //! ```rust
-//! use std::alloc::{GlobalAlloc, System, Layout};
+//! use std::alloc::{GlobalAlloc, System};
+//! use std::mem::Layout;
 //!
 //! struct MyAllocator;
 //!
@@ -72,24 +73,24 @@ use crate::sys_common::util::dumb_print;
 #[doc(inline)]
 pub use alloc_crate::alloc::*;
 
-#[stable(feature = "alloc_layout", since = "1.28.0")]
-#[doc(no_inline)]
 /// **This alias is soft-deprecated.**
 ///
 /// Although using it won’t cause compilation warning, new code should use [`mem::Layout`] directly
 /// instead.
 ///
 /// [`mem::Layout`]: crate::mem::Layout
-pub use crate::mem::Layout;
-
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[doc(no_inline)]
+pub use crate::mem::Layout;
+
 /// **This alias is soft-deprecated.**
 ///
 /// Although using it won’t cause compilation warning, new code should use [`mem::LayoutError`]
 /// directly instead.
 ///
 /// [`mem::LayoutError`]: crate::mem::LayoutError
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[doc(no_inline)]
 pub use crate::mem::LayoutError as LayoutErr;
 
 /// The default memory allocator provided by the operating system.
@@ -116,7 +117,8 @@ pub use crate::mem::LayoutError as LayoutErr;
 /// keeping track of the number of all bytes allocated:
 ///
 /// ```rust
-/// use std::alloc::{System, GlobalAlloc, Layout};
+/// use std::alloc::{System, GlobalAlloc};
+/// use std::mem::Layout;
 /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 ///
 /// struct Counter;
