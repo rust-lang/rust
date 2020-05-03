@@ -193,7 +193,7 @@ it can be found [here][rctd].
 As a developer to this repository, you don't have to treat the following external projects
 differently from other crates that are directly in this repo:
 
-* none so far, see https://github.com/rust-lang/rust/issues/70651 for more info
+* Clippy
 
 They are just regular files and directories. This is in contrast to `submodule` dependencies
 (see below for those). Only tool authors will actually use any operations here.
@@ -247,7 +247,7 @@ git subtree add -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git
 This will create a new commit, which you may not rebase under any circumstances! Delete the commit
 and redo the operation if you need to rebase.
 
-Now you're done, the `src/tools/clippy` directory behaves as if clippy were part of the rustc
+Now you're done, the `src/tools/clippy` directory behaves as if Clippy were part of the rustc
 monorepo, so no one but you (or others that synchronize subtrees) actually needs to use `git subtree`.
 
 
@@ -255,7 +255,6 @@ monorepo, so no one but you (or others that synchronize subtrees) actually needs
 
 Currently building Rust will also build the following external projects:
 
-* [clippy](https://github.com/rust-lang/rust-clippy)
 * [miri](https://github.com/rust-lang/miri)
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rls](https://github.com/rust-lang/rls/)
