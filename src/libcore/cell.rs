@@ -1023,6 +1023,31 @@ impl<T: ?Sized> RefCell<T> {
     }
 }
 
+impl<T: Default> RefCell<T> {
+    /// Takes the wrapped value, leaving `Default::default()` in its place.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is currently borrowed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_take)]
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    /// let five = c.take();
+    ///
+    /// assert_eq!(five, 5);
+    /// assert_eq!(c.into_inner(), 0);
+    /// ```
+    #[unstable(feature = "refcell_take", issue = "71395")]
+    pub fn take(&self) -> T {
+        self.replace(Default::default())
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized> Send for RefCell<T> where T: Send {}
 
