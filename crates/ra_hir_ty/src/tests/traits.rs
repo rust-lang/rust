@@ -2106,7 +2106,7 @@ impl TokenStream for Rustc {
         let group: Self::Group = make();
         make()
     }
-}        
+}
 "#),
         @r###"
     1062..1073 '{ loop {} }': T
