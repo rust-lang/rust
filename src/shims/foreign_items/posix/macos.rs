@@ -98,6 +98,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(stack_size, dest)?;
             }
 
+            // Threading
+            "pthread_setname_np" => {
+                let ptr = this.read_scalar(args[0])?.not_undef()?;
+                this.pthread_setname_np(ptr)?;
+            }
+
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "mmap" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
