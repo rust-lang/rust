@@ -1522,22 +1522,26 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident: Ident,
         has_sub: bool,
     ) -> Option<Res> {
+        // An immutable (no `mut`) by-value (no `ref`) binding pattern without
+        // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
+        // also be interpreted as a path to e.g. a constant, variant, etc.
+        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
+
         let ls_binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?;
         let (res, binding) = match ls_binding {
-            LexicalScopeBinding::Item(binding) if binding.is_ambiguity() => {
+            LexicalScopeBinding::Item(binding)
+                if is_syntactic_ambiguity && binding.is_ambiguity() =>
+            {
                 // For ambiguous bindings we don't know all their definitions and cannot check
                 // whether they can be shadowed by fresh bindings or not, so force an error.
+                // issues/33118#issuecomment-233962221 (see below) still applies here,
+                // but we have to ignore it for backward compatibility.
                 self.r.record_use(ident, ValueNS, binding, false);
                 return None;
             }
             LexicalScopeBinding::Item(binding) => (binding.res(), Some(binding)),
             LexicalScopeBinding::Res(res) => (res, None),
         };
-
-        // An immutable (no `mut`) by-value (no `ref`) binding pattern without
-        // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
-        // also be interpreted as a path to e.g. a constant, variant, etc.
-        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
 
         match res {
             Res::SelfCtor(_) // See #70549.
