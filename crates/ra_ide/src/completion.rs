@@ -65,21 +65,23 @@ pub(crate) fn completions(
     let ctx = CompletionContext::new(db, position, config)?;
 
     let mut acc = Completions::default();
-
-    complete_fn_param::complete_fn_param(&mut acc, &ctx);
-    complete_keyword::complete_expr_keyword(&mut acc, &ctx);
-    complete_keyword::complete_use_tree_keyword(&mut acc, &ctx);
-    complete_snippet::complete_expr_snippet(&mut acc, &ctx);
-    complete_snippet::complete_item_snippet(&mut acc, &ctx);
-    complete_qualified_path::complete_qualified_path(&mut acc, &ctx);
-    complete_unqualified_path::complete_unqualified_path(&mut acc, &ctx);
-    complete_dot::complete_dot(&mut acc, &ctx);
-    complete_record::complete_record(&mut acc, &ctx);
-    complete_pattern::complete_pattern(&mut acc, &ctx);
-    complete_postfix::complete_postfix(&mut acc, &ctx);
-    complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
-    complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
-    complete_attribute::complete_attribute(&mut acc, &ctx);
+    if ctx.attribute_under_caret.is_some() {
+        complete_attribute::complete_attribute(&mut acc, &ctx);
+    } else {
+        complete_fn_param::complete_fn_param(&mut acc, &ctx);
+        complete_keyword::complete_expr_keyword(&mut acc, &ctx);
+        complete_keyword::complete_use_tree_keyword(&mut acc, &ctx);
+        complete_snippet::complete_expr_snippet(&mut acc, &ctx);
+        complete_snippet::complete_item_snippet(&mut acc, &ctx);
+        complete_qualified_path::complete_qualified_path(&mut acc, &ctx);
+        complete_unqualified_path::complete_unqualified_path(&mut acc, &ctx);
+        complete_dot::complete_dot(&mut acc, &ctx);
+        complete_record::complete_record(&mut acc, &ctx);
+        complete_pattern::complete_pattern(&mut acc, &ctx);
+        complete_postfix::complete_postfix(&mut acc, &ctx);
+        complete_macro_in_item_position::complete_macro_in_item_position(&mut acc, &ctx);
+        complete_trait_impl::complete_trait_impl(&mut acc, &ctx);
+    }
 
     Some(acc)
 }

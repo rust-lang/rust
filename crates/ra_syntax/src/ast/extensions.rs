@@ -467,7 +467,7 @@ impl ast::TokenTree {
 
     pub fn right_delimiter_token(&self) -> Option<SyntaxToken> {
         self.syntax().last_child_or_token()?.into_token().filter(|it| match it.kind() {
-            T!['{'] | T!['('] | T!['['] => true,
+            T!['}'] | T![')'] | T![']'] => true,
             _ => false,
         })
     }
