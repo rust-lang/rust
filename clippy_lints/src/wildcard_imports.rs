@@ -158,12 +158,14 @@ impl LateLintPass<'_, '_> for WildcardImports {
 // Allow "...prelude::*" imports.
 // Many crates have a prelude, and it is imported as a glob by design.
 fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
-    segments.iter().last().map_or(false, |ps| ps.ident.as_str() == "prelude")
+    segments
+        .iter()
+        .last()
+        .map_or(false, |ps| ps.ident.as_str() == "prelude")
 }
 
 // Allow "super::*" imports.
 // This is intended primarily to ease the process of writing unit tests.
 fn is_super_only_import_in_test(segments: &[PathSegment<'_>]) -> bool {
-    segments.iter().len() == 1 &&
-        segments.first().map_or(false, |ps| ps.ident.as_str() == "super")
+    segments.iter().len() == 1 && segments.first().map_or(false, |ps| ps.ident.as_str() == "super")
 }
