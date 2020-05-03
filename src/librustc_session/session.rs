@@ -18,10 +18,11 @@ use rustc_data_structures::sync::{
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
+use rustc_errors::registry::Registry;
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{self, FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
-use rustc_span::SourceFileHashAlgorithm;
+use rustc_span::{SourceFileHashAlgorithm, Symbol};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target, TargetTriple, TlsModel};
 
 use std::cell::{self, RefCell};
@@ -142,6 +143,12 @@ pub struct Session {
     /// and immediately printing the backtrace to stderr.
     pub ctfe_backtrace: Lock<CtfeBacktrace>,
 
+    /// This tracks where `-Zunleash-the-miri-inside-of-you` was used to get around a
+    /// const check, optionally with the relevant feature gate.  We use this to
+    /// warn about unleashing, but with a single diagnostic instead of dozens that
+    /// drown everything else in noise.
+    miri_unleashed_features: Lock<Vec<(Span, Option<Symbol>)>>,
+
     /// Base directory containing the `src/` for the Rust standard library, and
     /// potentially `rustc` as well, if we can can find it. Right now it's always
     /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
@@ -189,6 +196,44 @@ impl From<&'static lint::Lint> for DiagnosticMessageId {
 }
 
 impl Session {
+    pub fn miri_unleashed_feature(&self, span: Span, feature_gate: Option<Symbol>) {
+        self.miri_unleashed_features.lock().push((span, feature_gate));
+    }
+
+    fn check_miri_unleashed_features(&self) {
+        let unleashed_features = self.miri_unleashed_features.lock();
+        if !unleashed_features.is_empty() {
+            let mut must_err = false;
+            // Create a diagnostic pointing at where things got unleashed.
+            let mut diag = self.struct_warn("skipping const checks");
+            for &(span, feature_gate) in unleashed_features.iter() {
+                // FIXME: `span_label` doesn't do anything, so we use "help" as a hack.
+                if let Some(feature_gate) = feature_gate {
+                    diag.span_help(span, &format!("skipping check for `{}` feature", feature_gate));
+                    // The unleash flag must *not* be used to just "hack around" feature gates.
+                    must_err = true;
+                } else {
+                    diag.span_help(span, "skipping check that does not even have a feature gate");
+                }
+            }
+            diag.emit();
+            // If we should err, make sure we did.
+            if must_err && !self.has_errors() {
+                // We have skipped a feature gate, and not run into other errors... reject.
+                self.err(
+                    "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
+                     gates, except when testing error paths in the CTFE engine",
+                );
+            }
+        }
+    }
+
+    /// Invoked all the way at the end to finish off diagnostics printing.
+    pub fn finish_diagnostics(&self, registry: &Registry) {
+        self.check_miri_unleashed_features();
+        self.diagnostic().print_error_count(registry);
+    }
+
     pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
         *self.crate_disambiguator.get()
     }
@@ -1139,6 +1184,7 @@ pub fn build_session_with_source_map(
         confused_type_with_std_module: Lock::new(Default::default()),
         system_library_path: OneThread::new(RefCell::new(Default::default())),
         ctfe_backtrace,
+        miri_unleashed_features: Lock::new(Default::default()),
         real_rust_source_base_dir,
     };
 

@@ -1,5 +1,7 @@
 warning: skipping const checks
-  --> $DIR/mutable_const2.rs:15:38
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_const2.rs:13:38
    |
 LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    |                                      ^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +9,7 @@ LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *m
 warning: 1 warning emitted
 
 error: internal compiler error: mutable allocation in constant
-  --> $DIR/mutable_const2.rs:15:1
+  --> $DIR/mutable_const2.rs:13:1
    |
 LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

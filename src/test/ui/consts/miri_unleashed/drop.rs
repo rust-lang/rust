@@ -15,5 +15,4 @@ static TEST_OK: () = {
 // The actual error is tested by the error-pattern above.
 static TEST_BAD: () = {
     let _v: Vec<i32> = Vec::new();
-    //~^ WARN skipping const check
 };

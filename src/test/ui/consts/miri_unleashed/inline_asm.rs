@@ -9,8 +9,7 @@ fn main() {}
 static TEST_BAD: () = {
     unsafe { llvm_asm!("xor %eax, %eax" ::: "eax"); }
     //~^ ERROR could not evaluate static initializer
-    //~| NOTE in this expansion of llvm_asm!
     //~| NOTE inline assembly is not supported
-    //~| WARN skipping const checks
+    //~| NOTE in this expansion of llvm_asm!
     //~| NOTE in this expansion of llvm_asm!
 };

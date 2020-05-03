@@ -8,14 +8,12 @@ const extern "C" fn c_fn() {}
 
 const fn call_rust_fn(my_fn: extern "Rust" fn()) {
     my_fn();
-    //~^ WARN skipping const checks
-    //~| ERROR could not evaluate static initializer
+    //~^ ERROR could not evaluate static initializer
     //~| NOTE calling a function with ABI C using caller ABI Rust
     //~| NOTE inside `call_rust_fn`
 }
 
 static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
-//~^ WARN skipping const checks
-//~| NOTE inside `VAL`
+//~^ NOTE inside `VAL`
 
 fn main() {}

@@ -1,14 +1,36 @@
-warning: skipping const checks
-  --> $DIR/mutable_references.rs:28:8
-   |
-LL |     x: &UnsafeCell::new(42),
-   |        ^^^^^^^^^^^^^^^^^^^^
-
 error[E0594]: cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
-  --> $DIR/mutable_references.rs:39:5
+  --> $DIR/mutable_references.rs:37:5
    |
 LL |     *OH_YES = 99;
    |     ^^^^^^^^^^^^ cannot assign
+
+warning: skipping const checks
+   |
+help: skipping check for `const_mut_refs` feature
+  --> $DIR/mutable_references.rs:9:26
+   |
+LL | static FOO: &&mut u32 = &&mut 42;
+   |                          ^^^^^^^
+help: skipping check for `const_mut_refs` feature
+  --> $DIR/mutable_references.rs:13:23
+   |
+LL | static BAR: &mut () = &mut ();
+   |                       ^^^^^^^
+help: skipping check for `const_mut_refs` feature
+  --> $DIR/mutable_references.rs:18:28
+   |
+LL | static BOO: &mut Foo<()> = &mut Foo(());
+   |                            ^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_references.rs:27:8
+   |
+LL |     x: &UnsafeCell::new(42),
+   |        ^^^^^^^^^^^^^^^^^^^^
+help: skipping check for `const_mut_refs` feature
+  --> $DIR/mutable_references.rs:31:27
+   |
+LL | static OH_YES: &mut i32 = &mut 42;
+   |                           ^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

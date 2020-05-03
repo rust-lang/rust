@@ -1,14 +1,16 @@
-warning: skipping const checks
-  --> $DIR/assoc_const.rs:14:20
-   |
-LL |     const F: u32 = (U::X, 42).1;
-   |                    ^^^^^^^^^^
-
 error[E0080]: erroneous constant used
   --> $DIR/assoc_const.rs:31:13
    |
 LL |     let y = <String as Bar<Vec<u32>, String>>::F;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/assoc_const.rs:14:20
+   |
+LL |     const F: u32 = (U::X, 42).1;
+   |                    ^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

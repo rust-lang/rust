@@ -1,5 +1,4 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
-#![feature(const_mut_refs)]
 #![allow(const_err)]
 
 use std::cell::UnsafeCell;
@@ -26,7 +25,6 @@ unsafe impl Sync for Meh {}
 
 static MEH: Meh = Meh {
     x: &UnsafeCell::new(42),
-    //~^ WARN: skipping const checks
 };
 
 // this is fine for the same reason as `BAR`.
