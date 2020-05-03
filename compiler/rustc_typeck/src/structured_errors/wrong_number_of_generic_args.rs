@@ -65,7 +65,7 @@ impl<'tcx> WrongNumberOfGenericArgs<'_, 'tcx> {
             let def_kind = self.tcx.def_kind(self.def_id).descr(self.def_id);
             let (quantifier, bound) = self.quantifier_and_bound();
 
-            if self.gen_args.span().is_some() {
+            if self.gen_args.span(|id| self.tcx.hir().span(id)).is_some() {
                 format!(
                     "this {} takes {}{} {} argument{} but {}{} {} argument{} {} supplied",
                     def_kind,
@@ -122,7 +122,7 @@ impl<'tcx> WrongNumberOfGenericArgs<'_, 'tcx> {
 
         for (i, arg) in args {
             err.span_label(
-                arg.span(),
+                self.tcx.hir().span(arg.id()),
                 if i + 1 == self.provided {
                     format!(
                         "supplied {} {} argument{}",
@@ -139,7 +139,7 @@ impl<'tcx> WrongNumberOfGenericArgs<'_, 'tcx> {
 
     fn suggest(&self, err: &mut DiagnosticBuilder<'_>) {
         if self.provided == 0 {
-            if self.gen_args.span().is_some() {
+            if self.gen_args.span(|id| self.tcx.hir().span(id)).is_some() {
                 self.suggest_adding_args(err);
             } else {
                 self.suggest_creating_generics(err);
@@ -206,11 +206,14 @@ impl<'tcx> WrongNumberOfGenericArgs<'_, 'tcx> {
         let missing_arg_count = self.expected_min - self.provided;
 
         let (span, sugg_prefix) = if self.args_offset + self.provided == 0 {
-            let span = self.gen_args.args[0].span().shrink_to_lo();
+            let span = self.tcx.hir().span(self.gen_args.args[0].id()).shrink_to_lo();
             (span, "")
         } else {
-            let span =
-                self.gen_args.args[self.args_offset + self.provided - 1].span().shrink_to_hi();
+            let span = self
+                .tcx
+                .hir()
+                .span(self.gen_args.args[self.args_offset + self.provided - 1].id())
+                .shrink_to_hi();
             (span, ", ")
         };
 
@@ -249,7 +252,7 @@ impl<'tcx> WrongNumberOfGenericArgs<'_, 'tcx> {
                 .path_segment
                 .args
                 .unwrap()
-                .span_ext(sm)
+                .span_ext(sm, |id| self.tcx.hir().span(id))
                 .unwrap()
                 .with_lo(self.path_segment.ident.span.hi());
 
@@ -293,19 +296,23 @@ impl<'tcx> WrongNumberOfGenericArgs<'_, 'tcx> {
                 let last_argument_ends_generics = to_idx + 1 == self.gen_args.args.len();
 
                 if !first_argument_starts_generics && last_argument_ends_generics {
-                    (self.gen_args.args[from_idx - 1].span().hi(), true)
+                    (self.tcx.hir().span(self.gen_args.args[from_idx - 1].id()).hi(), true)
                 } else {
-                    (self.gen_args.args[from_idx].span().lo(), false)
+                    (self.tcx.hir().span(self.gen_args.args[from_idx].id()).lo(), false)
                 }
             };
 
             let to = {
-                let hi = self.gen_args.args[to_idx].span().hi();
+                let hi = self.tcx.hir().span(self.gen_args.args[to_idx].id()).hi();
 
                 if comma_eaten {
                     hi
                 } else {
-                    self.gen_args.args.get(to_idx + 1).map(|arg| arg.span().lo()).unwrap_or(hi)
+                    self.gen_args
+                        .args
+                        .get(to_idx + 1)
+                        .map(|arg| self.tcx.hir().span(arg.id()).lo())
+                        .unwrap_or(hi)
                 }
             };
 

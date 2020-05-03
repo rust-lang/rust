@@ -29,9 +29,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         help: Option<&str>,
     ) {
         let sess = tcx.sess;
+        let arg_span = tcx.hir().span(arg.id());
         let mut err = struct_span_err!(
             sess,
-            arg.span(),
+            arg_span,
             E0747,
             "{} provided when a {} was expected",
             arg.descr(),
@@ -46,8 +47,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut DiagnosticBuilder<'_>| {
             let suggestions = vec![
-                (arg.span().shrink_to_lo(), String::from("{ ")),
-                (arg.span().shrink_to_hi(), String::from(" }")),
+                (tcx.hir().span(arg.id()).shrink_to_lo(), String::from("{ ")),
+                (tcx.hir().span(arg.id()).shrink_to_hi(), String::from(" }")),
             ];
             err.multipart_suggestion(
                 "if this generic argument was intended as a const parameter, \
@@ -102,7 +103,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id));
                 if let Ok(snippet) = snippet {
                     err.span_suggestion(
-                        arg.span(),
+                        arg_span,
                         "array type provided where a `usize` was expected, try",
                         format!("{{ {} }}", snippet),
                         Applicability::MaybeIncorrect,
@@ -453,7 +454,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     invalid_args.extend(
                         gen_args.args[args_offset + expected_max..args_offset + provided]
                             .iter()
-                            .map(|arg| arg.span()),
+                            .map(|arg| tcx.hir().span(arg.id())),
                     );
                 };
 
@@ -548,7 +549,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .args
                 .iter()
                 .filter_map(|arg| match arg {
-                    GenericArg::Type(_) | GenericArg::Const(_) => Some(arg.span()),
+                    GenericArg::Type(_) | GenericArg::Const(_) => Some(tcx.hir().span(arg.id())),
                     _ => None,
                 })
                 .collect::<Vec<_>>();
@@ -596,7 +597,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let msg = "cannot specify lifetime arguments explicitly \
                        if late bound lifetime parameters are present";
             let note = "the late bound lifetime parameter is introduced here";
-            let span = args.args[0].span();
+            let span = tcx.hir().span(args.args[0].id());
 
             if position == GenericArgPosition::Value
                 && arg_counts.lifetimes != param_counts.lifetimes

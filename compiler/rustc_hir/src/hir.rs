@@ -261,14 +261,6 @@ pub enum GenericArg<'hir> {
 }
 
 impl GenericArg<'_> {
-    pub fn span(&self) -> Span {
-        match self {
-            GenericArg::Lifetime(l) => l.span,
-            GenericArg::Type(t) => t.span,
-            GenericArg::Const(c) => c.span,
-        }
-    }
-
     pub fn id(&self) -> HirId {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,
@@ -355,17 +347,17 @@ impl GenericArgs<'_> {
         own_counts
     }
 
-    pub fn span(&self) -> Option<Span> {
+    pub fn span(&self, get_span: impl Fn(HirId) -> Span) -> Option<Span> {
         self.args
             .iter()
             .filter(|arg| !arg.is_synthetic())
-            .map(|arg| arg.span())
+            .map(|arg| get_span(arg.id()))
             .reduce(|span1, span2| span1.to(span2))
     }
 
     /// Returns span encompassing arguments and their surrounding `<>` or `()`
-    pub fn span_ext(&self, sm: &SourceMap) -> Option<Span> {
-        let mut span = self.span()?;
+    pub fn span_ext(&self, sm: &SourceMap, get_span: impl Fn(HirId) -> Span) -> Option<Span> {
+        let mut span = self.span(get_span)?;
 
         let (o, c) = if self.parenthesized { ('(', ')') } else { ('<', '>') };
 

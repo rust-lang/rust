@@ -421,10 +421,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
                         if has_default {
+                            let arg_id = arg.id();
                             tcx.check_optional_stability(
                                 param.def_id,
-                                Some(arg.id()),
-                                arg.span(),
+                                Some(arg_id),
+                                tcx.hir().span(arg_id),
                                 |_, _| {
                                     // Default generic parameters may not be marked
                                     // with stability attributes, i.e. when the

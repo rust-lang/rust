@@ -266,10 +266,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
         let first_generic_span = generic_args
             .args
-            .iter()
-            .map(|a| a.span())
-            .chain(generic_args.bindings.iter().map(|b| b.span))
-            .next();
+            .first()
+            .map(|a| self.spans[a.id()])
+            .or_else(|| generic_args.bindings.first().map(|b| b.span));
         if !generic_args.parenthesized && !has_lifetimes {
             generic_args.args = self
                 .elided_path_lifetimes(
