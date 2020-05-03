@@ -2388,21 +2388,14 @@ impl<'tcx> AdtDef {
                     None
                 }
             }
-            Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => {
-                if !expr_did.is_local() {
-                    span_bug!(
-                        tcx.def_span(expr_did),
-                        "variant discriminant evaluation succeeded \
-                         in its crate but failed locally"
-                    );
-                }
-                None
-            }
-            Err(ErrorHandled::TooGeneric) => {
-                tcx.sess.delay_span_bug(
-                    tcx.def_span(expr_did),
-                    "enum discriminant depends on generic arguments",
-                );
+            Err(err) => {
+                let msg = match err {
+                    ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
+                        "enum discriminant evaluation failed"
+                    }
+                    ErrorHandled::TooGeneric => "enum discriminant depends on generics",
+                };
+                tcx.sess.delay_span_bug(tcx.def_span(expr_did), msg);
                 None
             }
         }
