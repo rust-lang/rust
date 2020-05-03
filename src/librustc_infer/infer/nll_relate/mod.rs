@@ -657,7 +657,7 @@ where
             // Reset the ambient variance to covariant. This is needed
             // to correctly handle cases like
             //
-            //     for<'a> fn(&'a u32, &'a u3) == for<'b, 'c> fn(&'b u32, &'c u32)
+            //     for<'a> fn(&'a u32, &'a u32) == for<'b, 'c> fn(&'b u32, &'c u32)
             //
             // Somewhat surprisingly, these two types are actually
             // **equal**, even though the one on the right looks more
