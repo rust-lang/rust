@@ -698,7 +698,9 @@ impl<T> Trait<T> for X {
             suggested |=
                 self.suggest_constraint(db, &msg, body_owner_def_id, proj_ty, values.found);
         }
-        if let (Some(hir_id), false) = (self.hir().as_local_hir_id(body_owner_def_id), suggested) {
+        if let (Some(hir_id), false) =
+            (body_owner_def_id.as_local().map(|id| self.hir().as_local_hir_id(id)), suggested)
+        {
             // When `body_owner` is an `impl` or `trait` item, look in its associated types for
             // `expected` and point at it.
             let parent_id = self.hir().get_parent_item(hir_id);
