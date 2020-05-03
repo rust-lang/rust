@@ -98,6 +98,8 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
 [inv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.Invocation.html
 [`AstFragment`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/enum.AstFragment.html
 
+### Error Recovery
+
 If we make no progress in an iteration, then we have reached a compilation
 error (e.g. an undefined macro). We attempt to recover from failures
 (unresolved macros or imports) for the sake of diagnostics. This allows
@@ -108,6 +110,8 @@ fail at this point. The recovery happens by expanding unresolved macros into
 
 [err]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/enum.ExprKind.html#variant.Err
 
+### Name Resolution
+
 Notice that name resolution is involved here: we need to resolve imports and
 macro names in the above algorithm. This is done in
 [`rustc_resolve::macros`][mresolve], which resolves macro paths, validates
@@ -117,28 +121,6 @@ other names yet. This happens later, as we will see in the [next
 chapter](./name-resolution.md).
 
 [mresolve]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/macros/index.html
-
-Here are some other notable data structures involved in expansion and integration:
-- [`Resolver`] - a trait used to break crate dependencies. This allows the
-  resolver services to be used in [`rustc_ast`], despite [`rustc_resolve`] and
-  pretty much everything else depending on [`rustc_ast`].
-- [`ExtCtxt`]/[`ExpansionData`] - various intermediate data kept and used by expansion
-  infrastructure in the process of its work
-- [`Annotatable`] - a piece of AST that can be an attribute target, almost same
-  thing as AstFragment except for types and patterns that can be produced by
-  macros but cannot be annotated with attributes
-- [`MacResult`] - a "polymorphic" AST fragment, something that can turn into a
-  different `AstFragment` depending on its [`AstFragmentKind`] - item,
-  or expression, or pattern etc.
-
-[`rustc_ast`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/index.html
-[`rustc_resolve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/index.html
-[`Resolver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.Resolver.html
-[`ExtCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/struct.ExtCtxt.html
-[`ExpansionData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/struct.ExpansionData.html
-[`Annotatable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/enum.Annotatable.html
-[`MacResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.MacResult.html
-[`AstFragmentKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/enum.AstFragmentKind.html
 
 ### Eager Expansion
 
@@ -168,6 +150,30 @@ their AST fragments in [`rustc_expand::build`][reb]. Eager expansion generally
 performs a subset of the things that lazy (normal) expansion. It is done by
 invoking [`fully_expand_fragment`][fef] on only part of a crate (as opposed to
 whole crate, like we normally do).
+
+### Other Data Structures
+
+Here are some other notable data structures involved in expansion and integration:
+- [`Resolver`] - a trait used to break crate dependencies. This allows the
+  resolver services to be used in [`rustc_ast`], despite [`rustc_resolve`] and
+  pretty much everything else depending on [`rustc_ast`].
+- [`ExtCtxt`]/[`ExpansionData`] - various intermediate data kept and used by expansion
+  infrastructure in the process of its work
+- [`Annotatable`] - a piece of AST that can be an attribute target, almost same
+  thing as AstFragment except for types and patterns that can be produced by
+  macros but cannot be annotated with attributes
+- [`MacResult`] - a "polymorphic" AST fragment, something that can turn into a
+  different `AstFragment` depending on its [`AstFragmentKind`] - item,
+  or expression, or pattern etc.
+
+[`rustc_ast`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/index.html
+[`rustc_resolve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/index.html
+[`Resolver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.Resolver.html
+[`ExtCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/struct.ExtCtxt.html
+[`ExpansionData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/struct.ExpansionData.html
+[`Annotatable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/enum.Annotatable.html
+[`MacResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.MacResult.html
+[`AstFragmentKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/enum.AstFragmentKind.html
 
 ## Hygiene and Hierarchies
 
