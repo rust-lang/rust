@@ -196,7 +196,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
 
     let (mut ecx, ret_place) = match create_ecx(tcx, main_id, config) {
         Ok(v) => v,
-        Err(mut err) => {
+        Err(err) => {
             err.print_backtrace();
             panic!("Miri initialization error: {}", err.kind)
         }
