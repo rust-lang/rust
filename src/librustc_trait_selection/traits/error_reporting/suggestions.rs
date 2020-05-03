@@ -570,33 +570,30 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // original type obligation, not the last one that failed, which is arbitrary.
                     // Because of this, we modify the error to refer to the original obligation and
                     // return early in the caller.
-                    
 
                     let has_colon = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(span)
-                            .map(|w| w.contains(":"))
-                            .unwrap_or(false);
+                        .tcx
+                        .sess
+                        .source_map()
+                        .span_to_snippet(span)
+                        .map(|w| w.contains(":"))
+                        .unwrap_or(false);
 
                     let has_double_colon = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(span)
-                            .map(|w| w.contains("::"))
-                            .unwrap_or(false);
+                        .tcx
+                        .sess
+                        .source_map()
+                        .span_to_snippet(span)
+                        .map(|w| w.contains("::"))
+                        .unwrap_or(false);
 
                     let has_bracket = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(span)
-                            .map(|w| w.contains("{"))
-                            .unwrap_or(false);
-
-                   
+                        .tcx
+                        .sess
+                        .source_map()
+                        .span_to_snippet(span)
+                        .map(|w| w.contains("{"))
+                        .unwrap_or(false);
 
                     let msg = format!(
                         "the trait bound `{}: {}` is not satisfied",
@@ -620,7 +617,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             obligation.parent_trait_ref.skip_binder().print_only_trait_path(),
                         ),
                     );
-                
+
                     // This if is to prevent a special edge-case
                     if !has_colon || has_double_colon || has_bracket {
                         // We don't want a borrowing suggestion on the fields in structs,
