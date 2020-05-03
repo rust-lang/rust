@@ -48,7 +48,7 @@ pub enum NonHaltingDiagnostic {
 /// Emit a custom diagnostic without going through the miri-engine machinery
 pub fn report_error<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-    mut e: InterpErrorInfo<'tcx>,
+    e: InterpErrorInfo<'tcx>,
 ) -> Option<i64> {
     use InterpError::*;
 
