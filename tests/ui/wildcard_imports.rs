@@ -156,3 +156,41 @@ fn test_weird_formatting() {
     exported();
     foo();
 }
+
+mod test_super_imports {
+    fn foofoo() {}
+
+    mod use_super {
+        use super::*;
+
+        fn with_super() {
+            let _ = foofoo();
+        }
+    }
+
+    mod use_explicit {
+        use test_super_imports::*;
+
+        fn with_explicit() {
+            let _ = foofoo();
+        }
+    }
+
+    mod use_double_super {
+        mod inner {
+            use super::super::*;
+
+            fn with_double_super() {
+                let _ = foofoo();
+            }
+        }
+    }
+
+    mod use_super_explicit {
+        use super::super::test_super_imports::*;
+
+        fn with_super_explicit() {
+            let _ = foofoo();
+        }
+    }
+}

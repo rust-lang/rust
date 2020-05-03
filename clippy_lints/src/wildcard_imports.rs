@@ -3,7 +3,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
     def::{DefKind, Res},
-    Item, ItemKind, UseKind,
+    Item, ItemKind, PathSegment, UseKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -83,8 +83,8 @@ impl LateLintPass<'_, '_> for WildcardImports {
         if_chain! {
             if !in_macro(item.span);
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
-            // don't lint prelude glob imports
-            if !use_path.segments.iter().last().map_or(false, |ps| ps.ident.as_str() == "prelude");
+            if !is_prelude_import(use_path.segments);
+            if !is_super_only_import_in_test(use_path.segments);
             let used_imports = cx.tcx.names_imported_by_glob_use(item.hir_id.owner);
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
@@ -153,4 +153,17 @@ impl LateLintPass<'_, '_> for WildcardImports {
             }
         }
     }
+}
+
+// Allow "...prelude::*" imports.
+// Many crates have a prelude, and it is imported as a glob by design.
+fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
+    segments.iter().last().map_or(false, |ps| ps.ident.as_str() == "prelude")
+}
+
+// Allow "super::*" imports.
+// This is intended primarily to ease the process of writing unit tests.
+fn is_super_only_import_in_test(segments: &[PathSegment<'_>]) -> bool {
+    segments.iter().len() == 1 &&
+        segments.first().map_or(false, |ps| ps.ident.as_str() == "super")
 }

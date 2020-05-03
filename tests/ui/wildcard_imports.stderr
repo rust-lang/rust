@@ -92,5 +92,23 @@ LL |       use crate:: fn_mod::
 LL | |         *;
    | |_________^ help: try: `crate:: fn_mod::foo`
 
-error: aborting due to 15 previous errors
+error: usage of wildcard import
+  --> $DIR/wildcard_imports.rs:172:13
+   |
+LL |         use test_super_imports::*;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `test_super_imports::foofoo`
+
+error: usage of wildcard import
+  --> $DIR/wildcard_imports.rs:181:17
+   |
+LL |             use super::super::*;
+   |                 ^^^^^^^^^^^^^^^ help: try: `super::super::foofoo`
+
+error: usage of wildcard import
+  --> $DIR/wildcard_imports.rs:190:13
+   |
+LL |         use super::super::test_super_imports::*;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::test_super_imports::foofoo`
+
+error: aborting due to 18 previous errors
 
