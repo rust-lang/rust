@@ -10,10 +10,9 @@ use rustc_middle::mir::{
     FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::Span;
-use rustc_trait_selection::traits::error_reporting::suggest_constraining_type_param;
 
 use crate::dataflow::drop_flag_effects;
 use crate::dataflow::indexes::{MoveOutIndex, MovePathIndex};
