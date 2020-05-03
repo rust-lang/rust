@@ -8,7 +8,9 @@ use superslice::Ext;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineIndex {
+    /// Offset the the beginning of each line, zero-based
     pub(crate) newlines: Vec<TextSize>,
+    /// List of non-ASCII characters on each line
     pub(crate) utf16_lines: FxHashMap<u32, Vec<Utf16Char>>,
 }
 
@@ -22,7 +24,9 @@ pub struct LineCol {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) struct Utf16Char {
+    /// Start offset of a character inside a line, zero-based
     pub(crate) start: TextSize,
+    /// End offset of a character inside a line, zero-based
     pub(crate) end: TextSize,
 }
 
@@ -120,7 +124,7 @@ impl LineIndex {
     fn utf16_to_utf8_col(&self, line: u32, mut col: u32) -> TextSize {
         if let Some(utf16_chars) = self.utf16_lines.get(&line) {
             for c in utf16_chars {
-                if col >= u32::from(c.start) {
+                if col > u32::from(c.start) {
                     col += u32::from(c.len()) - 1;
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
@@ -226,8 +230,10 @@ const C: char = \"メ メ\";
         // UTF-16 to UTF-8
         assert_eq!(col_index.utf16_to_utf8_col(1, 15), TextSize::from(15));
 
-        assert_eq!(col_index.utf16_to_utf8_col(1, 18), TextSize::from(20));
-        assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextSize::from(23));
+        // メ UTF-8: 0xE3 0x83 0xA1, UTF-16: 0x30E1
+        assert_eq!(col_index.utf16_to_utf8_col(1, 17), TextSize::from(17)); // first メ at 17..20
+        assert_eq!(col_index.utf16_to_utf8_col(1, 18), TextSize::from(20)); // space
+        assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextSize::from(21)); // second メ at 21..24
 
         assert_eq!(col_index.utf16_to_utf8_col(2, 15), TextSize::from(15));
     }
