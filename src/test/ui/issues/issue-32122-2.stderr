@@ -5,7 +5,7 @@ LL |     let _: *const u8 = &a;
    |            ---------   ^^
    |            |           |
    |            |           expected `u8`, found struct `Emm`
-   |            |           help: consider dereferencing the reference: `&***a`
+   |            |           help: consider dereferencing: `&***a`
    |            expected due to this
    |
    = note: expected raw pointer `*const u8`

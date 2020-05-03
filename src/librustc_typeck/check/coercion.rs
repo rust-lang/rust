@@ -74,7 +74,7 @@ use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 
-pub struct Coerce<'a, 'tcx> {
+struct Coerce<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     cause: ObligationCause<'tcx>,
     use_lub: bool,
@@ -126,7 +126,7 @@ fn success<'tcx>(
 }
 
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
-    pub fn new(
+    fn new(
         fcx: &'f FnCtxt<'f, 'tcx>,
         cause: ObligationCause<'tcx>,
         allow_two_phase: AllowTwoPhase,
@@ -134,7 +134,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Coerce { fcx, cause, allow_two_phase, use_lub: false }
     }
 
-    pub fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
+    fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
             if self.use_lub {
@@ -839,6 +839,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We don't ever need two-phase here since we throw out the result of the coercion
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
         self.probe(|_| coerce.coerce(source, target)).is_ok()
+    }
+
+    /// Given a type and a target type, this function will calculate and return
+    /// how many dereference steps needed to achieve `expr_ty <: target`. If
+    /// it's not possible, return `None`.
+    pub fn deref_steps(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> Option<usize> {
+        let cause = self.cause(rustc_span::DUMMY_SP, ObligationCauseCode::ExprAssignable);
+        // We don't ever need two-phase here since we throw out the result of the coercion
+        let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
+        coerce
+            .autoderef(rustc_span::DUMMY_SP, expr_ty)
+            .find_map(|(ty, steps)| coerce.unify(ty, target).ok().map(|_| steps))
     }
 
     /// Given some expressions, their known unified type and another expression,
