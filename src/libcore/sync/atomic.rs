@@ -1809,11 +1809,10 @@ Note: This may call the function multiple times if the value has been changed fr
 the meantime, as long as the function returns `Some(_)`, but the function will have been applied
 but once to the stored value.
 
-`fetch_update` takes two [`Ordering`] arguments to describe the memory
-ordering of this operation. The first describes the required ordering for loads
-and failed updates while the second describes the required ordering when the
-operation finally succeeds. Beware that this is different from the two
-modes in [`compare_exchange`]!
+`fetch_update` takes two [`Ordering`] arguments to describe the memory ordering of this operation.
+The first describes the required ordering for when the operation finally succeeds while the second
+describes the required ordering for loads. These correspond to the success and failure orderings of
+[`compare_exchange`] respectively.
 
 Using [`Acquire`] as success ordering makes the store part
 of this operation [`Relaxed`], and using [`Release`] makes the final successful load
@@ -1831,24 +1830,21 @@ and must be equivalent to or weaker than the success ordering.
 # Examples
 
 ```rust
-#![feature(no_more_cas)]
 ", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
 
 let x = ", stringify!($atomic_type), "::new(7);
-assert_eq!(x.fetch_update(|_| None, Ordering::SeqCst, Ordering::SeqCst), Err(7));
-assert_eq!(x.fetch_update(|x| Some(x + 1), Ordering::SeqCst, Ordering::SeqCst), Ok(7));
-assert_eq!(x.fetch_update(|x| Some(x + 1), Ordering::SeqCst, Ordering::SeqCst), Ok(8));
+assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(7));
+assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(7));
+assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(8));
 assert_eq!(x.load(Ordering::SeqCst), 9);
 ```"),
                 #[inline]
-                #[unstable(feature = "no_more_cas",
-                       reason = "no more CAS loops in user code",
-                       issue = "48655")]
+                #[stable(feature = "no_more_cas", since = "1.45.0")]
                 #[$cfg_cas]
                 pub fn fetch_update<F>(&self,
-                                       mut f: F,
+                                       set_order: Ordering,
                                        fetch_order: Ordering,
-                                       set_order: Ordering) -> Result<$int_type, $int_type>
+                                       mut f: F) -> Result<$int_type, $int_type>
                 where F: FnMut($int_type) -> Option<$int_type> {
                     let mut prev = self.load(fetch_order);
                     while let Some(next) = f(prev) {
