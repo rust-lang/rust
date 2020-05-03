@@ -1636,6 +1636,17 @@ fn test_slice_partition_dedup_partialeq() {
 }
 
 #[test]
+fn test_slice_retain() {
+    let mut slice = [1, 2, 2, 3, 1, 4];
+    let retained = slice.retain(|&x| x == 1);
+    assert_eq!(retained, &[1, 1]);
+
+    let mut slice = [1, 2, 2, 3, 1, 4];
+    let retained = slice.retain(|&x| x % 2 == 0);
+    assert_eq!(retained, &[2, 2, 4]);
+}
+
+#[test]
 fn test_copy_within() {
     // Start to end, with a RangeTo.
     let mut bytes = *b"Hello, World!";
