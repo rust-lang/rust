@@ -222,7 +222,7 @@ impl Session {
                 // We have skipped a feature gate, and not run into other errors... reject.
                 self.err(
                     "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
-                     gates, except when testing error paths in the CTFE engine"
+                     gates, except when testing error paths in the CTFE engine",
                 );
             }
         }
