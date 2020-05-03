@@ -5,10 +5,19 @@ LL | use foo as self;
    |            ^^^^ expected identifier, found keyword
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/import-self.rs:12:5
+  --> $DIR/import-self.rs:12:8
    |
 LL | use foo::self;
-   |     ^^^^^^^^^
+   |        ^^^^^^
+   |
+help: Remove `::self`..
+   |
+LL | use foo;
+   |       --
+help: ..or add braces around `self`
+   |
+LL | use foo::{self};
+   |          ^    ^
 
 error[E0255]: the name `foo` is defined multiple times
   --> $DIR/import-self.rs:6:11

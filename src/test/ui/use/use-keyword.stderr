@@ -2,7 +2,7 @@ error[E0429]: `self` imports are only allowed within a { } list
   --> $DIR/use-keyword.rs:6:13
    |
 LL |         use self as A;
-   |             ^^^^^^^^^
+   |             ^^^^
 
 error[E0432]: unresolved import `super`
   --> $DIR/use-keyword.rs:8:13

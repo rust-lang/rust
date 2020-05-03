@@ -1,14 +1,32 @@
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-mod-4.rs:1:5
+  --> $DIR/use-mod-4.rs:1:8
    |
 LL | use foo::self;
-   |     ^^^^^^^^^
+   |        ^^^^^^
+   |
+help: Remove `::self`..
+   |
+LL | use foo;
+   |       --
+help: ..or add braces around `self`
+   |
+LL | use foo::{self};
+   |          ^    ^
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-mod-4.rs:4:5
+  --> $DIR/use-mod-4.rs:4:13
    |
 LL | use std::mem::self;
-   |     ^^^^^^^^^^^^^^
+   |             ^^^^^^
+   |
+help: Remove `::self`..
+   |
+LL | use std::mem;
+   |            --
+help: ..or add braces around `self`
+   |
+LL | use std::mem::{self};
+   |               ^    ^
 
 error[E0432]: unresolved import `foo`
   --> $DIR/use-mod-4.rs:1:5

@@ -194,7 +194,7 @@ enum ResolutionError<'a> {
     /// Error E0426: use of undeclared label.
     UndeclaredLabel(&'a str, Option<Symbol>),
     /// Error E0429: `self` imports are only allowed within a `{ }` list.
-    SelfImportsOnlyAllowedWithin,
+    SelfImportsOnlyAllowedWithin { root: bool, span_with_rename: Span },
     /// Error E0430: `self` import can only appear once in the list.
     SelfImportCanOnlyAppearOnceInTheList,
     /// Error E0431: `self` import can only appear in an import list with a non-empty prefix.

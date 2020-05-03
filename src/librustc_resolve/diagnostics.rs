@@ -301,13 +301,40 @@ impl<'a> Resolver<'a> {
                 }
                 err
             }
-            ResolutionError::SelfImportsOnlyAllowedWithin => struct_span_err!(
-                self.session,
-                span,
-                E0429,
-                "{}",
-                "`self` imports are only allowed within a { } list"
-            ),
+            ResolutionError::SelfImportsOnlyAllowedWithin { root, span_with_rename } => {
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0429,
+                    "{}",
+                    "`self` imports are only allowed within a { } list"
+                );
+
+                // None of the suggestions below would help with a case like `use self`.
+                if !root {
+                    // use foo::bar::self        -> foo::bar
+                    // use foo::bar::self as abc -> foo::bar as abc
+                    err.span_suggestion(
+                        span,
+                        "Remove `::self`..",
+                        "".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+
+                    // use foo::bar::self        -> foo::bar::{self}
+                    // use foo::bar::self as abc -> foo::bar::{self as abc}
+                    let braces = vec![
+                        (span_with_rename.shrink_to_lo(), "{".to_string()),
+                        (span_with_rename.shrink_to_hi(), "}".to_string()),
+                    ];
+                    err.multipart_suggestion(
+                        "..or add braces around `self`",
+                        braces,
+                        Applicability::MachineApplicable,
+                    );
+                }
+                err
+            }
             ResolutionError::SelfImportCanOnlyAppearOnceInTheList => {
                 let mut err = struct_span_err!(
                     self.session,
