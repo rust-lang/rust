@@ -29,34 +29,10 @@ handled in [`rustc_expand::config`][cfg].
 
 First of all, expansion happens at the crate level. Given a raw source code for
 a crate, the compiler will produce a massive AST with all macros expanded, all
-modules inlined, etc.
-
-The primary entry point for this process is the
-[`MacroExpander::fully_expand_fragment`][fef] method. Usually, we run this
-method on a whole crate. If it is not run on a full crate, it means we are
-doing _eager macro expansion_. Eager expansion means that we expand the
-arguments of a macro invocation before the macro invocation itself. This is
-implemented only for a few special built-in macros that expect literals (it's
-not a generally available feature of Rust).
-As an example, consider the following:
-
-```rust,ignore
-macro bar($i: ident) { $i }
-macro foo($i: ident) { $i }
-
-foo!(bar!(baz));
-```
-
-A lazy expansion would expand `foo!` first. An eager expansion would expand
-`bar!` first. Implementing eager expansion more generally would be challenging,
-but we implement it for a few special built-in macros for the sake of user
-experience. The built-in macros are implemented in [`rustc_builtin_macros`],
-along with some other early code generation facilities like injection of
-standard library imports or generation of test harness. There are some
-additional helpers for building their AST fragments in
-[`rustc_expand::build`][reb]. Eager expansion generally performs a subset of
-the things that lazy (normal) expansion does, so we will focus on lazy
-expansion for the rest of this chapter.
+modules inlined, etc. The primary entry point for this process is the
+[`MacroExpander::fully_expand_fragment`][fef] method. With few exceptions, we
+use this method on the whole crate (see ["Eager Expansion"](#eager-expansion)
+below for more detailed discussion of edge case expansion issues).
 
 [`rustc_builtin_macros`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_builtin_macros/index.html
 [reb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/build/index.html
@@ -164,6 +140,34 @@ Here are some other notable data structures involved in expansion and integratio
 [`MacResult`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/base/trait.MacResult.html
 [`AstFragmentKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/enum.AstFragmentKind.html
 
+### Eager Expansion
+
+_Eager expansion_ means that we expand the arguments of a macro invocation
+before the macro invocation itself. This is implemented only for a few special
+built-in macros that expect literals; expanding arguments first for some of
+these macro results in a smoother user experience.  As an example, consider the
+following:
+
+```rust,ignore
+macro bar($i: ident) { $i }
+macro foo($i: ident) { $i }
+
+foo!(bar!(baz));
+```
+
+A lazy expansion would expand `foo!` first. An eager expansion would expand
+`bar!` first.
+
+Eager expansion is not a generally available feature of Rust.  Implementing
+eager expansion more generally would be challenging, but we implement it for a
+few special built-in macros for the sake of user experience.  The built-in
+macros are implemented in [`rustc_builtin_macros`], along with some other early
+code generation facilities like injection of standard library imports or
+generation of test harness. There are some additional helpers for building
+their AST fragments in [`rustc_expand::build`][reb]. Eager expansion generally
+performs a subset of the things that lazy (normal) expansion. It is done by
+invoking [`fully_expand_fragment`][fef] on only part of a crate (as opposed to
+whole crate, like we normally do).
 
 ## Hygiene and Hierarchies
 
