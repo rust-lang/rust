@@ -281,6 +281,7 @@ E0535: include_str!("./error_codes/E0535.md"),
 E0536: include_str!("./error_codes/E0536.md"),
 E0537: include_str!("./error_codes/E0537.md"),
 E0538: include_str!("./error_codes/E0538.md"),
+E0539: include_str!("./error_codes/E0539.md"),
 E0541: include_str!("./error_codes/E0541.md"),
 E0550: include_str!("./error_codes/E0550.md"),
 E0551: include_str!("./error_codes/E0551.md"),
@@ -570,7 +571,6 @@ E0753: include_str!("./error_codes/E0753.md"),
     E0521, // borrowed data escapes outside of closure
     E0523,
 //  E0526, // shuffle indices are not constant
-    E0539, // incorrect meta item
     E0540, // multiple rustc_deprecated attributes
     E0542, // missing 'since'
     E0543, // missing 'reason'

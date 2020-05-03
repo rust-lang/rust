@@ -1,4 +1,3 @@
-use crate::check::coercion::Coerce;
 use crate::check::FnCtxt;
 use rustc_infer::infer::InferOk;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -9,7 +8,6 @@ use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Node};
-use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::sym;
@@ -355,6 +353,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    fn replace_prefix<A, B, C>(&self, s: A, old: B, new: C) -> Option<String>
+    where
+        A: AsRef<str>,
+        B: AsRef<str>,
+        C: AsRef<str>,
+    {
+        let s = s.as_ref();
+        let old = old.as_ref();
+        if s.starts_with(old) { Some(new.as_ref().to_owned() + &s[old.len()..]) } else { None }
+    }
+
     /// This function is used to determine potential "simple" improvements or users' errors and
     /// provide them useful help. For example:
     ///
@@ -376,7 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
-    ) -> Option<(Span, &'static str, String)> {
+    ) -> Option<(Span, &'static str, String, Applicability)> {
         let sm = self.sess().source_map();
         let sp = expr.span;
         if sm.is_imported(sp) {
@@ -400,11 +409,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if src.starts_with("b\"") {
+                            if let Some(src) = self.replace_prefix(src, "b\"", "\"") {
                                 return Some((
                                     sp,
                                     "consider removing the leading `b`",
-                                    src[1..].to_string(),
+                                    src,
+                                    Applicability::MachineApplicable,
                                 ));
                             }
                         }
@@ -413,11 +423,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if src.starts_with('"') {
+                            if let Some(src) = self.replace_prefix(src, "\"", "b\"") {
                                 return Some((
                                     sp,
                                     "consider adding a leading `b`",
-                                    format!("b{}", src),
+                                    src,
+                                    Applicability::MachineApplicable,
                                 ));
                             }
                         }
@@ -470,7 +481,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let sugg_expr = if needs_parens { format!("({})", src) } else { src };
 
                         if let Some(sugg) = self.can_use_as_ref(expr) {
-                            return Some(sugg);
+                            return Some((
+                                sugg.0,
+                                sugg.1,
+                                sugg.2,
+                                Applicability::MachineApplicable,
+                            ));
                         }
                         let field_name = if is_struct_pat_shorthand_field {
                             format!("{}: ", sugg_expr)
@@ -495,6 +511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         "consider dereferencing here to assign to the mutable \
                                          borrowed piece of memory",
                                         format!("*{}", src),
+                                        Applicability::MachineApplicable,
                                     ));
                                 }
                             }
@@ -505,11 +522,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 sp,
                                 "consider mutably borrowing here",
                                 format!("{}&mut {}", field_name, sugg_expr),
+                                Applicability::MachineApplicable,
                             ),
                             hir::Mutability::Not => (
                                 sp,
                                 "consider borrowing here",
                                 format!("{}&{}", field_name, sugg_expr),
+                                Applicability::MachineApplicable,
                             ),
                         });
                     }
@@ -526,51 +545,88 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest removing a `&`.
                 if sm.is_imported(expr.span) {
-                    if let Ok(code) = sm.span_to_snippet(sp) {
-                        if code.starts_with('&') {
+                    if let Ok(src) = sm.span_to_snippet(sp) {
+                        if let Some(src) = self.replace_prefix(src, "&", "") {
                             return Some((
                                 sp,
                                 "consider removing the borrow",
-                                code[1..].to_string(),
+                                src,
+                                Applicability::MachineApplicable,
                             ));
                         }
                     }
                     return None;
                 }
                 if let Ok(code) = sm.span_to_snippet(expr.span) {
-                    return Some((sp, "consider removing the borrow", code));
+                    return Some((
+                        sp,
+                        "consider removing the borrow",
+                        code,
+                        Applicability::MachineApplicable,
+                    ));
                 }
             }
             (
                 _,
-                &ty::RawPtr(TypeAndMut { ty: _, mutbl: hir::Mutability::Not }),
-                &ty::Ref(_, _, hir::Mutability::Not),
+                &ty::RawPtr(TypeAndMut { ty: ty_b, mutbl: mutbl_b }),
+                &ty::Ref(_, ty_a, mutbl_a),
             ) => {
-                let cause = self.cause(rustc_span::DUMMY_SP, ObligationCauseCode::ExprAssignable);
-                // We don't ever need two-phase here since we throw out the result of the coercion
-                let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
-
-                if let Some(steps) =
-                    coerce.autoderef(sp, checked_ty).skip(1).find_map(|(referent_ty, steps)| {
-                        coerce
-                            .unify(
-                                coerce.tcx.mk_ptr(ty::TypeAndMut {
-                                    mutbl: hir::Mutability::Not,
-                                    ty: referent_ty,
-                                }),
-                                expected,
-                            )
-                            .ok()
-                            .map(|_| steps)
-                    })
-                {
-                    // The pointer type implements `Copy` trait so the suggestion is always valid.
-                    if let Ok(code) = sm.span_to_snippet(sp) {
-                        if code.starts_with('&') {
-                            let derefs = "*".repeat(steps - 1);
-                            let message = "consider dereferencing the reference";
-                            let suggestion = format!("&{}{}", derefs, code[1..].to_string());
-                            return Some((sp, message, suggestion));
+                if let Some(steps) = self.deref_steps(ty_a, ty_b) {
+                    // Only suggest valid if dereferencing needed.
+                    if steps > 0 {
+                        // The pointer type implements `Copy` trait so the suggestion is always valid.
+                        if let Ok(src) = sm.span_to_snippet(sp) {
+                            let derefs = &"*".repeat(steps);
+                            if let Some((src, applicability)) = match mutbl_b {
+                                hir::Mutability::Mut => {
+                                    let new_prefix = "&mut ".to_owned() + derefs;
+                                    match mutbl_a {
+                                        hir::Mutability::Mut => {
+                                            if let Some(s) =
+                                                self.replace_prefix(src, "&mut ", new_prefix)
+                                            {
+                                                Some((s, Applicability::MachineApplicable))
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                        hir::Mutability::Not => {
+                                            if let Some(s) =
+                                                self.replace_prefix(src, "&", new_prefix)
+                                            {
+                                                Some((s, Applicability::Unspecified))
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                    }
+                                }
+                                hir::Mutability::Not => {
+                                    let new_prefix = "&".to_owned() + derefs;
+                                    match mutbl_a {
+                                        hir::Mutability::Mut => {
+                                            if let Some(s) =
+                                                self.replace_prefix(src, "&mut ", new_prefix)
+                                            {
+                                                Some((s, Applicability::MachineApplicable))
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                        hir::Mutability::Not => {
+                                            if let Some(s) =
+                                                self.replace_prefix(src, "&", new_prefix)
+                                            {
+                                                Some((s, Applicability::MachineApplicable))
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                    }
+                                }
+                            } {
+                                return Some((sp, "consider dereferencing", src, applicability));
+                            }
                         }
                     }
                 }
@@ -616,7 +672,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             format!("*{}", code)
                         };
-                        return Some((sp, message, suggestion));
+                        return Some((sp, message, suggestion, Applicability::MachineApplicable));
                     }
                 }
             }
