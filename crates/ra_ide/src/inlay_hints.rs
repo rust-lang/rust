@@ -9,6 +9,7 @@ use ra_syntax::{
 };
 
 use crate::{FileId, FunctionSignature};
+use stdx::to_lower_snake_case;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -279,23 +280,9 @@ fn is_enum_name_similar_to_param_name(
     param_name: &str,
 ) -> bool {
     match sema.type_of_expr(argument).and_then(|t| t.as_adt()) {
-        Some(Adt::Enum(e)) => &camel_case_to_snake_case(e.name(sema.db).to_string()) == param_name,
+        Some(Adt::Enum(e)) => to_lower_snake_case(&e.name(sema.db).to_string()) == param_name,
         _ => false,
     }
-}
-
-fn camel_case_to_snake_case(s: String) -> String {
-    let mut buf = String::with_capacity(s.len());
-    let mut prev = false;
-    for c in s.chars() {
-        if c.is_ascii_uppercase() && prev {
-            buf.push('_')
-        }
-        prev = true;
-
-        buf.push(c.to_ascii_lowercase());
-    }
-    buf
 }
 
 fn get_string_representation(expr: &ast::Expr) -> Option<String> {
