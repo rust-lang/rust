@@ -1807,7 +1807,7 @@ new value. Returns a `Result` of `Ok(previous_value)` if the function returned `
 
 Note: This may call the function multiple times if the value has been changed from other threads in
 the meantime, as long as the function returns `Some(_)`, but the function will have been applied
-but once to the stored value.
+only once to the stored value.
 
 `fetch_update` takes two [`Ordering`] arguments to describe the memory ordering of this operation.
 The first describes the required ordering for when the operation finally succeeds while the second
