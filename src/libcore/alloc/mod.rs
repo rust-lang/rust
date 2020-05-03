@@ -3,12 +3,29 @@
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
 mod global;
-mod layout;
 
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub use self::global::GlobalAlloc;
+
 #[stable(feature = "alloc_layout", since = "1.28.0")]
-pub use self::layout::{Layout, LayoutErr};
+#[doc(no_inline)]
+/// **This alias is soft-deprecated.**
+///
+/// Although using it won’t cause compilation warning, new code should use [`mem::Layout`] directly
+/// instead.
+///
+/// [`mem::Layout`]: crate::mem::Layout
+pub use crate::mem::Layout;
+
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[doc(no_inline)]
+/// **This alias is soft-deprecated.**
+///
+/// Although using it won’t cause compilation warning, new code should use [`mem::LayoutError`]
+/// directly instead.
+///
+/// [`mem::LayoutError`]: crate::mem::LayoutError
+pub use crate::mem::LayoutError as LayoutErr;
 
 use crate::fmt;
 use crate::ptr::{self, NonNull};

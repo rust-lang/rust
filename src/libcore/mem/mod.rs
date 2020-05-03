@@ -25,6 +25,10 @@ pub use maybe_uninit::MaybeUninit;
 #[doc(inline)]
 pub use crate::intrinsics::transmute;
 
+mod layout;
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+pub use layout::{Layout, LayoutError};
+
 /// Takes ownership and "forgets" about the value **without running its destructor**.
 ///
 /// Any resources the value manages, such as heap memory or a file handle, will linger

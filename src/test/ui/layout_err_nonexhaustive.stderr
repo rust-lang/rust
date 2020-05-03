@@ -1,0 +1,9 @@
+error[E0423]: expected value, found struct `LayoutError`
+  --> $DIR/layout_err_nonexhaustive.rs:4:16
+   |
+LL |     let _err = LayoutError;
+   |                ^^^^^^^^^^^ constructor is not visible here due to private fields
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0423`.
