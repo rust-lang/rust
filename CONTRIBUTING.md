@@ -155,7 +155,7 @@ That's why the `else_if_without_else` example uses the `register_early_pass` fun
 
 ## Fixing build failures caused by Rust
 
-Clippy currently gets build with `rustc` of the `rust-lang/rust` `master`
+Clippy currently gets built with `rustc` of the `rust-lang/rust` `master`
 branch. Most of the times we have to adapt to the changes and only very rarely
 there's an actual bug in Rust.
 
@@ -170,7 +170,7 @@ Here is a TL;DR version of the sync process:
 
 1. Clone the [`rust-lang/rust`] repository (all of the following commands have
    to be run inside the `rust` directory)
-2. Sync the changes to the copy of Clippy to your fork of the Clippy repository:
+2. Sync the changes to the rust-copy of Clippy to your Clippy fork:
     ```bash
     # Make sure to change `your-github-name` to your github name in the following command
     git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
@@ -178,7 +178,7 @@ Here is a TL;DR version of the sync process:
 3. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
    accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
    ~~annoy~~ ask them in the [Discord] channel.)
-4. Sync the `rust-lang/rust-clippy` master to the copy of Clippy:
+4. Sync the `rust-lang/rust-clippy` master to the rust-copy of Clippy:
     ```bash
     git checkout -b sync-from-clippy
     git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy master
