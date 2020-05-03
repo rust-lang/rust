@@ -134,16 +134,20 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
         }
         false
     }
+
+    /// Get the name of the current thread, or `<unnamed>` if it was not set.
+    fn thread_name(&self) -> &[u8] {
+        if let Some(ref thread_name) = self.thread_name {
+            thread_name
+        } else {
+            b"<unnamed>"
+        }
+    }
 }
 
 impl<'mir, 'tcx> std::fmt::Debug for Thread<'mir, 'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(ref name) = self.thread_name {
-            write!(f, "{}", String::from_utf8_lossy(name))?;
-        } else {
-            write!(f, "<unnamed>")?;
-        }
-        write!(f, "({:?}, {:?})", self.state, self.join_status)
+        write!(f, "{}({:?}, {:?})", String::from_utf8_lossy(self.thread_name()), self.state, self.join_status)
     }
 }
 
@@ -314,11 +318,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
     /// Get the name of the active thread.
     fn get_thread_name(&self) -> &[u8] {
-        if let Some(ref thread_name) = self.active_thread_ref().thread_name {
-            thread_name
-        } else {
-            b"<unnamed>"
-        }
+        self.active_thread_ref().thread_name()
     }
 
     /// Allocate a new blockset id.

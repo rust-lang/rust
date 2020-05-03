@@ -434,7 +434,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Architecture-specific shims
-            "llvm.x86.sse2.pause" if this.tcx.sess.target.target.arch == "x86" || this.tcx.sess.target.target.arch == "x86_64" => {}
+            "llvm.x86.sse2.pause" if this.tcx.sess.target.target.arch == "x86" || this.tcx.sess.target.target.arch == "x86_64" => {
+                this.sched_yield()?;
+            }
 
             // Platform-specific shims
             _ => match this.tcx.sess.target.target.target_os.as_str() {

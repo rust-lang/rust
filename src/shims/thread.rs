@@ -95,6 +95,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         _arg5: OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+        this.assert_target_os("linux", "prctl");
 
         let option = this.read_scalar(option)?.to_i32()?;
         if option == this.eval_libc_i32("PR_SET_NAME")? {
@@ -116,6 +117,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         Ok(0)
+    }
+
+    fn pthread_setname_np(
+        &mut self,
+        ptr: Scalar<Tag>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.assert_target_os("macos", "pthread_setname_np");
+
+        let name = this.memory.read_c_str(ptr)?.to_owned();
+        this.set_active_thread_name(name)?;
+
+        Ok(())
     }
 
     fn sched_yield(&mut self) -> InterpResult<'tcx, i32> {
