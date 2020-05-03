@@ -9,6 +9,26 @@ use core::ptr::{NonNull, Unique};
 #[doc(inline)]
 pub use core::alloc::*;
 
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[doc(no_inline)]
+/// **This alias is soft-deprecated.**
+///
+/// Although using it won’t cause compilation warning, new code should use [`mem::Layout`] directly
+/// instead.
+///
+/// [`mem::Layout`]: core::mem::Layout
+pub use core::mem::Layout;
+
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[doc(no_inline)]
+/// **This alias is soft-deprecated.**
+///
+/// Although using it won’t cause compilation warning, new code should use [`mem::LayoutError`]
+/// directly instead.
+///
+/// [`mem::LayoutError`]: core::mem::LayoutError
+pub use core::mem::LayoutError as LayoutErr;
+
 #[cfg(test)]
 mod tests;
 

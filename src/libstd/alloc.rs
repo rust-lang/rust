@@ -72,6 +72,26 @@ use crate::sys_common::util::dumb_print;
 #[doc(inline)]
 pub use alloc_crate::alloc::*;
 
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[doc(no_inline)]
+/// **This alias is soft-deprecated.**
+///
+/// Although using it won’t cause compilation warning, new code should use [`mem::Layout`] directly
+/// instead.
+///
+/// [`mem::Layout`]: crate::mem::Layout
+pub use crate::mem::Layout;
+
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+#[doc(no_inline)]
+/// **This alias is soft-deprecated.**
+///
+/// Although using it won’t cause compilation warning, new code should use [`mem::LayoutError`]
+/// directly instead.
+///
+/// [`mem::LayoutError`]: crate::mem::LayoutError
+pub use crate::mem::LayoutError as LayoutErr;
+
 /// The default memory allocator provided by the operating system.
 ///
 /// This is based on `malloc` on Unix platforms and `HeapAlloc` on Windows,
