@@ -1,8 +1,10 @@
 warning: skipping const checks
-  --> $DIR/mutable_const2.rs:13:1
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_const2.rs:13:38
    |
 LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                      ^^^^^^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 

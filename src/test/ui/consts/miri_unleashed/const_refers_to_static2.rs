@@ -8,7 +8,6 @@ use std::sync::atomic::Ordering;
 // so they cause an immediate error when *defining* the const.
 
 const REF_INTERIOR_MUT: &usize = { //~ ERROR undefined behavior to use this value
-//~^ WARN skipping const checks
 //~| NOTE encountered a reference pointing to a static variable
 //~| NOTE
     static FOO: AtomicUsize = AtomicUsize::new(0);
@@ -17,7 +16,6 @@ const REF_INTERIOR_MUT: &usize = { //~ ERROR undefined behavior to use this valu
 
 // ok some day perhaps
 const READ_IMMUT: &usize = { //~ ERROR it is undefined behavior to use this value
-//~^ WARN skipping const checks
 //~| NOTE encountered a reference pointing to a static variable
 //~| NOTE
     static FOO: usize = 0;

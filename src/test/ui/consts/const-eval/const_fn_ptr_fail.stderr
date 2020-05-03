@@ -1,10 +1,10 @@
 warning: skipping const checks
-  --> $DIR/const_fn_ptr_fail.rs:9:1
    |
-LL | / const fn bar(x: usize) -> usize {
-LL | |     X(x) // FIXME: this should error someday
-LL | | }
-   | |_^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_fn_ptr_fail.rs:10:5
+   |
+LL |     X(x) // FIXME: this should error someday
+   |     ^^^^
 
 warning: 1 warning emitted
 

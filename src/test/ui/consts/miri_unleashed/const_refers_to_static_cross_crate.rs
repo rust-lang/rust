@@ -9,14 +9,12 @@ extern crate static_cross_crate;
 // Sneaky: reference to a mutable static.
 // Allowing this would be a disaster for pattern matching, we could violate exhaustiveness checking!
 const SLICE_MUT: &[u8; 1] = { //~ ERROR undefined behavior to use this value
-//~^ WARN skipping const checks
 //~| NOTE encountered a reference pointing to a static variable
 //~| NOTE
     unsafe { &static_cross_crate::ZERO }
 };
 
 const U8_MUT: &u8 = { //~ ERROR undefined behavior to use this value
-//~^ WARN skipping const checks
 //~| NOTE encountered a reference pointing to a static variable
 //~| NOTE
     unsafe { &static_cross_crate::ZERO[0] }
@@ -25,14 +23,12 @@ const U8_MUT: &u8 = { //~ ERROR undefined behavior to use this value
 // Also test indirection that reads from other static. This causes a const_err.
 #[warn(const_err)] //~ NOTE
 const U8_MUT2: &u8 = { //~ NOTE
-//~^ WARN skipping const checks
     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
     //~^ WARN [const_err]
     //~| NOTE constant accesses static
 };
 #[warn(const_err)] //~ NOTE
 const U8_MUT3: &u8 = { //~ NOTE
-//~^ WARN skipping const checks
     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
     //~^ WARN [const_err]
     //~| NOTE constant accesses static

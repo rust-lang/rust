@@ -9,20 +9,17 @@ use std::sync::atomic::Ordering;
 // when *using* the const.
 
 const MUTATE_INTERIOR_MUT: usize = {
-//~^ WARN skipping const checks
     static FOO: AtomicUsize = AtomicUsize::new(0);
     FOO.fetch_add(1, Ordering::Relaxed)
 };
 
 const READ_INTERIOR_MUT: usize = {
-//~^ WARN skipping const checks
     static FOO: AtomicUsize = AtomicUsize::new(0);
     unsafe { *(&FOO as *const _ as *const usize) }
 };
 
 static mut MUTABLE: u32 = 0;
 const READ_MUT: u32 = unsafe { MUTABLE };
-//~^ WARN skipping const checks
 
 fn main() {
     MUTATE_INTERIOR_MUT;

@@ -9,7 +9,7 @@ fn double(x: usize) -> usize {
 }
 const X: fn(usize) -> usize = double;
 
-const fn bar(x: fn(usize) -> usize, y: usize) -> usize { //~ WARN skipping const checks
+const fn bar(x: fn(usize) -> usize, y: usize) -> usize {
     x(y)
 }
 

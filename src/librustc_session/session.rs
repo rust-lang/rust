@@ -27,7 +27,6 @@ use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target, TargetTr
 
 use std::cell::{self, RefCell};
 use std::env;
-use std::fmt::Write as _;
 use std::io::Write;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
@@ -144,9 +143,11 @@ pub struct Session {
     /// and immediately printing the backtrace to stderr.
     pub ctfe_backtrace: Lock<CtfeBacktrace>,
 
-    /// This tracks whether `-Zunleash-the-miri-inside-of-you` was used to get around a
-    /// feature gate.  If yes, this file must fail to compile.
-    miri_unleashed_features: Lock<FxHashSet<Symbol>>,
+    /// This tracks where `-Zunleash-the-miri-inside-of-you` was used to get around a
+    /// const check, optionally with the relevant feature gate.  We use this to
+    /// warn about unleashing, but with a single diagnostic instead of dozens that
+    /// drown everything else in noise.
+    miri_unleashed_features: Lock<Vec<(Span, Option<Symbol>)>>,
 
     /// Base directory containing the `src/` for the Rust standard library, and
     /// potentially `rustc` as well, if we can can find it. Right now it's always
@@ -195,29 +196,34 @@ impl From<&'static lint::Lint> for DiagnosticMessageId {
 }
 
 impl Session {
-    pub fn miri_unleashed_feature(&self, s: Symbol) {
-        self.miri_unleashed_features.lock().insert(s);
+    pub fn miri_unleashed_feature(&self, span: Span, feature_gate: Option<Symbol>) {
+        self.miri_unleashed_features.lock().push((span, feature_gate));
     }
 
     fn check_miri_unleashed_features(&self) {
-        if !self.has_errors_or_delayed_span_bugs() {
-            let unleashed_features = self.miri_unleashed_features.lock();
-            if !unleashed_features.is_empty() {
-                // Join the strings (itertools has it but libstd does not...)
-                let mut list = String::new();
-                for feature in unleashed_features.iter() {
-                    if !list.is_empty() {
-                        list.push_str(", ");
-                    }
-                    write!(&mut list, "{}", feature).unwrap();
+        let unleashed_features = self.miri_unleashed_features.lock();
+        if !unleashed_features.is_empty() {
+            let mut must_err = false;
+            // Create a diagnostic pointing at where things got unleashed.
+            let mut diag = self.struct_warn("skipping const checks");
+            for &(span, feature_gate) in unleashed_features.iter() {
+                // FIXME: `span_label` doesn't do anything, so we use "help" as a hack.
+                if let Some(feature_gate) = feature_gate {
+                    diag.span_help(span, &format!("skipping check for `{}` feature", feature_gate));
+                    // The unleash flag must *not* be used to just "hack around" feature gates.
+                    must_err = true;
+                } else {
+                    diag.span_help(span, "skipping check that does not even have a feature gate");
                 }
+            }
+            diag.emit();
+            // If we should err, make sure we did.
+            if must_err && !self.has_errors() {
                 // We have skipped a feature gate, and not run into other errors... reject.
-                self.err(&format!(
+                self.err(
                     "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
-                    gates, except when testing error paths in the CTFE engine.\n\
-                    The following feature flags are missing from this crate: {}",
-                    list,
-                ));
+                     gates, except when testing error paths in the CTFE engine"
+                );
             }
         }
     }

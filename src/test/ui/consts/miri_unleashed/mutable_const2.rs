@@ -11,7 +11,6 @@ use std::cell::UnsafeCell;
 
 // make sure we do not just intern this as mutable
 const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
-//~^ WARN: skipping const checks
-//~| ERROR: mutable allocation in constant
+//~^ ERROR: mutable allocation in constant
 
 fn main() {}
