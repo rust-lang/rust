@@ -241,6 +241,14 @@ impl<T> fmt::Debug for MaybeUninit<T> {
     }
 }
 
+#[stable(feature = "maybe_uninit_default", since = "1.45.0")]
+impl<T> Default for MaybeUninit<T> {
+    #[inline(always)]
+    fn default() -> Self {
+        Self::uninit()
+    }
+}
+
 impl<T> MaybeUninit<T> {
     /// Creates a new `MaybeUninit<T>` initialized with the given value.
     /// It is safe to call [`assume_init`] on the return value of this function.
