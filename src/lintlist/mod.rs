@@ -1138,6 +1138,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "map_unwrap",
+        group: "pedantic",
+        desc: "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "match_as_ref",
         group: "complexity",
         desc: "a `match` on an Option value instead of using `as_ref()` or `as_mut`",
@@ -1614,20 +1621,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "map_unit_fn",
     },
     Lint {
-        name: "option_map_unwrap_or",
-        group: "pedantic",
-        desc: "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as `map_or(a, f)`",
-        deprecation: None,
-        module: "methods",
-    },
-    Lint {
-        name: "option_map_unwrap_or_else",
-        group: "pedantic",
-        desc: "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `map_or_else(g, f)`",
-        deprecation: None,
-        module: "methods",
-    },
-    Lint {
         name: "option_option",
         group: "pedantic",
         desc: "usage of `Option<Option<T>>`",
@@ -1899,13 +1892,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "using `result.map(f)`, where `f` is a function or closure that returns `()`",
         deprecation: None,
         module: "map_unit_fn",
-    },
-    Lint {
-        name: "result_map_unwrap_or_else",
-        group: "pedantic",
-        desc: "using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `.map_or_else(g, f)`",
-        deprecation: None,
-        module: "methods",
     },
     Lint {
         name: "result_unwrap_used",

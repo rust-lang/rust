@@ -257,59 +257,40 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.map(_).unwrap_or(_)`.
+    /// **What it does:** Checks for usage of `option.map(_).unwrap_or(_)` or `option.map(_).unwrap_or_else(_)` or
+    /// `result.map(_).unwrap_or_else(_)`.
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.map_or(_, _)`.
+    /// **Why is this bad?** Readability, these can be written more concisely (resp.) as
+    /// `option.map_or(_, _)`, `option.map_or_else(_, _)` and `result.map_or_else(_, _)`.
     ///
     /// **Known problems:** The order of the arguments is not in execution order
     ///
-    /// **Example:**
+    /// **Examples:**
     /// ```rust
     /// # let x = Some(1);
+    ///
+    /// // Bad
     /// x.map(|a| a + 1).unwrap_or(0);
+    ///
+    /// // Good
+    /// x.map_or(0, |a| a + 1);
     /// ```
-    pub OPTION_MAP_UNWRAP_OR,
-    pedantic,
-    "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as `map_or(a, f)`"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.map(_).unwrap_or_else(_)`.
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.map_or_else(_, _)`.
+    /// // or
     ///
-    /// **Known problems:** The order of the arguments is not in execution order.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// # let x = Some(1);
-    /// # fn some_function() -> usize { 1 }
-    /// x.map(|a| a + 1).unwrap_or_else(some_function);
-    /// ```
-    pub OPTION_MAP_UNWRAP_OR_ELSE,
-    pedantic,
-    "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `map_or_else(g, f)`"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `result.map(_).unwrap_or_else(_)`.
-    ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `result.map_or_else(_, _)`.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
     /// ```rust
     /// # let x: Result<usize, ()> = Ok(1);
     /// # fn some_function(foo: ()) -> usize { 1 }
+    ///
+    /// // Bad
     /// x.map(|a| a + 1).unwrap_or_else(some_function);
+    ///
+    /// // Good
+    /// x.map_or_else(some_function, |a| a + 1);
     /// ```
-    pub RESULT_MAP_UNWRAP_OR_ELSE,
+    pub MAP_UNWRAP,
     pedantic,
-    "using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `.map_or_else(g, f)`"
+    "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`"
 }
 
 declare_clippy_lint! {
@@ -1294,9 +1275,7 @@ declare_lint_pass!(Methods => [
     WRONG_SELF_CONVENTION,
     WRONG_PUB_SELF_CONVENTION,
     OK_EXPECT,
-    OPTION_MAP_UNWRAP_OR,
-    OPTION_MAP_UNWRAP_OR_ELSE,
-    RESULT_MAP_UNWRAP_OR_ELSE,
+    MAP_UNWRAP,
     RESULT_MAP_OR_INTO_OPTION,
     OPTION_MAP_OR_NONE,
     OPTION_AND_THEN_SOME,
@@ -1503,9 +1482,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                             cx,
                             lint,
                             first_arg.pat.span,
-                            &format!(
-                               "methods called `{}` usually take {}; consider choosing a less \
-                                 ambiguous name",
+                            &format!("methods called `{}` usually take {}; consider choosing a less ambiguous name",
                                 conv,
                                 &self_kinds
                                     .iter()
@@ -1678,7 +1655,7 @@ fn lint_or_fun_call<'a, 'tcx>(
             let self_ty = cx.tables.expr_ty(self_expr);
 
             if let Some(&(_, fn_has_arguments, poss, suffix)) =
-                   know_types.iter().find(|&&i| match_type(cx, self_ty, i.0));
+                know_types.iter().find(|&&i| match_type(cx, self_ty, i.0));
 
             if poss.contains(&name);
 
@@ -1931,7 +1908,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, arg: &hir:
                 CLONE_DOUBLE_REF,
                 expr.span,
                 "using `clone` on a double-reference; \
-                 this will copy the reference instead of cloning the inner type",
+                this will copy the reference instead of cloning the inner type",
                 |diag| {
                     if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
                         let mut ty = innermost;
@@ -2121,7 +2098,7 @@ fn lint_iter_cloned_collect<'a, 'tcx>(
                 ITER_CLONED_COLLECT,
                 to_replace,
                 "called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
-                 more readable",
+                more readable",
                 "try",
                 ".to_vec()".to_string(),
                 Applicability::MachineApplicable,
@@ -2436,7 +2413,7 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
             None,
             &format!(
                 "if you don't want to handle the `{}` case gracefully, consider \
-                 using `expect()` to provide a better panic message",
+                using `expect()` to provide a better panic message",
                 none_value,
             ),
         );
@@ -2494,7 +2471,7 @@ fn lint_map_flatten<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<
     // lint if caller of `.map().flatten()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `map(..).flatten()` on an `Iterator`. \
-                   This is more succinctly expressed by calling `.flat_map(..)`";
+                    This is more succinctly expressed by calling `.flat_map(..)`";
         let self_snippet = snippet(cx, map_args[0].span, "..");
         let func_snippet = snippet(cx, map_args[1].span, "..");
         let hint = format!("{0}.flat_map({1})", self_snippet, func_snippet);
@@ -2555,10 +2532,10 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
         // lint message
         let msg = if is_option {
             "called `map(f).unwrap_or_else(g)` on an `Option` value. This can be done more directly by calling \
-             `map_or_else(g, f)` instead"
+            `map_or_else(g, f)` instead"
         } else {
             "called `map(f).unwrap_or_else(g)` on a `Result` value. This can be done more directly by calling \
-             `.map_or_else(g, f)` instead"
+            `.map_or_else(g, f)` instead"
         };
         // get snippets for args to map() and unwrap_or_else()
         let map_snippet = snippet(cx, map_args[1].span, "..");
@@ -2570,11 +2547,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
         if same_span && !multiline {
             span_lint_and_note(
                 cx,
-                if is_option {
-                    OPTION_MAP_UNWRAP_OR_ELSE
-                } else {
-                    RESULT_MAP_UNWRAP_OR_ELSE
-                },
+                MAP_UNWRAP,
                 expr.span,
                 msg,
                 None,
@@ -2584,16 +2557,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
                 ),
             );
         } else if same_span && multiline {
-            span_lint(
-                cx,
-                if is_option {
-                    OPTION_MAP_UNWRAP_OR_ELSE
-                } else {
-                    RESULT_MAP_UNWRAP_OR_ELSE
-                },
-                expr.span,
-                msg,
-            );
+            span_lint(cx, MAP_UNWRAP, expr.span, msg);
         };
     }
 }
