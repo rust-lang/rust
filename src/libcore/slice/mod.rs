@@ -2063,6 +2063,51 @@ impl<T> [T] {
         self.partition_dedup_by(|a, b| key(a) == key(b))
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
+    /// This method operates in place, visiting each element exactly once in the
+    /// original order, and preserves the order of the retained elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_retain)]
+    ///
+    /// let mut slice = [1, 2, 3, 4];
+    /// let retained = slice.retain(|&x| x % 2 == 0);
+    /// assert_eq!(retained, [2, 4]);
+    /// ```
+    ///
+    /// The exact order may be useful for tracking external state, like an index.
+    ///
+    /// ```
+    /// #![feature(slice_retain)]
+    ///
+    /// let mut slice = [1, 2, 3, 4, 5];
+    /// let keep = [false, true, true, false, true];
+    /// let mut i = 0;
+    /// let retained = slice.retain(|_| (keep[i], i += 1).0);
+    /// assert_eq!(retained, [2, 3, 5]);
+    /// ```
+    #[unstable(feature = "slice_retain", issue = "71831")]
+    #[must_use]
+    pub fn retain<F>(&mut self, mut f: F) -> &mut Self
+    where
+        F: FnMut(&T) -> bool,
+    {
+        let len = self.len();
+        let mut del = 0;
+        for i in 0..len {
+            if !f(&self[i]) {
+                del += 1;
+            } else if del > 0 {
+                self.swap(i - del, i);
+            }
+        }
+        self.split_at_mut(len - del).0
+    }
+
     /// Rotates the slice in-place such that the first `mid` elements of the
     /// slice move to the end while the last `self.len() - mid` elements move to
     /// the front. After calling `rotate_left`, the element previously at index
