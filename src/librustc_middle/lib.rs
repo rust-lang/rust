@@ -43,7 +43,6 @@
 #![feature(range_is_empty)]
 #![feature(specialization)]
 #![feature(trusted_len)]
-#![feature(vec_remove_item)]
 #![feature(stmt_expr_attributes)]
 #![feature(test)]
 #![feature(in_band_lifetimes)]

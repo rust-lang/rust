@@ -1752,29 +1752,6 @@ impl<T: PartialEq> Vec<T> {
     }
 }
 
-impl<T> Vec<T> {
-    /// Removes the first instance of `item` from the vector if the item exists.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(vec_remove_item)]
-    /// let mut vec = vec![1, 2, 3, 1];
-    ///
-    /// vec.remove_item(&1);
-    ///
-    /// assert_eq!(vec, vec![2, 3, 1]);
-    /// ```
-    #[unstable(feature = "vec_remove_item", reason = "recently added", issue = "40062")]
-    pub fn remove_item<V>(&mut self, item: &V) -> Option<T>
-    where
-        T: PartialEq<V>,
-    {
-        let pos = self.iter().position(|x| *x == *item)?;
-        Some(self.remove(pos))
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Internal methods and functions
 ////////////////////////////////////////////////////////////////////////////////

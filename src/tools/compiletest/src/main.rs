@@ -1,5 +1,4 @@
 #![crate_name = "compiletest"]
-#![feature(vec_remove_item)]
 #![deny(warnings)]
 // The `test` crate is the only unstable feature
 // allowed here, just to share similar code.

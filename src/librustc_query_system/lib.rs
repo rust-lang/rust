@@ -6,7 +6,6 @@
 #![feature(hash_raw_entry)]
 #![feature(specialization)]
 #![feature(stmt_expr_attributes)]
-#![feature(vec_remove_item)]
 
 #[macro_use]
 extern crate log;
