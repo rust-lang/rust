@@ -20,7 +20,7 @@ pub(super) fn check(
             span_lint_and_sugg(
                 cx,
                 FILTER_MAP_IDENTITY,
-                filter_map_span.with_hi(expr.span.hi()),
+                filter_map_span.with_hi(cx.tcx.hir().span(expr.hir_id).hi()),
                 message,
                 "try",
                 "flatten()".to_string(),

@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                         StripKind::Suffix => "suffix",
                     };
 
-                    let test_span = expr.span.until(then.span);
+                    let test_span = cx.tcx.hir().span(expr.hir_id).until(cx.tcx.hir().span(then.hir_id));
                     span_lint_and_then(cx, MANUAL_STRIP, strippings[0], &format!("stripping a {} manually", kind_word), |diag| {
                         diag.span_note(test_span, &format!("the {} was tested here", kind_word));
                         multispan_sugg(
@@ -122,9 +122,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                             &format!("try using the `strip_{}` method", kind_word),
                             vec![(test_span,
                                   format!("if let Some(<stripped>) = {}.strip_{}({}) ",
-                                          snippet(cx, target_arg.span, ".."),
+                                          snippet(cx, cx.tcx.hir().span(target_arg.hir_id), ".."),
                                           kind_word,
-                                          snippet(cx, pattern.span, "..")))]
+                                          snippet(cx, cx.tcx.hir().span(pattern.hir_id), "..")))]
                             .into_iter().chain(strippings.into_iter().map(|span| (span, "<stripped>".into()))),
                         )
                     });
@@ -226,7 +226,7 @@ fn find_stripping<'tcx>(
                     match (self.strip_kind, start, end) {
                         (StripKind::Prefix, Some(start), None) => {
                             if eq_pattern_length(self.cx, self.pattern, start) {
-                                self.results.push(ex.span);
+                                self.results.push(self.cx.tcx.hir().span(ex.hir_id));
                                 return;
                             }
                         },
@@ -238,7 +238,7 @@ fn find_stripping<'tcx>(
                                 if self.cx.qpath_res(left_path, left_arg.hir_id) == self.target;
                                 if eq_pattern_length(self.cx, self.pattern, right);
                                 then {
-                                    self.results.push(ex.span);
+                                    self.results.push(self.cx.tcx.hir().span(ex.hir_id));
                                     return;
                                 }
                             }

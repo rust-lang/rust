@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(
         if !block.stmts.is_empty();
 
         then {
-            let for_span = get_span_of_entire_for_loop(expr);
+            let for_span = get_span_of_entire_for_loop(cx, expr);
             let mut block_str = snippet(cx, cx.tcx.hir().span(block.hir_id), "..").into_owned();
             block_str.remove(0);
             block_str.pop();

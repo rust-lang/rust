@@ -43,37 +43,39 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
             if let ExprKind::MethodCall(path, _, [receiver, count], _) = &expr.kind;
             if path.ident.name == sym!(repeat);
             if let Some(Constant::Int(1)) = constant_context(cx, cx.typeck_results()).expr(&count);
-            if !in_macro(receiver.span);
+            let receiver_span = cx.tcx.hir().span(receiver.hir_id);
+            if !in_macro(receiver_span);
             then {
                 let ty = cx.typeck_results().expr_ty(&receiver).peel_refs();
+                let expr_span = cx.tcx.hir().span(expr.hir_id);
                 if ty.is_str() {
                     span_lint_and_sugg(
                         cx,
                         REPEAT_ONCE,
-                        expr.span,
+                        expr_span,
                         "calling `repeat(1)` on str",
                         "consider using `.to_string()` instead",
-                        format!("{}.to_string()", snippet(cx, receiver.span, r#""...""#)),
+                        format!("{}.to_string()", snippet(cx, receiver_span, r#""...""#)),
                         Applicability::MachineApplicable,
                     );
                 } else if ty.builtin_index().is_some() {
                     span_lint_and_sugg(
                         cx,
                         REPEAT_ONCE,
-                        expr.span,
+                        expr_span,
                         "calling `repeat(1)` on slice",
                         "consider using `.to_vec()` instead",
-                        format!("{}.to_vec()", snippet(cx, receiver.span, r#""...""#)),
+                        format!("{}.to_vec()", snippet(cx, receiver_span, r#""...""#)),
                         Applicability::MachineApplicable,
                     );
                 } else if is_type_diagnostic_item(cx, ty, sym::string_type) {
                     span_lint_and_sugg(
                         cx,
                         REPEAT_ONCE,
-                        expr.span,
+                        expr_span,
                         "calling `repeat(1)` on a string literal",
                         "consider using `.clone()` instead",
-                        format!("{}.clone()", snippet(cx, receiver.span, r#""...""#)),
+                        format!("{}.clone()", snippet(cx, receiver_span, r#""...""#)),
                         Applicability::MachineApplicable,
                     );
                 }

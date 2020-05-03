@@ -48,18 +48,18 @@ pub(super) fn check<'tcx>(
             `.map_or_else(<g>, <f>)` instead"
         };
         // get snippets for args to map() and unwrap_or_else()
-        let map_snippet = snippet(cx, map_args[1].span, "..");
-        let unwrap_snippet = snippet(cx, unwrap_args[1].span, "..");
+        let map_snippet = snippet(cx, cx.tcx.hir().span(map_args[1].hir_id), "..");
+        let unwrap_snippet = snippet(cx, cx.tcx.hir().span(unwrap_args[1].hir_id), "..");
         // lint, with note if neither arg is > 1 line and both map() and
         // unwrap_or_else() have the same span
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
-        let same_span = map_args[1].span.ctxt() == unwrap_args[1].span.ctxt();
+        let same_span = cx.tcx.hir().span(map_args[1].hir_id).ctxt() == cx.tcx.hir().span(unwrap_args[1].hir_id).ctxt();
         if same_span && !multiline {
-            let var_snippet = snippet(cx, map_args[0].span, "..");
+            let var_snippet = snippet(cx, cx.tcx.hir().span(map_args[0].hir_id), "..");
             span_lint_and_sugg(
                 cx,
                 MAP_UNWRAP_OR,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 msg,
                 "try this",
                 format!("{}.map_or_else({}, {})", var_snippet, unwrap_snippet, map_snippet),
@@ -67,7 +67,7 @@ pub(super) fn check<'tcx>(
             );
             return true;
         } else if same_span && multiline {
-            span_lint(cx, MAP_UNWRAP_OR, expr.span, msg);
+            span_lint(cx, MAP_UNWRAP_OR, cx.tcx.hir().span(expr.hir_id), msg);
             return true;
         }
     }

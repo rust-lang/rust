@@ -516,7 +516,7 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
             return;
         }
 
-        let (method_names, arg_lists, spans) = method_calls(expr, 2);
+        let (method_names, arg_lists, spans) = method_calls(cx, expr, 2);
         let method_names: Vec<SymbolStr> = method_names.iter().map(|s| s.as_str()).collect();
         let method_names: Vec<&str> = method_names.iter().map(|s| &**s).collect();
         if_chain! {
@@ -530,7 +530,7 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
                 span_lint_and_sugg(
                     cx,
                     OUTER_EXPN_EXPN_DATA,
-                    spans[1].with_hi(expr.span.hi()),
+                    spans[1].with_hi(cx.tcx.hir().span(expr.hir_id).hi()),
                     "usage of `outer_expn().expn_data()`",
                     "try",
                     "outer_expn_data()".to_string(),
@@ -586,19 +586,19 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
                         suggest_suggestion(cx, expr, &and_then_snippets, &span_suggestion_snippets(cx, span_call_args));
                     },
                     "span_help" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
-                        let help_snippet = snippet(cx, span_call_args[2].span, r#""...""#);
+                        let help_snippet = snippet(cx, cx.tcx.hir().span(span_call_args[2].hir_id), r#""...""#);
                         suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), true);
                     },
                     "span_note" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
-                        let note_snippet = snippet(cx, span_call_args[2].span, r#""...""#);
+                        let note_snippet = snippet(cx, cx.tcx.hir().span(span_call_args[2].hir_id), r#""...""#);
                         suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), true);
                     },
                     "help" => {
-                        let help_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
+                        let help_snippet = snippet(cx, cx.tcx.hir().span(span_call_args[1].hir_id), r#""...""#);
                         suggest_help(cx, expr, &and_then_snippets, help_snippet.borrow(), false);
                     }
                     "note" => {
-                        let note_snippet = snippet(cx, span_call_args[1].span, r#""...""#);
+                        let note_snippet = snippet(cx, cx.tcx.hir().span(span_call_args[1].hir_id), r#""...""#);
                         suggest_note(cx, expr, &and_then_snippets, note_snippet.borrow(), false);
                     }
                     _  => (),
@@ -615,11 +615,14 @@ struct AndThenSnippets<'a> {
     msg: Cow<'a, str>,
 }
 
-fn get_and_then_snippets<'a, 'hir>(cx: &LateContext<'_>, and_then_snippets: &'hir [Expr<'hir>]) -> AndThenSnippets<'a> {
-    let cx_snippet = snippet(cx, and_then_snippets[0].span, "cx");
-    let lint_snippet = snippet(cx, and_then_snippets[1].span, "..");
-    let span_snippet = snippet(cx, and_then_snippets[2].span, "span");
-    let msg_snippet = snippet(cx, and_then_snippets[3].span, r#""...""#);
+fn get_and_then_snippets<'a, 'hir>(
+    cx: &LateContext<'_>,
+    and_then_snippets: &'hir [Expr<'hir>],
+) -> AndThenSnippets<'a> {
+    let cx_snippet = snippet(cx, cx.tcx.hir().span(and_then_snippets[0].hir_id), "cx");
+    let lint_snippet = snippet(cx, cx.tcx.hir().span(and_then_snippets[1].hir_id), "..");
+    let span_snippet = snippet(cx, cx.tcx.hir().span(and_then_snippets[2].hir_id), "span");
+    let msg_snippet = snippet(cx, cx.tcx.hir().span(and_then_snippets[3].hir_id), r#""...""#);
 
     AndThenSnippets {
         cx: cx_snippet,
@@ -639,9 +642,9 @@ fn span_suggestion_snippets<'a, 'hir>(
     cx: &LateContext<'_>,
     span_call_args: &'hir [Expr<'hir>],
 ) -> SpanSuggestionSnippets<'a> {
-    let help_snippet = snippet(cx, span_call_args[2].span, r#""...""#);
-    let sugg_snippet = snippet(cx, span_call_args[3].span, "..");
-    let applicability_snippet = snippet(cx, span_call_args[4].span, "Applicability::MachineApplicable");
+    let help_snippet = snippet(cx, cx.tcx.hir().span(span_call_args[2].hir_id), r#""...""#);
+    let sugg_snippet = snippet(cx, cx.tcx.hir().span(span_call_args[3].hir_id), "..");
+    let applicability_snippet = snippet(cx, cx.tcx.hir().span(span_call_args[4].hir_id), "Applicability::MachineApplicable");
 
     SpanSuggestionSnippets {
         help: help_snippet,
@@ -659,7 +662,7 @@ fn suggest_suggestion(
     span_lint_and_sugg(
         cx,
         COLLAPSIBLE_SPAN_LINT_CALLS,
-        expr.span,
+        cx.tcx.hir().span(expr.hir_id),
         "this call is collapsible",
         "collapse into",
         format!(
@@ -692,7 +695,7 @@ fn suggest_help(
     span_lint_and_sugg(
         cx,
         COLLAPSIBLE_SPAN_LINT_CALLS,
-        expr.span,
+        cx.tcx.hir().span(expr.hir_id),
         "this call is collapsible",
         "collapse into",
         format!(
@@ -724,7 +727,7 @@ fn suggest_note(
     span_lint_and_sugg(
         cx,
         COLLAPSIBLE_SPAN_LINT_CALLS,
-        expr.span,
+        cx.tcx.hir().span(expr.hir_id),
         "this call is collspible",
         "collapse into",
         format!(
@@ -761,13 +764,13 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
             let diag_items = cx.tcx.diagnostic_items(ty_did.krate);
             if let Some(item_name) = diag_items.iter().find_map(|(k, v)| if *v == ty_did { Some(k) } else { None });
             then {
-                let cx_snippet = snippet(cx, context.span, "_");
-                let ty_snippet = snippet(cx, ty.span, "_");
+                let cx_snippet = snippet(cx, cx.tcx.hir().span(context.hir_id), "_");
+                let ty_snippet = snippet(cx, cx.tcx.hir().span(ty.hir_id), "_");
 
                 span_lint_and_sugg(
                     cx,
                     MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "usage of `utils::match_type()` on a type diagnostic item",
                     "try",
                     format!("utils::is_type_diagnostic_item({}, {}, sym::{})", cx_snippet, ty_snippet, item_name),

@@ -50,5 +50,5 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
         },
     };
 
-    span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span, &msg);
+    span_lint(cx, CAST_POSSIBLE_TRUNCATION, cx.tcx.hir().span(expr.hir_id), &msg);
 }

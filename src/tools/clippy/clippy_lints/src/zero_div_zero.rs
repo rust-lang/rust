@@ -51,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
                 span_lint_and_help(
                     cx,
                     ZERO_DIVIDED_BY_ZERO,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "constant division of `0.0` with `0.0` will always result in NaN",
                     None,
                     &format!(

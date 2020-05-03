@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                     // type are the same, implying that the method call is unnecessary.
                     return;
                 }
-                let expr_span = expr.span;
+                let expr_span = cx.tcx.hir().span(expr.hir_id);
                 let note = format!(
                     "the type `{:?}` which `{}` is being called on is the same as \
                      the type returned from `{}`, so the method call does not do \
@@ -93,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                     receiver_ty, method, method,
                 );
 
-                let span = expr_span.with_lo(receiver.span.hi());
+                let span = expr_span.with_lo(cx.tcx.hir().span(receiver.hir_id).hi());
                 cx.struct_span_lint(NOOP_METHOD_CALL, span, |lint| {
                     let method = &call.ident.name;
                     let message = format!(

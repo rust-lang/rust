@@ -9,11 +9,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, skip_args: &[hir
     // lint if caller of skip is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         if let [caller, n] = skip_args {
-            let hint = format!(".nth({})", snippet(cx, n.span, ".."));
+            let hint = format!(".nth({})", snippet(cx, cx.tcx.hir().span(n.hir_id), ".."));
             span_lint_and_sugg(
                 cx,
                 ITER_SKIP_NEXT,
-                expr.span.trim_start(caller.span).unwrap(),
+                cx.tcx
+                    .hir()
+                    .span(expr.hir_id)
+                    .trim_start(cx.tcx.hir().span(caller.hir_id))
+                    .unwrap(),
                 "called `skip(..).next()` on an iterator",
                 "use `nth` instead",
                 hint,

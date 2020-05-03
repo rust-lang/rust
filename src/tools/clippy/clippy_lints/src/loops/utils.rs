@@ -303,11 +303,11 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
 }
 
 // this function assumes the given expression is a `for` loop.
-pub(super) fn get_span_of_entire_for_loop(expr: &Expr<'_>) -> Span {
+pub(super) fn get_span_of_entire_for_loop(cx: &LateContext<'_>, expr: &Expr<'_>) -> Span {
     // for some reason this is the only way to get the `Span`
     // of the entire `for` loop
     if let ExprKind::Match(_, arms, _) = &expr.kind {
-        arms[0].body.span
+        cx.tcx.hir().span(arms[0].body.hir_id)
     } else {
         unreachable!()
     }

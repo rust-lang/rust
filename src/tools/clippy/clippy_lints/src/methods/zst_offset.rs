@@ -13,7 +13,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
         if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty));
         if layout.is_zst();
         then {
-            span_lint(cx, ZST_OFFSET, expr.span, "offset calculation on zero-sized value");
+            span_lint(cx, ZST_OFFSET, cx.tcx.hir().span(expr.hir_id), "offset calculation on zero-sized value");
         }
     }
 }

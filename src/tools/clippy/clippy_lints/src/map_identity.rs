@@ -36,7 +36,7 @@ declare_lint_pass!(MapIdentity => [MAP_IDENTITY]);
 
 impl<'tcx> LateLintPass<'tcx> for MapIdentity {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if expr.span.from_expansion() {
+        if cx.tcx.hir().span(expr.hir_id).from_expansion() {
             return;
         }
 
@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for MapIdentity {
                 span_lint_and_sugg(
                     cx,
                     MAP_IDENTITY,
-                    expr.span.trim_start(caller.span).unwrap(),
+                    cx.tcx.hir().span(expr.hir_id).trim_start(cx.tcx.hir().span(caller.hir_id)).unwrap(),
                     "unnecessary map of the identity function",
                     "remove the call to `map`",
                     String::new(),

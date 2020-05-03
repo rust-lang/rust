@@ -268,6 +268,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     {
         debug!("cat_expr_adjusted_with({:?}): {:?}", adjustment, expr);
         let target = self.resolve_vars_if_possible(adjustment.target);
+        let expr_span = self.tcx().hir().span(expr.hir_id);
         match adjustment.kind {
             adjustment::Adjust::Deref(overloaded) => {
                 // Equivalent to *expr or something similar.
@@ -275,7 +276,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     let ref_ty = self
                         .tcx()
                         .mk_ref(deref.region, ty::TypeAndMut { ty: target, mutbl: deref.mutbl });
-                    self.cat_rvalue(expr.hir_id, expr.span, ref_ty)
+                    self.cat_rvalue(expr.hir_id, expr_span, ref_ty)
                 } else {
                     previous()?
                 };
@@ -286,7 +287,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | adjustment::Adjust::Pointer(_)
             | adjustment::Adjust::Borrow(_) => {
                 // Result is an rvalue.
-                Ok(self.cat_rvalue(expr.hir_id, expr.span, target))
+                Ok(self.cat_rvalue(expr.hir_id, expr_span, target))
             }
         }
     }
@@ -340,7 +341,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
             hir::ExprKind::Path(ref qpath) => {
                 let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
-                self.cat_res(expr.hir_id, expr.span, expr_ty, res)
+                let expr_span = self.tcx().hir().span(expr.hir_id);
+                self.cat_res(expr.hir_id, expr_span, expr_ty, res)
             }
 
             hir::ExprKind::Type(ref e, _) => self.cat_expr(&e),
@@ -372,7 +374,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::LlvmInlineAsm(..)
             | hir::ExprKind::Box(..)
-            | hir::ExprKind::Err => Ok(self.cat_rvalue(expr.hir_id, expr.span, expr_ty)),
+            | hir::ExprKind::Err => {
+                Ok(self.cat_rvalue(expr.hir_id, self.tcx().hir().span(expr.hir_id), expr_ty))
+            }
         }
     }
 
@@ -476,14 +480,15 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
         let place_ty = self.expr_ty(expr)?;
         let base_ty = self.expr_ty_adjusted(base)?;
+        let expr_span = self.tcx().hir().span(expr.hir_id);
 
         let (region, mutbl) = match *base_ty.kind() {
             ty::Ref(region, _, mutbl) => (region, mutbl),
-            _ => span_bug!(expr.span, "cat_overloaded_place: base is not a reference"),
+            _ => span_bug!(expr_span, "cat_overloaded_place: base is not a reference"),
         };
         let ref_ty = self.tcx().mk_ref(region, ty::TypeAndMut { ty: place_ty, mutbl });
 
-        let base = self.cat_rvalue(expr.hir_id, expr.span, ref_ty);
+        let base = self.cat_rvalue(expr.hir_id, expr_span, ref_ty);
         self.cat_deref(expr, base)
     }
 

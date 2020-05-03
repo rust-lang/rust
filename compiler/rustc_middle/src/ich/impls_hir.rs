@@ -66,9 +66,8 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
 
     fn hash_hir_expr(&mut self, expr: &hir::Expr<'_>, hasher: &mut StableHasher) {
         self.while_hashing_hir_bodies(true, |hcx| {
-            let hir::Expr { hir_id: _, ref span, ref kind } = *expr;
+            let hir::Expr { hir_id: _, ref kind } = *expr;
 
-            span.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
         })
     }

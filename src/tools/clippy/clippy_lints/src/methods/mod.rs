@@ -1670,11 +1670,11 @@ impl_lint_pass!(Methods => [
 impl<'tcx> LateLintPass<'tcx> for Methods {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if in_macro(expr.span) {
+        if in_macro(cx.tcx.hir().span(expr.hir_id)) {
             return;
         }
 
-        let (method_names, arg_lists, method_spans) = method_calls(expr, 2);
+        let (method_names, arg_lists, method_spans) = method_calls(cx, expr, 2);
         let method_names: Vec<SymbolStr> = method_names.iter().map(|s| s.as_str()).collect();
         let method_names: Vec<&str> = method_names.iter().map(|s| &**s).collect();
 
@@ -2049,7 +2049,7 @@ fn lint_chars_cmp(
     suggest: &str,
 ) -> bool {
     if_chain! {
-        if let Some(args) = method_chain_args(info.chain, chain_methods);
+        if let Some(args) = method_chain_args(cx, info.chain, chain_methods);
         if let hir::ExprKind::Call(ref fun, ref arg_char) = info.other.kind;
         if arg_char.len() == 1;
         if let hir::ExprKind::Path(ref qpath) = fun.kind;
@@ -2066,14 +2066,14 @@ fn lint_chars_cmp(
             span_lint_and_sugg(
                 cx,
                 lint,
-                info.expr.span,
+                cx.tcx.hir().span(info.expr.hir_id),
                 &format!("you should use the `{}` method", suggest),
                 "like this",
                 format!("{}{}.{}({})",
                         if info.eq { "" } else { "!" },
-                        snippet_with_applicability(cx, args[0][0].span, "..", &mut applicability),
+                        snippet_with_applicability(cx, cx.tcx.hir().span(args[0][0].hir_id), "..", &mut applicability),
                         suggest,
-                        snippet_with_applicability(cx, arg_char[0].span, "..", &mut applicability)),
+                        snippet_with_applicability(cx, cx.tcx.hir().span(arg_char[0].hir_id), "..", &mut applicability)),
                 applicability,
             );
 
@@ -2107,7 +2107,7 @@ fn lint_chars_cmp_with_unwrap<'tcx>(
     suggest: &str,
 ) -> bool {
     if_chain! {
-        if let Some(args) = method_chain_args(info.chain, chain_methods);
+        if let Some(args) = method_chain_args(cx, info.chain, chain_methods);
         if let hir::ExprKind::Lit(ref lit) = info.other.kind;
         if let ast::LitKind::Char(c) = lit.node;
         then {
@@ -2115,12 +2115,12 @@ fn lint_chars_cmp_with_unwrap<'tcx>(
             span_lint_and_sugg(
                 cx,
                 lint,
-                info.expr.span,
+                cx.tcx.hir().span(info.expr.hir_id),
                 &format!("you should use the `{}` method", suggest),
                 "like this",
                 format!("{}{}.{}('{}')",
                         if info.eq { "" } else { "!" },
-                        snippet_with_applicability(cx, args[0][0].span, "..", &mut applicability),
+                        snippet_with_applicability(cx, cx.tcx.hir().span(args[0][0].hir_id), "..", &mut applicability),
                         suggest,
                         c),
                 applicability,
@@ -2158,7 +2158,7 @@ fn get_hint_if_single_char_arg(
         let string = r.as_str();
         if string.chars().count() == 1;
         then {
-            let snip = snippet_with_applicability(cx, arg.span, &string, applicability);
+            let snip = snippet_with_applicability(cx, cx.tcx.hir().span(arg.hir_id), "..", applicability);
             let ch = if let ast::StrStyle::Raw(nhash) = style {
                 let nhash = nhash as usize;
                 // for raw string: r##"a"##

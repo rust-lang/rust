@@ -42,10 +42,15 @@ fn in_macro(span: Span) -> bool {
 }
 
 fn first_method_call<'tcx>(
+    cx: &LateContext<'_>,
     expr: &'tcx Expr<'tcx>,
 ) -> Option<(&'tcx PathSegment<'tcx>, &'tcx [Expr<'tcx>])> {
     if let ExprKind::MethodCall(path, _, args, _) = &expr.kind {
-        if args.iter().any(|e| e.span.from_expansion()) { None } else { Some((path, *args)) }
+        if args.iter().any(|e| cx.tcx.hir().span(e.hir_id).from_expansion()) {
+            None
+        } else {
+            Some((path, *args))
+        }
     } else {
         None
     }
@@ -53,15 +58,15 @@ fn first_method_call<'tcx>(
 
 impl<'tcx> LateLintPass<'tcx> for TemporaryCStringAsPtr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_macro(expr.span) {
+        if in_macro(cx.tcx.hir().span(expr.hir_id)) {
             return;
         }
 
-        match first_method_call(expr) {
+        match first_method_call(cx, expr) {
             Some((path, args)) if path.ident.name == sym::as_ptr => {
                 let unwrap_arg = &args[0];
                 let as_ptr_span = path.ident.span;
-                match first_method_call(unwrap_arg) {
+                match first_method_call(cx, unwrap_arg) {
                     Some((path, args))
                         if path.ident.name == sym::unwrap || path.ident.name == sym::expect =>
                     {
@@ -92,7 +97,7 @@ fn lint_cstring_as_ptr(
                             .build("getting the inner pointer of a temporary `CString`");
                         diag.span_label(as_ptr_span, "this pointer will be invalid");
                         diag.span_label(
-                            unwrap.span,
+                            cx.tcx.hir().span(unwrap.hir_id),
                             "this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime",
                         );
                         diag.note("pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned");

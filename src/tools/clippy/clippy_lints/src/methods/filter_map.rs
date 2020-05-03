@@ -78,7 +78,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, is_
             let msg = format!("`{}(..).map(..)` can be simplified as `{0}_map(..)`", filter_name);
             let to_opt = if is_result { ".ok()" } else { "" };
             let sugg = format!("{}_map(|{}| {}{})", filter_name, map_param_ident,
-                snippet(cx, map_arg.span, ".."), to_opt);
+                snippet(cx, cx.tcx.hir().span(map_arg.hir_id), ".."), to_opt);
             span_lint_and_sugg(cx, lint, span, &msg, "try", sugg, Applicability::MachineApplicable);
         }
     }

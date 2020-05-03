@@ -73,7 +73,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     self.visit_expr(e);
                 }
 
-                if self.require_label_in_labeled_block(e.span, &break_label, "break") {
+                let e_span = self.hir_map.span(e.hir_id);
+                if self.require_label_in_labeled_block(e_span, &break_label, "break") {
                     // If we emitted an error about an unlabeled break in a labeled
                     // block, we don't need any further checking for this break any more
                     return;
@@ -83,7 +84,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     Ok(loop_id) => Some(loop_id),
                     Err(hir::LoopIdError::OutsideLoopScope) => None,
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
-                        self.emit_unlabled_cf_in_while_condition(e.span, "break");
+                        self.emit_unlabled_cf_in_while_condition(e_span, "break");
                         None
                     }
                     Err(hir::LoopIdError::UnresolvedLabel) => None,
@@ -100,7 +101,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                 (Some(sp), label, Some(source))
                             }
                             ref r => {
-                                span_bug!(e.span, "break label resolved to a non-loop: {:?}", r)
+                                span_bug!(e_span, "break label resolved to a non-loop: {:?}", r)
                             }
                         }
                     } else {
@@ -111,13 +112,13 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                         Some(kind) => {
                             let mut err = struct_span_err!(
                                 self.sess,
-                                e.span,
+                                e_span,
                                 E0571,
                                 "`break` with value from a `{}` loop",
                                 kind.name()
                             );
                             err.span_label(
-                                e.span,
+                                e_span,
                                 "can only break with a value inside `loop` or breakable block",
                             );
                             if let Some(head) = head {
@@ -130,7 +131,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                 );
                             }
                             err.span_suggestion(
-                                e.span,
+                                e_span,
                                 &format!(
                                     "use `break` on its own without a value inside this `{}` loop",
                                     kind.name(),
@@ -162,7 +163,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                     }
                                     _ => {
                                         err.span_suggestion(
-                                            break_expr.span,
+                                            self.hir_map.span(break_expr.hir_id),
                                             "alternatively, you might have meant to use the \
                                              available loop label",
                                             label.ident.to_string(),
@@ -176,10 +177,11 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     }
                 }
 
-                self.require_break_cx("break", e.span);
+                self.require_break_cx("break", e_span);
             }
             hir::ExprKind::Continue(destination) => {
-                self.require_label_in_labeled_block(e.span, &destination, "continue");
+                let e_span = self.hir_map.span(e.hir_id);
+                self.require_label_in_labeled_block(e_span, &destination, "continue");
 
                 match destination.target_id {
                     Ok(loop_id) => {
@@ -187,21 +189,21 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                             let block_span = self.hir_map.span(block.hir_id);
                             struct_span_err!(
                                 self.sess,
-                                e.span,
+                                e_span,
                                 E0696,
                                 "`continue` pointing to a labeled block"
                             )
-                            .span_label(e.span, "labeled blocks cannot be `continue`'d")
+                            .span_label(e_span, "labeled blocks cannot be `continue`'d")
                             .span_label(block_span, "labeled block the `continue` points to")
                             .emit();
                         }
                     }
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
-                        self.emit_unlabled_cf_in_while_condition(e.span, "continue");
+                        self.emit_unlabled_cf_in_while_condition(e_span, "continue");
                     }
                     Err(_) => {}
                 }
-                self.require_break_cx("continue", e.span)
+                self.require_break_cx("continue", e_span)
             }
             _ => intravisit::walk_expr(self, e),
         }

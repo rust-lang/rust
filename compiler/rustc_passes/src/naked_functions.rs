@@ -129,11 +129,12 @@ impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
             hir::Path { res: hir::def::Res::Local(var_hir_id), .. },
         )) = expr.kind
         {
+            let expr_span = self.tcx.hir().span(expr.hir_id);
             if self.params.contains(var_hir_id) {
                 self.tcx
                     .sess
                     .struct_span_err(
-                        expr.span,
+                        expr_span,
                         "referencing function parameters is not allowed in naked functions",
                     )
                     .help("follow the calling convention in asm block to use parameters")
@@ -319,6 +320,6 @@ impl<'tcx> Visitor<'tcx> for CheckInlineAssembly<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        self.check_expr(&expr, expr.span);
+        self.check_expr(&expr, self.tcx.hir().span(expr.hir_id));
     }
 }

@@ -51,6 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
 
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir::Body<'tcx>) {
     let panics = find_macro_calls(
+        cx.tcx,
         &[
             "unimplemented",
             "unreachable",

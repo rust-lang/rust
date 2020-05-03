@@ -39,10 +39,10 @@ impl LateLintPass<'_> for CreateDir {
                 span_lint_and_sugg(
                     cx,
                     CREATE_DIR,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "calling `std::fs::create_dir` where there may be a better way",
                     "consider calling `std::fs::create_dir_all` instead",
-                    format!("create_dir_all({})", snippet(cx, args[0].span, "..")),
+                    format!("create_dir_all({})", snippet(cx, cx.tcx.hir().span(args[0].hir_id), "..")),
                     Applicability::MaybeIncorrect,
                 )
             }

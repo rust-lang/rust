@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             span_lint(
                 cx,
                 CAST_REF_TO_MUT,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "casting `&T` to `&mut T` may cause undefined behavior, consider instead using an `UnsafeCell`",
             );
         }

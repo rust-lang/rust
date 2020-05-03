@@ -390,14 +390,16 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
                 if let Res::Local(_var_hir_id) = path.res {
-                    self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                    let expr_span = self.tcx.hir().span(expr.hir_id);
+                    self.add_live_node_for_node(expr.hir_id, ExprNode(expr_span));
                 }
                 intravisit::walk_expr(self, expr);
             }
             hir::ExprKind::Closure(..) => {
+                let expr_span = self.tcx.hir().span(expr.hir_id);
                 // Interesting control flow (for loops can contain labeled
                 // breaks or continues)
-                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr_span));
 
                 // Make a live_node for each captured variable, with the span
                 // being the location that the variable is used.  This results
@@ -425,11 +427,13 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
 
             // live nodes required for interesting control flow:
             hir::ExprKind::If(..) | hir::ExprKind::Match(..) | hir::ExprKind::Loop(..) => {
-                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                let expr_span = self.tcx.hir().span(expr.hir_id);
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr_span));
                 intravisit::walk_expr(self, expr);
             }
             hir::ExprKind::Binary(op, ..) if op.node.is_lazy() => {
-                self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
+                let expr_span = self.tcx.hir().span(expr.hir_id);
+                self.add_live_node_for_node(expr.hir_id, ExprNode(expr_span));
                 intravisit::walk_expr(self, expr);
             }
 
@@ -742,8 +746,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             },
             ty::Generator(..) => return succ,
             _ => {
+                let body_span = self.ir.tcx.hir().span(body.value.hir_id);
                 span_bug!(
-                    body.value.span,
+                    body_span,
                     "{} has upvars so it should have a closure type: {:?}",
                     hir_id,
                     ty
@@ -833,16 +838,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 // the construction of a closure itself is not important,
                 // but we have to consider the closed over variables.
-                let caps = self
-                    .ir
-                    .capture_info_map
-                    .get(&expr.hir_id)
-                    .cloned()
-                    .unwrap_or_else(|| span_bug!(expr.span, "no registered caps"));
+                let caps =
+                    self.ir.capture_info_map.get(&expr.hir_id).cloned().unwrap_or_else(|| {
+                        span_bug!(self.ir.tcx.hir().span(expr.hir_id), "no registered caps")
+                    });
 
                 caps.iter().rev().fold(succ, |succ, cap| {
                     self.init_from_succ(cap.ln, succ);
-                    let var = self.variable(cap.var_hid, expr.span);
+                    let expr_span = self.ir.tcx.hir().span(expr.hir_id);
+                    let var = self.variable(cap.var_hid, expr_span);
                     self.acc(cap.ln, var, ACC_READ | ACC_USE);
                     cap.ln
                 })
@@ -869,7 +873,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let else_ln =
                     self.propagate_through_opt_expr(else_opt.as_ref().map(|e| &**e), succ);
                 let then_ln = self.propagate_through_expr(&then, succ);
-                let ln = self.live_node(expr.hir_id, expr.span);
+                let expr_span = self.ir.tcx.hir().span(expr.hir_id);
+                let ln = self.live_node(expr.hir_id, expr_span);
                 self.init_from_succ(ln, else_ln);
                 self.merge_from_succ(ln, then_ln);
                 self.propagate_through_expr(&cond, ln)
@@ -890,7 +895,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 //   (  succ  )
                 //
                 //
-                let ln = self.live_node(expr.hir_id, expr.span);
+                let expr_span = self.ir.tcx.hir().span(expr.hir_id);
+                let ln = self.live_node(expr.hir_id, expr_span);
                 self.init_empty(ln, succ);
                 for arm in arms {
                     let body_succ = self.propagate_through_expr(&arm.body, succ);
@@ -917,7 +923,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // Find which label this break jumps to
                 let target = match label.target_id {
                     Ok(hir_id) => self.break_ln.get(&hir_id),
-                    Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
+                    Err(err) => {
+                        span_bug!(self.ir.tcx.hir().span(expr.hir_id), "loop scope error: {}", err)
+                    }
                 }
                 .cloned();
 
@@ -926,22 +934,33 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 match target {
                     Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
-                    None => span_bug!(expr.span, "`break` to unknown label"),
+                    None => {
+                        // FIXME: This should have been checked earlier. Once this is fixed,
+                        // replace with `delay_span_bug`. (#62480)
+                        self.ir
+                            .tcx
+                            .sess
+                            .struct_span_err(
+                                self.ir.tcx.hir().span(expr.hir_id),
+                                "`break` to unknown label",
+                            )
+                            .emit();
+                        rustc_errors::FatalError.raise()
+                    }
                 }
             }
 
             hir::ExprKind::Continue(label) => {
                 // Find which label this expr continues to
-                let sc = label
-                    .target_id
-                    .unwrap_or_else(|err| span_bug!(expr.span, "loop scope error: {}", err));
+                let sc = label.target_id.unwrap_or_else(|err| {
+                    span_bug!(self.ir.tcx.hir().span(expr.hir_id), "loop scope error: {}", err)
+                });
 
                 // Now that we know the label we're going to,
                 // look it up in the continue loop nodes table
-                self.cont_ln
-                    .get(&sc)
-                    .cloned()
-                    .unwrap_or_else(|| span_bug!(expr.span, "continue to unknown label"))
+                self.cont_ln.get(&sc).cloned().unwrap_or_else(|| {
+                    span_bug!(self.ir.tcx.hir().span(expr.hir_id), "continue to unknown label")
+                })
             }
 
             hir::ExprKind::Assign(ref l, ref r, _) => {
@@ -1012,7 +1031,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Binary(op, ref l, ref r) if op.node.is_lazy() => {
                 let r_succ = self.propagate_through_expr(&r, succ);
 
-                let ln = self.live_node(expr.hir_id, expr.span);
+                let expr_span = self.ir.tcx.hir().span(expr.hir_id);
+                let ln = self.live_node(expr.hir_id, expr_span);
                 self.init_from_succ(ln, succ);
                 self.merge_from_succ(ln, r_succ);
 
@@ -1258,7 +1278,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         */
 
         // first iteration:
-        let ln = self.live_node(expr.hir_id, expr.span);
+        let expr_span = self.ir.tcx.hir().span(expr.hir_id);
+        let ln = self.live_node(expr.hir_id, expr_span);
         self.init_empty(ln, succ);
         debug!("propagate_through_loop: using id for loop body {} {:?}", expr.hir_id, body);
 
@@ -1397,9 +1418,10 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     // if there is no later assignment. If this local is actually
                     // mutable, then check for a reassignment to flag the mutability
                     // as being used.
-                    let ln = self.live_node(expr.hir_id, expr.span);
-                    let var = self.variable(var_hid, expr.span);
-                    self.warn_about_dead_assign(vec![expr.span], expr.hir_id, ln, var);
+                    let expr_span = self.ir.tcx.hir().span(expr.hir_id);
+                    let ln = self.live_node(expr.hir_id, expr_span);
+                    let var = self.variable(var_hid, expr_span);
+                    self.warn_about_dead_assign(vec![expr_span], expr.hir_id, ln, var);
                 }
             }
             _ => {

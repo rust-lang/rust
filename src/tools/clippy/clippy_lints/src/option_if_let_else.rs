@@ -158,15 +158,15 @@ fn detect_option_if_let_else<'tcx>(
     expr: &'_ Expr<'tcx>,
 ) -> Option<OptionIfLetElseOccurence> {
     if_chain! {
-        if !utils::in_macro(expr.span); // Don't lint macros, because it behaves weirdly
+        if !utils::in_macro(cx.tcx.hir().span(expr.hir_id)); // Don't lint macros, because it behaves weirdly
         if let ExprKind::Match(cond_expr, arms, MatchSource::IfLetDesugar{contains_else_clause: true}) = &expr.kind;
         if arms.len() == 2;
         if !is_result_ok(cx, cond_expr); // Don't lint on Result::ok because a different lint does it already
         if let PatKind::TupleStruct(struct_qpath, &[inner_pat], _) = &arms[0].pat.kind;
         if utils::match_qpath(struct_qpath, &paths::OPTION_SOME);
         if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
-        if !utils::usage::contains_return_break_continue_macro(arms[0].body);
-        if !utils::usage::contains_return_break_continue_macro(arms[1].body);
+        if !utils::usage::contains_return_break_continue_macro(cx, arms[0].body);
+        if !utils::usage::contains_return_break_continue_macro(cx, arms[1].body);
         then {
             let capture_mut = if bind_annotation == &BindingAnnotation::Mutable { "mut " } else { "" };
             let some_body = extract_body_from_arm(&arms[0])?;
@@ -203,7 +203,7 @@ impl<'tcx> LateLintPass<'tcx> for OptionIfLetElse {
             span_lint_and_sugg(
                 cx,
                 OPTION_IF_LET_ELSE,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 format!("use Option::{} instead of an if let/else", detection.method_sugg).as_str(),
                 "try",
                 format!(

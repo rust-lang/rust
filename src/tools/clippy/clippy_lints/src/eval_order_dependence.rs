@@ -119,7 +119,12 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
         }
     }
     fn report_diverging_sub_expr(&mut self, e: &Expr<'_>) {
-        span_lint(self.cx, DIVERGING_SUB_EXPRESSION, e.span, "sub-expression diverges");
+        span_lint(
+            self.cx,
+            DIVERGING_SUB_EXPRESSION,
+            self.cx.tcx.hir().span(e.hir_id),
+            "sub-expression diverges",
+        );
     }
 }
 
@@ -303,9 +308,9 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
                 span_lint_and_note(
                     self.cx,
                     EVAL_ORDER_DEPENDENCE,
-                    expr.span,
+                    self.cx.tcx.hir().span(expr.hir_id),
                     "unsequenced read of a variable",
-                    Some(self.write_expr.span),
+                    Some(self.cx.tcx.hir().span(self.write_expr.hir_id)),
                     "whether read occurs before this write depends on evaluation order",
                 );
             }

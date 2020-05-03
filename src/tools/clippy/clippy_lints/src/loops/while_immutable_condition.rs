@@ -45,7 +45,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
         span_lint_and_then(
             cx,
             WHILE_IMMUTABLE_CONDITION,
-            cond.span,
+            cx.tcx.hir().span(cond.hir_id),
             "variables in the condition are not mutated in the loop body",
             |diag| {
                 diag.note("this may lead to an infinite or to a never running loop");

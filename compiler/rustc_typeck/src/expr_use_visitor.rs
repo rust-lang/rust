@@ -441,7 +441,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // may not. This will generate an error earlier in typeck,
                 // so we can just ignore it.
                 if !self.tcx().sess.has_errors() {
-                    span_bug!(with_expr.span, "with expression doesn't evaluate to a struct");
+                    span_bug!(
+                        self.tcx().hir().span(with_expr.hir_id),
+                        "with expression doesn't evaluate to a struct"
+                    );
                 }
             }
         }

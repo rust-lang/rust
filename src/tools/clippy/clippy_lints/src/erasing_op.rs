@@ -31,16 +31,16 @@ declare_lint_pass!(ErasingOp => [ERASING_OP]);
 
 impl<'tcx> LateLintPass<'tcx> for ErasingOp {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if e.span.from_expansion() {
+        if cx.tcx.hir().span(e.hir_id).from_expansion() {
             return;
         }
         if let ExprKind::Binary(ref cmp, ref left, ref right) = e.kind {
             match cmp.node {
                 BinOpKind::Mul | BinOpKind::BitAnd => {
-                    check(cx, left, e.span);
-                    check(cx, right, e.span);
+                    check(cx, left, cx.tcx.hir().span(e.hir_id));
+                    check(cx, right, cx.tcx.hir().span(e.hir_id));
                 },
-                BinOpKind::Div => check(cx, left, e.span),
+                BinOpKind::Div => check(cx, left, cx.tcx.hir().span(e.hir_id)),
                 _ => (),
             }
         }

@@ -35,12 +35,12 @@ pub(super) fn check<'tcx>(
                 then {
                     let mut applicability = Applicability::MachineApplicable;
 
-                    let for_span = get_span_of_entire_for_loop(expr);
+                    let for_span = get_span_of_entire_for_loop(cx, expr);
 
                     span_lint_and_sugg(
                         cx,
                         EXPLICIT_COUNTER_LOOP,
-                        for_span.with_hi(arg.span.hi()),
+                        for_span.with_hi(cx.tcx.hir().span(arg.hir_id).hi()),
                         &format!("the variable `{}` is used as a loop counter", name),
                         "consider using",
                         format!(

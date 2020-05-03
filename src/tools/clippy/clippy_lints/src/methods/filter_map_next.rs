@@ -21,20 +21,20 @@ pub(super) fn check<'tcx>(
 
         let msg = "called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
                    `.find_map(..)` instead";
-        let filter_snippet = snippet(cx, filter_args[1].span, "..");
+        let filter_snippet = snippet(cx, cx.tcx.hir().span(filter_args[1].hir_id), "..");
         if filter_snippet.lines().count() <= 1 {
-            let iter_snippet = snippet(cx, filter_args[0].span, "..");
+            let iter_snippet = snippet(cx, cx.tcx.hir().span(filter_args[0].hir_id), "..");
             span_lint_and_sugg(
                 cx,
                 FILTER_MAP_NEXT,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 msg,
                 "try this",
                 format!("{}.find_map({})", iter_snippet, filter_snippet),
                 Applicability::MachineApplicable,
             );
         } else {
-            span_lint(cx, FILTER_MAP_NEXT, expr.span, msg);
+            span_lint(cx, FILTER_MAP_NEXT, cx.tcx.hir().span(expr.hir_id), msg);
         }
     }
 }

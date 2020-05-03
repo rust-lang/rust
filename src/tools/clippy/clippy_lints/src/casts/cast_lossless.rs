@@ -15,7 +15,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_op: &Expr<'_>, c
     // The suggestion is to use a function call, so if the original expression
     // has parens on the outside, they are no longer needed.
     let mut applicability = Applicability::MachineApplicable;
-    let opt = snippet_opt(cx, cast_op.span);
+    let opt = snippet_opt(cx, cx.tcx.hir().span(cast_op.hir_id));
     let sugg = opt.as_ref().map_or_else(
         || {
             applicability = Applicability::HasPlaceholders;
@@ -33,7 +33,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_op: &Expr<'_>, c
     span_lint_and_sugg(
         cx,
         CAST_LOSSLESS,
-        expr.span,
+        cx.tcx.hir().span(expr.hir_id),
         &format!(
             "casting `{}` to `{}` may become silently lossy if you later change the type",
             cast_from, cast_to

@@ -133,9 +133,9 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                     }
                     span_lint_and_note(cx,
                                        lint,
-                                       expr.span,
+                                       cx.tcx.hir().span(expr.hir_id),
                                        &msg,
-                                       Some(arg.span),
+                                       Some(cx.tcx.hir().span(arg.hir_id)),
                                        &format!("argument has type `{}`", arg_ty));
                 } else if is_copy(cx, arg_ty) {
                     if match_def_path(cx, def_id, &paths::DROP) {
@@ -149,9 +149,9 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                     }
                     span_lint_and_note(cx,
                                        lint,
-                                       expr.span,
+                                       cx.tcx.hir().span(expr.hir_id),
                                        &msg,
-                                       Some(arg.span),
+                                       Some(cx.tcx.hir().span(arg.hir_id)),
                                        &format!("argument has type {}", arg_ty));
                 }
             }

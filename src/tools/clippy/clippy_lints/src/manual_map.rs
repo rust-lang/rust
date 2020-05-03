@@ -51,7 +51,7 @@ declare_lint_pass!(ManualMap => [MANUAL_MAP]);
 impl LateLintPass<'_> for ManualMap {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), cx.tcx.hir().span(expr.hir_id)) {
             return;
         }
 
@@ -66,7 +66,7 @@ impl LateLintPass<'_> for ManualMap {
                 return;
             }
 
-            let expr_ctxt = expr.span.ctxt();
+            let expr_ctxt = cx.tcx.hir().span(expr.hir_id).ctxt();
             let (some_expr, some_pat, pat_ref_count, is_wild_none) = match (
                 try_parse_pattern(cx, arm1.pat, expr_ctxt),
                 try_parse_pattern(cx, arm2.pat, expr_ctxt),
@@ -129,18 +129,22 @@ impl LateLintPass<'_> for ManualMap {
             // Remove address-of expressions from the scrutinee. Either `as_ref` will be called, or
             // it's being passed by value.
             let scrutinee = peel_hir_expr_refs(scrutinee).0;
-            let scrutinee_str = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
             let scrutinee_str =
-                if scrutinee.span.ctxt() == expr.span.ctxt() && scrutinee.precedence().order() < PREC_POSTFIX {
-                    format!("({})", scrutinee_str)
-                } else {
-                    scrutinee_str.into()
-                };
+                snippet_with_context(cx, cx.tcx.hir().span(scrutinee.hir_id), expr_ctxt, "..", &mut app);
+            let scrutinee_str = if cx.tcx.hir().span(scrutinee.hir_id).ctxt() == expr_ctxt
+                && scrutinee.precedence().order() < PREC_POSTFIX
+            {
+                format!("({})", scrutinee_str)
+            } else {
+                scrutinee_str.into()
+            };
 
             let body_str = if let PatKind::Binding(annotation, _, some_binding, None) = some_pat.kind {
                 match can_pass_as_func(cx, some_binding, some_expr) {
-                    Some(func) if func.span.ctxt() == some_expr.span.ctxt() => {
-                        snippet_with_applicability(cx, func.span, "..", &mut app).into_owned()
+                    Some(func)
+                        if cx.tcx.hir().span(func.hir_id).ctxt() == cx.tcx.hir().span(some_expr.hir_id).ctxt() =>
+                    {
+                        snippet_with_applicability(cx, cx.tcx.hir().span(func.hir_id), "..", &mut app).into_owned()
                     },
                     _ => {
                         if match_var(some_expr, some_binding.name)
@@ -160,7 +164,7 @@ impl LateLintPass<'_> for ManualMap {
                             "|{}{}| {}",
                             annotation,
                             some_binding,
-                            snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app)
+                            snippet_with_context(cx, cx.tcx.hir().span(some_expr.hir_id), expr_ctxt, "..", &mut app)
                         )
                     },
                 }
@@ -179,7 +183,7 @@ impl LateLintPass<'_> for ManualMap {
             span_lint_and_sugg(
                 cx,
                 MANUAL_MAP,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "manual implementation of `Option::map`",
                 "try this",
                 format!("{}{}.map({})", scrutinee_str, as_ref_str, body_str),
@@ -299,7 +303,7 @@ fn get_some_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ctxt: SyntaxConte
                 ..
             },
             [arg],
-        ) if ctxt == expr.span.ctxt() => {
+        ) if ctxt == cx.tcx.hir().span(expr.hir_id).ctxt() => {
             if match_def_path(cx, path.res.opt_def_id()?, &paths::OPTION_SOME) {
                 Some(arg)
             } else {

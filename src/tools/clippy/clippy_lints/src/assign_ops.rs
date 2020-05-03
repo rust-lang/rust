@@ -133,14 +133,14 @@ impl<'tcx> LateLintPass<'tcx> for AssignOps {
                             span_lint_and_then(
                                 cx,
                                 ASSIGN_OP_PATTERN,
-                                expr.span,
+                                cx.tcx.hir().span(expr.hir_id),
                                 "manual implementation of an assign operation",
                                 |diag| {
                                     if let (Some(snip_a), Some(snip_r)) =
-                                        (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
+                                        (snippet_opt(cx, cx.tcx.hir().span(assignee.hir_id)), snippet_opt(cx, cx.tcx.hir().span(rhs.hir_id)))
                                     {
                                         diag.span_suggestion(
-                                            expr.span,
+                                            cx.tcx.hir().span(expr.hir_id),
                                             "replace it with",
                                             format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
                                             Applicability::MachineApplicable,
@@ -199,15 +199,15 @@ fn lint_misrefactored_assign_op(
     span_lint_and_then(
         cx,
         MISREFACTORED_ASSIGN_OP,
-        expr.span,
+        cx.tcx.hir().span(expr.hir_id),
         "variable appears on both sides of an assignment operation",
         |diag| {
-            if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span)) {
+            if let (Some(snip_a), Some(snip_r)) = (snippet_opt(cx, cx.tcx.hir().span(assignee.hir_id)), snippet_opt(cx, cx.tcx.hir().span(rhs_other.hir_id))) {
                 let a = &sugg::Sugg::hir(cx, assignee, "..");
                 let r = &sugg::Sugg::hir(cx, rhs, "..");
                 let long = format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
                 diag.span_suggestion(
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     &format!(
                         "did you mean `{} = {} {} {}` or `{}`? Consider replacing it with",
                         snip_a,
@@ -220,7 +220,7 @@ fn lint_misrefactored_assign_op(
                     Applicability::MaybeIncorrect,
                 );
                 diag.span_suggestion(
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "or",
                     long,
                     Applicability::MaybeIncorrect, // snippet

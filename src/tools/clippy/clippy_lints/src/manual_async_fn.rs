@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                                 );
 
                                 let block_span = cx.tcx.hir().span(block.hir_id);
-                                let body_snip = snippet_block(cx, closure_body.value.span, "..", Some(block_span));
+                                let body_snip = snippet_block(cx, cx.tcx.hir().span(closure_body.value.hir_id), "..", Some(block_span));
                                 diag.span_suggestion(
                                     block_span,
                                     "move the body of the async block to the enclosing function",

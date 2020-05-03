@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(
             span_lint_and_then(
                 cx,
                 TRANSMUTE_FLOAT_TO_INT,
-                e.span,
+                cx.tcx.hir().span(e.hir_id),
                 &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                 |diag| {
                     let mut expr = &args[0];
@@ -55,7 +55,12 @@ pub(super) fn check<'tcx>(
                         arg
                     };
 
-                    diag.span_suggestion(e.span, "consider using", arg.to_string(), Applicability::Unspecified);
+                    diag.span_suggestion(
+                        cx.tcx.hir().span(e.hir_id),
+                        "consider using",
+                        arg.to_string(),
+                        Applicability::Unspecified,
+                    );
                 },
             );
             true

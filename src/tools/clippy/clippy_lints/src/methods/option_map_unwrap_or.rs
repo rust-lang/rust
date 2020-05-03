@@ -43,13 +43,13 @@ pub(super) fn check<'tcx>(
             }
         }
 
-        if differing_macro_contexts(unwrap_args[1].span, map_span) {
+        if differing_macro_contexts(cx.tcx.hir().span(unwrap_args[1].hir_id), map_span) {
             return;
         }
 
         let mut applicability = Applicability::MachineApplicable;
         // get snippet for unwrap_or()
-        let unwrap_snippet = snippet_with_applicability(cx, unwrap_args[1].span, "..", &mut applicability);
+        let unwrap_snippet = snippet_with_applicability(cx, cx.tcx.hir().span(unwrap_args[1].hir_id), "..", &mut applicability);
         // lint message
         // comparing the snippet from source to raw text ("None") below is safe
         // because we already have checked the type.
@@ -66,15 +66,15 @@ pub(super) fn check<'tcx>(
             arg, suggest
         );
 
-        span_lint_and_then(cx, MAP_UNWRAP_OR, expr.span, msg, |diag| {
-            let map_arg_span = map_args[1].span;
+        span_lint_and_then(cx, MAP_UNWRAP_OR, cx.tcx.hir().span(expr.hir_id), msg, |diag| {
+            let map_arg_span = cx.tcx.hir().span(map_args[1].hir_id);
 
             let mut suggestion = vec![
                 (
                     map_span,
                     String::from(if unwrap_snippet_none { "and_then" } else { "map_or" }),
                 ),
-                (expr.span.with_lo(unwrap_args[0].span.hi()), String::from("")),
+                (cx.tcx.hir().span(expr.hir_id).with_lo(cx.tcx.hir().span(unwrap_args[0].hir_id).hi()), String::from("")),
             ];
 
             if !unwrap_snippet_none {

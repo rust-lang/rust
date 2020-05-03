@@ -44,7 +44,7 @@ impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
 #[allow(clippy::too_many_lines)]
 impl<'tcx> LateLintPass<'tcx> for UselessConversion {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if e.span.from_expansion() {
+        if cx.tcx.hir().span(e.hir_id).from_expansion() {
             return;
         }
 
@@ -68,11 +68,11 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(&args[0]);
                     if TyS::same_type(a, b) {
-                        let sugg = snippet_with_macro_callsite(cx, args[0].span, "<expr>").to_string();
+                        let sugg = snippet_with_macro_callsite(cx, cx.tcx.hir().span(args[0].hir_id), "<expr>").to_string();
                         span_lint_and_sugg(
                             cx,
                             USELESS_CONVERSION,
-                            e.span,
+                            cx.tcx.hir().span(e.hir_id),
                             &format!("useless conversion to the same type: `{}`", b),
                             "consider removing `.into()`",
                             sugg,
@@ -91,11 +91,11 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(&args[0]);
                     if TyS::same_type(a, b) {
-                        let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
+                        let sugg = snippet(cx, cx.tcx.hir().span(args[0].hir_id), "<expr>").into_owned();
                         span_lint_and_sugg(
                             cx,
                             USELESS_CONVERSION,
-                            e.span,
+                            cx.tcx.hir().span(e.hir_id),
                             &format!("useless conversion to the same type: `{}`", b),
                             "consider removing `.into_iter()`",
                             sugg,
@@ -116,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             span_lint_and_help(
                                 cx,
                                 USELESS_CONVERSION,
-                                e.span,
+                                cx.tcx.hir().span(e.hir_id),
                                 &format!("useless conversion to the same type: `{}`", b),
                                 None,
                                 "consider removing `.try_into()`",
@@ -143,11 +143,11 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             if TyS::same_type(a_type, b);
 
                             then {
-                                let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));
+                                let hint = format!("consider removing `{}()`", snippet(cx, cx.tcx.hir().span(path.hir_id), "TryFrom::try_from"));
                                 span_lint_and_help(
                                     cx,
                                     USELESS_CONVERSION,
-                                    e.span,
+                                    cx.tcx.hir().span(e.hir_id),
                                     &format!("useless conversion to the same type: `{}`", b),
                                     None,
                                     &hint,
@@ -162,11 +162,11 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             then {
                                 let sugg = Sugg::hir_with_macro_callsite(cx, &args[0], "<expr>").maybe_par();
                                 let sugg_msg =
-                                    format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
+                                    format!("consider removing `{}()`", snippet(cx, cx.tcx.hir().span(path.hir_id), "From::from"));
                                 span_lint_and_sugg(
                                     cx,
                                     USELESS_CONVERSION,
-                                    e.span,
+                                    cx.tcx.hir().span(e.hir_id),
                                     &format!("useless conversion to the same type: `{}`", b),
                                     &sugg_msg,
                                     sugg.to_string(),

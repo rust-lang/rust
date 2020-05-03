@@ -312,7 +312,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                     // use the macro callsite when the init span (but not the whole local span)
                     // comes from an expansion like `vec![1, 2, 3]` in `let ref _ = vec![1, 2, 3];`
                     let local_span = cx.tcx.hir().span(local.hir_id);
-                    let sugg_init = if init.span.from_expansion() && !local_span.from_expansion() {
+                    let sugg_init = if cx.tcx.hir().span(init.hir_id).from_expansion() && !local_span.from_expansion() {
                         Sugg::hir_with_macro_callsite(cx, init, "..")
                     } else {
                         Sugg::hir(cx, init, "..")
@@ -370,7 +370,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                             format!(
                                 "if {} {{ {}; }}",
                                 sugg,
-                                &snippet(cx, b.span, ".."),
+                                &snippet(cx, cx.tcx.hir().span(b.hir_id), ".."),
                             ),
                             Applicability::MachineApplicable, // snippet
                         );
@@ -380,9 +380,10 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        let expr_span = cx.tcx.hir().span(expr.hir_id);
         match expr.kind {
             ExprKind::Cast(ref e, ref ty) => {
-                check_cast(cx, expr.span, e, ty);
+                check_cast(cx, expr_span, e, ty);
                 return;
             },
             ExprKind::Binary(ref cmp, ref left, ref right) => {
@@ -391,7 +392,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
             },
             _ => {},
         }
-        if in_attributes_expansion(expr) || expr.span.is_desugaring(DesugaringKind::Await) {
+        if in_attributes_expansion(cx, expr) || expr_span.is_desugaring(DesugaringKind::Await) {
             // Don't lint things expanded by #[derive(...)], etc or `await` desugaring
             return;
         }
@@ -424,7 +425,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
             span_lint(
                 cx,
                 USED_UNDERSCORE_BINDING,
-                expr.span,
+                expr_span,
                 &format!(
                     "used binding `{}` which is prefixed with an underscore. A leading \
                      underscore signals that a binding will not be used",
@@ -475,7 +476,7 @@ fn check_nan(cx: &LateContext<'_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
                 span_lint(
                     cx,
                     CMP_NAN,
-                    cmp_expr.span,
+                    cx.tcx.hir().span(cmp_expr.hir_id),
                     "doomed comparison with `NAN`, use `{f32,f64}::is_nan()` instead",
                 );
             }
@@ -564,7 +565,7 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
                 if is_diagnostic_assoc_item(cx, expr_def_id, sym::ToString)
                     || is_diagnostic_assoc_item(cx, expr_def_id, sym::ToOwned);
                 then {
-                    (cx.typeck_results().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
+                    (cx.typeck_results().expr_ty(&args[0]), snippet(cx, cx.tcx.hir().span(args[0].hir_id), ".."))
                 } else {
                     return;
                 }
@@ -573,7 +574,10 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
         ExprKind::Call(ref path, ref v) if v.len() == 1 => {
             if let ExprKind::Path(ref path) = path.kind {
                 if match_qpath(path, &["String", "from_str"]) || match_qpath(path, &["String", "from"]) {
-                    (cx.typeck_results().expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
+                    (
+                        cx.typeck_results().expr_ty(&v[0]),
+                        snippet(cx, cx.tcx.hir().span(v[0].hir_id), ".."),
+                    )
                 } else {
                     return;
                 }
@@ -599,9 +603,9 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
     let other_gets_derefed = matches!(other.kind, ExprKind::Unary(UnOp::Deref, _));
 
     let lint_span = if other_gets_derefed {
-        expr.span.to(other.span)
+        cx.tcx.hir().span(expr.hir_id).to(cx.tcx.hir().span(other.hir_id))
     } else {
-        expr.span
+        cx.tcx.hir().span(expr.hir_id)
     };
 
     span_lint_and_then(
@@ -626,17 +630,20 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
                 eq_impl = without_deref;
             };
 
+            let expr_span = cx.tcx.hir().span(expr.hir_id);
+            let other_span = cx.tcx.hir().span(other.hir_id);
+
             let span;
             let hint;
             if (eq_impl.ty_eq_other && left) || (eq_impl.other_eq_ty && !left) {
-                span = expr.span;
+                span = expr_span;
                 hint = expr_snip;
             } else {
-                span = expr.span.to(other.span);
+                span = expr_span.to(other_span);
                 if eq_impl.ty_eq_other {
-                    hint = format!("{} == {}", expr_snip, snippet(cx, other.span, ".."));
+                    hint = format!("{} == {}", expr_snip, snippet(cx, other_span, ".."));
                 } else {
-                    hint = format!("{} == {}", snippet(cx, other.span, ".."), expr_snip);
+                    hint = format!("{} == {}", snippet(cx, other_span, ".."), expr_snip);
                 }
             }
 
@@ -662,11 +669,17 @@ fn is_used(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 /// Tests whether an expression is in a macro expansion (e.g., something
 /// generated by `#[derive(...)]` or the like).
-fn in_attributes_expansion(expr: &Expr<'_>) -> bool {
+fn in_attributes_expansion(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     use rustc_span::hygiene::MacroKind;
-    if expr.span.from_expansion() {
-        let data = expr.span.ctxt().outer_expn_data();
-        matches!(data.kind, ExpnKind::Macro(MacroKind::Attr, _))
+    let expr_span = cx.tcx.hir().span(expr.hir_id);
+    if expr_span.from_expansion() {
+        let data = expr_span.ctxt().outer_expn_data();
+
+        if let ExpnKind::Macro(MacroKind::Attr, _) = data.kind {
+            true
+        } else {
+            false
+        }
     } else {
         false
     }
@@ -741,13 +754,14 @@ fn check_binary(
             is_named_constant(cx, left) || is_named_constant(cx, right),
             is_comparing_arrays,
         );
-        span_lint_and_then(cx, lint, expr.span, msg, |diag| {
+        let expr_span = cx.tcx.hir().span(expr.hir_id);
+        span_lint_and_then(cx, lint, expr_span, msg, |diag| {
             let lhs = Sugg::hir(cx, left, "..");
             let rhs = Sugg::hir(cx, right, "..");
 
             if !is_comparing_arrays {
                 diag.span_suggestion(
-                    expr.span,
+                    expr_span,
                     "consider comparing them within some margin of error",
                     format!(
                         "({}).abs() {} error_margin",
@@ -760,8 +774,9 @@ fn check_binary(
             diag.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`");
         });
     } else if op == BinOpKind::Rem {
+        let expr_span = cx.tcx.hir().span(expr.hir_id);
         if is_integer_const(cx, right, 1) {
-            span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
+            span_lint(cx, MODULO_ONE, expr_span, "any number modulo 1 will be 0");
         }
 
         if let ty::Int(ity) = cx.typeck_results().expr_ty(right).kind() {
@@ -769,7 +784,7 @@ fn check_binary(
                 span_lint(
                     cx,
                     MODULO_ONE,
-                    expr.span,
+                    expr_span,
                     "any number modulo -1 will panic/overflow or result in 0",
                 );
             }

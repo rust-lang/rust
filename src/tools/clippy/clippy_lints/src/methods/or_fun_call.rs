@@ -53,7 +53,7 @@ pub(super) fn check<'tcx>(
                     "try this",
                     format!(
                         "{}.unwrap_or_default()",
-                        snippet_with_applicability(cx, self_expr.span, "..", &mut applicability)
+                        snippet_with_applicability(cx, cx.tcx.hir().span(self_expr.hir_id), "..", &mut applicability)
                     ),
                     applicability,
                 );
@@ -118,7 +118,7 @@ pub(super) fn check<'tcx>(
                 let sugg: Cow<'_, str> = {
                     let (snippet_span, use_lambda) = match (fn_has_arguments, fun_span) {
                         (false, Some(fun_span)) => (fun_span, false),
-                        _ => (arg.span, true),
+                        _ => (cx.tcx.hir().span(arg.hir_id), true),
                     };
                     let snippet = {
                         let not_macro_argument_snippet = snippet_with_macro_callsite(cx, snippet_span, "..");
@@ -159,13 +159,41 @@ pub(super) fn check<'tcx>(
         match args[1].kind {
             hir::ExprKind::Call(ref fun, ref or_args) => {
                 let or_has_args = !or_args.is_empty();
-                if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {
-                    let fun_span = if or_has_args { None } else { Some(fun.span) };
-                    check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, fun_span);
+                if !check_unwrap_or_default(
+                    cx,
+                    name,
+                    fun,
+                    &args[0],
+                    &args[1],
+                    or_has_args,
+                    cx.tcx.hir().span(expr.hir_id),
+                ) {
+                    let fun_span = if or_has_args {
+                        None
+                    } else {
+                        Some(cx.tcx.hir().span(fun.hir_id))
+                    };
+                    check_general_case(
+                        cx,
+                        name,
+                        method_span,
+                        &args[0],
+                        &args[1],
+                        cx.tcx.hir().span(expr.hir_id),
+                        fun_span,
+                    );
                 }
             },
             hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
-                check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
+                check_general_case(
+                    cx,
+                    name,
+                    method_span,
+                    &args[0],
+                    &args[1],
+                    cx.tcx.hir().span(expr.hir_id),
+                    None,
+                );
             },
             _ => {},
         }

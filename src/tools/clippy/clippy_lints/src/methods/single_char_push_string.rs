@@ -10,13 +10,17 @@ use super::SINGLE_CHAR_ADD_STR;
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     let mut applicability = Applicability::MachineApplicable;
     if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[1], &mut applicability) {
-        let base_string_snippet =
-            snippet_with_applicability(cx, args[0].span.source_callsite(), "..", &mut applicability);
+        let base_string_snippet = snippet_with_applicability(
+            cx,
+            cx.tcx.hir().span(args[0].hir_id).source_callsite(),
+            "..",
+            &mut applicability,
+        );
         let sugg = format!("{}.push({})", base_string_snippet, extension_string);
         span_lint_and_sugg(
             cx,
             SINGLE_CHAR_ADD_STR,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "calling `push_str()` using a single-character string literal",
             "consider using `push` with a character literal",
             sugg,

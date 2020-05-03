@@ -80,8 +80,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return false,
         };
 
-        let sig = self.replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, sig).0;
-        let sig = self.normalize_associated_types_in(expr.span, sig);
+        let expr_span = hir.span(expr.hir_id);
+        let sig = self.replace_bound_vars_with_fresh_vars(expr_span, infer::FnCall, sig).0;
+        let sig = self.normalize_associated_types_in(expr_span, sig);
         if self.can_coerce(sig.output(), expected) {
             let (mut sugg_call, applicability) = if sig.inputs().is_empty() {
                 (String::new(), Applicability::MachineApplicable)
@@ -117,10 +118,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Some(Node::Expr(hir::Expr {
                     kind: ExprKind::Closure(_, _, body_id, _, _),
-                    span: full_closure_span,
+                    hir_id: full_closure_id,
                     ..
                 })) => {
-                    if *full_closure_span == expr.span {
+                    if hir.span(*full_closure_id) == expr_span {
                         return false;
                     }
                     msg = "call this closure";
@@ -186,7 +187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {}
             }
             err.span_suggestion_verbose(
-                expr.span.shrink_to_hi(),
+                expr_span.shrink_to_hi(),
                 &format!("use parentheses to {}", msg),
                 format!("({})", sugg_call),
                 applicability,
@@ -214,10 +215,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(sp, &format!("{} defined here", found));
             }
         } else if !self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
+            let expr_span = self.tcx.hir().span(expr.hir_id);
             let is_struct_pat_shorthand_field =
-                self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, expr.span);
-            let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
-            if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
+                self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, expr_span);
+            let methods = self.get_conversion_methods(expr_span, expected, found, expr.hir_id);
+            if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr_span) {
                 let mut suggestions = iter::repeat(&expr_text)
                     .zip(methods.iter())
                     .filter_map(|(receiver, method)| {
@@ -248,7 +250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .peekable();
                 if suggestions.peek().is_some() {
                     err.span_suggestions(
-                        expr.span,
+                        expr_span,
                         "try using a conversion method",
                         suggestions,
                         Applicability::MaybeIncorrect,
@@ -275,12 +277,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
         let boxed_found = self.tcx.mk_box(found);
+        let expr_span = self.tcx.hir().span(expr.hir_id);
         if let (true, Ok(snippet)) = (
             self.can_coerce(boxed_found, expected),
-            self.sess().source_map().span_to_snippet(expr.span),
+            self.sess().source_map().span_to_snippet(expr_span),
         ) {
             err.span_suggestion(
-                expr.span,
+                expr_span,
                 "store this in the heap by calling `Box::new`",
                 format!("Box::new({})", snippet),
                 Applicability::MachineApplicable,
@@ -349,9 +352,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let boxed_found = self.tcx.mk_box(found);
         let new_found = self.tcx.mk_lang_item(boxed_found, LangItem::Pin).unwrap();
+        let expr_span = self.tcx.hir().span(expr.hir_id);
         if let (true, Ok(snippet)) = (
             self.can_coerce(new_found, expected),
-            self.sess().source_map().span_to_snippet(expr.span),
+            self.sess().source_map().span_to_snippet(expr_span),
         ) {
             match found.kind() {
                 ty::Adt(def, _) if def.is_box() => {
@@ -359,7 +363,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => {
                     err.span_suggestion(
-                        expr.span,
+                        expr_span,
                         "you need to pin and box this expression",
                         format!("Box::pin({})", snippet),
                         Applicability::MachineApplicable,
@@ -486,15 +490,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let found = self.resolve_vars_with_obligations(found);
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
+            let expr_span = self.tcx.hir().span(expr.hir_id);
             let ty = AstConv::ast_ty_to_ty(self, ty);
             let ty = self.tcx.erase_late_bound_regions(Binder::bind(ty));
-            let ty = self.normalize_associated_types_in(expr.span, ty);
+            let ty = self.normalize_associated_types_in(expr_span, ty);
             if self.can_coerce(found, ty) {
                 err.multipart_suggestion(
                     "you might have meant to return this value",
                     vec![
-                        (expr.span.shrink_to_lo(), "return ".to_string()),
-                        (expr.span.shrink_to_hi(), ";".to_string()),
+                        (expr_span.shrink_to_lo(), "return ".to_string()),
+                        (expr_span.shrink_to_hi(), ";".to_string()),
                     ],
                     Applicability::MaybeIncorrect,
                 );
@@ -507,7 +512,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
     ) {
-        let sp = self.tcx.sess.source_map().start_point(expr.span);
+        let expr_span = self.tcx.hir().span(expr.hir_id);
+        let sp = self.tcx.sess.source_map().start_point(expr_span);
         if let Some(sp) = self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp) {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
             self.tcx.sess.parse_sess.expr_parentheses_needed(err, *sp, None);

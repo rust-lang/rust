@@ -96,19 +96,20 @@ pub(crate) trait BindInsteadOfMap {
                     return false;
                 }
 
-                let some_inner_snip = if inner_expr.span.from_expansion() {
-                    snippet_with_macro_callsite(cx, inner_expr.span, "_")
+                let inner_expr_span = cx.tcx.hir().span(inner_expr.hir_id);
+                let some_inner_snip = if inner_expr_span.from_expansion() {
+                    snippet_with_macro_callsite(cx, inner_expr_span, "_")
                 } else {
-                    snippet(cx, inner_expr.span, "_")
+                    snippet(cx, inner_expr_span, "_")
                 };
 
                 let closure_args_snip = snippet(cx, closure_args_span, "..");
-                let option_snip = snippet(cx, args[0].span, "..");
+                let option_snip = snippet(cx, cx.tcx.hir().span(args[0].hir_id), "..");
                 let note = format!("{}.{}({} {})", option_snip, Self::GOOD_METHOD_NAME, closure_args_snip, some_inner_snip);
                 span_lint_and_sugg(
                     cx,
                     BIND_INSTEAD_OF_MAP,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     Self::lint_msg().as_ref(),
                     "try this",
                     note,
@@ -124,15 +125,16 @@ pub(crate) trait BindInsteadOfMap {
     fn lint_closure(cx: &LateContext<'_>, expr: &hir::Expr<'_>, closure_expr: &hir::Expr<'_>) -> bool {
         let mut suggs = Vec::new();
         let can_sugg: bool = find_all_ret_expressions(cx, closure_expr, |ret_expr| {
+            let ret_expr_span = cx.tcx.hir().span(ret_expr.hir_id);
             if_chain! {
-                if !in_macro(ret_expr.span);
+                if !in_macro(ret_expr_span);
                 if let hir::ExprKind::Call(ref func_path, ref args) = ret_expr.kind;
                 if let hir::ExprKind::Path(ref qpath) = func_path.kind;
                 if match_qpath(qpath, Self::BAD_VARIANT_QPATH);
                 if args.len() == 1;
                 if !contains_return(&args[0]);
                 then {
-                    suggs.push((ret_expr.span, args[0].span.source_callsite()));
+                    suggs.push((ret_expr_span, cx.tcx.hir().span(args[0].hir_id).source_callsite()));
                     true
                 } else {
                     false
@@ -141,12 +143,12 @@ pub(crate) trait BindInsteadOfMap {
         });
 
         if can_sugg {
-            span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, Self::lint_msg().as_ref(), |diag| {
+            span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, cx.tcx.hir().span(expr.hir_id), Self::lint_msg().as_ref(), |diag| {
                 multispan_sugg_with_applicability(
                     diag,
                     "try this",
                     Applicability::MachineApplicable,
-                    std::iter::once((*method_calls(expr, 1).2.get(0).unwrap(), Self::GOOD_METHOD_NAME.into())).chain(
+                    std::iter::once((*method_calls(cx, expr, 1).2.get(0).unwrap(), Self::GOOD_METHOD_NAME.into())).chain(
                         suggs
                             .into_iter()
                             .map(|(span1, span2)| (span1, snippet(cx, span2, "_").into())),
@@ -179,10 +181,10 @@ pub(crate) trait BindInsteadOfMap {
                 span_lint_and_sugg(
                     cx,
                     BIND_INSTEAD_OF_MAP,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     Self::no_op_msg().as_ref(),
                     "use the expression directly",
-                    snippet(cx, args[0].span, "..").into(),
+                    snippet(cx, cx.tcx.hir().span(args[0].hir_id), "..").into(),
                     Applicability::MachineApplicable,
                 );
                 true

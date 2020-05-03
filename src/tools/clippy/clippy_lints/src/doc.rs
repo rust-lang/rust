@@ -718,19 +718,20 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
             if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.kind;
             if let Some(path_def_id) = path.res.opt_def_id();
             if match_panic_def_id(self.cx, path_def_id);
-            if is_expn_of(expr.span, "unreachable").is_none();
+            let expr_span = self.cx.tcx.hir().span(expr.hir_id);
+            if is_expn_of(expr_span, "unreachable").is_none();
             then {
-                self.panic_span = Some(expr.span);
+                self.panic_span = Some(expr_span);
             }
         }
 
         // check for `unwrap`
-        if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
+        if let Some(arglists) = method_chain_args(self.cx, expr, &["unwrap"]) {
             let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
             if is_type_diagnostic_item(self.cx, reciever_ty, sym::option_type)
                 || is_type_diagnostic_item(self.cx, reciever_ty, sym::result_type)
             {
-                self.panic_span = Some(expr.span);
+                self.panic_span = Some(self.cx.tcx.hir().span(expr.hir_id));
             }
         }
 

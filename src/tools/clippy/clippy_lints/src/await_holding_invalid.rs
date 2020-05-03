@@ -101,7 +101,7 @@ impl LateLintPass<'_> for AwaitHolding {
             check_interior_types(
                 cx,
                 &typeck_results.generator_interior_types.as_ref().skip_binder(),
-                body.value.span,
+                cx.tcx.hir().span(body.value.hir_id),
             );
         }
     }

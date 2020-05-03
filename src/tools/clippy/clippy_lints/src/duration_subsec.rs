@@ -55,12 +55,12 @@ impl<'tcx> LateLintPass<'tcx> for DurationSubsec {
                 span_lint_and_sugg(
                     cx,
                     DURATION_SUBSEC,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     &format!("calling `{}()` is more concise than this calculation", suggested_fn),
                     "try",
                     format!(
                         "{}.{}()",
-                        snippet_with_applicability(cx, args[0].span, "_", &mut applicability),
+                        snippet_with_applicability(cx, cx.tcx.hir().span(args[0].hir_id), "_", &mut applicability),
                         suggested_fn
                     ),
                     applicability,

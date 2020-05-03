@@ -14,7 +14,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_op: &Expr<'_>, c
         span_lint(
             cx,
             CAST_SIGN_LOSS,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             &format!(
                 "casting `{}` to `{}` may lose the sign of the value",
                 cast_from, cast_to
@@ -48,7 +48,7 @@ fn should_lint(cx: &LateContext<'_>, cast_op: &Expr<'_>, cast_from: Ty<'_>, cast
 
                 if_chain! {
                     if method_name == "unwrap";
-                    if let Some(arglist) = method_chain_args(cast_op, &["unwrap"]);
+                    if let Some(arglist) = method_chain_args(cx, cast_op, &["unwrap"]);
                     if let ExprKind::MethodCall(ref inner_path, _, _, _) = &arglist[0][0].kind;
                     then {
                         method_name = inner_path.ident.name.as_str();

@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                         span_lint_and_sugg(
                             cx,
                             LOSSY_FLOAT_LITERAL,
-                            expr.span,
+                            cx.tcx.hir().span(expr.hir_id),
                             "literal cannot be represented as the underlying type without loss of precision",
                             "consider changing the type or replacing it with",
                             numeric_literal::format(&float_str, type_suffix, true),
@@ -116,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                     span_lint_and_sugg(
                         cx,
                         EXCESSIVE_PRECISION,
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         "float has excessive precision",
                         "consider changing the type or truncating it to",
                         numeric_literal::format(&float_str, type_suffix, true),

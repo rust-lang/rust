@@ -47,7 +47,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: &[hir
                         "{replacement}(|{s}| {r})",
                         replacement = replacement_method_name,
                         s = second_arg_ident,
-                        r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
+                        r = snippet_with_applicability(cx, cx.tcx.hir().span(right_expr.hir_id), "EXPR", &mut applicability),
                     )
                 } else {
                     format!(
@@ -59,7 +59,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: &[hir
                 span_lint_and_sugg(
                     cx,
                     UNNECESSARY_FOLD,
-                    fold_span.with_hi(expr.span.hi()),
+                    fold_span.with_hi(cx.tcx.hir().span(expr.hir_id).hi()),
                     // TODO #2371 don't suggest e.g., .any(|x| f(x)) if we can suggest .any(f)
                     "this `.fold` can be written more succinctly using another method",
                     "try",

@@ -108,7 +108,7 @@ declare_lint_pass!(MapErrIgnore => [MAP_ERR_IGNORE]);
 impl<'tcx> LateLintPass<'tcx> for MapErrIgnore {
     // do not try to lint if this is from a macro or desugaring
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
-        if e.span.from_expansion() {
+        if cx.tcx.hir().span(e.hir_id).from_expansion() {
             return;
         }
 

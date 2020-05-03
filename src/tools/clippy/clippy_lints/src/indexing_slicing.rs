@@ -87,6 +87,7 @@ declare_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]
 
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        let expr_span = cx.tcx.hir().span(expr.hir_id);
         if let ExprKind::Index(ref array, ref index) = &expr.kind {
             let ty = cx.typeck_results().expr_ty(array).peel_refs();
             if let Some(range) = higher::range(index) {
@@ -105,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                             span_lint(
                                 cx,
                                 OUT_OF_BOUNDS_INDEXING,
-                                range.start.map_or(expr.span, |start| start.span),
+                                range.start.map_or(expr_span, |start| cx.tcx.hir().span(start.hir_id)),
                                 "range is out of bounds",
                             );
                             return;
@@ -117,7 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                             span_lint(
                                 cx,
                                 OUT_OF_BOUNDS_INDEXING,
-                                range.end.map_or(expr.span, |end| end.span),
+                                range.end.map_or(expr_span, |end| cx.tcx.hir().span(end.hir_id)),
                                 "range is out of bounds",
                             );
                             return;
@@ -138,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                     (None, None) => return, // [..] is ok.
                 };
 
-                span_lint_and_help(cx, INDEXING_SLICING, expr.span, "slicing may panic", None, help_msg);
+                span_lint_and_help(cx, INDEXING_SLICING, expr_span, "slicing may panic", None, help_msg);
             } else {
                 // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.kind() {
@@ -152,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                 span_lint_and_help(
                     cx,
                     INDEXING_SLICING,
-                    expr.span,
+                    expr_span,
                     "indexing may panic",
                     None,
                     "consider using `.get(n)` or `.get_mut(n)` instead",

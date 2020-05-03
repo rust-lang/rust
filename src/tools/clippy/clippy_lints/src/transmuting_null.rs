@@ -31,7 +31,7 @@ const LINT_MSG: &str = "transmuting a known null pointer into a reference";
 
 impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), cx.tcx.hir().span(expr.hir_id)) {
             return;
         }
 
@@ -50,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
                     let x = const_eval_context.expr(&args[0]);
                     if let Some(Constant::RawPtr(0)) = x;
                     then {
-                        span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
+                        span_lint(cx, TRANSMUTING_NULL, cx.tcx.hir().span(expr.hir_id), LINT_MSG)
                     }
                 }
 
@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
                     if let ExprKind::Lit(ref lit) = inner_expr.kind;
                     if let LitKind::Int(0, _) = lit.node;
                     then {
-                        span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
+                        span_lint(cx, TRANSMUTING_NULL, cx.tcx.hir().span(expr.hir_id), LINT_MSG)
                     }
                 }
 
@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
                     if match_qpath(path1, &paths::STD_PTR_NULL);
                     if args1.is_empty();
                     then {
-                        span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
+                        span_lint(cx, TRANSMUTING_NULL, cx.tcx.hir().span(expr.hir_id), LINT_MSG)
                     }
                 }
 

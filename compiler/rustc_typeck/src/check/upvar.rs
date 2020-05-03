@@ -90,7 +90,8 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
         if let hir::ExprKind::Closure(cc, _, body_id, _, _) = expr.kind {
             let body = self.fcx.tcx.hir().body(body_id);
             self.visit_body(body);
-            self.fcx.analyze_closure(expr.hir_id, expr.span, body, cc);
+            let expr_span = self.fcx.tcx.hir().span(expr.hir_id);
+            self.fcx.analyze_closure(expr.hir_id, expr_span, body, cc);
         }
 
         intravisit::walk_expr(self, expr);

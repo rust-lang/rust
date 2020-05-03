@@ -89,7 +89,7 @@ fn check_const_operands<'tcx>(
         span_lint_and_then(
             cx,
             MODULO_ARITHMETIC,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             &format!(
                 "you are using modulo operator on constants with different signs: `{} % {}`",
                 lhs_operand.string_representation.as_ref().unwrap(),
@@ -111,7 +111,7 @@ fn check_non_const_operands<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, 
         span_lint_and_then(
             cx,
             MODULO_ARITHMETIC,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "you are using modulo operator on types that might have different signs",
             |diag| {
                 diag.note("double check for expected result especially when interoperating with different languages");

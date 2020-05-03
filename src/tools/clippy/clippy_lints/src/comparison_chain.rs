@@ -55,7 +55,7 @@ declare_lint_pass!(ComparisonChain => [COMPARISON_CHAIN]);
 
 impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
+        if cx.tcx.hir().span(expr.hir_id).from_expansion() {
             return;
         }
 
@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
         span_lint_and_help(
             cx,
             COMPARISON_CHAIN,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "`if` chain can be rewritten with `match`",
             None,
             "consider rewriting the `if` chain to use `cmp` and `match`",

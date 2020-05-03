@@ -160,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         };
 
         if let Some(must_use_op) = must_use_op {
-            cx.struct_span_lint(UNUSED_MUST_USE, expr.span, |lint| {
+            cx.struct_span_lint(UNUSED_MUST_USE, cx.tcx.hir().span(expr.hir_id), |lint| {
                 lint.build(&format!("unused {} that must be used", must_use_op)).emit()
             });
             op_warned = true;
@@ -238,7 +238,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     let mut has_emitted = false;
                     let spans = if let hir::ExprKind::Tup(comps) = &expr.kind {
                         debug_assert_eq!(comps.len(), tys.len());
-                        comps.iter().map(|e| e.span).collect()
+                        comps.iter().map(|e| cx.tcx.hir().span(e.hir_id)).collect()
                     } else {
                         vec![]
                     };
@@ -355,7 +355,8 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
                     let ty = cx.typeck_results().expr_ty(expr);
                     if ty.needs_drop(cx.tcx, cx.param_env) {
                         let mut lint = lint.build("path statement drops value");
-                        if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span) {
+                        let expr_span = cx.tcx.hir().span(expr.hir_id);
+                        if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr_span) {
                             lint.span_suggestion(
                                 span,
                                 "use `drop` to clarify the intent",
@@ -1208,7 +1209,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
 
         for adj in cx.typeck_results().expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
-                cx.struct_span_lint(UNUSED_ALLOCATION, e.span, |lint| {
+                cx.struct_span_lint(UNUSED_ALLOCATION, cx.tcx.hir().span(e.hir_id), |lint| {
                     let msg = match m {
                         adjustment::AutoBorrowMutability::Not => {
                             "unnecessary allocation, use `&` instead"

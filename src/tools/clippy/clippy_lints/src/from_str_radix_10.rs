@@ -84,7 +84,7 @@ impl LateLintPass<'tcx> for FromStrRadix10 {
                 span_lint_and_sugg(
                     cx,
                     FROM_STR_RADIX_10,
-                    exp.span,
+                    cx.tcx.hir().span(exp.hir_id),
                     "this call to `from_str_radix` can be replaced with a call to `str::parse`",
                     "try",
                     format!("{}.parse::<{}>()", sugg, prim_ty.name_str()),

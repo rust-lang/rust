@@ -513,7 +513,7 @@ fn typeck_with_fallback<'tcx>(
             // Compute the fty from point of view of inside the fn.
             let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
             let fn_sig = inh.normalize_associated_types_in(
-                body.value.span,
+                tcx.hir().span(body.value.hir_id),
                 body_id.hir_id,
                 param_env,
                 fn_sig,
@@ -545,11 +545,12 @@ fn typeck_with_fallback<'tcx>(
                     _ => fallback(),
                 });
 
-            let expected_type = fcx.normalize_associated_types_in(body.value.span, expected_type);
-            fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
+            let body_value_span = tcx.hir().span(body.value.hir_id);
+            let expected_type = fcx.normalize_associated_types_in(body_value_span, expected_type);
+            fcx.require_type_is_sized(expected_type, body_value_span, traits::ConstSized);
 
             let revealed_ty = if tcx.features().impl_trait_in_bindings {
-                fcx.instantiate_opaque_types_from_value(id, expected_type, body.value.span)
+                fcx.instantiate_opaque_types_from_value(id, expected_type, body_value_span)
             } else {
                 expected_type
             };
@@ -722,7 +723,7 @@ fn binding_opaque_type_cycle_error(
                     tcx.typeck(tcx.hir().local_def_id(tcx.hir().get_parent_item(hir_id)));
                 if let Some(ty) = typeck_results.node_type_opt(expr.hir_id) {
                     err.span_label(
-                        expr.span,
+                        tcx.hir().span(expr.hir_id),
                         &format!(
                             "this is of type `{}`, which doesn't constrain \
                              `{}` enough to arrive to a concrete type",

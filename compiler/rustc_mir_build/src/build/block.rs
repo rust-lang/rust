@@ -110,8 +110,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     // Evaluate the initializer, if present.
                     if let Some(init) = initializer {
-                        let initializer_span = init.span;
-
                         unpack!(
                             block = this.in_opt_scope(
                                 opt_destruction_scope.map(|de| (de, source_info)),
@@ -123,7 +121,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                             remainder_span,
                                             pattern,
                                             ArmHasGuard(false),
-                                            Some((None, initializer_span)),
+                                            Some((None, init.span)),
                                         );
                                         this.expr_into_pattern(block, pattern.clone(), init)
                                     })

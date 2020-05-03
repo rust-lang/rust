@@ -39,7 +39,7 @@ impl LateLintPass<'tcx> for UndroppedManuallyDrops {
                 span_lint_and_help(
                     cx,
                     UNDROPPED_MANUALLY_DROPS,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "the inner value of this ManuallyDrop will not be dropped",
                     None,
                     "to drop a `ManuallyDrop<T>`, use std::mem::ManuallyDrop::drop",

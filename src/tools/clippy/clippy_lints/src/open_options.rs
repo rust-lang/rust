@@ -34,7 +34,7 @@ impl<'tcx> LateLintPass<'tcx> for OpenOptions {
             if path.ident.name == sym!(open) && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
                 get_open_options(cx, &arguments[0], &mut options);
-                check_open_options(cx, &options, e.span);
+                check_open_options(cx, &options, cx.tcx.hir().span(e.hir_id));
             }
         }
     }

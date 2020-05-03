@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
         span_lint_and_then(
             cx,
             TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
-            e.span,
+            cx.tcx.hir().span(e.hir_id),
             &format!(
                 "transmute from `{}` to `{}` which could be expressed as a pointer cast instead",
                 from_ty, to_ty
@@ -27,7 +27,12 @@ pub(super) fn check<'tcx>(
             |diag| {
                 if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                     let sugg = arg.as_ty(&to_ty.to_string()).to_string();
-                    diag.span_suggestion(e.span, "try", sugg, Applicability::MachineApplicable);
+                    diag.span_suggestion(
+                        cx.tcx.hir().span(e.hir_id),
+                        "try",
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
                 }
             },
         );

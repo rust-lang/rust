@@ -23,7 +23,7 @@ pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr
             span_lint_and_then(
                 cx,
                 INEFFICIENT_TO_STRING,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 &format!("calling `to_string` on `{}`", arg_ty),
                 |diag| {
                     diag.help(&format!(
@@ -31,9 +31,9 @@ pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr
                         self_ty, deref_self_ty
                     ));
                     let mut applicability = Applicability::MachineApplicable;
-                    let arg_snippet = snippet_with_applicability(cx, arg.span, "..", &mut applicability);
+                    let arg_snippet = snippet_with_applicability(cx, cx.tcx.hir().span(arg.hir_id), "..", &mut applicability);
                     diag.span_suggestion(
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         "try dereferencing the receiver",
                         format!("({}{}).to_string()", "*".repeat(deref_count), arg_snippet),
                         applicability,

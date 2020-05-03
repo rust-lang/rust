@@ -104,7 +104,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
             then {
                 format_arg_expr_tup
                     .iter()
-                    .map(|a| snippet_with_applicability(cx, a.span, "..", applicability).into_owned())
+                    .map(|a| snippet_with_applicability(cx, cx.tcx.hir().span(a.hir_id), "..", applicability).into_owned())
                     .collect()
             } else {
                 unreachable!()
@@ -142,7 +142,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
 
     let arg_root = get_arg_root(cx, &args[1]);
 
-    let span_replace_word = method_span.with_hi(expr.span.hi());
+    let span_replace_word = method_span.with_hi(cx.tcx.hir().span(expr.hir_id).hi());
 
     let mut applicability = Applicability::MachineApplicable;
 
@@ -153,13 +153,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
         if let hir::StmtKind::Local(local) = &block.stmts[0].kind;
         if let Some(arg_root) = &local.init;
         if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = arg_root.kind;
-        if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1;
+        if is_expn_of(cx.tcx.hir().span(inner_fun.hir_id), "format").is_some() && inner_args.len() == 1;
         if let hir::ExprKind::Call(_, format_args) = &inner_args[0].kind;
         then {
             let fmt_spec = &format_args[0];
             let fmt_args = &format_args[1];
 
-            let mut args = vec![snippet(cx, fmt_spec.span, "..").into_owned()];
+            let mut args = vec![snippet(cx, cx.tcx.hir().span(fmt_spec.hir_id), "..").into_owned()];
 
             args.extend(generate_format_arg_snippet(cx, fmt_args, &mut applicability));
 
@@ -179,7 +179,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
         }
     }
 
-    let mut arg_root_snippet: Cow<'_, _> = snippet_with_applicability(cx, arg_root.span, "..", &mut applicability);
+    let mut arg_root_snippet: Cow<'_, _> =
+        snippet_with_applicability(cx, cx.tcx.hir().span(arg_root.hir_id), "..", &mut applicability);
     if requires_to_string(cx, arg_root) {
         arg_root_snippet.to_mut().push_str(".to_string()");
     }

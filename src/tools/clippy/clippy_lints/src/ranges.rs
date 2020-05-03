@@ -186,7 +186,7 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
             ExprKind::MethodCall(ref path, _, ref args, _) => {
-                check_range_zip_with_len(cx, path, args, expr.span);
+                check_range_zip_with_len(cx, path, args, cx.tcx.hir().span(expr.hir_id));
             },
             ExprKind::Binary(ref op, ref l, ref r) => {
                 if meets_msrv(self.msrv.as_ref(), &MANUAL_RANGE_CONTAINS_MSRV) {
@@ -208,7 +208,7 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
         return;
     }
 
-    let span = expr.span;
+    let span = cx.tcx.hir().span(expr.hir_id);
     let combine_and = match op {
         BinOpKind::And | BinOpKind::BitAnd => true,
         BinOpKind::Or | BinOpKind::BitOr => false,
@@ -299,11 +299,11 @@ fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, 
         };
         if let Some(id) = match_ident(l) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), r) {
-                return Some((c, id, l.span, r.span, ordering, inclusive));
+                return Some((c, id, cx.tcx.hir().span(l.hir_id), cx.tcx.hir().span(r.hir_id), ordering, inclusive));
             }
         } else if let Some(id) = match_ident(r) {
             if let Some((c, _)) = constant(cx, cx.typeck_results(), l) {
-                return Some((c, id, r.span, l.span, ordering.reverse(), inclusive));
+                return Some((c, id, cx.tcx.hir().span(r.hir_id), cx.tcx.hir().span(l.hir_id), ordering.reverse(), inclusive));
             }
         }
     }
@@ -345,7 +345,7 @@ fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: 
                     RANGE_ZIP_WITH_LEN,
                     span,
                     &format!("it is more idiomatic to use `{}.iter().enumerate()`",
-                        snippet(cx, iter_args[0].span, "_"))
+                        snippet(cx, cx.tcx.hir().span(iter_args[0].hir_id), "_"))
                 );
             }
         }
@@ -362,13 +362,13 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
         }) = higher::range(expr);
         if let Some(y) = y_plus_one(cx, end);
         then {
-            let span = if expr.span.from_expansion() {
-                expr.span
+            let span = if cx.tcx.hir().span(expr.hir_id).from_expansion() {
+                cx.tcx.hir().span(expr.hir_id)
                     .ctxt()
                     .outer_expn_data()
                     .call_site
             } else {
-                expr.span
+                cx.tcx.hir().span(expr.hir_id)
             };
             span_lint_and_then(
                 cx,
@@ -410,13 +410,13 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             span_lint_and_then(
                 cx,
                 RANGE_MINUS_ONE,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "an exclusive range would be more readable",
                 |diag| {
                     let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
                     let end = Sugg::hir(cx, y, "y");
                     diag.span_suggestion(
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         "use",
                         format!("{}..{}", start, end),
                         Applicability::MachineApplicable, // snippet
@@ -468,32 +468,34 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
         then {
             if inside_indexing_expr(cx, expr) {
                 // Avoid linting `N..N` as it has proven to be useful, see #5689 and #5628 ...
+                let expr_span = cx.tcx.hir().span(expr.hir_id);
                 if ordering != Ordering::Equal {
                     span_lint(
                         cx,
                         REVERSED_EMPTY_RANGES,
-                        expr.span,
+                        expr_span,
                         "this range is reversed and using it to index a slice will panic at run-time",
                     );
                 }
             // ... except in for loop arguments for backwards compatibility with `reverse_range_loop`
             } else if ordering != Ordering::Equal || is_for_loop_arg(cx, expr) {
+                let expr_span = cx.tcx.hir().span(expr.hir_id);
                 span_lint_and_then(
                     cx,
                     REVERSED_EMPTY_RANGES,
-                    expr.span,
+                    expr_span,
                     "this range is empty so it will yield no values",
                     |diag| {
                         if ordering != Ordering::Equal {
-                            let start_snippet = snippet(cx, start.span, "_");
-                            let end_snippet = snippet(cx, end.span, "_");
+                            let start_snippet = snippet(cx, cx.tcx.hir().span(start.hir_id), "_");
+                            let end_snippet = snippet(cx, cx.tcx.hir().span(end.hir_id), "_");
                             let dots = match limits {
                                 RangeLimits::HalfOpen => "..",
                                 RangeLimits::Closed => "..="
                             };
 
                             diag.span_suggestion(
-                                expr.span,
+                                expr_span,
                                 "consider using the following if you are attempting to iterate over this \
                                  range in reverse",
                                 format!("({}{}{}).rev()", end_snippet, dots, start_snippet),

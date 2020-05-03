@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
         body: &'tcx Body<'_>,
         _: HirId,
     ) {
-        if in_external_macro(cx.sess(), body.value.span) {
+        if in_external_macro(cx.sess(), cx.tcx.hir().span(body.value.hir_id)) {
             return;
         }
         check_fn(cx, decl, body);
@@ -261,6 +261,7 @@ fn lint_shadow<'tcx>(
     prev_span: Span,
 ) {
     if let Some(expr) = init {
+        let expr_span = cx.tcx.hir().span(expr.hir_id);
         if is_self_shadow(name, expr) {
             span_lint_and_then(
                 cx,
@@ -269,7 +270,7 @@ fn lint_shadow<'tcx>(
                 &format!(
                     "`{}` is shadowed by itself in `{}`",
                     snippet(cx, pattern_span, "_"),
-                    snippet(cx, expr.span, "..")
+                    snippet(cx, expr_span, "..")
                 ),
                 |diag| {
                     diag.span_note(prev_span, "previous binding is here");
@@ -283,10 +284,10 @@ fn lint_shadow<'tcx>(
                 &format!(
                     "`{}` is shadowed by `{}` which reuses the original value",
                     snippet(cx, pattern_span, "_"),
-                    snippet(cx, expr.span, "..")
+                    snippet(cx, expr_span, "..")
                 ),
                 |diag| {
-                    diag.span_note(expr.span, "initialization happens here");
+                    diag.span_note(expr_span, "initialization happens here");
                     diag.span_note(prev_span, "previous binding is here");
                 },
             );
@@ -295,9 +296,12 @@ fn lint_shadow<'tcx>(
                 cx,
                 SHADOW_UNRELATED,
                 pattern_span,
-                &format!("`{}` is being shadowed", snippet(cx, pattern_span, "_")),
+                &format!(
+                    "`{}` is being shadowed",
+                    snippet(cx, pattern_span, "_"),
+                ),
                 |diag| {
-                    diag.span_note(expr.span, "initialization happens here");
+                    diag.span_note(expr_span, "initialization happens here");
                     diag.span_note(prev_span, "previous binding is here");
                 },
             );
@@ -316,7 +320,7 @@ fn lint_shadow<'tcx>(
 }
 
 fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, bindings: &mut Vec<(Symbol, Span)>) {
-    if in_external_macro(cx.sess(), expr.span) {
+    if in_external_macro(cx.sess(), cx.tcx.hir().span(expr.hir_id)) {
         return;
     }
     match expr.kind {

@@ -21,13 +21,13 @@ pub(super) fn check<'tcx>(
             span_lint_and_then(
                 cx,
                 TRANSMUTE_INT_TO_BOOL,
-                e.span,
+                cx.tcx.hir().span(e.hir_id),
                 &format!("transmute from a `{}` to a `bool`", from_ty),
                 |diag| {
                     let arg = sugg::Sugg::hir(cx, &args[0], "..");
                     let zero = sugg::Sugg::NonParen(Cow::from("0"));
                     diag.span_suggestion(
-                        e.span,
+                        cx.tcx.hir().span(e.hir_id),
                         "consider using",
                         sugg::make_binop(ast::BinOpKind::Ne, &arg, &zero).to_string(),
                         Applicability::Unspecified,

@@ -48,10 +48,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let span = self.tcx.hir().span(param.pat.hir_id);
             wbcx.visit_node_id(span, param.hir_id);
         }
+
+        let body_value_span = self.tcx.hir().span(body.value.hir_id);
+
         // Type only exists for constants and statics, not functions.
         match self.tcx.hir().body_owner_kind(item_id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => {
-                wbcx.visit_node_id(body.value.span, item_id);
+                wbcx.visit_node_id(body_value_span, item_id);
             }
             hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => (),
         }
@@ -61,7 +64,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
-        wbcx.visit_opaque_types(body.value.span);
+        wbcx.visit_opaque_types(body_value_span);
         wbcx.visit_coercion_casts();
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
@@ -203,7 +206,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
                 // that isn't in the type table. We assume more relevant errors have already been
                 // emitted, so we delay an ICE if none have. (#64638)
-                self.tcx().sess.delay_span_bug(e.span, &format!("bad base: `{:?}`", base));
+                self.tcx().sess.delay_span_bug(
+                    self.tcx().hir().span(e.hir_id),
+                    &format!("bad base: `{:?}`", base),
+                );
             }
             if let Some(ty::Ref(_, base_ty, _)) = base_ty {
                 let index_ty = typeck_results.expr_ty_adjusted_opt(&index).unwrap_or_else(|| {
@@ -212,7 +218,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     // already have been emitted, so we only gate on this with an ICE if no
                     // error has been emitted. (#64638)
                     self.fcx.tcx.ty_error_with_message(
-                        e.span,
+                        self.tcx().hir().span(e.hir_id),
                         &format!("bad index {:?} for base: `{:?}`", index, base),
                     )
                 });
@@ -263,13 +269,14 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         self.fix_scalar_builtin_expr(e);
         self.fix_index_builtin_expr(e);
 
-        self.visit_node_id(e.span, e.hir_id);
+        let e_span = self.fcx.tcx.hir().span(e.hir_id);
+        self.visit_node_id(e_span, e.hir_id);
 
         match e.kind {
             hir::ExprKind::Closure(_, _, body, _, _) => {
                 let body = self.fcx.tcx.hir().body(body);
                 for param in body.params {
-                    self.visit_node_id(e.span, param.hir_id);
+                    self.visit_node_id(e_span, param.hir_id);
                 }
 
                 self.visit_body(body);

@@ -116,8 +116,8 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                             format!(
                                 "{}.swap({}, {})",
                                 slice.maybe_par(),
-                                snippet_with_applicability(cx, idx1.span, "..", &mut applicability),
-                                snippet_with_applicability(cx, idx2.span, "..", &mut applicability),
+                                snippet_with_applicability(cx, cx.tcx.hir().span(idx1.hir_id), "..", &mut applicability),
+                                snippet_with_applicability(cx, cx.tcx.hir().span(idx2.hir_id), "..", &mut applicability),
                             ),
                         )
                     } else {
@@ -133,7 +133,7 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                     (true, String::new(), String::new())
                 };
 
-                let span = cx.tcx.hir().span(w[0].hir_id).to(second.span);
+                let span = cx.tcx.hir().span(w[0].hir_id).to(cx.tcx.hir().span(second.hir_id));
 
                 span_lint_and_then(
                     cx,
@@ -218,7 +218,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
         if_chain! {
             if let StmtKind::Semi(ref first) = w[0].kind;
             if let StmtKind::Semi(ref second) = w[1].kind;
-            if !differing_macro_contexts(first.span, second.span);
+            if !differing_macro_contexts(cx.tcx.hir().span(first.hir_id), cx.tcx.hir().span(second.hir_id));
             if let ExprKind::Assign(ref lhs0, ref rhs0, _) = first.kind;
             if let ExprKind::Assign(ref lhs1, ref rhs1, _) = second.kind;
             if eq_expr_value(cx, lhs0, rhs1);
@@ -236,7 +236,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                     (String::new(), String::new(), String::new())
                 };
 
-                let span = first.span.to(second.span);
+                let span = cx.tcx.hir().span(first.hir_id).to(cx.tcx.hir().span(second.hir_id));
 
                 span_lint_and_then(cx,
                                    ALMOST_SWAPPED,

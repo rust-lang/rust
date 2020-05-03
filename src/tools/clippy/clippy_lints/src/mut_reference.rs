@@ -74,7 +74,7 @@ fn check_arguments<'tcx>(
                             span_lint(
                                 cx,
                                 UNNECESSARY_MUT_PASSED,
-                                argument.span,
+                                cx.tcx.hir().span(argument.hir_id),
                                 &format!("the {} `{}` doesn't need a mutable reference", fn_kind, name),
                             );
                         }

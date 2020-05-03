@@ -11,7 +11,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, args: &'
             span_lint(
                 cx,
                 ITERATOR_STEP_BY_ZERO,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "`Iterator::step_by(0)` will panic at runtime",
             );
         }

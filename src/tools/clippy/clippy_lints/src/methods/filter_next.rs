@@ -11,21 +11,21 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, fil
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
                    `.find(..)` instead";
-        let filter_snippet = snippet(cx, filter_args[1].span, "..");
+        let filter_snippet = snippet(cx, cx.tcx.hir().span(filter_args[1].hir_id), "..");
         if filter_snippet.lines().count() <= 1 {
-            let iter_snippet = snippet(cx, filter_args[0].span, "..");
+            let iter_snippet = snippet(cx, cx.tcx.hir().span(filter_args[0].hir_id), "..");
             // add note if not multi-line
             span_lint_and_sugg(
                 cx,
                 FILTER_NEXT,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 msg,
                 "try this",
                 format!("{}.find({})", iter_snippet, filter_snippet),
                 Applicability::MachineApplicable,
             );
         } else {
-            span_lint(cx, FILTER_NEXT, expr.span, msg);
+            span_lint(cx, FILTER_NEXT, cx.tcx.hir().span(expr.hir_id), msg);
         }
     }
 }

@@ -30,7 +30,8 @@ declare_lint_pass!(IdentityOp => [IDENTITY_OP]);
 
 impl<'tcx> LateLintPass<'tcx> for IdentityOp {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if e.span.from_expansion() {
+        let e_span = cx.tcx.hir().span(e.hir_id);
+        if e_span.from_expansion() {
             return;
         }
         if let ExprKind::Binary(cmp, ref left, ref right) = e.kind {
@@ -39,18 +40,18 @@ impl<'tcx> LateLintPass<'tcx> for IdentityOp {
             }
             match cmp.node {
                 BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
-                    check(cx, left, 0, e.span, right.span);
-                    check(cx, right, 0, e.span, left.span);
+                    check(cx, left, 0, e_span, cx.tcx.hir().span(right.hir_id));
+                    check(cx, right, 0, e_span, cx.tcx.hir().span(left.hir_id));
                 },
-                BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => check(cx, right, 0, e.span, left.span),
+                BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => check(cx, right, 0, e_span, cx.tcx.hir().span(left.hir_id)),
                 BinOpKind::Mul => {
-                    check(cx, left, 1, e.span, right.span);
-                    check(cx, right, 1, e.span, left.span);
+                    check(cx, left, 1, e_span, cx.tcx.hir().span(right.hir_id));
+                    check(cx, right, 1, e_span, cx.tcx.hir().span(left.hir_id));
                 },
-                BinOpKind::Div => check(cx, right, 1, e.span, left.span),
+                BinOpKind::Div => check(cx, right, 1, e_span, cx.tcx.hir().span(left.hir_id)),
                 BinOpKind::BitAnd => {
-                    check(cx, left, -1, e.span, right.span);
-                    check(cx, right, -1, e.span, left.span);
+                    check(cx, left, -1, e_span, cx.tcx.hir().span(right.hir_id));
+                    check(cx, right, -1, e_span, cx.tcx.hir().span(left.hir_id));
                 },
                 _ => (),
             }

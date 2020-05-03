@@ -30,13 +30,13 @@ pub(super) fn check(
             span_lint_and_sugg(
                 cx,
                 MAP_COLLECT_RESULT_UNIT,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "`.map().collect()` can be replaced with `.try_for_each()`",
                 "try this",
                 format!(
                     "{}.try_for_each({})",
-                    snippet(cx, iter.span, ".."),
-                    snippet(cx, map_fn.span, "..")
+                    snippet(cx, cx.tcx.hir().span(iter.hir_id), ".."),
+                    snippet(cx, cx.tcx.hir().span(map_fn.hir_id), "..")
                 ),
                 Applicability::MachineApplicable,
             );

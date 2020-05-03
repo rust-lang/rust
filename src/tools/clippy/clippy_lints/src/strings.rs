@@ -113,7 +113,7 @@ declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN]);
 
 impl<'tcx> LateLintPass<'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), e.span) {
+        if in_external_macro(cx.sess(), cx.tcx.hir().span(e.hir_id)) {
             return;
         }
 
@@ -140,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 span_lint(
                     cx,
                     STRING_ADD,
-                    e.span,
+                    cx.tcx.hir().span(e.hir_id),
                     "you added something to a string. Consider using `String::push_str()` instead",
                 );
             }
@@ -149,7 +149,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 span_lint(
                     cx,
                     STRING_ADD_ASSIGN,
-                    e.span,
+                    cx.tcx.hir().span(e.hir_id),
                     "you assigned the result of adding something to this string. Consider using \
                      `String::push_str()` instead",
                 );
@@ -215,7 +215,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             // Find string::as_bytes
             if let ExprKind::AddrOf(BorrowKind::Ref, _, ref args) = args[0].kind;
             if let ExprKind::Index(ref left, ref right) = args.kind;
-            let (method_names, expressions, _) = method_calls(left, 1);
+            let (method_names, expressions, _) = method_calls(cx, left, 1);
             if method_names.len() == 1;
             if expressions.len() == 1;
             if expressions[0].len() == 1;
@@ -230,17 +230,17 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
 
                 let snippet_app = snippet_with_applicability(
                     cx,
-                    string_expression.span, "..",
+                    cx.tcx.hir().span(string_expression.hir_id), "..",
                     &mut applicability,
                 );
 
                 span_lint_and_sugg(
                     cx,
                     STRING_FROM_UTF8_AS_BYTES,
-                    e.span,
+                    cx.tcx.hir().span(e.hir_id),
                     "calling a slice of `as_bytes()` with `from_utf8` should be not necessary",
                     "try",
-                    format!("Some(&{}[{}])", snippet_app, snippet(cx, right.span, "..")),
+                    format!("Some(&{}[{}])", snippet_app, snippet(cx, cx.tcx.hir().span(right.hir_id), "..")),
                     applicability
                 )
             }
@@ -252,16 +252,16 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             if let ExprKind::Lit(lit) = &args[0].kind;
             if let LitKind::Str(lit_content, _) = &lit.node;
             then {
-                let callsite = snippet(cx, args[0].span.source_callsite(), r#""foo""#);
+                let callsite = snippet(cx, cx.tcx.hir().span(args[0].hir_id).source_callsite(), r#""foo""#);
                 let mut applicability = Applicability::MachineApplicable;
                 if callsite.starts_with("include_str!") {
                     span_lint_and_sugg(
                         cx,
                         STRING_LIT_AS_BYTES,
-                        e.span,
+                        cx.tcx.hir().span(e.hir_id),
                         "calling `as_bytes()` on `include_str!(..)`",
                         "consider using `include_bytes!(..)` instead",
-                        snippet_with_applicability(cx, args[0].span, r#""foo""#, &mut applicability).replacen(
+                        snippet_with_applicability(cx, cx.tcx.hir().span(args[0].hir_id), r#""foo""#, &mut applicability).replacen(
                             "include_str",
                             "include_bytes",
                             1,
@@ -270,17 +270,17 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                     );
                 } else if lit_content.as_str().is_ascii()
                     && lit_content.as_str().len() <= MAX_LENGTH_BYTE_STRING_LIT
-                    && !args[0].span.from_expansion()
+                    && !cx.tcx.hir().span(args[0].hir_id).from_expansion()
                 {
                     span_lint_and_sugg(
                         cx,
                         STRING_LIT_AS_BYTES,
-                        e.span,
+                        cx.tcx.hir().span(e.hir_id),
                         "calling `as_bytes()` on a string literal",
                         "consider using a byte string literal instead",
                         format!(
                             "b{}",
-                            snippet_with_applicability(cx, args[0].span, r#""foo""#, &mut applicability)
+                            snippet_with_applicability(cx, cx.tcx.hir().span(args[0].hir_id), r#""foo""#, &mut applicability)
                         ),
                         applicability,
                     );
@@ -329,7 +329,7 @@ impl LateLintPass<'_> for StrToString {
                 span_lint_and_help(
                     cx,
                     STR_TO_STRING,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "`to_string()` called on a `&str`",
                     None,
                     "consider using `.to_owned()`",
@@ -377,7 +377,7 @@ impl LateLintPass<'_> for StringToString {
                 span_lint_and_help(
                     cx,
                     STRING_TO_STRING,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "`to_string()` called on a `String`",
                     None,
                     "consider using `.clone()`",

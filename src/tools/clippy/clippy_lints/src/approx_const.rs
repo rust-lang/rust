@@ -87,7 +87,7 @@ fn check_known_consts(cx: &LateContext<'_>, e: &Expr<'_>, s: symbol::Symbol, mod
                 span_lint(
                     cx,
                     APPROX_CONSTANT,
-                    e.span,
+                    cx.tcx.hir().span(e.hir_id),
                     &format!(
                         "approximate value of `{}::consts::{}` found. \
                          Consider using it directly",

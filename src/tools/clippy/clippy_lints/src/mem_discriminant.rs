@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for MemDiscriminant {
                 span_lint_and_then(
                     cx,
                     MEM_DISCRIMINANT_NON_ENUM,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     &format!("calling `mem::discriminant` on non-enum type `{}`", ty_param),
                     |diag| {
                         // if this is a reference to an enum, suggest dereferencing
@@ -67,9 +67,9 @@ impl<'tcx> LateLintPass<'tcx> for MemDiscriminant {
 
                             let derefs: String = iter::repeat('*').take(derefs_needed).collect();
                             diag.span_suggestion(
-                                param.span,
+                                cx.tcx.hir().span(param.hir_id),
                                 "try dereferencing",
-                                format!("{}{}", derefs, snippet(cx, cur_expr.span, "<param>")),
+                                format!("{}{}", derefs, snippet(cx, cx.tcx.hir().span(cur_expr.hir_id), "<param>")),
                                 Applicability::MachineApplicable,
                             );
                         }

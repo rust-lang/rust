@@ -24,7 +24,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
             if_chain! {
                 if let Some(parent) = get_parent_expr(cx, expr);
                 if let hir::ExprKind::MethodCall(_, ref span, _, _) = parent.kind;
-                if span != &expr.span;
+                if span != &cx.tcx.hir().span(expr.hir_id);
                 then {
                     return;
                 }
@@ -34,10 +34,10 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
             span_lint_and_sugg(
                 cx,
                 USELESS_ASREF,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 &format!("this call to `{}` does nothing", call_name),
                 "try this",
-                snippet_with_applicability(cx, recvr.span, "..", &mut applicability).to_string(),
+                snippet_with_applicability(cx, cx.tcx.hir().span(recvr.hir_id), "..", &mut applicability).to_string(),
                 applicability,
             );
         }

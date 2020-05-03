@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
             search_method
         );
         let hint = "this is more succinctly expressed by calling `any()`";
-        let search_snippet = snippet(cx, search_args[1].span, "..");
+        let search_snippet = snippet(cx, cx.tcx.hir().span(search_args[1].hir_id), "..");
         if search_snippet.lines().count() <= 1 {
             // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
             // suggest `any(|..| *..)` instead of `any(|..| **..)` for `find(|..| **..).is_some()`
@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
             span_lint_and_sugg(
                 cx,
                 SEARCH_IS_SOME,
-                method_span.with_hi(expr.span.hi()),
+                method_span.with_hi(cx.tcx.hir().span(expr.hir_id).hi()),
                 &msg,
                 "use `any()` instead",
                 format!(
@@ -66,7 +66,7 @@ pub(super) fn check<'tcx>(
                 Applicability::MachineApplicable,
             );
         } else {
-            span_lint_and_help(cx, SEARCH_IS_SOME, expr.span, &msg, None, hint);
+            span_lint_and_help(cx, SEARCH_IS_SOME, cx.tcx.hir().span(expr.hir_id), &msg, None, hint);
         }
     }
     // lint if `find()` is called by `String` or `&str`
@@ -85,11 +85,11 @@ pub(super) fn check<'tcx>(
             then {
                 let msg = "called `is_some()` after calling `find()` on a string";
                 let mut applicability = Applicability::MachineApplicable;
-                let find_arg = snippet_with_applicability(cx, search_args[1].span, "..", &mut applicability);
+                let find_arg = snippet_with_applicability(cx, cx.tcx.hir().span(search_args[1].hir_id), "..", &mut applicability);
                 span_lint_and_sugg(
                     cx,
                     SEARCH_IS_SOME,
-                    method_span.with_hi(expr.span.hi()),
+                    method_span.with_hi(cx.tcx.hir().span(expr.hir_id).hi()),
                     msg,
                     "use `contains()` instead",
                     format!("contains({})", find_arg),

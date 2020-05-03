@@ -107,7 +107,7 @@ declare_lint_pass!(CopyAndPaste => [IFS_SAME_COND, SAME_FUNCTIONS_IN_IF_CONDITIO
 
 impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !expr.span.from_expansion() {
+        if !cx.tcx.hir().span(expr.hir_id).from_expansion() {
             // skip ifs directly in else, it will be checked in the parent if
             if let Some(&Expr {
                 kind: ExprKind::If(_, _, Some(ref else_expr)),
@@ -158,9 +158,9 @@ fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
         span_lint_and_note(
             cx,
             IFS_SAME_COND,
-            j.span,
+            cx.tcx.hir().span(j.hir_id),
             "this `if` has the same condition as a previous `if`",
-            Some(i.span),
+            Some(cx.tcx.hir().span(i.hir_id)),
             "same as this",
         );
     }
@@ -176,7 +176,7 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
 
     let eq: &dyn Fn(&&Expr<'_>, &&Expr<'_>) -> bool = &|&lhs, &rhs| -> bool {
         // Do not lint if any expr originates from a macro
-        if in_macro(lhs.span) || in_macro(rhs.span) {
+        if in_macro(cx.tcx.hir().span(lhs.hir_id)) || in_macro(cx.tcx.hir().span(rhs.hir_id)) {
             return false;
         }
         // Do not spawn warning if `IFS_SAME_COND` already produced it.
@@ -190,9 +190,9 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
         span_lint_and_note(
             cx,
             SAME_FUNCTIONS_IN_IF_CONDITION,
-            j.span,
+            cx.tcx.hir().span(j.hir_id),
             "this `if` has the same function call as a previous `if`",
-            Some(i.span),
+            Some(cx.tcx.hir().span(i.hir_id)),
             "same as this",
         );
     }

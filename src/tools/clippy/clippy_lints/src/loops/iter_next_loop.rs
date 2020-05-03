@@ -8,7 +8,7 @@ pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, expr: &Expr<'_>) -> bo
         span_lint(
             cx,
             ITER_NEXT_LOOP,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "you are iterating over `Iterator::next()` which is an Option; this will compile but is \
             probably not what you want",
         );

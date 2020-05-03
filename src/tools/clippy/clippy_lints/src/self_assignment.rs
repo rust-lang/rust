@@ -37,12 +37,12 @@ impl<'tcx> LateLintPass<'tcx> for SelfAssignment {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Assign(lhs, rhs, _) = &expr.kind {
             if eq_expr_value(cx, lhs, rhs) {
-                let lhs = snippet(cx, lhs.span, "<lhs>");
-                let rhs = snippet(cx, rhs.span, "<rhs>");
+                let lhs = snippet(cx, cx.tcx.hir().span(lhs.hir_id), "<lhs>");
+                let rhs = snippet(cx, cx.tcx.hir().span(rhs.hir_id), "<rhs>");
                 span_lint(
                     cx,
                     SELF_ASSIGNMENT,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     &format!("self-assignment of `{}` to `{}`", rhs, lhs),
                 );
             }

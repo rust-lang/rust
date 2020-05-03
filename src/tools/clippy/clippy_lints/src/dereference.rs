@@ -41,7 +41,7 @@ declare_lint_pass!(Dereferencing => [
 impl<'tcx> LateLintPass<'tcx> for Dereferencing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if !expr.span.from_expansion();
+            if !cx.tcx.hir().span(expr.hir_id).from_expansion();
             if let ExprKind::MethodCall(ref method_name, _, ref args, _) = &expr.kind;
             if args.len() == 1;
 
@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                     }
                 }
                 let name = method_name.ident.as_str();
-                lint_deref(cx, &*name, &args[0], args[0].span, expr.span);
+                lint_deref(cx, &*name, &args[0], cx.tcx.hir().span(args[0].hir_id), cx.tcx.hir().span(expr.hir_id));
             }
         }
     }

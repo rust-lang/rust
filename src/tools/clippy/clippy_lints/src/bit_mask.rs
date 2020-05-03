@@ -115,9 +115,9 @@ impl<'tcx> LateLintPass<'tcx> for BitMask {
         if let ExprKind::Binary(cmp, left, right) = &e.kind {
             if cmp.node.is_comparison() {
                 if let Some(cmp_opt) = fetch_int_literal(cx, right) {
-                    check_compare(cx, left, cmp.node, cmp_opt, e.span)
+                    check_compare(cx, left, cmp.node, cmp_opt, cx.tcx.hir().span(e.hir_id))
                 } else if let Some(cmp_val) = fetch_int_literal(cx, left) {
-                    check_compare(cx, right, invert_cmp(cmp.node), cmp_val, e.span)
+                    check_compare(cx, right, invert_cmp(cmp.node), cmp_val, cx.tcx.hir().span(e.hir_id))
                 }
             }
         }
@@ -135,12 +135,12 @@ impl<'tcx> LateLintPass<'tcx> for BitMask {
             then {
                 span_lint_and_then(cx,
                                    VERBOSE_BIT_MASK,
-                                   e.span,
+                                   cx.tcx.hir().span(e.hir_id),
                                    "bit mask could be simplified with a call to `trailing_zeros`",
                                    |diag| {
                     let sugg = Sugg::hir(cx, left1, "...").maybe_par();
                     diag.span_suggestion(
-                        e.span,
+                        cx.tcx.hir().span(e.hir_id),
                         "try",
                         format!("{}.trailing_zeros() >= {}", sugg, n.count_ones()),
                         Applicability::MaybeIncorrect,

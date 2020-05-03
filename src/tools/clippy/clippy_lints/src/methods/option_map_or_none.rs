@@ -40,8 +40,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
         };
 
         if is_option {
-            let self_snippet = snippet(cx, map_or_args[0].span, "..");
-            let func_snippet = snippet(cx, map_or_args[2].span, "..");
+            let self_snippet = snippet(cx, cx.tcx.hir().span(map_or_args[0].hir_id), "..");
+            let func_snippet = snippet(cx, cx.tcx.hir().span(map_or_args[2].hir_id), "..");
             let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
                        `and_then(..)` instead";
             (
@@ -53,7 +53,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
         } else if f_arg_is_some {
             let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
                        `ok()` instead";
-            let self_snippet = snippet(cx, map_or_args[0].span, "..");
+            let self_snippet = snippet(cx, cx.tcx.hir().span(map_or_args[0].hir_id), "..");
             (
                 RESULT_MAP_OR_INTO_OPTION,
                 msg,
@@ -69,7 +69,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
     span_lint_and_sugg(
         cx,
         lint_name,
-        expr.span,
+        cx.tcx.hir().span(expr.hir_id),
         msg,
         instead,
         hint,

@@ -168,7 +168,7 @@ fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
         span_lint_and_sugg(
             cx,
             SUBOPTIMAL_FLOPS,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "logarithm for bases 2, 10 and e can be computed more accurately",
             "consider using",
             format!("{}.{}()", Sugg::hir(cx, &args[0], ".."), method),
@@ -200,7 +200,7 @@ fn check_ln1p(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
         span_lint_and_sugg(
             cx,
             IMPRECISE_FLOPS,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "ln(1 + x) can be computed more accurately",
             "consider using",
             format!("{}.ln_1p()", prepare_receiver_sugg(cx, recv)),
@@ -248,7 +248,7 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
         span_lint_and_sugg(
             cx,
             SUBOPTIMAL_FLOPS,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "exponent for bases 2 and e can be computed more accurately",
             "consider using",
             format!("{}.{}()", prepare_receiver_sugg(cx, &args[1]), method),
@@ -287,7 +287,7 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
         span_lint_and_sugg(
             cx,
             lint,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             help,
             "consider using",
             suggestion,
@@ -321,7 +321,7 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                     span_lint_and_sugg(
                         cx,
                         SUBOPTIMAL_FLOPS,
-                        parent.span,
+                        cx.tcx.hir().span(parent.hir_id),
                         "square can be computed more efficiently",
                         "consider using",
                         format!(
@@ -340,7 +340,7 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
             span_lint_and_sugg(
                 cx,
                 SUBOPTIMAL_FLOPS,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "square can be computed more efficiently",
                 "consider using",
                 format!("{} * {}", Sugg::hir(cx, &args[0], ".."), Sugg::hir(cx, &args[0], "..")),
@@ -402,7 +402,7 @@ fn check_hypot(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
         span_lint_and_sugg(
             cx,
             IMPRECISE_FLOPS,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "hypotenuse can be computed more accurately",
             "consider using",
             message,
@@ -426,7 +426,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
             span_lint_and_sugg(
                 cx,
                 IMPRECISE_FLOPS,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "(e.pow(x) - 1) can be computed more accurately",
                 "consider using",
                 format!(
@@ -481,7 +481,7 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
         span_lint_and_sugg(
             cx,
             SUBOPTIMAL_FLOPS,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "multiply and add expressions can be calculated more efficiently and accurately",
             "consider using",
             format!(
@@ -591,7 +591,7 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
             span_lint_and_sugg(
                 cx,
                 SUBOPTIMAL_FLOPS,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 sugg.0,
                 "try",
                 sugg.1,
@@ -635,7 +635,7 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
             span_lint_and_sugg(
                 cx,
                 SUBOPTIMAL_FLOPS,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "log base can be expressed more clearly",
                 "consider using",
                 format!("{}.log({})", Sugg::hir(cx, &largs[0], ".."), Sugg::hir(cx, &rargs[0], ".."),),
@@ -671,7 +671,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 span_lint_and_sugg(
                     cx,
                     SUBOPTIMAL_FLOPS,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "conversion to degrees can be done more accurately",
                     "consider using",
                     format!("{}.to_degrees()", Sugg::hir(cx, &mul_lhs, "..")),
@@ -684,7 +684,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 span_lint_and_sugg(
                     cx,
                     SUBOPTIMAL_FLOPS,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "conversion to radians can be done more accurately",
                     "consider using",
                     format!("{}.to_radians()", Sugg::hir(cx, &mul_lhs, "..")),

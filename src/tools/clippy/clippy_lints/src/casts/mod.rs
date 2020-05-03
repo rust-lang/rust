@@ -369,7 +369,7 @@ impl_lint_pass!(Casts => [
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
+        if cx.tcx.hir().span(expr.hir_id).from_expansion() {
             return;
         }
 
@@ -388,7 +388,10 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
 
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
-            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
+            if cast_from.is_numeric()
+                && cast_to.is_numeric()
+                && !in_external_macro(cx.sess(), cx.tcx.hir().span(expr.hir_id))
+            {
                 cast_possible_truncation::check(cx, expr, cast_from, cast_to);
                 cast_possible_wrap::check(cx, expr, cast_from, cast_to);
                 cast_precision_loss::check(cx, expr, cast_from, cast_to);

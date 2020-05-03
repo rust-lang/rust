@@ -157,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 span_lint(
                     cx,
                     CMP_NULL,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "comparing with null is better expressed by the `.is_null()` method",
                 );
             }

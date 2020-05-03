@@ -70,7 +70,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
 
             let body = self.cx.tcx.hir().body(eid);
             let ex = &body.value;
-            if matches!(ex.kind, ExprKind::Block(_, _)) && !body.value.span.from_expansion() {
+            if matches!(ex.kind, ExprKind::Block(_, _)) && !self.cx.tcx.hir().span(body.value.hir_id).from_expansion() {
                 self.found_block = Some(ex);
                 return;
             }
@@ -88,7 +88,8 @@ const COMPLEX_BLOCK_MESSAGE: &str = "in an `if` condition, avoid complex blocks 
 
 impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        let expr_span = cx.tcx.hir().span(expr.hir_id);
+        if in_external_macro(cx.sess(), expr_span) {
             return;
         }
         if let ExprKind::If(cond, _, _) = &expr.kind {
@@ -98,23 +99,23 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                         if let Some(ex) = &block.expr {
                             // don't dig into the expression here, just suggest that they remove
                             // the block
-                            if expr.span.from_expansion() || differing_macro_contexts(expr.span, ex.span) {
+                            if expr_span.from_expansion() || differing_macro_contexts(expr_span, cx.tcx.hir().span(ex.hir_id)) {
                                 return;
                             }
                             let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
                                 BLOCKS_IN_IF_CONDITIONS,
-                                cond.span,
+                                cx.tcx.hir().span(cond.hir_id),
                                 BRACED_EXPR_MESSAGE,
                                 "try",
                                 format!(
                                     "{}",
                                     snippet_block_with_applicability(
                                         cx,
-                                        ex.span,
+                                        cx.tcx.hir().span(ex.hir_id),
                                         "..",
-                                        Some(expr.span),
+                                        Some(expr_span),
                                         &mut applicability
                                     )
                                 ),
@@ -122,8 +123,8 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                             );
                         }
                     } else {
-                        let span = block.expr.as_ref().map_or_else(|| cx.tcx.hir().span(block.stmts[0].hir_id), |e| e.span);
-                        if span.from_expansion() || differing_macro_contexts(expr.span, span) {
+                        let span = block.expr.as_ref().map_or_else(|| cx.tcx.hir().span(block.stmts[0].hir_id), |e| cx.tcx.hir().span(e.hir_id));
+                        if span.from_expansion() || differing_macro_contexts(expr_span, span) {
                             return;
                         }
                         // move block higher
@@ -131,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                         span_lint_and_sugg(
                             cx,
                             BLOCKS_IN_IF_CONDITIONS,
-                            expr.span.with_hi(cond.span.hi()),
+                            expr_span.with_hi(cx.tcx.hir().span(cond.hir_id).hi()),
                             COMPLEX_BLOCK_MESSAGE,
                             "try",
                             format!(
@@ -140,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                                     cx,
                                     cx.tcx.hir().span(block.hir_id),
                                     "..",
-                                    Some(expr.span),
+                                    Some(expr_span),
                                     &mut applicability
                                 ),
                             ),
@@ -152,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                 let mut visitor = ExVisitor { found_block: None, cx };
                 walk_expr(&mut visitor, cond);
                 if let Some(block) = visitor.found_block {
-                    span_lint(cx, BLOCKS_IN_IF_CONDITIONS, block.span, COMPLEX_BLOCK_MESSAGE);
+                    span_lint(cx, BLOCKS_IN_IF_CONDITIONS, cx.tcx.hir().span(block.hir_id), COMPLEX_BLOCK_MESSAGE);
                 }
             }
         }

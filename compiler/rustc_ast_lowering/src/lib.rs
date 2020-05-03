@@ -573,7 +573,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let module = self.lower_mod(&c.items, c.span);
         self.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
-        let body_ids = body_ids(&self.bodies);
+        let body_ids = body_ids(&self.bodies, &self.spans);
         let proc_macros =
             c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
 
@@ -2454,7 +2454,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
         self.with_new_scopes(|this| {
             let body = this.lower_const_body(c.value.span, Some(&c.value));
-            let span = this.bodies[&body].value.span;
+            let span = this.spans[this.bodies[&body].value.hir_id];
             hir::AnonConst { hir_id: this.lower_node_id(c.id, span), body }
         })
     }
@@ -2569,7 +2569,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn block_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> &'hir hir::Block<'hir> {
-        self.block_all(expr.span, &[], Some(expr))
+        let span = self.spans[expr.hir_id];
+        self.block_all(span, &[], Some(expr))
     }
 
     fn block_all(
@@ -2868,11 +2869,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 }
 
-fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body<'_>>) -> Vec<hir::BodyId> {
+fn body_ids(
+    bodies: &BTreeMap<hir::BodyId, hir::Body<'_>>,
+    spans: &HirIdVec<Span>,
+) -> Vec<hir::BodyId> {
     // Sorting by span ensures that we get things in order within a
     // file, and also puts the files in a sensible order.
     let mut body_ids: Vec<_> = bodies.keys().cloned().collect();
-    body_ids.sort_by_key(|b| bodies[b].value.span);
+    body_ids.sort_by_key(|b| spans[bodies[b].value.hir_id]);
     body_ids
 }
 

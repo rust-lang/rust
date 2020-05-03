@@ -87,8 +87,10 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             if let ExprKind::Path(qpath) = &retexpr.kind;
             if match_qpath(qpath, &[&*ident.name.as_str()]);
             if !last_statement_borrows(cx, initexpr);
-            if !in_external_macro(cx.sess(), initexpr.span);
-            if !in_external_macro(cx.sess(), retexpr.span);
+            let initexpr_span = cx.tcx.hir().span(initexpr.hir_id);
+            if !in_external_macro(cx.sess(), initexpr_span);
+            let retexpr_span = cx.tcx.hir().span(retexpr.hir_id);
+            if !in_external_macro(cx.sess(), retexpr_span);
             let local_span = cx.tcx.hir().span(local.hir_id);
             if !in_external_macro(cx.sess(), local_span);
             if !in_macro(local_span);
@@ -96,12 +98,12 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                 span_lint_and_then(
                     cx,
                     LET_AND_RETURN,
-                    retexpr.span,
+                    retexpr_span,
                     "returning the result of a `let` binding from a block",
                     |err| {
                         err.span_label(local_span, "unnecessary `let` binding");
 
-                        if let Some(mut snippet) = snippet_opt(cx, initexpr.span) {
+                        if let Some(mut snippet) = snippet_opt(cx, initexpr_span) {
                             if !cx.typeck_results().expr_adjustments(&retexpr).is_empty() {
                                 snippet.push_str(" as _");
                             }
@@ -109,12 +111,12 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                                 "return the expression directly",
                                 vec![
                                     (local_span, String::new()),
-                                    (retexpr.span, snippet),
+                                    (retexpr_span, snippet),
                                 ],
                                 Applicability::MachineApplicable,
                             );
                         } else {
-                            err.span_help(initexpr.span, "this expression can be directly returned");
+                            err.span_help(initexpr_span, "this expression can be directly returned");
                         }
                     },
                 );
@@ -139,7 +141,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                 } else {
                     RetReplacement::Empty
                 };
-                check_final_expr(cx, &body.value, Some(body.value.span), replacement)
+                check_final_expr(cx, &body.value, Some(cx.tcx.hir().span(body.value.hir_id)), replacement)
             },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 if let ExprKind::Block(ref block, _) = body.value.kind {
@@ -156,7 +158,7 @@ fn attr_is_cfg(attr: &Attribute) -> bool {
 
 fn check_block_return<'tcx>(cx: &LateContext<'tcx>, block: &Block<'tcx>) {
     if let Some(expr) = block.expr {
-        check_final_expr(cx, expr, Some(expr.span), RetReplacement::Empty);
+        check_final_expr(cx, expr, Some(cx.tcx.hir().span(expr.hir_id)), RetReplacement::Empty);
     } else if let Some(stmt) = block.stmts.iter().last() {
         match stmt.kind {
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
@@ -185,7 +187,7 @@ fn check_final_expr<'tcx>(
                     emit_return_lint(
                         cx,
                         span.expect("`else return` is not possible"),
-                        inner.as_ref().map(|i| i.span),
+                        inner.as_ref().map(|i| cx.tcx.hir().span(i.hir_id)),
                         replacement,
                     );
                 }
@@ -210,7 +212,12 @@ fn check_final_expr<'tcx>(
         ExprKind::Match(_, ref arms, source) => match source {
             MatchSource::Normal => {
                 for arm in arms.iter() {
-                    check_final_expr(cx, &arm.body, Some(arm.body.span), RetReplacement::Block);
+                    check_final_expr(
+                        cx,
+                        &arm.body,
+                        Some(cx.tcx.hir().span(arm.body.hir_id)),
+                        RetReplacement::Block,
+                    );
                 }
             },
             MatchSource::IfLetDesugar {

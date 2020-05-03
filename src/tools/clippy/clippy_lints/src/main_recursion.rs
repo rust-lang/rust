@@ -50,8 +50,8 @@ impl LateLintPass<'_> for MainRecursion {
                 span_lint_and_help(
                     cx,
                     MAIN_RECURSION,
-                    func.span,
-                    &format!("recursing into entrypoint `{}`", snippet(cx, func.span, "main")),
+                    cx.tcx.hir().span(func.hir_id),
+                    &format!("recursing into entrypoint `{}`", snippet(cx, cx.tcx.hir().span(func.hir_id), "main")),
                     None,
                     "consider using another function for this recursion"
                 )

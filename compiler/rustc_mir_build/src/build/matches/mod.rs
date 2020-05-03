@@ -92,9 +92,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee: &Expr<'_, 'tcx>,
         arms: &[Arm<'_, 'tcx>],
     ) -> BlockAnd<()> {
-        let scrutinee_span = scrutinee.span;
         let scrutinee_place =
-            unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span,));
+            unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee.span));
 
         let mut arm_candidates = self.create_match_candidates(scrutinee_place, &arms);
 
@@ -103,12 +102,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             arm_candidates.iter_mut().map(|(_, candidate)| candidate).collect::<Vec<_>>();
 
         let fake_borrow_temps =
-            self.lower_match_tree(block, scrutinee_span, match_has_guard, &mut candidates);
+            self.lower_match_tree(block, scrutinee.span, match_has_guard, &mut candidates);
 
         self.lower_match_arms(
             destination,
             scrutinee_place,
-            scrutinee_span,
+            scrutinee.span,
             arm_candidates,
             self.source_info(span),
             fake_borrow_temps,
@@ -1752,7 +1751,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     (e.span, self.test_bool(block, e, source_info))
                 }
                 Guard::IfLet(pat, scrutinee) => {
-                    let scrutinee_span = scrutinee.span;
                     let scrutinee_place =
                         unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span));
                     let mut guard_candidate = Candidate::new(scrutinee_place, &pat, false);
@@ -1769,14 +1767,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         pat.span.to(arm_span.unwrap()),
                         pat,
                         ArmHasGuard(false),
-                        Some((Some(&scrutinee_place), scrutinee.span)),
+                        Some((Some(&scrutinee_place), scrutinee_span)),
                     );
                     let post_guard_block = self.bind_pattern(
                         self.source_info(pat.span),
                         guard_candidate,
                         None,
                         &fake_borrow_temps,
-                        scrutinee.span,
+                        scrutinee_span,
                         None,
                         None,
                     );

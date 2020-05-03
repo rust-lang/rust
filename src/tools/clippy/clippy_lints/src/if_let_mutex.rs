@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for IfLetMutex {
                     span_lint_and_help(
                         cx,
                         IF_LET_MUTEX,
-                        ex.span,
+                        cx.tcx.hir().span(ex.hir_id),
                         "calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock",
                         None,
                         "move the lock call outside of the `if let ...` expression",

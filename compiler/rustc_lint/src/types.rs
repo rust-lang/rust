@@ -138,7 +138,8 @@ fn lint_overflowing_range_endpoint<'tcx>(
         // (`..=`) instead only if it is the `end` that is
         // overflowing and only by 1.
         if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
-            cx.struct_span_lint(OVERFLOWING_LITERALS, parent_expr.span, |lint| {
+            let parent_expr_span = cx.tcx.hir().span(parent_expr.hir_id);
+            cx.struct_span_lint(OVERFLOWING_LITERALS, parent_expr_span, |lint| {
                 let mut err = lint.build(&format!("range endpoint is out of range for `{}`", ty));
                 if let Ok(start) =
                     cx.sess().source_map().span_to_snippet(cx.tcx.hir().span(eps[0].hir_id))
@@ -154,7 +155,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
                     };
                     let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
                     err.span_suggestion(
-                        parent_expr.span,
+                        parent_expr_span,
                         &"use an inclusive range instead",
                         suggestion,
                         Applicability::MachineApplicable,
@@ -216,7 +217,7 @@ fn report_bin_hex_error(
     negative: bool,
 ) {
     let size = Integer::from_attr(&cx.tcx, ty).size();
-    cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
+    cx.struct_span_lint(OVERFLOWING_LITERALS, cx.tcx.hir().span(expr.hir_id), |lint| {
         let (t, actually) = match ty {
             attr::IntType::SignedInt(t) => {
                 let actually = if negative {
@@ -254,7 +255,7 @@ fn report_bin_hex_error(
             if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
                 let (sans_suffix, _) = repr_str.split_at(pos);
                 err.span_suggestion(
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     &format!("consider using the type `{}` instead", sugg_ty),
                     format!("{}{}", sans_suffix, sugg_ty),
                     Applicability::MachineApplicable,
@@ -354,7 +355,7 @@ fn lint_int_literal<'tcx>(
             }
         }
 
-        cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
+        cx.struct_span_lint(OVERFLOWING_LITERALS, cx.tcx.hir().span(e.hir_id), |lint| {
             let mut err = lint.build(&format!("literal out of range for `{}`", t.name_str()));
             err.note(&format!(
                 "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
@@ -396,10 +397,11 @@ fn lint_uint_literal<'tcx>(
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
-                        cx.struct_span_lint(OVERFLOWING_LITERALS, par_e.span, |lint| {
+                        let par_e_span = cx.tcx.hir().span(par_e.hir_id);
+                        cx.struct_span_lint(OVERFLOWING_LITERALS, par_e_span, |lint| {
                             lint.build("only `u8` can be cast into `char`")
                                 .span_suggestion(
-                                    par_e.span,
+                                    par_e_span,
                                     &"use a `char` literal instead",
                                     format!("'\\u{{{:X}}}'", lit_val),
                                     Applicability::MachineApplicable,
@@ -430,7 +432,7 @@ fn lint_uint_literal<'tcx>(
             );
             return;
         }
-        cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
+        cx.struct_span_lint(OVERFLOWING_LITERALS, cx.tcx.hir().span(e.hir_id), |lint| {
             lint.build(&format!("literal out of range for `{}`", t.name_str()))
                 .note(&format!(
                     "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
@@ -472,7 +474,7 @@ fn lint_literal<'tcx>(
                 _ => bug!(),
             };
             if is_infinite == Ok(true) {
-                cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
+                cx.struct_span_lint(OVERFLOWING_LITERALS, cx.tcx.hir().span(e.hir_id), |lint| {
                     lint.build(&format!("literal out of range for `{}`", t.name_str()))
                         .note(&format!(
                             "the literal `{}` does not fit into the type `{}` and will be converted to `{}::INFINITY`",
@@ -502,7 +504,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
-                    cx.struct_span_lint(UNUSED_COMPARISONS, e.span, |lint| {
+                    cx.struct_span_lint(UNUSED_COMPARISONS, cx.tcx.hir().span(e.hir_id), |lint| {
                         lint.build("comparison is useless due to type limits").emit()
                     });
                 }

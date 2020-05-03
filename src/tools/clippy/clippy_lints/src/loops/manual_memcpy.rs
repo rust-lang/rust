@@ -85,7 +85,7 @@ pub(super) fn check<'tcx>(
                 span_lint_and_sugg(
                     cx,
                     MANUAL_MEMCPY,
-                    get_span_of_entire_for_loop(expr),
+                    get_span_of_entire_for_loop(cx, expr),
                     "it looks like you're manually copying between slices",
                     "try replacing the loop by",
                     big_sugg,
@@ -170,8 +170,8 @@ fn build_manual_memcpy_suggestion<'tcx>(
     let (dst_offset, dst_limit) = print_offset_and_limit(&dst);
     let (src_offset, src_limit) = print_offset_and_limit(&src);
 
-    let dst_base_str = snippet(cx, dst.base.span, "???");
-    let src_base_str = snippet(cx, src.base.span, "???");
+    let dst_base_str = snippet(cx, cx.tcx.hir().span(dst.base.hir_id), "???");
+    let src_base_str = snippet(cx, cx.tcx.hir().span(src.base.hir_id), "???");
 
     let dst = if dst_offset == sugg::EMPTY && dst_limit == sugg::EMPTY {
         dst_base_str

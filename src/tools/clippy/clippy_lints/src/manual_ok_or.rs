@@ -40,7 +40,7 @@ declare_lint_pass!(ManualOkOr => [MANUAL_OK_OR]);
 
 impl LateLintPass<'_> for ManualOkOr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'tcx>) {
-        if in_external_macro(cx.sess(), scrutinee.span) {
+        if in_external_macro(cx.sess(), cx.tcx.hir().span(scrutinee.hir_id)) {
             return;
         }
 
@@ -55,16 +55,16 @@ impl LateLintPass<'_> for ManualOkOr {
             if is_ok_wrapping(cx, &args[2]);
             if let ExprKind::Call(Expr { kind: ExprKind::Path(err_path), .. }, &[ref err_arg]) = or_expr.kind;
             if match_qpath(err_path, &paths::RESULT_ERR);
-            if let Some(method_receiver_snippet) = snippet_opt(cx, method_receiver.span);
-            if let Some(err_arg_snippet) = snippet_opt(cx, err_arg.span);
-            if let Some(indent) = indent_of(cx, scrutinee.span);
+            if let Some(method_receiver_snippet) = snippet_opt(cx, cx.tcx.hir().span(method_receiver.hir_id));
+            if let Some(err_arg_snippet) = snippet_opt(cx, cx.tcx.hir().span(err_arg.hir_id));
+            if let Some(indent) = indent_of(cx, cx.tcx.hir().span(scrutinee.hir_id));
             then {
                 let reindented_err_arg_snippet =
                     reindent_multiline(err_arg_snippet.into(), true, Some(indent + 4));
                 span_lint_and_sugg(
                     cx,
                     MANUAL_OK_OR,
-                    scrutinee.span,
+                    cx.tcx.hir().span(scrutinee.hir_id),
                     "this pattern reimplements `Option::ok_or`",
                     "replace with",
                     format!(

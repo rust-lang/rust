@@ -1238,8 +1238,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let user_body = this.lower_block_expr_opt(body_span, body);
 
                     // Transform into `drop-temps { <user-body> }`, an expression:
-                    let desugared_span =
-                        this.mark_span_with_reason(DesugaringKind::Async, user_body.span, None);
+                    let desugared_span = this.mark_span_with_reason(
+                        DesugaringKind::Async,
+                        this.spans[user_body.hir_id],
+                        None,
+                    );
                     let user_body = this.expr_drop_temps(
                         desugared_span,
                         this.arena.alloc(user_body),

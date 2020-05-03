@@ -39,7 +39,7 @@ impl<'tcx> LateLintPass<'tcx> for VerboseFileReads {
             span_lint_and_help(
                 cx,
                 VERBOSE_FILE_READS,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "use of `File::read_to_end`",
                 None,
                 "consider using `fs::read` instead",
@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for VerboseFileReads {
             span_lint_and_help(
                 cx,
                 VERBOSE_FILE_READS,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "use of `File::read_to_string`",
                 None,
                 "consider using `fs::read_to_string` instead",

@@ -108,7 +108,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         fn_sig.abi,
     );
 
-    let span = body.value.span;
+    let span = hir.span(body.value.hir_id);
 
     fn_maybe_err(tcx, span, fn_sig.abi);
 
@@ -1577,7 +1577,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, id: HirId) {
                 .returns
                 .iter()
                 .filter(|expr| typeck_results.node_type_opt(expr.hir_id).is_some())
-                .map(|expr| expr.span)
+                .map(|expr| tcx.hir().span(expr.hir_id))
                 .collect::<Vec<Span>>();
             let span_len = spans.len();
             if span_len == 1 {
@@ -1599,7 +1599,9 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, id: HirId) {
             for (sp, ty) in visitor
                 .returns
                 .iter()
-                .filter_map(|e| typeck_results.node_type_opt(e.hir_id).map(|t| (e.span, t)))
+                .filter_map(|e| {
+                    typeck_results.node_type_opt(e.hir_id).map(|t| (tcx.hir().span(e.hir_id), t))
+                })
                 .filter(|(_, ty)| !matches!(ty.kind(), ty::Never))
             {
                 struct VisitTypes(Vec<DefId>);

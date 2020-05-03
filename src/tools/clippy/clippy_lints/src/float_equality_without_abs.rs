@@ -95,11 +95,11 @@ impl<'tcx> LateLintPass<'tcx> for FloatEqualityWithoutAbs {
                 span_lint_and_then(
                     cx,
                     FLOAT_EQUALITY_WITHOUT_ABS,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "float equality check without `.abs()`",
                     | diag | {
                         diag.span_suggestion(
-                            lhs.span,
+                            cx.tcx.hir().span(lhs.hir_id),
                             "add `.abs()`",
                             suggestion,
                             Applicability::MaybeIncorrect,

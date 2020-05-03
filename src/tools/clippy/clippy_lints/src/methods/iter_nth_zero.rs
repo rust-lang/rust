@@ -16,10 +16,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, nth_args
             span_lint_and_sugg(
                 cx,
                 ITER_NTH_ZERO,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "called `.nth(0)` on a `std::iter::Iterator`, when `.next()` is equivalent",
                 "try calling `.next()` instead of `.nth(0)`",
-                format!("{}.next()", snippet_with_applicability(cx, nth_args[0].span, "..", &mut applicability)),
+                format!("{}.next()", snippet_with_applicability(cx, cx.tcx.hir().span(nth_args[0].hir_id), "..", &mut applicability)),
                 applicability,
             );
         }

@@ -33,7 +33,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                 match_type(cx, ty, &paths::BTREEMAP) ||
                 is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
                 if method.ident.name == sym!(len) {
-                    let span = shorten_needless_collect_span(expr);
+                    let span = shorten_needless_collect_span(cx, expr);
                     span_lint_and_sugg(
                         cx,
                         NEEDLESS_COLLECT,
@@ -45,7 +45,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                     );
                 }
                 if method.ident.name == sym!(is_empty) {
-                    let span = shorten_needless_collect_span(expr);
+                    let span = shorten_needless_collect_span(cx, expr);
                     span_lint_and_sugg(
                         cx,
                         NEEDLESS_COLLECT,
@@ -57,8 +57,8 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                     );
                 }
                 if method.ident.name == sym!(contains) {
-                    let contains_arg = snippet(cx, args[1].span, "??");
-                    let span = shorten_needless_collect_span(expr);
+                    let contains_arg = snippet(cx, cx.tcx.hir().span(args[1].hir_id), "??");
+                    let span = shorten_needless_collect_span(cx, expr);
                     span_lint_and_then(
                         cx,
                         NEEDLESS_COLLECT,
@@ -101,7 +101,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                 if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                     is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
                     match_type(cx, ty, &paths::LINKED_LIST);
-                if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
+                if let Some(iter_calls) = detect_iter_and_into_iters(cx, block, *ident);
                 if iter_calls.len() == 1;
                 then {
                     let mut used_count_visitor = UsedCountVisitor {
@@ -184,12 +184,13 @@ enum IterFunctionKind {
     Contains(Span),
 }
 
-struct IterFunctionVisitor {
+struct IterFunctionVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
     uses: Vec<IterFunction>,
     seen_other: bool,
     target: Ident,
 }
-impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
+impl<'a, 'tcx> Visitor<'tcx> for IterFunctionVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         // Check function calls on our collection
         if_chain! {
@@ -201,18 +202,19 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
                 let len = sym!(len);
                 let is_empty = sym!(is_empty);
                 let contains = sym!(contains);
+                let expr_span = self.cx.tcx.hir().span(expr.hir_id);
                 match method_name.ident.name {
                     sym::into_iter => self.uses.push(
-                        IterFunction { func: IterFunctionKind::IntoIter, span: expr.span }
+                        IterFunction { func: IterFunctionKind::IntoIter, span: expr_span }
                     ),
                     name if name == len => self.uses.push(
-                        IterFunction { func: IterFunctionKind::Len, span: expr.span }
+                        IterFunction { func: IterFunctionKind::Len, span: expr_span }
                     ),
                     name if name == is_empty => self.uses.push(
-                        IterFunction { func: IterFunctionKind::IsEmpty, span: expr.span }
+                        IterFunction { func: IterFunctionKind::IsEmpty, span: expr_span }
                     ),
                     name if name == contains => self.uses.push(
-                        IterFunction { func: IterFunctionKind::Contains(args[1].span), span: expr.span }
+                        IterFunction { func: IterFunctionKind::Contains(self.cx.tcx.hir().span(args[1].hir_id)), span: expr_span }
                     ),
                     _ => self.seen_other = true,
                 }
@@ -262,8 +264,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UsedCountVisitor<'a, 'tcx> {
 
 /// Detect the occurrences of calls to `iter` or `into_iter` for the
 /// given identifier
-fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident) -> Option<Vec<IterFunction>> {
+fn detect_iter_and_into_iters<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>, identifier: Ident) -> Option<Vec<IterFunction>> {
     let mut visitor = IterFunctionVisitor {
+        cx: cx,
         uses: Vec::new(),
         target: identifier,
         seen_other: false,
@@ -272,12 +275,12 @@ fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident)
     if visitor.seen_other { None } else { Some(visitor.uses) }
 }
 
-fn shorten_needless_collect_span(expr: &Expr<'_>) -> Span {
+fn shorten_needless_collect_span(cx: &LateContext<'_>, expr: &Expr<'_>) -> Span {
     if_chain! {
         if let ExprKind::MethodCall(.., args, _) = &expr.kind;
         if let ExprKind::MethodCall(_, span, ..) = &args[0].kind;
         then {
-            return expr.span.with_lo(span.lo());
+            return cx.tcx.hir().span(expr.hir_id).with_lo(span.lo());
         }
     }
     unreachable!();

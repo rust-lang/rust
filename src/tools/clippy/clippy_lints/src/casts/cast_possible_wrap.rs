@@ -34,7 +34,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
         span_lint(
             cx,
             CAST_POSSIBLE_WRAP,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             &format!(
                 "casting `{}` to `{}` may wrap around the value{}",
                 cast_from, cast_to, suffix,

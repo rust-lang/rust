@@ -51,7 +51,7 @@ fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_f
             span_lint(
                 cx,
                 CAST_PTR_ALIGNMENT,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 &format!(
                     "casting from `{}` to a more-strictly-aligned pointer (`{}`) ({} < {} bytes)",
                     cast_from,

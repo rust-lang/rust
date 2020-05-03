@@ -555,7 +555,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for arg in substs.iter().filter(|arg| {
             matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
         }) {
-            self.register_wf_obligation(arg, expr.span, traits::MiscObligation);
+            self.register_wf_obligation(
+                arg,
+                self.tcx.hir().span(expr.hir_id),
+                traits::MiscObligation,
+            );
         }
     }
 
@@ -1013,7 +1017,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ),
             );
             sp.push_span_label(
-                rcvr.span,
+                self.tcx.hir().span(rcvr.hir_id),
                 "you probably want to use this value after calling the method...".to_string(),
             );
             err.span_note(

@@ -25,12 +25,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
             lint_unary = "!";
             verb = "denies";
             help_unary = "";
-            span = parent.span;
+            span = cx.tcx.hir().span(parent.hir_id);
         } else {
             lint_unary = "";
             verb = "covers";
             help_unary = "!";
-            span = expr.span;
+            span = cx.tcx.hir().span(expr.hir_id);
         }
     }
     let lint_msg = format!("`{}FileType::is_file()` only {} regular files", lint_unary, verb);

@@ -19,7 +19,7 @@ pub(super) fn check(
     cast_to: Ty<'_>,
 ) -> bool {
     if let Some(lit) = get_numeric_literal(cast_expr) {
-        let literal_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
+        let literal_str = snippet_opt(cx, cx.tcx.hir().span(cast_expr.hir_id)).unwrap_or_default();
 
         if_chain! {
             if let LitKind::Int(n, _) = lit.node;
@@ -45,11 +45,11 @@ pub(super) fn check(
             },
             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
             _ => {
-                if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
+                if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), cx.tcx.hir().span(expr.hir_id)) {
                     span_lint(
                         cx,
                         UNNECESSARY_CAST,
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         &format!(
                             "casting to the same type is unnecessary (`{}` -> `{}`)",
                             cast_from, cast_to
@@ -69,7 +69,7 @@ fn lint_unnecessary_cast(cx: &LateContext<'_>, expr: &Expr<'_>, literal_str: &st
     span_lint_and_sugg(
         cx,
         UNNECESSARY_CAST,
-        expr.span,
+        cx.tcx.hir().span(expr.hir_id),
         &format!("casting {} literal to `{}` is unnecessary", literal_kind_name, cast_to),
         "try",
         format!("{}_{}", literal_str.trim_end_matches('.'), cast_to),

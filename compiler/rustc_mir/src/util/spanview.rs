@@ -99,7 +99,7 @@ where
     W: Write,
 {
     let def_id = body.source.def_id();
-    let body_span = hir_body(tcx, def_id).value.span;
+    let body_span = tcx.hir().span(hir_body(tcx, def_id).value.hir_id);
     let mut span_viewables = Vec::new();
     for (bb, data) in body.basic_blocks().iter_enumerated() {
         match spanview {
@@ -664,7 +664,7 @@ fn fn_span<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Span {
     let hir_id =
         tcx.hir().local_def_id_to_hir_id(def_id.as_local().expect("expected DefId is local"));
     let fn_decl_span = tcx.hir().span(hir_id);
-    let body_span = hir_body(tcx, def_id).value.span;
+    let body_span = tcx.hir().span(hir_body(tcx, def_id).value.hir_id);
     if fn_decl_span.ctxt() == body_span.ctxt() {
         fn_decl_span.to(body_span)
     } else {

@@ -176,9 +176,9 @@ impl SlowVectorInit {
     ) {
         let len_expr = Sugg::hir(cx, vec_alloc.len_expr, "len");
 
-        span_lint_and_then(cx, lint, slow_fill.span, msg, |diag| {
+        span_lint_and_then(cx, lint, cx.tcx.hir().span(slow_fill.hir_id), msg, |diag| {
             diag.span_suggestion(
-                vec_alloc.allocation_expr.span,
+                cx.tcx.hir().span(vec_alloc.allocation_expr.hir_id),
                 "consider replace allocation with",
                 format!("vec![0; {}]", len_expr),
                 Applicability::Unspecified,

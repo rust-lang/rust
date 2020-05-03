@@ -18,13 +18,13 @@ pub(super) fn check<'tcx>(
     _: &'tcx Expr<'_>,
 ) {
     fn emit_lint(cx: &LateContext<'_>, vec: &Expr<'_>, pushed_item: &Expr<'_>) {
-        let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
-        let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
+        let vec_str = snippet_with_macro_callsite(cx, cx.tcx.hir().span(vec.hir_id), "");
+        let item_str = snippet_with_macro_callsite(cx, cx.tcx.hir().span(pushed_item.hir_id), "");
 
         span_lint_and_help(
             cx,
             SAME_ITEM_PUSH,
-            vec.span,
+            cx.tcx.hir().span(vec.hir_id),
             "it looks like the same item is being pushed into this Vec",
             None,
             &format!(

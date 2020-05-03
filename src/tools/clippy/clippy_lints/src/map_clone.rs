@@ -46,7 +46,7 @@ declare_lint_pass!(MapClone => [MAP_CLONE]);
 
 impl<'tcx> LateLintPass<'tcx> for MapClone {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
-        if e.span.from_expansion() {
+        if cx.tcx.hir().span(e.hir_id).from_expansion() {
             return;
         }
 
@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                         hir::BindingAnnotation::Unannotated, .., name, None
                     ) = inner.kind {
                         if ident_eq(name, closure_expr) {
-                            lint(cx, e.span, args[0].span, true);
+                            lint(cx, cx.tcx.hir().span(e.hir_id), cx.tcx.hir().span(args[0].hir_id), true);
                         }
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                             hir::ExprKind::Unary(hir::UnOp::Deref, ref inner) => {
                                 if ident_eq(name, inner) {
                                     if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
-                                        lint(cx, e.span, args[0].span, true);
+                                        lint(cx, cx.tcx.hir().span(e.hir_id), cx.tcx.hir().span(args[0].hir_id), true);
                                     }
                                 }
                             },
@@ -90,10 +90,10 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                                     if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
                                         if matches!(mutability, Mutability::Not) {
                                             let copy = is_copy(cx, ty);
-                                            lint(cx, e.span, args[0].span, copy);
+                                            lint(cx, cx.tcx.hir().span(e.hir_id), cx.tcx.hir().span(args[0].hir_id), copy);
                                         }
                                     } else {
-                                        lint_needless_cloning(cx, e.span, args[0].span);
+                                        lint_needless_cloning(cx, cx.tcx.hir().span(e.hir_id), cx.tcx.hir().span(args[0].hir_id));
                                     }
                                 }
                             },

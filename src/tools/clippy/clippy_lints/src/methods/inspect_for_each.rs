@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, ins
         span_lint_and_help(
             cx,
             INSPECT_FOR_EACH,
-            inspect_span.with_hi(expr.span.hi()),
+            inspect_span.with_hi(cx.tcx.hir().span(expr.hir_id).hi()),
             msg,
             None,
             hint,

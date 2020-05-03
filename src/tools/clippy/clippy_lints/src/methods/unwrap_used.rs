@@ -21,7 +21,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, unwrap_args: &[h
         span_lint_and_help(
             cx,
             lint,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             &format!("used `unwrap()` on `{}` value", kind,),
             None,
             &format!(

@@ -35,7 +35,7 @@ impl<'tcx> LateLintPass<'tcx> for TemporaryAssignment {
                 base = f;
             }
             if is_temporary(base) && !is_adjusted(cx, base) {
-                span_lint(cx, TEMPORARY_ASSIGNMENT, expr.span, "assignment to temporary");
+                span_lint(cx, TEMPORARY_ASSIGNMENT, cx.tcx.hir().span(expr.hir_id), "assignment to temporary");
             }
         }
     }

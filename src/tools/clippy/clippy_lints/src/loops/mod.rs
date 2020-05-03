@@ -545,14 +545,14 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
             // we don't want to check expanded macros
             // this check is not at the top of the function
             // since higher::for_loop expressions are marked as expansions
-            if body.span.from_expansion() {
+            if cx.tcx.hir().span(body.hir_id).from_expansion() {
                 return;
             }
             check_for_loop(cx, pat, arg, body, expr, span);
         }
 
         // we don't want to check expanded macros
-        if expr.span.from_expansion() {
+        if cx.tcx.hir().span(expr.hir_id).from_expansion() {
             return;
         }
 

@@ -71,13 +71,13 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
 
                 if let Some((is_method_call, char_arg, radix_arg)) = match_result {
                     let mut applicability = Applicability::MachineApplicable;
-                    let char_arg_snip = snippet_with_applicability(cx, char_arg.span, "_", &mut applicability);
-                    let radix_snip = snippet_with_applicability(cx, radix_arg.span, "_", &mut applicability);
+                    let char_arg_snip = snippet_with_applicability(cx, cx.tcx.hir().span(char_arg.hir_id), "_", &mut applicability);
+                    let radix_snip = snippet_with_applicability(cx, cx.tcx.hir().span(radix_arg.hir_id), "_", &mut applicability);
 
                     span_lint_and_sugg(
                         cx,
                         TO_DIGIT_IS_SOME,
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         "use of `.to_digit(..).is_some()`",
                         "try this",
                         if is_method_call {

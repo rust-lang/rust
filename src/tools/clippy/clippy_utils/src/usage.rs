@@ -8,7 +8,7 @@ use rustc_hir::{Expr, ExprKind, HirId, Path};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
@@ -150,19 +150,21 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
     }
 }
 
-struct ReturnBreakContinueMacroVisitor {
+struct ReturnBreakContinueMacroVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
     seen_return_break_continue: bool,
 }
 
-impl ReturnBreakContinueMacroVisitor {
-    fn new() -> ReturnBreakContinueMacroVisitor {
+impl<'tcx> ReturnBreakContinueMacroVisitor<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> ReturnBreakContinueMacroVisitor<'tcx> {
         ReturnBreakContinueMacroVisitor {
+            tcx,
             seen_return_break_continue: false,
         }
     }
 }
 
-impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
+impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor<'_> {
     type Map = Map<'tcx>;
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
@@ -181,7 +183,7 @@ impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
             // desugaring, as this will detect a break if there's a while loop
             // or a for loop inside the expression.
             _ => {
-                if utils::in_macro(ex.span) {
+                if utils::in_macro(self.tcx.hir().span(ex.hir_id)) {
                     self.seen_return_break_continue = true;
                 } else {
                     rustc_hir::intravisit::walk_expr(self, ex);
@@ -191,8 +193,8 @@ impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
     }
 }
 
-pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
-    let mut recursive_visitor = ReturnBreakContinueMacroVisitor::new();
+pub fn contains_return_break_continue_macro(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
+    let mut recursive_visitor = ReturnBreakContinueMacroVisitor::new(cx.tcx);
     recursive_visitor.visit_expr(expression);
     recursive_visitor.seen_return_break_continue
 }

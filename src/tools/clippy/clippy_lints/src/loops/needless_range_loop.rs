@@ -86,7 +86,7 @@ pub(super) fn check<'tcx>(
                 } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, start) {
                     return;
                 } else {
-                    format!(".skip({})", snippet(cx, start.span, ".."))
+                    format!(".skip({})", snippet(cx, cx.tcx.hir().span(start.hir_id), ".."))
                 };
 
                 let mut end_is_start_plus_val = false;
@@ -119,7 +119,9 @@ pub(super) fn check<'tcx>(
                                 let take_expr = sugg::Sugg::hir(cx, take_expr, "<count>");
                                 format!(".take({})", take_expr + sugg::ONE)
                             },
-                            ast::RangeLimits::HalfOpen => format!(".take({})", snippet(cx, take_expr.span, "..")),
+                            ast::RangeLimits::HalfOpen => {
+                                format!(".take({})", snippet(cx, cx.tcx.hir().span(take_expr.hir_id), ".."))
+                            },
                         }
                     }
                 } else {
@@ -144,7 +146,7 @@ pub(super) fn check<'tcx>(
                     span_lint_and_then(
                         cx,
                         NEEDLESS_RANGE_LOOP,
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         &format!("the loop variable `{}` is used to index `{}`", ident.name, indexed),
                         |diag| {
                             multispan_sugg(
@@ -153,7 +155,7 @@ pub(super) fn check<'tcx>(
                                 vec![
                                     (cx.tcx.hir().span(pat.hir_id), format!("({}, <item>)", ident.name)),
                                     (
-                                        arg.span,
+                                        cx.tcx.hir().span(arg.hir_id),
                                         format!("{}.{}().enumerate(){}{}", indexed, method, method_1, method_2),
                                     ),
                                 ],
@@ -170,13 +172,16 @@ pub(super) fn check<'tcx>(
                     span_lint_and_then(
                         cx,
                         NEEDLESS_RANGE_LOOP,
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         &format!("the loop variable `{}` is only used to index `{}`", ident.name, indexed),
                         |diag| {
                             multispan_sugg(
                                 diag,
                                 "consider using an iterator",
-                                vec![(cx.tcx.hir().span(pat.hir_id), "<item>".to_string()), (arg.span, repl)],
+                                vec![
+                                    (cx.tcx.hir().span(pat.hir_id), "<item>".to_string()),
+                                    (cx.tcx.hir().span(arg.hir_id), repl),
+                                ],
                             );
                         },
                     );

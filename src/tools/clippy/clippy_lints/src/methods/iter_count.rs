@@ -35,12 +35,12 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'
     span_lint_and_sugg(
         cx,
         ITER_COUNT,
-        expr.span,
+        cx.tcx.hir().span(expr.hir_id),
         &format!("called `.{}().count()` on a `{}`", iter_method, caller_type),
         "try",
         format!(
             "{}.len()",
-            snippet_with_applicability(cx, iter_args[0].span, "..", &mut applicability),
+            snippet_with_applicability(cx, cx.tcx.hir().span(iter_args[0].hir_id), "..", &mut applicability),
         ),
         applicability,
     );

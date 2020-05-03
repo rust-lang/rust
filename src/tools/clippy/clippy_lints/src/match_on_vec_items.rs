@@ -48,7 +48,7 @@ declare_lint_pass!(MatchOnVecItems => [MATCH_ON_VEC_ITEMS]);
 impl<'tcx> LateLintPass<'tcx> for MatchOnVecItems {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
-            if !in_external_macro(cx.sess(), expr.span);
+            if !in_external_macro(cx.sess(), cx.tcx.hir().span(expr.hir_id));
             if let ExprKind::Match(ref match_expr, _, MatchSource::Normal) = expr.kind;
             if let Some(idx_expr) = is_vec_indexing(cx, match_expr);
             if let ExprKind::Index(vec, idx) = idx_expr.kind;
@@ -59,13 +59,13 @@ impl<'tcx> LateLintPass<'tcx> for MatchOnVecItems {
                 span_lint_and_sugg(
                     cx,
                     MATCH_ON_VEC_ITEMS,
-                    match_expr.span,
+                    cx.tcx.hir().span(match_expr.hir_id),
                     "indexing into a vector may panic",
                     "try this",
                     format!(
                         "{}.get({})",
-                        snippet(cx, vec.span, ".."),
-                        snippet(cx, idx.span, "..")
+                        snippet(cx, cx.tcx.hir().span(vec.hir_id), ".."),
+                        snippet(cx, cx.tcx.hir().span(idx.hir_id), "..")
                     ),
                     Applicability::MaybeIncorrect
                 );

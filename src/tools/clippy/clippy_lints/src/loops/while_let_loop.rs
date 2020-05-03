@@ -19,7 +19,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'
                         && arms[1].guard.is_none()
                         && is_simple_break_expr(&arms[1].body)
                     {
-                        if in_external_macro(cx.sess(), expr.span) {
+                        if in_external_macro(cx.sess(), cx.tcx.hir().span(expr.hir_id)) {
                             return;
                         }
 
@@ -32,7 +32,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'
                         span_lint_and_sugg(
                             cx,
                             WHILE_LET_LOOP,
-                            expr.span,
+                            cx.tcx.hir().span(expr.hir_id),
                             "this loop could be written as a `while let` loop",
                             "try",
                             format!(
@@ -43,7 +43,12 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'
                                     "..",
                                     &mut applicability
                                 ),
-                                snippet_with_applicability(cx, matchexpr.span, "..", &mut applicability),
+                                snippet_with_applicability(
+                                    cx,
+                                    cx.tcx.hir().span(matchexpr.hir_id),
+                                    "..",
+                                    &mut applicability
+                                ),
                             ),
                             applicability,
                         );

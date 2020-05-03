@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ok_args: &[hir::
             span_lint_and_help(
                 cx,
                 OK_EXPECT,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "called `ok().expect()` on a `Result` value",
                 None,
                 "you can call `expect()` directly on the `Result`",

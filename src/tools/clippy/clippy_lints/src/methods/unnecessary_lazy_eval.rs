@@ -48,14 +48,14 @@ pub(super) fn check<'tcx>(
                 span_lint_and_sugg(
                     cx,
                     UNNECESSARY_LAZY_EVALUATIONS,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     msg,
                     &format!("use `{}` instead", simplify_using),
                     format!(
                         "{0}.{1}({2})",
-                        snippet(cx, args[0].span, ".."),
+                        snippet(cx, cx.tcx.hir().span(args[0].hir_id), ".."),
                         simplify_using,
-                        snippet(cx, body_expr.span, ".."),
+                        snippet(cx, cx.tcx.hir().span(body_expr.hir_id), ".."),
                     ),
                     applicability,
                 );

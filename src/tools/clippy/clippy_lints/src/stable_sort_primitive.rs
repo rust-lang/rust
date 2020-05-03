@@ -110,7 +110,7 @@ impl LateLintPass<'_> for StableSortPrimitive {
             span_lint_and_then(
                 cx,
                 STABLE_SORT_PRIMITIVE,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 format!(
                     "used `{}` on primitive type `{}`",
                     detection.method.stable_name(),
@@ -119,7 +119,7 @@ impl LateLintPass<'_> for StableSortPrimitive {
                 .as_str(),
                 |diag| {
                     diag.span_suggestion(
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         "try",
                         format!(
                             "{}.{}({})",

@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                 span_lint_and_sugg(
                     cx,
                     NEEDLESS_BOOL,
-                    e.span,
+                    cx.tcx.hir().span(e.hir_id),
                     "this if-then-else expression returns a bool literal",
                     "you can reduce it to",
                     snip.to_string(),
@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                         span_lint(
                             cx,
                             NEEDLESS_BOOL,
-                            e.span,
+                            cx.tcx.hir().span(e.hir_id),
                             "this if-then-else expression will always return true",
                         );
                     },
@@ -107,7 +107,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                         span_lint(
                             cx,
                             NEEDLESS_BOOL,
-                            e.span,
+                            cx.tcx.hir().span(e.hir_id),
                             "this if-then-else expression will always return false",
                         );
                     },
@@ -128,7 +128,7 @@ declare_lint_pass!(BoolComparison => [BOOL_COMPARISON]);
 
 impl<'tcx> LateLintPass<'tcx> for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if e.span.from_expansion() {
+        if cx.tcx.hir().span(e.hir_id).from_expansion() {
             return;
         }
 
@@ -194,16 +194,20 @@ struct ExpressionInfoWithSpan {
     right_span: Span,
 }
 
-fn is_unary_not(e: &Expr<'_>) -> (bool, Span) {
+fn is_unary_not(cx: &LateContext<'_>, e: &Expr<'_>) -> (bool, Span) {
     if let ExprKind::Unary(UnOp::Not, operand) = e.kind {
-        return (true, operand.span);
+        return (true, cx.tcx.hir().span(operand.hir_id));
     }
-    (false, e.span)
+    (false, cx.tcx.hir().span(e.hir_id))
 }
 
-fn one_side_is_unary_not<'tcx>(left_side: &'tcx Expr<'_>, right_side: &'tcx Expr<'_>) -> ExpressionInfoWithSpan {
-    let left = is_unary_not(left_side);
-    let right = is_unary_not(right_side);
+fn one_side_is_unary_not<'tcx>(
+    cx: &LateContext<'tcx>,
+    left_side: &'tcx Expr<'_>,
+    right_side: &'tcx Expr<'_>,
+) -> ExpressionInfoWithSpan {
+    let left = is_unary_not(cx, left_side);
+    let right = is_unary_not(cx, right_side);
 
     ExpressionInfoWithSpan {
         one_side_is_unary_not: left.0 != right.0,
@@ -228,19 +232,21 @@ fn check_comparison<'a, 'tcx>(
             cx.typeck_results().expr_ty(left_side),
             cx.typeck_results().expr_ty(right_side),
         );
-        if is_expn_of(left_side.span, "cfg").is_some() || is_expn_of(right_side.span, "cfg").is_some() {
+        if is_expn_of(cx.tcx.hir().span(left_side.hir_id), "cfg").is_some()
+            || is_expn_of(cx.tcx.hir().span(right_side.hir_id), "cfg").is_some()
+        {
             return;
         }
         if l_ty.is_bool() && r_ty.is_bool() {
             let mut applicability = Applicability::MachineApplicable;
 
             if let BinOpKind::Eq = op.node {
-                let expression_info = one_side_is_unary_not(&left_side, &right_side);
+                let expression_info = one_side_is_unary_not(cx, &left_side, &right_side);
                 if expression_info.one_side_is_unary_not {
                     span_lint_and_sugg(
                         cx,
                         BOOL_COMPARISON,
-                        e.span,
+                        cx.tcx.hir().span(e.hir_id),
                         "this comparison might be written more concisely",
                         "try simplifying it as shown",
                         format!(
@@ -272,7 +278,7 @@ fn check_comparison<'a, 'tcx>(
                     span_lint_and_sugg(
                         cx,
                         BOOL_COMPARISON,
-                        e.span,
+                        cx.tcx.hir().span(e.hir_id),
                         m,
                         "try simplifying it as shown",
                         h(left_side, right_side).to_string(),
@@ -293,7 +299,7 @@ fn suggest_bool_comparison<'a, 'tcx>(
     message: &str,
     conv_hint: impl FnOnce(Sugg<'a>) -> Sugg<'a>,
 ) {
-    let hint = if expr.span.from_expansion() {
+    let hint = if cx.tcx.hir().span(expr.hir_id).from_expansion() {
         if applicability != Applicability::Unspecified {
             applicability = Applicability::MaybeIncorrect;
         }
@@ -304,7 +310,7 @@ fn suggest_bool_comparison<'a, 'tcx>(
     span_lint_and_sugg(
         cx,
         BOOL_COMPARISON,
-        e.span,
+        cx.tcx.hir().span(e.hir_id),
         message,
         "try simplifying it as shown",
         conv_hint(hint).to_string(),

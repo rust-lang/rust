@@ -129,7 +129,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 self.insert_def_id(def.non_enum_variant().fields[index].did);
             }
             ty::Tuple(..) => {}
-            _ => span_bug!(lhs.span, "named field access on non-ADT"),
+            _ => span_bug!(self.tcx.hir().span(lhs.hir_id), "named field access on non-ADT"),
         }
     }
 

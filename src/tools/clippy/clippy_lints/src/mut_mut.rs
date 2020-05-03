@@ -48,7 +48,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        if in_external_macro(self.cx.sess(), expr.span) {
+        if in_external_macro(self.cx.sess(), self.cx.tcx.hir().span(expr.hir_id)) {
             return;
         }
 
@@ -66,14 +66,14 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                 span_lint(
                     self.cx,
                     MUT_MUT,
-                    expr.span,
+                    self.cx.tcx.hir().span(expr.hir_id),
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
             } else if let ty::Ref(_, _, hir::Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind() {
                 span_lint(
                     self.cx,
                     MUT_MUT,
-                    expr.span,
+                    self.cx.tcx.hir().span(expr.hir_id),
                     "this expression mutably borrows a mutable reference. Consider reborrowing",
                 );
             }

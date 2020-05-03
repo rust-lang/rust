@@ -100,7 +100,7 @@ impl LateLintPass<'_> for ToStringInDisplay {
                 span_lint(
                     cx,
                     TO_STRING_IN_DISPLAY,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "using `to_string` in `fmt::Display` implementation might lead to infinite recursion",
                 );
             }

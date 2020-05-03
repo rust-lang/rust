@@ -33,13 +33,13 @@ pub(super) fn check<'tcx>(
                 span_lint_and_sugg(
                     cx,
                     TRANSMUTE_BYTES_TO_STR,
-                    e.span,
+                    cx.tcx.hir().span(e.hir_id),
                     &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                     "consider using",
                     format!(
                         "std::str::from_utf8{}({}).unwrap()",
                         postfix,
-                        snippet(cx, args[0].span, ".."),
+                        snippet(cx, cx.tcx.hir().span(args[0].hir_id), ".."),
                     ),
                     Applicability::Unspecified,
                 );
@@ -50,7 +50,7 @@ pub(super) fn check<'tcx>(
                     span_lint_and_then(
                         cx,
                         TRANSMUTE_PTR_TO_PTR,
-                        e.span,
+                        cx.tcx.hir().span(e.hir_id),
                         "transmute from a reference to a reference",
                         |diag| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                             let ty_from_and_mut = ty::TypeAndMut {
@@ -67,7 +67,7 @@ pub(super) fn check<'tcx>(
                                 sugg_paren.addr_deref()
                             };
                             diag.span_suggestion(
-                                e.span,
+                                cx.tcx.hir().span(e.hir_id),
                                 "try",
                                 sugg.to_string(),
                                 Applicability::Unspecified,

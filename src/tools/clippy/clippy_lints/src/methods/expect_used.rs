@@ -21,7 +21,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, expect_args: &[h
         span_lint_and_help(
             cx,
             lint,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             &format!("used `expect()` on `{}` value", kind,),
             None,
             &format!("if this value is an `{}`, it will panic", none_value,),

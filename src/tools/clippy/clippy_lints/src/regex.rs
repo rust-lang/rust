@@ -156,14 +156,14 @@ fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
             match parser.parse(r) {
                 Ok(r) => {
                     if let Some(repl) = is_trivial_regex(&r) {
-                        span_lint_and_help(cx, TRIVIAL_REGEX, expr.span, "trivial regex", None, repl);
+                        span_lint_and_help(cx, TRIVIAL_REGEX, cx.tcx.hir().span(expr.hir_id), "trivial regex", None, repl);
                     }
                 },
                 Err(regex_syntax::Error::Parse(e)) => {
                     span_lint(
                         cx,
                         INVALID_REGEX,
-                        str_span(expr.span, *e.span(), offset),
+                        str_span(cx.tcx.hir().span(expr.hir_id), *e.span(), offset),
                         &format!("regex syntax error: {}", e.kind()),
                     );
                 },
@@ -171,12 +171,12 @@ fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
                     span_lint(
                         cx,
                         INVALID_REGEX,
-                        str_span(expr.span, *e.span(), offset),
+                        str_span(cx.tcx.hir().span(expr.hir_id), *e.span(), offset),
                         &format!("regex syntax error: {}", e.kind()),
                     );
                 },
                 Err(e) => {
-                    span_lint(cx, INVALID_REGEX, expr.span, &format!("regex syntax error: {}", e));
+                    span_lint(cx, INVALID_REGEX, cx.tcx.hir().span(expr.hir_id), &format!("regex syntax error: {}", e));
                 },
             }
         }
@@ -184,14 +184,14 @@ fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
         match parser.parse(&r) {
             Ok(r) => {
                 if let Some(repl) = is_trivial_regex(&r) {
-                    span_lint_and_help(cx, TRIVIAL_REGEX, expr.span, "trivial regex", None, repl);
+                    span_lint_and_help(cx, TRIVIAL_REGEX, cx.tcx.hir().span(expr.hir_id), "trivial regex", None, repl);
                 }
             },
             Err(regex_syntax::Error::Parse(e)) => {
                 span_lint(
                     cx,
                     INVALID_REGEX,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     &format!("regex syntax error on position {}: {}", e.span().start.offset, e.kind()),
                 );
             },
@@ -199,12 +199,12 @@ fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
                 span_lint(
                     cx,
                     INVALID_REGEX,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     &format!("regex syntax error on position {}: {}", e.span().start.offset, e.kind()),
                 );
             },
             Err(e) => {
-                span_lint(cx, INVALID_REGEX, expr.span, &format!("regex syntax error: {}", e));
+                span_lint(cx, INVALID_REGEX, cx.tcx.hir().span(expr.hir_id), &format!("regex syntax error: {}", e));
             },
         }
     }

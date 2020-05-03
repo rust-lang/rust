@@ -11,7 +11,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
     let obj_ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
     if is_type_diagnostic_item(cx, obj_ty, sym::string_type) {
         let arg = &args[1];
-        if let Some(arglists) = method_chain_args(arg, &["chars"]) {
+        if let Some(arglists) = method_chain_args(cx, arg, &["chars"]) {
             let target = &arglists[0][0];
             let self_ty = cx.typeck_results().expr_ty(target).peel_refs();
             let ref_str = if *self_ty.kind() == ty::Str {
@@ -26,14 +26,14 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
             span_lint_and_sugg(
                 cx,
                 STRING_EXTEND_CHARS,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "calling `.extend(_.chars())`",
                 "try this",
                 format!(
                     "{}.push_str({}{})",
-                    snippet_with_applicability(cx, args[0].span, "..", &mut applicability),
+                    snippet_with_applicability(cx, cx.tcx.hir().span(args[0].hir_id), "..", &mut applicability),
                     ref_str,
-                    snippet_with_applicability(cx, target.span, "..", &mut applicability)
+                    snippet_with_applicability(cx, cx.tcx.hir().span(target.hir_id), "..", &mut applicability)
                 ),
                 applicability,
             );

@@ -449,9 +449,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => (None, None),
             Some(expr) => {
                 let ty = self.check_expr(expr);
+                let expr_span = self.tcx.hir().span(expr.hir_id);
                 // Check that the end-point is of numeric or char type.
                 let fail = !(ty.is_numeric() || ty.is_char() || ty.references_error());
-                (Some(ty), Some((fail, ty, expr.span)))
+                (Some(ty), Some((fail, ty, expr_span)))
             }
         };
         let (lhs_ty, lhs) = calc_side(lhs);

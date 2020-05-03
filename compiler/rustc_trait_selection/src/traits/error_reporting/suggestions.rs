@@ -1114,8 +1114,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .returns
                     .iter()
                     .map(|expr| {
-                        let snip = sm.span_to_snippet(expr.span).ok()?;
-                        Some((expr.span, format!("Box::new({})", snip)))
+                        let expr_span = self.tcx.hir().span(expr.hir_id);
+                        let snip = sm.span_to_snippet(expr_span).ok()?;
+                        Some((expr_span, format!("Box::new({})", snip)))
                     })
                     .collect::<Option<Vec<_>>>()
                 {
@@ -1171,7 +1172,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             for expr in &visitor.returns {
                 if let Some(returned_ty) = typeck_results.node_type_opt(expr.hir_id) {
                     let ty = self.resolve_vars_if_possible(returned_ty);
-                    err.span_label(expr.span, &format!("this returned value is of type `{}`", ty));
+                    let expr_span = self.tcx.hir().span(expr.hir_id);
+                    err.span_label(expr_span, &format!("this returned value is of type `{}`", ty));
                 }
             }
         }
@@ -1499,7 +1501,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     );
                     ty_matches(ty::Binder::dummy(ty))
                 })
-                .map(|expr| expr.span);
+                .map(|expr| self.tcx.hir().span(expr.hir_id));
             let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } = cause;
 
             interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(*span));
@@ -1930,18 +1932,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     );
                 }
             }
-            ObligationCauseCode::VariableType(hir_id) => {
-                let parent_node = self.tcx.hir().get_parent_node(hir_id);
+            ObligationCauseCode::VariableType(child_hir_id) => {
+                let parent_node = self.tcx.hir().get_parent_node(child_hir_id);
                 match self.tcx.hir().find(parent_node) {
                     Some(Node::Local(hir::Local {
-                        init: Some(hir::Expr { kind: hir::ExprKind::Index(_, _), span, .. }),
+                        init: Some(hir::Expr { kind: hir::ExprKind::Index(_, _), hir_id, .. }),
                         ..
                     })) => {
                         // When encountering an assignment of an unsized trait, like
                         // `let x = ""[..];`, provide a suggestion to borrow the initializer in
                         // order to use have a slice instead.
                         err.span_suggestion_verbose(
-                            span.shrink_to_lo(),
+                            self.tcx.hir().span(*hir_id).shrink_to_lo(),
                             "consider borrowing here",
                             "&".to_owned(),
                             Applicability::MachineApplicable,

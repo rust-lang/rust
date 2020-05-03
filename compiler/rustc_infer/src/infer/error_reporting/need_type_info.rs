@@ -75,9 +75,9 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
     /// Determine whether the expression, assumed to be the callee within a `Call`,
     /// corresponds to the `From::from` emitted in desugaring of the `?` operator.
     fn is_try_conversion(&self, callee: &Expr<'tcx>) -> bool {
-        self.infcx
-            .trait_def_from_hir_fn(callee.hir_id)
-            .map_or(false, |def_id| self.infcx.is_try_conversion(callee.span, def_id))
+        self.infcx.trait_def_from_hir_fn(callee.hir_id).map_or(false, |def_id| {
+            self.infcx.is_try_conversion(self.infcx.tcx.hir().span(callee.hir_id), def_id)
+        })
     }
 }
 
@@ -139,13 +139,16 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
                 // `From::from(e)` call emitted during desugaring of the `?` operator,
                 // extract the types inferred before and after the call
                 ExprKind::Call(callee, [arg])
-                    if self.target_span.contains(expr.span)
+                    if self.target_span.contains(self.infcx.tcx.hir().span(expr.hir_id))
                         && self.found_use_diagnostic.is_none()
                         && self.is_try_conversion(callee) =>
                 {
-                    self.found_use_diagnostic = self.node_type_opt(arg.hir_id).map(|pre_ty| {
-                        UseDiagnostic::TryConversion { pre_ty, post_ty: ty, span: callee.span }
-                    });
+                    self.found_use_diagnostic =
+                        self.node_type_opt(arg.hir_id).map(|pre_ty| UseDiagnostic::TryConversion {
+                            pre_ty,
+                            post_ty: ty,
+                            span: self.infcx.tcx.hir().span(callee.hir_id),
+                        });
                 }
                 _ => {}
             }
@@ -230,7 +233,7 @@ fn closure_return_type_suggestion(
         }
         _ => vec![
             (output.span(|id| tcx.hir().span(id)), format!("{}{}{}{{ ", arrow, ret, post)),
-            (body.value.span.shrink_to_hi(), " }".to_string()),
+            (tcx.hir().span(body.value.hir_id).shrink_to_hi(), " }".to_string()),
         ],
     };
     err.multipart_suggestion(
@@ -673,7 +676,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 //    |               help: specify type like: `<Impl as Into<u32>>::into(foo_impl)`
                 //    |
                 //    = note: cannot satisfy `Impl: Into<_>`
-                if !impl_candidates.is_empty() && e.span.contains(span) {
+                let e_span = self.tcx.hir().span(e.hir_id);
+                if !impl_candidates.is_empty() && e_span.contains(span) {
                     if let Some(expr) = exprs.first() {
                         if let ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind {
                             if let [path_segment] = path.segments {
@@ -685,7 +689,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     )
                                 });
                                 err.span_suggestions(
-                                    e.span,
+                                    e_span,
                                     &format!(
                                         "use the fully qualified path for the potential candidate{}",
                                         pluralize!(candidate_len),
@@ -824,7 +828,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let sig = self.tcx.fn_sig(did);
                     let bound_output = sig.output();
                     let output = bound_output.skip_binder();
-                    err.span_label(e.span, &format!("this method call resolves to `{}`", output));
+                    err.span_label(
+                        self.tcx.hir().span(e.hir_id),
+                        &format!("this method call resolves to `{}`", output),
+                    );
                     let kind = output.kind();
                     if let ty::Projection(proj) = kind {
                         if let Some(span) = self.tcx.hir().span_if_local(proj.item_def_id) {

@@ -97,7 +97,7 @@ fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 span_lint_and_help(
                     cx,
                     INVALID_ATOMIC_ORDERING,
-                    ordering_arg.span,
+                    cx.tcx.hir().span(ordering_arg.hir_id),
                     "atomic loads cannot have `Release` and `AcqRel` ordering",
                     None,
                     "consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`"
@@ -107,7 +107,7 @@ fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 span_lint_and_help(
                     cx,
                     INVALID_ATOMIC_ORDERING,
-                    ordering_arg.span,
+                    cx.tcx.hir().span(ordering_arg.hir_id),
                     "atomic stores cannot have `Acquire` and `AcqRel` ordering",
                     None,
                     "consider using ordering modes `Release`, `SeqCst` or `Relaxed`"
@@ -132,7 +132,7 @@ fn check_memory_fence(cx: &LateContext<'_>, expr: &Expr<'_>) {
             span_lint_and_help(
                 cx,
                 INVALID_ATOMIC_ORDERING,
-                args[0].span,
+                cx.tcx.hir().span(args[0].hir_id),
                 "memory fences cannot have `Relaxed` ordering",
                 None,
                 "consider using ordering modes `Acquire`, `Release`, `AcqRel` or `SeqCst`"
@@ -192,7 +192,7 @@ fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 span_lint_and_help(
                     cx,
                     INVALID_ATOMIC_ORDERING,
-                    failure_order_arg.span,
+                    cx.tcx.hir().span(failure_order_arg.hir_id),
                     &format!(
                         "{}'s failure ordering may not be `Release` or `AcqRel`",
                         method,
@@ -205,7 +205,7 @@ fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
                     span_lint_and_help(
                         cx,
                         INVALID_ATOMIC_ORDERING,
-                        failure_order_arg.span,
+                        cx.tcx.hir().span(failure_order_arg.hir_id),
                         &format!(
                             "{}'s failure ordering may not be stronger than the success ordering of `{}`",
                             method,

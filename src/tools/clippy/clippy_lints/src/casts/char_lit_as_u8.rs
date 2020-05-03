@@ -18,19 +18,19 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if ty::Uint(UintTy::U8) == *cx.typeck_results().expr_ty(expr).kind();
         then {
             let mut applicability = Applicability::MachineApplicable;
-            let snippet = snippet_with_applicability(cx, e.span, "'x'", &mut applicability);
+            let snippet = snippet_with_applicability(cx, cx.tcx.hir().span(e.hir_id), "'x'", &mut applicability);
 
             span_lint_and_then(
                 cx,
                 CHAR_LIT_AS_U8,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "casting a character literal to `u8` truncates",
                 |diag| {
                     diag.note("`char` is four bytes wide, but `u8` is a single byte");
 
                     if c.is_ascii() {
                         diag.span_suggestion(
-                            expr.span,
+                            cx.tcx.hir().span(expr.hir_id),
                             "use a byte literal instead",
                             format!("b{}", snippet),
                             applicability,

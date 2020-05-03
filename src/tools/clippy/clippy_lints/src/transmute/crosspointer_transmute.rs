@@ -12,7 +12,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty
             span_lint(
                 cx,
                 CROSSPOINTER_TRANSMUTE,
-                e.span,
+                cx.tcx.hir().span(e.hir_id),
                 &format!(
                     "transmute from a type (`{}`) to the type that it points to (`{}`)",
                     from_ty, to_ty
@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty
             span_lint(
                 cx,
                 CROSSPOINTER_TRANSMUTE,
-                e.span,
+                cx.tcx.hir().span(e.hir_id),
                 &format!(
                     "transmute from a type (`{}`) to a pointer to that type (`{}`)",
                     from_ty, to_ty

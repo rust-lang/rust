@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
             span_lint(
                 cx,
                 USELESS_TRANSMUTE,
-                e.span,
+                cx.tcx.hir().span(e.hir_id),
                 &format!("transmute from a type (`{}`) to itself", from_ty),
             );
             true
@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
             span_lint_and_then(
                 cx,
                 USELESS_TRANSMUTE,
-                e.span,
+                cx.tcx.hir().span(e.hir_id),
                 "transmute from a reference to a pointer",
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
@@ -43,7 +43,12 @@ pub(super) fn check<'tcx>(
                             arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
                         };
 
-                        diag.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
+                        diag.span_suggestion(
+                            cx.tcx.hir().span(e.hir_id),
+                            "try",
+                            sugg.to_string(),
+                            Applicability::Unspecified,
+                        );
                     }
                 },
             );
@@ -53,12 +58,12 @@ pub(super) fn check<'tcx>(
             span_lint_and_then(
                 cx,
                 USELESS_TRANSMUTE,
-                e.span,
+                cx.tcx.hir().span(e.hir_id),
                 "transmute from an integer to a pointer",
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                         diag.span_suggestion(
-                            e.span,
+                            cx.tcx.hir().span(e.hir_id),
                             "try",
                             arg.as_ty(&to_ty.to_string()).to_string(),
                             Applicability::Unspecified,

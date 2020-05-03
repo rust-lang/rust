@@ -32,7 +32,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty
                 span_lint(
                     cx,
                     UNSOUND_COLLECTION_TRANSMUTE,
-                    e.span,
+                    cx.tcx.hir().span(e.hir_id),
                     &format!(
                         "transmute from `{}` to `{}` with mismatched layout is unsound",
                         from_ty, to_ty

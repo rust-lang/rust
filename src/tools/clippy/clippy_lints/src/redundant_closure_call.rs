@@ -146,7 +146,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                     span_lint(
                         cx,
                         REDUNDANT_CLOSURE_CALL,
-                        second.span,
+                        cx.tcx.hir().span(second.hir_id),
                         "closure called just once immediately after it was declared",
                     );
                 }

@@ -37,11 +37,12 @@ impl<'tcx> LateLintPass<'tcx> for VecResizeToZero {
             if let ExprKind::Lit(Spanned { node: LitKind::Int(0, _), .. }) = args[1].kind;
             if let ExprKind::Lit(Spanned { node: LitKind::Int(..), .. }) = args[2].kind;
             then {
-                let method_call_span = expr.span.with_lo(path_segment.ident.span.lo());
+                let expr_span = cx.tcx.hir().span(expr.hir_id);
+                let method_call_span = expr_span.with_lo(path_segment.ident.span.lo());
                 span_lint_and_then(
                     cx,
                     VEC_RESIZE_TO_ZERO,
-                    expr.span,
+                    expr_span,
                     "emptying a vector with `resize`",
                     |db| {
                         db.help("the arguments may be inverted...");

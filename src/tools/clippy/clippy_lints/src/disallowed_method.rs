@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethod {
                 span_lint(
                     cx,
                     DISALLOWED_METHOD,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     &format!("use of a disallowed method `{}`", func_path_string),
                 );
             }

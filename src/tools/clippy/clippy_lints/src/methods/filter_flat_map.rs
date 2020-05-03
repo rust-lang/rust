@@ -16,6 +16,6 @@ pub(super) fn check<'tcx>(
         let msg = "called `filter(..).flat_map(..)` on an `Iterator`";
         let hint = "this is more succinctly expressed by calling `.flat_map(..)` \
                     and filtering by returning `iter::empty()`";
-        span_lint_and_help(cx, FILTER_MAP, expr.span, msg, None, hint);
+        span_lint_and_help(cx, FILTER_MAP, cx.tcx.hir().span(expr.hir_id), msg, None, hint);
     }
 }

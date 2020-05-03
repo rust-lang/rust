@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
                 if implements_trait(cx, expr_ty, future_trait_def_id, &[]) {
                     let return_expr_span = match &body.value.kind {
                         // XXXkhuey there has to be a better way.
-                        ExprKind::Block(block, _) => block.expr.map(|e| e.span),
+                        ExprKind::Block(block, _) => block.expr.map(|e| cx.tcx.hir().span(e.hir_id)),
                         ExprKind::Path(QPath::Resolved(_, path)) => Some(path.span),
                         _ => None,
                     };
@@ -67,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
                             return_expr_span,
                             "an async construct yields a type which is itself awaitable",
                             |db| {
-                                db.span_label(body.value.span, "outer async construct");
+                                db.span_label(cx.tcx.hir().span(body.value.hir_id), "outer async construct");
                                 db.span_label(return_expr_span, "awaitable value not awaited");
                                 db.span_suggestion(
                                     return_expr_span,

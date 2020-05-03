@@ -63,14 +63,14 @@ impl<'tcx> LateLintPass<'tcx> for PtrOffsetWithCast {
             span_lint_and_sugg(
                 cx,
                 PTR_OFFSET_WITH_CAST,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 &msg,
                 "try",
                 sugg,
                 Applicability::MachineApplicable,
             );
         } else {
-            span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, &msg);
+            span_lint(cx, PTR_OFFSET_WITH_CAST, cx.tcx.hir().span(expr.hir_id), &msg);
         }
     }
 }
@@ -120,8 +120,8 @@ fn build_suggestion<'tcx>(
     receiver_expr: &Expr<'_>,
     cast_lhs_expr: &Expr<'_>,
 ) -> Option<String> {
-    let receiver = snippet_opt(cx, receiver_expr.span)?;
-    let cast_lhs = snippet_opt(cx, cast_lhs_expr.span)?;
+    let receiver = snippet_opt(cx, cx.tcx.hir().span(receiver_expr.hir_id))?;
+    let cast_lhs = snippet_opt(cx, cx.tcx.hir().span(cast_lhs_expr.hir_id))?;
     Some(format!("{}.{}({})", receiver, method.suggestion(), cast_lhs))
 }
 

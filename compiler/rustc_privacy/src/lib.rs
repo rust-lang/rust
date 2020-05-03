@@ -1077,7 +1077,10 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                     });
                     let (use_ctxt, span) = match field {
                         Some(field) => (field.ident.span, self.tcx.hir().span(field.hir_id)),
-                        None => (base.span, base.span),
+                        None => {
+                            let base_span = self.tcx.hir().span(base.hir_id);
+                            (base_span, base_span)
+                        }
                     };
                     self.check_field(use_ctxt, span, adt, variant_field, true);
                 }
@@ -1241,14 +1244,15 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
     // Check types of expressions
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if self.check_expr_pat_type(expr.hir_id, expr.span) {
+        let expr_span = self.tcx.hir().span(expr.hir_id);
+        if self.check_expr_pat_type(expr.hir_id, expr_span) {
             // Do not check nested expressions if the error already happened.
             return;
         }
         match expr.kind {
             hir::ExprKind::Assign(_, ref rhs, _) | hir::ExprKind::Match(ref rhs, ..) => {
                 // Do not report duplicate errors for `x = y` and `match x { ... }`.
-                if self.check_expr_pat_type(rhs.hir_id, rhs.span) {
+                if self.check_expr_pat_type(rhs.hir_id, self.tcx.hir().span(rhs.hir_id)) {
                     return;
                 }
             }
@@ -1262,7 +1266,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 } else {
                     self.tcx
                         .sess
-                        .delay_span_bug(expr.span, "no type-dependent def for method call");
+                        .delay_span_bug(expr_span, "no type-dependent def for method call");
                 }
             }
             _ => {}
@@ -1334,7 +1338,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
     fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
         if let Some(ref init) = local.init {
-            if self.check_expr_pat_type(init.hir_id, init.span) {
+            if self.check_expr_pat_type(init.hir_id, self.tcx.hir().span(init.hir_id)) {
                 // Do not report duplicate errors for `let x = y`.
                 return;
             }

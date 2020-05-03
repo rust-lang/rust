@@ -52,8 +52,8 @@ impl<'tcx> DoubleComparisons {
         macro_rules! lint_double_comparison {
             ($op:tt) => {{
                 let mut applicability = Applicability::MachineApplicable;
-                let lhs_str = snippet_with_applicability(cx, llhs.span, "", &mut applicability);
-                let rhs_str = snippet_with_applicability(cx, lrhs.span, "", &mut applicability);
+                let lhs_str = snippet_with_applicability(cx, cx.tcx.hir().span(llhs.hir_id), "", &mut applicability);
+                let rhs_str = snippet_with_applicability(cx, cx.tcx.hir().span(lrhs.hir_id), "", &mut applicability);
                 let sugg = format!("{} {} {}", lhs_str, stringify!($op), rhs_str);
                 span_lint_and_sugg(
                     cx,
@@ -88,7 +88,7 @@ impl<'tcx> DoubleComparisons {
 impl<'tcx> LateLintPass<'tcx> for DoubleComparisons {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = expr.kind {
-            Self::check_binop(cx, kind.node, lhs, rhs, expr.span);
+            Self::check_binop(cx, kind.node, lhs, rhs, cx.tcx.hir().span(expr.hir_id));
         }
     }
 }

@@ -108,7 +108,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(pass_name: &'a str, tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
         let source_map = tcx.sess.source_map();
         let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, mir_body.source.def_id());
-        let body_span = hir_body.value.span;
+        let body_span = tcx.hir().span(hir_body.value.hir_id);
         let source_file = source_map.lookup_source_file(body_span.lo());
         let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
             Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.hi()))

@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
 
                     let mut visitor = InsertVisitor {
                         cx,
-                        span: expr.span,
+                        span: cx.tcx.hir().span(expr.hir_id),
                         ty,
                         map,
                         key,
@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
                     let mut visitor = InsertVisitor {
                         cx,
-                        span: expr.span,
+                        span: cx.tcx.hir().span(expr.hir_id),
                         ty,
                         map,
                         key,
@@ -143,16 +143,16 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
             if path.ident.name == sym!(insert);
             if get_item_name(self.cx, self.map) == get_item_name(self.cx, &params[0]);
             if SpanlessEq::new(self.cx).eq_expr(self.key, &params[1]);
-            if snippet_opt(self.cx, self.map.span) == snippet_opt(self.cx, params[0].span);
+            if snippet_opt(self.cx, self.cx.tcx.hir().span(self.map.hir_id)) == snippet_opt(self.cx, self.cx.tcx.hir().span(params[0].hir_id));
             then {
                 span_lint_and_then(self.cx, MAP_ENTRY, self.span,
                                    &format!("usage of `contains_key` followed by `insert` on a `{}`", self.ty), |diag| {
                     if self.sole_expr {
                         let mut app = Applicability::MachineApplicable;
                         let help = format!("{}.entry({}).or_insert({});",
-                                           snippet_with_applicability(self.cx, self.map.span, "map", &mut app),
-                                           snippet_with_applicability(self.cx, params[1].span, "..", &mut app),
-                                           snippet_with_applicability(self.cx, params[2].span, "..", &mut app));
+                                           snippet_with_applicability(self.cx, self.cx.tcx.hir().span(self.map.hir_id), "map", &mut app),
+                                           snippet_with_applicability(self.cx, self.cx.tcx.hir().span(params[1].hir_id), "..", &mut app),
+                                           snippet_with_applicability(self.cx, self.cx.tcx.hir().span(params[2].hir_id), "..", &mut app));
 
                         diag.span_suggestion(
                             self.span,
@@ -163,8 +163,8 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
                     }
                     else {
                         let help = format!("consider using `{}.entry({})`",
-                                           snippet(self.cx, self.map.span, "map"),
-                                           snippet(self.cx, params[1].span, ".."));
+                                           snippet(self.cx, self.cx.tcx.hir().span(self.map.hir_id), "map"),
+                                           snippet(self.cx, self.cx.tcx.hir().span(params[1].hir_id), ".."));
 
                         diag.span_label(
                             self.span,

@@ -137,8 +137,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Ty<'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
-        let mut autoderef =
-            self.autoderef_overloaded_span(self.span, unadjusted_self_ty, self.call_expr.span);
+        let mut autoderef = self.autoderef_overloaded_span(
+            self.span,
+            unadjusted_self_ty,
+            self.tcx.hir().span(self.call_expr.hir_id),
+        );
         let (_, n) = match autoderef.nth(pick.autoderefs) {
             Some(n) => n,
             None => {
@@ -521,8 +524,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             ty::TraitContainer(trait_def_id) => callee::check_legal_trait_for_method_call(
                 self.tcx,
                 self.span,
-                Some(self.self_expr.span),
-                self.call_expr.span,
+                Some(self.tcx.hir().span(self.self_expr.hir_id)),
+                self.tcx.hir().span(self.call_expr.hir_id),
                 trait_def_id,
             ),
             ty::ImplContainer(..) => {}

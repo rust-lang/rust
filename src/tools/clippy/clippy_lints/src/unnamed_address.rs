@@ -83,7 +83,7 @@ impl LateLintPass<'_> for UnnamedAddress {
                 span_lint_and_help(
                     cx,
                     VTABLE_ADDRESS_COMPARISONS,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "comparing trait object pointers compares a non-unique vtable address",
                     None,
                     "consider extracting and comparing data pointers only",
@@ -104,7 +104,7 @@ impl LateLintPass<'_> for UnnamedAddress {
                 span_lint_and_help(
                     cx,
                     VTABLE_ADDRESS_COMPARISONS,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "comparing trait object pointers compares a non-unique vtable address",
                     None,
                     "consider extracting and comparing data pointers only",
@@ -122,7 +122,7 @@ impl LateLintPass<'_> for UnnamedAddress {
                 span_lint(
                     cx,
                     FN_ADDRESS_COMPARISONS,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "comparing with a non-unique address of a function item",
                 );
             }

@@ -80,22 +80,22 @@ impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // check for `expect`
-        if let Some(arglists) = method_chain_args(expr, &["expect"]) {
+        if let Some(arglists) = method_chain_args(self.lcx, expr, &["expect"]) {
             let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
             if is_type_diagnostic_item(self.lcx, reciever_ty, sym::option_type)
                 || is_type_diagnostic_item(self.lcx, reciever_ty, sym::result_type)
             {
-                self.result.push(expr.span);
+                self.result.push(self.lcx.tcx.hir().span(expr.hir_id));
             }
         }
 
         // check for `unwrap`
-        if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
+        if let Some(arglists) = method_chain_args(self.lcx, expr, &["unwrap"]) {
             let reciever_ty = self.typeck_results.expr_ty(&arglists[0][0]).peel_refs();
             if is_type_diagnostic_item(self.lcx, reciever_ty, sym::option_type)
                 || is_type_diagnostic_item(self.lcx, reciever_ty, sym::result_type)
             {
-                self.result.push(expr.span);
+                self.result.push(self.lcx.tcx.hir().span(expr.hir_id));
             }
         }
 

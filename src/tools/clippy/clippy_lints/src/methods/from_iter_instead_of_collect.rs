@@ -24,7 +24,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
             span_lint_and_sugg(
                 cx,
                 FROM_ITER_INSTEAD_OF_COLLECT,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "usage of `FromIterator::from_iter`",
                 "use `.collect()` instead of `::from_iter()`",
                 sugg,
@@ -36,7 +36,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
 
 fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -> String {
     if_chain! {
-        let call_site = expr.span.source_callsite();
+        let call_site = cx.tcx.hir().span(expr.hir_id).source_callsite();
         if let Ok(snippet) = cx.sess().source_map().span_to_snippet(call_site);
         let snippet_split = snippet.split("::").collect::<Vec<_>>();
         if let Some((_, elements)) = snippet_split.split_last();

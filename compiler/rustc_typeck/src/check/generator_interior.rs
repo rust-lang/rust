@@ -118,7 +118,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 "no type in expr = {:?}, count = {:?}, span = {:?}",
                 expr,
                 self.expr_count,
-                expr.map(|e| e.span)
+                expr.map(|e| self.fcx.tcx.hir().span(e.hir_id))
             );
             let ty = self.fcx.resolve_vars_if_possible(ty);
             if let Some((unresolved_type, unresolved_type_span)) =
@@ -170,7 +170,7 @@ pub fn resolve_interior<'a, 'tcx>(
     // if a Sync generator contains an &'α T, we need to check whether &'α T: Sync),
     // so knowledge of the exact relationships between them isn't particularly important.
 
-    debug!("types in generator {:?}, span = {:?}", types, body.value.span);
+    debug!("types in generator {:?}, span = {:?}", types, fcx.tcx.hir().span(body.value.hir_id));
 
     let mut counter = 0;
     let mut captured_tys = FxHashSet::default();
@@ -208,13 +208,14 @@ pub fn resolve_interior<'a, 'tcx>(
     visitor.fcx.inh.typeck_results.borrow_mut().generator_interior_types =
         ty::Binder::bind(type_causes);
 
+    let body_value_span = fcx.tcx.hir().span(body.value.hir_id);
     debug!(
         "types in generator after region replacement {:?}, span = {:?}",
-        witness, body.value.span
+        witness, body_value_span
     );
 
     // Unify the type variable inside the generator with the new witness
-    match fcx.at(&fcx.misc(body.value.span), fcx.param_env).eq(interior, witness) {
+    match fcx.at(&fcx.misc(body_value_span), fcx.param_env).eq(interior, witness) {
         Ok(ok) => fcx.register_infer_ok_obligations(ok),
         _ => bug!(),
     }
@@ -320,11 +321,12 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         self.expr_count += 1;
 
         let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+        let expr_span = self.fcx.tcx.hir().span(expr.hir_id);
 
         // If there are adjustments, then record the final type --
         // this is the actual value that is being produced.
         if let Some(adjusted_ty) = self.fcx.typeck_results.borrow().expr_ty_adjusted_opt(expr) {
-            self.record(adjusted_ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
+            self.record(adjusted_ty, scope, Some(expr), expr_span, guard_borrowing_from_pattern);
         }
 
         // Also record the unadjusted type (which is the only type if
@@ -362,11 +364,11 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                     tcx.mk_region(ty::RegionKind::ReErased),
                     ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
                 );
-                self.record(ref_ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
+                self.record(ref_ty, scope, Some(expr), expr_span, guard_borrowing_from_pattern);
             }
-            self.record(ty, scope, Some(expr), expr.span, guard_borrowing_from_pattern);
+            self.record(ty, scope, Some(expr), expr_span, guard_borrowing_from_pattern);
         } else {
-            self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
+            self.fcx.tcx.sess.delay_span_bug(expr_span, "no type for node");
         }
     }
 }

@@ -16,7 +16,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
             span_lint_and_then(
                 cx,
                 CLONE_DOUBLE_REF,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 &format!(
                     "using `clone` on a double-reference; \
                     this will copy the reference of type `{}` instead of cloning the inner type",
@@ -34,13 +34,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
                         let derefs: String = iter::repeat('*').take(n).collect();
                         let explicit = format!("<{}{}>::clone({})", refs, ty, snip);
                         diag.span_suggestion(
-                            expr.span,
+                            cx.tcx.hir().span(expr.hir_id),
                             "try dereferencing it",
                             format!("{}({}{}).clone()", refs, derefs, snip.deref()),
                             Applicability::MaybeIncorrect,
                         );
                         diag.span_suggestion(
-                            expr.span,
+                            cx.tcx.hir().span(expr.hir_id),
                             "or try being explicit if you are sure, that you want to clone a reference",
                             explicit,
                             Applicability::MaybeIncorrect,
@@ -97,11 +97,16 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         span_lint_and_then(
             cx,
             CLONE_ON_COPY,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             &format!("using `clone` on type `{}` which implements the `Copy` trait", ty),
             |diag| {
                 if let Some((text, snip)) = snip {
-                    diag.span_suggestion(expr.span, text, snip, Applicability::MachineApplicable);
+                    diag.span_suggestion(
+                        cx.tcx.hir().span(expr.hir_id),
+                        text,
+                        snip,
+                        Applicability::MachineApplicable,
+                    );
                 }
             },
         );

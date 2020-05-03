@@ -37,7 +37,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
     span_lint(
         cx,
         CAST_PRECISION_LOSS,
-        expr.span,
+        cx.tcx.hir().span(expr.hir_id),
         &format!(
             "casting `{0}` to `{1}` causes a loss of precision {2}(`{0}` is {3} bits wide, \
              but `{1}`'s mantissa is only {4} bits wide)",

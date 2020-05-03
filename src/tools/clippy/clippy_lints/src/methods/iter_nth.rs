@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
     span_lint_and_help(
         cx,
         ITER_NTH,
-        expr.span,
+        cx.tcx.hir().span(expr.hir_id),
         &format!("called `.iter{0}().nth()` on a {1}", mut_str, caller_type),
         None,
         &format!("calling `.get{}()` is both faster and more readable", mut_str),

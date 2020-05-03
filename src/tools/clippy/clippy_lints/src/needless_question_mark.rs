@@ -141,10 +141,13 @@ fn emit_lint(cx: &LateContext<'_>, expr: &SomeOkCall<'_>) {
     utils::span_lint_and_sugg(
         cx,
         NEEDLESS_QUESTION_MARK,
-        entire_expr.span,
+        cx.tcx.hir().span(entire_expr.hir_id),
         "question mark operator is useless here",
         "try",
-        format!("{}", utils::snippet(cx, inner_expr.span, r#""...""#)),
+        format!(
+            "{}",
+            utils::snippet(cx, cx.tcx.hir().span(inner_expr.hir_id), r#""...""#)
+        ),
         Applicability::MachineApplicable,
     );
 }

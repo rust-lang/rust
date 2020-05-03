@@ -207,7 +207,13 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         let is_empty_match = arms.is_empty();
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
-            non_exhaustive_match(&cx, scrut_ty, scrut.span, witnesses, is_empty_match);
+            non_exhaustive_match(
+                &cx,
+                scrut_ty,
+                cx.tcx.hir().span(scrut.hir_id),
+                witnesses,
+                is_empty_match,
+            );
         }
     }
 

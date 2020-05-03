@@ -31,12 +31,12 @@ pub(super) fn check(cx: &LateContext<'_>, args: &[Expr<'_>], arg: &Expr<'_>, met
     }
 
     let mut applicability = Applicability::MachineApplicable;
-    let object = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
+    let object = snippet_with_applicability(cx, cx.tcx.hir().span(args[0].hir_id), "_", &mut applicability);
     let muta = if method_name == "iter_mut" { "mut " } else { "" };
     span_lint_and_sugg(
         cx,
         EXPLICIT_ITER_LOOP,
-        arg.span,
+        cx.tcx.hir().span(arg.hir_id),
         "it is more concise to loop over references to containers instead of using explicit \
          iteration methods",
         "to write this more concisely, try",

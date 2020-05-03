@@ -36,10 +36,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, ite
                 span_lint_and_sugg(
                     cx,
                     ITER_NEXT_SLICE,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "using `.iter().next()` on a Slice without end index",
                     "try calling",
-                    format!("{}.get({})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability), start_idx),
+                    format!("{}.get({})", snippet_with_applicability(cx, cx.tcx.hir().span(caller_var.hir_id), "..", &mut applicability), start_idx),
                     applicability,
                 );
             }
@@ -55,12 +55,12 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, ite
         span_lint_and_sugg(
             cx,
             ITER_NEXT_SLICE,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "using `.iter().next()` on an array",
             "try calling",
             format!(
                 "{}.get(0)",
-                snippet_with_applicability(cx, caller_expr.span, "..", &mut applicability)
+                snippet_with_applicability(cx, cx.tcx.hir().span(caller_expr.hir_id), "..", &mut applicability)
             ),
             applicability,
         );

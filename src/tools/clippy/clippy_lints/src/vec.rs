@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
             if let ExprKind::AddrOf(BorrowKind::Ref, _, ref addressee) = expr.kind;
             if let Some(vec_args) = higher::vec_macro(cx, addressee);
             then {
-                self.check_vec_macro(cx, &vec_args, expr.span);
+                self.check_vec_macro(cx, &vec_args, cx.tcx.hir().span(expr.hir_id));
             }
         }
 
@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
             if is_copy(cx, vec_type(cx.typeck_results().expr_ty_adjusted(arg)));
             then {
                 // report the error around the `vec!` not inside `<std macros>:`
-                let span = arg.span
+                let span = cx.tcx.hir().span(arg.hir_id)
                     .ctxt()
                     .outer_expn_data()
                     .call_site
@@ -86,8 +86,8 @@ impl UselessVec {
 
                     format!(
                         "&[{}; {}]",
-                        snippet_with_applicability(cx, elem.span, "elem", &mut applicability),
-                        snippet_with_applicability(cx, len.span, "len", &mut applicability)
+                        snippet_with_applicability(cx, cx.tcx.hir().span(elem.hir_id), "elem", &mut applicability),
+                        snippet_with_applicability(cx, cx.tcx.hir().span(len.hir_id), "len", &mut applicability)
                     )
                 } else {
                     return;
@@ -99,7 +99,7 @@ impl UselessVec {
                     if args.len() as u64 * size_of(cx, last) > self.too_large_for_stack {
                         return;
                     }
-                    let span = args[0].span.to(last.span);
+                    let span = cx.tcx.hir().span(args[0].hir_id).to(cx.tcx.hir().span(last.hir_id));
 
                     format!("&[{}]", snippet_with_applicability(cx, span, "..", &mut applicability))
                 } else {

@@ -430,7 +430,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnitValue {
                     "this let-binding has unit value",
                     |diag| {
                         if let Some(expr) = &local.init {
-                            let snip = snippet_with_macro_callsite(cx, expr.span, "()");
+                            let snip = snippet_with_macro_callsite(cx, cx.tcx.hir().span(expr.hir_id), "()");
                             diag.span_suggestion(
                                 stmt_span,
                                 "omit the `let` binding",
@@ -496,8 +496,9 @@ declare_lint_pass!(UnitCmp => [UNIT_CMP]);
 
 impl<'tcx> LateLintPass<'tcx> for UnitCmp {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if expr.span.from_expansion() {
-            if let Some(callee) = expr.span.source_callee() {
+        let expr_span = cx.tcx.hir().span(expr.hir_id);
+        if expr_span.from_expansion() {
+            if let Some(callee) = expr_span.source_callee() {
                 if let ExpnKind::Macro(MacroKind::Bang, symbol) = callee.kind {
                     if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
                         let op = cmp.node;
@@ -510,7 +511,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitCmp {
                             span_lint(
                                 cx,
                                 UNIT_CMP,
-                                expr.span,
+                                expr_span,
                                 &format!(
                                     "`{}` of unit values detected. This will always {}",
                                     symbol.as_str(),
@@ -533,7 +534,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitCmp {
                 span_lint(
                     cx,
                     UNIT_CMP,
-                    expr.span,
+                    expr_span,
                     &format!(
                         "{}-comparison of unit values detected. This will always be {}",
                         op.as_str(),
@@ -569,7 +570,7 @@ declare_lint_pass!(UnitArg => [UNIT_ARG]);
 
 impl<'tcx> LateLintPass<'tcx> for UnitArg {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
+        if cx.tcx.hir().span(expr.hir_id).from_expansion() {
             return;
         }
 
@@ -577,14 +578,14 @@ impl<'tcx> LateLintPass<'tcx> for UnitArg {
         // so check for that here
         // only the calls to `Try::from_error` is marked as desugared,
         // so we need to check both the current Expr and its parent.
-        if is_questionmark_desugar_marked_call(expr) {
+        if is_questionmark_desugar_marked_call(cx, expr) {
             return;
         }
         if_chain! {
             let map = &cx.tcx.hir();
             let opt_parent_node = map.find(map.get_parent_node(expr.hir_id));
             if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
-            if is_questionmark_desugar_marked_call(parent_expr);
+            if is_questionmark_desugar_marked_call(cx, parent_expr);
             then {
                 return;
             }
@@ -621,7 +622,7 @@ fn fmt_stmts_and_call(
     args_snippets: &[impl AsRef<str>],
     non_empty_block_args_snippets: &[impl AsRef<str>],
 ) -> String {
-    let call_expr_indent = indent_of(cx, call_expr.span).unwrap_or(0);
+    let call_expr_indent = indent_of(cx, cx.tcx.hir().span(call_expr.hir_id)).unwrap_or(0);
     let call_snippet_with_replacements = args_snippets
         .iter()
         .fold(call_snippet.to_owned(), |acc, arg| acc.replacen(arg.as_ref(), "()", 1));
@@ -660,10 +661,11 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
     } else {
         ("a ", "")
     };
+    let expr_span = cx.tcx.hir().span(expr.hir_id);
     span_lint_and_then(
         cx,
         UNIT_ARG,
-        expr.span,
+        expr_span,
         &format!("passing {}unit value{} to a function", singular, plural),
         |db| {
             let mut or = "";
@@ -675,7 +677,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                         if block.expr.is_none();
                         if let Some(last_stmt) = block.stmts.iter().last();
                         if let StmtKind::Semi(last_expr) = last_stmt.kind;
-                        if let Some(snip) = snippet_opt(cx, last_expr.span);
+                        if let Some(snip) = snippet_opt(cx, cx.tcx.hir().span(last_expr.hir_id));
                         then {
                             Some((
                                 cx.tcx.hir().span(last_stmt.hir_id),
@@ -700,15 +702,15 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
 
             let arg_snippets: Vec<String> = args_to_recover
                 .iter()
-                .filter_map(|arg| snippet_opt(cx, arg.span))
+                .filter_map(|arg| snippet_opt(cx, cx.tcx.hir().span(arg.hir_id)))
                 .collect();
             let arg_snippets_without_empty_blocks: Vec<String> = args_to_recover
                 .iter()
                 .filter(|arg| !is_empty_block(arg))
-                .filter_map(|arg| snippet_opt(cx, arg.span))
+                .filter_map(|arg| snippet_opt(cx, cx.tcx.hir().span(arg.hir_id)))
                 .collect();
 
-            if let Some(call_snippet) = snippet_opt(cx, expr.span) {
+            if let Some(call_snippet) = snippet_opt(cx, cx.tcx.hir().span(expr.hir_id)) {
                 let sugg = fmt_stmts_and_call(
                     cx,
                     expr,
@@ -722,7 +724,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                         &format!("use {}unit literal{} instead", singular, plural),
                         args_to_recover
                             .iter()
-                            .map(|arg| (arg.span, "()".to_string()))
+                            .map(|arg| (cx.tcx.hir().span(arg.hir_id), "()".to_string()))
                             .collect::<Vec<_>>(),
                         applicability,
                     );
@@ -731,7 +733,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                     let empty_or_s = if plural { "s" } else { "" };
                     let it_or_them = if plural { "them" } else { "it" };
                     db.span_suggestion(
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         &format!(
                             "{}move the expression{} in front of the call and replace {} with the unit literal `()`",
                             or, empty_or_s, it_or_them
@@ -759,10 +761,13 @@ fn is_empty_block(expr: &Expr<'_>) -> bool {
     )
 }
 
-fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
+fn is_questionmark_desugar_marked_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     use rustc_span::hygiene::DesugaringKind;
     if let ExprKind::Call(ref callee, _) = expr.kind {
-        callee.span.is_desugaring(DesugaringKind::QuestionMark)
+        cx.tcx
+            .hir()
+            .span(callee.hir_id)
+            .is_desugaring(DesugaringKind::QuestionMark)
     } else {
         false
     }
@@ -1076,7 +1081,7 @@ impl<'tcx> LateLintPass<'tcx> for AbsurdExtremeComparisons {
 
         if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.kind {
             if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
-                if !expr.span.from_expansion() {
+                if !cx.tcx.hir().span(expr.hir_id).from_expansion() {
                     let msg = "this comparison involving the minimum or maximum element for this \
                                type contains a case that is always true or always false";
 
@@ -1086,14 +1091,14 @@ impl<'tcx> LateLintPass<'tcx> for AbsurdExtremeComparisons {
                         InequalityImpossible => format!(
                             "the case where the two sides are not equal never occurs, consider using `{} == {}` \
                              instead",
-                            snippet(cx, lhs.span, "lhs"),
-                            snippet(cx, rhs.span, "rhs")
+                            snippet(cx, cx.tcx.hir().span(lhs.hir_id), "lhs"),
+                            snippet(cx, cx.tcx.hir().span(rhs.hir_id), "rhs")
                         ),
                     };
 
                     let help = format!(
                         "because `{}` is the {} value for this type, {}",
-                        snippet(cx, culprit.expr.span, "x"),
+                        snippet(cx, cx.tcx.hir().span(culprit.expr.hir_id), "x"),
                         match culprit.which {
                             Minimum => "minimum",
                             Maximum => "maximum",
@@ -1101,7 +1106,14 @@ impl<'tcx> LateLintPass<'tcx> for AbsurdExtremeComparisons {
                         conclusion
                     );
 
-                    span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, None, &help);
+                    span_lint_and_help(
+                        cx,
+                        ABSURD_EXTREME_COMPARISONS,
+                        cx.tcx.hir().span(expr.hir_id),
+                        msg,
+                        None,
+                        &help,
+                    );
                 }
             }
         }
@@ -1232,7 +1244,7 @@ fn err_upcast_comparison(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, alwa
             span,
             &format!(
                 "because of the numeric bounds on `{}` prior to casting, this expression is always {}",
-                snippet(cx, cast_val.span, "the expression"),
+                snippet(cx, cx.tcx.hir().span(cast_val.hir_id), "the expression"),
                 if always { "true" } else { "false" },
             ),
         );
@@ -1310,8 +1322,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidUpcastComparisons {
             let lhs_bounds = numeric_cast_precast_bounds(cx, normalized_lhs);
             let rhs_bounds = numeric_cast_precast_bounds(cx, normalized_rhs);
 
-            upcast_comparison_bounds_err(cx, expr.span, rel, lhs_bounds, normalized_lhs, normalized_rhs, false);
-            upcast_comparison_bounds_err(cx, expr.span, rel, rhs_bounds, normalized_rhs, normalized_lhs, true);
+            let expr_span = cx.tcx.hir().span(expr.hir_id);
+            upcast_comparison_bounds_err(cx, expr_span, rel, lhs_bounds, normalized_lhs, normalized_rhs, false);
+            upcast_comparison_bounds_err(cx, expr_span, rel, rhs_bounds, normalized_rhs, normalized_lhs, true);
         }
     }
 }
@@ -1632,29 +1645,30 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                     return;
                 }
 
+                let e_span = self.cx.tcx.hir().span(e.hir_id);
                 if match_path(ty_path, &paths::HASHMAP) {
                     if method.ident.name == sym::new {
                         self.suggestions
-                            .insert(e.span, "HashMap::default()".to_string());
+                            .insert(e_span, "HashMap::default()".to_string());
                     } else if method.ident.name == sym!(with_capacity) {
                         self.suggestions.insert(
-                            e.span,
+                            e_span,
                             format!(
                                 "HashMap::with_capacity_and_hasher({}, Default::default())",
-                                snippet(self.cx, args[0].span, "capacity"),
+                                snippet(self.cx, self.cx.tcx.hir().span(args[0].hir_id), "capacity"),
                             ),
                         );
                     }
                 } else if match_path(ty_path, &paths::HASHSET) {
                     if method.ident.name == sym::new {
                         self.suggestions
-                            .insert(e.span, "HashSet::default()".to_string());
+                            .insert(e_span, "HashSet::default()".to_string());
                     } else if method.ident.name == sym!(with_capacity) {
                         self.suggestions.insert(
-                            e.span,
+                            e_span,
                             format!(
                                 "HashSet::with_capacity_and_hasher({}, Default::default())",
-                                snippet(self.cx, args[0].span, "capacity"),
+                                snippet(self.cx, self.cx.tcx.hir().span(args[0].hir_id), "capacity"),
                             ),
                         );
                     }

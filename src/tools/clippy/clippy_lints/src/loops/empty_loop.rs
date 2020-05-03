@@ -12,6 +12,6 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'
         } else {
             "you should either use `panic!()` or add `std::thread::sleep(..);` to the loop body"
         };
-        span_lint_and_help(cx, EMPTY_LOOP, expr.span, msg, None, help);
+        span_lint_and_help(cx, EMPTY_LOOP, cx.tcx.hir().span(expr.hir_id), msg, None, help);
     }
 }

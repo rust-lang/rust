@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args
     let mut applicability = Applicability::MachineApplicable;
     let expr_ty = cx.typeck_results().expr_ty(&get_args[0]);
     let get_args_str = if get_args.len() > 1 {
-        snippet_with_applicability(cx, get_args[1].span, "..", &mut applicability)
+        snippet_with_applicability(cx, cx.tcx.hir().span(get_args[1].hir_id), "..", &mut applicability)
     } else {
         return; // not linting on a .get().unwrap() chain or variant
     };
@@ -40,7 +40,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args
         return; // caller is not a type that we want to lint
     };
 
-    let mut span = expr.span;
+    let mut span = cx.tcx.hir().span(expr.hir_id);
 
     // Handle the case where the result is immediately dereferenced
     // by not requiring ref and pulling the dereference into the
@@ -51,7 +51,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args
         if let hir::ExprKind::Unary(hir::UnOp::Deref, _) = parent.kind;
         then {
             needs_ref = false;
-            span = parent.span;
+            span = cx.tcx.hir().span(parent.hir_id);
         }
     }
 
@@ -76,7 +76,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args
         format!(
             "{}{}[{}]",
             borrow_str,
-            snippet_with_applicability(cx, get_args[0].span, "..", &mut applicability),
+            snippet_with_applicability(cx, cx.tcx.hir().span(get_args[0].hir_id), "..", &mut applicability),
             get_args_str
         ),
         applicability,

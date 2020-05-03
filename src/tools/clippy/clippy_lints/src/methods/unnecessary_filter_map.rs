@@ -31,7 +31,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
             span_lint(
                 cx,
                 UNNECESSARY_FILTER_MAP,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "this `.filter_map` can be written more simply using `.map`",
             );
             return;
@@ -41,7 +41,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
             span_lint(
                 cx,
                 UNNECESSARY_FILTER_MAP,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "this `.filter_map` can be written more simply using `.filter`",
             );
             return;

@@ -138,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
                 span_lint_and_help(
                     cx,
                     SIZE_OF_IN_ELEMENT_COUNT,
-                    count_expr.span,
+                    cx.tcx.hir().span(count_expr.hir_id),
                     LINT_MSG,
                     None,
                     HELP_MSG

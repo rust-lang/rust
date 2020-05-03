@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessUpdate {
                     span_lint(
                         cx,
                         NEEDLESS_UPDATE,
-                        base.span,
+                        cx.tcx.hir().span(base.hir_id),
                         "struct update has no effect, all the fields in the struct have already been specified",
                     );
                 }

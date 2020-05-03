@@ -235,7 +235,7 @@ impl LateLintPass<'_> for UnnecessarySortBy {
             Some(LintTrigger::SortByKey(trigger)) => utils::span_lint_and_sugg(
                 cx,
                 UNNECESSARY_SORT_BY,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "use Vec::sort_by_key here instead",
                 "try",
                 format!(
@@ -258,7 +258,7 @@ impl LateLintPass<'_> for UnnecessarySortBy {
             Some(LintTrigger::Sort(trigger)) => utils::span_lint_and_sugg(
                 cx,
                 UNNECESSARY_SORT_BY,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "use Vec::sort here instead",
                 "try",
                 format!(

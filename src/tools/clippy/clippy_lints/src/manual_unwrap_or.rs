@@ -42,7 +42,7 @@ declare_lint_pass!(ManualUnwrapOr => [MANUAL_UNWRAP_OR]);
 
 impl LateLintPass<'_> for ManualUnwrapOr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), cx.tcx.hir().span(expr.hir_id)) {
             return;
         }
         lint_manual_unwrap_or(cx, expr);
@@ -65,7 +65,7 @@ impl Case {
 }
 
 fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-    fn applicable_or_arm<'a>(arms: &'a [Arm<'a>]) -> Option<&'a Arm<'a>> {
+    fn applicable_or_arm<'a>(cx: &LateContext<'_>, arms: &'a [Arm<'a>]) -> Option<&'a Arm<'a>> {
         if_chain! {
             if arms.len() == 2;
             if arms.iter().all(|arm| arm.guard.is_none());
@@ -84,7 +84,7 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
                 || utils::match_qpath(unwrap_qpath, &utils::paths::RESULT_OK);
             if let PatKind::Binding(_, binding_hir_id, ..) = unwrap_pat.kind;
             if path_to_local_id(unwrap_arm.body, binding_hir_id);
-            if !utils::usage::contains_return_break_continue_macro(or_arm.body);
+            if !utils::usage::contains_return_break_continue_macro(cx, or_arm.body);
             then {
                 Some(or_arm)
             } else {
@@ -103,16 +103,16 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         } else {
             None
         };
-        if let Some(or_arm) = applicable_or_arm(match_arms);
-        if let Some(or_body_snippet) = utils::snippet_opt(cx, or_arm.body.span);
-        if let Some(indent) = utils::indent_of(cx, expr.span);
+        if let Some(or_arm) = applicable_or_arm(cx, match_arms);
+        if let Some(or_body_snippet) = utils::snippet_opt(cx, cx.tcx.hir().span(or_arm.body.hir_id));
+        if let Some(indent) = utils::indent_of(cx, cx.tcx.hir().span(expr.hir_id));
         if constant_simple(cx, cx.typeck_results(), or_arm.body).is_some();
         then {
             let reindented_or_body =
                 utils::reindent_multiline(or_body_snippet.into(), true, Some(indent));
             utils::span_lint_and_sugg(
                 cx,
-                MANUAL_UNWRAP_OR, expr.span,
+                MANUAL_UNWRAP_OR, cx.tcx.hir().span(expr.hir_id),
                 &format!("this pattern reimplements `{}`", case.unwrap_fn_path()),
                 "replace with",
                 format!(

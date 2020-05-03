@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
             span_lint_and_sugg(
                 cx,
                 FLAT_MAP_IDENTITY,
-                flat_map_span.with_hi(expr.span.hi()),
+                flat_map_span.with_hi(cx.tcx.hir().span(expr.hir_id).hi()),
                 message,
                 "try",
                 "flatten()".to_string(),

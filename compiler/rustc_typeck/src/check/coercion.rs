@@ -859,7 +859,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
-        let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
+        let cause =
+            self.cause(self.tcx.hir().span(expr.hir_id), ObligationCauseCode::ExprAssignable);
         let coerce = Coerce::new(self, cause, allow_two_phase);
         let ok = self.commit_if_ok(|_| coerce.coerce(source, target))?;
 
@@ -973,9 +974,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
+            let new_span = self.tcx.hir().span(new.hir_id);
+
             // The signature must match.
-            let a_sig = self.normalize_associated_types_in(new.span, a_sig);
-            let b_sig = self.normalize_associated_types_in(new.span, b_sig);
+            let a_sig = self.normalize_associated_types_in(new_span, a_sig);
+            let b_sig = self.normalize_associated_types_in(new_span, b_sig);
             let sig = self
                 .at(cause, self.param_env)
                 .trace(prev_ty, new_ty)
@@ -1452,12 +1455,13 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 // If the block is from an external macro, then do not suggest
                 // adding a semicolon, because there's nowhere to put it.
                 // See issue #81943.
-                if cond_expr.span.desugaring_kind().is_none()
-                    && !in_external_macro(fcx.tcx.sess, cond_expr.span)
+                let cond_expr_span = fcx.tcx.hir().span(cond_expr.hir_id);
+                if cond_expr_span.desugaring_kind().is_none()
+                    && !in_external_macro(fcx.tcx.sess, cond_expr_span)
                 {
-                    err.span_label(cond_expr.span, "expected this to be `()`");
+                    err.span_label(cond_expr_span, "expected this to be `()`");
                     if expr.can_have_side_effects() {
-                        fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                        fcx.suggest_semicolon_at_end(cond_expr_span, &mut err);
                     }
                 }
             }

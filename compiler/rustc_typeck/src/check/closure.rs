@@ -132,7 +132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => self.infcx.next_ty_var(TypeVariableOrigin {
                 // FIXME(eddyb) distinguish closure kind inference variables from the rest.
                 kind: TypeVariableOriginKind::ClosureSynthetic,
-                span: expr.span,
+                span: self.tcx.hir().span(expr.hir_id),
             }),
         };
 
@@ -728,7 +728,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> ClosureSignatures<'tcx> {
         let liberated_sig = self.tcx().liberate_late_bound_regions(expr_def_id, bound_sig);
         let liberated_sig = self.inh.normalize_associated_types_in(
-            body.value.span,
+            self.tcx().hir().span(body.value.hir_id),
             body.value.hir_id,
             self.param_env,
             liberated_sig,

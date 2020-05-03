@@ -41,7 +41,7 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
             if let Some(expr) = block.expr;
             let t_expr = cx.typeck_results().expr_ty(expr);
             if t_expr.is_unit();
-            if let snippet = snippet_with_macro_callsite(cx, expr.span, "}");
+            if let snippet = snippet_with_macro_callsite(cx, cx.tcx.hir().span(expr.hir_id), "}");
             if !snippet.ends_with('}');
             then {
                 // filter out the desugared `for` loop
@@ -54,7 +54,7 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
                 span_lint_and_sugg(
                     cx,
                     SEMICOLON_IF_NOTHING_RETURNED,
-                    expr.span.source_callsite(),
+                    cx.tcx.hir().span(expr.hir_id).source_callsite(),
                     "consider adding a `;` to the last statement for consistent formatting",
                     "add a `;` here",
                     suggestion,

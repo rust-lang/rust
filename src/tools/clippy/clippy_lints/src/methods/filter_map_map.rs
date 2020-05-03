@@ -15,6 +15,6 @@ pub(super) fn check<'tcx>(
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(..).map(..)` on an `Iterator`";
         let hint = "this is more succinctly expressed by only calling `.filter_map(..)` instead";
-        span_lint_and_help(cx, FILTER_MAP, expr.span, msg, None, hint);
+        span_lint_and_help(cx, FILTER_MAP, cx.tcx.hir().span(expr.hir_id), msg, None, hint);
     }
 }

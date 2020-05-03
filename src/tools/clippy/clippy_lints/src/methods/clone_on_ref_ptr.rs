@@ -21,12 +21,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
             return;
         };
 
-        let snippet = snippet_with_macro_callsite(cx, arg.span, "..");
+        let snippet = snippet_with_macro_callsite(cx, cx.tcx.hir().span(arg.hir_id), "..");
 
         span_lint_and_sugg(
             cx,
             CLONE_ON_REF_PTR,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "using `.clone()` on a ref-counted pointer",
             "try this",
             format!("{}::<{}>::clone(&{})", caller_type, subst.type_at(0), snippet),

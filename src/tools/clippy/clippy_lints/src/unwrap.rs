@@ -153,7 +153,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // Shouldn't lint when `expr` is in macro.
-        if in_external_macro(self.cx.tcx.sess, expr.span) {
+        if in_external_macro(self.cx.tcx.sess, self.cx.tcx.hir().span(expr.hir_id)) {
             return;
         }
         if let ExprKind::If(cond, then, els) = &expr.kind {
@@ -172,27 +172,27 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                 if let Some(unwrappable) = self.unwrappables.iter()
                     .find(|u| u.ident.res == path.res);
                 // Span contexts should not differ with the conditional branch
-                if !differing_macro_contexts(unwrappable.branch.span, expr.span);
-                if !differing_macro_contexts(unwrappable.branch.span, unwrappable.check.span);
+                if !differing_macro_contexts(self.cx.tcx.hir().span(unwrappable.branch.hir_id), self.cx.tcx.hir().span(expr.hir_id));
+                if !differing_macro_contexts(self.cx.tcx.hir().span(unwrappable.branch.hir_id), self.cx.tcx.hir().span(unwrappable.check.hir_id));
                 then {
                     if call_to_unwrap == unwrappable.safe_to_unwrap {
                         span_lint_and_then(
                             self.cx,
                             UNNECESSARY_UNWRAP,
-                            expr.span,
+                            self.cx.tcx.hir().span(expr.hir_id),
                             &format!("you checked before that `{}()` cannot fail, \
                             instead of checking and unwrapping, it's better to use `if let` or `match`",
                             method_name.ident.name),
-                            |diag| { diag.span_label(unwrappable.check.span, "the check is happening here"); },
+                            |diag| { diag.span_label(self.cx.tcx.hir().span(unwrappable.check.hir_id), "the check is happening here"); },
                         );
                     } else {
                         span_lint_and_then(
                             self.cx,
                             PANICKING_UNWRAP,
-                            expr.span,
+                            self.cx.tcx.hir().span(expr.hir_id),
                             &format!("this call to `{}()` will always panic",
                             method_name.ident.name),
-                            |diag| { diag.span_label(unwrappable.check.span, "because of this check"); },
+                            |diag| { diag.span_label(self.cx.tcx.hir().span(unwrappable.check.hir_id), "because of this check"); },
                         );
                     }
                 }

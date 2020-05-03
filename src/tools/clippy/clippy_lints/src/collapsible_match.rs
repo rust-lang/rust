@@ -65,7 +65,7 @@ fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext
         let expr = strip_singleton_blocks(arm.body);
         if let ExprKind::Match(expr_in, arms_inner, _) = expr.kind;
         // the outer arm pattern and the inner match
-        if expr_in.span.ctxt() == cx.tcx.hir().span(arm.pat.hir_id).ctxt();
+        if cx.tcx.hir().span(expr_in.hir_id).ctxt() == cx.tcx.hir().span(arm.pat.hir_id).ctxt();
         // there must be no more than two arms in the inner match for this lint
         if arms_inner.len() == 2;
         // no if guards on the inner match
@@ -95,7 +95,7 @@ fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext
             span_lint_and_then(
                 cx,
                 COLLAPSIBLE_MATCH,
-                expr.span,
+                cx.tcx.hir().span(expr.hir_id),
                 "unnecessary nested match",
                 |diag| {
                     let binding_span = cx.tcx.hir().span(binding_span);

@@ -38,7 +38,7 @@ impl<'tcx> LateLintPass<'tcx> for Exit {
                     // and only then emit a linter warning
                     let def_id = cx.tcx.hir().local_def_id(parent);
                     if !is_entrypoint_fn(cx, def_id.to_def_id()) {
-                        span_lint(cx, EXIT, e.span, "usage of `process::exit`");
+                        span_lint(cx, EXIT, cx.tcx.hir().span(e.hir_id), "usage of `process::exit`");
                     }
                 }
             }

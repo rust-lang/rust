@@ -13,11 +13,11 @@ pub(super) fn check(cx: &LateContext<'_>, args: &'hir [Expr<'hir>], arg: &Expr<'
     }
 
     let mut applicability = Applicability::MachineApplicable;
-    let object = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
+    let object = snippet_with_applicability(cx, cx.tcx.hir().span(args[0].hir_id), "_", &mut applicability);
     span_lint_and_sugg(
         cx,
         EXPLICIT_INTO_ITER_LOOP,
-        arg.span,
+        cx.tcx.hir().span(arg.hir_id),
         "it is more concise to loop over containers instead of using explicit \
             iteration methods",
         "to write this more concisely, try",

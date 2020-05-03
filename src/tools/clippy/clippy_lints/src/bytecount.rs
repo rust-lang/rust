@@ -80,12 +80,12 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
                         span_lint_and_sugg(
                             cx,
                             NAIVE_BYTECOUNT,
-                            expr.span,
+                            cx.tcx.hir().span(expr.hir_id),
                             "you appear to be counting bytes the naive way",
                             "consider using the bytecount crate",
                             format!("bytecount::count({}, {})",
-                                    snippet_with_applicability(cx, haystack.span, "..", &mut applicability),
-                                    snippet_with_applicability(cx, needle.span, "..", &mut applicability)),
+                                    snippet_with_applicability(cx, cx.tcx.hir().span(haystack.hir_id), "..", &mut applicability),
+                                    snippet_with_applicability(cx, cx.tcx.hir().span(needle.hir_id), "..", &mut applicability)),
                             applicability,
                         );
                     }

@@ -134,8 +134,9 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         }
     }
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        if in_macro(expr.span) {
-            self.push_unique_macro(cx, expr.span);
+        let expr_span = cx.tcx.hir().span(expr.hir_id);
+        if in_macro(expr_span) {
+            self.push_unique_macro(cx, expr_span);
         }
     }
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {

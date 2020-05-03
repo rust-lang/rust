@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
         //         val,
         // };
         if_chain! {
-            if !in_external_macro(cx.tcx.sess, expr.span);
+            if !in_external_macro(cx.tcx.sess, cx.tcx.hir().span(expr.hir_id));
             if let ExprKind::Match(ref match_arg, _, MatchSource::TryDesugar) = expr.kind;
             if let ExprKind::Call(ref match_fun, ref try_args) = match_arg.kind;
             if let ExprKind::Path(ref match_fun_path) = match_fun.kind;
@@ -92,14 +92,16 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
                 };
 
                 let expr_err_ty = cx.typeck_results().expr_ty(err_arg);
-                let differing_contexts = differing_macro_contexts(expr.span, err_arg.span);
+                let expr_span = cx.tcx.hir().span(expr.hir_id);
+                let err_arg_span = cx.tcx.hir().span(err_arg.hir_id);
+                let differing_contexts = differing_macro_contexts(expr_span, err_arg_span);
 
-                let origin_snippet = if in_macro(expr.span) && in_macro(err_arg.span) && differing_contexts {
-                    snippet(cx, err_arg.span.ctxt().outer_expn_data().call_site, "_")
-                } else if err_arg.span.from_expansion() && !in_macro(expr.span) {
-                    snippet_with_macro_callsite(cx, err_arg.span, "_")
+                let origin_snippet = if in_macro(expr_span) && in_macro(err_arg_span) && differing_contexts {
+                    snippet(cx, err_arg_span.ctxt().outer_expn_data().call_site, "_")
+                } else if err_arg_span.from_expansion() && !in_macro(expr_span) {
+                    snippet_with_macro_callsite(cx, err_arg_span, "_")
                 } else {
-                    snippet(cx, err_arg.span, "_")
+                    snippet(cx, err_arg_span, "_")
                 };
                 let suggestion = if err_ty == expr_err_ty {
                     format!("return {}{}{}", prefix, origin_snippet, suffix)
@@ -110,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
                 span_lint_and_sugg(
                     cx,
                     TRY_ERR,
-                    expr.span,
+                    expr_span,
                     "returning an `Err(_)` with the `?` operator",
                     "try this",
                     suggestion,

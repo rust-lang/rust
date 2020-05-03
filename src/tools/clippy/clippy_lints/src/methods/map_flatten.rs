@@ -31,12 +31,15 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
             // `(...).map(...)` has type `impl Iterator<Item=impl Iterator<...>>
             "flat_map"
         };
-        let func_snippet = snippet(cx, map_args[1].span, "..");
+        let func_snippet = snippet(cx, cx.tcx.hir().span(map_args[1].hir_id), "..");
         let hint = format!(".{0}({1})", method_to_use, func_snippet);
         span_lint_and_sugg(
             cx,
             MAP_FLATTEN,
-            expr.span.with_lo(map_args[0].span.hi()),
+            cx.tcx
+                .hir()
+                .span(expr.hir_id)
+                .with_lo(cx.tcx.hir().span(map_args[0].hir_id).hi()),
             "called `map(..).flatten()` on an `Iterator`",
             &format!("try using `{}` instead", method_to_use),
             hint,
@@ -46,12 +49,15 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
 
     // lint if caller of `.map().flatten()` is an Option
     if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::option_type) {
-        let func_snippet = snippet(cx, map_args[1].span, "..");
+        let func_snippet = snippet(cx, cx.tcx.hir().span(map_args[1].hir_id), "..");
         let hint = format!(".and_then({})", func_snippet);
         span_lint_and_sugg(
             cx,
             MAP_FLATTEN,
-            expr.span.with_lo(map_args[0].span.hi()),
+            cx.tcx
+                .hir()
+                .span(expr.hir_id)
+                .with_lo(cx.tcx.hir().span(map_args[0].hir_id).hi()),
             "called `map(..).flatten()` on an `Option`",
             "try using `and_then` instead",
             hint,

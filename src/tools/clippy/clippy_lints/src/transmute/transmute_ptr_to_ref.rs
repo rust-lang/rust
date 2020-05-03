@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
             span_lint_and_then(
                 cx,
                 TRANSMUTE_PTR_TO_REF,
-                e.span,
+                cx.tcx.hir().span(e.hir_id),
                 &format!(
                     "transmute from a pointer type (`{}`) to a reference type (`{}`)",
                     from_ty, to_ty
@@ -41,7 +41,7 @@ pub(super) fn check<'tcx>(
                     };
 
                     diag.span_suggestion(
-                        e.span,
+                        cx.tcx.hir().span(e.hir_id),
                         "try",
                         sugg::make_unop(deref, arg).to_string(),
                         Applicability::Unspecified,

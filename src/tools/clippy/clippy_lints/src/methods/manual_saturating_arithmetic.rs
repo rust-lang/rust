@@ -44,14 +44,14 @@ pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>
         span_lint_and_sugg(
             cx,
             super::MANUAL_SATURATING_ARITHMETIC,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "manual saturating arithmetic",
             &format!("try using `saturating_{}`", arith),
             format!(
                 "{}.saturating_{}({})",
-                snippet_with_applicability(cx, arith_lhs.span, "..", &mut applicability),
+                snippet_with_applicability(cx, cx.tcx.hir().span(arith_lhs.hir_id), "..", &mut applicability),
                 arith,
-                snippet_with_applicability(cx, arith_rhs.span, "..", &mut applicability),
+                snippet_with_applicability(cx, cx.tcx.hir().span(arith_rhs.hir_id), "..", &mut applicability),
             ),
             applicability,
         );
@@ -65,14 +65,14 @@ pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>
         span_lint_and_sugg(
             cx,
             super::MANUAL_SATURATING_ARITHMETIC,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "manual saturating arithmetic",
             &format!("try using `saturating_{}`", arith),
             format!(
                 "{}.saturating_{}({})",
-                snippet_with_applicability(cx, arith_lhs.span, "..", &mut applicability),
+                snippet_with_applicability(cx, cx.tcx.hir().span(arith_lhs.hir_id), "..", &mut applicability),
                 arith,
-                snippet_with_applicability(cx, arith_rhs.span, "..", &mut applicability),
+                snippet_with_applicability(cx, cx.tcx.hir().span(arith_rhs.hir_id), "..", &mut applicability),
             ),
             applicability,
         );

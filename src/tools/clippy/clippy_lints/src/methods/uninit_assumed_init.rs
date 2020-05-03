@@ -18,7 +18,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, outer: &hir::Exp
             span_lint(
                 cx,
                 UNINIT_ASSUMED_INIT,
-                outer.span,
+                cx.tcx.hir().span(outer.hir_id),
                 "this call for this type may be undefined behavior"
             );
         }

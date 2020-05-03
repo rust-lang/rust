@@ -39,7 +39,7 @@ declare_lint_pass!(RedundantSlicing => [REDUNDANT_SLICING]);
 
 impl LateLintPass<'_> for RedundantSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), cx.tcx.hir().span(expr.hir_id)) {
             return;
         }
 
@@ -50,12 +50,12 @@ impl LateLintPass<'_> for RedundantSlicing {
             if TyS::same_type(cx.typeck_results().expr_ty(expr), cx.typeck_results().expr_ty(indexed));
             then {
                 let mut app = Applicability::MachineApplicable;
-                let hint = snippet_with_applicability(cx, indexed.span, "..", &mut app).into_owned();
+                let hint = snippet_with_applicability(cx, cx.tcx.hir().span(indexed.hir_id), "..", &mut app).into_owned();
 
                 span_lint_and_sugg(
                     cx,
                     REDUNDANT_SLICING,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "redundant slicing of the whole range",
                     "use the original slice instead",
                     hint,

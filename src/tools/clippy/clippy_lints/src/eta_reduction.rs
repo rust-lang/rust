@@ -69,7 +69,7 @@ declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE, REDUNDANT_CLOSURE_FOR_MET
 
 impl<'tcx> LateLintPass<'tcx> for EtaReduction {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), cx.tcx.hir().span(expr.hir_id)) {
             return;
         }
 
@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) => {
                 for arg in args {
                     // skip `foo(macro!())`
-                    if arg.span.ctxt() == expr.span.ctxt() {
+                    if cx.tcx.hir().span(arg.hir_id).ctxt() == cx.tcx.hir().span(expr.hir_id).ctxt() {
                         check_closure(cx, arg)
                     }
                 }
@@ -92,13 +92,13 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
         let body = cx.tcx.hir().body(eid);
         let ex = &body.value;
 
-        if ex.span.ctxt() != expr.span.ctxt() {
+        if cx.tcx.hir().span(ex.hir_id).ctxt() != cx.tcx.hir().span(expr.hir_id).ctxt() {
             if let Some(VecArgs::Vec(&[])) = higher::vec_macro(cx, ex) {
                 // replace `|| vec![]` with `Vec::new`
                 span_lint_and_sugg(
                     cx,
                     REDUNDANT_CLOSURE,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "redundant closure",
                     "replace the closure with `Vec::new`",
                     "std::vec::Vec::new".into(),
@@ -129,10 +129,10 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if compare_inputs(&mut iter_input_pats(decl, body), &mut args.iter());
 
             then {
-                span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
-                    if let Some(snippet) = snippet_opt(cx, caller.span) {
+                span_lint_and_then(cx, REDUNDANT_CLOSURE, cx.tcx.hir().span(expr.hir_id), "redundant closure", |diag| {
+                    if let Some(snippet) = snippet_opt(cx, cx.tcx.hir().span(caller.hir_id)) {
                         diag.span_suggestion(
-                            expr.span,
+                            cx.tcx.hir().span(expr.hir_id),
                             "replace the closure with the function itself",
                             snippet,
                             Applicability::MachineApplicable,
@@ -162,7 +162,7 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 span_lint_and_sugg(
                     cx,
                     REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "redundant closure",
                     "replace the closure with the method itself",
                     format!("{}::{}", name, path.ident.name),

@@ -96,12 +96,22 @@ pub(super) fn check<'tcx>(
 
     if is_deref {
         let current_method = if is_mut {
-            format!(".as_mut().map({})", snippet(cx, map_args[1].span, ".."))
+            format!(
+                ".as_mut().map({})",
+                snippet(cx, cx.tcx.hir().span(map_args[1].hir_id), "..")
+            )
         } else {
-            format!(".as_ref().map({})", snippet(cx, map_args[1].span, ".."))
+            format!(
+                ".as_ref().map({})",
+                snippet(cx, cx.tcx.hir().span(map_args[1].hir_id), "..")
+            )
         };
         let method_hint = if is_mut { "as_deref_mut" } else { "as_deref" };
-        let hint = format!("{}.{}()", snippet(cx, as_ref_args[0].span, ".."), method_hint);
+        let hint = format!(
+            "{}.{}()",
+            snippet(cx, cx.tcx.hir().span(as_ref_args[0].hir_id), ".."),
+            method_hint
+        );
         let suggestion = format!("try using {} instead", method_hint);
 
         let msg = format!(
@@ -112,7 +122,7 @@ pub(super) fn check<'tcx>(
         span_lint_and_sugg(
             cx,
             OPTION_AS_REF_DEREF,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             &msg,
             &suggestion,
             hint,

@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(
 
     if let PatKind::Tuple(ref pat, _) = pat.kind {
         if pat.len() == 2 {
-            let arg_span = arg.span;
+            let arg_span = cx.tcx.hir().span(arg.hir_id);
             let (new_pat_span, kind, ty, mutbl) = match *cx.typeck_results().expr_ty(arg).kind() {
                 ty::Ref(_, ty, mutbl) => match (&pat[0].kind, &pat[1].kind) {
                     (key, _) if pat_is_wild(cx, key, body) => (cx.tcx.hir().span(pat[1].hir_id), "value", ty, mutbl),
@@ -42,7 +42,7 @@ pub(super) fn check<'tcx>(
                 span_lint_and_then(
                     cx,
                     FOR_KV_MAP,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     &format!("you seem to want to iterate on a map's {}s", kind),
                     |diag| {
                         let map = sugg::Sugg::hir(cx, arg, "map");

@@ -418,7 +418,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             };
 
             if is_unfrozen(cx, ty) && is_value_unfrozen_expr(cx, expr.hir_id, item_def_id, ty) {
-                lint(cx, Source::Expr { expr: expr.span });
+                lint(cx, Source::Expr { expr: cx.tcx.hir().span(expr.hir_id) });
             }
         }
     }

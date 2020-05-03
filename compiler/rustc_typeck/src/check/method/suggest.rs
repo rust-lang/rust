@@ -18,7 +18,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::lev_distance;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{source_map, FileName, Span};
+use rustc_span::{FileName, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::Obligation;
 
@@ -180,7 +180,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 item.def_id,
                                 sugg_span,
                                 idx,
-                                self.tcx.sess.source_map(),
+                                self.tcx,
                             );
                         }
                     }
@@ -222,7 +222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             item.def_id,
                             sugg_span,
                             idx,
-                            self.tcx.sess.source_map(),
+                            self.tcx,
                         );
                     }
                 }
@@ -234,7 +234,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let sugg_span = if let SelfSource::MethodCall(expr) = source {
             // Given `foo.bar(baz)`, `expr` is `bar`, but we want to point to the whole thing.
-            self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id)).span
+            let hir = self.tcx.hir();
+            hir.span(hir.expect_expr(hir.get_parent_node(expr.hir_id)).hir_id)
         } else {
             span
         };
@@ -477,7 +478,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         if is_accessible {
                             if self.is_fn_ty(&field_ty, span) {
-                                let expr_span = expr.span.to(item_name.span);
+                                let expr_span = self.tcx.hir().span(expr.hir_id);
+                                let expr_span = expr_span.to(item_name.span);
                                 err.multipart_suggestion(
                                     &format!(
                                         "to call the function stored in `{}`, \
@@ -495,8 +497,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .tcx
                                     .hir()
                                     .expect_expr(self.tcx.hir().get_parent_node(expr.hir_id));
+                                let call_expr_span = self.tcx.hir().span(call_expr.hir_id);
 
-                                if let Some(span) = call_expr.span.trim_start(item_name.span) {
+                                if let Some(span) = call_expr_span.trim_start(item_name.span) {
                                     err.span_suggestion(
                                         span,
                                         "remove the arguments",
@@ -527,7 +530,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     if let SelfSource::MethodCall(expr) = source {
-                        if let Ok(expr_string) = tcx.sess.source_map().span_to_snippet(expr.span) {
+                        let expr_span = tcx.hir().span(expr.hir_id);
+                        if let Ok(expr_string) = tcx.sess.source_map().span_to_snippet(expr_span) {
                             report_function(&mut err, expr_string);
                         } else if let ExprKind::Path(QPath::Resolved(_, ref path)) = expr.kind {
                             if let Some(segment) = path.segments.last() {
@@ -563,8 +567,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.ty_to_value_string(actual.peel_refs())
                     };
                     if let SelfSource::MethodCall(expr) = source {
+                        let expr_span = tcx.hir().span(expr.hir_id);
                         err.span_suggestion(
-                            expr.span.to(span),
+                            expr_span.to(span),
                             "use associated function syntax instead",
                             format!("{}::{}", ty_str, item_name),
                             Applicability::MachineApplicable,
@@ -779,7 +784,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let SelfSource::MethodCall(expr) = source {
                         let call_expr =
                             self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id));
-                        if let Some(span) = call_expr.span.trim_start(expr.span) {
+                        let expr_span = tcx.hir().span(expr.hir_id);
+                        let call_expr_span = tcx.hir().span(call_expr.hir_id);
+                        if let Some(span) = call_expr_span.trim_start(expr_span) {
                             err.span_suggestion(
                                 span,
                                 msg,
@@ -1503,7 +1510,7 @@ fn print_disambiguation_help(
     def_id: DefId,
     span: Span,
     candidate: Option<usize>,
-    source_map: &source_map::SourceMap,
+    tcx: TyCtxt<'_>,
 ) {
     let mut applicability = Applicability::MachineApplicable;
     let sugg_args = if let (ty::AssocKind::Fn, Some(args)) = (kind, args) {
@@ -1515,10 +1522,14 @@ fn print_disambiguation_help(
                 ""
             },
             args.iter()
-                .map(|arg| source_map.span_to_snippet(arg.span).unwrap_or_else(|_| {
-                    applicability = Applicability::HasPlaceholders;
-                    "_".to_owned()
-                }))
+                .map(|arg| tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(tcx.hir().span(arg.hir_id))
+                    .unwrap_or_else(|_| {
+                        applicability = Applicability::HasPlaceholders;
+                        "_".to_owned()
+                    }))
                 .collect::<Vec<_>>()
                 .join(", "),
         )

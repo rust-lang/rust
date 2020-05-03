@@ -163,7 +163,12 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     #[allow(clippy::similar_names)]
     fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
-        if !self.inner.allow_side_effects && differing_macro_contexts(left.span, right.span) {
+        if !self.inner.allow_side_effects
+            && differing_macro_contexts(
+                self.inner.cx.tcx.hir().span(left.hir_id),
+                self.inner.cx.tcx.hir().span(right.hir_id),
+            )
+        {
             return false;
         }
 

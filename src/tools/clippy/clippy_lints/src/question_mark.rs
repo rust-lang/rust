@@ -83,7 +83,7 @@ impl QuestionMark {
                     span_lint_and_sugg(
                         cx,
                         QUESTION_MARK,
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         "this block may be rewritten with the `?` operator",
                         "replace it with",
                         replacement_str,
@@ -115,7 +115,7 @@ impl QuestionMark {
             if Self::expression_returns_none(cx, arms[1].body);
             then {
                 let mut applicability = Applicability::MachineApplicable;
-                let receiver_str = snippet_with_applicability(cx, subject.span, "..", &mut applicability);
+                let receiver_str = snippet_with_applicability(cx, cx.tcx.hir().span(subject.hir_id), "..", &mut applicability);
                 let replacement = format!(
                     "{}{}?",
                     receiver_str,
@@ -125,7 +125,7 @@ impl QuestionMark {
                 span_lint_and_sugg(
                     cx,
                     QUESTION_MARK,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "this if-let-else may be rewritten with the `?` operator",
                     "replace it with",
                     replacement,
@@ -138,7 +138,7 @@ impl QuestionMark {
     fn moves_by_default(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
         let expr_ty = cx.typeck_results().expr_ty(expression);
 
-        !expr_ty.is_copy_modulo_regions(cx.tcx.at(expression.span), cx.param_env)
+        !expr_ty.is_copy_modulo_regions(cx.tcx.at(cx.tcx.hir().span(expression.hir_id)), cx.param_env)
     }
 
     fn is_option(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {

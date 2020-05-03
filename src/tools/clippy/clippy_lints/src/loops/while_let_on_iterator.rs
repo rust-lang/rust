@@ -45,7 +45,8 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
                         && !is_nested(cx, expr, &method_args[0]))
             {
                 let mut applicability = Applicability::MachineApplicable;
-                let iterator = snippet_with_applicability(cx, method_args[0].span, "_", &mut applicability);
+                let iterator =
+                    snippet_with_applicability(cx, cx.tcx.hir().span(method_args[0].hir_id), "_", &mut applicability);
                 let loop_var = if pat_args.is_empty() {
                     "_".to_string()
                 } else {
@@ -55,7 +56,10 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
                 span_lint_and_sugg(
                     cx,
                     WHILE_LET_ON_ITERATOR,
-                    expr.span.with_hi(match_expr.span.hi()),
+                    cx.tcx
+                        .hir()
+                        .span(expr.hir_id)
+                        .with_hi(cx.tcx.hir().span(match_expr.hir_id).hi()),
                     "this loop could be written as a `for` loop",
                     "try",
                     format!("for {} in {}", loop_var, iterator),

@@ -202,7 +202,7 @@ impl ExprVisitor<'tcx> {
             Some(asm_ty) => asm_ty,
             None => {
                 let msg = &format!("cannot use value of type `{}` for inline assembly", ty);
-                let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
+                let mut err = self.tcx.sess.struct_span_err(self.tcx.hir().span(expr.hir_id), msg);
                 err.note(
                     "only integers, floats, SIMD vectors, pointers and function pointers \
                      can be used as arguments for inline assembly",
@@ -216,7 +216,7 @@ impl ExprVisitor<'tcx> {
         // possibly fail is for SIMD types which don't #[derive(Copy)].
         if !ty.is_copy_modulo_regions(self.tcx.at(DUMMY_SP), self.param_env) {
             let msg = "arguments for inline assembly must be copyable";
-            let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
+            let mut err = self.tcx.sess.struct_span_err(self.tcx.hir().span(expr.hir_id), msg);
             err.note(&format!("`{}` does not implement the Copy trait", ty));
             err.emit();
         }
@@ -233,12 +233,14 @@ impl ExprVisitor<'tcx> {
         if let Some((in_expr, Some(in_asm_ty))) = tied_input {
             if in_asm_ty != asm_ty {
                 let msg = "incompatible types for asm inout argument";
-                let mut err = self.tcx.sess.struct_span_err(vec![in_expr.span, expr.span], msg);
+                let in_expr_span = self.tcx.hir().span(in_expr.hir_id);
+                let expr_span = self.tcx.hir().span(expr.hir_id);
+                let mut err = self.tcx.sess.struct_span_err(vec![in_expr_span, expr_span], msg);
                 err.span_label(
-                    in_expr.span,
+                    in_expr_span,
                     &format!("type `{}`", self.typeck_results.expr_ty_adjusted(in_expr)),
                 );
-                err.span_label(expr.span, &format!("type `{}`", ty));
+                err.span_label(expr_span, &format!("type `{}`", ty));
                 err.note(
                     "asm inout arguments must have the same type, \
                     unless they are both pointers or integers of the same size",
@@ -260,7 +262,7 @@ impl ExprVisitor<'tcx> {
             Some((_, feature)) => feature,
             None => {
                 let msg = &format!("type `{}` cannot be used with this register class", ty);
-                let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
+                let mut err = self.tcx.sess.struct_span_err(self.tcx.hir().span(expr.hir_id), msg);
                 let supported_tys: Vec<_> =
                     supported_tys.iter().map(|(t, _)| t.to_string()).collect();
                 err.note(&format!(
@@ -292,7 +294,7 @@ impl ExprVisitor<'tcx> {
         if let Some(feature) = feature {
             if !self.tcx.sess.target_features.contains(&Symbol::intern(feature)) {
                 let msg = &format!("`{}` target feature is not enabled", feature);
-                let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
+                let mut err = self.tcx.sess.struct_span_err(self.tcx.hir().span(expr.hir_id), msg);
                 err.note(&format!(
                     "this is required to use type `{}` with register class `{}`",
                     ty,
@@ -328,7 +330,7 @@ impl ExprVisitor<'tcx> {
                     |lint| {
                         let msg = "formatting may not be suitable for sub-register argument";
                         let mut err = lint.build(msg);
-                        err.span_label(expr.span, "for this argument");
+                        err.span_label(self.tcx.hir().span(expr.hir_id), "for this argument");
                         err.help(&format!(
                             "use the `{}` modifier to have the register formatted as `{}`",
                             suggested_modifier, suggested_result,
@@ -379,7 +381,7 @@ impl ExprVisitor<'tcx> {
                         _ => {
                             let msg =
                                 "asm `const` arguments must be integer or floating-point values";
-                            self.tcx.sess.span_err(expr.span, msg);
+                            self.tcx.sess.span_err(self.tcx.hir().span(expr.hir_id), msg);
                         }
                     }
                 }
@@ -419,11 +421,12 @@ impl Visitor<'tcx> for ExprVisitor<'tcx> {
                 let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
                 if let Res::Def(DefKind::Fn, did) = res {
                     if self.def_id_is_transmute(did) {
+                        let expr_span = self.tcx.hir().span(expr.hir_id);
                         let typ = self.typeck_results.node_type(expr.hir_id);
                         let sig = typ.fn_sig(self.tcx);
                         let from = sig.inputs().skip_binder()[0];
                         let to = sig.output().skip_binder();
-                        self.check_transmute(expr.span, from, to);
+                        self.check_transmute(expr_span, from, to);
                     }
                 }
             }

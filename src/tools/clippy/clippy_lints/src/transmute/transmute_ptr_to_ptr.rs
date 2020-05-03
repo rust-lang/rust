@@ -19,12 +19,17 @@ pub(super) fn check<'tcx>(
             span_lint_and_then(
                 cx,
                 TRANSMUTE_PTR_TO_PTR,
-                e.span,
+                cx.tcx.hir().span(e.hir_id),
                 "transmute from a pointer to a pointer",
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                         let sugg = arg.as_ty(cx.tcx.mk_ptr(*to_ty));
-                        diag.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
+                        diag.span_suggestion(
+                            cx.tcx.hir().span(e.hir_id),
+                            "try",
+                            sugg.to_string(),
+                            Applicability::Unspecified,
+                        );
                     }
                 },
             );

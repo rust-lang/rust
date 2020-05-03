@@ -111,17 +111,19 @@ impl LateLintPass<'_> for VecInitThenPush {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if self.searcher.is_none() {
             if_chain! {
-                if !in_external_macro(cx.sess(), expr.span);
+                let expr_span = cx.tcx.hir().span(expr.hir_id);
+                if !in_external_macro(cx.sess(), expr_span);
                 if let ExprKind::Assign(left, right, _) = expr.kind;
                 if let Some(id) = path_to_local(left);
                 if let Some(init_kind) = get_vec_init_kind(cx, right);
                 then {
+                    let left_span = cx.tcx.hir().span(left.hir_id);
                     self.searcher = Some(VecPushSearcher {
                         local_id: id,
                         init: init_kind,
                         lhs_is_local: false,
-                        lhs_span: left.span,
-                        err_span: expr.span,
+                        lhs_span: left_span,
+                        err_span: expr_span,
                         found: 0,
                     });
                 }

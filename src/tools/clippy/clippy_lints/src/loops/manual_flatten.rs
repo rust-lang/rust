@@ -62,13 +62,13 @@ pub(super) fn check<'tcx>(
                     |diag| {
                         let sugg = format!("{}.flatten()", arg_snippet);
                         diag.span_suggestion(
-                            arg.span,
+                            cx.tcx.hir().span(arg.hir_id),
                             "try",
                             sugg,
                             Applicability::MaybeIncorrect,
                         );
                         diag.span_help(
-                            inner_expr.span,
+                            cx.tcx.hir().span(inner_expr.hir_id),
                             "...and remove the `if let` statement in the for loop",
                         );
                     }

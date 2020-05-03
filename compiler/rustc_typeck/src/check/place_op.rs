@@ -23,7 +23,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Some(mt.ty);
         }
 
-        let ok = self.try_overloaded_deref(expr.span, oprnd_ty)?;
+        let expr_span = self.tcx.hir().span(expr.hir_id);
+        let ok = self.try_overloaded_deref(expr_span, oprnd_ty)?;
         let method = self.register_infer_ok_obligations(ok);
         if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
             self.apply_adjustments(
@@ -34,7 +35,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }],
             );
         } else {
-            span_bug!(expr.span, "input to deref is not a ref?");
+            span_bug!(expr_span, "input to deref is not a ref?");
         }
         let ty = self.make_overloaded_place_return_type(method).ty;
         self.write_method_call(expr.hir_id, method);
@@ -53,7 +54,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // autoderef that normal method probing does. They could likely be
         // consolidated.
 
-        let mut autoderef = self.autoderef(base_expr.span, base_ty);
+        let base_expr_span = self.tcx.hir().span(base_expr.hir_id);
+        let mut autoderef = self.autoderef(base_expr_span, base_ty);
         let mut result = None;
         while result.is_none() && autoderef.next().is_some() {
             result = self.try_index_step(expr, base_expr, &autoderef, idx_ty);
@@ -96,12 +98,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If some lookup succeeds, write callee into table and extract index/element
             // type from the method signature.
             // If some lookup succeeded, install method in table
+            let expr_span = self.tcx.hir().span(expr.hir_id);
+            let base_expr_span = self.tcx.hir().span(base_expr.hir_id);
             let input_ty = self.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::AutoDeref,
-                span: base_expr.span,
+                span: base_expr_span,
             });
             let method =
-                self.try_overloaded_place_op(expr.span, self_ty, &[input_ty], PlaceOp::Index);
+                self.try_overloaded_place_op(expr_span, self_ty, &[input_ty], PlaceOp::Index);
 
             let result = method.map(|ok| {
                 debug!("try_index_step: success, using overloaded indexing");
@@ -117,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     });
                 } else {
-                    span_bug!(expr.span, "input to index is not a ref?");
+                    span_bug!(expr_span, "input to index is not a ref?");
                 }
                 if unsize {
                     adjustments.push(Adjustment {
@@ -234,8 +238,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(mut adjustments) = previous_adjustments {
                 for adjustment in &mut adjustments {
                     if let Adjust::Deref(Some(ref mut deref)) = adjustment.kind {
+                        let expr_span = self.tcx.hir().span(expr.hir_id);
                         if let Some(ok) = self.try_mutable_overloaded_place_op(
-                            expr.span,
+                            expr_span,
                             source,
                             &[],
                             PlaceOp::Deref,
@@ -250,7 +255,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 && source.ty_adt_def().map_or(false, |adt| adt.is_manually_drop())
                             {
                                 let mut err = self.tcx.sess.struct_span_err(
-                                    expr.span,
+                                    expr_span,
                                     "not automatically applying `DerefMut` on `ManuallyDrop` union field",
                                 );
                                 err.help(
@@ -318,7 +323,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(ref ty) => slice::from_ref(ty),
         };
 
-        let method = self.try_mutable_overloaded_place_op(expr.span, base_ty, arg_tys, op);
+        let expr_span = self.tcx.hir().span(expr.hir_id);
+        let method = self.try_mutable_overloaded_place_op(expr_span, base_ty, arg_tys, op);
         let method = match method {
             Some(ok) => self.register_infer_ok_obligations(ok),
             // Couldn't find the mutable variant of the place op, keep the
@@ -331,7 +337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let region = if let ty::Ref(r, _, hir::Mutability::Mut) = method.sig.inputs()[0].kind() {
             r
         } else {
-            span_bug!(expr.span, "input to mutable place op is not a mut ref?");
+            span_bug!(expr_span, "input to mutable place op is not a mut ref?");
         };
 
         // Convert the autoref in the base expr to mutable with the correct

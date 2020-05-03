@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         let mut suggs = Vec::new();
         let can_sugg = find_all_ret_expressions(cx, &body.value, |ret_expr| {
             if_chain! {
-                if !in_macro(ret_expr.span);
+                if !in_macro(cx.tcx.hir().span(ret_expr.hir_id));
                 // Check if a function call.
                 if let ExprKind::Call(ref func, ref args) = ret_expr.kind;
                 // Get the Path of the function call.
@@ -113,11 +113,11 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 then {
                     suggs.push(
                         (
-                            ret_expr.span,
+                            cx.tcx.hir().span(ret_expr.hir_id),
                             if inner_type.is_unit() {
                                 "".to_string()
                             } else {
-                                snippet(cx, args[0].span.source_callsite(), "..").to_string()
+                                snippet(cx, cx.tcx.hir().span(args[0].hir_id).source_callsite(), "..").to_string()
                             }
                         )
                     );

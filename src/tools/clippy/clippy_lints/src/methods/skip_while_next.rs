@@ -11,7 +11,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, _sk
         span_lint_and_help(
             cx,
             SKIP_WHILE_NEXT,
-            expr.span,
+            cx.tcx.hir().span(expr.hir_id),
             "called `skip_while(<p>).next()` on an `Iterator`",
             None,
             "this is more succinctly expressed by calling `.find(!<p>)` instead",

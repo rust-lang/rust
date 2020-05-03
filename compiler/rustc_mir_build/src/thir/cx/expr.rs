@@ -48,7 +48,8 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
         let expr_scope =
             region::Scope { id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
 
-        debug!("Expr::make_mirror(): id={}, span={:?}", hir_expr.hir_id, hir_expr.span);
+        let span = self.tcx.hir().span(hir_expr.hir_id);
+        debug!("Expr::make_mirror(): id={}, span={:?}", hir_expr.hir_id, span);
 
         let mut expr = self.make_mirror_unadjusted(hir_expr);
 
@@ -62,7 +63,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
         expr = Expr {
             temp_lifetime,
             ty: expr.ty,
-            span: hir_expr.span,
+            span,
             kind: ExprKind::Scope {
                 region_scope: expr_scope,
                 value: self.arena.alloc(expr),
@@ -77,7 +78,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
             expr = Expr {
                 temp_lifetime,
                 ty: expr.ty,
-                span: hir_expr.span,
+                span: self.tcx.hir().span(hir_expr.hir_id),
                 kind: ExprKind::Scope {
                     region_scope,
                     value: self.arena.alloc(expr),
@@ -192,13 +193,13 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
 
                     // rewrite f(u, v) into FnOnce::call_once(f, (u, v))
 
-                    let method = self.method_callee(expr, fun.span, None);
+                    let method = self.method_callee(expr, self.tcx.hir().span(fun.hir_id), None);
 
                     let arg_tys = args.iter().map(|e| self.typeck_results().expr_ty_adjusted(e));
                     let tupled_args = Expr {
                         ty: self.tcx.mk_tup(arg_tys),
                         temp_lifetime,
-                        span: expr.span,
+                        span: self.tcx.hir().span(expr.hir_id),
                         kind: ExprKind::Tuple { fields: self.mirror_exprs(args) },
                     };
 
@@ -209,7 +210,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                             .arena
                             .alloc_from_iter(vec![self.mirror_expr_inner(fun), tupled_args]),
                         from_hir_call: true,
-                        fn_span: expr.span,
+                        fn_span: self.tcx.hir().span(expr.hir_id),
                     }
                 } else {
                     let adt_data =
@@ -255,7 +256,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                             fun: self.mirror_expr(fun),
                             args: self.mirror_exprs(args),
                             from_hir_call: true,
-                            fn_span: expr.span,
+                            fn_span: self.tcx.hir().span(expr.hir_id),
                         }
                     }
                 }
@@ -335,7 +336,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                         expr_ty,
                         None,
                         self.arena.alloc_from_iter(vec![lhs, index]),
-                        expr.span,
+                        self.tcx.hir().span(expr.hir_id),
                     )
                 } else {
                     ExprKind::Index { lhs: self.mirror_expr(lhs), index: self.mirror_expr(index) }
@@ -350,7 +351,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                         expr_ty,
                         None,
                         self.arena.alloc_from_iter(iter::once(arg)),
-                        expr.span,
+                        self.tcx.hir().span(expr.hir_id),
                     )
                 } else {
                     ExprKind::Deref { arg: self.mirror_expr(arg) }
@@ -424,13 +425,21 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                                 }
                             }
                             _ => {
-                                span_bug!(expr.span, "unexpected res: {:?}", res);
+                                span_bug!(
+                                    self.tcx.hir().span(expr.hir_id),
+                                    "unexpected res: {:?}",
+                                    res
+                                );
                             }
                         }
                     }
                 },
                 _ => {
-                    span_bug!(expr.span, "unexpected type for struct literal: {:?}", expr_ty);
+                    span_bug!(
+                        self.tcx.hir().span(expr.hir_id),
+                        "unexpected type for struct literal: {:?}",
+                        expr_ty
+                    );
                 }
             },
 
@@ -442,7 +451,11 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                         (def_id, UpvarSubsts::Generator(substs), Some(movability))
                     }
                     _ => {
-                        span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
+                        span_bug!(
+                            self.tcx.hir().span(expr.hir_id),
+                            "closure expr w/o closure type: {:?}",
+                            closure_ty
+                        );
                     }
                 };
 
@@ -492,10 +505,11 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                             InlineAsmOperand::Const { expr: self.mirror_expr(expr) }
                         }
                         hir::InlineAsmOperand::Sym { ref expr } => {
+                            let expr_span = self.tcx.hir().span(expr.hir_id);
                             let qpath = match expr.kind {
                                 hir::ExprKind::Path(ref qpath) => qpath,
                                 _ => span_bug!(
-                                    expr.span,
+                                    expr_span,
                                     "asm `sym` operand should be a path, found {:?}",
                                     expr.kind
                                 ),
@@ -512,7 +526,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                                         expr: self.arena.alloc(Expr {
                                             ty,
                                             temp_lifetime,
-                                            span: expr.span,
+                                            span: expr_span,
                                             kind: ExprKind::Literal {
                                                 literal: ty::Const::zero_sized(self.tcx, ty),
                                                 user_ty,
@@ -528,7 +542,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
 
                                 _ => {
                                     self.tcx.sess.span_err(
-                                        expr.span,
+                                        self.tcx.hir().span(expr.hir_id),
                                         "asm `sym` operand must point to a fn or static",
                                     );
 
@@ -538,7 +552,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                                         expr: self.arena.alloc(Expr {
                                             ty,
                                             temp_lifetime,
-                                            span: expr.span,
+                                            span: self.tcx.hir().span(expr.hir_id),
                                             kind: ExprKind::Literal {
                                                 literal: ty::Const::zero_sized(self.tcx, ty),
                                                 user_ty: None,
@@ -677,7 +691,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                             self.arena.alloc(Expr {
                                 temp_lifetime,
                                 ty: var_ty,
-                                span: expr.span,
+                                span: self.tcx.hir().span(expr.hir_id),
                                 kind: ExprKind::Literal { literal, user_ty: None, const_id: None },
                             })
                         };
@@ -704,7 +718,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                                 self.arena.alloc(Expr {
                                     temp_lifetime,
                                     ty: var_ty,
-                                    span: expr.span,
+                                    span: self.tcx.hir().span(expr.hir_id),
                                     kind: bin,
                                 })
                             }
@@ -723,7 +737,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                     let cast_expr = self.arena.alloc(Expr {
                         temp_lifetime,
                         ty: expr_ty,
-                        span: expr.span,
+                        span: self.tcx.hir().span(expr.hir_id),
                         kind: cast,
                     });
                     debug!("make_mirror_unadjusted: (cast) user_ty={:?}", user_ty);
@@ -757,7 +771,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
             hir::ExprKind::Err => unreachable!(),
         };
 
-        Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind }
+        Expr { temp_lifetime, ty: expr_ty, span: self.tcx.hir().span(expr.hir_id), kind }
     }
 
     fn user_substs_applied_to_res(
@@ -807,7 +821,10 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
             None => {
                 let (kind, def_id) =
                     self.typeck_results().type_dependent_def(expr.hir_id).unwrap_or_else(|| {
-                        span_bug!(expr.span, "no type-dependent def for method callee")
+                        span_bug!(
+                            self.tcx.hir().span(expr.hir_id),
+                            "no type-dependent def for method callee"
+                        )
                     });
                 let user_ty = self.user_substs_applied_to_res(expr.hir_id, Res::Def(kind, def_id));
                 debug!("method_callee: user_ty={:?}", user_ty);
@@ -937,13 +954,18 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                     }
                 };
                 ExprKind::Deref {
-                    arg: self.arena.alloc(Expr { ty, temp_lifetime, span: expr.span, kind }),
+                    arg: self.arena.alloc(Expr {
+                        ty,
+                        temp_lifetime,
+                        span: self.tcx.hir().span(expr.hir_id),
+                        kind,
+                    }),
                 }
             }
 
             Res::Local(var_hir_id) => self.convert_var(var_hir_id),
 
-            _ => span_bug!(expr.span, "res `{:?}` not yet implemented", res),
+            _ => span_bug!(self.tcx.hir().span(expr.hir_id), "res `{:?}` not yet implemented", res),
         }
     }
 
@@ -972,8 +994,15 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         args: &'thir [Expr<'thir, 'tcx>],
     ) -> ExprKind<'thir, 'tcx> {
-        let fun = self.arena.alloc(self.method_callee(expr, expr.span, None));
-        ExprKind::Call { ty: fun.ty, fun, args, from_hir_call: false, fn_span: expr.span }
+        let fun =
+            self.arena.alloc(self.method_callee(expr, self.tcx.hir().span(expr.hir_id), None));
+        ExprKind::Call {
+            ty: fun.ty,
+            fun,
+            args,
+            from_hir_call: false,
+            fn_span: self.tcx.hir().span(expr.hir_id),
+        }
     }
 
     fn overloaded_place(
@@ -1035,7 +1064,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
         let mut captured_place_expr = Expr {
             temp_lifetime,
             ty: var_ty,
-            span: closure_expr.span,
+            span: self.tcx.hir().span(closure_expr.hir_id),
             kind: self.convert_var(var_hir_id),
         };
 
@@ -1058,8 +1087,12 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                 }
             };
 
-            captured_place_expr =
-                Expr { temp_lifetime, ty: proj.ty, span: closure_expr.span, kind };
+            captured_place_expr = Expr {
+                temp_lifetime,
+                ty: proj.ty,
+                span: self.tcx.hir().span(closure_expr.hir_id),
+                kind,
+            };
         }
 
         match upvar_capture {
@@ -1073,7 +1106,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                 Expr {
                     temp_lifetime,
                     ty: upvar_ty,
-                    span: closure_expr.span,
+                    span: self.tcx.hir().span(closure_expr.hir_id),
                     kind: ExprKind::Borrow {
                         borrow_kind,
                         arg: self.arena.alloc(captured_place_expr),

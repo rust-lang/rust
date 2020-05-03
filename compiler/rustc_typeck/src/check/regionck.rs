@@ -392,15 +392,16 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         // Check any autoderefs or autorefs that appear.
         let cmt_result = self.constrain_adjustments(expr);
+        let expr_span = self.tcx.hir().span(expr.hir_id);
 
         // If necessary, constrain destructors in this expression. This will be
         // the adjusted form if there is an adjustment.
         match cmt_result {
             Ok(head_cmt) => {
-                self.check_safety_of_rvalue_destructor_if_necessary(&head_cmt, expr.span);
+                self.check_safety_of_rvalue_destructor_if_necessary(&head_cmt, expr_span);
             }
             Err(..) => {
-                self.tcx.sess.delay_span_bug(expr.span, "cat_expr Errd");
+                self.tcx.sess.delay_span_bug(expr_span, "cat_expr Errd");
             }
         }
 
@@ -453,17 +454,18 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         }
 
         debug!("constrain_adjustments: adjustments={:?}", adjustments);
+        let expr_span = self.fcx.tcx.hir().span(expr.hir_id);
 
         // If necessary, constrain destructors in the unadjusted form of this
         // expression.
-        self.check_safety_of_rvalue_destructor_if_necessary(&place, expr.span);
+        self.check_safety_of_rvalue_destructor_if_necessary(&place, expr_span);
 
         for adjustment in adjustments {
             debug!("constrain_adjustments: adjustment={:?}, place={:?}", adjustment, place);
 
             if let adjustment::Adjust::Deref(Some(deref)) = adjustment.kind {
                 self.link_region(
-                    expr.span,
+                    expr_span,
                     deref.region,
                     ty::BorrowKind::from_mutbl(deref.mutbl),
                     &place,
@@ -527,7 +529,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         debug!("link_addr_of: cmt={:?}", cmt);
 
-        self.link_region_from_node_type(expr.span, expr.hir_id, mutability, &cmt);
+        let expr_span = self.fcx.tcx.hir().span(expr.hir_id);
+        self.link_region_from_node_type(expr_span, expr.hir_id, mutability, &cmt);
     }
 
     /// Computes the guarantors for any ref bindings in a `let` and
@@ -601,7 +604,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         match *autoref {
             adjustment::AutoBorrow::Ref(r, m) => {
-                self.link_region(expr.span, r, ty::BorrowKind::from_mutbl(m.into()), expr_cmt);
+                let expr_span = self.fcx.tcx.hir().span(expr.hir_id);
+                self.link_region(expr_span, r, ty::BorrowKind::from_mutbl(m.into()), expr_cmt);
             }
 
             adjustment::AutoBorrow::RawPtr(_) => {}

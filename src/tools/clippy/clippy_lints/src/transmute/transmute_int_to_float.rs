@@ -20,7 +20,7 @@ pub(super) fn check<'tcx>(
             span_lint_and_then(
                 cx,
                 TRANSMUTE_INT_TO_FLOAT,
-                e.span,
+                cx.tcx.hir().span(e.hir_id),
                 &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                 |diag| {
                     let arg = sugg::Sugg::hir(cx, &args[0], "..");
@@ -33,7 +33,7 @@ pub(super) fn check<'tcx>(
                         arg
                     };
                     diag.span_suggestion(
-                        e.span,
+                        cx.tcx.hir().span(e.hir_id),
                         "consider using",
                         format!("{}::from_bits({})", to_ty, arg.to_string()),
                         Applicability::Unspecified,

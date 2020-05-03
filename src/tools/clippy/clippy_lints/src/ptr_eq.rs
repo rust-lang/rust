@@ -40,7 +40,7 @@ static LINT_MSG: &str = "use `std::ptr::eq` when comparing raw pointers";
 
 impl LateLintPass<'_> for PtrEq {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if utils::in_macro(expr.span) {
+        if utils::in_macro(cx.tcx.hir().span(expr.hir_id)) {
             return;
         }
 
@@ -54,13 +54,13 @@ impl LateLintPass<'_> for PtrEq {
                 if_chain! {
                     if let Some(left_var) = expr_as_cast_to_raw_pointer(cx, left);
                     if let Some(right_var) = expr_as_cast_to_raw_pointer(cx, right);
-                    if let Some(left_snip) = utils::snippet_opt(cx, left_var.span);
-                    if let Some(right_snip) = utils::snippet_opt(cx, right_var.span);
+                    if let Some(left_snip) = utils::snippet_opt(cx, cx.tcx.hir().span(left_var.hir_id));
+                    if let Some(right_snip) = utils::snippet_opt(cx, cx.tcx.hir().span(right_var.hir_id));
                     then {
                         utils::span_lint_and_sugg(
                             cx,
                             PTR_EQ,
-                            expr.span,
+                            cx.tcx.hir().span(expr.hir_id),
                             LINT_MSG,
                             "try",
                             format!("std::ptr::eq({}, {})", left_snip, right_snip),

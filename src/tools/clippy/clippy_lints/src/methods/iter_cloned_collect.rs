@@ -12,7 +12,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, iter_arg
     if_chain! {
         if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::vec_type);
         if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.typeck_results().expr_ty(&iter_args[0]));
-        if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite());
+        if let Some(to_replace) = cx.tcx.hir().span(expr.hir_id).trim_start(cx.tcx.hir().span(slice.hir_id).source_callsite());
 
         then {
             span_lint_and_sugg(

@@ -77,7 +77,7 @@ impl LateLintPass<'_> for Default {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // Avoid cases already linted by `field_reassign_with_default`
-            if !self.reassigned_linted.contains(&expr.span);
+            if !self.reassigned_linted.contains(&cx.tcx.hir().span(expr.hir_id));
             if let ExprKind::Call(ref path, ..) = expr.kind;
             if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
             if let ExprKind::Path(ref qpath) = path.kind;
@@ -94,7 +94,7 @@ impl LateLintPass<'_> for Default {
                     span_lint_and_sugg(
                         cx,
                         DEFAULT_TRAIT_ACCESS,
-                        expr.span,
+                        cx.tcx.hir().span(expr.hir_id),
                         &format!("calling `{}` is more clear than this expression", replacement),
                         "try",
                         replacement,
@@ -122,7 +122,8 @@ impl LateLintPass<'_> for Default {
                 if let StmtKind::Local(local) = stmt.kind;
                 if let Some(expr) = local.init;
                 if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
-                if !in_external_macro(cx.tcx.sess, expr.span);
+                let expr_span = cx.tcx.hir().span(expr.hir_id);
+                if !in_external_macro(cx.tcx.sess, expr_span);
                 // only take bindings to identifiers
                 if let PatKind::Binding(_, binding_id, ident, _) = local.pat.kind;
                 // only when assigning `... = Default::default()`
@@ -138,7 +139,7 @@ impl LateLintPass<'_> for Default {
                     .iter()
                     .all(|field| field.vis.is_accessible_from(module_did, cx.tcx));
                 then {
-                    (local, variant, ident.name, binding_type, expr.span)
+                    (local, variant, ident.name, binding_type, cx.tcx.hir().span(expr.hir_id))
                 } else {
                     continue;
                 }
@@ -192,7 +193,7 @@ impl LateLintPass<'_> for Default {
                     .into_iter()
                     .map(|(field, rhs)| {
                         // extract and store the assigned value for help message
-                        let value_snippet = snippet_with_macro_callsite(cx, rhs.span, "..");
+                        let value_snippet = snippet_with_macro_callsite(cx, cx.tcx.hir().span(rhs.hir_id), "..");
                         format!("{}: {}", field, value_snippet)
                     })
                     .collect::<Vec<String>>()

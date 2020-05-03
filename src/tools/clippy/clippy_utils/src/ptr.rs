@@ -63,7 +63,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
                 for &(fn_name, suffix) in self.replace {
                     if seg.ident.name.as_str() == fn_name {
                         self.spans
-                            .push((expr.span, snippet(self.cx, args[0].span, "_") + suffix));
+                            .push((self.cx.tcx.hir().span(expr.hir_id), snippet(self.cx, self.cx.tcx.hir().span(args[0].hir_id), "_") + suffix));
                         return;
                     }
                 }

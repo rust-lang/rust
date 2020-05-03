@@ -128,7 +128,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
     match expr.kind {
         hir::ExprKind::Call(_, _) | hir::ExprKind::MethodCall(_, _, _, _) => {
             // Calls can't be reduced any more
-            Some(expr.span)
+            Some(cx.tcx.hir().span(expr.hir_id))
         },
         hir::ExprKind::Block(ref block, _) => {
             match (block.stmts, block.expr.as_ref()) {
@@ -142,7 +142,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
                     // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.kind {
                         hir::StmtKind::Local(ref local) => Some(cx.tcx.hir().span(local.hir_id)),
-                        hir::StmtKind::Expr(ref e) => Some(e.span),
+                        hir::StmtKind::Expr(ref e) => Some(cx.tcx.hir().span(e.hir_id)),
                         hir::StmtKind::Semi(..) => Some(cx.tcx.hir().span(inner_stmt.hir_id)),
                         hir::StmtKind::Item(..) => None,
                     }
@@ -189,8 +189,8 @@ fn unit_closure<'tcx>(
 /// Anything else will return `a`.
 fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
     match &var_arg.kind {
-        hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
-        hir::ExprKind::Path(_) => format!("_{}", snippet(cx, var_arg.span, "")),
+        hir::ExprKind::Field(_, _) => snippet(cx, cx.tcx.hir().span(var_arg.hir_id), "_").replace(".", "_"),
+        hir::ExprKind::Path(_) => format!("_{}", snippet(cx, cx.tcx.hir().span(var_arg.hir_id), "")),
         _ => "a".to_string(),
     }
 }
@@ -222,24 +222,24 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
         let suggestion = format!(
             "if let {0}({binding}) = {1} {{ {2}({binding}) }}",
             variant,
-            snippet(cx, var_arg.span, "_"),
-            snippet(cx, fn_arg.span, "_"),
+            snippet(cx, cx.tcx.hir().span(var_arg.hir_id), "_"),
+            snippet(cx, cx.tcx.hir().span(fn_arg.hir_id), "_"),
             binding = let_binding_name(cx, var_arg)
         );
 
-        span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
+        span_lint_and_then(cx, lint, cx.tcx.hir().span(expr.hir_id), &msg, |diag| {
             diag.span_suggestion(stmt_span, "try this", suggestion, Applicability::MachineApplicable);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
 
-        span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
+        span_lint_and_then(cx, lint, cx.tcx.hir().span(expr.hir_id), &msg, |diag| {
             if let Some(reduced_expr_span) = reduce_unit_expression(cx, closure_expr) {
                 let suggestion = format!(
                     "if let {0}({1}) = {2} {{ {3} }}",
                     variant,
                     snippet(cx, cx.tcx.hir().span(binding.pat.hir_id), "_"),
-                    snippet(cx, var_arg.span, "_"),
+                    snippet(cx, cx.tcx.hir().span(var_arg.hir_id), "_"),
                     snippet(cx, reduced_expr_span, "_")
                 );
                 diag.span_suggestion(
@@ -253,7 +253,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
                     "if let {0}({1}) = {2} {{ ... }}",
                     variant,
                     snippet(cx, cx.tcx.hir().span(binding.pat.hir_id), "_"),
-                    snippet(cx, var_arg.span, "_"),
+                    snippet(cx, cx.tcx.hir().span(var_arg.hir_id), "_"),
                 );
                 diag.span_suggestion(stmt_span, "try this", suggestion, Applicability::HasPlaceholders);
             }
@@ -268,7 +268,7 @@ impl<'tcx> LateLintPass<'tcx> for MapUnit {
         }
 
         if let hir::StmtKind::Semi(ref expr) = stmt.kind {
-            if let Some(arglists) = method_chain_args(expr, &["map"]) {
+            if let Some(arglists) = method_chain_args(cx, expr, &["map"]) {
                 lint_map_unit_fn(cx, stmt, expr, arglists[0]);
             }
         }

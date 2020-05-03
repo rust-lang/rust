@@ -391,9 +391,10 @@ crate fn is_literal_expr(cx: &DocContext<'_>, hir_id: hir::HirId) -> bool {
 crate fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
     let hir = tcx.hir();
     let value = &hir.body(body).value;
+    let value_span = hir.span(value.hir_id);
 
-    let snippet = if !value.span.from_expansion() {
-        tcx.sess.source_map().span_to_snippet(value.span).ok()
+    let snippet = if !value_span.from_expansion() {
+        tcx.sess.source_map().span_to_snippet(value_span).ok()
     } else {
         None
     };

@@ -13,7 +13,7 @@ pub(super) fn check(cx: &LateContext<'_>, _expr: &hir::Expr<'_>, arg: &hir::Expr
         span_lint_and_sugg(
             cx,
             SINGLE_CHAR_PATTERN,
-            arg.span,
+            cx.tcx.hir().span(arg.hir_id),
             "single-character string constant used as pattern",
             "try using a `char` instead",
             hint,

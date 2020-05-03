@@ -46,7 +46,7 @@ impl Display for Sugg<'_> {
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
     pub fn hir_opt(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Self> {
-        snippet_opt(cx, expr.span).map(|snippet| {
+        snippet_opt(cx, cx.tcx.hir().span(expr.hir_id)).map(|snippet| {
             let snippet = Cow::Owned(snippet);
             Self::hir_from_snippet(expr, snippet)
         })
@@ -71,7 +71,7 @@ impl<'a> Sugg<'a> {
         default: &'a str,
         applicability: &mut Applicability,
     ) -> Self {
-        if *applicability != Applicability::Unspecified && expr.span.from_expansion() {
+        if *applicability != Applicability::Unspecified && cx.tcx.hir().span(expr.hir_id).from_expansion() {
             *applicability = Applicability::MaybeIncorrect;
         }
         Self::hir_opt(cx, expr).unwrap_or_else(|| {
@@ -84,7 +84,7 @@ impl<'a> Sugg<'a> {
 
     /// Same as `hir`, but will use the pre expansion span if the `expr` was in a macro.
     pub fn hir_with_macro_callsite(cx: &LateContext<'_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
-        let snippet = snippet_with_macro_callsite(cx, expr.span, default);
+        let snippet = snippet_with_macro_callsite(cx, cx.tcx.hir().span(expr.hir_id), default);
 
         Self::hir_from_snippet(expr, snippet)
     }

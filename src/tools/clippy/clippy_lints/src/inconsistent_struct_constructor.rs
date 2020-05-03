@@ -92,7 +92,7 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
                 fields_snippet.push_str(&last_ident.to_string());
 
                 let base_snippet = if let Some(base) = base {
-                        format!(", ..{}", snippet(cx, base.span, ".."))
+                        format!(", ..{}", snippet(cx, cx.tcx.hir().span(base.hir_id), ".."))
                     } else {
                         String::new()
                     };
@@ -106,7 +106,7 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
                 span_lint_and_sugg(
                     cx,
                     INCONSISTENT_STRUCT_CONSTRUCTOR,
-                    expr.span,
+                    cx.tcx.hir().span(expr.hir_id),
                     "inconsistent struct constructor",
                     "try",
                     sugg,
