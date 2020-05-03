@@ -55,16 +55,13 @@ entry:
 
 ; CHECK: define internal { i8* } @augmented_indirect(double* %x, double* %"x'", double* %dxdt, double* %"dxdt'", double %t) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 16)
+; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 8)
 ; CHECK-NEXT:   %a1 = load double, double* %x, align 8
 ; CHECK-NEXT:   %call1_augmented = call { {}, double*, double* } @augmented_bad(double* %dxdt, double* %"dxdt'")
 ; CHECK-NEXT:   %antiptr_call1 = extractvalue { {}, double*, double* } %call1_augmented, 2
 ; CHECK-NEXT:   %0 = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   store double* %antiptr_call1, double** %0
 ; CHECK-NEXT:   %call1 = extractvalue { {}, double*, double* } %call1_augmented, 1
-; CHECK-NEXT:   %1 = getelementptr i8, i8* %malloccall, i64 8
-; CHECK-NEXT:   %2 = bitcast i8* %1 to double**
-; CHECK-NEXT:   store double* %call1, double** %2, align 8
 ; CHECK-NEXT:   store double %a1, double* %call1, align 8
 ; CHECK-NEXT:   %.fca.0.insert = insertvalue { i8* } undef, i8* %malloccall, 0
 ; CHECK-NEXT:   ret { i8* } %.fca.0.insert

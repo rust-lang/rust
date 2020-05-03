@@ -531,7 +531,7 @@ std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGr
     return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
 }
 
-void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, CacheType)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations);
+void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, std::function<unsigned(Instruction*, CacheType)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations);
 void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, AllocaInst* dretAlloca, const std::map<Argument*, bool> uncacheable_args, std::function<unsigned(Instruction*, CacheType)> getIndex, const AugmentedReturn* subdata);
 
 enum class DerivativeMode {
@@ -561,12 +561,12 @@ public:
   AugmentedReturnType augmentedReturn;
   std::vector<Instruction*> *fakeTBAA;
   const std::map<ReturnInst*,StoreInst*> *replacedReturns;
-  const SmallPtrSetImpl<Instruction*> *valuesOnlyUsedInUnnecessaryReturns;
+  const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns;
   AllocaInst* dretAlloca;
   DerivativeMaker(DerivativeMode mode, GradientUtils *gutils, TypeResults &TR, std::function<unsigned(Instruction*, CacheType)> getIndex,
     const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map, const SmallPtrSetImpl<Instruction*> *returnuses, AugmentedReturnType augmentedReturn,
     std::vector<Instruction*>* fakeTBAA, const std::map<ReturnInst*,StoreInst*>* replacedReturns,
-    const SmallPtrSetImpl<Instruction*> *valuesOnlyUsedInUnnecessaryReturns, AllocaInst* dretAlloca
+    const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, AllocaInst* dretAlloca
     ) : mode(mode), gutils(gutils), TR(TR),
         getIndex(getIndex), uncacheable_args_map(uncacheable_args_map),
         returnuses(returnuses), augmentedReturn(augmentedReturn), fakeTBAA(fakeTBAA), replacedReturns(replacedReturns),
@@ -1505,7 +1505,7 @@ void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
 
   assert(uncacheable_args_map.find(orig) != uncacheable_args_map.end());
   assert(augmentedReturn);
-  handleAugmentedCallInst(TR, &call, gutils, uncacheable_args_map.find(orig)->second, *returnuses, getIndex, augmentedReturn->subaugmentations);
+  handleAugmentedCallInst(TR, &call, gutils, uncacheable_args_map.find(orig)->second, *returnuses, valuesOnlyUsedInUnnecessaryReturns, getIndex, augmentedReturn->subaugmentations);
 }
 
 template <>
@@ -1535,8 +1535,7 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
   }
   assert(uncacheable_args_map.find(orig) != uncacheable_args_map.end());
   assert(replacedReturns);
-  assert(valuesOnlyUsedInUnnecessaryReturns);
-  handleGradientCallInst(TR, Builder2, &call, (DiffeGradientUtils*)gutils, /*topLevel*/mode == DerivativeMode::Both, *replacedReturns, *valuesOnlyUsedInUnnecessaryReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, subdata);
+  handleGradientCallInst(TR, Builder2, &call, (DiffeGradientUtils*)gutils, /*topLevel*/mode == DerivativeMode::Both, *replacedReturns, valuesOnlyUsedInUnnecessaryReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, subdata);
 }
 
 // TODO note this doesn't go through [loop, unreachable], and we could get more performance by doing this
@@ -1605,6 +1604,64 @@ typename std::map<K, V>::iterator insert_or_assign(std::map<K, V>& map, K2 key, 
   return map.find(key);
 }
 
+void calculateUnusedValues(Function& oldFunc, SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, bool returnValue) {
+  std::deque<Instruction*> todo;
+  for(auto &BB : oldFunc) {
+    if (auto ri = dyn_cast<ReturnInst>(BB.getTerminator())) {
+      if (!returnValue) {
+        valuesOnlyUsedInUnnecessaryReturns.insert(ri);
+        if (auto val = dyn_cast_or_null<Instruction>(ri->getReturnValue())) {
+          todo.push_back(val);
+        }
+      }
+    }
+  }
+  while (!todo.empty()) {
+    auto inst = todo.front();
+    todo.pop_front();
+    if (valuesOnlyUsedInUnnecessaryReturns.count(inst)) continue;
+    // TODO this could be changed to only writing to memory, but for now (since not fixed everywhere), we are conservative
+    bool necessaryUse = inst->mayWriteToMemory();
+    //bool necessaryUse = inst->mayReadOrWriteMemory();
+    // TODO make this more robust to phi nodes
+    for(auto user_val : inst->users()) {
+      if (auto val = dyn_cast<Instruction>(user_val)) {
+        if (valuesOnlyUsedInUnnecessaryReturns.count(val)) continue;
+        bool bad = val->mayWriteToMemory();
+        //bool bad = val->mayReadOrWriteMemory();
+        for(auto user_dtx : val->users()) {
+          if (!isa<Instruction>(user_dtx)) continue;
+          auto dtx = cast<Instruction>(user_dtx);
+          if (valuesOnlyUsedInUnnecessaryReturns.count(dtx)) continue;
+          if (dtx == inst || dtx == val) continue;
+          bad = true;
+          break;
+        }
+        if (!bad) continue;
+
+        //llvm::errs() << " cannot use value: " << *inst << " because of user " << *user_val << "\n";
+        necessaryUse = true;
+        break;
+      }
+    }
+    if (!necessaryUse) {
+      valuesOnlyUsedInUnnecessaryReturns.insert(inst);
+      for(auto &operand : inst->operands()) {
+        if (auto usedinst = dyn_cast<Instruction>(operand.get())) {
+          todo.push_back(usedinst);
+        }
+      }
+    }
+  }
+
+  /*
+  llvm::errs() << "Prepping values for: " << oldFunc.getName() << " returnValue: " << returnValue << "\n";
+  for(auto v : valuesOnlyUsedInUnnecessaryReturns) {
+    llvm::errs() << "valuesOnlyUsedInUnnecessaryReturns: " << *v << "\n";
+  }
+  llvm::errs() << "</end>\n";
+  */
+}
 
 //! return structtype if recursive function
 const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &global_AA,
@@ -1734,6 +1791,8 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
   //  llvm::errs() << "isneeded: " << iter.second << " augmented can_modref_map: " << *iter.first << " fn: " << iter.first->getParent()->getParent()->getName() << "\n";
   //}
 
+  SmallPtrSet<Instruction*,4> valuesOnlyUsedInUnnecessaryReturns;
+  calculateUnusedValues(*gutils->oldFunc, valuesOnlyUsedInUnnecessaryReturns, returnUsed);
 
   insert_or_assign(cachedfunctions, tup, AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping, uncacheable_args_map, can_modref_map));
   cachedfinished[tup] = false;
@@ -1794,6 +1853,8 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
     }
   }
 
+  DerivativeMaker<AugmentedReturn*> maker(DerivativeMode::Forward, gutils, TR, getIndex, uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second, nullptr, nullptr, valuesOnlyUsedInUnnecessaryReturns, nullptr);
+
   for(BasicBlock* BB: gutils->originalBlocks) {
       auto term = BB->getTerminator();
       assert(term);
@@ -1817,8 +1878,6 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
       for (; I != E; I++) {
         Instruction* inst = gutils->getNewFromOriginal(&*I);
         assert(inst);
-
-        DerivativeMaker<AugmentedReturn*> maker(DerivativeMode::Forward, gutils, TR, getIndex, uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second, nullptr, nullptr, nullptr, nullptr);
         maker.visit(*inst);
      }
   }
@@ -2284,7 +2343,7 @@ static bool shouldAugmentCall(CallInst* op, const GradientUtils* gutils) {
   return modifyPrimal;
 }
 
-void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, std::function<unsigned(Instruction*, CacheType)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
+void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, std::function<unsigned(Instruction*, CacheType)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
     Function *called = op->getCalledFunction();
 
     if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -2328,7 +2387,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
     }
 
     if (gutils->isConstantInstruction(op)) {
-        if (op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
+        if (op->getNumUses() != 0 && !op->doesNotAccessMemory() && is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false)) {
             IRBuilder<> BuilderZ(op);
             gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self) );
         }
@@ -2373,7 +2432,8 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         }
       }
 
-      bool subretused = op->getNumUses() != 0;
+      bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(gutils->getOriginal(op)) == valuesOnlyUsedInUnnecessaryReturns.end() || is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false));
+      llvm::errs() << "aug subretused: " << subretused << " op: " << *op << "\n";
 
       //We check uses of the original function as that includes potential uses in the return,
       //  specifically consider case where the value returned isn't necessary but the subdifferentialreturn is
@@ -2391,7 +2451,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
       //llvm::errs() << " augmp op: " << *op << " modifyPrimal: " << modifyPrimal << " subretused: " << subretused << " subdifferentialreturn: " << subdifferentialreturn << " opuses: " << op->getNumUses() << " ipcount: " << gutils->invertedPointers.count(op) << " constantval: " << gutils->isConstantValue(op) << "\n";
 
       if (!modifyPrimal) {
-        if (hasNonReturnUse && !op->doesNotAccessMemory()) {
+        if (hasNonReturnUse && !op->doesNotAccessMemory() && is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false)) {
           gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self));
         }
         return;
@@ -2505,7 +2565,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
               gutils->invertedPointers.erase(op);
           }
 
-          if (hasNonReturnUse) {
+          if (hasNonReturnUse && is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false)) {
             gutils->addMalloc(BuilderZ, rv, getIndex(gutils->getOriginal(op), CacheType::Self) );
           }
           gutils->originalToNewFn[gutils->getOriginal(op)] = rv;
@@ -2825,7 +2885,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(orig) == valuesOnlyUsedInUnnecessaryReturns.end() || is_value_needed_in_reverse(TR, gutils, orig, topLevel));
 
   //llvm::errs() << "newFunc:" << *gutils->oldFunc << "\n";
-  //llvm::errs() << "subretused: " << subretused << " metaretused: " << metaretused << " op: " << *op << "\n";
+  llvm::errs() << "grad subretused: " << subretused << " op: " << *op << "\n";
 
   if (called && isAllocationFunction(*called, gutils->TLI)) {
     bool constval = gutils->isConstantValue(op);
@@ -2938,9 +2998,14 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   //llvm::errs() << " considering op: " << *op << " isConstantInstruction:" << gutils->isConstantInstruction(op) << " subretused: " << subretused << " !op->doesNotAccessMemory: " << !op->doesNotAccessMemory() << "\n";
   if (gutils->isConstantInstruction(op)) {
     if (!topLevel && subretused && !op->doesNotAccessMemory()) {
-      IRBuilder<> BuilderZ(op);
-      auto inst = gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
-      inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), "const")}));
+      if (is_value_needed_in_reverse(TR, gutils, orig, topLevel)) {
+        IRBuilder<> BuilderZ(op);
+        auto inst = gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
+        inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), "const")}));
+      } else {
+        op->replaceAllUsesWith(UndefValue::get(op->getType()));
+        gutils->erase(op);
+      }
     }
     return;
   }
@@ -2999,7 +3064,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
 
   Value* tape = nullptr;
   CallInst* augmentcall = nullptr;
-  Instruction* cachereplace = nullptr;
+  Value* cachereplace = nullptr;
 
   bool constval = gutils->isConstantValue(op);
 
@@ -3133,9 +3198,13 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
           tape = gutils->addMalloc(BuilderZ, tape, getIndex(orig, CacheType::Tape) );
 
           if (!topLevel && subretused) {
-            cachereplace = BuilderZ.CreatePHI(op->getType(), 1);
-            cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(orig, CacheType::Self) );
-            cachereplace->setMetadata("enzyme_activity_value", MDNode::get(cachereplace->getContext(), {MDString::get(cachereplace->getContext(), constval ? "const" : "active")}));
+            if (is_value_needed_in_reverse(TR, gutils, orig, topLevel)) {
+              cachereplace = BuilderZ.CreatePHI(op->getType(), 1);
+              cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(orig, CacheType::Self) );
+              cast<Instruction>(cachereplace)->setMetadata("enzyme_activity_value", MDNode::get(cachereplace->getContext(), {MDString::get(cachereplace->getContext(), constval ? "const" : "active")}));
+            } else {
+              cachereplace = UndefValue::get(op->getType());
+            }
           }
         }
 
@@ -3163,7 +3232,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
                     assert(newip->getType() == op->getType());
                     placeholder->replaceAllUsesWith(newip);
                 } else {
-                    newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(gutils->getOriginal(op), CacheType::Shadow) );
+                    newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(orig, CacheType::Shadow) );
                 }
 
                 gutils->invertedPointers[op] = newip;
@@ -3205,10 +3274,14 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
       gutils->erase(placeholder);
     }
     if (!topLevel && subretused && !op->doesNotAccessMemory()) {
-      assert(!replaceFunction);
-      cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
-      cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(orig, CacheType::Self) );
-      cachereplace->setMetadata("enzyme_activity_value", MDNode::get(cachereplace->getContext(), {MDString::get(cachereplace->getContext(), constval ? "const" : "active")}));
+      if (is_value_needed_in_reverse(TR, gutils, orig, topLevel)) {
+        assert(!replaceFunction);
+        cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
+        cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(orig, CacheType::Self) );
+        cast<Instruction>(cachereplace)->setMetadata("enzyme_activity_value", MDNode::get(cachereplace->getContext(), {MDString::get(cachereplace->getContext(), constval ? "const" : "active")}));
+      } else {
+        cachereplace = UndefValue::get(op->getType());
+      }
     }
   }
 
@@ -3412,12 +3485,14 @@ badfn:;
         assert(dcall == nullptr);
         dcall = cachereplace;
       }
+      assert(dcall);
 
-      if (Instruction* inst = dyn_cast<Instruction>(dcall))
+      if (Instruction* inst = dyn_cast<Instruction>(dcall)) {
         gutils->originalInstructions.insert(inst);
-      gutils->nonconstant.insert(dcall);
-      if (!gutils->isConstantValue(op))
-        gutils->nonconstant_values.insert(dcall);
+        gutils->nonconstant.insert(dcall);
+        if (!gutils->isConstantValue(op))
+          gutils->nonconstant_values.insert(dcall);
+      }
 
       if (!gutils->isConstantValue(op)) {
         if (!op->getType()->isFPOrFPVectorTy() && TR.query(orig)[{}].isPossiblePointer()) {
@@ -3431,8 +3506,8 @@ badfn:;
       op->replaceAllUsesWith(dcall);
       auto name = op->getName();
       op->setName("");
-      if (dcall) {
-        dcall->setName(name);
+      if (isa<Instruction>(dcall)) {
+        cast<Instruction>(dcall)->setName(name);
       }
     } else {
       for(auto inst_orig : valuesOnlyUsedInUnnecessaryReturns) {
@@ -3767,64 +3842,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   }
 
   SmallPtrSet<Instruction*,4> valuesOnlyUsedInUnnecessaryReturns;
-  {
+  calculateUnusedValues(*gutils->oldFunc, valuesOnlyUsedInUnnecessaryReturns, returnValue);
 
-  std::deque<Instruction*> todo;
-  for(auto &BB : *gutils->oldFunc) {
-    if (auto ri = dyn_cast<ReturnInst>(BB.getTerminator())) {
-      if (replacedReturns.find(ri) == replacedReturns.end()) {
-        valuesOnlyUsedInUnnecessaryReturns.insert(ri);
-        if (auto val = dyn_cast_or_null<Instruction>(ri->getReturnValue())) {
-          todo.push_back(val);
-        }
-      }
-    }
-  }
-  while (!todo.empty()) {
-    auto inst = todo.front();
-    todo.pop_front();
-    if (valuesOnlyUsedInUnnecessaryReturns.count(inst)) continue;
-    // TODO this could be changed to only writing to memory, but for now (since not fixed everywhere), we are conservative
-    bool necessaryUse = inst->mayWriteToMemory();
-    //bool necessaryUse = inst->mayReadOrWriteMemory();
-    // TODO make this more robust to phi nodes
-    for(auto user_val : inst->users()) {
-      if (auto val = dyn_cast<Instruction>(user_val)) {
-        if (valuesOnlyUsedInUnnecessaryReturns.count(val)) continue;
-        bool bad = val->mayWriteToMemory();
-        //bool bad = val->mayReadOrWriteMemory();
-        for(auto user_dtx : val->users()) {
-          if (!isa<Instruction>(user_dtx)) continue;
-          auto dtx = cast<Instruction>(user_dtx);
-          if (valuesOnlyUsedInUnnecessaryReturns.count(dtx)) continue;
-          if (dtx == inst || dtx == val) continue;
-          bad = true;
-          break;
-        }
-        if (!bad) continue;
-
-        necessaryUse = true;
-        break;
-      }
-    }
-    if (!necessaryUse) {
-      valuesOnlyUsedInUnnecessaryReturns.insert(inst);
-      for(auto &operand : inst->operands()) {
-        if (auto usedinst = dyn_cast<Instruction>(operand.get())) {
-          todo.push_back(usedinst);
-        }
-      }
-    }
-  }
-
-  /*
-  for(auto v : valuesOnlyUsedInUnnecessaryReturns) {
-    llvm::errs() << "valuesOnlyUsedInUnnecessaryReturns: " << *v << "\n";
-  }
-  */
-  }
-
-  DerivativeMaker<const AugmentedReturn*> maker( topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils, TR, getIndex, uncacheable_args_map, /*returnuses*/nullptr, augmenteddata, &fakeTBAA, &replacedReturns, &valuesOnlyUsedInUnnecessaryReturns, dretAlloca);
+  DerivativeMaker<const AugmentedReturn*> maker( topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils, TR, getIndex, uncacheable_args_map, /*returnuses*/nullptr, augmenteddata, &fakeTBAA, &replacedReturns, valuesOnlyUsedInUnnecessaryReturns, dretAlloca);
 
   for(BasicBlock* BB: gutils->originalBlocks) {
     // Don't create derivatives for code that results in termination

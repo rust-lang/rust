@@ -51,33 +51,30 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[augsubf:.+]] = call { { {}, i1, {}, i1 } } @augmented_subf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[augsubf:.+]] = call { { {}, {} } } @augmented_subf(double* %x, double* %"x'")
 ; CHECK-NEXT:   store double 2.000000e+00, double* %x, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:   %[[augcache:.+]] = extractvalue { { {}, i1, {}, i1 } } %[[augsubf]], 0
-; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, i1, {}, i1 } %[[augcache]])
+; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, {} } undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
+; TODO: there is no need to return the i1 here -- update the subretused in handleAugmented
+;    to be more aggresssive
 ; CHECK: define internal {{(dso_local )?}}{ {}, i1 } @augmented_othermetasubf(double* nocapture %x, double* %"x'") 
 
 ; CHECK: define internal {{(dso_local )?}}{ {}, i1 } @augmented_metasubf(double* nocapture %x, double* %"x'") 
 
-; CHECK: define internal {{(dso_local )?}}{ { {}, i1, {}, i1 } } @augmented_subf(double* nocapture %x, double* %"x'") 
+; CHECK: define internal {{(dso_local )?}}{ { {}, {} } } @augmented_subf(double* nocapture %x, double* %"x'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[loadx:.+]] = load double, double* %x, align 8
 ; CHECK-NEXT:   %mul = fmul fast double %0, 2.000000e+00
 ; CHECK-NEXT:   store double %mul, double* %x, align 8
 ; CHECK-NEXT:   %[[metasubf:.+]] = call { {}, i1 } @augmented_metasubf(double* %x, double* %"x'")
-; CHECK-NEXT:   %[[metasubfret:.+]] = extractvalue { {}, i1 } %[[metasubf]], 1
 ; CHECK-NEXT:   %[[othermetasubf:.+]] = call { {}, i1 } @augmented_othermetasubf(double* %x, double* %"x'")
-; CHECK-NEXT:   %[[msf:.+]] = extractvalue { {}, i1 } %[[othermetasubf:.+]], 1
-; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { {}, i1, {}, i1 } } undef, i1 %[[msf]], 0, 1
-; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { {}, i1, {}, i1 } } %.fca.0.1.insert, i1 %[[metasubfret]], 0, 3
-; CHECK-NEXT:   ret { { {}, i1, {}, i1 } } %.fca.0.3.insert
+; CHECK-NEXT:   ret { { {}, {} } } undef
 ; CHECK-NEXT: }
 
-; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* %"x'", { {}, i1, {}, i1 } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{} @diffesubf(double* nocapture %x, double* %"x'", { {}, {} } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call {} @diffeothermetasubf(double* %x, double* %"x'", {} undef)
 ; CHECK-NEXT:   %1 = call {} @diffemetasubf(double* %x, double* %"x'", {} undef)

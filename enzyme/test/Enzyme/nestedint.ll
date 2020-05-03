@@ -817,8 +817,8 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   %m_data.i17 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 0
 ; CHECK-NEXT:   %"a9'ipl" = load double*, double** %[[m_datai17ipge:.+]], align 8
 ; CHECK-NEXT:   %a9 = load double*, double** %m_data.i17, align 8, !tbaa !9
-; CHECK-NEXT:   %subcall_augmented = call { { { {} }, i64 }, i64 } @augmented_sub(double* %a9, double* %"a9'ipl", i64 %a8) #9
-; CHECK-NEXT:   %subcall = extractvalue { { { {} }, i64 }, i64 } %subcall_augmented, 1
+; CHECK-NEXT:   %subcall_augmented = call { { { {} } }, i64 } @augmented_sub(double* %a9, double* %"a9'ipl", i64 %a8) #9
+; CHECK-NEXT:   %subcall = extractvalue { { { {} } }, i64 } %subcall_augmented, 1
 ; CHECK-NEXT:   %mvcond = icmp slt i64 %subcall, 0
 ; CHECK-NEXT:   br i1 %mvcond, label %one, label %invertentry
 
@@ -832,8 +832,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   %a9_unwrap = load double*, double** %m_data.i17, align 8, !tbaa !9
 ; CHECK-NEXT:   %a8_unwrap = load i64, i64* %m_rows.i19, align 8, !tbaa !2
 ; TODO there should be an a9'ipl unwrap here too
-; CHECK-NEXT:   %[[ev:.+]] = extractvalue { { { {} }, i64 }, i64 } %subcall_augmented, 0
-; CHECK-NEXT:   %[[unused:.+]] = call {} @diffesub(double* %a9_unwrap, double* %"a9'ipl", i64 %a8_unwrap, { { {} }, i64 } %[[ev]]) #9
+; CHECK-NEXT:   %[[unused:.+]] = call {} @diffesub(double* %a9_unwrap, double* %"a9'ipl", i64 %a8_unwrap, { { {} } } undef) #9
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
@@ -865,7 +864,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   ret { { {} }, i64 } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { { {} }, i64 }, i64 } @augmented_sub(double*, double* %"'", i64 %subsize)
+; CHECK: define internal { { { {} } }, i64 } @augmented_sub(double*, double* %"'", i64 %subsize)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %tobool = icmp eq double* %0, null
 ; CHECK-NEXT:   br i1 %tobool, label %if.end, label %return
@@ -876,14 +875,12 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   br label %return
 
 ; CHECK: return:                                           ; preds = %if.end, %entry
-; CHECK-NEXT:   %.sroa.0.0 = phi i64 [ %metacall, %if.end ], [ undef, %entry ]
 ; CHECK-NEXT:   %subret = phi i64 [ %metacall, %if.end ], [ -1, %entry ]
-; CHECK-NEXT:   %[[tapeinsert:.+]] = insertvalue { { { {} }, i64 }, i64 } undef, i64 %.sroa.0.0, 0, 1
-; CHECK-NEXT:   %[[retinsert:.+]] = insertvalue { { { {} }, i64 }, i64 } %[[tapeinsert]], i64 %subret, 1
-; CHECK-NEXT:   ret { { { {} }, i64 }, i64 } %[[retinsert]]
+; CHECK-NEXT:   %[[retinsert:.+]] = insertvalue { { { {} } }, i64 } undef, i64 %subret, 1
+; CHECK-NEXT:   ret { { { {} } }, i64 } %[[retinsert]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal {} @diffesub(double*, double* %"'", i64 %subsize, { { {} }, i64 } %tapeArg)
+; CHECK: define internal {} @diffesub(double*, double* %"'", i64 %subsize, { { {} } } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %tobool = icmp eq double* %0, null
 ; CHECK-NEXT:   br i1 %tobool, label %if.end, label %invertentry
