@@ -217,6 +217,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 assert_eq!(self.push_unsafe_count, 0);
                 match self.unpushed_unsafe {
                     Safety::Safe => {}
+                    // no longer treat `unsafe fn`s as `unsafe` contexts (see RFC #2585)
+                    Safety::FnUnsafe if self.hir.tcx().features().unsafe_block_in_unsafe_fn => {}
                     _ => return,
                 }
                 self.unpushed_unsafe = Safety::ExplicitUnsafe(hir_id);

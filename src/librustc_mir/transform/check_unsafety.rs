@@ -9,7 +9,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::lint::builtin::{SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
+use rustc_session::lint::builtin::{SAFE_PACKED_BORROWS, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_span::symbol::{sym, Symbol};
 
 use std::ops::Bound;
@@ -351,6 +351,9 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                 violation.kind = UnsafetyViolationKind::General;
                             }
                         }
+                        UnsafetyViolationKind::UnsafeFn(_) => {
+                            bug!("`UnsafetyViolationKind::UnsafeFn` in an `Safe` context")
+                        }
                     }
                     if !self.violations.contains(&violation) {
                         self.violations.push(violation)
@@ -358,7 +361,25 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 }
                 false
             }
-            // `unsafe` function bodies allow unsafe without additional unsafe blocks
+            // With the RFC 2585, no longer allow `unsafe` operations in `unsafe fn`s
+            Safety::FnUnsafe if self.tcx.features().unsafe_block_in_unsafe_fn => {
+                for violation in violations {
+                    let mut violation = *violation;
+                    let lint_root = self.body.source_scopes[self.source_info.scope]
+                        .local_data
+                        .as_ref()
+                        .assert_crate_local()
+                        .lint_root;
+
+                    // FIXME(LeSeulArtichaut): what to do with `UnsafetyViolationKind::BorrowPacked`?
+                    violation.kind = UnsafetyViolationKind::UnsafeFn(lint_root);
+                    if !self.violations.contains(&violation) {
+                        self.violations.push(violation)
+                    }
+                }
+                false
+            }
+            // `unsafe` function bodies allow unsafe without additional unsafe blocks (before RFC 2585)
             Safety::BuiltinUnsafe | Safety::FnUnsafe => true,
             Safety::ExplicitUnsafe(hir_id) => {
                 // mark unsafe block as used if there are any unsafe operations inside
@@ -383,6 +404,9 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                     self.violations.push(violation)
                                 }
                             }
+                            UnsafetyViolationKind::UnsafeFn(_) => bug!(
+                                "`UnsafetyViolationKind::UnsafeFn` in an `ExplicitUnsafe` context"
+                            ),
                         }
                     }
                 }
@@ -575,9 +599,12 @@ fn is_enclosed(
             kind: hir::ItemKind::Fn(ref sig, _, _), ..
         })) = tcx.hir().find(parent_id)
         {
-            match sig.header.unsafety {
-                hir::Unsafety::Unsafe => Some(("fn".to_string(), parent_id)),
-                hir::Unsafety::Normal => None,
+            if sig.header.unsafety == hir::Unsafety::Unsafe
+                && !tcx.features().unsafe_block_in_unsafe_fn
+            {
+                Some(("fn".to_string(), parent_id))
+            } else {
+                None
             }
         } else {
             is_enclosed(tcx, used_unsafe, parent_id)
@@ -630,16 +657,20 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
     let UnsafetyCheckResult { violations, unsafe_blocks } =
         tcx.unsafety_check_result(def_id.expect_local());
 
+    let or_block_msg = if tcx.features().unsafe_block_in_unsafe_fn { "" } else { " or block" };
+
     for &UnsafetyViolation { source_info, description, details, kind } in violations.iter() {
         // Report an error.
         match kind {
             UnsafetyViolationKind::GeneralAndConstFn | UnsafetyViolationKind::General => {
+                // once
                 struct_span_err!(
                     tcx.sess,
                     source_info.span,
                     E0133,
-                    "{} is unsafe and requires unsafe function or block",
-                    description
+                    "{} is unsafe and requires unsafe function{}",
+                    description,
+                    or_block_msg,
                 )
                 .span_label(source_info.span, &*description.as_str())
                 .note(&details.as_str())
@@ -655,8 +686,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                         source_info.span,
                         |lint| {
                             lint.build(&format!(
-                                "{} is unsafe and requires unsafe function or block (error E0133)",
-                                description
+                                "{} is unsafe and requires unsafe function{} (error E0133)",
+                                description, or_block_msg,
                             ))
                             .note(&details.as_str())
                             .emit()
@@ -664,6 +695,20 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                     )
                 }
             }
+            UnsafetyViolationKind::UnsafeFn(lint_hir_id) => tcx.struct_span_lint_hir(
+                UNSAFE_OP_IN_UNSAFE_FN,
+                lint_hir_id,
+                source_info.span,
+                |lint| {
+                    lint.build(&format!(
+                        "{} is unsafe and requires unsafe block (error E0133)",
+                        description
+                    ))
+                    .span_label(source_info.span, &*description.as_str())
+                    .note(&details.as_str())
+                    .emit();
+                },
+            ),
         }
     }
 

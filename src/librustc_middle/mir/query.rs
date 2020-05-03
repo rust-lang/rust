@@ -15,10 +15,17 @@ use super::{Field, SourceInfo};
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UnsafetyViolationKind {
+    /// Only permitted in regular `fn`s, prohibitted in `const fn`s.
     General,
     /// Permitted both in `const fn`s and regular `fn`s.
     GeneralAndConstFn,
+    /// Borrow of packed field.
+    /// Has to be handled as a lint for backwards compatibility.
     BorrowPacked(hir::HirId),
+    /// Unsafe operation in an `unsafe fn` but outside an `unsafe` block.
+    /// Has to be handled as a lint for backwards compatibility.
+    /// Should stay gated under `#![feature(unsafe_block_in_unsafe_fn)]`.
+    UnsafeFn(hir::HirId),
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
