@@ -93,7 +93,7 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
            proper set-in-stone AST with side-tables. It happens as follows:
             - If the macro produces tokens (e.g. a proc macro), we parse into
               an AST, which may produce parse errors.
-            - During expansion, we create `SyntaxContext`s (heirarchy 2). (See
+            - During expansion, we create `SyntaxContext`s (hierarchy 2). (See
               [the "Hygiene" section below][hybelow])
             - These three passes happen one after another on every AST fragment
               freshly expanded from a macro:
@@ -116,7 +116,7 @@ iteration, this represents a compile error.  Here is the [algorithm][original]:
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [`DefCollector`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/def_collector/struct.DefCollector.html
 [`BuildReducedGraphVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/build_reduced_graph/struct.BuildReducedGraphVisitor.html
-[hybelow]: #hygiene-and-heirarchies
+[hybelow]: #hygiene-and-hierarchies
 [tt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/enum.TokenTree.html
 [`TokenStream`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/tokenstream/struct.TokenStream.html
 [inv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/struct.Invocation.html
@@ -165,7 +165,7 @@ Here are some other notable data structures involved in expansion and integratio
 [`AstFragmentKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/expand/enum.AstFragmentKind.html
 
 
-## Hygiene and Heirarchies
+## Hygiene and Hierarchies
 
 If you have ever used C/C++ preprocessor macros, you know that there are some
 annoying and hard-to-debug gotchas! For example, consider the following C code:
@@ -228,26 +228,26 @@ This struct also has hygiene information attached to it, as we will see later.
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 
 Because macros invocations and definitions can be nested, the syntax context of
-a node must be a heirarchy. For example, if we expand a macro and there is
+a node must be a hierarchy. For example, if we expand a macro and there is
 another macro invocation or definition in the generated output, then the syntax
 context should reflex the nesting.
 
 However, it turns out that there are actually a few types of context we may
-want to track for different purposes. Thus, there not just one but _three_
-expansion heirarchies that together comprise the hygiene information for a
+want to track for different purposes. Thus, there are not just one but _three_
+expansion hierarchies that together comprise the hygiene information for a
 crate.
 
-All of these heirarchies need some sort of "macro ID" to identify individual
+All of these hierarchies need some sort of "macro ID" to identify individual
 elements in the chain of expansions. This ID is [`ExpnId`].  All macros receive
 an integer ID, assigned continuously starting from 0 as we discover new macro
-calls.  All heirarchies start at [`ExpnId::root()`][rootid], which is its own
+calls.  All hierarchies start at [`ExpnId::root()`][rootid], which is its own
 parent.
 
 [`rustc_span::hygiene`][hy] contains all of the hygiene-related algorithms
 (with the exception of some hacks in [`Resolver::resolve_crate_root`][hacks])
 and structures related to hygiene and expansion that are kept in global data.
 
-The actual heirarchies are stored in [`HygieneData`][hd]. This is a global
+The actual hierarchies are stored in [`HygieneData`][hd]. This is a global
 piece of data containing hygiene and expansion info that can be accessed from
 any [`Ident`] without any context.
 
@@ -259,15 +259,15 @@ any [`Ident`] without any context.
 [hacks]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_resolve/struct.Resolver.html#method.resolve_crate_root
 [`Ident`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
 
-### The Expansion Order Heirarchy
+### The Expansion Order Hierarchy
 
-The first heirarchy tracks the order of expansions, i.e., when a macro
+The first hierarchy tracks the order of expansions, i.e., when a macro
 invocation is in the output of another macro.
 
-Here, the children in the heirarchy will be the "innermost" tokens.  The
+Here, the children in the hierarchy will be the "innermost" tokens.  The
 [`ExpnData`] struct itself contains a subset of properties from both macro
 definition and macro call available through global data.
-[`ExpnData::parent`][edp] tracks the child -> parent link in this heirarchy.
+[`ExpnData::parent`][edp] tracks the child -> parent link in this hierarchy.
 
 [`ExpnData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnData.html
 [edp]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnData.html#structfield.parent
@@ -280,7 +280,7 @@ macro_rules! foo { () => { println!(); } }
 fn main() { foo!(); }
 ```
 
-In this code, the AST nodes that are finally generated would have heirarchy:
+In this code, the AST nodes that are finally generated would have hierarchy:
 
 ```
 root
@@ -288,11 +288,11 @@ root
         expn_id_println
 ```
 
-### The Macro Definition Heirarchy
+### The Macro Definition Hierarchy
 
-The second heirarchy tracks the order of macro definitions, i.e., when we are
+The second hierarchy tracks the order of macro definitions, i.e., when we are
 expanding one macro another macro definition is revealed in its output.  This
-one is a bit tricky and more complex than the other two heirarchies.
+one is a bit tricky and more complex than the other two hierarchies.
 
 [`SyntaxContext`][sc] represents a whole chain in this hierarchy via an ID.
 [`SyntaxContextData`][scd] contains data associated with the given
@@ -315,7 +315,7 @@ a code location and `SyntaxContext`. Likewise, an [`Ident`] is just an interned
 
 For built-in macros, we use the context:
 `SyntaxContext::empty().apply_mark(expn_id)`, and such macros are considered to
-be defined at the heirarchy root. We do the same for proc-macros because we
+be defined at the hierarchy root. We do the same for proc-macros because we
 haven't implemented cross-crate hygiene yet.
 
 If the token had context `X` before being produced by a macro then after being
@@ -360,7 +360,7 @@ m!(foo);
 After all expansions, `foo` has context `ROOT -> id(n)` and `bar` has context
 `ROOT -> id(m) -> id(n)`.
 
-Finally, one last thing to mention is that currently, this heirarchy is subject
+Finally, one last thing to mention is that currently, this hierarchy is subject
 to the ["context transplantation hack"][hack]. Basically, the more modern (and
 experimental) `macro` macros have stronger hygiene than the older MBE system,
 but this can result in weird interactions between the two. The hack is intended
@@ -368,11 +368,11 @@ to make things "just work" for now.
 
 [hack]: https://github.com/rust-lang/rust/pull/51762#issuecomment-401400732
 
-### The Call-site Heirarchy
+### The Call-site Hierarchy
 
-The third and final heirarchy tracks the location of macro invocations.
+The third and final hierarchy tracks the location of macro invocations.
 
-In this heirarchy [`ExpnData::call_site`][callsite] is the child -> parent link.
+In this hierarchy [`ExpnData::call_site`][callsite] is the child -> parent link.
 
 [callsite]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/hygiene/struct.ExpnData.html#structfield.call_site
 
@@ -385,8 +385,8 @@ macro foo($i: ident) { $i }
 foo!(bar!(baz));
 ```
 
-For the `baz` AST node in the final output, the first heirarchy is `ROOT ->
-id(foo) -> id(bar) -> baz`, while the third heirarchy is `ROOT -> baz`.
+For the `baz` AST node in the final output, the first hierarchy is `ROOT ->
+id(foo) -> id(bar) -> baz`, while the third hierarchy is `ROOT -> baz`.
 
 ### Macro Backtraces
 
