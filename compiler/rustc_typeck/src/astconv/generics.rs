@@ -27,9 +27,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         help: Option<&str>,
     ) {
         let sess = tcx.sess;
+        let arg_span = tcx.hir().span(arg.id());
         let mut err = struct_span_err!(
             sess,
-            arg.span(),
+            arg_span,
             E0747,
             "{} provided when a {} was expected",
             arg.descr(),
@@ -49,8 +50,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 GenericParamDefKind::Const { .. },
             ) => {
                 let suggestions = vec![
-                    (arg.span().shrink_to_lo(), String::from("{ ")),
-                    (arg.span().shrink_to_hi(), String::from(" }")),
+                    (arg_span.shrink_to_lo(), String::from("{ ")),
+                    (arg_span.shrink_to_hi(), String::from(" }")),
                 ];
                 err.multipart_suggestion(
                     "if this generic argument was intended as a const parameter, \
@@ -66,7 +67,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id));
                 if let Ok(snippet) = snippet {
                     err.span_suggestion(
-                        arg.span(),
+                        arg_span,
                         "array type provided where a `usize` was expected, try",
                         format!("{{ {} }}", snippet),
                         Applicability::MaybeIncorrect,
@@ -450,7 +451,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let (spans, labels): (Vec<Span>, Vec<String>) = args.args
                     [offset + permitted..offset + provided]
                     .iter()
-                    .map(|arg| (arg.span(), format!("unexpected {} argument", arg.short_descr())))
+                    .map(|arg| {
+                        (
+                            tcx.hir().span(arg.id()),
+                            format!("unexpected {} argument", arg.short_descr()),
+                        )
+                    })
                     .unzip();
                 unexpected_spans.extend(spans.clone());
                 (spans, labels)
@@ -553,7 +559,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .args
                 .iter()
                 .filter_map(|arg| match arg {
-                    GenericArg::Type(_) | GenericArg::Const(_) => Some(arg.span()),
+                    GenericArg::Type(_) | GenericArg::Const(_) => Some(tcx.hir().span(arg.id())),
                     _ => None,
                 })
                 .collect::<Vec<_>>();
@@ -599,7 +605,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let msg = "cannot specify lifetime arguments explicitly \
                        if late bound lifetime parameters are present";
             let note = "the late bound lifetime parameter is introduced here";
-            let span = args.args[0].span();
+            let span = tcx.hir().span(args.args[0].id());
             if position == GenericArgPosition::Value
                 && arg_counts.lifetimes != param_counts.lifetimes
             {

@@ -129,10 +129,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .and_then(|args| args.args.iter().last())
                         // Account for `foo.bar::<T>()`.
                         .map(|arg| {
+                            let arg_span = tcx.hir().span(arg.id());
                             // Skip the closing `>`.
                             tcx.sess
                                 .source_map()
-                                .next_point(tcx.sess.source_map().next_point(arg.span()))
+                                .next_point(tcx.sess.source_map().next_point(arg_span))
                         })
                         .unwrap_or(*span),
                     &args[1..], // Skip the receiver.

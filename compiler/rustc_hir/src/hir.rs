@@ -256,14 +256,6 @@ pub enum GenericArg<'hir> {
 }
 
 impl GenericArg<'_> {
-    pub fn span(&self) -> Span {
-        match self {
-            GenericArg::Lifetime(l) => l.span,
-            GenericArg::Type(t) => t.span,
-            GenericArg::Const(c) => c.span,
-        }
-    }
-
     pub fn id(&self) -> HirId {
         match self {
             GenericArg::Lifetime(l) => l.hir_id,

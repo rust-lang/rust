@@ -638,7 +638,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     // doesn't happen, even in erroneous
                     // programs. Else we should use delay-span-bug.
                     span_bug!(
-                        hir_arg.span(),
+                        self.infcx.tcx.hir().span(hir_arg.id()),
                         "unmatched subst and hir arg: found {:?} vs {:?}",
                         kind,
                         hir_arg,
