@@ -426,7 +426,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             return;
                         }
 
-                        // Replace `use foo::self;` with `use foo;`
+                        // Replace `use foo::{ self };` with `use foo;`
                         source = module_path.pop().unwrap();
                         if rename.is_none() {
                             ident = source.ident;
@@ -454,6 +454,14 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                                 span_with_rename,
                             },
                         );
+
+                        // Error recovery: replace `use foo::self;` with `use foo;`
+                        if let Some(parent) = module_path.pop() {
+                            source = parent;
+                            if rename.is_none() {
+                                ident = source.ident;
+                            }
+                        }
                     }
 
                     // Disallow `use $crate;`
