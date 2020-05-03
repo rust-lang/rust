@@ -667,6 +667,10 @@ fn apply_document_changes(
     mut line_index: Cow<'_, LineIndex>,
     content_changes: Vec<TextDocumentContentChangeEvent>,
 ) {
+    // Remove when https://github.com/rust-analyzer/rust-analyzer/issues/4263 is fixed.
+    let backup_text = old_text.clone();
+    let backup_changes = content_changes.clone();
+
     // The changes we got must be applied sequentially, but can cross lines so we
     // have to keep our line index updated.
     // Some clients (e.g. Code) sort the ranges in reverse. As an optimization, we
@@ -694,7 +698,19 @@ fn apply_document_changes(
                 }
                 index_valid = IndexValid::UpToLine(range.start.line);
                 let range = range.conv_with(&line_index);
-                old_text.replace_range(Range::<usize>::from(range), &change.text);
+                let mut text = old_text.to_owned();
+                match std::panic::catch_unwind(move || {
+                    text.replace_range(Range::<usize>::from(range), &change.text);
+                    text
+                }) {
+                    Ok(t) => *old_text = t,
+                    Err(e) => {
+                        eprintln!("Bug in incremental text synchronization. Please report the following output on https://github.com/rust-analyzer/rust-analyzer/issues/4263");
+                        dbg!(&backup_text);
+                        dbg!(&backup_changes);
+                        std::panic::resume_unwind(e);
+                    }
+                }
             }
             None => {
                 *old_text = change.text;
