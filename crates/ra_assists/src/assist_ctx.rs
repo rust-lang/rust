@@ -105,7 +105,7 @@ impl<'a> AssistCtx<'a> {
         let mut info = AssistInfo::new(label);
         if self.should_compute_edit {
             let action = {
-                let mut edit = ActionBuilder::default();
+                let mut edit = ActionBuilder::new(&self);
                 f(&mut edit);
                 edit.build()
             };
@@ -130,6 +130,12 @@ impl<'a> AssistCtx<'a> {
     pub(crate) fn find_node_at_offset<N: AstNode>(&self) -> Option<N> {
         find_node_at_offset(self.source_file.syntax(), self.frange.range.start())
     }
+
+    pub(crate) fn find_node_at_offset_with_descend<N: AstNode>(&self) -> Option<N> {
+        self.sema
+            .find_node_at_offset_with_descend(self.source_file.syntax(), self.frange.range.start())
+    }
+
     pub(crate) fn covering_element(&self) -> SyntaxElement {
         find_covering_element(self.source_file.syntax(), self.frange.range)
     }
@@ -156,7 +162,7 @@ impl<'a> AssistGroup<'a> {
         let mut info = AssistInfo::new(label).with_group(GroupLabel(self.group_name.clone()));
         if self.ctx.should_compute_edit {
             let action = {
-                let mut edit = ActionBuilder::default();
+                let mut edit = ActionBuilder::new(&self.ctx);
                 f(&mut edit);
                 edit.build()
             };
@@ -175,15 +181,29 @@ impl<'a> AssistGroup<'a> {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct ActionBuilder {
+pub(crate) struct ActionBuilder<'a, 'b> {
     edit: TextEditBuilder,
     cursor_position: Option<TextSize>,
     target: Option<TextRange>,
     file: AssistFile,
+    ctx: &'a AssistCtx<'b>,
 }
 
-impl ActionBuilder {
+impl<'a, 'b> ActionBuilder<'a, 'b> {
+    fn new(ctx: &'a AssistCtx<'b>) -> Self {
+        Self {
+            edit: TextEditBuilder::default(),
+            cursor_position: None,
+            target: None,
+            file: AssistFile::default(),
+            ctx,
+        }
+    }
+
+    pub(crate) fn ctx(&self) -> &AssistCtx<'b> {
+        &self.ctx
+    }
+
     /// Replaces specified `range` of text with a given string.
     pub(crate) fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())

@@ -45,15 +45,12 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
+    let range = ctx.sema.original_range(&auto_import_assets.syntax_under_caret).range;
     let mut group = ctx.add_assist_group(auto_import_assets.get_import_group_message());
     for import in proposed_imports {
         group.add_assist(AssistId("auto_import"), format!("Import `{}`", &import), |edit| {
-            edit.target(auto_import_assets.syntax_under_caret.text_range());
-            insert_use_statement(
-                &auto_import_assets.syntax_under_caret,
-                &import,
-                edit.text_edit_builder(),
-            );
+            edit.target(range);
+            insert_use_statement(&auto_import_assets.syntax_under_caret, &import, edit);
         });
     }
     group.finish()
@@ -68,10 +65,10 @@ struct AutoImportAssets {
 
 impl AutoImportAssets {
     fn new(ctx: &AssistCtx) -> Option<Self> {
-        if let Some(path_under_caret) = ctx.find_node_at_offset::<ast::Path>() {
+        if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
             Self::for_regular_path(path_under_caret, &ctx)
         } else {
-            Self::for_method_call(ctx.find_node_at_offset()?, &ctx)
+            Self::for_method_call(ctx.find_node_at_offset_with_descend()?, &ctx)
         }
     }
 
@@ -297,6 +294,35 @@ mod tests {
             <|>use PubMod::PubStruct;
 
             PubStruct
+
+            pub mod PubMod {
+                pub struct PubStruct;
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn applicable_when_found_an_import_in_macros() {
+        check_assist(
+            auto_import,
+            r"
+            macro_rules! foo {
+                ($i:ident) => { fn foo(a: $i) {} }
+            }
+            foo!(Pub<|>Struct);
+
+            pub mod PubMod {
+                pub struct PubStruct;
+            }
+            ",
+            r"
+            use PubMod::PubStruct;
+
+            macro_rules! foo {
+                ($i:ident) => { fn foo(a: $i) {} }
+            }
+            foo!(Pub<|>Struct);
 
             pub mod PubMod {
                 pub struct PubStruct;

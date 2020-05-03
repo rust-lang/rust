@@ -11,7 +11,7 @@ use ra_syntax::{
 };
 use rustc_hash::FxHashSet;
 
-pub use insert_use::insert_use_statement;
+pub(crate) use insert_use::insert_use_statement;
 
 pub fn get_missing_impl_items(
     sema: &Semantics<RootDatabase>,
