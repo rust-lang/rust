@@ -133,6 +133,7 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         // the def in call only to the input from the success
         // path and not the unwind path. -nmatsakis
         PlaceContext::MutatingUse(MutatingUseContext::Call) |
+        PlaceContext::MutatingUse(MutatingUseContext::Yield) |
 
         // Storage live and storage dead aren't proper defines, but we can ignore
         // values that come before them.

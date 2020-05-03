@@ -50,12 +50,13 @@
 //! Otherwise it drops all the values in scope at the last suspension point.
 
 use crate::dataflow::{self, Analysis};
-use crate::dataflow::{MaybeBorrowedLocals, MaybeRequiresStorage, MaybeStorageLive};
+use crate::dataflow::{
+    MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
+};
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::transform::simplify;
 use crate::transform::{MirPass, MirSource};
 use crate::util::dump_mir;
-use crate::util::liveness;
 use crate::util::storage;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -195,7 +196,7 @@ struct SuspensionPoint<'tcx> {
     /// Which block to jump to if the generator is dropped in this state.
     drop: Option<BasicBlock>,
     /// Set of locals that have live storage while at this suspension point.
-    storage_liveness: liveness::LiveVarSet,
+    storage_liveness: BitSet<Local>,
 }
 
 struct TransformVisitor<'tcx> {
@@ -211,7 +212,7 @@ struct TransformVisitor<'tcx> {
     remap: FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
-    storage_liveness: IndexVec<BasicBlock, Option<liveness::LiveVarSet>>,
+    storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
 
     // A list of suspension points, generated during the transform
     suspension_points: Vec<SuspensionPoint<'tcx>>,
@@ -418,7 +419,7 @@ struct LivenessInfo {
     /// GeneratorSavedLocal is indexed in terms of the elements in this set;
     /// i.e. GeneratorSavedLocal::new(1) corresponds to the second local
     /// included in this set.
-    live_locals: liveness::LiveVarSet,
+    live_locals: BitSet<Local>,
 
     /// The set of saved locals live at each suspension point.
     live_locals_at_suspension_points: Vec<BitSet<GeneratorSavedLocal>>,
@@ -430,7 +431,7 @@ struct LivenessInfo {
 
     /// For every suspending block, the locals which are storage-live across
     /// that suspension point.
-    storage_liveness: IndexVec<BasicBlock, Option<liveness::LiveVarSet>>,
+    storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
 }
 
 fn locals_live_across_suspend_points(
@@ -467,16 +468,21 @@ fn locals_live_across_suspend_points(
         dataflow::ResultsCursor::new(body_ref, &requires_storage_results);
 
     // Calculate the liveness of MIR locals ignoring borrows.
-    let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
-    let mut liveness = liveness::liveness_of_locals(body);
-    liveness::dump_mir(tcx, "generator_liveness", source, body_ref, &liveness);
+    let mut liveness = MaybeLiveLocals
+        .into_engine(tcx, body_ref, def_id)
+        .iterate_to_fixpoint()
+        .into_results_cursor(body_ref);
 
     let mut storage_liveness_map = IndexVec::from_elem(None, body.basic_blocks());
     let mut live_locals_at_suspension_points = Vec::new();
+    let mut live_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
 
     for (block, data) in body.basic_blocks().iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
             let loc = Location { block, statement_index: data.statements.len() };
+
+            liveness.seek_to_block_end(block);
+            let mut live_locals = liveness.get().clone();
 
             if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
@@ -489,59 +495,51 @@ fn locals_live_across_suspend_points(
                 // If a borrow is converted to a raw reference, we must also assume that it lives
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
-                borrowed_locals_cursor.seek_before(loc);
-                liveness.outs[block].union(borrowed_locals_cursor.get());
+                borrowed_locals_cursor.seek_before_primary_effect(loc);
+                live_locals.union(borrowed_locals_cursor.get());
             }
-
-            storage_live.seek_before(loc);
-            let mut storage_liveness = storage_live.get().clone();
-
-            // Later passes handle the generator's `self` argument separately.
-            storage_liveness.remove(SELF_ARG);
 
             // Store the storage liveness for later use so we can restore the state
             // after a suspension point
-            storage_liveness_map[block] = Some(storage_liveness);
-
-            requires_storage_cursor.seek_before(loc);
-            let storage_required = requires_storage_cursor.get().clone();
+            storage_live.seek_before_primary_effect(loc);
+            storage_liveness_map[block] = Some(storage_live.get().clone());
 
             // Locals live are live at this point only if they are used across
             // suspension points (the `liveness` variable)
             // and their storage is required (the `storage_required` variable)
-            let mut live_locals_here = storage_required;
-            live_locals_here.intersect(&liveness.outs[block]);
+            requires_storage_cursor.seek_before_primary_effect(loc);
+            live_locals.intersect(requires_storage_cursor.get());
 
             // The generator argument is ignored.
-            live_locals_here.remove(SELF_ARG);
+            live_locals.remove(SELF_ARG);
 
-            debug!("loc = {:?}, live_locals_here = {:?}", loc, live_locals_here);
+            debug!("loc = {:?}, live_locals = {:?}", loc, live_locals);
 
             // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
-            live_locals.union(&live_locals_here);
+            live_locals_at_any_suspension_point.union(&live_locals);
 
-            live_locals_at_suspension_points.push(live_locals_here);
+            live_locals_at_suspension_points.push(live_locals);
         }
     }
-    debug!("live_locals = {:?}", live_locals);
+    debug!("live_locals_anywhere = {:?}", live_locals_at_any_suspension_point);
 
     // Renumber our liveness_map bitsets to include only the locals we are
     // saving.
     let live_locals_at_suspension_points = live_locals_at_suspension_points
         .iter()
-        .map(|live_here| renumber_bitset(&live_here, &live_locals))
+        .map(|live_here| renumber_bitset(&live_here, &live_locals_at_any_suspension_point))
         .collect();
 
     let storage_conflicts = compute_storage_conflicts(
         body_ref,
-        &live_locals,
+        &live_locals_at_any_suspension_point,
         always_live_locals.clone(),
         requires_storage_results,
     );
 
     LivenessInfo {
-        live_locals,
+        live_locals: live_locals_at_any_suspension_point,
         live_locals_at_suspension_points,
         storage_conflicts,
         storage_liveness: storage_liveness_map,
@@ -555,7 +553,7 @@ fn locals_live_across_suspend_points(
 /// `[0, 1, 2]`. Thus, if `input = [3, 5]` we would return `[1, 2]`.
 fn renumber_bitset(
     input: &BitSet<Local>,
-    stored_locals: &liveness::LiveVarSet,
+    stored_locals: &BitSet<Local>,
 ) -> BitSet<GeneratorSavedLocal> {
     assert!(stored_locals.superset(&input), "{:?} not a superset of {:?}", stored_locals, input);
     let mut out = BitSet::new_empty(stored_locals.count());
@@ -575,7 +573,7 @@ fn renumber_bitset(
 /// computation; see `GeneratorLayout` for more.
 fn compute_storage_conflicts(
     body: &'mir Body<'tcx>,
-    stored_locals: &liveness::LiveVarSet,
+    stored_locals: &BitSet<Local>,
     always_live_locals: storage::AlwaysLiveLocals,
     requires_storage: dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
@@ -630,7 +628,7 @@ fn compute_storage_conflicts(
 
 struct StorageConflictVisitor<'mir, 'tcx, 's> {
     body: &'mir Body<'tcx>,
-    stored_locals: &'s liveness::LiveVarSet,
+    stored_locals: &'s BitSet<Local>,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
     // benchmarks for generators.
     local_conflicts: BitMatrix<Local, Local>,
@@ -639,7 +637,7 @@ struct StorageConflictVisitor<'mir, 'tcx, 's> {
 impl dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'mir, 'tcx, '_> {
     type FlowState = BitSet<Local>;
 
-    fn visit_statement(
+    fn visit_statement_before_primary_effect(
         &mut self,
         state: &Self::FlowState,
         _statement: &'mir Statement<'tcx>,
@@ -648,7 +646,7 @@ impl dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'mir, 'tcx,
         self.apply_state(state, loc);
     }
 
-    fn visit_terminator(
+    fn visit_terminator_before_primary_effect(
         &mut self,
         state: &Self::FlowState,
         _terminator: &'mir Terminator<'tcx>,
@@ -689,7 +687,7 @@ fn compute_layout<'tcx>(
 ) -> (
     FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
     GeneratorLayout<'tcx>,
-    IndexVec<BasicBlock, Option<liveness::LiveVarSet>>,
+    IndexVec<BasicBlock, Option<BitSet<Local>>>,
 ) {
     // Use a liveness analysis to compute locals which are live across a suspension point
     let LivenessInfo {

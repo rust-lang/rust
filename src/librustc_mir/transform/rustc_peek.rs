@@ -15,7 +15,7 @@ use crate::dataflow::MaybeMutBorrowedLocals;
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{Analysis, Results, ResultsCursor};
 use crate::dataflow::{
-    DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
+    DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces,
 };
 
 pub struct SanityCheck;
@@ -36,31 +36,45 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         let move_data = MoveData::gather_moves(body, tcx, param_env).unwrap();
         let mdpe = MoveDataParamEnv { move_data, param_env };
 
-        let flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
-            .into_engine(tcx, body, def_id)
-            .iterate_to_fixpoint();
-        let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
-            .into_engine(tcx, body, def_id)
-            .iterate_to_fixpoint();
-        let flow_def_inits = DefinitelyInitializedPlaces::new(tcx, body, &mdpe)
-            .into_engine(tcx, body, def_id)
-            .iterate_to_fixpoint();
-        let flow_mut_borrowed = MaybeMutBorrowedLocals::mut_borrows_only(tcx, body, param_env)
-            .into_engine(tcx, body, def_id)
-            .iterate_to_fixpoint();
-
         if has_rustc_mir_with(&attributes, sym::rustc_peek_maybe_init).is_some() {
+            let flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
+                .into_engine(tcx, body, def_id)
+                .iterate_to_fixpoint();
+
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_inits);
         }
+
         if has_rustc_mir_with(&attributes, sym::rustc_peek_maybe_uninit).is_some() {
+            let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
+                .into_engine(tcx, body, def_id)
+                .iterate_to_fixpoint();
+
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_uninits);
         }
+
         if has_rustc_mir_with(&attributes, sym::rustc_peek_definite_init).is_some() {
+            let flow_def_inits = DefinitelyInitializedPlaces::new(tcx, body, &mdpe)
+                .into_engine(tcx, body, def_id)
+                .iterate_to_fixpoint();
+
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_def_inits);
         }
+
         if has_rustc_mir_with(&attributes, sym::rustc_peek_indirectly_mutable).is_some() {
+            let flow_mut_borrowed = MaybeMutBorrowedLocals::mut_borrows_only(tcx, body, param_env)
+                .into_engine(tcx, body, def_id)
+                .iterate_to_fixpoint();
+
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_mut_borrowed);
         }
+
+        if has_rustc_mir_with(&attributes, sym::rustc_peek_liveness).is_some() {
+            let flow_liveness =
+                MaybeLiveLocals.into_engine(tcx, body, def_id).iterate_to_fixpoint();
+
+            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_liveness);
+        }
+
         if has_rustc_mir_with(&attributes, sym::stop_after_dataflow).is_some() {
             tcx.sess.fatal("stop_after_dataflow ended compilation");
         }
@@ -126,7 +140,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
                 mir::Rvalue::Use(mir::Operand::Move(place) | mir::Operand::Copy(place)),
             ) => {
                 let loc = Location { block: bb, statement_index };
-                cursor.seek_before(loc);
+                cursor.seek_before_primary_effect(loc);
                 let state = cursor.get();
                 results.analysis.peek_at(tcx, *place, state, call);
             }
@@ -266,6 +280,28 @@ where
 }
 
 impl<'tcx> RustcPeekAt<'tcx> for MaybeMutBorrowedLocals<'_, 'tcx> {
+    fn peek_at(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        place: mir::Place<'tcx>,
+        flow_state: &BitSet<Local>,
+        call: PeekCall,
+    ) {
+        warn!("peek_at: place={:?}", place);
+        let local = if let Some(l) = place.as_local() {
+            l
+        } else {
+            tcx.sess.span_err(call.span, "rustc_peek: argument was not a local");
+            return;
+        };
+
+        if !flow_state.contains(local) {
+            tcx.sess.span_err(call.span, "rustc_peek: bit not set");
+        }
+    }
+}
+
+impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
     fn peek_at(
         &self,
         tcx: TyCtxt<'tcx>,

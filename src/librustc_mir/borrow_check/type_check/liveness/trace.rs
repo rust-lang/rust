@@ -408,7 +408,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
     /// DROP of some local variable will have an effect -- note that
     /// drops, as they may unwind, are always terminators.
     fn initialized_at_terminator(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.seek_before(self.body.terminator_loc(block));
+        self.flow_inits.seek_before_primary_effect(self.body.terminator_loc(block));
         self.initialized_at_curr_loc(mpi)
     }
 
@@ -418,7 +418,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
     /// **Warning:** Does not account for the result of `Call`
     /// instructions.
     fn initialized_at_exit(&mut self, block: BasicBlock, mpi: MovePathIndex) -> bool {
-        self.flow_inits.seek_after(self.body.terminator_loc(block));
+        self.flow_inits.seek_after_primary_effect(self.body.terminator_loc(block));
         self.initialized_at_curr_loc(mpi)
     }
 

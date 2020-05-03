@@ -1,11 +1,12 @@
 //! Random access inspection of the results of a dataflow analysis.
 
 use std::borrow::Borrow;
+use std::cmp::Ordering;
 
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::{self, BasicBlock, Location, TerminatorKind};
+use rustc_middle::mir::{self, BasicBlock, Location};
 
-use super::{Analysis, Results};
+use super::{Analysis, Direction, Effect, EffectIndex, Results};
 
 /// A `ResultsCursor` that borrows the underlying `Results`.
 pub type ResultsRefCursor<'a, 'mir, 'tcx, A> = ResultsCursor<'mir, 'tcx, A, &'a Results<'tcx, A>>;
@@ -13,9 +14,9 @@ pub type ResultsRefCursor<'a, 'mir, 'tcx, A> = ResultsCursor<'mir, 'tcx, A, &'a 
 /// Allows random access inspection of the results of a dataflow analysis.
 ///
 /// This cursor only has linear performance within a basic block when its statements are visited in
-/// order. In the worst case—when statements are visited in *reverse* order—performance will be
-/// quadratic in the number of statements in the block. The order in which basic blocks are
-/// inspected has no impact on performance.
+/// the same order as the `DIRECTION` of the analysis. In the worst case—when statements are
+/// visited in *reverse* order—performance will be quadratic in the number of statements in the
+/// block. The order in which basic blocks are inspected has no impact on performance.
 ///
 /// A `ResultsCursor` can either own (the default) or borrow the dataflow results it inspects. The
 /// type of ownership is determined by `R` (see `ResultsRefCursor` above).
@@ -29,14 +30,10 @@ where
 
     pos: CursorPosition,
 
-    /// When this flag is set, the cursor is pointing at a `Call` or `Yield` terminator whose call
-    /// return or resume effect has been applied to `state`.
+    /// Indicates that `state` has been modified with a custom effect.
     ///
-    /// This flag helps to ensure that multiple calls to `seek_after_assume_success` with the
-    /// same target will result in exactly one invocation of `apply_call_return_effect`. It is
-    /// sufficient to clear this only in `seek_to_block_start`, since seeking away from a
-    /// terminator will always require a cursor reset.
-    success_effect_applied: bool,
+    /// When this flag is set, we need to reset to an entry set before doing a seek.
+    state_needs_reset: bool,
 }
 
 impl<'mir, 'tcx, A, R> ResultsCursor<'mir, 'tcx, A, R>
@@ -44,15 +41,25 @@ where
     A: Analysis<'tcx>,
     R: Borrow<Results<'tcx, A>>,
 {
-    /// Returns a new cursor for `results` that points to the start of the `START_BLOCK`.
+    /// Returns a new cursor that can inspect `results`.
     pub fn new(body: &'mir mir::Body<'tcx>, results: R) -> Self {
+        let bits_per_block = results.borrow().entry_set_for_block(mir::START_BLOCK).domain_size();
+
         ResultsCursor {
             body,
-            pos: CursorPosition::BlockStart(mir::START_BLOCK),
-            state: results.borrow().entry_sets[mir::START_BLOCK].clone(),
-            success_effect_applied: false,
             results,
+
+            // Initialize to an empty `BitSet` and set `state_needs_reset` to tell the cursor that
+            // it needs to reset to block entry before the first seek. The cursor position is
+            // immaterial.
+            state_needs_reset: true,
+            state: BitSet::new_empty(bits_per_block),
+            pos: CursorPosition::block_entry(mir::START_BLOCK),
         }
+    }
+
+    pub fn body(&self) -> &'mir mir::Body<'tcx> {
+        self.body
     }
 
     /// Returns the `Analysis` used to generate the underlying results.
@@ -72,209 +79,134 @@ where
         self.state.contains(elem)
     }
 
-    /// Resets the cursor to the start of the given basic block.
+    /// Resets the cursor to hold the entry set for the given basic block.
+    ///
+    /// For forward dataflow analyses, this is the dataflow state prior to the first statement.
+    ///
+    /// For backward dataflow analyses, this is the dataflow state after the terminator.
+    pub(super) fn seek_to_block_entry(&mut self, block: BasicBlock) {
+        self.state.overwrite(&self.results.borrow().entry_set_for_block(block));
+        self.pos = CursorPosition::block_entry(block);
+        self.state_needs_reset = false;
+    }
+
+    /// Resets the cursor to hold the state prior to the first statement in a basic block.
+    ///
+    /// For forward analyses, this is the entry set for the given block.
+    ///
+    /// For backward analyses, this is the state that will be propagated to its
+    /// predecessors (ignoring edge-specific effects).
     pub fn seek_to_block_start(&mut self, block: BasicBlock) {
-        self.state.overwrite(&self.results.borrow().entry_sets[block]);
-        self.pos = CursorPosition::BlockStart(block);
-        self.success_effect_applied = false;
+        if A::Direction::is_forward() {
+            self.seek_to_block_entry(block)
+        } else {
+            self.seek_after(Location { block, statement_index: 0 }, Effect::Primary)
+        }
     }
 
-    /// Advances the cursor to hold all effects up to and including to the "before" effect of the
-    /// statement (or terminator) at the given location.
+    /// Resets the cursor to hold the state after the terminator in a basic block.
     ///
-    /// If you wish to observe the full effect of a statement or terminator, not just the "before"
-    /// effect, use `seek_after` or `seek_after_assume_success`.
-    pub fn seek_before(&mut self, target: Location) {
+    /// For backward analyses, this is the entry set for the given block.
+    ///
+    /// For forward analyses, this is the state that will be propagated to its
+    /// successors (ignoring edge-specific effects).
+    pub fn seek_to_block_end(&mut self, block: BasicBlock) {
+        if A::Direction::is_backward() {
+            self.seek_to_block_entry(block)
+        } else {
+            self.seek_after(self.body.terminator_loc(block), Effect::Primary)
+        }
+    }
+
+    /// Advances the cursor to hold the dataflow state at `target` before its "primary" effect is
+    /// applied.
+    ///
+    /// The "before" effect at the target location *will be* applied.
+    pub fn seek_before_primary_effect(&mut self, target: Location) {
+        self.seek_after(target, Effect::Before)
+    }
+
+    /// Advances the cursor to hold the dataflow state at `target` after its "primary" effect is
+    /// applied.
+    ///
+    /// The "before" effect at the target location will be applied as well.
+    pub fn seek_after_primary_effect(&mut self, target: Location) {
+        self.seek_after(target, Effect::Primary)
+    }
+
+    fn seek_after(&mut self, target: Location, effect: Effect) {
         assert!(target <= self.body.terminator_loc(target.block));
-        self.seek_(target, false);
-    }
 
-    /// Advances the cursor to hold the full effect of all statements (and possibly closing
-    /// terminators) up to and including the `target`.
-    ///
-    /// If the `target` is a `Call` terminator, any call return effect for that terminator will
-    /// **not** be observed. Use `seek_after_assume_success` if you wish to observe the call
-    /// return effect.
-    pub fn seek_after(&mut self, target: Location) {
-        assert!(target <= self.body.terminator_loc(target.block));
+        // Reset to the entry of the target block if any of the following are true:
+        //   - A custom effect has been applied to the cursor state.
+        //   - We are in a different block than the target.
+        //   - We are in the same block but have advanced past the target effect.
+        if self.state_needs_reset || self.pos.block != target.block {
+            self.seek_to_block_entry(target.block);
+        } else if let Some(curr_effect) = self.pos.curr_effect_index {
+            let mut ord = curr_effect.statement_index.cmp(&target.statement_index);
+            if A::Direction::is_backward() {
+                ord = ord.reverse()
+            }
 
-        // If we have already applied the call return effect, we are currently pointing at a `Call`
-        // terminator. Unconditionally reset the dataflow cursor, since there is no way to "undo"
-        // the call return effect.
-        if self.success_effect_applied {
-            self.seek_to_block_start(target.block);
+            match ord.then_with(|| curr_effect.effect.cmp(&effect)) {
+                Ordering::Equal => return,
+                Ordering::Greater => self.seek_to_block_entry(target.block),
+                Ordering::Less => {}
+            }
         }
-
-        self.seek_(target, true);
-    }
-
-    /// Advances the cursor to hold all effects up to and including of the statement (or
-    /// terminator) at the given location.
-    ///
-    /// If the `target` is a `Call` or `Yield` terminator, any call return or resume effect for that
-    /// terminator will be observed. Use `seek_after` if you do **not** wish to observe the
-    /// "success" effect.
-    pub fn seek_after_assume_success(&mut self, target: Location) {
-        let terminator_loc = self.body.terminator_loc(target.block);
-        assert!(target.statement_index <= terminator_loc.statement_index);
-
-        self.seek_(target, true);
-
-        if target != terminator_loc || self.success_effect_applied {
-            return;
-        }
-
-        // Apply the effect of the "success" path of the terminator.
-
-        self.success_effect_applied = true;
-        let terminator = self.body.basic_blocks()[target.block].terminator();
-        match &terminator.kind {
-            TerminatorKind::Call { destination: Some((return_place, _)), func, args, .. } => {
-                self.results.borrow().analysis.apply_call_return_effect(
-                    &mut self.state,
-                    target.block,
-                    func,
-                    args,
-                    *return_place,
-                );
-            }
-            TerminatorKind::Yield { resume, resume_arg, .. } => {
-                self.results.borrow().analysis.apply_yield_resume_effect(
-                    &mut self.state,
-                    *resume,
-                    *resume_arg,
-                );
-            }
-            _ => {}
-        }
-    }
-
-    fn seek_(&mut self, target: Location, apply_after_effect_at_target: bool) {
-        use CursorPosition::*;
-
-        match self.pos {
-            // Return early if we are already at the target location.
-            Before(curr) if curr == target && !apply_after_effect_at_target => return,
-            After(curr) if curr == target && apply_after_effect_at_target => return,
-
-            // Otherwise, we must reset to the start of the target block if...
-
-            // we are in a different block entirely.
-            BlockStart(block) | Before(Location { block, .. }) | After(Location { block, .. })
-                if block != target.block =>
-            {
-                self.seek_to_block_start(target.block)
-            }
-
-            // we are in the same block but have advanced past the target statement.
-            Before(curr) | After(curr) if curr.statement_index > target.statement_index => {
-                self.seek_to_block_start(target.block)
-            }
-
-            // we have already applied the entire effect of a statement but only wish to observe
-            // its "before" effect.
-            After(curr)
-                if curr.statement_index == target.statement_index
-                    && !apply_after_effect_at_target =>
-            {
-                self.seek_to_block_start(target.block)
-            }
-
-            // N.B., `success_effect_applied` is checked in `seek_after`, not here.
-            _ => (),
-        }
-
-        let analysis = &self.results.borrow().analysis;
-        let block_data = &self.body.basic_blocks()[target.block];
 
         // At this point, the cursor is in the same block as the target location at an earlier
         // statement.
-        debug_assert_eq!(target.block, self.pos.block());
+        debug_assert_eq!(target.block, self.pos.block);
 
-        // Find the first statement whose transfer function has not yet been applied.
-        let first_unapplied_statement = match self.pos {
-            BlockStart(_) => 0,
-            After(Location { statement_index, .. }) => statement_index + 1,
-
-            // If we have only applied the "before" effect for the current statement, apply the
-            // remainder before continuing.
-            Before(curr) => {
-                if curr.statement_index == block_data.statements.len() {
-                    let terminator = block_data.terminator();
-                    analysis.apply_terminator_effect(&mut self.state, terminator, curr);
-                } else {
-                    let statement = &block_data.statements[curr.statement_index];
-                    analysis.apply_statement_effect(&mut self.state, statement, curr);
-                }
-
-                // If all we needed to do was go from `Before` to `After` in the same statement,
-                // we are now done.
-                if curr.statement_index == target.statement_index {
-                    debug_assert!(apply_after_effect_at_target);
-                    self.pos = After(target);
-                    return;
-                }
-
-                curr.statement_index + 1
-            }
+        let block_data = &self.body[target.block];
+        let next_effect = if A::Direction::is_forward() {
+            #[rustfmt::skip]
+            self.pos.curr_effect_index.map_or_else(
+                || Effect::Before.at_index(0),
+                EffectIndex::next_in_forward_order,
+            )
+        } else {
+            self.pos.curr_effect_index.map_or_else(
+                || Effect::Before.at_index(block_data.statements.len()),
+                EffectIndex::next_in_backward_order,
+            )
         };
 
-        // We have now applied all effects prior to `first_unapplied_statement`.
+        let analysis = &self.results.borrow().analysis;
+        let target_effect_index = effect.at_index(target.statement_index);
 
-        // Apply the effects of all statements before `target`.
-        let mut location = Location { block: target.block, statement_index: 0 };
-        for statement_index in first_unapplied_statement..target.statement_index {
-            location.statement_index = statement_index;
-            let statement = &block_data.statements[statement_index];
-            analysis.apply_before_statement_effect(&mut self.state, statement, location);
-            analysis.apply_statement_effect(&mut self.state, statement, location);
-        }
+        A::Direction::apply_effects_in_range(
+            analysis,
+            &mut self.state,
+            target.block,
+            block_data,
+            next_effect..=target_effect_index,
+        );
 
-        // Apply the effect of the statement (or terminator) at `target`.
-        location.statement_index = target.statement_index;
-        if target.statement_index == block_data.statements.len() {
-            let terminator = &block_data.terminator();
-            analysis.apply_before_terminator_effect(&mut self.state, terminator, location);
+        self.pos =
+            CursorPosition { block: target.block, curr_effect_index: Some(target_effect_index) };
+    }
 
-            if apply_after_effect_at_target {
-                analysis.apply_terminator_effect(&mut self.state, terminator, location);
-                self.pos = After(target);
-            } else {
-                self.pos = Before(target);
-            }
-        } else {
-            let statement = &block_data.statements[target.statement_index];
-            analysis.apply_before_statement_effect(&mut self.state, statement, location);
-
-            if apply_after_effect_at_target {
-                analysis.apply_statement_effect(&mut self.state, statement, location);
-                self.pos = After(target)
-            } else {
-                self.pos = Before(target);
-            }
-        }
+    /// Applies `f` to the cursor's internal state.
+    ///
+    /// This can be used, e.g., to apply the call return effect directly to the cursor without
+    /// creating an extra copy of the dataflow state.
+    pub fn apply_custom_effect(&mut self, f: impl FnOnce(&A, &mut BitSet<A::Idx>)) {
+        f(&self.results.borrow().analysis, &mut self.state);
+        self.state_needs_reset = true;
     }
 }
 
 #[derive(Clone, Copy, Debug)]
-enum CursorPosition {
-    /// No effects within this block have been applied.
-    BlockStart(BasicBlock),
-
-    /// Only the "before" effect of the statement (or terminator) at this location has been
-    /// applied (along with the effects of all previous statements).
-    Before(Location),
-
-    /// The effects of all statements up to and including the one at this location have been
-    /// applied.
-    After(Location),
+struct CursorPosition {
+    block: BasicBlock,
+    curr_effect_index: Option<EffectIndex>,
 }
 
 impl CursorPosition {
-    fn block(&self) -> BasicBlock {
-        match *self {
-            Self::BlockStart(block) => block,
-            Self::Before(loc) | Self::After(loc) => loc.block,
-        }
+    fn block_entry(block: BasicBlock) -> CursorPosition {
+        CursorPosition { block, curr_effect_index: None }
     }
 }
