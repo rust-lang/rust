@@ -4,7 +4,7 @@ error: used `unwrap()` on `an Option` value
 LL |     let _ = opt.unwrap();
    |             ^^^^^^^^^^^^
    |
-   = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
+   = note: `-D clippy::unwrap-used` implied by `-D warnings`
    = help: if you don't want to handle the `None` case gracefully, consider using `expect()` to provide a better panic message
 
 error: used `unwrap()` on `a Result` value
@@ -13,7 +13,6 @@ error: used `unwrap()` on `a Result` value
 LL |     let _ = res.unwrap();
    |             ^^^^^^^^^^^^
    |
-   = note: `-D clippy::result-unwrap-used` implied by `-D warnings`
    = help: if you don't want to handle the `Err` case gracefully, consider using `expect()` to provide a better panic message
 
 error: aborting due to 2 previous errors

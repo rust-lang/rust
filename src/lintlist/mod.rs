@@ -1628,13 +1628,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "types",
     },
     Lint {
-        name: "option_unwrap_used",
-        group: "restriction",
-        desc: "using `Option.unwrap()`, which should at least get a better message using `expect()`",
-        deprecation: None,
-        module: "methods",
-    },
-    Lint {
         name: "or_fun_call",
         group: "perf",
         desc: "using any `*or` method with a function call, which suggests `*or_else`",
@@ -2403,6 +2396,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "needless unit expression",
         deprecation: None,
         module: "returns",
+    },
+    Lint {
+        name: "unwrap_used",
+        group: "restriction",
+        desc: "using `.unwrap()` on `Result` or `Option`, which should at least get a better message using `expect()`",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "use_debug",

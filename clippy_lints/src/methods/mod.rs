@@ -33,40 +33,15 @@ use crate::utils::{
 };
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `.unwrap()` calls on `Option`s.
+    /// **What it does:** Checks for `.unwrap()` calls on `Option`s and on `Result`s.
     ///
-    /// **Why is this bad?** Usually it is better to handle the `None` case, or to
-    /// at least call `.expect(_)` with a more helpful message. Still, for a lot of
+    /// **Why is this bad?** It is better to handle the `None` or `Err` case,
+    /// or at least call `.expect(_)` with a more helpful message. Still, for a lot of
     /// quick-and-dirty code, `unwrap` is a good choice, which is why this lint is
     /// `Allow` by default.
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
-    /// Using unwrap on an `Option`:
-    ///
-    /// ```rust
-    /// let opt = Some(1);
-    /// opt.unwrap();
-    /// ```
-    ///
-    /// Better:
-    ///
-    /// ```rust
-    /// let opt = Some(1);
-    /// opt.expect("more helpful message");
-    /// ```
-    pub OPTION_UNWRAP_USED,
-    restriction,
-    "using `Option.unwrap()`, which should at least get a better message using `expect()`"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for `.unwrap()` calls on `Result`s.
-    ///
-    /// **Why is this bad?** `result.unwrap()` will let the thread panic on `Err`
-    /// values. Normally, you want to implement more sophisticated error handling,
+    /// `result.unwrap()` will let the thread panic on `Err` values.
+    /// Normally, you want to implement more sophisticated error handling,
     /// and propagate errors upwards with `?` operator.
     ///
     /// Even if you want to panic on errors, not all `Error`s implement good
@@ -75,23 +50,31 @@ declare_clippy_lint! {
     ///
     /// **Known problems:** None.
     ///
-    /// **Example:**
-    /// Using unwrap on an `Result`:
-    ///
+    /// **Examples:**
     /// ```rust
-    /// let res: Result<usize, ()> = Ok(1);
-    /// res.unwrap();
+    /// # let opt = Some(1);
+    ///
+    /// // Bad
+    /// opt.unwrap();
+    ///
+    /// // Good
+    /// opt.expect("more helpful message");
     /// ```
     ///
-    /// Better:
+    /// // or
     ///
     /// ```rust
-    /// let res: Result<usize, ()> = Ok(1);
+    /// # let res: Result<usize, ()> = Ok(1);
+    ///
+    /// // Bad
+    /// res.unwrap();
+    ///
+    /// // Good
     /// res.expect("more helpful message");
     /// ```
-    pub RESULT_UNWRAP_USED,
+    pub UNWRAP_USED,
     restriction,
-    "using `Result.unwrap()`, which might be better handled"
+    "using `.unwrap()` on `Result` or `Option`, which should at least get a better message using `expect()`"
 }
 
 declare_clippy_lint! {
@@ -1267,8 +1250,7 @@ declare_clippy_lint! {
 }
 
 declare_lint_pass!(Methods => [
-    OPTION_UNWRAP_USED,
-    RESULT_UNWRAP_USED,
+    UNWRAP_USED,
     OPTION_EXPECT_USED,
     RESULT_EXPECT_USED,
     SHOULD_IMPLEMENT_TRAIT,
@@ -2397,9 +2379,9 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, unwrap_args: &[hi
     let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&unwrap_args[0]));
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
-        Some((OPTION_UNWRAP_USED, "an Option", "None"))
+        Some((UNWRAP_USED, "an Option", "None"))
     } else if is_type_diagnostic_item(cx, obj_ty, sym!(result_type)) {
-        Some((RESULT_UNWRAP_USED, "a Result", "Err"))
+        Some((UNWRAP_USED, "a Result", "Err"))
     } else {
         None
     };
