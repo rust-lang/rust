@@ -1,0 +1,62 @@
+error[E0059]: one or more arguments to this function are incorrect
+  --> $DIR/basic.rs:31:5
+   |
+LL |     invalid(1.0);
+   |     ^^^^^^^^---^
+   |             |
+   |             the type of this argument is incorrect
+
+error[E0059]: one or more arguments to this function are incorrect
+  --> $DIR/basic.rs:32:5
+   |
+LL |     extra(&"");
+   |     ^^^^^^---^
+   |           |
+   |           this argument appears to be extra
+
+error[E0059]: one or more arguments to this function are incorrect
+  --> $DIR/basic.rs:33:5
+   |
+LL |     missing();
+   |     ^^^^^^^^^
+   |
+   = note: the 1st parameter appears to be missing
+
+error[E0059]: one or more arguments to this function are incorrect
+  --> $DIR/basic.rs:34:5
+   |
+LL |     swapped(&"", 1);
+   |     ^^^^^^^^---^^-^
+   |             |    |
+   |             |    these two arguments appear to be swapped
+   |             these two arguments appear to be swapped
+
+error[E0059]: one or more arguments to this function are incorrect
+  --> $DIR/basic.rs:35:5
+   |
+LL |     permuted(Y {}, Z {}, X {});
+   |     ^^^^^^^^^----^^----^^----^
+   |              |     |     |
+   |              |     |     these 3 arguments appear to be in the wrong order
+   |              |     these 3 arguments appear to be in the wrong order
+   |              these 3 arguments appear to be in the wrong order
+
+error[E0059]: one or more arguments to this function are incorrect
+  --> $DIR/basic.rs:36:5
+   |
+LL |     complex(1.0, H {}, &"", G{}, F::X2, Z {}, X {}, Y {});
+   |     ^^^^^^^^---^^----^^^^^^^---^^-----^^----^^----^^----^
+   |             |    |          |    |      |     |     |
+   |             |    |          |    |      |     |     these 3 arguments appear to be in the wrong order
+   |             |    |          |    |      |     these 3 arguments appear to be in the wrong order
+   |             |    |          |    |      these 3 arguments appear to be in the wrong order
+   |             |    |          |    these two arguments appear to be swapped
+   |             |    |          these two arguments appear to be swapped
+   |             |    this argument appears to be extra
+   |             the type of this argument is incorrect
+   |
+   = note: the 3rd parameter appears to be missing
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0059`.
