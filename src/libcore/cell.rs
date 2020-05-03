@@ -1026,6 +1026,10 @@ impl<T: ?Sized> RefCell<T> {
 impl<T: Default> RefCell<T> {
     /// Takes the wrapped value, leaving `Default::default()` in its place.
     ///
+    /// # Panics
+    ///
+    /// Panics if the value is currently borrowed.
+    ///
     /// # Examples
     ///
     /// ```
