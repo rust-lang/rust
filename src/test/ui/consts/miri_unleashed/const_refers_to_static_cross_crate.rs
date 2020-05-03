@@ -1,7 +1,8 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you -Zdeduplicate-diagnostics
+// compile-flags: -Zunleash-the-miri-inside-of-you
 // aux-build:static_cross_crate.rs
 #![allow(const_err)]
 
+// `const_if_match` is a HIR check and thus needed even when unleashed.
 #![feature(exclusive_range_pattern, half_open_range_patterns, const_if_match)]
 
 extern crate static_cross_crate;
@@ -38,6 +39,7 @@ pub fn test(x: &[u8; 1]) -> bool {
     match x {
         SLICE_MUT => true,
         //~^ ERROR could not evaluate constant pattern
+        //~| ERROR could not evaluate constant pattern
         &[1..] => false,
     }
 }
@@ -46,6 +48,7 @@ pub fn test2(x: &u8) -> bool {
     match x {
         U8_MUT => true,
         //~^ ERROR could not evaluate constant pattern
+        //~| ERROR could not evaluate constant pattern
         &(1..) => false,
     }
 }
@@ -56,6 +59,7 @@ pub fn test3(x: &u8) -> bool {
     match x {
         U8_MUT2 => true,
         //~^ ERROR could not evaluate constant pattern
+        //~| ERROR could not evaluate constant pattern
         &(1..) => false,
     }
 }
@@ -63,6 +67,7 @@ pub fn test4(x: &u8) -> bool {
     match x {
         U8_MUT3 => true,
         //~^ ERROR could not evaluate constant pattern
+        //~| ERROR could not evaluate constant pattern
         &(1..) => false,
     }
 }

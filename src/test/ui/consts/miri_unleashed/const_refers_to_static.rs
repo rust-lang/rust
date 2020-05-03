@@ -1,5 +1,5 @@
 // build-fail
-// compile-flags: -Zunleash-the-miri-inside-of-you -Zdeduplicate-diagnostics
+// compile-flags: -Zunleash-the-miri-inside-of-you
 #![allow(const_err)]
 
 use std::sync::atomic::AtomicUsize;

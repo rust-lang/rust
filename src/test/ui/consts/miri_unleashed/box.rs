@@ -1,4 +1,4 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you -Zdeduplicate-diagnostics
+// compile-flags: -Zunleash-the-miri-inside-of-you
 #![feature(box_syntax)]
 #![allow(const_err)]
 

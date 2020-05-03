@@ -1,4 +1,4 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you -Zdeduplicate-diagnostics
+// compile-flags: -Zunleash-the-miri-inside-of-you
 // normalize-stderr-test "alloc[0-9]+" -> "allocN"
 
 #![deny(const_err)] // The `allow` variant is tested by `mutable_const2`.
