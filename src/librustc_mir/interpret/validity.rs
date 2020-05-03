@@ -11,6 +11,7 @@ use std::ops::RangeInclusive;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_middle::mir::interpret::{InterpError, InterpErrorInfo};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::symbol::{sym, Symbol};
@@ -24,43 +25,71 @@ use super::{
 };
 
 macro_rules! throw_validation_failure {
-    ($what:expr, $where:expr, $details:expr) => {{
+    ($what:expr, $where:expr $(, $expected:expr )?) => {{
         let mut msg = format!("encountered {}", $what);
         let where_ = &$where;
         if !where_.is_empty() {
             msg.push_str(" at ");
             write_path(&mut msg, where_);
         }
-        write!(&mut msg, ", but expected {}", $details).unwrap();
-        throw_ub!(ValidationFailure(msg))
-    }};
-    ($what:expr, $where:expr) => {{
-        let mut msg = format!("encountered {}", $what);
-        let where_ = &$where;
-        if !where_.is_empty() {
-            msg.push_str(" at ");
-            write_path(&mut msg, where_);
-        }
+        $( write!(&mut msg, ", but expected {}", $expected).unwrap(); )?
         throw_ub!(ValidationFailure(msg))
     }};
 }
 
+/// Returns a validation failure for any Err value of $e.
+// FIXME: Replace all usages of try_validation! with try_validation_pat!.
 macro_rules! try_validation {
-    ($e:expr, $what:expr, $where:expr, $details:expr) => {{
-        match $e {
-            Ok(x) => x,
-            // We re-throw the error, so we are okay with allocation:
-            // this can only slow down builds that fail anyway.
-            Err(_) => throw_validation_failure!($what, $where, $details),
-        }
+    ($e:expr, $what:expr, $where:expr $(, $expected:expr )?) => {{
+        try_validation_pat!($e, $where, {
+            _ => { "{}", $what } $( expected { "{}", $expected } )?,
+        })
     }};
-
-    ($e:expr, $what:expr, $where:expr) => {{
+}
+/// Like try_validation, but will throw a validation error if any of the patterns in $p are
+/// matched. Other errors are passed back to the caller, unchanged. This lets you use the patterns
+/// as a kind of validation blacklist:
+///
+/// ```
+/// let v = try_validation_pat!(some_fn(), some_path, {
+///     Foo | Bar | Baz => { "some failure" },
+/// });
+/// // Failures that match $p are thrown up as validation errors, but other errors are passed back
+/// // unchanged.
+/// ```
+///
+/// An additional expected parameter can also be added to the failure message:
+///
+/// ```
+/// let v = try_validation_pat!(some_fn(), some_path, {
+///     Foo | Bar | Baz => { "some failure" } expected { "something that wasn't a failure" },
+/// });
+/// ```
+///
+/// An additional nicety is that both parameters actually take format args, so you can just write
+/// the format string in directly:
+///
+/// ```
+/// let v = try_validation_pat!(some_fn(), some_path, {
+///     Foo | Bar | Baz => { "{:?}", some_failure } expected { "{}", expected_value },
+/// });
+/// ```
+///
+macro_rules! try_validation_pat {
+    ($e:expr, $where:expr, { $( $p:pat )|+ =>
+        { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? $( , )?}) => {{
         match $e {
             Ok(x) => x,
-            // We re-throw the error, so we are okay with allocation:
-            // this can only slow down builds that fail anyway.
-            Err(_) => throw_validation_failure!($what, $where),
+            // We catch the error and turn it into a validation failure. We are okay with
+            // allocation here as this can only slow down builds that fail anyway.
+            $( Err(InterpErrorInfo { kind: $p, .. }) )|+ =>
+                throw_validation_failure!(
+                    format_args!($( $what_fmt ),+),
+                    $where
+                    $(, format_args!($( $expected_fmt ),+))?
+                ),
+            #[allow(unreachable_patterns)]
+            Err(e) => Err::<!, _>(e)?,
         }
     }};
 }
@@ -492,11 +521,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // We are conservative with undef for integers, but try to
                 // actually enforce the strict rules for raw pointers (mostly because
                 // that lets us re-use `ref_to_mplace`).
-                let place = try_validation!(
-                    self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
-                    "uninitialized raw pointer",
-                    self.path
-                );
+                let place = try_validation_pat!(self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?), self.path, {
+                    err_ub!(InvalidUndefBytes(..)) => { "uninitialized raw pointer" },
+                });
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
                 }
@@ -800,7 +827,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
                                 throw_validation_failure!("uninitialized bytes", self.path)
                             }
-                            // Other errors shouldn't be possible
+                            // Propagate upwards (that will also check for unexpected errors).
                             _ => return Err(err),
                         }
                     }
@@ -843,9 +870,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Run it.
         match visitor.visit_value(op) {
             Ok(()) => Ok(()),
-            // We should only get validation errors here. Avoid other errors as
-            // those do not show *where* in the value the issue lies.
+            // Pass through validation failures.
             Err(err) if matches!(err.kind, err_ub!(ValidationFailure { .. })) => Err(err),
+            // Also pass through InvalidProgram, those just indicate that we could not
+            // validate and each caller will know best what to do with them.
+            Err(err) if matches!(err.kind, InterpError::InvalidProgram(_)) => Err(err),
+            // Avoid other errors as those do not show *where* in the value the issue lies.
             Err(err) => bug!("Unexpected error during validation: {}", err),
         }
     }

@@ -549,11 +549,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        // FIXME we need to revisit this for #67176
-        if rvalue.needs_subst() {
-            return None;
-        }
-
         // Perform any special handling for specific Rvalue types.
         // Generally, checks here fall into one of two categories:
         //   1. Additional checking to provide useful lints to the user
@@ -592,6 +587,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             _ => {}
+        }
+
+        // FIXME we need to revisit this for #67176
+        if rvalue.needs_subst() {
+            return None;
         }
 
         self.use_ecx(|this| {
