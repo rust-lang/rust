@@ -26,7 +26,6 @@ use rustc_middle::ty::{
 use rustc_middle::ty::{GenericParamDef, GenericParamDefKind};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, LATE_BOUND_LIFETIME_ARGUMENTS};
 use rustc_session::parse::feature_err;
-use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
@@ -260,12 +259,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         });
 
         if explicit && impl_trait {
+            let hir = tcx.hir();
             let spans = seg
                 .generic_args()
                 .args
                 .iter()
                 .filter_map(|arg| match arg {
-                    GenericArg::Type(_) => Some(arg.span()),
+                    GenericArg::Type(_) => Some(hir.span(arg.id())),
                     _ => None,
                 })
                 .collect::<Vec<_>>();
@@ -388,7 +388,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // we want to point to the unexpected arguments.
                 let spans: Vec<Span> = args.args[offset + permitted..offset + provided]
                     .iter()
-                    .map(|arg| arg.span())
+                    .map(|arg| tcx.hir().span(arg.id()))
                     .collect();
                 unexpected_spans.extend(spans.clone());
                 (spans, format!("unexpected {} argument", kind))
@@ -475,10 +475,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Report an error that a generic argument did not match the generic parameter that was
     /// expected.
-    fn generic_arg_mismatch_err(sess: &Session, arg: &GenericArg<'_>, kind: &'static str) {
+    fn generic_arg_mismatch_err(tcx: TyCtxt<'_>, arg: &GenericArg<'_>, kind: &'static str) {
         let mut err = struct_span_err!(
-            sess,
-            arg.span(),
+            tcx.sess,
+            tcx.hir().span(arg.id()),
             E0747,
             "{} provided when a {} was expected",
             arg.descr(),
@@ -648,7 +648,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 if arg_count.correct.is_ok()
                                     && arg_count.explicit_late_bound == ExplicitLateBound::No
                                 {
-                                    Self::generic_arg_mismatch_err(tcx.sess, arg, kind.descr());
+                                    Self::generic_arg_mismatch_err(tcx, arg, kind.descr());
                                 }
 
                                 // We've reported the error, but we want to make sure that this
@@ -680,7 +680,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             assert_eq!(kind, "lifetime");
                             let provided =
                                 force_infer_lt.expect("lifetimes ought to have been inferred");
-                            Self::generic_arg_mismatch_err(tcx.sess, provided, kind);
+                            Self::generic_arg_mismatch_err(tcx, provided, kind);
                         }
 
                         break;
@@ -2539,7 +2539,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let msg = "cannot specify lifetime arguments explicitly \
                        if late bound lifetime parameters are present";
             let note = "the late bound lifetime parameter is introduced here";
-            let span = args.args[0].span();
+            let span = tcx.hir().span(args.args[0].id());
             if position == GenericArgPosition::Value
                 && arg_counts.lifetimes != param_counts.lifetimes
             {

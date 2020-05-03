@@ -3943,9 +3943,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Account for `foo.bar::<T>()`.
                         .map(|arg| {
                             // Skip the closing `>`.
-                            tcx.sess
-                                .source_map()
-                                .next_point(tcx.sess.source_map().next_point(arg.span()))
+                            tcx.sess.source_map().next_point(
+                                tcx.sess.source_map().next_point(tcx.hir().span(arg.id())),
+                            )
                         })
                         .unwrap_or(*span),
                     &args[1..], // Skip the receiver.
