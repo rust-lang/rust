@@ -255,7 +255,7 @@ declare_clippy_lint! {
     /// // Good
     /// x.map_or_else(some_function, |a| a + 1);
     /// ```
-    pub MAP_UNWRAP,
+    pub MAP_UNWRAP_OR,
     pedantic,
     "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`"
 }
@@ -1240,7 +1240,7 @@ declare_lint_pass!(Methods => [
     WRONG_SELF_CONVENTION,
     WRONG_PUB_SELF_CONVENTION,
     OK_EXPECT,
-    MAP_UNWRAP,
+    MAP_UNWRAP_OR,
     RESULT_MAP_OR_INTO_OPTION,
     OPTION_MAP_OR_NONE,
     OPTION_AND_THEN_SOME,
@@ -2512,7 +2512,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
         if same_span && !multiline {
             span_lint_and_note(
                 cx,
-                MAP_UNWRAP,
+                MAP_UNWRAP_OR,
                 expr.span,
                 msg,
                 None,
@@ -2522,7 +2522,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
                 ),
             );
         } else if same_span && multiline {
-            span_lint(cx, MAP_UNWRAP, expr.span, msg);
+            span_lint(cx, MAP_UNWRAP_OR, expr.span, msg);
         };
     }
 }

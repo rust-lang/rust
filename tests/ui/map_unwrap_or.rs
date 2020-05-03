@@ -1,7 +1,7 @@
 // FIXME: Add "run-rustfix" once it's supported for multipart suggestions
 // aux-build:option_helpers.rs
 
-#![warn(clippy::map_unwrap)]
+#![warn(clippy::map_unwrap_or)]
 
 #[macro_use]
 extern crate option_helpers;

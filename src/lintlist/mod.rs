@@ -1138,7 +1138,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
-        name: "map_unwrap",
+        name: "map_unwrap_or",
         group: "pedantic",
         desc: "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`",
         deprecation: None,
@@ -1871,13 +1871,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "using `result.map(f)`, where `f` is a function or closure that returns `()`",
         deprecation: None,
         module: "map_unit_fn",
-    },
-    Lint {
-        name: "result_unwrap_used",
-        group: "restriction",
-        desc: "using `Result.unwrap()`, which might be better handled",
-        deprecation: None,
-        module: "methods",
     },
     Lint {
         name: "reversed_empty_ranges",

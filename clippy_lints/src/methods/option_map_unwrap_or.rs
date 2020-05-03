@@ -9,7 +9,7 @@ use rustc_middle::hir::map::Map;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 
-use super::MAP_UNWRAP;
+use super::MAP_UNWRAP_OR;
 
 /// lint use of `map().unwrap_or()` for `Option`s
 pub(super) fn lint<'a, 'tcx>(
@@ -66,7 +66,7 @@ pub(super) fn lint<'a, 'tcx>(
             arg, suggest
         );
 
-        span_lint_and_then(cx, MAP_UNWRAP, expr.span, msg, |diag| {
+        span_lint_and_then(cx, MAP_UNWRAP_OR, expr.span, msg, |diag| {
             let map_arg_span = map_args[1].span;
 
             let mut suggestion = vec![

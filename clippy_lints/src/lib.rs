@@ -673,7 +673,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &methods::ITER_SKIP_NEXT,
         &methods::MANUAL_SATURATING_ARITHMETIC,
         &methods::MAP_FLATTEN,
-        &methods::MAP_UNWRAP,
+        &methods::MAP_UNWRAP_OR,
         &methods::NEW_RET_NO_SELF,
         &methods::OK_EXPECT,
         &methods::OPTION_AND_THEN_SOME,
@@ -1145,7 +1145,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::FIND_MAP),
         LintId::of(&methods::INEFFICIENT_TO_STRING),
         LintId::of(&methods::MAP_FLATTEN),
-        LintId::of(&methods::MAP_UNWRAP),
+        LintId::of(&methods::MAP_UNWRAP_OR),
         LintId::of(&misc::USED_UNDERSCORE_BINDING),
         LintId::of(&misc_early::UNSEPARATED_LITERAL_SUFFIX),
         LintId::of(&mut_mut::MUT_MUT),
@@ -1785,6 +1785,17 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
     ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
     ls.register_renamed("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes");
+    ls.register_renamed("clippy::block_in_if_condition_expr", "clippy::block_in_if_condition");
+    ls.register_renamed("clippy::block_in_if_condition_stmt", "clippy::block_in_if_condition");
+    ls.register_renamed("clippy::option_map_unwrap_or", "clippy::map_unwrap_or");
+    ls.register_renamed("clippy::option_map_unwrap_or_else", "clippy::map_unwrap_or");
+    ls.register_renamed("clippy::result_map_unwrap_or_else", "clippy::map_unwrap_or");
+    ls.register_renamed("clippy::option_unwrap_used", "clippy::unwrap_used");
+    ls.register_renamed("clippy::result_unwrap_used", "clippy::unwrap_used");
+    ls.register_renamed("clippy::option_expect_used", "clippy::expect_used");
+    ls.register_renamed("clippy::result_expect_used", "clippy::expect_used");
+    ls.register_renamed("clippy::for_loop_over_option", "clippy::for_loop_over_fallible");
+    ls.register_renamed("clippy::for_loop_over_result", "clippy::for_loop_over_fallible");
 }
 
 // only exists to let the dogfood integration test works.
