@@ -1103,26 +1103,12 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, [2, 3, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn retain<F>(&mut self, mut f: F)
+    pub fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&T) -> bool,
     {
-        let len = self.len();
-        let mut del = 0;
-        {
-            let v = &mut **self;
-
-            for i in 0..len {
-                if !f(&v[i]) {
-                    del += 1;
-                } else if del > 0 {
-                    v.swap(i - del, i);
-                }
-            }
-        }
-        if del > 0 {
-            self.truncate(len - del);
-        }
+        let retained_len = self.as_mut_slice().retain(f).len();
+        self.truncate(retained_len);
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
