@@ -150,51 +150,31 @@ pub struct TraitData {
 
 impl TraitData {
     pub(crate) fn trait_data_query(db: &dyn DefDatabase, tr: TraitId) -> Arc<TraitData> {
-        let src = tr.lookup(db).source(db);
+        let tr_loc = tr.lookup(db);
+        let src = tr_loc.source(db);
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let auto = src.value.auto_token().is_some();
-        let ast_id_map = db.ast_id_map(src.file_id);
+        let module_id = tr_loc.container.module(db);
 
         let container = AssocContainerId::TraitId(tr);
-        let items = if let Some(item_list) = src.value.item_list() {
-            item_list
-                .impl_items()
-                .map(|item_node| match item_node {
-                    ast::ImplItem::FnDef(it) => {
-                        let name = it.name().map_or_else(Name::missing, |it| it.as_name());
-                        let def = FunctionLoc {
-                            container,
-                            ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
-                        }
-                        .intern(db)
-                        .into();
-                        (name, def)
-                    }
-                    ast::ImplItem::ConstDef(it) => {
-                        let name = it.name().map_or_else(Name::missing, |it| it.as_name());
-                        let def = ConstLoc {
-                            container,
-                            ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
-                        }
-                        .intern(db)
-                        .into();
-                        (name, def)
-                    }
-                    ast::ImplItem::TypeAliasDef(it) => {
-                        let name = it.name().map_or_else(Name::missing, |it| it.as_name());
-                        let def = TypeAliasLoc {
-                            container,
-                            ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
-                        }
-                        .intern(db)
-                        .into();
-                        (name, def)
-                    }
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let mut items = Vec::new();
+
+        if let Some(item_list) = src.value.item_list() {
+            let mut expander = Expander::new(db, tr_loc.ast_id.file_id, module_id);
+            items.extend(collect_impl_items(
+                db,
+                &mut expander,
+                item_list.impl_items(),
+                src.file_id,
+                container,
+            ));
+            items.extend(collect_impl_items_in_macros(
+                db,
+                &mut expander,
+                &src.with_value(item_list),
+                container,
+            ));
+        }
         Arc::new(TraitData { name, items, auto })
     }
 
@@ -232,24 +212,33 @@ impl ImplData {
         let target_type = TypeRef::from_ast_opt(&lower_ctx, src.value.target_type());
         let is_negative = src.value.excl_token().is_some();
         let module_id = impl_loc.container.module(db);
+        let container = AssocContainerId::ImplId(id);
 
-        let mut items = Vec::new();
+        let mut items: Vec<AssocItemId> = Vec::new();
 
         if let Some(item_list) = src.value.item_list() {
             let mut expander = Expander::new(db, impl_loc.ast_id.file_id, module_id);
-            items.extend(collect_impl_items(
-                db,
-                &mut expander,
-                item_list.impl_items(),
-                src.file_id,
-                id,
-            ));
-            items.extend(collect_impl_items_in_macros(
-                db,
-                &mut expander,
-                &src.with_value(item_list),
-                id,
-            ));
+            items.extend(
+                collect_impl_items(
+                    db,
+                    &mut expander,
+                    item_list.impl_items(),
+                    src.file_id,
+                    container,
+                )
+                .into_iter()
+                .map(|(_, item)| item),
+            );
+            items.extend(
+                collect_impl_items_in_macros(
+                    db,
+                    &mut expander,
+                    &src.with_value(item_list),
+                    container,
+                )
+                .into_iter()
+                .map(|(_, item)| item),
+            );
         }
 
         let res = ImplData { target_trait, target_type, items, is_negative };
@@ -296,15 +285,15 @@ fn collect_impl_items_in_macros(
     db: &dyn DefDatabase,
     expander: &mut Expander,
     impl_def: &InFile<ast::ItemList>,
-    id: ImplId,
-) -> Vec<AssocItemId> {
+    container: AssocContainerId,
+) -> Vec<(Name, AssocItemId)> {
     let mut res = Vec::new();
 
     // We set a limit to protect against infinite recursion
     let limit = 100;
 
     for m in impl_def.value.syntax().children().filter_map(ast::MacroCall::cast) {
-        res.extend(collect_impl_items_in_macro(db, expander, m, id, limit))
+        res.extend(collect_impl_items_in_macro(db, expander, m, container, limit))
     }
 
     res
@@ -314,9 +303,9 @@ fn collect_impl_items_in_macro(
     db: &dyn DefDatabase,
     expander: &mut Expander,
     m: ast::MacroCall,
-    id: ImplId,
+    container: AssocContainerId,
     limit: usize,
-) -> Vec<AssocItemId> {
+) -> Vec<(Name, AssocItemId)> {
     if limit == 0 {
         return Vec::new();
     }
@@ -328,13 +317,14 @@ fn collect_impl_items_in_macro(
             expander,
             items.value.items().filter_map(|it| ImplItem::cast(it.syntax().clone())),
             items.file_id,
-            id,
+            container,
         );
+
         // Recursive collect macros
         // Note that ast::ModuleItem do not include ast::MacroCall
         // We cannot use ModuleItemOwner::items here
         for it in items.value.syntax().children().filter_map(ast::MacroCall::cast) {
-            res.extend(collect_impl_items_in_macro(db, expander, it, id, limit - 1))
+            res.extend(collect_impl_items_in_macro(db, expander, it, container, limit - 1))
         }
         expander.exit(db, mark);
         res
@@ -348,39 +338,34 @@ fn collect_impl_items(
     expander: &mut Expander,
     impl_items: impl Iterator<Item = ImplItem>,
     file_id: crate::HirFileId,
-    id: ImplId,
-) -> Vec<AssocItemId> {
+    container: AssocContainerId,
+) -> Vec<(Name, AssocItemId)> {
     let items = db.ast_id_map(file_id);
 
     impl_items
         .filter_map(|item_node| match item_node {
             ast::ImplItem::FnDef(it) => {
+                let name = it.name().map_or_else(Name::missing, |it| it.as_name());
                 let attrs = expander.parse_attrs(&it);
                 if !expander.is_cfg_enabled(&attrs) {
                     return None;
                 }
-                let def = FunctionLoc {
-                    container: AssocContainerId::ImplId(id),
-                    ast_id: AstId::new(file_id, items.ast_id(&it)),
-                }
-                .intern(db);
-                Some(def.into())
+                let def = FunctionLoc { container, ast_id: AstId::new(file_id, items.ast_id(&it)) }
+                    .intern(db);
+                Some((name, def.into()))
             }
             ast::ImplItem::ConstDef(it) => {
-                let def = ConstLoc {
-                    container: AssocContainerId::ImplId(id),
-                    ast_id: AstId::new(file_id, items.ast_id(&it)),
-                }
-                .intern(db);
-                Some(def.into())
+                let name = it.name().map_or_else(Name::missing, |it| it.as_name());
+                let def = ConstLoc { container, ast_id: AstId::new(file_id, items.ast_id(&it)) }
+                    .intern(db);
+                Some((name, def.into()))
             }
             ast::ImplItem::TypeAliasDef(it) => {
-                let def = TypeAliasLoc {
-                    container: AssocContainerId::ImplId(id),
-                    ast_id: AstId::new(file_id, items.ast_id(&it)),
-                }
-                .intern(db);
-                Some(def.into())
+                let name = it.name().map_or_else(Name::missing, |it| it.as_name());
+                let def =
+                    TypeAliasLoc { container, ast_id: AstId::new(file_id, items.ast_id(&it)) }
+                        .intern(db);
+                Some((name, def.into()))
             }
         })
         .collect()
