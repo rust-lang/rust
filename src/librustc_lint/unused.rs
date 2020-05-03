@@ -327,7 +327,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             descr_post_path: &str,
         ) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
-                if attr.check_name(sym::must_use) {
+                if attr.check_name(sym::rustc_must_use) {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
                         let msg = format!(
                             "unused {}`{}`{} that must be used",

@@ -7,7 +7,7 @@ extern "C" {
         /// Bar
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
@@ -23,7 +23,7 @@ type FnType = fn(
     /// Bar
     //~^ ERROR documentation comments cannot be applied to function
     #[must_use]
-    //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+    //~^ ERROR expected an inert attribute, found an attribute macro
     /// Baz
     //~^ ERROR documentation comments cannot be applied to function
     #[no_mangle] b: i32,
@@ -38,7 +38,7 @@ pub fn foo(
     /// Bar
     //~^ ERROR documentation comments cannot be applied to function
     #[must_use]
-    //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+    //~^ ERROR expected an inert attribute, found an attribute macro
     /// Baz
     //~^ ERROR documentation comments cannot be applied to function
     #[no_mangle] b: i32,
@@ -58,7 +58,7 @@ impl SelfStruct {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
@@ -73,7 +73,7 @@ impl SelfStruct {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
@@ -94,7 +94,7 @@ impl RefStruct {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
@@ -113,7 +113,7 @@ trait RefTrait {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
@@ -128,7 +128,7 @@ trait RefTrait {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
@@ -148,7 +148,7 @@ impl RefTrait for RefStruct {
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Qux
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32,
@@ -165,7 +165,7 @@ fn main() {
         /// Bar
         //~^ ERROR documentation comments cannot be applied to function
         #[must_use]
-        //~^ ERROR allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in
+        //~^ ERROR expected an inert attribute, found an attribute macro
         /// Baz
         //~^ ERROR documentation comments cannot be applied to function
         #[no_mangle] b: i32

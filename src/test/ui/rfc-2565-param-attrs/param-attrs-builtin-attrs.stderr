@@ -5,10 +5,22 @@ LL |         #[test] a: i32,
    |         ^^^^^^^
 
 error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:9:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
   --> $DIR/param-attrs-builtin-attrs.rs:21:5
    |
 LL |     #[test] a: u32,
    |     ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:25:5
+   |
+LL |     #[must_use]
+   |     ^^^^^^^^^^^
 
 error: expected an inert attribute, found an attribute macro
   --> $DIR/param-attrs-builtin-attrs.rs:36:5
@@ -17,10 +29,22 @@ LL |     #[test] a: u32,
    |     ^^^^^^^
 
 error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:40:5
+   |
+LL |     #[must_use]
+   |     ^^^^^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
   --> $DIR/param-attrs-builtin-attrs.rs:56:9
    |
 LL |         #[test] a: i32,
    |         ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:60:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
 
 error: expected an inert attribute, found an attribute macro
   --> $DIR/param-attrs-builtin-attrs.rs:71:9
@@ -29,10 +53,22 @@ LL |         #[test] a: i32,
    |         ^^^^^^^
 
 error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:75:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
   --> $DIR/param-attrs-builtin-attrs.rs:92:9
    |
 LL |         #[test] a: i32,
    |         ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:96:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
 
 error: expected an inert attribute, found an attribute macro
   --> $DIR/param-attrs-builtin-attrs.rs:111:9
@@ -41,10 +77,22 @@ LL |         #[test] a: i32,
    |         ^^^^^^^
 
 error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:115:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
   --> $DIR/param-attrs-builtin-attrs.rs:126:9
    |
 LL |         #[test] a: i32,
    |         ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:130:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
 
 error: expected an inert attribute, found an attribute macro
   --> $DIR/param-attrs-builtin-attrs.rs:146:9
@@ -53,10 +101,22 @@ LL |         #[test] a: i32,
    |         ^^^^^^^
 
 error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:150:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
   --> $DIR/param-attrs-builtin-attrs.rs:163:9
    |
 LL |         #[test] a: u32,
    |         ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:167:9
+   |
+LL |         #[must_use]
+   |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:3:9
@@ -69,12 +129,6 @@ error: documentation comments cannot be applied to function parameters
    |
 LL |         /// Bar
    |         ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:9:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:11:9
@@ -100,12 +154,6 @@ error: documentation comments cannot be applied to function parameters
 LL |     /// Bar
    |     ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:25:5
-   |
-LL |     #[must_use]
-   |     ^^^^^^^^^^^
-
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:27:5
    |
@@ -129,12 +177,6 @@ error: documentation comments cannot be applied to function parameters
    |
 LL |     /// Bar
    |     ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:40:5
-   |
-LL |     #[must_use]
-   |     ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:42:5
@@ -166,12 +208,6 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:60:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:62:9
    |
@@ -195,12 +231,6 @@ error: documentation comments cannot be applied to function parameters
    |
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:75:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:77:9
@@ -232,12 +262,6 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:96:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:98:9
    |
@@ -268,12 +292,6 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:115:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:117:9
    |
@@ -297,12 +315,6 @@ error: documentation comments cannot be applied to function parameters
    |
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:130:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:132:9
@@ -334,12 +346,6 @@ error: documentation comments cannot be applied to function parameters
 LL |         /// Baz
    |         ^^^^^^^ doc comments are not allowed here
 
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:150:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
-
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:152:9
    |
@@ -363,12 +369,6 @@ error: documentation comments cannot be applied to function parameters
    |
 LL |         /// Bar
    |         ^^^^^^^ doc comments are not allowed here
-
-error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/param-attrs-builtin-attrs.rs:167:9
-   |
-LL |         #[must_use]
-   |         ^^^^^^^^^^^
 
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:169:9

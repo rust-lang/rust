@@ -34,6 +34,7 @@ mod global_allocator;
 mod global_asm;
 mod llvm_asm;
 mod log_syntax;
+mod must_use;
 mod source_util;
 mod test;
 mod trace_macros;
@@ -92,6 +93,7 @@ pub fn register_builtin_macros(resolver: &mut dyn Resolver, edition: Edition) {
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
+        must_use: must_use::expand,
     }
 
     register_derive! {

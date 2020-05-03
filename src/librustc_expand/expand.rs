@@ -1084,6 +1084,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             if !self.cx.ecfg.custom_inner_attributes()
                 && attr.style == ast::AttrStyle::Inner
                 && !attr.has_name(sym::test)
+                && !attr.has_name(sym::must_use)
             {
                 feature_err(
                     &self.cx.parse_sess,

@@ -1446,4 +1446,13 @@ pub(crate) mod builtin {
     pub macro RustcEncodable($item:item) {
         /* compiler built-in */
     }
+
+    /// Indicates that a value must be explicitly consumed by the user.
+    #[cfg(not(bootstrap))]
+    #[rustc_builtin_macro]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(rustc_attrs)]
+    pub macro must_use($item:item) {
+        /* compiler built-in */
+    }
 }

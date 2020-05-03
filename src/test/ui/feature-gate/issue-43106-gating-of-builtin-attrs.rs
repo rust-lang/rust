@@ -77,7 +77,6 @@
 #![link_name = "1900"]
 #![link_section = "1800"]
 // see issue-43106-gating-of-rustc_deprecated.rs
-#![must_use]
 // see issue-43106-gating-of-stable.rs
 // see issue-43106-gating-of-unstable.rs
 // see issue-43106-gating-of-deprecated.rs

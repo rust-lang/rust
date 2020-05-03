@@ -62,6 +62,11 @@ pub use core::prelude::v1::{
 #[doc(hidden)]
 pub use core::prelude::v1::cfg_accessible;
 
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[cfg(not(bootstrap))]
+#[doc(hidden)]
+pub use core::prelude::v1::must_use;
+
 // The file so far is equivalent to src/libcore/prelude/v1.rs,
 // and below to src/liballoc/prelude.rs.
 // Those files are duplicated rather than using glob imports

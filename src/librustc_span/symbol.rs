@@ -648,6 +648,7 @@ symbols! {
         rustc_layout_scalar_valid_range_start,
         rustc_macro_transparency,
         rustc_mir,
+        rustc_must_use,
         rustc_nonnull_optimization_guaranteed,
         rustc_object_lifetime_default,
         rustc_on_unimplemented,

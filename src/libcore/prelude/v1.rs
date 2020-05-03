@@ -76,3 +76,8 @@ pub use crate::macros::builtin::{
 )]
 #[doc(no_inline)]
 pub use crate::macros::builtin::cfg_accessible;
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(no_inline)]
+pub use crate::macros::builtin::must_use;

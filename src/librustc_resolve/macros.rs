@@ -293,7 +293,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         invoc_id.set_expn_data(ext.expn_data(parent_scope.expansion, span, fast_print_path(path)));
 
         if let Res::Def(_, def_id) = res {
-            if after_derive {
+            if after_derive && !ext.is_builtin {
                 self.session.span_err(span, "macro attributes must be placed before `#[derive]`");
             }
             self.macro_defs.insert(invoc_id, def_id);
