@@ -168,7 +168,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for `for` loops over `Option` values.
+    /// **What it does:** Checks for `for` loops over `Option` or `Result` values.
     ///
     /// **Why is this bad?** Readability. This is more clearly expressed as an `if
     /// let`.
@@ -176,47 +176,38 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
-    /// for x in option {
-    ///     ..
+    /// ```rust
+    /// # let opt = Some(1);
+    ///
+    /// // Bad
+    /// for x in opt {
+    ///     // ..
+    /// }
+    ///
+    /// // Good
+    /// if let Some(x) = opt {
+    ///     // ..
     /// }
     /// ```
     ///
-    /// This should be
-    /// ```ignore
-    /// if let Some(x) = option {
-    ///     ..
+    /// // or
+    ///
+    /// ```rust
+    /// # let res: Result<i32, std::io::Error> = Ok(1);
+    ///
+    /// // Bad
+    /// for x in &res {
+    ///     // ..
+    /// }
+    ///
+    /// // Good
+    /// if let Ok(x) = res {
+    ///     // ..
     /// }
     /// ```
-    pub FOR_LOOP_OVER_OPTION,
+    pub FOR_LOOP_OVER_FALLIBLE,
     correctness,
-    "for-looping over an `Option`, which is more clearly expressed as an `if let`"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for `for` loops over `Result` values.
-    ///
-    /// **Why is this bad?** Readability. This is more clearly expressed as an `if
-    /// let`.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```ignore
-    /// for x in result {
-    ///     ..
-    /// }
-    /// ```
-    ///
-    /// This should be
-    /// ```ignore
-    /// if let Ok(x) = result {
-    ///     ..
-    /// }
-    /// ```
-    pub FOR_LOOP_OVER_RESULT,
-    correctness,
-    "for-looping over a `Result`, which is more clearly expressed as an `if let`"
+    "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`"
 }
 
 declare_clippy_lint! {
@@ -435,8 +426,7 @@ declare_lint_pass!(Loops => [
     EXPLICIT_ITER_LOOP,
     EXPLICIT_INTO_ITER_LOOP,
     ITER_NEXT_LOOP,
-    FOR_LOOP_OVER_RESULT,
-    FOR_LOOP_OVER_OPTION,
+    FOR_LOOP_OVER_FALLIBLE,
     WHILE_LET_LOOP,
     NEEDLESS_COLLECT,
     EXPLICIT_COUNTER_LOOP,
@@ -1283,7 +1273,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>, e
                     ITER_NEXT_LOOP,
                     expr.span,
                     "you are iterating over `Iterator::next()` which is an Option; this will compile but is \
-                     probably not what you want",
+                    probably not what you want",
                 );
                 next_loop_linted = true;
             }
@@ -1300,11 +1290,11 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     if is_type_diagnostic_item(cx, ty, sym!(option_type)) {
         span_lint_and_help(
             cx,
-            FOR_LOOP_OVER_OPTION,
+            FOR_LOOP_OVER_FALLIBLE,
             arg.span,
             &format!(
                 "for loop over `{0}`, which is an `Option`. This is more readably written as an \
-                 `if let` statement.",
+                `if let` statement.",
                 snippet(cx, arg.span, "_")
             ),
             None,
@@ -1317,11 +1307,11 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     } else if is_type_diagnostic_item(cx, ty, sym!(result_type)) {
         span_lint_and_help(
             cx,
-            FOR_LOOP_OVER_RESULT,
+            FOR_LOOP_OVER_FALLIBLE,
             arg.span,
             &format!(
                 "for loop over `{0}`, which is a `Result`. This is more readably written as an \
-                 `if let` statement.",
+                `if let` statement.",
                 snippet(cx, arg.span, "_")
             ),
             None,

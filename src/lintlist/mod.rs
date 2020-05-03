@@ -676,16 +676,9 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "loops",
     },
     Lint {
-        name: "for_loop_over_option",
+        name: "for_loop_over_fallible",
         group: "correctness",
-        desc: "for-looping over an `Option`, which is more clearly expressed as an `if let`",
-        deprecation: None,
-        module: "loops",
-    },
-    Lint {
-        name: "for_loop_over_result",
-        group: "correctness",
-        desc: "for-looping over a `Result`, which is more clearly expressed as an `if let`",
+        desc: "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`",
         deprecation: None,
         module: "loops",
     },
