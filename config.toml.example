@@ -171,7 +171,7 @@
 # rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
 #
 # Defaults to the Python interpreter used to execute x.py.
-#python = "python"
+#python = "python3"
 
 # Force Cargo to check that Cargo.lock describes the precise dependency
 # set that all the Cargo.toml files create, instead of updating it.
