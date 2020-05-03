@@ -4,8 +4,8 @@ use crate::check::method::MethodCallee;
 use crate::check::Expectation::*;
 use crate::check::TupleArgumentsFlag::*;
 use crate::check::{
-    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt,
-    LocalTy, Needs, TupleArgumentsFlag,
+    struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy, Needs,
+    TupleArgumentsFlag,
 };
 
 use rustc_ast as ast;
@@ -19,13 +19,16 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::Session;
-use rustc_span::{BytePos, Pos, symbol::{sym, Ident}};
 use rustc_span::{self, MultiSpan, Span};
+use rustc_span::{
+    symbol::{sym, Ident},
+    BytePos, Pos,
+};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
 
+use std::cmp;
 use std::mem::replace;
 use std::slice;
-use std::cmp;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&self) {
@@ -96,12 +99,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         call_span: Span,                        // Span enclosing the call site
         call_expr: &'tcx hir::Expr<'tcx>,       // Expression of the call site
-        formal_input_tys: &[Ty<'tcx>],          // Types (as defined in the *signature* of the target function)
-        expected_input_tys: &[Ty<'tcx>],        // More specific expected types, after unifying with caller output types
+        formal_input_tys: &[Ty<'tcx>], // Types (as defined in the *signature* of the target function)
+        expected_input_tys: &[Ty<'tcx>], // More specific expected types, after unifying with caller output types
         provided_args: &'tcx [hir::Expr<'tcx>], // The expressions for each provided argument
-        c_variadic: bool,                       // Whether the function is variadic, for example when imported from C
-        tuple_arguments: TupleArgumentsFlag,    // Whether the arguments have been bundled in a tuple (ex: closures)
-        fn_def_id: Option<DefId>,               // The DefId for the function being called, for better error messages
+        c_variadic: bool, // Whether the function is variadic, for example when imported from C
+        tuple_arguments: TupleArgumentsFlag, // Whether the arguments have been bundled in a tuple (ex: closures)
+        fn_def_id: Option<DefId>, // The DefId for the function being called, for better error messages
     ) {
         let tcx = self.tcx;
 
@@ -198,7 +201,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
             let coerced_ty = self.resolve_vars_with_obligations(coerced_ty);
 
-            let coerce_error = self.try_coerce(provided_arg, checked_ty, coerced_ty, AllowTwoPhase::Yes);
+            let coerce_error =
+                self.try_coerce(provided_arg, checked_ty, coerced_ty, AllowTwoPhase::Yes);
 
             // 3. Check if the formal type is a supertype of the checked one
             //    and register any such obligations for future type checks
@@ -262,7 +266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.warn_if_unreachable(
                 provided_args[idx].hir_id,
                 provided_args[idx].span,
-                "expression"
+                "expression",
             );
 
             // If we're past the end of the expected inputs, we won't have anything to check against
@@ -327,14 +331,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // First, fill in the rest of our compatibility matrix
             for i in 0..provided_arg_count {
                 for j in 0..minimum_input_count {
-                    if i == j { continue; }
+                    if i == j {
+                        continue;
+                    }
                     compatibility_matrix[i][j] = check_compatible(i, j);
                 }
             }
 
             // Obviously, detecting exact user intention is impossible, so the goal here is to
             // come up with as likely of a story as we can to be helpful.
-            // 
+            //
             // We'll iteratively removed "satisfied" input/argument paris,
             // then check for the cases above, until we've eliminated the entire grid
             //
@@ -398,7 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // This is a satisfied input, so move along
                         continue;
                     }
-                    
+
                     let mut useless = true;
                     let mut unsatisfiable = true;
                     if is_arg {
@@ -473,12 +479,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     loop {
                         stack.push(j);
                         // Look for params this one could slot into
-                        let compat: Vec<_> = mat[j]
-                            .iter()
-                            .enumerate()
-                            .filter(|(_, &c)| c)
-                            .map(|(i, _)| i)
-                            .collect();
+                        let compat: Vec<_> =
+                            mat[j].iter().enumerate().filter(|(_, &c)| c).map(|(i, _)| i).collect();
                         if compat.len() != 1 {
                             // this could go into multipl slots, don't bother exploring both
                             is_cycle = false;
@@ -491,7 +493,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     if stack.len() <= 2 {
-                        // If we encounter a cycle of 1 or 2 elements, we'll let the 
+                        // If we encounter a cycle of 1 or 2 elements, we'll let the
                         // "satisfy" and "swap" code above handle those
                     }
                     // We've built up some chain, some of which might be a cycle
@@ -541,7 +543,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     Some(Issue::Missing(idx)) => {
                         // FIXME: improve these with help from code reviewers
-                        let input_ty = self.resolve_vars_if_possible(expected_input_tys[input_indexes[idx]]);
+                        let input_ty =
+                            self.resolve_vars_if_possible(expected_input_tys[input_indexes[idx]]);
                         if input_ty.is_unit() {
                             info!("~~~ Issue: Maybe use ()?"); // FIXME
                         }
@@ -555,7 +558,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             &mut compatibility_matrix,
                             &mut input_indexes,
                             &mut arg_indexes,
-                            min, max,
+                            min,
+                            max,
                         );
                         satisfy_input(
                             &mut compatibility_matrix,
@@ -569,7 +573,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // FIXME: If satisfy_input ever did anything non-trivial (emit obligations to help type checking, for example)
                         // we'd want to call this function with the correct arg/input pairs, but for now, we just throw them in a bucket.
                         // This works because they force a cycle, so each row is guaranteed to also be a column
-                        let mut idxs: Vec<usize> = args.iter().filter(|a| a.is_some()).map(|a| a.unwrap()).collect();
+                        let mut idxs: Vec<usize> =
+                            args.iter().filter(|a| a.is_some()).map(|a| a.unwrap()).collect();
                         // FIXME: Is there a cleaner way to do this?
                         let mut real_idxs = vec![None; provided_args.len()];
                         for (src, dst) in args.iter().enumerate() {
@@ -591,7 +596,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None => {
                         // We didn't find any issues, so we need to push the algorithm forward
                         // First, eliminate any arguments that currently satisfy their inputs
-                        let mut i = cmp:: min(arg_indexes.len(), input_indexes.len());
+                        let mut i = cmp::min(arg_indexes.len(), input_indexes.len());
                         while i > 0 {
                             let idx = i - 1;
                             if compatibility_matrix[idx][idx] {
@@ -677,7 +682,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     E0059, // FIXME: Choose a different code?
                     "multiple arguments to this function are incorrect"
                 );
-                
+
                 // Call out where the function is defined
                 if let Some(def_id) = fn_def_id {
                     if let Some(node) = tcx.hir().get_if_local(def_id) {
