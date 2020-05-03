@@ -11,11 +11,10 @@ use super::*;
 impl char {
     /// The highest valid code point a `char` can have.
     ///
-    /// A [`char`] is a [Unicode Scalar Value], which means that it is a [Code
+    /// A `char` is a [Unicode Scalar Value], which means that it is a [Code
     /// Point], but only ones within a certain range. `MAX` is the highest valid
     /// code point that's a valid [Unicode Scalar Value].
     ///
-    /// [`char`]: ../../std/primitive.char.html
     /// [Unicode Scalar Value]: http://www.unicode.org/glossary/#unicode_scalar_value
     /// [Code Point]: http://www.unicode.org/glossary/#code_point
     #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
@@ -25,7 +24,7 @@ impl char {
     /// decoding error.
     ///
     /// It can occur, for example, when giving ill-formed UTF-8 bytes to
-    /// [`String::from_utf8_lossy`](../../std/string/struct.String.html#method.from_utf8_lossy).
+    /// [`String::from_utf8_lossy`](string/struct.String.html#method.from_utf8_lossy).
     #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
     pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 
@@ -96,7 +95,7 @@ impl char {
 
     /// Converts a `u32` to a `char`.
     ///
-    /// Note that all [`char`]s are valid [`u32`]s, and can be cast to one with
+    /// Note that all `char`s are valid [`u32`]s, and can be cast to one with
     /// `as`:
     ///
     /// ```
@@ -107,16 +106,15 @@ impl char {
     /// ```
     ///
     /// However, the reverse is not true: not all valid [`u32`]s are valid
-    /// [`char`]s. `from_u32()` will return `None` if the input is not a valid value
-    /// for a [`char`].
+    /// `char`s. `from_u32()` will return `None` if the input is not a valid value
+    /// for a `char`.
     ///
-    /// [`char`]: ../../std/primitive.char.html
-    /// [`u32`]: ../../std/primitive.u32.html
+    /// [`u32`]: primitive.u32.html
     ///
     /// For an unsafe version of this function which ignores these checks, see
     /// [`from_u32_unchecked`].
     ///
-    /// [`from_u32_unchecked`]: fn.from_u32_unchecked.html
+    /// [`from_u32_unchecked`]: #method.from_u32_unchecked
     ///
     /// # Examples
     ///
@@ -130,7 +128,7 @@ impl char {
     /// assert_eq!(Some('❤'), c);
     /// ```
     ///
-    /// Returning `None` when the input is not a valid [`char`]:
+    /// Returning `None` when the input is not a valid `char`:
     ///
     /// ```
     /// use std::char;
@@ -147,7 +145,7 @@ impl char {
 
     /// Converts a `u32` to a `char`, ignoring validity.
     ///
-    /// Note that all [`char`]s are valid [`u32`]s, and can be cast to one with
+    /// Note that all `char`s are valid [`u32`]s, and can be cast to one with
     /// `as`:
     ///
     /// ```
@@ -158,11 +156,10 @@ impl char {
     /// ```
     ///
     /// However, the reverse is not true: not all valid [`u32`]s are valid
-    /// [`char`]s. `from_u32_unchecked()` will ignore this, and blindly cast to
-    /// [`char`], possibly creating an invalid one.
+    /// `char`s. `from_u32_unchecked()` will ignore this, and blindly cast to
+    /// `char`, possibly creating an invalid one.
     ///
-    /// [`char`]: ../../std/primitive.char.html
-    /// [`u32`]: ../../std/primitive.u32.html
+    /// [`u32`]: primitive.u32.html
     ///
     /// # Safety
     ///
@@ -170,7 +167,7 @@ impl char {
     ///
     /// For a safe version of this function, see the [`from_u32`] function.
     ///
-    /// [`from_u32`]: fn.from_u32.html
+    /// [`from_u32`]: #method.from_u32
     ///
     /// # Examples
     ///
