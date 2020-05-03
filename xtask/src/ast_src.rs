@@ -305,7 +305,7 @@ macro_rules! ast_enums {
 pub(crate) const AST_SRC: AstSrc = AstSrc {
     tokens: &["Whitespace", "Comment", "String", "RawString"],
     nodes: &ast_nodes! {
-        struct SourceFile: ModuleItemOwner, AttrsOwner {
+        struct SourceFile: ModuleItemOwner, AttrsOwner, DocCommentsOwner {
             modules: [Module],
         }
 
@@ -401,7 +401,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
             T![;]
         }
 
-        struct ImplDef: TypeParamsOwner, AttrsOwner {
+        struct ImplDef: TypeParamsOwner, AttrsOwner, DocCommentsOwner {
             T![default],
             T![const],
             T![unsafe],
