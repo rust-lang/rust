@@ -5,7 +5,7 @@ use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
 use rustc_target::spec::abi;
 
@@ -616,26 +616,11 @@ impl<T> Trait<T> for X {
         // We don't want to suggest calling an assoc fn in a scope where that isn't feasible.
         let callable_scope = match body_owner {
             Some(
-                hir::Node::Item(hir::Item {
-                    kind:
-                        hir::ItemKind::Trait(..)
-                        | hir::ItemKind::Impl { .. }
-                        | hir::ItemKind::Const(..)
-                        | hir::ItemKind::Enum(..)
-                        | hir::ItemKind::Struct(..)
-                        | hir::ItemKind::Union(..),
-                    ..
-                })
-                | hir::Node::TraitItem(hir::TraitItem {
-                    kind: hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..),
-                    ..
-                })
-                | hir::Node::ImplItem(hir::ImplItem {
-                    kind: hir::ImplItemKind::Const(..) | hir::ImplItemKind::TyAlias(..),
-                    ..
-                }),
-            ) => false,
-            _ => true,
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
+                | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
+                | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
+            ) => true,
+            _ => false,
         };
         let impl_comparison = matches!(
             cause_code,
@@ -649,112 +634,20 @@ impl<T> Trait<T> for X {
             // type error is a comparison of an `impl` with its `trait` or when the
             // scope is outside of a `Body`.
         } else {
-            let items = self.associated_items(assoc.container.id());
-            // Find all the methods in the trait that could be called to construct the
-            // expected associated type.
-            // FIXME: consider suggesting the use of associated `const`s.
-            let methods: Vec<(Span, String)> = items
-                .items
-                .iter()
-                .filter(|(name, item)| {
-                    ty::AssocKind::Fn == item.kind && Some(**name) != current_method_ident
-                })
-                .filter_map(|(_, item)| {
-                    let method = self.fn_sig(item.def_id);
-                    match method.output().skip_binder().kind {
-                        ty::Projection(ty::ProjectionTy { item_def_id, .. })
-                            if item_def_id == proj_ty.item_def_id =>
-                        {
-                            Some((
-                                self.sess.source_map().guess_head_span(self.def_span(item.def_id)),
-                                format!("consider calling `{}`", self.def_path_str(item.def_id)),
-                            ))
-                        }
-                        _ => None,
-                    }
-                })
-                .collect();
-            if !methods.is_empty() {
-                // Use a single `help:` to show all the methods in the trait that can
-                // be used to construct the expected associated type.
-                let mut span: MultiSpan =
-                    methods.iter().map(|(sp, _)| *sp).collect::<Vec<Span>>().into();
-                let msg = format!(
-                    "{some} method{s} {are} available that return{r} `{ty}`",
-                    some = if methods.len() == 1 { "a" } else { "some" },
-                    s = pluralize!(methods.len()),
-                    are = if methods.len() == 1 { "is" } else { "are" },
-                    r = if methods.len() == 1 { "s" } else { "" },
-                    ty = values.expected
-                );
-                for (sp, label) in methods.into_iter() {
-                    span.push_span_label(sp, label);
-                }
-                db.span_help(span, &msg);
-                suggested = true;
-            }
+            suggested |= self.point_at_methods_that_satisfy_associated_type(
+                db,
+                assoc.container.id(),
+                current_method_ident,
+                proj_ty.item_def_id,
+                values.expected,
+            );
             // Possibly suggest constraining the associated type to conform to the
             // found type.
             suggested |=
                 self.suggest_constraint(db, &msg, body_owner_def_id, proj_ty, values.found);
         }
-        if let (Some(hir_id), false) =
-            (body_owner_def_id.as_local().map(|id| self.hir().as_local_hir_id(id)), suggested)
-        {
-            // When `body_owner` is an `impl` or `trait` item, look in its associated types for
-            // `expected` and point at it.
-            let parent_id = self.hir().get_parent_item(hir_id);
-            let item = self.hir().find(parent_id);
-            debug!("expected_projection parent item {:?}", item);
-            match item {
-                Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(.., items), ..
-                })) => {
-                    // FIXME: account for `#![feature(specialization)]`
-                    for item in &items[..] {
-                        match item.kind {
-                            hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
-                                if self.type_of(self.hir().local_def_id(item.id.hir_id))
-                                    == values.found
-                                {
-                                    if let hir::Defaultness::Default { has_value: true } =
-                                        item.defaultness
-                                    {
-                                        db.span_label(
-                                            item.span,
-                                            "associated type defaults can't be assumed inside the \
-                                                trait defining them",
-                                        );
-                                    } else {
-                                        db.span_label(item.span, "expected this associated type");
-                                    }
-                                    suggested = true;
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl { items, .. },
-                    ..
-                })) => {
-                    for item in &items[..] {
-                        match item.kind {
-                            hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
-                                if self.type_of(self.hir().local_def_id(item.id.hir_id))
-                                    == values.found
-                                {
-                                    db.span_label(item.span, "expected this associated type");
-                                    suggested = true;
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                _ => {}
-            }
+        if !suggested {
+            suggested = self.point_at_associated_type(db, body_owner_def_id, values.found);
         }
         if let ty::Opaque(def_id, _) = proj_ty.self_ty().kind {
             // When the expected `impl Trait` is not defined in the current item, it will come from
@@ -800,6 +693,121 @@ fn foo(&self) -> Self::T { String::new() }
         }
     }
 
+    fn point_at_methods_that_satisfy_associated_type(
+        &self,
+        db: &mut DiagnosticBuilder<'_>,
+        assoc_container_id: DefId,
+        current_method_ident: Option<Symbol>,
+        proj_ty_item_def_id: DefId,
+        expected: Ty<'tcx>,
+    ) -> bool {
+        let items = self.associated_items(assoc_container_id);
+        // Find all the methods in the trait that could be called to construct the
+        // expected associated type.
+        // FIXME: consider suggesting the use of associated `const`s.
+        let methods: Vec<(Span, String)> = items
+            .items
+            .iter()
+            .filter(|(name, item)| {
+                ty::AssocKind::Fn == item.kind && Some(**name) != current_method_ident
+            })
+            .filter_map(|(_, item)| {
+                let method = self.fn_sig(item.def_id);
+                match method.output().skip_binder().kind {
+                    ty::Projection(ty::ProjectionTy { item_def_id, .. })
+                        if item_def_id == proj_ty_item_def_id =>
+                    {
+                        Some((
+                            self.sess.source_map().guess_head_span(self.def_span(item.def_id)),
+                            format!("consider calling `{}`", self.def_path_str(item.def_id)),
+                        ))
+                    }
+                    _ => None,
+                }
+            })
+            .collect();
+        if !methods.is_empty() {
+            // Use a single `help:` to show all the methods in the trait that can
+            // be used to construct the expected associated type.
+            let mut span: MultiSpan =
+                methods.iter().map(|(sp, _)| *sp).collect::<Vec<Span>>().into();
+            let msg = format!(
+                "{some} method{s} {are} available that return{r} `{ty}`",
+                some = if methods.len() == 1 { "a" } else { "some" },
+                s = pluralize!(methods.len()),
+                are = if methods.len() == 1 { "is" } else { "are" },
+                r = if methods.len() == 1 { "s" } else { "" },
+                ty = expected
+            );
+            for (sp, label) in methods.into_iter() {
+                span.push_span_label(sp, label);
+            }
+            db.span_help(span, &msg);
+            return true;
+        }
+        false
+    }
+
+    fn point_at_associated_type(
+        &self,
+        db: &mut DiagnosticBuilder<'_>,
+        body_owner_def_id: DefId,
+        found: Ty<'tcx>,
+    ) -> bool {
+        let hir_id = match body_owner_def_id.as_local().map(|id| self.hir().as_local_hir_id(id)) {
+            Some(hir_id) => hir_id,
+            None => return false,
+        };
+        // When `body_owner` is an `impl` or `trait` item, look in its associated types for
+        // `expected` and point at it.
+        let parent_id = self.hir().get_parent_item(hir_id);
+        let item = self.hir().find(parent_id);
+        debug!("expected_projection parent item {:?}", item);
+        match item {
+            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. })) => {
+                // FIXME: account for `#![feature(specialization)]`
+                for item in &items[..] {
+                    match item.kind {
+                        hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
+                            if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
+                                if let hir::Defaultness::Default { has_value: true } =
+                                    item.defaultness
+                                {
+                                    db.span_label(
+                                        item.span,
+                                        "associated type defaults can't be assumed inside the \
+                                            trait defining them",
+                                    );
+                                } else {
+                                    db.span_label(item.span, "expected this associated type");
+                                }
+                                return true;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            Some(hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Impl { items, .. }, ..
+            })) => {
+                for item in &items[..] {
+                    match item.kind {
+                        hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
+                            if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
+                                db.span_label(item.span, "expected this associated type");
+                                return true;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+        false
+    }
+
     /// Given a slice of `hir::GenericBound`s, if any of them corresponds to the `trait_ref`
     /// requirement, provide a strucuted suggestion to constrain it to a given type `ty`.
     fn constrain_generic_bound_associated_type_structured_suggestion(
@@ -812,22 +820,16 @@ fn foo(&self) -> Self::T { String::new() }
         msg: &str,
     ) -> bool {
         // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
-        for bound in bounds {
-            match bound {
-                hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::None) => {
-                    // Relate the type param against `T` in `<A as T>::Foo`.
-                    if ptr.trait_ref.trait_def_id() == Some(trait_ref.def_id)
-                        && self.constrain_associated_type_structured_suggestion(
-                            db, ptr.span, assoc, ty, msg,
-                        )
-                    {
-                        return true;
-                    }
-                }
-                _ => {}
+        bounds.iter().any(|bound| match bound {
+            hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::None) => {
+                // Relate the type param against `T` in `<A as T>::Foo`.
+                ptr.trait_ref.trait_def_id() == Some(trait_ref.def_id)
+                    && self.constrain_associated_type_structured_suggestion(
+                        db, ptr.span, assoc, ty, msg,
+                    )
             }
-        }
-        false
+            _ => false,
+        })
     }
 
     /// Given a span corresponding to a bound, provide a structured suggestion to set an
