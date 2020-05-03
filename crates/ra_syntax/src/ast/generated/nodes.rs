@@ -12,6 +12,7 @@ pub struct SourceFile {
 }
 impl ast::ModuleItemOwner for SourceFile {}
 impl ast::AttrsOwner for SourceFile {}
+impl ast::DocCommentsOwner for SourceFile {}
 impl SourceFile {
     pub fn modules(&self) -> AstChildren<Module> { support::children(&self.syntax) }
 }
@@ -259,6 +260,7 @@ pub struct ImplDef {
 }
 impl ast::TypeParamsOwner for ImplDef {}
 impl ast::AttrsOwner for ImplDef {}
+impl ast::DocCommentsOwner for ImplDef {}
 impl ImplDef {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
