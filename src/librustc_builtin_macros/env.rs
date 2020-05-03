@@ -22,8 +22,10 @@ pub fn expand_option_env<'cx>(
     };
 
     let sp = cx.with_def_site_ctxt(sp);
-    let e = match env::var(&var.as_str()) {
-        Err(..) => {
+    let value = env::var(&var.as_str()).ok().as_deref().map(Symbol::intern);
+    cx.parse_sess.env_depinfo.borrow_mut().insert((Symbol::intern(&var), value));
+    let e = match value {
+        None => {
             let lt = cx.lifetime(sp, Ident::new(kw::StaticLifetime, sp));
             cx.expr_path(cx.path_all(
                 sp,
@@ -37,10 +39,10 @@ pub fn expand_option_env<'cx>(
                 ))],
             ))
         }
-        Ok(s) => cx.expr_call_global(
+        Some(value) => cx.expr_call_global(
             sp,
             cx.std_path(&[sym::option, sym::Option, sym::Some]),
-            vec![cx.expr_str(sp, Symbol::intern(&s))],
+            vec![cx.expr_str(sp, value)],
         ),
     };
     MacEager::expr(e)
@@ -78,12 +80,14 @@ pub fn expand_env<'cx>(
     }
 
     let sp = cx.with_def_site_ctxt(sp);
-    let e = match env::var(&*var.as_str()) {
-        Err(_) => {
+    let value = env::var(&*var.as_str()).ok().as_deref().map(Symbol::intern);
+    cx.parse_sess.env_depinfo.borrow_mut().insert((var, value));
+    let e = match value {
+        None => {
             cx.span_err(sp, &msg.as_str());
             return DummyResult::any(sp);
         }
-        Ok(s) => cx.expr_str(sp, Symbol::intern(&s)),
+        Some(value) => cx.expr_str(sp, value),
     };
     MacEager::expr(e)
 }
