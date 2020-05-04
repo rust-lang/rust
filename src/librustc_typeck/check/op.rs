@@ -251,7 +251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(()) => {
                 // error types are considered "builtin"
-                if !lhs_ty.references_error() {
+                if !lhs_ty.references_error() && !rhs_ty.references_error() {
                     let source_map = self.tcx.sess.source_map();
                     match is_assign {
                         IsAssign::Yes => {
