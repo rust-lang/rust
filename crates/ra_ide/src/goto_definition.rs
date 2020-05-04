@@ -244,6 +244,39 @@ mod tests {
     }
 
     #[test]
+    fn goto_def_for_use_alias() {
+        covers!(ra_ide_db::goto_def_for_use_alias);
+        check_goto(
+            "
+            //- /lib.rs
+            use foo as bar<|>;
+
+
+            //- /foo/lib.rs
+            #[macro_export]
+            macro_rules! foo { () => { () } }",
+            "SOURCE_FILE FileId(2) 0..50",
+            "#[macro_export]\nmacro_rules! foo { () => { () } }\n",
+        );
+    }
+
+    #[test]
+    fn goto_def_for_use_alias_foo_macro() {
+        check_goto(
+            "
+            //- /lib.rs
+            use foo::foo as bar<|>;
+
+            //- /foo/lib.rs
+            #[macro_export]
+            macro_rules! foo { () => { () } }
+            ",
+            "foo MACRO_CALL FileId(2) 0..49 29..32",
+            "#[macro_export]\nmacro_rules! foo { () => { () } }|foo",
+        );
+    }
+
+    #[test]
     fn goto_def_for_macros_in_use_tree() {
         check_goto(
             "
