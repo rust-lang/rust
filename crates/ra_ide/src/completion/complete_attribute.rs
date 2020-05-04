@@ -3,14 +3,16 @@
 //! This module uses a bit of static metadata to provide completions
 //! for built-in attributes.
 
-use super::completion_context::CompletionContext;
-use super::completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions};
-use ast::AttrInput;
 use ra_syntax::{
-    ast::{self, AttrKind},
+    ast::{self, AttrInput, AttrKind},
     AstNode, SyntaxKind,
 };
 use rustc_hash::FxHashSet;
+
+use crate::completion::{
+    completion_context::CompletionContext,
+    completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
+};
 
 pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let attribute = ctx.attribute_under_caret.as_ref()?;
