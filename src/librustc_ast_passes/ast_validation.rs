@@ -1291,6 +1291,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
+/// When encountering an equality constraint in a `where` clause, emit an error. If the code seems
+/// like it's setting an associated type, provide an appropriate suggestion.
 fn deny_equality_constraints(
     this: &mut AstValidator<'_>,
     predicate: &WhereEqPredicate,
