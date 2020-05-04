@@ -978,9 +978,8 @@ impl<'tcx> Constructor<'tcx> {
         let pat = match self {
             Single | Variant(_) => match ty.kind {
                 ty::Adt(..) | ty::Tuple(..) => {
-                    let subpatterns = subpatterns
-                        .enumerate()
-                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                    let subpatterns = VariantFields::from_patterns(cx, self, ty, subpatterns)
+                        .into_fieldpats()
                         .collect();
 
                     if let ty::Adt(adt, substs) = ty.kind {
@@ -1040,6 +1039,70 @@ impl<'tcx> Constructor<'tcx> {
     fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
         let subpatterns = self.wildcard_subpatterns(cx, ty).into_iter().rev();
         self.apply(cx, ty, subpatterns)
+    }
+}
+
+/// The fields of a variant, like `Option::Some` or `(,)`. This handles uninhabited fields and
+/// `non_exhaustive` pragmas under the hood.
+#[derive(Debug)]
+struct VariantFields<'p, 'tcx> {
+    fields: SmallVec<[&'p Pat<'tcx>; 2]>,
+    is_non_exhaustive: bool,
+}
+
+impl<'p, 'tcx> VariantFields<'p, 'tcx> {
+    fn from_patterns(
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        constructor: &Constructor<'tcx>,
+        ty: Ty<'tcx>,
+        pats: impl IntoIterator<Item = Pat<'tcx>>,
+    ) -> Self {
+        let fields = cx.pattern_arena.alloc_from_iter(pats);
+        let fields: SmallVec<_> = fields.iter().collect();
+        let is_non_exhaustive = match ty.kind {
+            ty::Adt(adt, _) => {
+                let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
+                cx.is_foreign_non_exhaustive_variant(ty, variant)
+            }
+            _ => false,
+        };
+        VariantFields { fields, is_non_exhaustive }
+    }
+
+    /// Creates a new list of wildcard fields for a given constructor. `constructor`
+    /// must be `Variant` or `Single`.
+    fn wildcards(
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        constructor: &Constructor<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Self {
+        Self::from_patterns(cx, constructor, ty, constructor.wildcard_subpatterns(cx, ty))
+    }
+
+    /// Overrides some of the fields with the provided patterns
+    fn override_patterns(
+        mut self,
+        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>,
+    ) -> Self {
+        for pat in pats {
+            if !self.is_non_exhaustive || !cx.is_uninhabited(pat.pattern.ty) {
+                self.fields[pat.field.index()] = &pat.pattern;
+            }
+        }
+        self
+    }
+
+    fn into_patstack(self) -> PatStack<'p, 'tcx> {
+        PatStack::from_vec(self.fields)
+    }
+
+    fn into_fieldpats(self) -> impl Iterator<Item = FieldPat<'tcx>> + 'p {
+        self.fields
+            .into_iter()
+            .cloned()
+            .enumerate()
+            .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
     }
 }
 
@@ -2306,27 +2369,6 @@ fn constructor_covered_by_range<'tcx>(
     if intersects { Some(()) } else { None }
 }
 
-fn patterns_for_variant<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'p, 'tcx>,
-    subpatterns: &'p [FieldPat<'tcx>],
-    constructor: &Constructor<'tcx>,
-    ty: Ty<'tcx>,
-    is_non_exhaustive: bool,
-) -> PatStack<'p, 'tcx> {
-    let ctor_wild_subpatterns =
-        cx.pattern_arena.alloc_from_iter(constructor.wildcard_subpatterns(cx, ty));
-    let mut result: SmallVec<_> = ctor_wild_subpatterns.iter().collect();
-
-    for subpat in subpatterns {
-        if !is_non_exhaustive || !cx.is_uninhabited(subpat.pattern.ty) {
-            result[subpat.field.index()] = &subpat.pattern;
-        }
-    }
-
-    debug!("patterns_for_variant({:#?}) = {:#?}", subpatterns, result);
-    PatStack::from_vec(result)
-}
-
 /// This is the main specialization step. It expands the pattern
 /// into `arity` patterns based on the constructor. For most patterns, the step is trivial,
 /// for instance tuple patterns are flattened and box patterns expand into their inner pattern.
@@ -2356,18 +2398,23 @@ fn specialize_one_pattern<'p, 'tcx>(
         }
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
-            let variant = &adt_def.variants[variant_index];
-            if constructor == &Variant(variant.def_id) {
-                let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
-                Some(patterns_for_variant(cx, subpatterns, constructor, pat.ty, is_non_exhaustive))
+            let pat_ctor = Variant(adt_def.variants[variant_index].def_id);
+            if constructor == &pat_ctor {
+                Some(
+                    VariantFields::wildcards(cx, constructor, pat.ty)
+                        .override_patterns(cx, subpatterns)
+                        .into_patstack(),
+                )
             } else {
                 None
             }
         }
 
-        PatKind::Leaf { ref subpatterns } => {
-            Some(patterns_for_variant(cx, subpatterns, constructor, pat.ty, false))
-        }
+        PatKind::Leaf { ref subpatterns } => Some(
+            VariantFields::wildcards(cx, constructor, pat.ty)
+                .override_patterns(cx, subpatterns)
+                .into_patstack(),
+        ),
 
         PatKind::Deref { ref subpattern } => Some(PatStack::from_pattern(subpattern)),
 
