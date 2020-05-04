@@ -518,7 +518,7 @@ are:
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
 [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
-[gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
+[gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
 [rr]: https://doc.rust-lang.org/book/README.html
