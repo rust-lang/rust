@@ -575,15 +575,15 @@ impl ExprCollector<'_> {
             self.body.item_scope.define_def(def);
             if let Some(name) = name {
                 let vis = crate::visibility::Visibility::Public; // FIXME determine correctly
-                let favor_types = match def {
+                let has_constructor = match def {
                     ModuleDefId::AdtId(AdtId::StructId(s)) => {
-                        self.db.struct_data(s).variant_data.kind() == StructKind::Record
+                        self.db.struct_data(s).variant_data.kind() != StructKind::Record
                     }
-                    _ => false,
+                    _ => true,
                 };
                 self.body.item_scope.push_res(
                     name.as_name(),
-                    crate::per_ns::PerNs::from_def(def, vis, favor_types),
+                    crate::per_ns::PerNs::from_def(def, vis, has_constructor),
                 );
             }
         }
