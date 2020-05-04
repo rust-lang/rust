@@ -23,7 +23,7 @@ use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
     copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
-use rustc_middle::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::ty::TyCtxt;
@@ -477,10 +477,7 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         let mut files = vec![];
 
         if let Some(ref path) = module.object {
-            files.push((WorkProductFileKind::Object, path.clone()));
-        }
-        if let Some(ref path) = module.bytecode {
-            files.push((WorkProductFileKind::Bytecode, path.clone()));
+            files.push(path.clone());
         }
 
         if let Some((id, product)) =
@@ -817,20 +814,9 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 ) -> Result<WorkItemResult<B>, FatalError> {
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
     let mut object = None;
-    let mut bytecode = None;
-    for (kind, saved_file) in &module.source.saved_files {
-        let obj_out = match kind {
-            WorkProductFileKind::Object => {
-                let path = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
-                object = Some(path.clone());
-                path
-            }
-            WorkProductFileKind::Bytecode => {
-                let path = cgcx.output_filenames.temp_path(OutputType::Bitcode, Some(&module.name));
-                bytecode = Some(path.clone());
-                path
-            }
-        };
+    for saved_file in &module.source.saved_files {
+        let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
+        object = Some(obj_out.clone());
         let source_file = in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
         debug!(
             "copying pre-existing module `{}` from {:?} to {}",
@@ -850,13 +836,12 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     }
 
     assert_eq!(object.is_some(), module_config.emit_obj != EmitObj::None);
-    assert_eq!(bytecode.is_some(), module_config.emit_bc);
 
     Ok(WorkItemResult::Compiled(CompiledModule {
         name: module.name,
         kind: ModuleKind::Regular,
         object,
-        bytecode,
+        bytecode: None,
     }))
 }
 

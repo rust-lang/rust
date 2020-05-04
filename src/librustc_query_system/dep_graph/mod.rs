@@ -6,7 +6,6 @@ mod query;
 mod serialized;
 
 pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
-pub use graph::WorkProductFileKind;
 pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
 pub use prev::PreviousDepGraph;
 pub use query::DepGraphQuery;
