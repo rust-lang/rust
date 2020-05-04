@@ -161,14 +161,14 @@ impl TraitData {
 
         if let Some(item_list) = src.value.item_list() {
             let mut expander = Expander::new(db, tr_loc.ast_id.file_id, module_id);
-            items.extend(collect_impl_items(
+            items.extend(collect_items(
                 db,
                 &mut expander,
                 item_list.impl_items(),
                 src.file_id,
                 container,
             ));
-            items.extend(collect_impl_items_in_macros(
+            items.extend(collect_items_in_macros(
                 db,
                 &mut expander,
                 &src.with_value(item_list),
@@ -219,25 +219,14 @@ impl ImplData {
         if let Some(item_list) = src.value.item_list() {
             let mut expander = Expander::new(db, impl_loc.ast_id.file_id, module_id);
             items.extend(
-                collect_impl_items(
-                    db,
-                    &mut expander,
-                    item_list.impl_items(),
-                    src.file_id,
-                    container,
-                )
-                .into_iter()
-                .map(|(_, item)| item),
+                collect_items(db, &mut expander, item_list.impl_items(), src.file_id, container)
+                    .into_iter()
+                    .map(|(_, item)| item),
             );
             items.extend(
-                collect_impl_items_in_macros(
-                    db,
-                    &mut expander,
-                    &src.with_value(item_list),
-                    container,
-                )
-                .into_iter()
-                .map(|(_, item)| item),
+                collect_items_in_macros(db, &mut expander, &src.with_value(item_list), container)
+                    .into_iter()
+                    .map(|(_, item)| item),
             );
         }
 
@@ -281,7 +270,7 @@ impl ConstData {
     }
 }
 
-fn collect_impl_items_in_macros(
+fn collect_items_in_macros(
     db: &dyn DefDatabase,
     expander: &mut Expander,
     impl_def: &InFile<ast::ItemList>,
@@ -293,13 +282,13 @@ fn collect_impl_items_in_macros(
     let limit = 100;
 
     for m in impl_def.value.syntax().children().filter_map(ast::MacroCall::cast) {
-        res.extend(collect_impl_items_in_macro(db, expander, m, container, limit))
+        res.extend(collect_items_in_macro(db, expander, m, container, limit))
     }
 
     res
 }
 
-fn collect_impl_items_in_macro(
+fn collect_items_in_macro(
     db: &dyn DefDatabase,
     expander: &mut Expander,
     m: ast::MacroCall,
@@ -312,7 +301,7 @@ fn collect_impl_items_in_macro(
 
     if let Some((mark, items)) = expander.enter_expand(db, None, m) {
         let items: InFile<ast::MacroItems> = expander.to_source(items);
-        let mut res = collect_impl_items(
+        let mut res = collect_items(
             db,
             expander,
             items.value.items().filter_map(|it| ImplItem::cast(it.syntax().clone())),
@@ -324,7 +313,7 @@ fn collect_impl_items_in_macro(
         // Note that ast::ModuleItem do not include ast::MacroCall
         // We cannot use ModuleItemOwner::items here
         for it in items.value.syntax().children().filter_map(ast::MacroCall::cast) {
-            res.extend(collect_impl_items_in_macro(db, expander, it, container, limit - 1))
+            res.extend(collect_items_in_macro(db, expander, it, container, limit - 1))
         }
         expander.exit(db, mark);
         res
@@ -333,7 +322,7 @@ fn collect_impl_items_in_macro(
     }
 }
 
-fn collect_impl_items(
+fn collect_items(
     db: &dyn DefDatabase,
     expander: &mut Expander,
     impl_items: impl Iterator<Item = ImplItem>,
