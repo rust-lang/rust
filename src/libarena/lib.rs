@@ -224,7 +224,7 @@ impl<T> TypedArena<T> {
                     new_capacity = last_chunk.storage.capacity();
                     loop {
                         new_capacity = new_capacity.checked_mul(2).unwrap();
-                        if new_capacity >= currently_used_cap + n {
+                        if new_capacity >= n {
                             break;
                         }
                     }
@@ -350,7 +350,7 @@ impl DroplessArena {
                     new_capacity = last_chunk.storage.capacity();
                     loop {
                         new_capacity = new_capacity.checked_mul(2).unwrap();
-                        if new_capacity >= used_bytes + needed_bytes {
+                        if new_capacity >= needed_bytes {
                             break;
                         }
                     }
