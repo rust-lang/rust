@@ -701,7 +701,8 @@ public:
             std::vector<int> next;
 
             if (pair.first.size() == 0) {
-                if (pair.second == IntType::Pointer) continue;
+                if (pair.second == IntType::Pointer || pair.second == IntType::Anything)
+                    continue;
 
                 llvm::errs() << "could not unmerge " << str() << "\n";
             }

@@ -1436,10 +1436,13 @@ endCheck:
 
         Value* storeInto = alloc;
 
+        //llvm::errs() << "considering alloca builder: " << name << "\n";
+
         for(int i=sublimits.size()-1; i>=0; i--) {
             const auto& containedloops = sublimits[i].second;
 
             Value* size = sublimits[i].first;
+            //llvm::errs() << " + size: " << *size << " ph: " << containedloops.back().first.preheader->getName() << " header: " << containedloops.back().first.header->getName() << "\n";
             Type* myType = types[i];
 
             ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8);
@@ -1560,14 +1563,37 @@ endCheck:
 
             if (i != 0) {
                 IRBuilder <>v(&sublimits[i-1].second.back().first.preheader->back());
-                //TODO
-                if (!sublimits[i].second.back().first.dynamic) {
-                    storeInto = v.CreateGEP(v.CreateLoad(storeInto), sublimits[i].second.back().first.var);
-                    cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
-                } else {
-                    storeInto = v.CreateGEP(v.CreateLoad(storeInto), sublimits[i].second.back().first.var);
-                    cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
+
+                SmallVector<Value*,3> indices;
+                SmallVector<Value*,3> limits;
+                ValueToValueMapTy available;
+                for(auto riter = containedloops.rbegin(), rend = containedloops.rend(); riter != rend; riter++) {
+                  // Only include dynamic index on last iteration (== skip dynamic index on non-last iterations)
+                  //if (i != 0 && riter+1 == rend) break;
+
+                  const auto &idx = riter->first;
+                  indices.push_back(idx.var);
+                  available[idx.var] = idx.var;
+
+                  Value* lim = unwrapM(riter->second, v, available, UnwrapMode::AttemptFullUnwrapWithLookup);
+                  assert(lim);
+                  if (limits.size() == 0) {
+                    limits.push_back(lim);
+                  } else {
+                    limits.push_back(v.CreateMul(lim, limits.back(), "", /*NUW*/true, /*NSW*/true));
+                  }
                 }
+
+                assert (indices.size() > 0);
+
+                Value* idx = indices[0];
+                for(unsigned ind=1; ind<indices.size(); ind++) {
+                  idx = v.CreateAdd(idx, v.CreateMul(indices[ind], limits[ind-1], "", /*NUW*/true, /*NSW*/true), "", /*NUW*/true, /*NSW*/true);
+                }
+                // sublimits[i].second.back().first.var
+
+              storeInto = v.CreateGEP(v.CreateLoad(storeInto), idx);
+              cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
             }
         }
         return alloc;

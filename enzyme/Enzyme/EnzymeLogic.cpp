@@ -1070,7 +1070,7 @@ public:
           if (auto ci = dyn_cast<ConstantInt>(op1)) {
             if (Type* flt = TR.intType(orig->getOperand(0), /*necessary*/false).isFloat()) {
               auto bits = gutils->newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(flt);
-              if (ci->getSExtValue() >= bits && ci->getSExtValue() % bits == 0) {
+              if (ci->getSExtValue() >= (int64_t)bits && ci->getSExtValue() % bits == 0) {
                 dif0 = Builder2.CreateShl(idiff, ci);
                 addingType = flt;
                 goto done;
@@ -1233,8 +1233,12 @@ public:
     if (mode == DerivativeMode::Forward) {
       switch(II.getIntrinsicID()) {
         case Intrinsic::stacksave:
-        case Intrinsic::prefetch:
+          II.replaceAllUsesWith(UndefValue::get(II.getType()));
         case Intrinsic::stackrestore:
+          gutils->erase(&II);
+          return;
+
+        case Intrinsic::prefetch:
         case Intrinsic::dbg_declare:
         case Intrinsic::dbg_value:
         #if LLVM_VERSION_MAJOR > 6
@@ -1288,11 +1292,14 @@ public:
       }
 
       switch(II.getIntrinsicID()) {
+        case Intrinsic::stacksave:
+          II.replaceAllUsesWith(UndefValue::get(II.getType()));
+        case Intrinsic::stackrestore:
+          gutils->erase(&II);
+          return;
 
         case Intrinsic::assume:
-        case Intrinsic::stacksave:
         case Intrinsic::prefetch:
-        case Intrinsic::stackrestore:
         case Intrinsic::dbg_declare:
         case Intrinsic::dbg_value:
         #if LLVM_VERSION_MAJOR > 6
@@ -2433,7 +2440,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
       }
 
       bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(gutils->getOriginal(op)) == valuesOnlyUsedInUnnecessaryReturns.end() || is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false));
-      llvm::errs() << "aug subretused: " << subretused << " op: " << *op << "\n";
+      //llvm::errs() << "aug subretused: " << subretused << " op: " << *op << "\n";
 
       //We check uses of the original function as that includes potential uses in the return,
       //  specifically consider case where the value returned isn't necessary but the subdifferentialreturn is
@@ -2678,7 +2685,7 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
 
   //Given a function I we know must be moved to the reverse for legality reasons
   auto propagate = [&](Instruction* I) {
-    llvm::errs() << " propating: " << *I << "\n";
+    //llvm::errs() << " propating: " << *I << "\n";
     // if only used in unneeded return, don't need to move this to reverse (unless this is the original function)
     if (usetree.count(I)) return;
     if (auto ri = dyn_cast<ReturnInst>(I)) {
@@ -2751,7 +2758,7 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
       return;
     }
 
-    llvm::errs() << " inserting: " << *I << "\n";
+    //llvm::errs() << " inserting: " << *I << "\n";
     usetree.insert(I);
     for(auto use : I->users()) {
       //llvm::errs() << "I: " << *I << " use: " << *use << "\n";
@@ -2768,7 +2775,7 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
       auto consider = [&](Instruction* user) {
         if (!user->mayReadFromMemory()) return;
         auto mri = getMRI(user, inst);
-        llvm::errs() << " checking if need follower of " << *inst << " - " << *user << " : mri " << mri << "\n";
+        //llvm::errs() << " checking if need follower of " << *inst << " - " << *user << " : mri " << mri << "\n";
         if (isRefSet(mri)) {
           propagate(user);
           if (!legal) return;
@@ -2782,9 +2789,9 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
     if (!legal) return false;
   }
 
-  llvm::errs() << " found usetree for: " << ci << "\n";
-  for(auto u : usetree)
-    llvm::errs() << " + " << *u << "\n";
+  //llvm::errs() << " found usetree for: " << ci << "\n";
+  //for(auto u : usetree)
+  //  llvm::errs() << " + " << *u << "\n";
 
   // Check if any of the unmoved operations will make it illegal to move the instruction
   for (auto inst : usetree) {
@@ -2885,7 +2892,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(orig) == valuesOnlyUsedInUnnecessaryReturns.end() || is_value_needed_in_reverse(TR, gutils, orig, topLevel));
 
   //llvm::errs() << "newFunc:" << *gutils->oldFunc << "\n";
-  llvm::errs() << "grad subretused: " << subretused << " op: " << *op << "\n";
+  //llvm::errs() << "grad subretused: " << subretused << " op: " << *op << "\n";
 
   if (called && isAllocationFunction(*called, gutils->TLI)) {
     bool constval = gutils->isConstantValue(op);
