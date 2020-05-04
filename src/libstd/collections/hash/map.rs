@@ -3364,7 +3364,7 @@ mod test_map {
     #[test]
     fn test_entry_take_doesnt_corrupt() {
         #![allow(deprecated)] //rand
-                              // Test for #19292
+        // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
                 assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
