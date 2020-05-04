@@ -103,7 +103,9 @@
   }
 
 bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& available) {
-  if (available.count(val)) return true;
+  if (available.count(val)) {
+    return true;
+  }
 
   if (isa<PHINode>(val)) {
     if (auto dli = dyn_cast_or_null<LoadInst>(hasUninverted(val))) {
@@ -129,6 +131,7 @@ bool GradientUtils::legalRecompute(Value* val, const ValueToValueMapTy& availabl
 
     if (originalInstructions.find(li) != originalInstructions.end()) {
         auto found = can_modref_map->find(getOriginal(li));
+        //llvm::errs() << "legality of recomputing: " << *li << " is " << !found->second << "\n";
         if(found == can_modref_map->end()) {
             llvm::errs() << "can_modref_map:\n";
             for(auto& pair : *can_modref_map) {

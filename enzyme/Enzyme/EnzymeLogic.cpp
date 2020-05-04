@@ -62,6 +62,35 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
             "enzyme_nonmarkedglobals_inactiveloads", cl::init(true), cl::Hidden,
             cl::desc("Consider loads of nonmarked globals to be inactive"));
 
+
+static inline void allFollowersOf(Instruction* inst, std::function<void(Instruction*)> f) {
+
+  //llvm::errs() << "all followers of: " << *inst << "\n";
+  for(auto uinst = inst->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
+    //llvm::errs() << " + bb1: " << *uinst << "\n";
+    f(uinst);
+  }
+
+  std::deque<BasicBlock*> todo;
+  std::set<BasicBlock*> done;
+  for(auto suc : successors(inst->getParent())) {
+    todo.push_back(suc);
+  }
+  while(todo.size()) {
+    auto BB = todo.front();
+    todo.pop_front();
+    if (done.count(BB)) continue;
+    done.insert(BB);
+    for(auto &ni : *BB) {
+      f(&ni);
+      if (&ni == inst) break;
+    }
+    for(auto suc : successors(BB)) {
+      todo.push_back(suc);
+    }
+  }
+}
+
 bool is_load_uncacheable(LoadInst& li, AAResults& AA, GradientUtils* gutils, TargetLibraryInfo& TLI, const std::map<Argument*, bool>& uncacheable_args);
 
 
@@ -133,36 +162,31 @@ bool is_load_uncacheable(LoadInst& li, AAResults& AA, GradientUtils* gutils, Tar
 
   bool can_modref = is_value_mustcache_from_origin(obj, AA, gutils, TLI, uncacheable_args);
 
-  for (inst_iterator I2 = inst_begin(*gutils->oldFunc), E2 = inst_end(*gutils->oldFunc); I2 != E2; ++I2) {
-      Instruction* inst2 = &*I2;
-      assert(li.getParent()->getParent() == inst2->getParent()->getParent());
-      if (&li == inst2) continue;
-      if (!gutils->OrigDT.dominates(inst2, &li)) {
-
-        // Don't consider modref from malloc/free as a need to cache
-        if (auto obj_op = dyn_cast<CallInst>(inst2)) {
-          Function* called = obj_op->getCalledFunction();
-          if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
-            if (castinst->isCast()) {
-              if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                if (isAllocationFunction(*fn, TLI) || isDeallocationFunction(*fn, TLI)) {
-                  called = fn;
-                }
-              }
+  allFollowersOf(&li, [&](Instruction* inst2) {
+    // Don't consider modref from malloc/free as a need to cache
+    if (auto obj_op = dyn_cast<CallInst>(inst2)) {
+      Function* called = obj_op->getCalledFunction();
+      if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
+        if (castinst->isCast()) {
+          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+            if (isAllocationFunction(*fn, TLI) || isDeallocationFunction(*fn, TLI)) {
+              called = fn;
             }
           }
-          if (called && isCertainMallocOrFree(called)) {
-            continue;
-          }
-        }
-
-        if (llvm::isModSet(AA.getModRefInfo(inst2, MemoryLocation::get(&li)))) {
-          can_modref = true;
-          //llvm::errs() << li << " needs to be cached due to: " << *inst2 << "\n";
-          break;
         }
       }
-  }
+      if (called && isCertainMallocOrFree(called)) {
+        return;
+      }
+    }
+
+    if (llvm::isModSet(AA.getModRefInfo(inst2, MemoryLocation::get(&li)))) {
+      can_modref = true;
+      //llvm::errs() << li << " needs to be cached due to: " << *inst2 << "\n";
+      return;
+    }
+  });
+
   //llvm::errs() << "F - " << li << " can_modref" << can_modref << "\n";
   return can_modref;
 }
@@ -2645,34 +2669,6 @@ bool legalCombinedForwardReverse(CallInst &ci, const std::map<ReturnInst*,StoreI
     }
     llvm::errs() << " inst2: " << *inst2 << "\n";
     llvm_unreachable("unknown inst2");
-  };
-
-  auto allFollowersOf = [&](Instruction* inst, std::function<void(Instruction*)> f) {
-
-    //llvm::errs() << "all followers of: " << *inst << "\n";
-    for(auto uinst = inst->getNextNode(); uinst != nullptr; uinst = uinst->getNextNode()) {
-      //llvm::errs() << " + bb1: " << *uinst << "\n";
-      f(uinst);
-    }
-
-    std::deque<BasicBlock*> todo;
-    std::set<BasicBlock*> done;
-    for(auto suc : successors(inst->getParent())) {
-      todo.push_back(suc);
-    }
-    while(todo.size()) {
-      auto BB = todo.front();
-      todo.pop_front();
-      if (done.count(BB)) continue;
-      done.insert(BB);
-      for(auto &ni : *BB) {
-        f(&ni);
-        if (&ni == inst) break;
-      }
-      for(auto suc : successors(BB)) {
-        todo.push_back(suc);
-      }
-    }
   };
 
   // Check any users of the returned value and determine all values that would be needed to be moved to reverse pass
