@@ -156,113 +156,65 @@ intrinsics! {
     #[arm_aeabi_alias = __aeabi_uidiv]
     /// Returns `n / d`
     pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
-        // Special cases
-        if d == 0 {
-            // NOTE This should be unreachable in safe Rust because the program will panic before
-            // this intrinsic is called
-            ::abort();
-        }
-
-        if n == 0 {
-            return 0;
-        }
-
-        let mut sr = d.leading_zeros().wrapping_sub(n.leading_zeros());
-
-        // d > n
-        if sr > u32::BITS - 1 {
-            return 0;
-        }
-
-        // d == 1
-        if sr == u32::BITS - 1 {
-            return n;
-        }
-
-        sr += 1;
-
-        // 1 <= sr <= u32::BITS - 1
-        let mut q = n << (u32::BITS - sr);
-        let mut r = n >> sr;
-
-        let mut carry = 0;
-
-        // Don't use a range because they may generate references to memcpy in unoptimized code
-        let mut i = 0;
-        while i < sr {
-            i += 1;
-
-            // r:q = ((r:q) << 1) | carry
-            r = (r << 1) | (q >> (u32::BITS - 1));
-            q = (q << 1) | carry;
-
-            // carry = 0;
-            // if r > d {
-            //     r -= d;
-            //     carry = 1;
-            // }
-
-            let s = (d.wrapping_sub(r).wrapping_sub(1)) as i32 >> (u32::BITS - 1);
-            carry = (s & 1) as u32;
-            r -= d & s as u32;
-        }
-
-        (q << 1) | carry
+        u32_div_rem(n, d).0
     }
 
     #[maybe_use_optimized_c_shim]
     /// Returns `n % d`
     pub extern "C" fn __umodsi3(n: u32, d: u32) -> u32 {
-        let q = __udivsi3(n, d);
-        n - q * d
+        u32_div_rem(n, d).1
     }
 
     #[maybe_use_optimized_c_shim]
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
-        let q = __udivsi3(n, d);
+        let quo_rem = u32_div_rem(n, d);
         if let Some(rem) = rem {
-            *rem = n - (q * d);
+            *rem = quo_rem.1;
         }
-        q
+        quo_rem.0
     }
 
     #[maybe_use_optimized_c_shim]
     /// Returns `n / d`
     pub extern "C" fn __udivdi3(n: u64, d: u64) -> u64 {
-        __udivmoddi4(n, d, None)
+        u64_div_rem(n, d).0
     }
 
     #[maybe_use_optimized_c_shim]
     /// Returns `n % d`
     pub extern "C" fn __umoddi3(n: u64, d: u64) -> u64 {
-        let mut rem = 0;
-        __udivmoddi4(n, d, Some(&mut rem));
-        rem
+        u64_div_rem(n, d).1
     }
 
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
-        udivmod_inner!(n, d, rem, u64)
+        let quo_rem = u64_div_rem(n, d);
+        if let Some(rem) = rem {
+            *rem = quo_rem.1;
+        }
+        quo_rem.0
     }
 
     #[win64_128bit_abi_hack]
     /// Returns `n / d`
     pub extern "C" fn __udivti3(n: u128, d: u128) -> u128 {
-        __udivmodti4(n, d, None)
+        u128_div_rem(n, d).0
     }
 
     #[win64_128bit_abi_hack]
     /// Returns `n % d`
     pub extern "C" fn __umodti3(n: u128, d: u128) -> u128 {
-        let mut rem = 0;
-        __udivmodti4(n, d, Some(&mut rem));
-        rem
+        u128_div_rem(n, d).1
     }
 
     #[win64_128bit_abi_hack]
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __udivmodti4(n: u128, d: u128, rem: Option<&mut u128>) -> u128 {
-        udivmod_inner!(n, d, rem, u128)
+        let quo_rem = u128_div_rem(n, d);
+        if let Some(rem) = rem {
+            *rem = quo_rem.1;
+        }
+        quo_rem.0
     }
 }
