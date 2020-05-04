@@ -947,65 +947,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
-                !unsatisfied_predicates.iter().any(|(p, _)| match p {
-                        // Hide traits if they are present in predicates as they can be fixed without
-                        // having to implement them.
-                        ty::Predicate::Trait(t, _) => t.def_id() != info.def_id,
-                        ty::Predicate::Projection(p) => p.item_def_id() != info.def_id,
-                        _ => true,
-                    }) && (type_is_local || info.def_id.is_local())
-                        && self
-                            .associated_item(info.def_id, item_name, Namespace::ValueNS)
-                            .filter(|item| {
-                                if let ty::AssocKind::Fn = item.kind {
-                                    let id = item.def_id.as_local().map(|def_id| {
-                                        self.tcx.hir().as_local_hir_id(def_id)
-                                    });
-                                    if let Some(hir::Node::TraitItem(hir::TraitItem {
-                                        kind: hir::TraitItemKind::Fn(fn_sig, method),
-                                        ..
-                                    })) = id.map(|id| self.tcx.hir().get(id))
-                                    {
-                                        let self_first_arg = match method {
-                                            hir::TraitFn::Required([ident, ..]) => {
-                                                ident.name == kw::SelfLower
-                                            }
-                                            hir::TraitFn::Provided(body_id) => {
-                                                match &self.tcx.hir().body(*body_id).params[..] {
-                                                    [hir::Param {
-                                                        pat:
-                                                            hir::Pat {
-                                                                kind:
-                                                                    hir::PatKind::Binding(
-                                                                        _,
-                                                                        _,
-                                                                        ident,
-                                                                        ..,
-                                                                    ),
-                                                                ..
-                                                            },
-                                                        ..
-                                                    }, ..] => ident.name == kw::SelfLower,
-                                                    _ => false,
-                                                }
-                                            }
-                                            _ => false,
-                                        };
-
-                                        if !fn_sig.decl.implicit_self.has_implicit_self()
-                                            && self_first_arg
-                                        {
-                                            if let Some(ty) = fn_sig.decl.inputs.get(0) {
-                                                arbitrary_rcvr.push(ty.span);
-                                            }
-                                            return false;
+                unsatisfied_predicates.iter().all(|(p, _)| match p {
+                    // Hide traits if they are present in predicates as they can be fixed without
+                    // having to implement them.
+                    ty::Predicate::Trait(t, _) => t.def_id() == info.def_id,
+                    ty::Predicate::Projection(p) => p.item_def_id() == info.def_id,
+                    _ => false,
+                }) && (type_is_local || info.def_id.is_local())
+                    && self
+                        .associated_item(info.def_id, item_name, Namespace::ValueNS)
+                        .filter(|item| {
+                            if let ty::AssocKind::Fn = item.kind {
+                                let id = item
+                                    .def_id
+                                    .as_local()
+                                    .map(|def_id| self.tcx.hir().as_local_hir_id(def_id));
+                                if let Some(hir::Node::TraitItem(hir::TraitItem {
+                                    kind: hir::TraitItemKind::Fn(fn_sig, method),
+                                    ..
+                                })) = id.map(|id| self.tcx.hir().get(id))
+                                {
+                                    let self_first_arg = match method {
+                                        hir::TraitFn::Required([ident, ..]) => {
+                                            ident.name == kw::SelfLower
                                         }
+                                        hir::TraitFn::Provided(body_id) => {
+                                            self.tcx.hir().body(*body_id).params.first().map_or(
+                                                false,
+                                                |param| {
+                                                    matches!(
+                                                        param.pat.kind,
+                                                        hir::PatKind::Binding(_, _, ident, _)
+                                                            if ident.name == kw::SelfLower
+                                                    )
+                                                },
+                                            )
+                                        }
+                                        _ => false,
+                                    };
+
+                                    if !fn_sig.decl.implicit_self.has_implicit_self()
+                                        && self_first_arg
+                                    {
+                                        if let Some(ty) = fn_sig.decl.inputs.get(0) {
+                                            arbitrary_rcvr.push(ty.span);
+                                        }
+                                        return false;
                                     }
                                 }
-                                // We only want to suggest public or local traits (#45781).
-                                item.vis == ty::Visibility::Public || info.def_id.is_local()
-                            })
-                            .is_some()
+                            }
+                            // We only want to suggest public or local traits (#45781).
+                            item.vis == ty::Visibility::Public || info.def_id.is_local()
+                        })
+                        .is_some()
             })
             .collect::<Vec<_>>();
         for span in &arbitrary_rcvr {
