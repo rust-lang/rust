@@ -534,6 +534,10 @@
             {
                 "id": "unresolvedReference",
                 "description": "Style for names which can not be resolved due to compilation errors"
+            },
+            {
+                "id": "formatSpecifier",
+                "description": "Style for {} placeholders in format strings"
             }
         ],
         "semanticTokenModifiers": [
