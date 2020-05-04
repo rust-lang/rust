@@ -408,7 +408,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         PatStack::from_slice(&self.0[1..])
     }
 
-    fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
+    fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> + DoubleEndedIterator {
         self.0.iter().copied()
     }
 
@@ -880,23 +880,26 @@ impl<'tcx> Constructor<'tcx> {
     /// This returns one wildcard pattern for each argument to this constructor.
     ///
     /// This must be consistent with `apply`, `specialize_one_pattern`, and `arity`.
-    fn wildcard_subpatterns<'a>(
+    fn wildcard_subpatterns<'p>(
         &self,
-        cx: &MatchCheckCtxt<'a, 'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         ty: Ty<'tcx>,
-    ) -> Vec<Pat<'tcx>> {
+    ) -> PatStack<'p, 'tcx> {
         debug!("wildcard_subpatterns({:#?}, {:?})", self, ty);
 
         match self {
-            Single | Variant(_) => VariantFields::wildcards(cx, self, ty).into_vec(),
+            Single | Variant(_) => VariantFields::wildcards(cx, self, ty).into_patstack(),
             Slice(slice) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
+                    let wild = &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
                     let arity = slice.arity();
-                    (0..arity).map(|_| Pat::wildcard_from_ty(ty)).collect()
+                    (0..arity).map(|_| wild).collect()
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
-            ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => vec![],
+            ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => {
+                PatStack::default()
+            }
         }
     }
 
@@ -1009,8 +1012,8 @@ impl<'tcx> Constructor<'tcx> {
 
     /// Like `apply`, but where all the subpatterns are wildcards `_`.
     fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
-        let subpatterns = self.wildcard_subpatterns(cx, ty).into_iter().rev();
-        self.apply(cx, ty, subpatterns)
+        let subpatterns = self.wildcard_subpatterns(cx, ty);
+        self.apply(cx, ty, subpatterns.iter().cloned().rev())
     }
 }
 
@@ -1096,10 +1099,6 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
 
     fn into_patstack(self) -> PatStack<'p, 'tcx> {
         PatStack::from_vec(self.fields)
-    }
-
-    fn into_vec(self) -> Vec<Pat<'tcx>> {
-        self.fields.into_iter().cloned().collect()
     }
 
     fn into_fieldpats(self) -> impl Iterator<Item = FieldPat<'tcx>> + 'p {
@@ -2397,9 +2396,7 @@ fn specialize_one_pattern<'p, 'tcx>(
         PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
 
         PatKind::Binding { .. } | PatKind::Wild => {
-            let ctor_wild_subpatterns =
-                cx.pattern_arena.alloc_from_iter(constructor.wildcard_subpatterns(cx, pat.ty));
-            Some(ctor_wild_subpatterns.iter().collect())
+            Some(constructor.wildcard_subpatterns(cx, pat.ty))
         }
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
