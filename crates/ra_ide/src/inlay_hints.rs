@@ -9,6 +9,7 @@ use ra_syntax::{
 };
 
 use crate::{FileId, FunctionSignature};
+use stdx::to_lower_snake_case;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -144,7 +145,7 @@ fn get_param_name_hints(
         .iter()
         .skip(n_params_to_skip)
         .zip(args)
-        .filter(|(param, arg)| should_show_param_hint(&fn_signature, param, &arg))
+        .filter(|(param, arg)| should_show_param_name_hint(sema, &fn_signature, param, &arg))
         .map(|(param_name, arg)| InlayHint {
             range: arg.syntax().text_range(),
             kind: InlayKind::ParameterHint,
@@ -181,7 +182,7 @@ fn get_bind_pat_hints(
 
 fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::BindPat, pat_ty: &Type) -> bool {
     if let Some(Adt::Enum(enum_data)) = pat_ty.as_adt() {
-        let pat_text = bind_pat.syntax().to_string();
+        let pat_text = bind_pat.to_string();
         enum_data
             .variants(db)
             .into_iter()
@@ -198,7 +199,7 @@ fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_
     }
 
     if let Some(Adt::Struct(s)) = pat_ty.as_adt() {
-        if s.fields(db).is_empty() && s.name(db).to_string() == bind_pat.syntax().to_string() {
+        if s.fields(db).is_empty() && s.name(db).to_string() == bind_pat.to_string() {
             return true;
         }
     }
@@ -230,15 +231,16 @@ fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_
     false
 }
 
-fn should_show_param_hint(
+fn should_show_param_name_hint(
+    sema: &Semantics<RootDatabase>,
     fn_signature: &FunctionSignature,
     param_name: &str,
     argument: &ast::Expr,
 ) -> bool {
+    let param_name = param_name.trim_start_matches('_');
     if param_name.is_empty()
-        || is_argument_similar_to_param(argument, param_name)
-        || Some(param_name.trim_start_matches('_'))
-            == fn_signature.name.as_ref().map(|s| s.trim_start_matches('_'))
+        || Some(param_name) == fn_signature.name.as_ref().map(|s| s.trim_start_matches('_'))
+        || is_argument_similar_to_param_name(sema, argument, param_name)
     {
         return false;
     }
@@ -254,20 +256,42 @@ fn should_show_param_hint(
     parameters_len != 1 || !is_obvious_param(param_name)
 }
 
-fn is_argument_similar_to_param(argument: &ast::Expr, param_name: &str) -> bool {
-    let argument_string = remove_ref(argument.clone()).syntax().to_string();
-    let param_name = param_name.trim_start_matches('_');
-    let argument_string = argument_string.trim_start_matches('_');
-    argument_string.starts_with(&param_name) || argument_string.ends_with(&param_name)
-}
-
-fn remove_ref(expr: ast::Expr) -> ast::Expr {
-    if let ast::Expr::RefExpr(ref_expr) = &expr {
-        if let Some(inner) = ref_expr.expr() {
-            return inner;
+fn is_argument_similar_to_param_name(
+    sema: &Semantics<RootDatabase>,
+    argument: &ast::Expr,
+    param_name: &str,
+) -> bool {
+    if is_enum_name_similar_to_param_name(sema, argument, param_name) {
+        return true;
+    }
+    match get_string_representation(argument) {
+        None => false,
+        Some(repr) => {
+            let argument_string = repr.trim_start_matches('_');
+            argument_string.starts_with(param_name) || argument_string.ends_with(param_name)
         }
     }
-    expr
+}
+
+fn is_enum_name_similar_to_param_name(
+    sema: &Semantics<RootDatabase>,
+    argument: &ast::Expr,
+    param_name: &str,
+) -> bool {
+    match sema.type_of_expr(argument).and_then(|t| t.as_adt()) {
+        Some(Adt::Enum(e)) => to_lower_snake_case(&e.name(sema.db).to_string()) == param_name,
+        _ => false,
+    }
+}
+
+fn get_string_representation(expr: &ast::Expr) -> Option<String> {
+    match expr {
+        ast::Expr::MethodCallExpr(method_call_expr) => {
+            Some(method_call_expr.name_ref()?.to_string())
+        }
+        ast::Expr::RefExpr(ref_expr) => get_string_representation(&ref_expr.expr()?),
+        _ => Some(expr.to_string()),
+    }
 }
 
 fn is_obvious_param(param_name: &str) -> bool {
@@ -1073,6 +1097,12 @@ struct TestVarContainer {
     test_var: i32,
 }
 
+impl TestVarContainer {
+    fn test_var(&self) -> i32 {
+        self.test_var
+    }
+}
+
 struct Test {}
 
 impl Test {
@@ -1098,9 +1128,14 @@ struct Param {}
 fn different_order(param: &Param) {}
 fn different_order_mut(param: &mut Param) {}
 fn has_underscore(_param: bool) {}
+fn enum_matches_param_name(completion_kind: CompletionKind) {}
 
 fn twiddle(twiddle: bool) {}
 fn doo(_doo: bool) {}
+
+enum CompletionKind {
+    Keyword,
+}
 
 fn main() {
     let container: TestVarContainer = TestVarContainer { test_var: 42 };
@@ -1114,17 +1149,20 @@ fn main() {
     let test_var: i32 = 55;
     test_processed.no_hints_expected(22, test_var);
     test_processed.no_hints_expected(33, container.test_var);
+    test_processed.no_hints_expected(44, container.test_var());
     test_processed.frob(false);
 
     twiddle(true);
     doo(true);
 
-    let param_begin: Param = Param {};
+    let mut param_begin: Param = Param {};
     different_order(&param_begin);
     different_order(&mut param_begin);
 
     let param: bool = true;
     has_underscore(param);
+
+    enum_matches_param_name(CompletionKind::Keyword);
 
     let a: f64 = 7.0;
     let b: f64 = 4.0;
