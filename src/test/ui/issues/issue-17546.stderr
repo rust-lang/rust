@@ -24,7 +24,7 @@ error[E0573]: expected type, found variant `Result`
 LL |     fn new() -> Result<foo::MyEnum, String> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
    |
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL |     use std::fmt::Result;
    |
@@ -42,7 +42,7 @@ error[E0573]: expected type, found variant `Result`
 LL | fn new() -> Result<foo::MyEnum, String> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
    |
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use std::fmt::Result;
    |
