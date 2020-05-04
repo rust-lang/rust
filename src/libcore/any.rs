@@ -446,8 +446,8 @@ impl TypeId {
 /// # Note
 ///
 /// This is intended for diagnostic use. The exact contents and format of the
-/// string retrned are not specified, other than being a best-effort description
-/// of the type. For example, amongst the strings
+/// string returned are not specified, other than being a best-effort
+/// description of the type. For example, amongst the strings
 /// that `type_name::<Option<String>>()` might map to are `"Option<String>"` and
 /// `"std::option::Option<std::string::String>"`.
 ///
