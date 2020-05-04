@@ -83,6 +83,7 @@ pub struct PackageData {
     pub dependencies: Vec<PackageDependency>,
     pub edition: Edition,
     pub features: Vec<String>,
+    pub cfgs: Vec<PathBuf>,
     pub out_dir: Option<PathBuf>,
     pub proc_macro_dylib_path: Option<PathBuf>,
 }
@@ -165,10 +166,12 @@ impl CargoWorkspace {
         })?;
 
         let mut out_dir_by_id = FxHashMap::default();
+        let mut cfgs = FxHashMap::default();
         let mut proc_macro_dylib_paths = FxHashMap::default();
         if cargo_features.load_out_dirs_from_check {
             let resources = load_extern_resources(cargo_toml, cargo_features)?;
             out_dir_by_id = resources.out_dirs;
+            cfgs = resources.cfgs;
             proc_macro_dylib_paths = resources.proc_dylib_paths;
         }
 
@@ -194,6 +197,7 @@ impl CargoWorkspace {
                 edition,
                 dependencies: Vec::new(),
                 features: Vec::new(),
+                cfgs: cfgs.get(&id).cloned().unwrap_or_default(),
                 out_dir: out_dir_by_id.get(&id).cloned(),
                 proc_macro_dylib_path: proc_macro_dylib_paths.get(&id).cloned(),
             });
@@ -275,6 +279,7 @@ impl CargoWorkspace {
 pub struct ExternResources {
     out_dirs: FxHashMap<PackageId, PathBuf>,
     proc_dylib_paths: FxHashMap<PackageId, PathBuf>,
+    cfgs: FxHashMap<PackageId, Vec<PathBuf>>,
 }
 
 pub fn load_extern_resources(
@@ -300,8 +305,9 @@ pub fn load_extern_resources(
     for message in cargo_metadata::parse_messages(output.stdout.as_slice()) {
         if let Ok(message) = message {
             match message {
-                Message::BuildScriptExecuted(BuildScript { package_id, out_dir, .. }) => {
-                    res.out_dirs.insert(package_id, out_dir);
+                Message::BuildScriptExecuted(BuildScript { package_id, out_dir, cfgs, .. }) => {
+                    res.out_dirs.insert(package_id.clone(), out_dir);
+                    res.cfgs.insert(package_id, cfgs);
                 }
 
                 Message::CompilerArtifact(message) => {

@@ -9,7 +9,8 @@ use lsp_types::{
 };
 use rust_analyzer::req::{
     CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
-    Formatting, GotoDefinition, HoverRequest, OnEnter, Runnables, RunnablesParams,
+    Formatting, GotoDefinition, GotoTypeDefinition, HoverRequest, OnEnter, Runnables,
+    RunnablesParams,
 };
 use serde_json::json;
 use tempfile::TempDir;
@@ -706,4 +707,136 @@ pub fn foo(_input: TokenStream) -> TokenStream {
 
     let value = res.get("contents").unwrap().get("value").unwrap().to_string();
     assert_eq!(value, r#""```rust\nfoo::Bar\nfn bar()\n```""#)
+}
+
+#[test]
+fn build_rs_cfgs() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r###"
+//- Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- build.rs
+
+fn main() {
+    println!("cargo:rustc-cfg=atom_cfg");
+    println!("cargo:rustc-cfg=featlike=\"set\"");
+    println!("cargo:rerun-if-changed=build.rs");
+}
+//- src/main.rs
+#[cfg(atom_cfg)]
+struct A;
+
+#[cfg(bad_atom_cfg)]
+struct A;
+
+#[cfg(featlike = "set")]
+struct B;
+
+#[cfg(featlike = "not_set")]
+struct B;
+
+fn main() {
+    let va = A;
+    let vb = B;
+}
+"###,
+    )
+    .with_config(|config| {
+        config.cargo.load_out_dirs_from_check = true;
+    })
+    .server();
+    server.wait_until_workspace_is_loaded();
+    server.request::<GotoTypeDefinition>(
+        GotoDefinitionParams {
+            text_document_position_params: TextDocumentPositionParams::new(
+                server.doc_id("src/main.rs"),
+                Position::new(13, 9),
+            ),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([{
+            "originSelectionRange": {
+                "end": {
+                    "character": 10,
+                    "line": 13
+                },
+                "start": {
+                    "character": 8,
+                    "line":13
+                }
+            },
+            "targetRange": {
+                "end": {
+                    "character": 9,
+                    "line": 1
+                },
+                "start": {
+                    "character": 0,
+                    "line":0
+                }
+            },
+            "targetSelectionRange": {
+                "end": {
+                    "character": 8,
+                    "line": 1
+                },
+                "start": {
+                    "character": 7,
+                    "line": 1
+                }
+            },
+            "targetUri": "file:///[..]src/main.rs"
+        }]),
+    );
+    server.request::<GotoTypeDefinition>(
+        GotoDefinitionParams {
+            text_document_position_params: TextDocumentPositionParams::new(
+                server.doc_id("src/main.rs"),
+                Position::new(14, 9),
+            ),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([{
+            "originSelectionRange": {
+                "end": {
+                    "character": 10,
+                    "line": 14
+                },
+                "start": {
+                    "character": 8,
+                    "line":14
+                }
+            },
+            "targetRange": {
+                "end": {
+                    "character": 9,
+                    "line": 7
+                },
+                "start": {
+                    "character": 0,
+                    "line":6
+                }
+            },
+            "targetSelectionRange": {
+                "end": {
+                    "character": 8,
+                    "line": 7
+                },
+                "start": {
+                    "character": 7,
+                    "line": 7
+                }
+            },
+            "targetUri": "file:///[..]src/main.rs"
+        }]),
+    );
 }
