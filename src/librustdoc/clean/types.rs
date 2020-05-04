@@ -506,6 +506,18 @@ impl Attributes {
         let other_attrs = attrs
             .iter()
             .filter_map(|attr| {
+                // We want to render `#[must_use]`, but that's a macro that expands to
+                // `#[rustc_must_use]` (and possibly a `MustUse` impl), so turn that back into
+                // `#[must_use]` here.
+                if attr.name_or_empty().as_str() == "rustc_must_use" {
+                    let mut attr = attr.clone();
+                    if let ast::AttrKind::Normal(item) = &mut attr.kind {
+                        item.path = ast::Path::from_ident(Ident::new(sym::must_use, DUMMY_SP));
+                    }
+
+                    return Some(attr);
+                }
+
                 if let Some(value) = attr.doc_str() {
                     let (value, mk_fragment): (_, fn(_, _, _) -> _) = if attr.is_doc_comment() {
                         (strip_doc_comment_decoration(&value.as_str()), DocFragment::SugaredDoc)

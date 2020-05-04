@@ -201,7 +201,7 @@ pub fn early_report_deprecation(
     lint: &'static Lint,
     span: Span,
 ) {
-    if span.in_derive_expansion() {
+    if span.in_expansion_ignoring_deprecation() {
         return;
     }
 
@@ -217,7 +217,7 @@ fn late_report_deprecation(
     span: Span,
     hir_id: HirId,
 ) {
-    if span.in_derive_expansion() {
+    if span.in_expansion_ignoring_deprecation() {
         return;
     }
 

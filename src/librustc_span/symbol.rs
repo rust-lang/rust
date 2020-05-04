@@ -470,6 +470,7 @@ symbols! {
         movbe_target_feature,
         mul_with_overflow,
         must_use,
+        MustUse,
         naked,
         naked_functions,
         name,

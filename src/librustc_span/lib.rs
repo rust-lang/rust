@@ -13,6 +13,7 @@
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(specialization)]
+#![feature(or_patterns)]
 
 use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;
@@ -286,9 +287,16 @@ impl Span {
         self.ctxt() != SyntaxContext::root()
     }
 
-    /// Returns `true` if `span` originates in a derive-macro's expansion.
-    pub fn in_derive_expansion(self) -> bool {
-        matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
+    /// Returns `true` if `span` originates in a macro expansion that should ignore `#[deprecated]`
+    /// items.
+    ///
+    /// This is used to avoid undesired warnings when a type is marked as `#[deprecated]`.
+    pub fn in_expansion_ignoring_deprecation(self) -> bool {
+        match self.ctxt().outer_expn_data().kind {
+            ExpnKind::Macro(MacroKind::Derive, _) => true,
+            ExpnKind::Macro(MacroKind::Attr, sym::must_use) => true,
+            _ => false,
+        }
     }
 
     #[inline]
