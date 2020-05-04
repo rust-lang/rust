@@ -1,0 +1,12 @@
+error[E0508]: cannot move out of type `[S; 1]`, a non-copy array
+  --> $DIR/move-error-in-promoted-2.rs:6:7
+   |
+LL |     &([S][0],);
+   |       ^^^^^^
+   |       |
+   |       cannot move out of here
+   |       move occurs because value has type `S`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0508`.
