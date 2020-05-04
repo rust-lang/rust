@@ -441,9 +441,8 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         &self,
         cx: &mut MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &'p [Pat<'tcx>],
     ) -> Option<PatStack<'p, 'tcx>> {
-        let new_heads = specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns);
+        let new_heads = specialize_one_pattern(cx, self.head(), constructor);
         new_heads.map(|mut new_head| {
             new_head.0.extend_from_slice(&self.0[1..]);
             new_head
@@ -503,12 +502,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         &self,
         cx: &mut MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &'p [Pat<'tcx>],
     ) -> Matrix<'p, 'tcx> {
-        self.0
-            .iter()
-            .filter_map(|r| r.specialize_constructor(cx, constructor, ctor_wild_subpatterns))
-            .collect()
+        self.0.iter().filter_map(|r| r.specialize_constructor(cx, constructor)).collect()
     }
 }
 
@@ -922,9 +917,9 @@ impl<'tcx> Constructor<'tcx> {
                 }
                 _ => vec![],
             },
-            Slice(_) => match ty.kind {
+            Slice(slice) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
-                    let arity = self.arity(cx, ty);
+                    let arity = slice.arity();
                     (0..arity).map(|_| Pat::wildcard_from_ty(ty)).collect()
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
@@ -1844,10 +1839,8 @@ fn is_useful_specialized<'p, 'tcx>(
 ) -> Usefulness<'tcx, 'p> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
 
-    let ctor_wild_subpatterns =
-        cx.pattern_arena.alloc_from_iter(ctor.wildcard_subpatterns(cx, lty));
-    let matrix = matrix.specialize_constructor(cx, &ctor, ctor_wild_subpatterns);
-    v.specialize_constructor(cx, &ctor, ctor_wild_subpatterns)
+    let matrix = matrix.specialize_constructor(cx, &ctor);
+    v.specialize_constructor(cx, &ctor)
         .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false))
         .map(|u| u.apply_constructor(cx, &ctor, lty))
         .unwrap_or(NotUseful)
@@ -2316,9 +2309,12 @@ fn constructor_covered_by_range<'tcx>(
 fn patterns_for_variant<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
     subpatterns: &'p [FieldPat<'tcx>],
-    ctor_wild_subpatterns: &'p [Pat<'tcx>],
+    constructor: &Constructor<'tcx>,
+    ty: Ty<'tcx>,
     is_non_exhaustive: bool,
 ) -> PatStack<'p, 'tcx> {
+    let ctor_wild_subpatterns =
+        cx.pattern_arena.alloc_from_iter(constructor.wildcard_subpatterns(cx, ty));
     let mut result: SmallVec<_> = ctor_wild_subpatterns.iter().collect();
 
     for subpat in subpatterns {
@@ -2327,10 +2323,7 @@ fn patterns_for_variant<'p, 'tcx>(
         }
     }
 
-    debug!(
-        "patterns_for_variant({:#?}, {:#?}) = {:#?}",
-        subpatterns, ctor_wild_subpatterns, result
-    );
+    debug!("patterns_for_variant({:#?}) = {:#?}", subpatterns, result);
     PatStack::from_vec(result)
 }
 
@@ -2347,7 +2340,6 @@ fn specialize_one_pattern<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
     pat: &'p Pat<'tcx>,
     constructor: &Constructor<'tcx>,
-    ctor_wild_subpatterns: &'p [Pat<'tcx>],
 ) -> Option<PatStack<'p, 'tcx>> {
     if let NonExhaustive = constructor {
         // Only a wildcard pattern can match the special extra constructor
@@ -2357,30 +2349,31 @@ fn specialize_one_pattern<'p, 'tcx>(
     let result = match *pat.kind {
         PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
 
-        PatKind::Binding { .. } | PatKind::Wild => Some(ctor_wild_subpatterns.iter().collect()),
+        PatKind::Binding { .. } | PatKind::Wild => {
+            let ctor_wild_subpatterns =
+                cx.pattern_arena.alloc_from_iter(constructor.wildcard_subpatterns(cx, pat.ty));
+            Some(ctor_wild_subpatterns.iter().collect())
+        }
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let variant = &adt_def.variants[variant_index];
             if constructor == &Variant(variant.def_id) {
                 let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
-                Some(patterns_for_variant(
-                    cx,
-                    subpatterns,
-                    ctor_wild_subpatterns,
-                    is_non_exhaustive,
-                ))
+                Some(patterns_for_variant(cx, subpatterns, constructor, pat.ty, is_non_exhaustive))
             } else {
                 None
             }
         }
 
         PatKind::Leaf { ref subpatterns } => {
-            Some(patterns_for_variant(cx, subpatterns, ctor_wild_subpatterns, false))
+            Some(patterns_for_variant(cx, subpatterns, constructor, pat.ty, false))
         }
 
         PatKind::Deref { ref subpattern } => Some(PatStack::from_pattern(subpattern)),
 
         PatKind::Constant { value } if constructor.is_slice() => {
+            let arity = constructor.arity(cx, pat.ty);
+
             // We extract an `Option` for the pointer because slices of zero
             // elements don't necessarily point to memory, they are usually
             // just integers. The only time they should be pointing to memory
@@ -2391,7 +2384,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                     // Shortcut for `n == 0` where no matter what `alloc` and `offset` we produce,
                     // the result would be exactly what we early return here.
                     if n == 0 {
-                        if ctor_wild_subpatterns.len() as u64 == 0 {
+                        if arity == 0 {
                             return Some(PatStack::from_slice(&[]));
                         } else {
                             return None;
@@ -2429,7 +2422,7 @@ fn specialize_one_pattern<'p, 'tcx>(
                     constructor,
                 ),
             };
-            if ctor_wild_subpatterns.len() as u64 == n {
+            if arity == n {
                 // convert a constant slice/array pattern to a list of patterns.
                 let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
                 let ptr = Pointer::new(AllocId(0), offset);
@@ -2476,20 +2469,21 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Array { ref prefix, ref slice, ref suffix }
         | PatKind::Slice { ref prefix, ref slice, ref suffix } => match *constructor {
-            Slice(_) => {
+            Slice(slice_ctor) => {
                 let pat_len = prefix.len() + suffix.len();
-                if let Some(slice_count) = ctor_wild_subpatterns.len().checked_sub(pat_len) {
+                if let Some(slice_count) = (slice_ctor.arity() as usize).checked_sub(pat_len) {
                     if slice_count == 0 || slice.is_some() {
+                        let item_ty = match pat.ty.kind {
+                            ty::Slice(ty) | ty::Array(ty, _) => ty,
+                            _ => bug!("bad slice pattern {:?} {:?}", constructor, pat.ty),
+                        };
+                        let wild = &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(item_ty));
+
                         Some(
                             prefix
                                 .iter()
-                                .chain(
-                                    ctor_wild_subpatterns
-                                        .iter()
-                                        .skip(prefix.len())
-                                        .take(slice_count)
-                                        .chain(suffix.iter()),
-                                )
+                                .chain((0..slice_count).map(|_| wild))
+                                .chain(suffix.iter())
                                 .collect(),
                         )
                     } else {
@@ -2519,7 +2513,7 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     };
-    debug!("specialize({:#?}, {:#?}) = {:#?}", pat, ctor_wild_subpatterns, result);
+    debug!("specialize({:#?}) = {:#?}", pat, result);
 
     result
 }
