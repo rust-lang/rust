@@ -5387,7 +5387,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return None,
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
-        if self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err() {
+        if matches!(last_expr_ty.kind, ty::Error)
+            || self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err()
+        {
             return None;
         }
         let original_span = original_sp(last_stmt.span, blk.span);
