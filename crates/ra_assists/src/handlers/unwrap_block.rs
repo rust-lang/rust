@@ -24,38 +24,38 @@ use ra_syntax::{ast, AstNode, TextRange, T};
 pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
     let l_curly_token = ctx.find_token_at_offset(T!['{'])?;
 
-    let res = if let Some(if_expr) = l_curly_token.ancestors().find_map(IfExpr::cast) {
+    let (expr, expr_to_unwrap) = if let Some(if_expr) =
+        l_curly_token.ancestors().find_map(IfExpr::cast)
+    {
         // if expression
         let expr_to_unwrap = if_expr.blocks().find_map(|expr| extract_expr(ctx.frange.range, expr));
         let expr_to_unwrap = expr_to_unwrap?;
         // Find if we are in a else if block
         let ancestor = if_expr.syntax().ancestors().skip(1).find_map(ast::IfExpr::cast);
 
-        if let Some(ancestor) = ancestor {
-            Some((ast::Expr::IfExpr(ancestor), expr_to_unwrap))
-        } else {
-            Some((ast::Expr::IfExpr(if_expr), expr_to_unwrap))
+        match ancestor {
+            None => (ast::Expr::IfExpr(if_expr), expr_to_unwrap),
+            Some(ancestor) => (ast::Expr::IfExpr(ancestor), expr_to_unwrap),
         }
     } else if let Some(for_expr) = l_curly_token.ancestors().find_map(ForExpr::cast) {
         // for expression
         let block_expr = for_expr.loop_body()?;
-        extract_expr(ctx.frange.range, block_expr)
-            .map(|expr_to_unwrap| (ast::Expr::ForExpr(for_expr), expr_to_unwrap))
+        let expr_to_unwrap = extract_expr(ctx.frange.range, block_expr)?;
+        (ast::Expr::ForExpr(for_expr), expr_to_unwrap)
     } else if let Some(while_expr) = l_curly_token.ancestors().find_map(WhileExpr::cast) {
         // while expression
         let block_expr = while_expr.loop_body()?;
-        extract_expr(ctx.frange.range, block_expr)
-            .map(|expr_to_unwrap| (ast::Expr::WhileExpr(while_expr), expr_to_unwrap))
+        let expr_to_unwrap = extract_expr(ctx.frange.range, block_expr)?;
+        (ast::Expr::WhileExpr(while_expr), expr_to_unwrap)
     } else if let Some(loop_expr) = l_curly_token.ancestors().find_map(LoopExpr::cast) {
         // loop expression
         let block_expr = loop_expr.loop_body()?;
-        extract_expr(ctx.frange.range, block_expr)
-            .map(|expr_to_unwrap| (ast::Expr::LoopExpr(loop_expr), expr_to_unwrap))
+        let expr_to_unwrap = extract_expr(ctx.frange.range, block_expr)?;
+        (ast::Expr::LoopExpr(loop_expr), expr_to_unwrap)
     } else {
-        None
+        return None;
     };
 
-    let (expr, expr_to_unwrap) = res?;
     ctx.add_assist(AssistId("unwrap_block"), "Unwrap block", |edit| {
         edit.set_cursor(expr.syntax().text_range().start());
         edit.target(expr_to_unwrap.syntax().text_range());
