@@ -18,15 +18,46 @@ use crate::num::FpCategory;
 
 /// The radix or base of the internal representation of `f64`.
 /// Use [`f64::RADIX`](../../std/primitive.f64.html#associatedconstant.RADIX) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let r = std::f64::RADIX;
+///
+/// // intended way
+/// let r = f64::RADIX;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const RADIX: u32 = f64::RADIX;
 
 /// Number of significant digits in base 2.
 /// Use [`f64::MANTISSA_DIGITS`](../../std/primitive.f64.html#associatedconstant.MANTISSA_DIGITS) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let d = std::f64::MANTISSA_DIGITS;
+///
+/// // intended way
+/// let d = f64::MANTISSA_DIGITS;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MANTISSA_DIGITS: u32 = f64::MANTISSA_DIGITS;
+
 /// Approximate number of significant digits in base 10.
 /// Use [`f64::DIGITS`](../../std/primitive.f64.html#associatedconstant.DIGITS) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let d = std::f64::DIGITS;
+///
+/// // intended way
+/// let d = f64::DIGITS;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const DIGITS: u32 = f64::DIGITS;
 
@@ -36,50 +67,166 @@ pub const DIGITS: u32 = f64::DIGITS;
 /// This is the difference between `1.0` and the next larger representable number.
 ///
 /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let e = std::f64::EPSILON;
+///
+/// // intended way
+/// let e = f64::EPSILON;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f64 = f64::EPSILON;
 
 /// Smallest finite `f64` value.
 /// Use [`f64::MIN`](../../std/primitive.f64.html#associatedconstant.MIN) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let min = std::f64::MIN;
+///
+/// // intended way
+/// let min = f64::MIN;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN: f64 = f64::MIN;
+
 /// Smallest positive normal `f64` value.
 /// Use [`f64::MIN_POSITIVE`](../../std/primitive.f64.html#associatedconstant.MIN_POSITIVE) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let min = std::f64::MIN_POSITIVE;
+///
+/// // intended way
+/// let min = f64::MIN_POSITIVE;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_POSITIVE: f64 = f64::MIN_POSITIVE;
+
 /// Largest finite `f64` value.
 /// Use [`f64::MAX`](../../std/primitive.f64.html#associatedconstant.MAX) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let max = std::f64::MAX;
+///
+/// // intended way
+/// let max = f64::MAX;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX: f64 = f64::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
 /// Use [`f64::MIN_EXP`](../../std/primitive.f64.html#associatedconstant.MIN_EXP) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let min = std::f64::MIN_EXP;
+///
+/// // intended way
+/// let min = f64::MIN_EXP;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_EXP: i32 = f64::MIN_EXP;
+
 /// Maximum possible power of 2 exponent.
 /// Use [`f64::MAX_EXP`](../../std/primitive.f64.html#associatedconstant.MAX_EXP) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let max = std::f64::MAX_EXP;
+///
+/// // intended way
+/// let max = f64::MAX_EXP;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_EXP: i32 = f64::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
 /// Use [`f64::MIN_10_EXP`](../../std/primitive.f64.html#associatedconstant.MIN_10_EXP) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let min = std::f64::MIN_10_EXP;
+///
+/// // intended way
+/// let min = f64::MIN_10_EXP;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_10_EXP: i32 = f64::MIN_10_EXP;
+
 /// Maximum possible power of 10 exponent.
 /// Use [`f64::MAX_10_EXP`](../../std/primitive.f64.html#associatedconstant.MAX_10_EXP) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let max = std::f64::MAX_10_EXP;
+///
+/// // intended way
+/// let max = f64::MAX_10_EXP;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_10_EXP: i32 = f64::MAX_10_EXP;
 
 /// Not a Number (NaN).
 /// Use [`f64::NAN`](../../std/primitive.f64.html#associatedconstant.NAN) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let nan = std::f64::NAN;
+///
+/// // intended way
+/// let nan = f64::NAN;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NAN: f64 = f64::NAN;
+
 /// Infinity (∞).
 /// Use [`f64::INFINITY`](../../std/primitive.f64.html#associatedconstant.INFINITY) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let inf = std::f64::INFINITY;
+///
+/// // intended way
+/// let inf = f64::INFINITY;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const INFINITY: f64 = f64::INFINITY;
+
 /// Negative infinity (−∞).
 /// Use [`f64::NEG_INFINITY`](../../std/primitive.f64.html#associatedconstant.NEG_INFINITY) instead.
+///
+/// # Examples
+///
+/// ```rust
+/// // deprecated way
+/// let ninf = std::f64::NEG_INFINITY;
+///
+/// // intended way
+/// let ninf = f64::NEG_INFINITY;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NEG_INFINITY: f64 = f64::NEG_INFINITY;
 
