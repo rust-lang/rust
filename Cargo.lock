@@ -3102,7 +3102,6 @@ version = "0.6.0"
 dependencies = [
  "clippy_lints",
  "env_logger 0.7.1",
- "failure",
  "futures",
  "log",
  "rand 0.7.3",
