@@ -49,10 +49,10 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
-use crate::dataflow::{self, Analysis};
-use crate::dataflow::{
+use crate::dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
+use crate::dataflow::{self, Analysis};
 use crate::transform::no_landing_pads::no_landing_pads;
 use crate::transform::simplify;
 use crate::transform::{MirPass, MirSource};

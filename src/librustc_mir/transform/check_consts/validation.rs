@@ -20,7 +20,7 @@ use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstCx, ConstKind, Qualif};
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
-use crate::dataflow::MaybeMutBorrowedLocals;
+use crate::dataflow::impls::MaybeMutBorrowedLocals;
 use crate::dataflow::{self, Analysis};
 
 // We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
