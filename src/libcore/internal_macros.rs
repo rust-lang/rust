@@ -117,3 +117,9 @@ macro_rules! impl_fn_for_zst {
         )+
     }
 }
+
+#[allow(unused_macros)]
+macro_rules! llvm_asm {
+    // Redirect to asm! for stdarch in stable 1.43
+    ($($arg:tt)*) => { $crate::asm!($($arg)*) }
+}
