@@ -1,4 +1,5 @@
 //! Advertizes the capabilities of the LSP Server.
+use std::env;
 
 use crate::semantic_tokens;
 
@@ -16,7 +17,11 @@ pub fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
             open_close: Some(true),
-            change: Some(TextDocumentSyncKind::Incremental),
+            change: Some(if env::var("RA_PROFILE").is_ok() {
+                TextDocumentSyncKind::Incremental
+            } else {
+                TextDocumentSyncKind::Full
+            }),
             will_save: None,
             will_save_wait_until: None,
             save: Some(SaveOptions::default()),
