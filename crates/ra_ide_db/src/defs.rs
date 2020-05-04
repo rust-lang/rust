@@ -121,7 +121,7 @@ fn classify_name_inner(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Opti
         match parent {
             ast::Alias(it) => {
                 tested_by!(goto_def_for_use_alias; force);
-                let use_tree = it.syntax().ancestors().find_map(ast::UseTree::cast)?;
+                let use_tree = it.syntax().parent().and_then(ast::UseTree::cast)?;
                 let path = use_tree.path()?;
                 let path_segment = path.segment()?;
                 let name_ref = path_segment.name_ref()?;
