@@ -250,8 +250,8 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
                 &b.item_def_id,
             )))
         } else {
-            let ty = relation.relate(&a.ty, &b.ty)?;
-            let substs = relation.relate(&a.substs, &b.substs)?;
+            let ty = relation.relate_with_variance(ty::Invariant, &a.ty, &b.ty)?;
+            let substs = relation.relate_with_variance(ty::Invariant, &a.substs, &b.substs)?;
             Ok(ty::ExistentialProjection { item_def_id: a.item_def_id, substs, ty })
         }
     }

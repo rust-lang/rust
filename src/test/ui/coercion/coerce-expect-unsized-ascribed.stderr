@@ -121,7 +121,7 @@ error[E0308]: mismatched types
 LL |     let _ = Box::new(|x| (x as u8)): Box<dyn Fn(i32) -> _>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^ expected trait object `dyn std::ops::Fn`, found closure
    |
-   = note: expected struct `std::boxed::Box<dyn std::ops::Fn(i32) -> _>`
+   = note: expected struct `std::boxed::Box<dyn std::ops::Fn(i32) -> u8>`
               found struct `std::boxed::Box<[closure@$DIR/coerce-expect-unsized-ascribed.rs:26:22: 26:35]>`
 
 error: aborting due to 14 previous errors
