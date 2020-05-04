@@ -609,7 +609,6 @@ impl<T> Trait<T> for X {
             "consider constraining the associated type `{}` to `{}`",
             values.expected, values.found
         );
-        let mut suggested = false;
         let body_owner = self.hir().get_if_local(body_owner_def_id);
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
@@ -634,7 +633,10 @@ impl<T> Trait<T> for X {
             // type error is a comparison of an `impl` with its `trait` or when the
             // scope is outside of a `Body`.
         } else {
-            suggested |= self.point_at_methods_that_satisfy_associated_type(
+            // If we find a suitable associated function that returns the expected type, we don't
+            // want the more general suggestion later in this method about "consider constraining
+            // the associated type or calling a method that returns the associated type".
+            let point_at_assoc_fn = self.point_at_methods_that_satisfy_associated_type(
                 db,
                 assoc.container.id(),
                 current_method_ident,
@@ -643,25 +645,32 @@ impl<T> Trait<T> for X {
             );
             // Possibly suggest constraining the associated type to conform to the
             // found type.
-            suggested |=
-                self.suggest_constraint(db, &msg, body_owner_def_id, proj_ty, values.found);
+            if self.suggest_constraint(db, &msg, body_owner_def_id, proj_ty, values.found)
+                || point_at_assoc_fn
+            {
+                return;
+            }
         }
-        if !suggested {
-            suggested = self.point_at_associated_type(db, body_owner_def_id, values.found);
-        }
+
         if let ty::Opaque(def_id, _) = proj_ty.self_ty().kind {
             // When the expected `impl Trait` is not defined in the current item, it will come from
             // a return type. This can occur when dealing with `TryStream` (#71035).
-            suggested |= self.constrain_associated_type_structured_suggestion(
+            if self.constrain_associated_type_structured_suggestion(
                 db,
                 self.def_span(def_id),
                 &assoc,
                 values.found,
                 &msg,
-            );
+            ) {
+                return;
+            }
         }
 
-        if !suggested && !impl_comparison {
+        if self.point_at_associated_type(db, body_owner_def_id, values.found) {
+            return;
+        }
+
+        if !impl_comparison {
             // Generic suggestion when we can't be more specific.
             if callable_scope {
                 db.help(&format!("{} or calling a method that returns `{}`", msg, values.expected));
