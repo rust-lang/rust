@@ -218,7 +218,7 @@ function lookForEntry(entry, data) {
     return null;
 }
 
-function loadMainJsAndIndex(mainJs, aliases, searchIndex, crate) {
+function loadMainJsAndIndex(mainJs, searchIndex, crate) {
     if (searchIndex[searchIndex.length - 1].length === 0) {
         searchIndex.pop();
     }
@@ -238,17 +238,15 @@ function loadMainJsAndIndex(mainJs, aliases, searchIndex, crate) {
     var functionsToLoad = ["buildHrefAndPath", "pathSplitter", "levenshtein", "validateResult",
                            "handleAliases", "getQuery", "buildIndex", "execQuery", "execSearch"];
 
+    ALIASES = {};
     finalJS += 'window = { "currentCrate": "' + crate + '" };\n';
     finalJS += 'var rootPath = "../";\n';
-    finalJS += aliases;
     finalJS += loadThings(arraysToLoad, 'array', extractArrayVariable, mainJs);
     finalJS += loadThings(variablesToLoad, 'variable', extractVariable, mainJs);
     finalJS += loadThings(functionsToLoad, 'function', extractFunction, mainJs);
 
     var loaded = loadContent(finalJS);
     var index = loaded.buildIndex(searchIndex.rawSearchIndex);
-    // We make it "global" so that the "loaded.execSearch" function will find it.
-    rawSearchIndex = searchIndex.rawSearchIndex;
 
     return [loaded, index];
 }
@@ -340,11 +338,10 @@ function runChecks(testFile, loaded, index) {
 
 function load_files(doc_folder, resource_suffix, crate) {
     var mainJs = readFile(path.join(doc_folder, "main" + resource_suffix + ".js"));
-    var aliases = readFile(path.join(doc_folder, "aliases" + resource_suffix + ".js"));
     var searchIndex = readFile(
         path.join(doc_folder, "search-index" + resource_suffix + ".js")).split("\n");
 
-    return loadMainJsAndIndex(mainJs, aliases, searchIndex, crate);
+    return loadMainJsAndIndex(mainJs, searchIndex, crate);
 }
 
 function showHelp() {

@@ -503,27 +503,6 @@ impl DocFolder for Cache {
     }
 }
 
-impl Cache {
-    pub fn get_aliases<'a>(&'a self) -> FxHashMap<String, Vec<&'a IndexItem>> {
-        self.aliases
-            .iter()
-            .map(|(k, values)| {
-                (
-                    k.clone(),
-                    values
-                        .iter()
-                        .filter(|v| {
-                            let x = &self.search_index[**v];
-                            x.parent_idx.is_some() == x.parent.is_some()
-                        })
-                        .map(|v| &self.search_index[*v])
-                        .collect::<Vec<_>>(),
-                )
-            })
-            .collect()
-    }
-}
-
 /// Attempts to find where an external crate is located, given that we're
 /// rendering in to the specified source destination.
 fn extern_location(
@@ -640,6 +619,23 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         .map(|module| shorten(plain_summary_line(module.doc_value())))
         .unwrap_or(String::new());
 
+    let crate_aliases = aliases
+        .iter()
+        .map(|(k, values)| {
+            (
+                k.clone(),
+                values
+                    .iter()
+                    .filter_map(|v| {
+                        let x = &crate_items[*v];
+                        if x.parent_idx.is_some() == x.parent.is_some() { Some(*v) } else { None }
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .filter(|(_, values)| !values.is_empty())
+        .collect::<Vec<_>>();
+
     #[derive(Serialize)]
     struct CrateData<'a> {
         doc: String,
@@ -647,6 +643,11 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         items: Vec<&'a IndexItem>,
         #[serde(rename = "p")]
         paths: Vec<(ItemType, String)>,
+        // The String is alias name and the vec is the list of the elements with this alias.
+        //
+        // To be noted: the `usize` elements are indexes to `items`.
+        #[serde(rename = "a")]
+        aliases: Option<Vec<(String, Vec<usize>)>>,
     }
 
     // Collect the index into a string
@@ -657,6 +658,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
             doc: crate_doc,
             items: crate_items,
             paths: crate_paths,
+            aliases: if crate_aliases.is_empty() { None } else { Some(crate_aliases) },
         })
         .expect("failed serde conversion")
         // All these `replace` calls are because we have to go through JS string for JSON content.

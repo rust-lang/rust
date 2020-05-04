@@ -4,9 +4,9 @@ const QUERY = '+';
 
 const EXPECTED = {
     'others': [
-        { 'path': 'core', 'name': 'AddAssign' },
-        { 'path': 'core', 'name': 'Add' },
-        { 'path': 'std', 'name': 'AddAssign' },
+        { 'path': 'core::ops', 'name': 'AddAssign' },
+        { 'path': 'core::ops', 'name': 'Add' },
+        { 'path': 'std::ops', 'name': 'AddAssign' },
         { 'path': 'std::ops', 'name': 'Add' },
     ],
 };
