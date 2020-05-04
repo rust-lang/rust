@@ -281,7 +281,7 @@
                         "minItems": 1
                     },
                     "default": null,
-                    "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for checking. The command should include `--message=format=json` or similar option."
+                    "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for checking. The command should include `--message-format=json` or similar option."
                 },
                 "rust-analyzer.checkOnSave.allTargets": {
                     "type": "boolean",
