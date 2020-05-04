@@ -776,6 +776,21 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
+    /// Returns whether the fields of this constructor should be treated as `non_exhaustive`.
+    fn is_field_list_non_exhaustive<'a>(
+        &self,
+        cx: &MatchCheckCtxt<'a, 'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        match ty.kind {
+            ty::Adt(adt, _) => {
+                let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
+                cx.is_foreign_non_exhaustive_variant(ty, variant)
+            }
+            _ => false,
+        }
+    }
+
     fn variant_index_for_adt<'a>(
         &self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
@@ -913,15 +928,7 @@ impl<'tcx> Constructor<'tcx> {
     fn arity<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> u64 {
         debug!("Constructor::arity({:#?}, {:?})", self, ty);
         match self {
-            Single | Variant(_) => match ty.kind {
-                ty::Tuple(ref fs) => fs.len() as u64,
-                ty::Slice(..) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", self, ty),
-                ty::Ref(..) => 1,
-                ty::Adt(adt, _) => {
-                    adt.variants[self.variant_index_for_adt(cx, adt)].fields.len() as u64
-                }
-                _ => 0,
-            },
+            Single | Variant(_) => VariantFields::ctor_arity(cx, self, ty),
             Slice(slice) => slice.arity(),
             ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => 0,
         }
@@ -1018,30 +1025,60 @@ impl<'tcx> Constructor<'tcx> {
 }
 
 /// The fields of a variant, like `Option::Some` or `(,)`. This handles uninhabited fields and
-/// `non_exhaustive` pragmas under the hood.
-#[derive(Debug)]
+/// `non_exhaustive` field lists under the hood.
+#[derive(Debug, Clone)]
 struct VariantFields<'p, 'tcx> {
-    fields: SmallVec<[&'p Pat<'tcx>; 2]>,
+    fields: SmallVec<[VariantField<'p, 'tcx>; 2]>,
     is_non_exhaustive: bool,
 }
 
+#[derive(Debug, Clone)]
+enum VariantField<'p, 'tcx> {
+    Kept(&'p Pat<'tcx>),
+    // Hidden(Ty<'tcx>),
+}
+
+impl<'p, 'tcx> VariantField<'p, 'tcx> {
+    fn wildcard_from_ty(cx: &MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
+        let wild = &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
+        VariantField::Kept(wild)
+    }
+
+    fn kept(&self) -> Option<&'p Pat<'tcx>> {
+        match self {
+            VariantField::Kept(p) => Some(p),
+            // VariantField::Hidden(_) => None,
+        }
+    }
+
+    fn into_pattern(self) -> Pat<'tcx> {
+        match self {
+            VariantField::Kept(p) => p.clone(),
+            // VariantField::Hidden(ty) => Pat::wildcard_from_ty(ty),
+        }
+    }
+}
+
 impl<'p, 'tcx> VariantFields<'p, 'tcx> {
+    // Takes an already filtered list of patterns, e.g. taken from the matrix.
     fn from_patterns(
         cx: &MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> Self {
-        let fields = cx.pattern_arena.alloc_from_iter(pats);
-        let fields: SmallVec<_> = fields.iter().collect();
-        let is_non_exhaustive = match ty.kind {
-            ty::Adt(adt, _) => {
-                let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
-                cx.is_foreign_non_exhaustive_variant(ty, variant)
+        // There are `arity()` patterns in there.
+        let mut pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
+
+        let mut fields = Self::wildcards(cx, constructor, ty);
+        for f in &mut fields.fields {
+            if let VariantField::Kept(p) = f {
+                let (pat, rest) = pats.split_first().unwrap();
+                *p = pat;
+                pats = rest;
             }
-            _ => false,
-        };
-        VariantFields { fields, is_non_exhaustive }
+        }
+        fields
     }
 
     /// Creates a new list of wildcard fields for a given constructor. `constructor`
@@ -1051,15 +1088,17 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
         constructor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
     ) -> Self {
-        let subpatterns = match ty.kind {
-            ty::Tuple(ref fs) => {
-                fs.into_iter().map(|t| t.expect_ty()).map(Pat::wildcard_from_ty).collect()
-            }
-            ty::Ref(_, rty, _) => vec![Pat::wildcard_from_ty(rty)],
+        let fields = match ty.kind {
+            ty::Tuple(ref fs) => fs
+                .into_iter()
+                .map(|t| t.expect_ty())
+                .map(|ty| VariantField::wildcard_from_ty(cx, ty))
+                .collect(),
+            ty::Ref(_, rty, _) => smallvec![VariantField::wildcard_from_ty(cx, rty)],
             ty::Adt(adt, substs) => {
                 if adt.is_box() {
                     // Use T as the sub pattern type of Box<T>.
-                    vec![Pat::wildcard_from_ty(substs.type_at(0))]
+                    smallvec![VariantField::wildcard_from_ty(cx, substs.type_at(0))]
                 } else {
                     let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
                     variant
@@ -1074,37 +1113,58 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
                                 field.ty(cx.tcx, substs)
                             }
                         })
-                        .map(Pat::wildcard_from_ty)
+                        .map(|ty| VariantField::wildcard_from_ty(cx, ty))
                         .collect()
                 }
             }
-            _ => vec![],
+            _ => smallvec![],
         };
-        Self::from_patterns(cx, constructor, ty, subpatterns)
+        let is_non_exhaustive = constructor.is_field_list_non_exhaustive(cx, ty);
+        VariantFields { fields, is_non_exhaustive }
+    }
+
+    /// Calculates the number of fields of a given constructor. `constructor` must be `Variant` or
+    /// `Single`.
+    fn ctor_arity(
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        constructor: &Constructor<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> u64 {
+        match ty.kind {
+            ty::Tuple(ref fs) => fs.len() as u64,
+            ty::Ref(..) => 1,
+            ty::Adt(adt, _) => {
+                adt.variants[constructor.variant_index_for_adt(cx, adt)].fields.len() as u64
+            }
+            ty::Slice(..) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", constructor, ty),
+            _ => 0,
+        }
     }
 
     /// Overrides some of the fields with the provided patterns
     fn override_fieldpatterns(
         mut self,
-        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>,
     ) -> Self {
         for pat in pats {
             if !self.is_non_exhaustive || !cx.is_uninhabited(pat.pattern.ty) {
-                self.fields[pat.field.index()] = &pat.pattern;
+                self.fields[pat.field.index()] = VariantField::Kept(&pat.pattern);
             }
         }
         self
     }
 
+    /// Returns a filtered list of patterns, to be stored in the matrix.
     fn into_patstack(self) -> PatStack<'p, 'tcx> {
-        PatStack::from_vec(self.fields)
+        PatStack::from_vec(self.fields.into_iter().filter_map(|p| p.kept()).collect())
     }
 
+    /// Returns an exhaustive list of patterns, to be stored into the relevant `PatKind`.
     fn into_fieldpats(self) -> impl Iterator<Item = FieldPat<'tcx>> + 'p {
         self.fields
             .into_iter()
-            .cloned()
+            .map(|p| p.into_pattern())
             .enumerate()
             .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
     }
