@@ -3,15 +3,13 @@
 // Associated type defaults may not be assumed inside the trait defining them.
 // ie. they only resolve to `<Self as Tr>::A`, not the actual type `()`
 trait Tr {
-    type A = ();
+    type A = (); //~ NOTE associated type defaults can't be assumed inside the trait defining them
 
     fn f(p: Self::A) {
         let () = p;
         //~^ ERROR mismatched types
         //~| NOTE expected associated type, found `()`
         //~| NOTE expected associated type `<Self as Tr>::A`
-        //~| NOTE consider constraining the associated type
-        //~| NOTE for more information, visit
     }
 }
 
@@ -31,15 +29,13 @@ impl Tr for u8 {
 }
 
 trait AssocConst {
-    type Ty = u8;
+    type Ty = u8; //~ NOTE associated type defaults can't be assumed inside the trait defining them
 
     // Assoc. consts also cannot assume that default types hold
     const C: Self::Ty = 0u8;
     //~^ ERROR mismatched types
     //~| NOTE expected associated type, found `u8`
     //~| NOTE expected associated type `<Self as AssocConst>::Ty`
-    //~| NOTE consider constraining the associated type
-    //~| NOTE for more information, visit
 }
 
 // An impl can, however

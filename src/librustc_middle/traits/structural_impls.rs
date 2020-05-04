@@ -164,6 +164,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 tcx.lift(cause).map(super::ImplDerivedObligation)
             }
             super::DerivedObligation(ref cause) => tcx.lift(cause).map(super::DerivedObligation),
+            super::CompareImplConstObligation => Some(super::CompareImplConstObligation),
             super::CompareImplMethodObligation {
                 item_name,
                 impl_item_def_id,

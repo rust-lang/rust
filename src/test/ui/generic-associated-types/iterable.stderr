@@ -6,7 +6,7 @@ LL |     type Item<'a> where T: 'a = <std::slice::Iter<'a, T> as Iterator>::Item
    |
    = note:    expected reference `&T`
            found associated type `<std::vec::Vec<T> as Iterable>::Item<'_>`
-   = note: consider constraining the associated type `<std::vec::Vec<T> as Iterable>::Item<'_>` to `&_`
+   = help: consider constraining the associated type `<std::vec::Vec<T> as Iterable>::Item<'_>` to `&_`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0271]: type mismatch resolving `for<'a> <<[T] as Iterable>::Iter<'a> as std::iter::Iterator>::Item == <[T] as Iterable>::Item<'a>`
@@ -17,7 +17,7 @@ LL |     type Item<'a> where T: 'a = <std::slice::Iter<'a, T> as Iterator>::Item
    |
    = note:    expected reference `&T`
            found associated type `<[T] as Iterable>::Item<'_>`
-   = note: consider constraining the associated type `<[T] as Iterable>::Item<'_>` to `&_`
+   = help: consider constraining the associated type `<[T] as Iterable>::Item<'_>` to `&_`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0271]: type mismatch resolving `for<'a> <<std::vec::Vec<T> as Iterable>::Iter<'a> as std::iter::Iterator>::Item == <std::vec::Vec<T> as Iterable>::Item<'a>`
@@ -34,7 +34,7 @@ LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
    |
    = note: expected associated type `<std::vec::Vec<T> as Iterable>::Item<'_>`
                     found reference `&T`
-   = note: consider constraining the associated type `<std::vec::Vec<T> as Iterable>::Item<'_>` to `&_` or calling a method that returns `<std::vec::Vec<T> as Iterable>::Item<'_>`
+   = help: consider constraining the associated type `<std::vec::Vec<T> as Iterable>::Item<'_>` to `&_` or calling a method that returns `<std::vec::Vec<T> as Iterable>::Item<'_>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0271]: type mismatch resolving `for<'a> <<[T] as Iterable>::Iter<'a> as std::iter::Iterator>::Item == <[T] as Iterable>::Item<'a>`
@@ -51,7 +51,7 @@ LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
    |
    = note: expected associated type `<[T] as Iterable>::Item<'_>`
                     found reference `&T`
-   = note: consider constraining the associated type `<[T] as Iterable>::Item<'_>` to `&_` or calling a method that returns `<[T] as Iterable>::Item<'_>`
+   = help: consider constraining the associated type `<[T] as Iterable>::Item<'_>` to `&_` or calling a method that returns `<[T] as Iterable>::Item<'_>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error: aborting due to 4 previous errors

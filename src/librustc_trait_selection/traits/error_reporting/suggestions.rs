@@ -1738,6 +1738,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     predicate
                 ));
             }
+            ObligationCauseCode::CompareImplConstObligation => {
+                err.note(&format!(
+                    "the requirement `{}` appears on the associated impl constant \
+                     but not on the corresponding associated trait constant",
+                    predicate
+                ));
+            }
             ObligationCauseCode::ReturnType
             | ObligationCauseCode::ReturnValue(_)
             | ObligationCauseCode::BlockTailExpression(_) => (),

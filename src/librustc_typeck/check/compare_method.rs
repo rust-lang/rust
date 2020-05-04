@@ -966,6 +966,7 @@ crate fn compare_const_impl<'tcx>(
         let impl_ty = tcx.type_of(impl_c.def_id);
         let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
         let mut cause = ObligationCause::misc(impl_c_span, impl_c_hir_id);
+        cause.code = ObligationCauseCode::CompareImplConstObligation;
 
         // There is no "body" here, so just pass dummy id.
         let impl_ty =

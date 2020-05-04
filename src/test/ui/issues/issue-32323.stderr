@@ -8,8 +8,10 @@ LL | pub fn f<'a, T: Tr<'a>>() -> <T as Tr<'a>>::Out {}
    |
    = note: expected associated type `<T as Tr<'a>>::Out`
                     found unit type `()`
-   = note: consider constraining the associated type `<T as Tr<'a>>::Out` to `()` or calling a method that returns `<T as Tr<'a>>::Out`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+help: consider constraining the associated type `<T as Tr<'a>>::Out` to `()`
+   |
+LL | pub fn f<'a, T: Tr<'a, Out = ()>>() -> <T as Tr<'a>>::Out {}
+   |                      ^^^^^^^^^^
 
 error: aborting due to previous error
 
