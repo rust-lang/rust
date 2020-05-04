@@ -1409,7 +1409,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let tables: &TypeckTables<'tcx> = match &in_progress_tables {
             Some(t) if t.hir_owner.map(|owner| owner.to_def_id()) == Some(generator_did_root) => t,
             _ => {
-                query_tables = self.tcx.typeck_tables_of(generator_did.expect_local());
+                query_tables = self
+                    .tcx
+                    .typeck_tables_of(self.tcx.with_opt_param(generator_did.expect_local()));
                 &query_tables
             }
         };

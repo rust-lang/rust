@@ -361,6 +361,43 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
     }
 }
 
+impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for ty::WithOptParam<DefId> {
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
+
+    fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
+        tcx.def_path_hash(self.did).0
+    }
+
+    fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
+        tcx.def_path_str(self.did)
+    }
+
+    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+        dep_node.extract_def_id(tcx).map(|def_id| tcx.with_opt_param(def_id))
+    }
+}
+impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for ty::WithOptParam<LocalDefId> {
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
+
+    fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
+        tcx.def_path_hash(self.did.to_def_id()).0
+    }
+
+    fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
+        tcx.def_path_str(self.did.to_def_id())
+    }
+
+    fn recover(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<Self> {
+        dep_node.extract_def_id(tcx).map(|def_id| tcx.with_opt_param(def_id.expect_local()))
+    }
+}
+
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
     #[inline]
     fn can_reconstruct_query_key() -> bool {

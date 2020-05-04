@@ -848,7 +848,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     });
 
     sess.time("MIR_borrow_checking", || {
-        tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
+        tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(tcx.with_opt_param(def_id)));
     });
 
     sess.time("MIR_effect_checking", || {
@@ -856,7 +856,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
             mir::transform::check_unsafety::check_unsafety(tcx, def_id);
 
             if tcx.hir().body_const_context(def_id).is_some() {
-                tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
+                tcx.ensure().mir_drops_elaborated_and_const_checked(tcx.with_opt_param(def_id));
             }
         }
     });

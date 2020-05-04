@@ -353,7 +353,11 @@ fn item_tables<'a, 'tcx>(
     empty_tables: &'a ty::TypeckTables<'tcx>,
 ) -> &'a ty::TypeckTables<'tcx> {
     let def_id = tcx.hir().local_def_id(hir_id);
-    if tcx.has_typeck_tables(def_id) { tcx.typeck_tables_of(def_id) } else { empty_tables }
+    if tcx.has_typeck_tables(def_id) {
+        tcx.typeck_tables_of(tcx.with_opt_param(def_id))
+    } else {
+        empty_tables
+    }
 }
 
 fn min(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'_>) -> ty::Visibility {

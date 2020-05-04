@@ -21,7 +21,7 @@ where
     }
 
     for def_id in def_ids {
-        let body = &tcx.optimized_mir(def_id);
+        let body = &tcx.optimized_mir(tcx.with_opt_param(def_id));
         write_mir_fn_graphviz(tcx, def_id, body, use_subgraphs, w)?;
     }
 

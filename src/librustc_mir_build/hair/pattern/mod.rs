@@ -801,7 +801,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // `mir_const_qualif` must be called with the `DefId` of the item where the const is
         // defined, not where it is declared. The difference is significant for associated
         // constants.
-        let mir_structural_match_violation = self.tcx.mir_const_qualif(instance.def_id()).custom_eq;
+        let mir_structural_match_violation =
+            self.tcx.mir_const_qualif(instance.with_opt_param(self.tcx)).custom_eq;
         debug!("mir_structural_match_violation({:?}) -> {}", qpath, mir_structural_match_violation);
 
         match self.tcx.const_eval_instance(param_env_reveal_all, instance, Some(span)) {

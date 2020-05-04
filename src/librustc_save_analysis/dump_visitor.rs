@@ -109,7 +109,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         F: FnOnce(&mut Self),
     {
         let tables = if self.tcx.has_typeck_tables(item_def_id) {
-            self.tcx.typeck_tables_of(item_def_id)
+            self.tcx.typeck_tables_of(self.tcx.with_opt_param(item_def_id))
         } else {
             self.save_ctxt.empty_tables
         };

@@ -190,7 +190,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     .ty;
             let needs_note = match ty.kind {
                 ty::Closure(id, _) => {
-                    let tables = self.infcx.tcx.typeck_tables_of(id.expect_local());
+                    let tables = self
+                        .infcx
+                        .tcx
+                        .typeck_tables_of(self.infcx.tcx.with_opt_param(id.expect_local()));
                     let hir_id = self.infcx.tcx.hir().as_local_hir_id(id.expect_local());
 
                     tables.closure_kind_origins().get(hir_id).is_none()
@@ -865,22 +868,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("`{}` would have to be valid for `{}`...", name, region_name),
             );
 
-            let fn_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id);
+            let tcx = self.infcx.tcx;
+
+            let fn_hir_id = tcx.hir().as_local_hir_id(self.mir_def_id);
             err.span_label(
                 drop_span,
                 format!(
                     "...but `{}` will be dropped here, when the {} returns",
                     name,
-                    self.infcx
-                        .tcx
-                        .hir()
+                    tcx.hir()
                         .opt_name(fn_hir_id)
                         .map(|name| format!("function `{}`", name))
                         .unwrap_or_else(|| {
-                            match &self
-                                .infcx
-                                .tcx
-                                .typeck_tables_of(self.mir_def_id)
+                            match &tcx
+                                .typeck_tables_of(tcx.with_opt_param(self.mir_def_id))
                                 .node_type(fn_hir_id)
                                 .kind
                             {

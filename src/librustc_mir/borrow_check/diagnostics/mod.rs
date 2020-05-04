@@ -100,8 +100,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let did = did.expect_local();
                     let hir_id = self.infcx.tcx.hir().as_local_hir_id(did);
 
-                    if let Some((span, name)) =
-                        self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id)
+                    if let Some((span, name)) = self
+                        .infcx
+                        .tcx
+                        .typeck_tables_of(self.infcx.tcx.with_opt_param(did))
+                        .closure_kind_origins()
+                        .get(hir_id)
                     {
                         diag.span_note(
                             *span,
@@ -123,8 +127,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let did = did.expect_local();
                 let hir_id = self.infcx.tcx.hir().as_local_hir_id(did);
 
-                if let Some((span, name)) =
-                    self.infcx.tcx.typeck_tables_of(did).closure_kind_origins().get(hir_id)
+                if let Some((span, name)) = self
+                    .infcx
+                    .tcx
+                    .typeck_tables_of(self.infcx.tcx.with_opt_param(did))
+                    .closure_kind_origins()
+                    .get(hir_id)
                 {
                     diag.span_note(
                         *span,

@@ -75,6 +75,12 @@ impl IntoArgs for DefId {
     }
 }
 
+impl IntoArgs for ty::WithOptParam<DefId> {
+    fn into_args(self) -> (DefId, DefId) {
+        (self.did, self.param_did.unwrap_or(self.did))
+    }
+}
+
 impl IntoArgs for CrateNum {
     fn into_args(self) -> (DefId, DefId) {
         (self.as_def_id(), self.as_def_id())

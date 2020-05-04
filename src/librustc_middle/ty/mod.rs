@@ -14,6 +14,7 @@ use crate::mir::Body;
 use crate::mir::GeneratorLayout;
 use crate::traits::{self, Reveal};
 use crate::ty;
+use crate::ty::query::IntoQueryParam;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::{Discr, IntTypeExt};
 use rustc_ast::ast;
@@ -1094,7 +1095,7 @@ pub enum PredicateKind<'tcx> {
     Subtype(PolySubtypePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(DefId, SubstsRef<'tcx>),
+    ConstEvaluatable(ty::WithOptParam<DefId>, SubstsRef<'tcx>),
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
@@ -1208,8 +1209,8 @@ impl<'tcx> Predicate<'tcx> {
             &PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
                 PredicateKind::ClosureKind(closure_def_id, closure_substs.subst(tcx, substs), kind)
             }
-            &PredicateKind::ConstEvaluatable(def_id, const_substs) => {
-                PredicateKind::ConstEvaluatable(def_id, const_substs.subst(tcx, substs))
+            &PredicateKind::ConstEvaluatable(def, const_substs) => {
+                PredicateKind::ConstEvaluatable(def, const_substs.subst(tcx, substs))
             }
             PredicateKind::ConstEquate(c1, c2) => {
                 PredicateKind::ConstEquate(c1.subst(tcx, substs), c2.subst(tcx, substs))
@@ -1564,6 +1565,78 @@ pub type PlaceholderRegion = Placeholder<BoundRegion>;
 pub type PlaceholderType = Placeholder<BoundVar>;
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
+
+/// A `DefId` which is bundled with its corresponding generic parameter
+/// in case `did` is a const argument.
+///
+/// This is used to prevent cycle errors during typeck
+/// as `type_of(const_arg)` depends on `typeck_tables_of(owning_body)`
+/// which once again requires the type of its generic arguments.
+///
+/// Luckily we only need to deal with const arguments once we
+/// know their corresponding parameters. We (ab)use this by
+/// calling `type_of(param_did)` for these arguments.
+#[derive(Copy, Clone, Debug, Hash, HashStable, TypeFoldable, RustcEncodable, RustcDecodable)]
+pub struct WithOptParam<T> {
+    pub did: T,
+    /// The `DefId` of the corresponding generic paramter in case `did` is
+    /// a const argument.
+    ///
+    /// This must always be equal to `tcx.const_param_of(did)`.
+    pub param_did: Option<DefId>,
+}
+
+// We manually implement comparisions as the `param_did` can be ignored.
+impl<T: PartialEq> PartialEq for WithOptParam<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.did == other.did
+    }
+}
+
+impl<T: Eq> Eq for WithOptParam<T> {}
+
+impl<T: PartialOrd> PartialOrd for WithOptParam<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.did.partial_cmp(&other.did)
+    }
+}
+
+impl<T: Ord> Ord for WithOptParam<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.did.cmp(&other.did)
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn with_opt_param<T: IntoQueryParam<DefId> + Copy>(self, did: T) -> WithOptParam<T> {
+        WithOptParam { did, param_did: self.const_param_of(did) }
+    }
+}
+
+impl<T: IntoQueryParam<DefId>> WithOptParam<T> {
+    pub fn ty_def_id(self) -> DefId {
+        self.param_did.unwrap_or(self.did.into_query_param())
+    }
+}
+
+impl WithOptParam<DefId> {
+    #[inline]
+    pub fn as_local(self) -> Option<WithOptParam<LocalDefId>> {
+        Some(WithOptParam { did: self.did.as_local()?, param_did: self.param_did })
+    }
+
+    #[inline]
+    pub fn expect_local(self) -> WithOptParam<LocalDefId> {
+        WithOptParam { did: self.did.expect_local(), param_did: self.param_did }
+    }
+}
+
+impl WithOptParam<LocalDefId> {
+    #[inline]
+    pub fn to_global(self) -> WithOptParam<DefId> {
+        WithOptParam { did: self.did.to_def_id(), param_did: self.param_did }
+    }
+}
 
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
@@ -2566,7 +2639,7 @@ pub enum ImplOverlapKind {
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn body_tables(self, body: hir::BodyId) -> &'tcx TypeckTables<'tcx> {
-        self.typeck_tables_of(self.hir().body_owner_def_id(body))
+        self.typeck_tables_of(self.with_opt_param(self.hir().body_owner_def_id(body)))
     }
 
     /// Returns an iterator of the `DefId`s for all body-owners in this
@@ -2737,7 +2810,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
     pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
         match instance {
-            ty::InstanceDef::Item(did) => self.optimized_mir(did),
+            ty::InstanceDef::Item(_, _) => self.optimized_mir(instance.with_opt_param(self)),
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::Intrinsic(..)
@@ -2769,7 +2842,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn generator_layout(self, def_id: DefId) -> &'tcx GeneratorLayout<'tcx> {
-        self.optimized_mir(def_id).generator_layout.as_ref().unwrap()
+        self.optimized_mir(self.with_opt_param(def_id)).generator_layout.as_ref().unwrap()
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.

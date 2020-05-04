@@ -737,6 +737,11 @@ pub fn check_wf_new(tcx: TyCtxt<'_>) {
     tcx.hir().krate().par_visit_all_item_likes(&visit);
 }
 
+/// Computes `const_param_of` for all relevant `DefId`s in the current crate.
+pub fn compute_const_params_of(tcx: TyCtxt<'_>) {
+    tcx.par_body_owners(|body_owner_def_id| tcx.ensure().const_param_of(body_owner_def_id))
+}
+
 fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
 }
@@ -744,7 +749,7 @@ fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: DefId) {
 fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {
     debug_assert!(crate_num == LOCAL_CRATE);
     tcx.par_body_owners(|body_owner_def_id| {
-        tcx.ensure().typeck_tables_of(body_owner_def_id);
+        tcx.ensure().typeck_tables_of(tcx.with_opt_param(body_owner_def_id));
     });
 }
 
@@ -841,7 +846,7 @@ fn has_typeck_tables(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &FxHashSet<LocalDefId> {
-    &*tcx.typeck_tables_of(def_id).used_trait_imports
+    &*tcx.typeck_tables_of(ty::WithOptParam::dummy(def_id)).used_trait_imports
 }
 
 /// Inspects the substs of opaque types, replacing any inference variables
@@ -955,9 +960,11 @@ where
     val.fold_with(&mut FixupFolder { tcx })
 }
 
-fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckTables<'tcx> {
-    let fallback = move || tcx.type_of(def_id.to_def_id());
-    typeck_tables_of_with_fallback(tcx, def_id, fallback)
+fn typeck_tables_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::WithOptParam<LocalDefId>,
+) -> &ty::TypeckTables<'tcx> {
+    typeck_tables_of_with_fallback(tcx, def.did, move || tcx.type_of(def.ty_def_id()))
 }
 
 /// Used only to get `TypeckTables` for type inference during error recovery.
@@ -982,7 +989,7 @@ fn typeck_tables_of_with_fallback<'tcx>(
     // as they are part of the same "inference environment".
     let outer_def_id = tcx.closure_base_def_id(def_id.to_def_id()).expect_local();
     if outer_def_id != def_id {
-        return tcx.typeck_tables_of(outer_def_id);
+        return tcx.typeck_tables_of(tcx.with_opt_param(outer_def_id));
     }
 
     let id = tcx.hir().as_local_hir_id(def_id);
@@ -1917,11 +1924,11 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
         // Consts can play a role in type-checking, so they are included here.
         hir::ItemKind::Static(..) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
-            tcx.ensure().typeck_tables_of(def_id);
+            tcx.ensure().typeck_tables_of(tcx.with_opt_param(def_id));
             maybe_check_static_with_link_section(tcx, def_id, it.span);
         }
         hir::ItemKind::Const(..) => {
-            tcx.ensure().typeck_tables_of(tcx.hir().local_def_id(it.hir_id));
+            tcx.ensure().typeck_tables_of(tcx.with_opt_param(tcx.hir().local_def_id(it.hir_id)));
         }
         hir::ItemKind::Enum(ref enum_definition, _) => {
             check_enum(tcx, it.span, &enum_definition.variants, it.hir_id);
@@ -2832,7 +2839,7 @@ pub fn check_enum<'tcx>(
 
     for v in vs {
         if let Some(ref e) = v.disr_expr {
-            tcx.ensure().typeck_tables_of(tcx.hir().local_def_id(e.hir_id));
+            tcx.ensure().typeck_tables_of(tcx.with_opt_param(tcx.hir().local_def_id(e.hir_id)));
         }
     }
 
@@ -3529,6 +3536,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         ty
+    }
+
+    pub fn const_arg_to_const(
+        &self,
+        ast_c: &hir::AnonConst,
+        param_def_id: DefId,
+    ) -> &'tcx ty::Const<'tcx> {
+        let const_def = ty::WithOptParam {
+            did: self.tcx.hir().local_def_id(ast_c.hir_id),
+            param_did: Some(param_def_id),
+        };
+        let c = ty::Const::const_arg_from_anon_const(self.tcx, const_def);
+        self.register_wf_obligation(
+            c.into(),
+            self.tcx.hir().span(ast_c.hir_id),
+            ObligationCauseCode::MiscObligation,
+        );
+        c
     }
 
     pub fn to_const(&self, ast_c: &hir::AnonConst) -> &'tcx ty::Const<'tcx> {
@@ -5655,7 +5680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.to_ty(ty).into()
                     }
                     (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                        self.to_const(&ct.value).into()
+                        self.const_arg_to_const(&ct.value, param.def_id).into()
                     }
                     _ => unreachable!(),
                 },

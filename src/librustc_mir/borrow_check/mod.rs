@@ -90,14 +90,14 @@ pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers { mir_borrowck, ..*providers };
 }
 
-fn mir_borrowck(tcx: TyCtxt<'_>, def_id: LocalDefId) -> BorrowCheckResult<'_> {
-    let (input_body, promoted) = tcx.mir_validated(def_id);
-    debug!("run query mir_borrowck: {}", tcx.def_path_str(def_id.to_def_id()));
+fn mir_borrowck(tcx: TyCtxt<'_>, def: ty::WithOptParam<LocalDefId>) -> BorrowCheckResult<'_> {
+    let (input_body, promoted) = tcx.mir_validated(def);
+    debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));
 
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
         let input_body: &Body<'_> = &input_body.borrow();
         let promoted: &IndexVec<_, _> = &promoted.borrow();
-        do_mir_borrowck(&infcx, input_body, promoted, def_id)
+        do_mir_borrowck(&infcx, input_body, promoted, def)
     });
     debug!("mir_borrowck done");
 
@@ -108,13 +108,13 @@ fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexVec<Promoted, Body<'tcx>>,
-    def_id: LocalDefId,
+    def: ty::WithOptParam<LocalDefId>,
 ) -> BorrowCheckResult<'tcx> {
-    debug!("do_mir_borrowck(def_id = {:?})", def_id);
+    debug!("do_mir_borrowck(def_id = {:?})", def);
 
     let tcx = infcx.tcx;
-    let param_env = tcx.param_env(def_id);
-    let id = tcx.hir().as_local_hir_id(def_id);
+    let param_env = tcx.param_env(def.did);
+    let id = tcx.hir().as_local_hir_id(def.did);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
@@ -135,13 +135,13 @@ fn do_mir_borrowck<'a, 'tcx>(
     }
 
     // Gather the upvars of a closure, if any.
-    let tables = tcx.typeck_tables_of(def_id);
+    let tables = tcx.typeck_tables_of(def);
     if let Some(ErrorReported) = tables.tainted_by_errors {
         infcx.set_tainted_by_errors();
     }
     let upvars: Vec<_> = tables
         .closure_captures
-        .get(&def_id.to_def_id())
+        .get(&def.did.to_def_id())
         .into_iter()
         .flat_map(|v| v.values())
         .map(|upvar_id| {
@@ -171,8 +171,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     // will have a lifetime tied to the inference context.
     let mut body = input_body.clone();
     let mut promoted = input_promoted.clone();
-    let free_regions =
-        nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body, &mut promoted);
+    let free_regions = nll::replace_regions_in_mir(infcx, def, param_env, &mut body, &mut promoted);
     let body = &body; // no further changes
 
     let location_table = &LocationTable::new(&body);
@@ -190,7 +189,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def_id.to_def_id())
+        .into_engine(tcx, &body, def.did.to_def_id())
         .iterate_to_fixpoint()
         .into_results_cursor(&body);
 
@@ -207,7 +206,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         nll_errors,
     } = nll::compute_regions(
         infcx,
-        def_id,
+        def.did,
         free_regions,
         body,
         &promoted,
@@ -223,7 +222,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     // write unit-tests, as well as helping with debugging.
     nll::dump_mir_results(
         infcx,
-        MirSource::item(def_id.to_def_id()),
+        MirSource::item(def.did.to_def_id()),
         &body,
         &regioncx,
         &opt_closure_req,
@@ -234,7 +233,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     nll::dump_annotation(
         infcx,
         &body,
-        def_id.to_def_id(),
+        def.did.to_def_id(),
         &regioncx,
         &opt_closure_req,
         &opaque_type_values,
@@ -249,13 +248,13 @@ fn do_mir_borrowck<'a, 'tcx>(
     let regioncx = Rc::new(regioncx);
 
     let flow_borrows = Borrows::new(tcx, &body, regioncx.clone(), &borrow_set)
-        .into_engine(tcx, &body, def_id.to_def_id())
+        .into_engine(tcx, &body, def.did.to_def_id())
         .iterate_to_fixpoint();
     let flow_uninits = MaybeUninitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def_id.to_def_id())
+        .into_engine(tcx, &body, def.did.to_def_id())
         .iterate_to_fixpoint();
     let flow_ever_inits = EverInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body, def_id.to_def_id())
+        .into_engine(tcx, &body, def.did.to_def_id())
         .iterate_to_fixpoint();
 
     let movable_generator = match tcx.hir().get(id) {
@@ -274,7 +273,7 @@ fn do_mir_borrowck<'a, 'tcx>(
             let mut promoted_mbcx = MirBorrowckCtxt {
                 infcx,
                 body: promoted_body,
-                mir_def_id: def_id,
+                mir_def_id: def.did,
                 move_data: &move_data,
                 location_table: &LocationTable::new(promoted_body),
                 movable_generator,
@@ -306,7 +305,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mut mbcx = MirBorrowckCtxt {
         infcx,
         body,
-        mir_def_id: def_id,
+        mir_def_id: def.did,
         move_data: &mdpe.move_data,
         location_table,
         movable_generator,
@@ -1348,8 +1347,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // in order to populate our used_mut set.
                 match **aggregate_kind {
                     AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) => {
+                        let tcx = self.infcx.tcx;
                         let BorrowCheckResult { used_mut_upvars, .. } =
-                            self.infcx.tcx.mir_borrowck(def_id.expect_local());
+                            tcx.mir_borrowck(tcx.with_opt_param(def_id.expect_local()));
                         debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
                         for field in used_mut_upvars {
                             self.propagate_closure_used_mut_upvar(&operands[field.index()]);

@@ -235,7 +235,7 @@ pub fn write_mir_pretty<'tcx>(
 
     let mut first = true;
     for def_id in dump_mir_def_ids(tcx, single) {
-        let body = &tcx.optimized_mir(def_id);
+        let body = &tcx.optimized_mir(tcx.with_opt_param(def_id));
 
         if first {
             first = false;
@@ -246,9 +246,10 @@ pub fn write_mir_pretty<'tcx>(
 
         write_mir_fn(tcx, MirSource::item(def_id), body, &mut |_, _| Ok(()), w)?;
 
-        for (i, body) in tcx.promoted_mir(def_id).iter_enumerated() {
+        for (i, body) in tcx.promoted_mir(tcx.with_opt_param(def_id)).iter_enumerated() {
             writeln!(w)?;
-            let src = MirSource { instance: ty::InstanceDef::Item(def_id), promoted: Some(i) };
+            let src =
+                MirSource { instance: ty::InstanceDef::Item(def_id, None), promoted: Some(i) };
             write_mir_fn(tcx, src, body, &mut |_, _| Ok(()), w)?;
         }
     }

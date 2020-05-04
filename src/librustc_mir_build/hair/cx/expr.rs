@@ -614,7 +614,11 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                             // and not the beginning of discriminants (which is always `0`)
                             let substs = InternalSubsts::identity_for_item(cx.tcx(), did);
                             let lhs = mk_const(cx.tcx().mk_const(ty::Const {
-                                val: ty::ConstKind::Unevaluated(did, substs, None),
+                                val: ty::ConstKind::Unevaluated(
+                                    cx.tcx().with_opt_param(did),
+                                    substs,
+                                    None,
+                                ),
                                 ty: var_ty,
                             }));
                             let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
@@ -810,7 +814,7 @@ fn convert_path_expr<'a, 'tcx>(
             debug!("convert_path_expr: (const) user_ty={:?}", user_ty);
             ExprKind::Literal {
                 literal: cx.tcx.mk_const(ty::Const {
-                    val: ty::ConstKind::Unevaluated(def_id, substs, None),
+                    val: ty::ConstKind::Unevaluated(cx.tcx.with_opt_param(def_id), substs, None),
                     ty: cx.tables().node_type(expr.hir_id),
                 }),
                 user_ty,
@@ -868,7 +872,7 @@ fn convert_var<'tcx>(
     let upvar_index = cx
         .tables()
         .closure_captures
-        .get(&cx.body_owner)
+        .get(&cx.body_owner.did.to_def_id())
         .and_then(|upvars| upvars.get_full(&var_hir_id).map(|(i, _, _)| i));
 
     debug!(
@@ -882,10 +886,10 @@ fn convert_var<'tcx>(
         None => ExprKind::VarRef { id: var_hir_id },
 
         Some(upvar_index) => {
-            let closure_def_id = cx.body_owner;
+            let closure_def_id = cx.body_owner.did;
             let upvar_id = ty::UpvarId {
                 var_path: ty::UpvarPath { hir_id: var_hir_id },
-                closure_expr_id: closure_def_id.expect_local(),
+                closure_expr_id: closure_def_id,
             };
             let var_ty = cx.tables().node_type(var_hir_id);
 
@@ -898,7 +902,7 @@ fn convert_var<'tcx>(
             // signature will be &self or &mut self and hence will
             // have a bound region with number 0
             let region = ty::ReFree(ty::FreeRegion {
-                scope: closure_def_id,
+                scope: closure_def_id.to_def_id(),
                 bound_region: ty::BoundRegion::BrAnon(0),
             });
             let region = cx.tcx.mk_region(region);

@@ -191,7 +191,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         debug!("find_mir_or_eval_fn: {:?}", instance);
 
         // Only check non-glue functions
-        if let ty::InstanceDef::Item(def_id) = instance.def {
+        if let ty::InstanceDef::Item(def_id, _) = instance.def {
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.

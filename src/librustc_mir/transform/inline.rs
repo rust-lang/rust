@@ -102,14 +102,14 @@ impl Inliner<'tcx> {
                     // not inline us. This trick only works without incremental compilation.
                     // So don't do it if that is enabled.
                     if !self.tcx.dep_graph.is_fully_enabled() && self_hir_id < callee_hir_id {
-                        self.tcx.optimized_mir(callsite.callee)
+                        self.tcx.optimized_mir(self.tcx.with_opt_param(callsite.callee))
                     } else {
                         continue;
                     }
                 } else {
                     // This cannot result in a cycle since the callee MIR is from another crate
                     // and is already optimized.
-                    self.tcx.optimized_mir(callsite.callee)
+                    self.tcx.optimized_mir(self.tcx.with_opt_param(callsite.callee))
                 };
 
                 let callee_body = if self.consider_optimizing(callsite, callee_body) {

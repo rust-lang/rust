@@ -364,6 +364,8 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
     tcx.sess.time("item_bodies_checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
 
+    tcx.sess.time("compute_const_params_of", || check::compute_const_params_of(tcx));
+
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 

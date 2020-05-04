@@ -216,4 +216,4 @@ mod sealed {
     }
 }
 
-use sealed::IntoQueryParam;
+pub(crate) use sealed::IntoQueryParam;

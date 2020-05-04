@@ -939,7 +939,8 @@ impl EncodeContext<'tcx> {
         record!(self.tables.kind[def_id] <- match impl_item.kind {
             ty::AssocKind::Const => {
                 if let hir::ImplItemKind::Const(_, body_id) = ast_item.kind {
-                    let qualifs = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
+                    let tcx = self.tcx.at(ast_item.span);
+                    let qualifs = tcx.mir_const_qualif(tcx.with_opt_param(def_id));
 
                     EntryKind::AssocConst(
                         container,
@@ -1021,14 +1022,18 @@ impl EncodeContext<'tcx> {
     fn encode_optimized_mir(&mut self, def_id: LocalDefId) {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
-            record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
+            record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(
+                self.tcx.with_opt_param(def_id.to_def_id())
+            ));
         }
     }
 
     fn encode_promoted_mir(&mut self, def_id: LocalDefId) {
         debug!("EncodeContext::encode_promoted_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
-            record!(self.tables.promoted_mir[def_id.to_def_id()] <- self.tcx.promoted_mir(def_id));
+            record!(self.tables.promoted_mir[def_id.to_def_id()] <- self.tcx.promoted_mir(
+                self.tcx.with_opt_param(def_id.to_def_id())
+            ));
         }
     }
 
@@ -1086,7 +1091,8 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::Static(_, hir::Mutability::Mut, _) => EntryKind::MutStatic,
             hir::ItemKind::Static(_, hir::Mutability::Not, _) => EntryKind::ImmStatic,
             hir::ItemKind::Const(_, body_id) => {
-                let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
+                let tcx = self.tcx.at(item.span);
+                let qualifs = tcx.mir_const_qualif(tcx.with_opt_param(def_id));
                 EntryKind::Const(
                     qualifs,
                     self.encode_rendered_const_for_body(body_id)
@@ -1328,7 +1334,7 @@ impl EncodeContext<'tcx> {
         // NOTE(eddyb) `tcx.type_of(def_id)` isn't used because it's fully generic,
         // including on the signature, which is inferred in `typeck_tables_of.
         let hir_id = self.tcx.hir().as_local_hir_id(def_id);
-        let ty = self.tcx.typeck_tables_of(def_id).node_type(hir_id);
+        let ty = self.tcx.typeck_tables_of(self.tcx.with_opt_param(def_id)).node_type(hir_id);
 
         record!(self.tables.kind[def_id.to_def_id()] <- match ty.kind {
             ty::Generator(..) => {
@@ -1357,7 +1363,7 @@ impl EncodeContext<'tcx> {
         let id = self.tcx.hir().as_local_hir_id(def_id);
         let body_id = self.tcx.hir().body_owned_by(id);
         let const_data = self.encode_rendered_const_for_body(body_id);
-        let qualifs = self.tcx.mir_const_qualif(def_id);
+        let qualifs = self.tcx.mir_const_qualif(self.tcx.with_opt_param(def_id.to_def_id()));
 
         record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst(qualifs, const_data));
         record!(self.tables.visibility[def_id.to_def_id()] <- ty::Visibility::Public);
@@ -1744,8 +1750,9 @@ struct PrefetchVisitor<'tcx> {
 impl<'tcx> PrefetchVisitor<'tcx> {
     fn prefetch_mir(&self, def_id: LocalDefId) {
         if self.mir_keys.contains(&def_id) {
-            self.tcx.ensure().optimized_mir(def_id);
-            self.tcx.ensure().promoted_mir(def_id);
+            let def = self.tcx.with_opt_param(def_id).to_global();
+            self.tcx.ensure().optimized_mir(def);
+            self.tcx.ensure().promoted_mir(def);
         }
     }
 }

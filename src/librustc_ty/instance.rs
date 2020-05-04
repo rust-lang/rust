@@ -12,17 +12,17 @@ use log::debug;
 
 fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
+    key: ty::ParamEnvAnd<'tcx, (ty::WithOptParam<DefId>, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
-    let (param_env, (def_id, substs)) = key.into_parts();
+    let (param_env, (def, substs)) = key.into_parts();
 
-    debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-    let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
+    debug!("resolve(def={:?}, substs={:?})", def, substs);
+    let result = if let Some(trait_def_id) = tcx.trait_of_item(def.did) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
-        let item = tcx.associated_item(def_id);
+        let item = tcx.associated_item(def.did);
         resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
     } else {
-        let ty = tcx.type_of(def_id);
+        let ty = tcx.type_of(def.ty_def_id());
         let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, &ty);
 
         let def = match item_type.kind {
@@ -33,7 +33,7 @@ fn resolve_instance<'tcx>(
                 } =>
             {
                 debug!(" => intrinsic");
-                ty::InstanceDef::Intrinsic(def_id)
+                ty::InstanceDef::Intrinsic(def.did)
             }
             ty::FnDef(def_id, substs) if Some(def_id) == tcx.lang_items().drop_in_place_fn() => {
                 let ty = substs.type_at(0);
@@ -53,12 +53,12 @@ fn resolve_instance<'tcx>(
             }
             _ => {
                 debug!(" => free item");
-                ty::InstanceDef::Item(def_id)
+                ty::InstanceDef::Item(def.did, def.param_did)
             }
         };
         Ok(Some(Instance { def, substs }))
     };
-    debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
+    debug!("resolve(def={:?}, substs={:?}) = {:?}", def, substs, result);
     result
 }
 
@@ -182,7 +182,7 @@ fn resolve_associated_item<'tcx>(
             Some(ty::Instance::new(leaf_def.item.def_id, substs))
         }
         traits::ImplSourceGenerator(generator_data) => Some(Instance {
-            def: ty::InstanceDef::Item(generator_data.generator_def_id),
+            def: ty::InstanceDef::Item(generator_data.generator_def_id, None),
             substs: generator_data.substs,
         }),
         traits::ImplSourceClosure(closure_data) => {

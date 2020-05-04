@@ -249,7 +249,7 @@ fn exported_symbols_provider_local(
             }
 
             match *mono_item {
-                MonoItem::Fn(Instance { def: InstanceDef::Item(def_id), substs }) => {
+                MonoItem::Fn(Instance { def: InstanceDef::Item(def_id, _), substs }) => {
                     if substs.non_erasable_generics().next().is_some() {
                         let symbol = ExportedSymbol::Generic(def_id, substs);
                         symbols.push((symbol, SymbolExportLevel::Rust));

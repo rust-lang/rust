@@ -400,24 +400,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
-        let did = instance.def_id();
-        if let Some(did) = did.as_local() {
-            if self.tcx.has_typeck_tables(did) {
-                if let Some(error_reported) = self.tcx.typeck_tables_of(did).tainted_by_errors {
+        let def = instance.with_opt_param(*self.tcx);
+        if let Some(def) = def.as_local() {
+            if self.tcx.has_typeck_tables(def.did) {
+                if let Some(error_reported) = self.tcx.typeck_tables_of(def).tainted_by_errors {
                     throw_inval!(TypeckError(error_reported))
                 }
             }
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return Ok(&self.tcx.promoted_mir(did)[promoted]);
+            return Ok(&self.tcx.promoted_mir(def)[promoted]);
         }
         match instance {
-            ty::InstanceDef::Item(def_id) => {
-                if self.tcx.is_mir_available(did) {
-                    Ok(self.tcx.optimized_mir(did))
+            ty::InstanceDef::Item(_, _) => {
+                if self.tcx.is_mir_available(def.did) {
+                    Ok(self.tcx.optimized_mir(def))
                 } else {
-                    throw_unsup!(NoMirFor(def_id))
+                    throw_unsup!(NoMirFor(def.did))
                 }
             }
             _ => Ok(self.tcx.instance_mir(instance)),
@@ -448,15 +448,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
+    #[inline]
     pub(super) fn resolve(
         &self,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
-        trace!("resolve: {:?}, {:#?}", def_id, substs);
+        self.resolve_const_arg(self.tcx.with_opt_param(def_id), substs)
+    }
+
+    pub(super) fn resolve_const_arg(
+        &self,
+        def: ty::WithOptParam<DefId>,
+        substs: SubstsRef<'tcx>,
+    ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
+        trace!("resolve: {:?}, {:#?}", def, substs);
         trace!("param_env: {:#?}", self.param_env);
         trace!("substs: {:#?}", substs);
-        match ty::Instance::resolve(*self.tcx, self.param_env, def_id, substs) {
+        match ty::Instance::resolve_const_arg(*self.tcx, self.param_env, def, substs) {
             Ok(Some(instance)) => Ok(instance),
             Ok(None) => throw_inval!(TooGeneric),
 

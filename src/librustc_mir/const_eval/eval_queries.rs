@@ -288,17 +288,17 @@ pub fn const_eval_raw_provider<'tcx>(
     }
 
     let cid = key.value;
-    let def_id = cid.instance.def.def_id();
+    let def = cid.instance.with_opt_param(tcx);
 
-    if let Some(def_id) = def_id.as_local() {
-        if tcx.has_typeck_tables(def_id) {
-            if let Some(error_reported) = tcx.typeck_tables_of(def_id).tainted_by_errors {
+    if let Some(def) = def.as_local() {
+        if tcx.has_typeck_tables(def.did) {
+            if let Some(error_reported) = tcx.typeck_tables_of(def).tainted_by_errors {
                 return Err(ErrorHandled::Reported(error_reported));
             }
         }
     }
 
-    let is_static = tcx.is_static(def_id);
+    let is_static = tcx.is_static(def.did);
 
     let mut ecx = InterpCx::new(
         tcx,
@@ -334,9 +334,9 @@ pub fn const_eval_raw_provider<'tcx>(
                 }
 
                 v
-            } else if def_id.is_local() {
+            } else if def.did.is_local() {
                 // constant defined in this crate, we can figure out a lint level!
-                match tcx.def_kind(def_id) {
+                match tcx.def_kind(def.did) {
                     // constants never produce a hard error at the definition site. Anything else is
                     // a backwards compatibility hazard (and will break old versions of winapi for
                     // sure)
@@ -346,9 +346,9 @@ pub fn const_eval_raw_provider<'tcx>(
                     // validation thus preventing such a hard error from being a backwards
                     // compatibility hazard
                     DefKind::Const | DefKind::AssocConst => {
-                        let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+                        let hir_id = tcx.hir().as_local_hir_id(def.did.expect_local());
                         err.report_as_lint(
-                            tcx.at(tcx.def_span(def_id)),
+                            tcx.at(tcx.def_span(def.did)),
                             "any use of this value will cause an error",
                             hir_id,
                             Some(err.span),
@@ -359,7 +359,7 @@ pub fn const_eval_raw_provider<'tcx>(
                     // deny-by-default lint
                     _ => {
                         if let Some(p) = cid.promoted {
-                            let span = tcx.promoted_mir(def_id)[p].span;
+                            let span = tcx.promoted_mir(def)[p].span;
                             if let err_inval!(ReferencedConstant) = err.error {
                                 err.report_as_error(
                                     tcx.at(span),
@@ -369,7 +369,7 @@ pub fn const_eval_raw_provider<'tcx>(
                                 err.report_as_lint(
                                     tcx.at(span),
                                     "reaching this expression at runtime will panic or abort",
-                                    tcx.hir().as_local_hir_id(def_id.expect_local()),
+                                    tcx.hir().as_local_hir_id(def.did.expect_local()),
                                     Some(err.span),
                                 )
                             }

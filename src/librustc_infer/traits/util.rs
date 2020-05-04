@@ -40,8 +40,8 @@ pub fn anonymize_predicate<'tcx>(
             ty::PredicateKind::Subtype(tcx.anonymize_late_bound_regions(data))
         }
 
-        &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
-            ty::PredicateKind::ConstEvaluatable(def_id, substs)
+        &ty::PredicateKind::ConstEvaluatable(def, substs) => {
+            ty::PredicateKind::ConstEvaluatable(def, substs)
         }
 
         ty::PredicateKind::ConstEquate(c1, c2) => ty::PredicateKind::ConstEquate(c1, c2),

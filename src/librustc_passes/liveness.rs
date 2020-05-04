@@ -670,7 +670,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             exit_ln: ir.add_live_node(ExitNode),
         };
 
-        let tables = ir.tcx.typeck_tables_of(def_id);
+        let tables = ir.tcx.typeck_tables_of(ir.tcx.with_opt_param(def_id));
         let param_env = ir.tcx.param_env(def_id);
 
         let num_live_nodes = ir.num_live_nodes;
