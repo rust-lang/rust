@@ -96,7 +96,7 @@ where
     fn unblocked(
         &self,
         _offset: &<Self::Obligation as ForestObligation>::WatcherOffset,
-        _f: impl FnMut(<Self::Obligation as ForestObligation>::Variable) -> bool,
+        _f: impl FnMut(<Self::Obligation as ForestObligation>::Variable),
     ) {
     }
     fn register(&self) -> <Self::Obligation as ForestObligation>::WatcherOffset {}

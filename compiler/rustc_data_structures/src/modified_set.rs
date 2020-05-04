@@ -39,7 +39,7 @@ impl<T: Idx> ModifiedSet<T> {
         &mut self,
         undo_log: &mut impl UndoLogs<Undo<T>>,
         index: &Offset<T>,
-        mut f: impl FnMut(T) -> bool,
+        mut f: impl FnMut(T),
     ) {
         let offset = &mut self.offsets[index.index];
         if *offset < self.modified.len() {

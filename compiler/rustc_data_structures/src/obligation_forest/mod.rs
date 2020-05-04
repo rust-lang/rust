@@ -75,7 +75,9 @@
 use crate::fx::{FxHashMap, FxHashSet};
 
 use std::cell::{Cell, RefCell};
+use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
+use std::collections::BinaryHeap;
 use std::fmt::Debug;
 use std::hash;
 use std::marker::PhantomData;
@@ -87,8 +89,11 @@ mod graphviz;
 mod tests;
 
 pub trait ForestObligation: Clone + Debug {
+    /// A key used to avoid evaluating the same obligation twice
     type CacheKey: Clone + hash::Hash + Eq + Debug;
+    /// The variable type used in the obligation when it could not yet be fulfilled
     type Variable: Clone + hash::Hash + Eq + Debug;
+    /// A type which tracks which variables has been unified
     type WatcherOffset;
 
     /// Converts this `ForestObligation` suitable for use as a cache key.
@@ -97,6 +102,8 @@ pub trait ForestObligation: Clone + Debug {
     /// (e.g. success for error) for the other obligation
     fn as_cache_key(&self) -> Self::CacheKey;
 
+    /// Returns which variables this obligation is currently stalled on. If the slice is empty then
+    /// the variables stalled on are unknown.
     fn stalled_on(&self) -> &[Self::Variable];
 }
 
@@ -124,7 +131,7 @@ pub trait ObligationProcessor {
     fn unblocked(
         &self,
         offset: &<Self::Obligation as ForestObligation>::WatcherOffset,
-        f: impl FnMut(<Self::Obligation as ForestObligation>::Variable) -> bool,
+        f: impl FnMut(<Self::Obligation as ForestObligation>::Variable),
     );
     fn register(&self) -> <Self::Obligation as ForestObligation>::WatcherOffset;
     fn deregister(&self, offset: <Self::Obligation as ForestObligation>::WatcherOffset);
@@ -157,9 +164,16 @@ pub struct ObligationForest<O: ForestObligation> {
     /// this list only contains nodes in the `Pending` or `Waiting` state.
     nodes: Vec<Node<O>>,
 
-    /// Nodes must be processed in the order that they were added which this list keeps track of.
+    /// Nodes must be processed in the order that they were added so we give each node a unique,
+    /// number allowing them to be ordered when processing them.
+    node_number: u32,
+
+    /// Stores the indices of the nodes currently in the pending state
     pending_nodes: Vec<NodeIndex>,
+
+    /// Stores the indices of the nodes currently in the success or waiting states
     success_or_waiting_nodes: Vec<NodeIndex>,
+    /// Stores the indices of the nodes currently in the error or done states
     error_or_done_nodes: RefCell<Vec<NodeIndex>>,
 
     /// Nodes that have been removed and are ready to be reused
@@ -171,7 +185,6 @@ pub struct ObligationForest<O: ForestObligation> {
     active_cache: FxHashMap<O::CacheKey, Option<NodeIndex>>,
 
     obligation_tree_id_generator: ObligationTreeIdGenerator,
-    node_number: u32,
 
     /// Per tree error cache. This is used to deduplicate errors,
     /// which is necessary to avoid trait resolution overflow in
@@ -182,18 +195,25 @@ pub struct ObligationForest<O: ForestObligation> {
     /// [details]: https://github.com/rust-lang/rust/pull/53255#issuecomment-421184780
     error_cache: FxHashMap<ObligationTreeId, FxHashSet<O::CacheKey>>,
 
+    /// Stores which nodes would be unblocked once `O::Variable` is unified
     stalled_on: FxHashMap<O::Variable, Vec<NodeIndex>>,
-    unblocked: std::collections::BinaryHeap<Unblocked>,
+    /// Stores the node indices that are unblocked and should be processed at the next opportunity
+    unblocked: BinaryHeap<Unblocked>,
+    /// Stores nodes which should be processed on the next iteration since the variables they are
+    /// actually blocked on are unknown
     check_next: Vec<NodeIndex>,
+    /// The offset that this `ObligationForest` has registered. Should be de-registered before
+    /// dropping this forest.
     offset: Option<O::WatcherOffset>,
 }
 
+/// Helper struct for use with `BinaryHeap` to process nodes in the order that they were added to
+/// the forest
 struct Unblocked {
-    index: usize,
+    index: NodeIndex,
     order: u32,
 }
 
-use std::cmp::Ordering;
 impl PartialEq for Unblocked {
     fn eq(&self, other: &Self) -> bool {
         self.order == other.order
@@ -216,11 +236,14 @@ struct Node<O: ForestObligation> {
     obligation: O,
     state: Cell<NodeState>,
 
+    /// A predicate (and its key) can changed during processing. If it does we need to register the
+    /// old predicate so that we can remove or mark it as done if this node errors or is done.
     alternative_predicates: Vec<O::CacheKey>,
 
     /// Obligations that depend on this obligation for their completion. They
     /// must all be in a non-pending state.
     dependents: Vec<NodeIndex>,
+    /// Obligations that this obligation depends on for their completion.
     reverse_dependents: Vec<NodeIndex>,
 
     /// If true, `dependents[0]` points to a "parent" node, which requires
@@ -257,6 +280,7 @@ where
         }
     }
 
+    /// Initializes a node, reusing the existing allocations
     fn init(
         &mut self,
         parent: Option<NodeIndex>,
@@ -473,12 +497,16 @@ impl<O: ForestObligation> ObligationForest<O> {
                         .get(&obligation_tree_id)
                         .map(|errors| errors.contains(&obligation.as_cache_key()))
                         .unwrap_or(false);
+                // Retrieves a fresh number for the new node so that each node are processed in the
+                // order that they were created
                 let node_number = self.node_number;
                 self.node_number += 1;
 
                 if already_failed {
                     Err(())
                 } else {
+                    // If we have a dead node we can reuse it and it's associated allocations,
+                    // otherwise allocate a new node
                     let new_index = if let Some(new_index) = self.dead_nodes.pop() {
                         let node = &mut self.nodes[new_index];
                         node.init(parent, obligation, obligation_tree_id, node_number);
@@ -549,11 +577,6 @@ impl<O: ForestObligation> ObligationForest<O> {
         if self.offset.is_none() {
             self.offset = Some(processor.register());
         }
-        warn!(
-            "Begin process {}, pending: {}",
-            self.nodes.len(),
-            self.nodes.iter().filter(|n| n.state.get() == NodeState::Pending).count()
-        );
         let mut errors = vec![];
         let mut stalled = true;
 
@@ -577,6 +600,8 @@ impl<O: ForestObligation> ObligationForest<O> {
                 if node.state.get() != NodeState::Pending {
                     continue;
                 }
+
+                // Any variables we were stalled on are now resolved so remove the watches
                 for var in node.obligation.stalled_on() {
                     match self.stalled_on.entry(var.clone()) {
                         Entry::Vacant(_) => (),
@@ -607,18 +632,22 @@ impl<O: ForestObligation> ObligationForest<O> {
                 let node = &mut self.nodes[index];
                 match result {
                     ProcessResult::Unchanged => {
-                        for var in node.obligation.stalled_on() {
-                            self.stalled_on
-                                .entry(var.clone())
-                                .or_insert_with(|| {
-                                    processor.watch_variable(var.clone());
-                                    Vec::new()
-                                })
-                                .push(index);
-                        }
-
-                        if node.obligation.stalled_on().is_empty() {
+                        // We stalled but the variables that caused it are unknown so we run
+                        // `index` again at the next opportunity
+                        let stalled_on = node.obligation.stalled_on();
+                        if stalled_on.is_empty() {
                             self.check_next.push(index);
+                        } else {
+                            // Register every variable that we stal
+                            for var in stalled_on {
+                                self.stalled_on
+                                    .entry(var.clone())
+                                    .or_insert_with(|| {
+                                        processor.watch_variable(var.clone());
+                                        Vec::new()
+                                    })
+                                    .push(index);
+                            }
                         }
                         // No change in state.
                     }
@@ -646,7 +675,6 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
 
         if stalled {
-            warn!("Stalled {}", self.nodes.len());
             // There's no need to perform marking, cycle processing and compression when nothing
             // changed.
             return Outcome {
@@ -655,13 +683,9 @@ impl<O: ForestObligation> ObligationForest<O> {
             };
         }
 
-        warn!("Compressing {}", self.nodes.len());
         self.mark_successes();
         self.process_cycles(processor);
         let completed = self.compress(do_completed);
-        warn!("Compressed {}", self.nodes.len());
-
-        warn!("Stalled on: {:?}", self.stalled_on.keys().collect::<Vec<_>>());
 
         Outcome { completed, errors }
     }
@@ -678,19 +702,16 @@ impl<O: ForestObligation> ObligationForest<O> {
         processor.unblocked(self.offset.as_ref().unwrap(), |var| {
             if let Some(unblocked_nodes) = stalled_on.remove(&var) {
                 for node_index in unblocked_nodes {
+                    let node = &nodes[node_index];
                     debug_assert!(
-                        nodes[node_index].state.get() == NodeState::Pending,
+                        node.state.get() == NodeState::Pending,
                         "Unblocking non-pending2: {:?}",
-                        nodes[node_index].obligation
+                        node.obligation
                     );
-                    unblocked.push(Unblocked {
-                        index: node_index,
-                        order: nodes[node_index].node_number,
-                    });
+                    unblocked.push(Unblocked { index: node_index, order: node.node_number });
                 }
                 temp.push(var);
             }
-            true
         });
         for var in temp {
             processor.unwatch_variable(var);
@@ -848,6 +869,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     fn compress(&mut self, do_completed: DoCompleted) -> Option<Vec<O>> {
         let mut removed_done_obligations: Vec<O> = vec![];
 
+        // Compress the forest by removing any nodes marked as error or done
         let mut error_or_done_nodes = mem::take(self.error_or_done_nodes.get_mut());
         for &index in &error_or_done_nodes {
             let node = &mut self.nodes[index];

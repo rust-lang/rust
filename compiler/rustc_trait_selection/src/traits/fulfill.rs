@@ -568,7 +568,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     fn unblocked(
         &self,
         offset: &WatcherOffset,
-        f: impl FnMut(<Self::Obligation as ForestObligation>::Variable) -> bool,
+        f: impl FnMut(<Self::Obligation as ForestObligation>::Variable),
     ) {
         self.selcx.infcx().drain_modifications(offset, f);
     }

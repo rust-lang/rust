@@ -41,12 +41,15 @@ impl<K: ut::UnifyKey, I: Idx> Rollback<UndoLog<K, I>> for LoggedUnificationTable
     }
 }
 
+/// Storage for `LoggedUnificationTable`
 pub struct LoggedUnificationTableStorage<K: ut::UnifyKey, I: Idx = K> {
     relations: ut::UnificationTableStorage<K>,
     unify_log: ul::UnifyLog<I>,
     modified_set: ms::ModifiedSet<I>,
 }
 
+/// UnificationTableStorage which logs which variables has been unfified with a value, allowing watchers
+/// to only iterate over the changed variables instead of all variables
 pub struct LoggedUnificationTable<'a, K: ut::UnifyKey, I: Idx, L> {
     storage: &'a mut LoggedUnificationTableStorage<K, I>,
     undo_log: L,
@@ -170,28 +173,37 @@ where
         self.relations().new_key(value)
     }
 
+    /// Clears any modifications currently tracked. Usually this can only be done once there are no
+    /// snapshots active as the modifications may otherwise be needed after a rollback
     pub fn clear_modified_set(&mut self) {
         self.storage.modified_set.clear();
     }
 
-    pub fn register(&mut self) -> ms::Offset<I> {
+    /// Registers a watcher on the unifications done in this table
+    pub fn register_watcher(&mut self) -> ms::Offset<I> {
         self.storage.modified_set.register()
     }
 
-    pub fn deregister(&mut self, offset: ms::Offset<I>) {
+    /// Deregisters a watcher previously registered in this table
+    pub fn deregister_watcher(&mut self, offset: ms::Offset<I>) {
         self.storage.modified_set.deregister(offset);
     }
 
+    /// Watches the variable at `index` allowing any watchers to be notified to unifications with
+    /// `index`
     pub fn watch_variable(&mut self, index: I) {
         debug_assert!(index == self.relations().find(index).into());
         self.storage.unify_log.watch_variable(index)
     }
 
+    /// Unwatches a previous watch at `index`
     pub fn unwatch_variable(&mut self, index: I) {
         self.storage.unify_log.unwatch_variable(index)
     }
 
-    pub fn drain_modified_set(&mut self, offset: &ms::Offset<I>, mut f: impl FnMut(I) -> bool) {
+    /// Iterates through all unified variables since the last call to `drain_modified_set`
+    /// passing the unified variable to `f`
+    pub fn drain_modified_set(&mut self, offset: &ms::Offset<I>, mut f: impl FnMut(I)) {
         let unify_log = &self.storage.unify_log;
         self.storage.modified_set.drain(&mut self.undo_log, offset, |vid| {
             for &unified_vid in unify_log.get(vid) {

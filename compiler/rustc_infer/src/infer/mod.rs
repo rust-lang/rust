@@ -1617,7 +1617,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn drain_modifications(
         &self,
         offset: &WatcherOffset,
-        mut f: impl FnMut(TyOrConstInferVar) -> bool,
+        mut f: impl FnMut(TyOrConstInferVar),
     ) {
         let mut inner = self.inner.borrow_mut();
 
@@ -1643,11 +1643,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         WatcherOffset {
             ty_offset: inner.type_variables().register_unify_watcher(),
 
-            int_offset: inner.int_unification_table().register(),
+            int_offset: inner.int_unification_table().register_watcher(),
 
-            float_offset: inner.float_unification_table().register(),
+            float_offset: inner.float_unification_table().register_watcher(),
 
-            const_offset: inner.const_unification_table().register(),
+            const_offset: inner.const_unification_table().register_watcher(),
         }
     }
 
@@ -1656,11 +1656,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         inner.type_variables().deregister_unify_watcher(offset.ty_offset);
 
-        inner.int_unification_table().deregister(offset.int_offset);
+        inner.int_unification_table().deregister_watcher(offset.int_offset);
 
-        inner.float_unification_table().deregister(offset.float_offset);
+        inner.float_unification_table().deregister_watcher(offset.float_offset);
 
-        inner.const_unification_table().deregister(offset.const_offset);
+        inner.const_unification_table().deregister_watcher(offset.const_offset);
     }
 
     pub fn watch_variable(&self, infer: TyOrConstInferVar) {
