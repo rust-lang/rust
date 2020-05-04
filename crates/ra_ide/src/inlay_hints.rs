@@ -263,14 +263,13 @@ fn is_argument_similar_to_param_name(
 ) -> bool {
     if is_enum_name_similar_to_param_name(sema, argument, param_name) {
         return true;
-    } else {
-        let argument_string = if let Some(repr) = get_string_representation(argument) {
-            repr
-        } else {
-            return false;
-        };
-        let argument_string = argument_string.trim_start_matches('_');
-        argument_string.starts_with(param_name) || argument_string.ends_with(param_name)
+    }
+    match get_string_representation(argument) {
+        None => false,
+        Some(repr) => {
+            let argument_string = repr.trim_start_matches('_');
+            argument_string.starts_with(param_name) || argument_string.ends_with(param_name)
+        }
     }
 }
 
