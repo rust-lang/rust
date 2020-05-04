@@ -102,7 +102,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .to_machine_usize(this)?;
 
                 if args.is_empty() {
-                    throw_ub_format!("incorrect number of arguments for syscall, needed at least 1");
+                    throw_ub_format!("incorrect number of arguments for syscall: got 0, expected at least 1");
                 }
                 match this.read_scalar(args[0])?.to_machine_usize(this)? {
                     // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
@@ -143,6 +143,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_getattr_np" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
+                let &[_thread, _attr] = check_arg_count(args)?;
                 this.write_null(dest)?;
             }
 

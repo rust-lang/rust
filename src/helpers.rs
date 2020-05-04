@@ -477,7 +477,7 @@ pub fn check_arg_count<'a, 'tcx, const N: usize>(args: &'a [OpTy<'tcx, Tag>]) ->
     if let Ok(ops) = args.try_into() {
         return Ok(ops);
     }
-    throw_ub_format!("incorrect number of arguments, got {}, needed {}", args.len(), N)
+    throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
 }
 
 pub fn immty_from_int_checked<'tcx>(

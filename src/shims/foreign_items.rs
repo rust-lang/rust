@@ -454,6 +454,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Architecture-specific shims
             "llvm.x86.sse2.pause" if this.tcx.sess.target.target.arch == "x86" || this.tcx.sess.target.target.arch == "x86_64" => {
+                let &[] = check_arg_count(args)?;
                 this.sched_yield()?;
             }
 

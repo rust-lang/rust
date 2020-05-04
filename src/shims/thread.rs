@@ -121,12 +121,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn pthread_setname_np(
         &mut self,
-        ptr: Scalar<Tag>,
+        name: Scalar<Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.assert_target_os("macos", "pthread_setname_np");
 
-        let name = this.memory.read_c_str(ptr)?.to_owned();
+        let name = this.memory.read_c_str(name)?.to_owned();
         this.set_active_thread_name(name)?;
 
         Ok(())

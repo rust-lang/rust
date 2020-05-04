@@ -106,17 +106,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(res, dest)?;
             }
             "HeapFree" => {
-                let &[handle, _flags, ptr] = check_arg_count(args)?;
+                let &[handle, flags, ptr] = check_arg_count(args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
-                let _flags = this.read_scalar(_flags)?.to_u32()?;
+                this.read_scalar(flags)?.to_u32()?;
                 let ptr = this.read_scalar(ptr)?.not_undef()?;
                 this.free(ptr, MiriMemoryKind::WinHeap)?;
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
             "HeapReAlloc" => {
-                let &[handle, _flags, ptr, size] = check_arg_count(args)?;
+                let &[handle, flags, ptr, size] = check_arg_count(args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
-                let _flags = this.read_scalar(_flags)?.to_u32()?;
+                this.read_scalar(flags)?.to_u32()?;
                 let ptr = this.read_scalar(ptr)?.not_undef()?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let res = this.realloc(ptr, size, MiriMemoryKind::WinHeap)?;

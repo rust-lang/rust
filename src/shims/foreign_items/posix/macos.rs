@@ -118,8 +118,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Threading
             "pthread_setname_np" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                this.pthread_setname_np(ptr)?;
+                let &[name] = check_arg_count(args)?;
+                let name = this.read_scalar(name)?.not_undef()?;
+                this.pthread_setname_np(name)?;
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
