@@ -60,42 +60,52 @@ impl Divmod for i64 {}
 intrinsics! {
     #[maybe_use_optimized_c_shim]
     #[arm_aeabi_alias = __aeabi_idiv]
+    /// Returns `n / d`
     pub extern "C" fn __divsi3(a: i32, b: i32) -> i32 {
         a.div(b)
     }
 
     #[maybe_use_optimized_c_shim]
-    pub extern "C" fn __divdi3(a: i64, b: i64) -> i64 {
-        a.div(b)
-    }
-
-    #[win64_128bit_abi_hack]
-    pub extern "C" fn __divti3(a: i128, b: i128) -> i128 {
-        a.div(b)
-    }
-
-    #[maybe_use_optimized_c_shim]
+    /// Returns `n % d`
     pub extern "C" fn __modsi3(a: i32, b: i32) -> i32 {
         a.mod_(b)
     }
-
+    
     #[maybe_use_optimized_c_shim]
-    pub extern "C" fn __moddi3(a: i64, b: i64) -> i64 {
-        a.mod_(b)
-    }
-
-    #[win64_128bit_abi_hack]
-    pub extern "C" fn __modti3(a: i128, b: i128) -> i128 {
-        a.mod_(b)
-    }
-
-    #[maybe_use_optimized_c_shim]
+    /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __divmodsi4(a: i32, b: i32, rem: &mut i32) -> i32 {
         a.divmod(b, rem, |a, b| __divsi3(a, b))
     }
 
+    #[maybe_use_optimized_c_shim]
+    /// Returns `n / d`
+    pub extern "C" fn __divdi3(a: i64, b: i64) -> i64 {
+        a.div(b)
+    }
+
+    #[maybe_use_optimized_c_shim]
+    /// Returns `n % d`
+    pub extern "C" fn __moddi3(a: i64, b: i64) -> i64 {
+        a.mod_(b)
+    }
+
     #[aapcs_on_arm]
+    /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __divmoddi4(a: i64, b: i64, rem: &mut i64) -> i64 {
         a.divmod(b, rem, |a, b| __divdi3(a, b))
     }
+
+    #[win64_128bit_abi_hack]
+    /// Returns `n / d`
+    pub extern "C" fn __divti3(a: i128, b: i128) -> i128 {
+        a.div(b)
+    }
+
+    #[win64_128bit_abi_hack]
+    /// Returns `n % d`
+    pub extern "C" fn __modti3(a: i128, b: i128) -> i128 {
+        a.mod_(b)
+    }
+
+    // LLVM does not currently have a `__divmodti4` function
 }

@@ -241,6 +241,11 @@ intrinsics! {
         rem
     }
 
+    /// Returns `n / d` and sets `*rem = n % d`
+    pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
+        udivmod_inner!(n, d, rem, u64)
+    }
+
     #[win64_128bit_abi_hack]
     /// Returns `n / d`
     pub extern "C" fn __udivti3(n: u128, d: u128) -> u128 {
@@ -255,16 +260,9 @@ intrinsics! {
         rem
     }
 
-    /// Returns `n / d` and sets `*rem = n % d`
-    pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
-        udivmod_inner!(n, d, rem, u64)
-    }
-
     #[win64_128bit_abi_hack]
     /// Returns `n / d` and sets `*rem = n % d`
-    pub extern "C" fn __udivmodti4(n: u128,
-                                   d: u128,
-                                   rem: Option<&mut u128>) -> u128 {
+    pub extern "C" fn __udivmodti4(n: u128, d: u128, rem: Option<&mut u128>) -> u128 {
         udivmod_inner!(n, d, rem, u128)
     }
 }
