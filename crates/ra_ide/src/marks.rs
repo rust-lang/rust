@@ -11,4 +11,6 @@ test_utils::marks!(
     self_fulfilling_completion
     test_struct_field_completion_in_func_call
     test_struct_field_completion_in_record_lit
+    test_rename_struct_field_for_shorthand
+    test_rename_local_for_field_shorthand
 );
