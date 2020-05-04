@@ -19,12 +19,12 @@ fn macro_rules_are_globally_visible() {
     );
     assert_snapshot!(map, @r###"
    ⋮crate
-   ⋮Foo: t v
+   ⋮Foo: t
    ⋮nested: t
    ⋮
    ⋮crate::nested
-   ⋮Bar: t v
-   ⋮Baz: t v
+   ⋮Bar: t
+   ⋮Baz: t
     "###);
 }
 
@@ -91,13 +91,13 @@ fn macro_rules_from_other_crates_are_visible() {
     );
     assert_snapshot!(map, @r###"
    ⋮crate
-   ⋮Bar: t v
-   ⋮Foo: t v
+   ⋮Bar: t
+   ⋮Foo: t
    ⋮bar: t
    ⋮
    ⋮crate::bar
-   ⋮Bar: t v
-   ⋮Foo: t v
+   ⋮Bar: t
+   ⋮Foo: t
    ⋮bar: t
     "###);
 }
@@ -124,13 +124,13 @@ fn macro_rules_export_with_local_inner_macros_are_visible() {
     );
     assert_snapshot!(map, @r###"
    ⋮crate
-   ⋮Bar: t v
-   ⋮Foo: t v
+   ⋮Bar: t
+   ⋮Foo: t
    ⋮bar: t
    ⋮
    ⋮crate::bar
-   ⋮Bar: t v
-   ⋮Foo: t v
+   ⋮Bar: t
+   ⋮Foo: t
    ⋮bar: t
     "###);
 }
@@ -161,13 +161,13 @@ fn local_inner_macros_makes_local_macros_usable() {
     );
     assert_snapshot!(map, @r###"
    ⋮crate
-   ⋮Bar: t v
-   ⋮Foo: t v
+   ⋮Bar: t
+   ⋮Foo: t
    ⋮bar: t
    ⋮
    ⋮crate::bar
-   ⋮Bar: t v
-   ⋮Foo: t v
+   ⋮Bar: t
+   ⋮Foo: t
    ⋮bar: t
     "###);
 }
@@ -204,7 +204,7 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
     );
     assert_snapshot!(map, @r###"
    ⋮crate
-   ⋮Foo: t v
+   ⋮Foo: t
    ⋮bar: m
    ⋮foo: m
     "###);
