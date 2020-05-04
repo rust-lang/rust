@@ -8,9 +8,12 @@ use hir::{Adt, ModuleDef, Type};
 use ra_syntax::AstNode;
 
 pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if (!ctx.is_trivial_path && !ctx.is_pat_binding_or_const)
-        || ctx.record_lit_syntax.is_some()
+    if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
+        return;
+    }
+    if ctx.record_lit_syntax.is_some()
         || ctx.record_pat_syntax.is_some()
+        || ctx.attribute_under_caret.is_some()
     {
         return;
     }
@@ -1367,6 +1370,20 @@ mod tests {
             },
         ]
         "###
+        )
+    }
+
+    #[test]
+    fn dont_complete_attr() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                struct Foo;
+                #[<|>]
+                fn f() {}
+                "
+            ),
+            @r###"[]"###
         )
     }
 }
