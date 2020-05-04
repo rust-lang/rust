@@ -21,14 +21,14 @@ use super::on_lookup_result_bits;
 use crate::dataflow::drop_flag_effects;
 
 mod borrowed_locals;
+pub(super) mod borrows;
 mod liveness;
 mod storage_liveness;
 
-pub use self::borrowed_locals::*;
+pub use self::borrowed_locals::{MaybeBorrowedLocals, MaybeMutBorrowedLocals};
+pub use self::borrows::Borrows;
 pub use self::liveness::MaybeLiveLocals;
-pub use self::storage_liveness::*;
-
-pub(super) mod borrows;
+pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageLive};
 
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow
