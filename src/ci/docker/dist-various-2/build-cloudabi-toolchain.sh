@@ -33,7 +33,8 @@ ln -s ../../${target} /usr/lib/llvm-5.0/${target}
 
 # Install the C++ runtime libraries from CloudABI Ports.
 apt-key adv --batch --yes --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 0DA51B8531344B15
-add-apt-repository -y 'deb https://nuxi.nl/distfiles/cloudabi-ports/debian/ cloudabi cloudabi'
+add-apt-repository -y \
+    'deb https://ci-mirrors.rust-lang.org/rustc/2020-05-04-cloudabi-apt-archive/ cloudabi cloudabi'
 
 apt-get update
 apt-get install -y "${target//_/-}-cxx-runtime"
