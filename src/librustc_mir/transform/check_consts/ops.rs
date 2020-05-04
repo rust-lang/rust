@@ -39,6 +39,9 @@ pub trait NonConstOp: std::fmt::Debug {
             "{} contains unimplemented expression type",
             ccx.const_kind()
         );
+        if let Some(feat) = Self::feature_gate() {
+            err.help(&format!("add `#![feature({})]` to the crate attributes to enable", feat));
+        }
         if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "A function call isn't allowed in the const's initialization expression \
