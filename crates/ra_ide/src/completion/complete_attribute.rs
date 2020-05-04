@@ -3,20 +3,21 @@
 //! This module uses a bit of static metadata to provide completions
 //! for built-in attributes.
 
-use super::completion_context::CompletionContext;
-use super::completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions};
-use ast::AttrInput;
-use ra_syntax::{
-    ast::{self, AttrKind},
-    AstNode, SyntaxKind,
-};
+use ra_syntax::{ast, AstNode, SyntaxKind};
 use rustc_hash::FxHashSet;
+
+use crate::completion::{
+    completion_context::CompletionContext,
+    completion_item::{CompletionItem, CompletionItemKind, CompletionKind, Completions},
+};
 
 pub(super) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let attribute = ctx.attribute_under_caret.as_ref()?;
 
     match (attribute.path(), attribute.input()) {
-        (Some(path), Some(AttrInput::TokenTree(token_tree))) if path.to_string() == "derive" => {
+        (Some(path), Some(ast::AttrInput::TokenTree(token_tree)))
+            if path.to_string() == "derive" =>
+        {
             complete_derive(acc, ctx, token_tree)
         }
         _ => complete_attribute_start(acc, ctx, attribute),
@@ -40,7 +41,7 @@ fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attr
             _ => {}
         }
 
-        if attribute.kind() == AttrKind::Inner || !attr_completion.should_be_inner {
+        if attribute.kind() == ast::AttrKind::Inner || !attr_completion.should_be_inner {
             acc.add(item);
         }
     }
