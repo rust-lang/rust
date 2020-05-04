@@ -117,7 +117,13 @@ fn lower_enum(
     ast: &InFile<ast::EnumDef>,
     module_id: ModuleId,
 ) {
-    for var in ast.value.variant_list().into_iter().flat_map(|it| it.variants()) {
+    let expander = CfgExpander::new(db, ast.file_id, module_id.krate);
+    let variants =
+        ast.value.variant_list().into_iter().flat_map(|it| it.variants()).filter(|var| {
+            let attrs = expander.parse_attrs(var);
+            expander.is_cfg_enabled(&attrs)
+        });
+    for var in variants {
         trace.alloc(
             || var.clone(),
             || EnumVariantData {

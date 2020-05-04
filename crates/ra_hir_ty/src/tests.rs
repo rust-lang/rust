@@ -361,6 +361,33 @@ fn no_such_field_with_feature_flag_diagnostics() {
 }
 
 #[test]
+fn no_such_field_enum_with_feature_flag_diagnostics() {
+    let diagnostics = TestDB::with_files(
+        r#"
+        //- /lib.rs crate:foo cfg:feature=foo
+        enum Foo {
+            #[cfg(not(feature = "foo"))]
+            Buz,
+            #[cfg(feature = "foo")]
+            Bar,
+            Baz
+        }
+
+        fn test_fn(f: Foo) {
+            match f {
+                Foo::Bar => {},
+                Foo::Baz => {},
+            }
+        }
+        "#,
+    )
+    .diagnostics()
+    .0;
+
+    assert_snapshot!(diagnostics, @r###""###);
+}
+
+#[test]
 fn no_such_field_with_feature_flag_diagnostics_on_struct_lit() {
     let diagnostics = TestDB::with_files(
         r#"
