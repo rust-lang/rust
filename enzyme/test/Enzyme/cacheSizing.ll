@@ -912,7 +912,7 @@ attributes #9 = { noreturn nounwind }
 !43 = !{!"_ZTSN5Eigen8internal17product_evaluatorINS_7ProductINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEES4_Li1EEELi8ENS_10DenseShapeES6_ddEE", !17, i64 0, !17, i64 8, !44, i64 16, !44, i64 32, !4, i64 48}
 !44 = !{!"_ZTSN5Eigen8internal9evaluatorINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEEEE"}
 
-; CHECK-NEXT: define internal {} @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEES3_(double* noalias %W, double* %"W'", double* noalias %M, double* %"M'", double %differeturn)
+; CHECK: define internal {} @diffe_ZL6matvecPKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEES3_(double* noalias %W, double* %"W'", double* noalias %M, double* %"M'", double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %diff = alloca { double*, i64 }, align 8
 ; CHECK-NEXT:   %diffptr = getelementptr inbounds { double*, i64 }, { double*, i64 }* %diff, i64 0, i32 0
@@ -1003,8 +1003,8 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %invertsubfor
 
 ; CHECK: invertinternal:                                   ; preds = %invertmatfor1
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall13)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall13)
 ; CHECK-NEXT:   br label %invertsubfor
 
 ; CHECK: invertmatfor1:                                    ; preds = %invertmatfor2
@@ -1016,11 +1016,11 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup4
 
 ; CHECK: invertmatfor2:                                    ; preds = %invertmatfor3
-; CHECK-NEXT:   %17 = bitcast double** %22 to i8**
-; CHECK-NEXT:   %18 = load i8*, i8** %17, align 8, !dereferenceable !43
-; CHECK-NEXT:   tail call void @free(i8* nonnull %18)
-; CHECK-NEXT:   %19 = icmp eq i64 %"iv3'ac.0", 0
-; CHECK-NEXT:   br i1 %19, label %invertmatfor1, label %incinvertmatfor2
+; CHECK-NEXT:   %[[endcmp:.+]] = icmp eq i64 %"iv3'ac.0", 0
+; CHECK-NEXT:   %[[cstfree:.+]] = bitcast double** %22 to i8**
+; CHECK-NEXT:   %[[tofree:.+]] = load i8*, i8** %[[cstfree]], align 8, !dereferenceable !43
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree]])
+; CHECK-NEXT:   br i1 %[[endcmp]], label %invertmatfor1, label %incinvertmatfor2
 
 ; CHECK: incinvertmatfor2:                                 ; preds = %invertmatfor2
 ; CHECK-NEXT:   %20 = add nsw i64 %"iv3'ac.0", -1

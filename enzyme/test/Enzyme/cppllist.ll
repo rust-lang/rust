@@ -229,8 +229,8 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   br label %invertfor.body.i
 
 ; CHECK: diffe_Z12list_creatordm.exit:                     ; preds = %invertfor.body.i
-; CHECK-NEXT:   call void @free(i8* nonnull %[[call_malloc]]) #5
 ; CHECK-NEXT:   call void @free(i8* nonnull %malloccall.i) #5
+; CHECK-NEXT:   call void @free(i8* nonnull %[[call_malloc]]) #5
 ; CHECK-NEXT:   ret double %[[xadd]]
 ; CHECK-NEXT: }
 

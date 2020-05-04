@@ -299,10 +299,10 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %invertfor.body8.i
 
 ; CHECK: diffelist_creator.exit:                           ; preds = %invertfor.body.i
-; CHECK-NEXT:   call void @free(i8* nonnull %[[mcall2]]) #4
-; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcallp]]) #4
-; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcall2]]) #4
 ; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcall2p]]) #4
+; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcall2]]) #4
+; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcallp]]) #4
+; CHECK-NEXT:   call void @free(i8* nonnull %[[mcall2]]) #4
 ; CHECK-NEXT:   ret double %[[faddloop]]
 ; CHECK-NEXT: }
 

@@ -128,10 +128,10 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   br i1 %[[pcond]], label %invertfor.cond.cleanup, label %for.body.for.body_crit_edge
 
 ; CHECK: invertfor.body.preheader:                         ; preds = %invertfor.body.for.body_crit_edge
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   %[[lastload:.+]] = load double, double* %"x'"
 ; CHECK-NEXT:   %[[output:.+]] = fadd fast double %[[lastload]], %[[decarry:.+]]
 ; CHECK-NEXT:   store double %[[output]], double* %"x'"
+; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
 ; CHECK-NEXT:   %[[printer:.+]] = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.3, i64 0, i64 0), double 0.000000e+00)
 ; CHECK-NEXT:   ret void
 

@@ -109,6 +109,21 @@ public:
 
   const std::map<Instruction*, bool>* can_modref_map;
 
+  Value* getNewIfOriginal(Value* originst) const {
+    assert(originst);
+    auto f = originalToNewFn.find(originst);
+    if (f == originalToNewFn.end()) {
+      return originst;
+    }
+    assert(f != originalToNewFn.end());
+    if (f->second == nullptr) {
+        llvm::errs() << *oldFunc << "\n";
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << *originst << "\n";
+    }
+    assert(f->second);
+    return f->second;
+  }
 
   Value* getNewFromOriginal(Value* originst) const {
     assert(originst);
@@ -137,6 +152,22 @@ public:
         if (v.second == inverted) return const_cast<Value*>(v.first);
     }
     return nullptr;
+  }
+
+  Value* isOriginal(Value* newinst) const {
+    for(auto v: originalToNewFn) {
+        if (v.second == newinst) return const_cast<Value*>(v.first);
+    }
+    return nullptr;
+  }
+
+  Instruction* isOriginal(Instruction* newinst) const {
+    return dyn_cast_or_null<Instruction>(isOriginal((Value*)newinst));
+  }
+
+  template<typename T>
+  T* isOriginalT(T* newinst) const {
+    return dyn_cast_or_null<T>(isOriginal((Value*)newinst));
   }
 
   Value* getOriginal(Value* newinst) const {
@@ -1123,6 +1154,11 @@ public:
       }
     }
 
+    #define SAFE(a, b) ({\
+      if (auto v = isOriginalT<typeof(*a)>(a)) cast<typeof(*a)>(getNewFromOriginal(v))->b;\
+      a->b;\
+    })
+
     //llvm::errs() << "uwval: " << *val << "\n";
     auto getOp = [&](Value* v) -> Value* {
       if (mode == UnwrapMode::LegalFullUnwrap || mode == UnwrapMode::AttemptFullUnwrap || mode == UnwrapMode::AttemptFullUnwrapWithLookup) {
@@ -1140,23 +1176,25 @@ public:
       unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
       return val;
     } else if (auto op = dyn_cast<CastInst>(val)) {
-      auto op0 = getOp(op->getOperand(0));
+      auto op0 = getOp(SAFE(op,getOperand(0)));
       if (op0 == nullptr) goto endCheck;
+      //if (isOriginal(op))
+      //llvm::errs() << "op: " << *op << " op0: " << *op0 << " SAFE(op,getOperand(0)):" << *SAFE(op, getOperand(0)) << " orig:" << *getOriginal(op) << "\n";
       auto toreturn = BuilderM.CreateCast(op->getOpcode(), op0, op->getDestTy(), op->getName()+"_unwrap");
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<ExtractValueInst>(val)) {
-      auto op0 = getOp(op->getAggregateOperand());
+      auto op0 = getOp(SAFE(op,getAggregateOperand()));
       if (op0 == nullptr) goto endCheck;
       auto toreturn = BuilderM.CreateExtractValue(op0, op->getIndices(), op->getName()+"_unwrap");
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<BinaryOperator>(val)) {
-      auto op0 = getOp(op->getOperand(0));
+      auto op0 = getOp(SAFE(op,getOperand(0)));
       if (op0 == nullptr) goto endCheck;
-      auto op1 = getOp(op->getOperand(1));
+      auto op1 = getOp(SAFE(op,getOperand(1)));
       if (op1 == nullptr) goto endCheck;
       auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1, op->getName()+"_unwrap");
       cast<BinaryOperator>(toreturn)->copyIRFlags(op);
@@ -1164,47 +1202,54 @@ public:
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<ICmpInst>(val)) {
-      auto op0 = getOp(op->getOperand(0));
+      auto op0 = getOp(SAFE(op,getOperand(0)));
       if (op0 == nullptr) goto endCheck;
-      auto op1 = getOp(op->getOperand(1));
+      auto op1 = getOp(SAFE(op,getOperand(1)));
       if (op1 == nullptr) goto endCheck;
       auto toreturn = BuilderM.CreateICmp(op->getPredicate(), op0, op1);
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<FCmpInst>(val)) {
-      auto op0 = getOp(op->getOperand(0));
+      auto op0 = getOp(SAFE(op,getOperand(0)));
       if (op0 == nullptr) goto endCheck;
-      auto op1 = getOp(op->getOperand(1));
+      auto op1 = getOp(SAFE(op,getOperand(1)));
       if (op1 == nullptr) goto endCheck;
       auto toreturn = BuilderM.CreateFCmp(op->getPredicate(), op0, op1);
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<SelectInst>(val)) {
-      auto op0 = getOp(op->getOperand(0));
+      auto op0 = getOp(SAFE(op,getOperand(0)));
       if (op0 == nullptr) goto endCheck;
-      auto op1 = getOp(op->getOperand(1));
+      auto op1 = getOp(SAFE(op,getOperand(1)));
       if (op1 == nullptr) goto endCheck;
-      auto op2 = getOp(op->getOperand(2));
+      auto op2 = getOp(SAFE(op,getOperand(2)));
       if (op2 == nullptr) goto endCheck;
       auto toreturn = BuilderM.CreateSelect(op0, op1, op2);
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto inst = dyn_cast<GetElementPtrInst>(val)) {
-      auto ptr = getOp(inst->getPointerOperand());
+      auto ptr = getOp(SAFE(inst,getPointerOperand()));
       if (ptr == nullptr) goto endCheck;
       SmallVector<Value*,4> ind;
       //llvm::errs() << "inst: " << *inst << "\n";
-      for(auto& a : inst->indices()) {
+      for(unsigned i=0; i<inst->getNumIndices(); i++) {
+        Value* a = SAFE(inst, getOperand(1+i));
         assert(a->getName() != "<badref>");
         auto op = getOp(a);
         if (op == nullptr) goto endCheck;
         ind.push_back(op);
       }
       auto toreturn = BuilderM.CreateGEP(ptr, ind, inst->getName() + "_unwrap");
-      cast<GetElementPtrInst>(toreturn)->setIsInBounds(inst->isInBounds());
+      if (isa<GetElementPtrInst>(toreturn))
+        cast<GetElementPtrInst>(toreturn)->setIsInBounds(inst->isInBounds());
+      else {
+        //llvm::errs() << "gep tr: " << *toreturn << " inst: " << *inst << " ptr: " << *ptr << "\n";
+        //llvm::errs() << "safe: " << *SAFE(inst, getPointerOperand()) << "\n";
+        //assert(0 && "illegal");
+      }
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
@@ -1219,7 +1264,7 @@ public:
       if (!legalMove) return nullptr;
 
 
-      Value* idx = getOp(load->getOperand(0));
+      Value* idx = getOp(SAFE(load,getOperand(0)));
       if (idx == nullptr) goto endCheck;
 
       if(idx->getType() != load->getOperand(0)->getType()) {
@@ -1243,13 +1288,13 @@ public:
     } else if (auto op = dyn_cast<IntrinsicInst>(val)) {
       switch(op->getIntrinsicID()) {
           case Intrinsic::sin: {
-            Value *args[] = {getOp(op->getOperand(0))};
+            Value *args[] = {getOp(SAFE(op,getOperand(0)))};
             if (args[0] == nullptr) goto endCheck;
             Type *tys[] = {op->getOperand(0)->getType()};
             return BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::sin, tys), args);
           }
           case Intrinsic::cos: {
-            Value *args[] = {getOp(op->getOperand(0))};
+            Value *args[] = {getOp(SAFE(op,getOperand(0)))};
             if (args[0] == nullptr) goto endCheck;
             Type *tys[] = {op->getOperand(0)->getType()};
             return BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::cos, tys), args);
@@ -1259,9 +1304,8 @@ public:
       }
     } else if (auto phi = dyn_cast<PHINode>(val)) {
       if (phi->getNumIncomingValues () == 1) {
-          assert(phi->getIncomingValue(0) != phi);
-          llvm::errs() << " unwrap of " << *phi << " retrieves" << phi->getIncomingValue(0) << "\n";
-          auto toreturn = getOp(phi->getIncomingValue(0));
+          assert(SAFE(phi,getIncomingValue(0)) != phi);
+          auto toreturn = getOp(SAFE(phi,getIncomingValue(0)));
           if (toreturn == nullptr) goto endCheck;
           assert(val->getType() == toreturn->getType());
           return toreturn;
@@ -1533,7 +1577,7 @@ endCheck:
 
                 // ensure we are before the terminator if it exists
                 if (tbuild.GetInsertBlock()->size()) {
-                      tbuild.SetInsertPoint(tbuild.GetInsertBlock()->getFirstNonPHI());
+                      tbuild.SetInsertPoint(tbuild.GetInsertBlock()->getTerminator());
                 }
 
                 ValueToValueMapTy antimap;

@@ -87,9 +87,9 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   br i1 %exit1, label %invertcleanup, label %loop1
 
 ; CHECK: invertentry:                                      ; preds = %invertloop1
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall4)
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall3)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall3)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall4)
 ; CHECK-NEXT:   ret {} undef
 
 ; CHECK: invertloop1:                                      ; preds = %invertloop2

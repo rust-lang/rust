@@ -91,9 +91,9 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   ret {} undef
 
 ; CHECK: invertfor.cond3.preheader:
+; CHECK-NEXT:   %[[done1:.+]] = icmp eq i64 %[[iv:.+]], 0
 ; CHECK-NEXT:   %[[innerdatai8:.+]] = bitcast double* %[[innerdata:.+]] to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[innerdatai8]])
-; CHECK-NEXT:   %[[done1:.+]] = icmp eq i64 %[[iv:.+]], 0
 ; CHECK-NEXT:   br i1 %[[done1]], label %invertentry, label %incinvertfor.cond3.preheader
 
 ; CHECK: incinvertfor.cond3.preheader:

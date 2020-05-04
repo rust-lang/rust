@@ -172,9 +172,9 @@ attributes #4 = { nounwind }
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body
 ; CHECK-NEXT:   %[[lcssa:.+]] = phi double [ %[[added:.+]], %invertfor.body ]
+; CHECK-NEXT:   %[[toreturn:.+]] = insertvalue { double } undef, double %[[lcssa]], 0
 ; CHECK-NEXT:   %[[tofree:.+]] = bitcast i8** %0 to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree]])
-; CHECK-NEXT:   %[[toreturn:.+]] = insertvalue { double } undef, double %[[lcssa]], 0
 ; CHECK-NEXT:   ret { double } %[[toreturn]]
 
 ; CHECK: invertfor.body:                                   ; preds = %invertfor.body, %entry

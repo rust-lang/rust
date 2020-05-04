@@ -294,6 +294,11 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
         return lookupM(invertedPointers[val], BuilderM);
     }
 
+    #define SAFE(a, b) ({\
+      if (auto v = isOriginalT<typeof(*a)>(a)) cast<typeof(*a)>(getNewFromOriginal(v))->b;\
+      a->b;\
+    })
+
     if (auto arg = dyn_cast<GlobalVariable>(val)) {
       if (!hasMetadata(arg, "enzyme_shadow")) {
           llvm::errs() << *arg << "\n";
@@ -338,7 +343,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       return BuilderM.CreatePointerCast(GV, fn->getType());
     } else if (auto arg = dyn_cast<CastInst>(val)) {
       IRBuilder<> bb(arg);
-      invertedPointers[arg] = bb.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), bb), arg->getDestTy(), arg->getName()+"'ipc");
+      invertedPointers[arg] = bb.CreateCast(arg->getOpcode(), invertPointerM(SAFE(arg,getOperand(0)), bb), arg->getDestTy(), arg->getName()+"'ipc");
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<ConstantExpr>(val)) {
       if (arg->isCast()) {
@@ -351,51 +356,58 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       goto end;
     } else if (auto arg = dyn_cast<ExtractValueInst>(val)) {
       IRBuilder<> bb(arg);
+      Value* op0 = SAFE(arg, getOperand(0));
       if (tape) {
-        if(arg->getOperand(0) == tape) {
+        if(op0 == tape) {
           llvm::errs() << "oldFunc: " << *oldFunc << "\n";
           llvm::errs() << "newFunc: " << *newFunc << "\n";
           llvm::errs() << "arg: " << *arg << "\n";
         }
-        assert(arg->getOperand(0) != tape);
+        assert(op0 != tape);
       }
-      auto result = bb.CreateExtractValue(invertPointerM(arg->getOperand(0), bb), arg->getIndices(), arg->getName()+"'ipev");
+      auto result = bb.CreateExtractValue(invertPointerM(op0, bb), arg->getIndices(), arg->getName()+"'ipev");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<InsertValueInst>(val)) {
+      Value* op0 = SAFE(arg, getOperand(0));
+      Value* op1 = SAFE(arg, getOperand(1));
       IRBuilder<> bb(arg);
-      auto result = bb.CreateInsertValue(invertPointerM(arg->getOperand(0), bb), invertPointerM(arg->getOperand(1), bb), arg->getIndices(), arg->getName()+"'ipiv");
+      auto result = bb.CreateInsertValue(invertPointerM(op0, bb), invertPointerM(op1, bb), arg->getIndices(), arg->getName()+"'ipiv");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<ExtractElementInst>(val)) {
       IRBuilder<> bb(arg);
-      auto result = bb.CreateExtractElement(invertPointerM(arg->getVectorOperand(), bb), arg->getIndexOperand(), arg->getName()+"'ipee");
+      auto result = bb.CreateExtractElement(invertPointerM(SAFE(arg,getVectorOperand()), bb), SAFE(arg,getIndexOperand()), arg->getName()+"'ipee");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<InsertElementInst>(val)) {
       IRBuilder<> bb(arg);
-      if (isConstantValue(arg->getOperand(0)) && isConstantValue(arg->getOperand(1))) {
+      Value* op0 = SAFE(arg, getOperand(0));
+      Value* op1 = SAFE(arg, getOperand(1));
+      Value* op2 = SAFE(arg, getOperand(2));
+      if (isConstantValue(op0) && isConstantValue(op1)) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
-        llvm::errs() << *arg->getOperand(0) << "\n";
-        llvm::errs() << *arg->getOperand(1) << "\n";
+        llvm::errs() << *op0 << "\n";
+        llvm::errs() << *op1 << "\n";
         llvm::errs() << *arg << "\n";
       }
 
-      assert(!isConstantValue(arg->getOperand(0)) || !isConstantValue(arg->getOperand(1)));
-      Value* insertinto = isConstantValue(arg->getOperand(0)) ? arg->getOperand(0) : invertPointerM(arg->getOperand(0), bb);
-      Value* toinsert = isConstantValue(arg->getOperand(1)) ? arg->getOperand(1) : invertPointerM(arg->getOperand(1), bb);
-      auto result = bb.CreateInsertElement(insertinto, toinsert, arg->getOperand(2), arg->getName()+"'ipie");
+      assert(!isConstantValue(op0) || !isConstantValue(op1));
+      Value* insertinto = isConstantValue(op0) ? op0 : invertPointerM(op0, bb);
+      Value* toinsert = isConstantValue(op1) ? op1 : invertPointerM(op1, bb);
+      auto result = bb.CreateInsertElement(insertinto, toinsert, op2, arg->getName()+"'ipie");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<SelectInst>(val)) {
       IRBuilder<> bb(arg);
-      auto result = bb.CreateSelect(arg->getCondition(), invertPointerM(arg->getTrueValue(), bb), invertPointerM(arg->getFalseValue(), bb), arg->getName()+"'ipse");
+      auto result = bb.CreateSelect(SAFE(arg,getCondition()), invertPointerM(SAFE(arg,getTrueValue()), bb), invertPointerM(SAFE(arg,getFalseValue()), bb), arg->getName()+"'ipse");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<LoadInst>(val)) {
       IRBuilder <> bb(arg);
-        if(isConstantValue(arg->getOperand(0))) {
+      Value* op0 = SAFE(arg, getOperand(0));
+        if(isConstantValue(op0)) {
             return lookupM(arg, BuilderM);
             llvm::errs() << *oldFunc << "\n";
             llvm::errs() << *newFunc << "\n";
@@ -405,8 +417,8 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
             }
             llvm::errs() << *val << "\n";
         }
-      assert(!isConstantValue(arg->getOperand(0)));
-      auto li = bb.CreateLoad(invertPointerM(arg->getOperand(0), bb), arg->getName()+"'ipl");
+      assert(!isConstantValue(op0));
+      auto li = bb.CreateLoad(invertPointerM(op0, bb), arg->getName()+"'ipl");
       li->setAlignment(arg->getAlignment());
       li->setVolatile(arg->isVolatile());
       li->setOrdering(arg->getOrdering());
@@ -419,8 +431,11 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       Value* val0 = nullptr;
       Value* val1 = nullptr;
 
+      Value* op0 = SAFE(arg, getOperand(0));
+      Value* op1 = SAFE(arg, getOperand(1));
 
-      if (isConstantValue(arg->getOperand(0)) && isConstantValue(arg->getOperand(1))) {
+
+      if (isConstantValue(op0) && isConstantValue(op1)) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
         dumpSet(this->originalInstructions);
@@ -430,16 +445,16 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       }
 
       //if (isa<ConstantInt>(arg->getOperand(0))) {
-      if (isConstantValue(arg->getOperand(0))) {
-        val0 = arg->getOperand(0);
-        val1 = invertPointerM(arg->getOperand(1), bb);
-      } else if (isConstantValue(arg->getOperand(1))) {
+      if (isConstantValue(op0)) {
+        val0 = op0;
+        val1 = invertPointerM(op1, bb);
+      } else if (isConstantValue(op1)) {
       //} else if (isa<ConstantInt>(arg->getOperand(1))) {
-        val0 = invertPointerM(arg->getOperand(0), bb);
-        val1 = arg->getOperand(1);
+        val0 = invertPointerM(op0, bb);
+        val1 = op1;
       } else {
-        val0 = invertPointerM(arg->getOperand(0), bb);
-        val1 = invertPointerM(arg->getOperand(1), bb);
+        val0 = invertPointerM(op0, bb);
+        val1 = invertPointerM(op1, bb);
       }
 
       auto li = bb.CreateBinOp(arg->getOpcode(), val0, val1, arg->getName());
@@ -450,11 +465,12 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       //if (arg->getParent() == &arg->getParent()->getParent()->getEntryBlock()) {
         IRBuilder<> bb(arg);
         SmallVector<Value*,4> invertargs;
-        for(auto &a: arg->indices()) {
+        for(unsigned i=0; i<arg->getNumIndices(); i++) {
+            Value* a = SAFE(arg, getOperand(1+i));
             auto b = lookupM(a, bb);
             invertargs.push_back(b);
         }
-        auto result = bb.CreateGEP(invertPointerM(arg->getPointerOperand(), bb), invertargs, arg->getName()+"'ipg");
+        auto result = bb.CreateGEP(invertPointerM(SAFE(arg,getPointerOperand()), bb), invertargs, arg->getName()+"'ipg");
         if (auto gep = dyn_cast<GetElementPtrInst>(result))
             gep->setIsInBounds(arg->isInBounds());
         invertedPointers[arg] = result;
@@ -475,13 +491,14 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       */
     } else if (auto inst = dyn_cast<AllocaInst>(val)) {
         IRBuilder<> bb(inst);
-        AllocaInst* antialloca = bb.CreateAlloca(inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(), inst->getArraySize(), inst->getName()+"'ipa");
+        Value* asize = SAFE(inst,getArraySize());
+        AllocaInst* antialloca = bb.CreateAlloca(inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(), asize, inst->getName()+"'ipa");
         invertedPointers[val] = antialloca;
         antialloca->setAlignment(inst->getAlignment());
 
         auto dst_arg = bb.CreateBitCast(antialloca,Type::getInt8PtrTy(val->getContext()));
         auto val_arg = ConstantInt::get(Type::getInt8Ty(val->getContext()), 0);
-        auto len_arg = bb.CreateNUWMul(bb.CreateZExtOrTrunc(inst->getArraySize(),Type::getInt64Ty(val->getContext())), ConstantInt::get(Type::getInt64Ty(val->getContext()), M->getDataLayout().getTypeAllocSizeInBits(inst->getAllocatedType())/8) );
+        auto len_arg = bb.CreateMul(bb.CreateZExtOrTrunc(asize,Type::getInt64Ty(val->getContext())), ConstantInt::get(Type::getInt64Ty(val->getContext()), M->getDataLayout().getTypeAllocSizeInBits(inst->getAllocatedType())/8), "", true, true);
         auto volatile_arg = ConstantInt::getFalse(val->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
@@ -500,11 +517,11 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     } else if (auto phi = dyn_cast<PHINode>(val)) {
      std::map<Value*,std::set<BasicBlock*>> mapped;
      for(unsigned int i=0; i<phi->getNumIncomingValues(); i++) {
-        mapped[phi->getIncomingValue(i)].insert(phi->getIncomingBlock(i));
+        mapped[SAFE(phi,getIncomingValue(i))].insert(phi->getIncomingBlock(i));
      }
 
      if (false && mapped.size() == 1) {
-        return invertPointerM(phi->getIncomingValue(0), BuilderM);
+        return invertPointerM(SAFE(phi,getIncomingValue(0)), BuilderM);
      }
 #if 0
      else if (false && mapped.size() == 2) {
@@ -537,11 +554,12 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
 
          for(unsigned int i=0; i<phi->getNumIncomingValues(); i++) {
             IRBuilder <>pre(phi->getIncomingBlock(i)->getTerminator());
+            Value* ival = SAFE(phi, getIncomingValue(i));
             Value* val;
-            if (isConstantValue(phi->getIncomingValue(i))) {
-                val = lookupM(phi->getIncomingValue(i), pre);
+            if (isConstantValue(ival)) {
+                val = lookupM(ival, pre);
             } else {
-                val = invertPointerM(phi->getIncomingValue(i), pre);
+                val = invertPointerM(ival, pre);
                 hasnonconst = true;
             }
             which->addIncoming(val, phi->getIncomingBlock(i));

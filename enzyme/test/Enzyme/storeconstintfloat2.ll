@@ -80,7 +80,6 @@ loopexit:                                         ; preds = %while.body.i.i.i
 ; CHECK-NEXT:   br label %invertwhile.body.i.i.i
 
 ; CHECK: invertentry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
 ; CHECK-NEXT:   %[[xipc:.+]] = bitcast i8* %"malloccall'mi" to double*
 ; CHECK-NEXT:   %8 = load double, double* %[[xipc]], align 8
 ; CHECK-NEXT:   %9 = fadd fast double %8, %17
@@ -90,6 +89,7 @@ loopexit:                                         ; preds = %while.body.i.i.i
 ; CHECK-NEXT:   store i64 0, i64* %[[ipc]], align 8
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
 ; CHECK-NEXT:   %10 = insertvalue { double } undef, double %m0diffet, 0
+; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
 ; CHECK-NEXT:   ret { double } %10
 
 ; CHECK: invertwhile.body.i.i.i:

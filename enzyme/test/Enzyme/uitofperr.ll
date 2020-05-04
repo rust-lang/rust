@@ -195,9 +195,9 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %invertwhile
 
 ; CHECK: invertentry:                                      ; preds = %invertwhile
-; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
 ; CHECK-NEXT:   %m0diffet = fmul fast double %9, -1.200000e+00
 ; CHECK-NEXT:   %6 = insertvalue { double } undef, double %m0diffet, 0
+; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
 ; CHECK-NEXT:   ret { double } %6
 
 ; CHECK: invertwhile:                                      ; preds = %exit, %incinvertwhile

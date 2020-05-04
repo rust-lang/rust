@@ -64,8 +64,8 @@ declare double @__enzyme_autodiff(i8*, double)
 ; CHECK-NEXT:   br label %invertwhile
 
 ; CHECK: invertentry:                                      ; preds = %invertwhile
-; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
 ; CHECK-NEXT:   %6 = insertvalue { double } undef, double %9, 0
+; CHECK-NEXT:   tail call void @free(i8* nonnull %_realloccache)
 ; CHECK-NEXT:   ret { double } %6
 
 ; CHECK: invertwhile:                                      ; preds = %exit, %incinvertwhile

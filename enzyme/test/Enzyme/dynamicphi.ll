@@ -106,8 +106,8 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.outerbody
-; CHECK-NEXT:   tail call void @free(i8* nonnull %phi_realloccache)
 ; CHECK-NEXT:   %9 = insertvalue { double } undef, double %"x'de.0", 0
+; CHECK-NEXT:   tail call void @free(i8* nonnull %phi_realloccache)
 ; CHECK-NEXT:   ret { double } %9
 
 ; CHECK: invertfor.outerbody:                              ; preds = %for.outerbody, %invertfor.body.ph

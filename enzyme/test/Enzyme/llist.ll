@@ -150,8 +150,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  br label %invertfor.body.i
 
 ; CHECK:diffelist_creator.exit:                           ; preds = %invertfor.body.i
-; CHECK-NEXT:  call void @free(i8* nonnull %[[malloc1]]) #4
 ; CHECK-NEXT:  call void @free(i8* nonnull %[[mallocp]]) #4
+; CHECK-NEXT:  call void @free(i8* nonnull %[[malloc1]]) #4
 ; CHECK-NEXT:  ret double %[[add]]
 
 
