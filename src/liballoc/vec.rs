@@ -72,6 +72,7 @@ use core::ops::{self, Index, IndexMut, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
 
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
@@ -297,8 +298,8 @@ use crate::raw_vec::RawVec;
 /// [owned slice]: ../../std/boxed/struct.Box.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_type")]
-pub struct Vec<T> {
-    buf: RawVec<T>,
+pub struct Vec<T, A: AllocRef = Global> {
+    buf: RawVec<T, A>,
     len: usize,
 }
 
@@ -780,7 +781,9 @@ impl<T> Vec<T> {
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self
     }
+}
 
+impl<T, A: AllocRef> Vec<T, A> {
     /// Returns a raw pointer to the vector's buffer.
     ///
     /// The caller must ensure that the vector outlives the pointer this
@@ -853,7 +856,9 @@ impl<T> Vec<T> {
         }
         ptr
     }
+}
 
+impl<T> Vec<T> {
     /// Forces the length of the vector to `new_len`.
     ///
     /// This is a low-level operation that maintains none of the normal
@@ -2375,7 +2380,7 @@ impl<T: Ord> Ord for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T> Drop for Vec<T> {
+unsafe impl<#[may_dangle] T, A: AllocRef> Drop for Vec<T, A> {
     fn drop(&mut self) {
         unsafe {
             // use drop for [T]

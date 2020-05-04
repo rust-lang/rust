@@ -150,6 +150,7 @@ use core::mem::{self, size_of, swap, ManuallyDrop};
 use core::ops::{Deref, DerefMut};
 use core::ptr;
 
+use crate::alloc::{AllocRef, Global};
 use crate::slice;
 use crate::vec::{self, Vec};
 
@@ -245,8 +246,8 @@ use super::SpecExtend;
 /// [peek]: #method.peek
 /// [peek\_mut]: #method.peek_mut
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct BinaryHeap<T> {
-    data: Vec<T>,
+pub struct BinaryHeap<T, A: AllocRef = Global> {
+    data: Vec<T, A>,
 }
 
 /// Structure wrapping a mutable reference to the greatest item on a

@@ -4,6 +4,7 @@ use self::Entry::*;
 
 use hashbrown::hash_map as base;
 
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::Borrow;
 use crate::cell::Cell;
 use crate::collections::TryReserveError;
@@ -11,6 +12,7 @@ use crate::fmt::{self, Debug};
 #[allow(deprecated)]
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
 use crate::iter::{FromIterator, FusedIterator};
+use crate::marker::PhantomData;
 use crate::ops::Index;
 use crate::sys;
 
@@ -200,8 +202,9 @@ use crate::sys;
 #[derive(Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct HashMap<K, V, S = RandomState> {
+pub struct HashMap<K, V, S = RandomState, A: AllocRef = Global> {
     base: base::HashMap<K, V, S>,
+    alloc: PhantomData<A>,
 }
 
 impl<K, V> HashMap<K, V, RandomState> {
@@ -264,7 +267,7 @@ impl<K, V, S> HashMap<K, V, S> {
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
-        HashMap { base: base::HashMap::with_hasher(hash_builder) }
+        HashMap { base: base::HashMap::with_hasher(hash_builder), alloc: PhantomData }
     }
 
     /// Creates an empty `HashMap` with the specified capacity, using `hash_builder`
@@ -291,7 +294,10 @@ impl<K, V, S> HashMap<K, V, S> {
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> HashMap<K, V, S> {
-        HashMap { base: base::HashMap::with_capacity_and_hasher(capacity, hash_builder) }
+        HashMap {
+            base: base::HashMap::with_capacity_and_hasher(capacity, hash_builder),
+            alloc: PhantomData,
+        }
     }
 
     /// Returns the number of elements the map can hold without reallocating.

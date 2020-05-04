@@ -47,6 +47,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use core::cmp::Ordering;
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
@@ -55,6 +56,7 @@ use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
 use core::ptr;
 use core::str::{lossy, pattern::Pattern};
 
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
@@ -277,11 +279,10 @@ use crate::vec::Vec;
 /// [`&str`]: ../../std/primitive.str.html
 /// [`Deref`]: ../../std/ops/trait.Deref.html
 /// [`as_str()`]: struct.String.html#method.as_str
-#[derive(PartialOrd, Eq, Ord)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "string_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct String {
-    vec: Vec<u8>,
+pub struct String<A: AllocRef = Global> {
+    vec: Vec<u8, A>,
 }
 
 /// A possible error value when converting a `String` from a UTF-8 byte vector.
@@ -1883,6 +1884,25 @@ impl PartialEq for String {
     #[inline]
     fn ne(&self, other: &String) -> bool {
         PartialEq::ne(&self[..], &other[..])
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Eq for String {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialOrd for String {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.vec.partial_cmp(&other.vec)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Ord for String {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.vec.cmp(&other.vec)
     }
 }
 

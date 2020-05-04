@@ -281,9 +281,10 @@ struct RcBox<T: ?Sized> {
 /// [get_mut]: #method.get_mut
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Rc<T: ?Sized> {
+pub struct Rc<T: ?Sized, A: AllocRef = Global> {
     ptr: NonNull<RcBox<T>>,
     phantom: PhantomData<RcBox<T>>,
+    alloc: PhantomData<A>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -299,7 +300,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
     fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {
-        Self { ptr, phantom: PhantomData }
+        Self { ptr, phantom: PhantomData, alloc: PhantomData }
     }
 
     unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {
@@ -1114,7 +1115,7 @@ impl<T: ?Sized> Deref for Rc<T> {
 impl<T: ?Sized> Receiver for Rc<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
+unsafe impl<#[may_dangle] T: ?Sized, A: AllocRef> Drop for Rc<T, A> {
     /// Drops the `Rc`.
     ///
     /// This will decrement the strong reference count. If the strong reference
@@ -2074,7 +2075,7 @@ trait RcBoxPtr<T: ?Sized> {
     }
 }
 
-impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
+impl<T: ?Sized, A: AllocRef> RcBoxPtr<T> for Rc<T, A> {
     #[inline(always)]
     fn inner(&self) -> &RcBox<T> {
         unsafe { self.ptr.as_ref() }

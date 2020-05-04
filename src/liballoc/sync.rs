@@ -209,9 +209,10 @@ macro_rules! acquire {
 /// [rc_examples]: ../../std/rc/index.html#examples
 #[cfg_attr(not(test), rustc_diagnostic_item = "Arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Arc<T: ?Sized> {
+pub struct Arc<T: ?Sized, A: AllocRef = Global> {
     ptr: NonNull<ArcInner<T>>,
     phantom: PhantomData<ArcInner<T>>,
+    alloc: PhantomData<A>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -227,7 +228,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
     fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
-        Self { ptr, phantom: PhantomData }
+        Self { ptr, phantom: PhantomData, alloc: PhantomData }
     }
 
     unsafe fn from_ptr(ptr: *mut ArcInner<T>) -> Self {
@@ -850,29 +851,6 @@ impl<T: ?Sized> Arc<T> {
     }
 
     #[inline]
-    fn inner(&self) -> &ArcInner<T> {
-        // This unsafety is ok because while this arc is alive we're guaranteed
-        // that the inner pointer is valid. Furthermore, we know that the
-        // `ArcInner` structure itself is `Sync` because the inner data is
-        // `Sync` as well, so we're ok loaning out an immutable pointer to these
-        // contents.
-        unsafe { self.ptr.as_ref() }
-    }
-
-    // Non-inlined part of `drop`.
-    #[inline(never)]
-    unsafe fn drop_slow(&mut self) {
-        // Destroy the data at this time, even though we may not free the box
-        // allocation itself (there may still be weak pointers lying around).
-        ptr::drop_in_place(&mut self.ptr.as_mut().data);
-
-        if self.inner().weak.fetch_sub(1, Release) == 1 {
-            acquire!(self.inner().weak);
-            Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
-        }
-    }
-
-    #[inline]
     #[stable(feature = "ptr_eq", since = "1.17.0")]
     /// Returns `true` if the two `Arc`s point to the same allocation
     /// (in a vein similar to [`ptr::eq`]).
@@ -893,6 +871,31 @@ impl<T: ?Sized> Arc<T> {
     /// [`ptr::eq`]: ../../std/ptr/fn.eq.html
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         this.ptr.as_ptr() == other.ptr.as_ptr()
+    }
+}
+
+impl<T: ?Sized, A: AllocRef> Arc<T, A> {
+    #[inline]
+    fn inner(&self) -> &ArcInner<T> {
+        // This unsafety is ok because while this arc is alive we're guaranteed
+        // that the inner pointer is valid. Furthermore, we know that the
+        // `ArcInner` structure itself is `Sync` because the inner data is
+        // `Sync` as well, so we're ok loaning out an immutable pointer to these
+        // contents.
+        unsafe { self.ptr.as_ref() }
+    }
+
+    // Non-inlined part of `drop`.
+    #[inline(never)]
+    unsafe fn drop_slow(&mut self) {
+        // Destroy the data at this time, even though we may not free the box
+        // allocation itself (there may still be weak pointers lying around).
+        ptr::drop_in_place(&mut self.ptr.as_mut().data);
+
+        if self.inner().weak.fetch_sub(1, Release) == 1 {
+            acquire!(self.inner().weak);
+            Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
+        }
     }
 }
 
@@ -1308,7 +1311,7 @@ impl<T: ?Sized> Arc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
+unsafe impl<#[may_dangle] T: ?Sized, A: AllocRef> Drop for Arc<T, A> {
     /// Drops the `Arc`.
     ///
     /// This will decrement the strong reference count. If the strong reference

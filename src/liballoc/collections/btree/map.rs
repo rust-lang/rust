@@ -12,6 +12,7 @@ use core::{fmt, ptr};
 use super::node::{self, marker, ForceResult::*, Handle, InsertResult::*, NodeRef};
 use super::search::{self, SearchResult::*};
 use super::unwrap_unchecked;
+use crate::alloc::{AllocRef, Global};
 
 use Entry::*;
 use UnderflowResult::*;
@@ -122,13 +123,14 @@ use UnderflowResult::*;
 /// *stat += random_stat_buff();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct BTreeMap<K, V> {
+pub struct BTreeMap<K, V, A: AllocRef = Global> {
     root: Option<node::Root<K, V>>,
     length: usize,
+    alloc: PhantomData<A>,
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
-unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
+unsafe impl<#[may_dangle] K, #[may_dangle] V, A: AllocRef> Drop for BTreeMap<K, V, A> {
     fn drop(&mut self) {
         unsafe {
             drop(ptr::read(self).into_iter());
@@ -148,7 +150,11 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
         {
             match node.force() {
                 Leaf(leaf) => {
-                    let mut out_tree = BTreeMap { root: Some(node::Root::new_leaf()), length: 0 };
+                    let mut out_tree = BTreeMap {
+                        root: Some(node::Root::new_leaf()),
+                        length: 0,
+                        alloc: PhantomData,
+                    };
 
                     {
                         let root = out_tree.root.as_mut().unwrap();
@@ -210,7 +216,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
         if self.is_empty() {
             // Ideally we'd call `BTreeMap::new` here, but that has the `K:
             // Ord` constraint, which this method lacks.
-            BTreeMap { root: None, length: 0 }
+            BTreeMap { root: None, length: 0, alloc: PhantomData }
         } else {
             clone_subtree(self.root.as_ref().unwrap().as_ref())
         }
@@ -558,7 +564,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     pub const fn new() -> BTreeMap<K, V> {
-        BTreeMap { root: None, length: 0 }
+        BTreeMap { root: None, length: 0, alloc: PhantomData }
     }
 
     /// Clears the map, removing all elements.
@@ -1535,7 +1541,7 @@ impl<K, V> ExactSizeIterator for IterMut<'_, K, V> {
 impl<K, V> FusedIterator for IterMut<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V> IntoIterator for BTreeMap<K, V> {
+impl<K, V, A: AllocRef> IntoIterator for BTreeMap<K, V, A> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
 

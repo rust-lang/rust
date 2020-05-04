@@ -21,6 +21,7 @@ use core::mem;
 use core::ptr::NonNull;
 
 use super::SpecExtend;
+use crate::alloc::{AllocRef, Global};
 use crate::boxed::Box;
 
 #[cfg(test)]
@@ -35,11 +36,12 @@ mod tests;
 /// array-based containers are generally faster,
 /// more memory efficient, and make better use of CPU cache.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct LinkedList<T> {
+pub struct LinkedList<T, A: AllocRef = Global> {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
     len: usize,
     marker: PhantomData<Box<Node<T>>>,
+    alloc: PhantomData<A>,
 }
 
 struct Node<T> {
@@ -134,7 +136,7 @@ impl<T> Node<T> {
 }
 
 // private methods
-impl<T> LinkedList<T> {
+impl<T, A: AllocRef> LinkedList<T, A> {
     /// Adds the given node to the front of the list.
     #[inline]
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
@@ -216,7 +218,10 @@ impl<T> LinkedList<T> {
             node
         })
     }
+}
 
+// private methods
+impl<T> LinkedList<T> {
     /// Unlinks the specified node from the current list.
     ///
     /// Warning: this will not check that the provided node belongs to the current list.
@@ -310,6 +315,7 @@ impl<T> LinkedList<T> {
                 tail: first_part_tail,
                 len: at,
                 marker: PhantomData,
+                alloc: PhantomData,
             };
 
             // Fix the head ptr of the second part
@@ -346,6 +352,7 @@ impl<T> LinkedList<T> {
                 tail: second_part_tail,
                 len: self.len - at,
                 marker: PhantomData,
+                alloc: PhantomData,
             };
 
             // Fix the tail ptr of the first part
@@ -382,7 +389,7 @@ impl<T> LinkedList<T> {
     #[rustc_const_stable(feature = "const_linked_list_new", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn new() -> Self {
-        LinkedList { head: None, tail: None, len: 0, marker: PhantomData }
+        LinkedList { head: None, tail: None, len: 0, marker: PhantomData, alloc: PhantomData }
     }
 
     /// Moves all elements from `other` to the end of the list.
@@ -964,11 +971,11 @@ impl<T> LinkedList<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T> Drop for LinkedList<T> {
+unsafe impl<#[may_dangle] T, A: AllocRef> Drop for LinkedList<T, A> {
     fn drop(&mut self) {
-        struct DropGuard<'a, T>(&'a mut LinkedList<T>);
+        struct DropGuard<'a, T, A: AllocRef>(&'a mut LinkedList<T, A>);
 
-        impl<'a, T> Drop for DropGuard<'a, T> {
+        impl<'a, T, A: AllocRef> Drop for DropGuard<'a, T, A> {
             fn drop(&mut self) {
                 // Continue the same loop we do below. This only runs when a destructor has
                 // panicked. If another one panics this will abort.

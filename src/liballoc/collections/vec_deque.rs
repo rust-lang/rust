@@ -18,6 +18,7 @@ use core::ops::{Index, IndexMut, RangeBounds, Try};
 use core::ptr::{self, NonNull};
 use core::slice;
 
+use crate::alloc::{AllocRef, Global};
 use crate::collections::TryReserveError;
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
@@ -52,7 +53,7 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (64 - 1); // Largest possible power of 
 /// [`append`]: #method.append
 #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct VecDeque<T> {
+pub struct VecDeque<T, A: AllocRef = Global> {
     // tail and head are pointers into the buffer. Tail always points
     // to the first element that could be read, Head always points
     // to where data should be written.
@@ -60,7 +61,7 @@ pub struct VecDeque<T> {
     // is defined as the distance between the two.
     tail: usize,
     head: usize,
-    buf: RawVec<T>,
+    buf: RawVec<T, A>,
 }
 
 /// PairSlices pairs up equal length slice parts of two deques
@@ -147,7 +148,7 @@ impl<T: Clone> Clone for VecDeque<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T> Drop for VecDeque<T> {
+unsafe impl<#[may_dangle] T, A: AllocRef> Drop for VecDeque<T, A> {
     fn drop(&mut self) {
         /// Runs the destructor for all items in the slice when it gets dropped (normally or
         /// during unwinding).
@@ -180,7 +181,7 @@ impl<T> Default for VecDeque<T> {
     }
 }
 
-impl<T> VecDeque<T> {
+impl<T, A: AllocRef> VecDeque<T, A> {
     /// Marginally more convenient
     #[inline]
     fn ptr(&self) -> *mut T {
@@ -956,7 +957,9 @@ impl<T> VecDeque<T> {
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut { tail: self.tail, head: self.head, ring: unsafe { self.buffer_as_mut_slice() } }
     }
+}
 
+impl<T, A: AllocRef> VecDeque<T, A> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `VecDeque`.
     ///
@@ -1057,7 +1060,9 @@ impl<T> VecDeque<T> {
     pub fn is_empty(&self) -> bool {
         self.tail == self.head
     }
+}
 
+impl<T> VecDeque<T> {
     /// Creates a draining iterator that removes the specified range in the
     /// `VecDeque` and yields the removed items.
     ///

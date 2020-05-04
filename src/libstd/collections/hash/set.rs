@@ -1,3 +1,4 @@
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::Borrow;
 use crate::collections::TryReserveError;
 use crate::fmt;
@@ -107,8 +108,8 @@ use super::map::{self, HashMap, Keys, RandomState};
 #[derive(Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "hashset_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct HashSet<T, S = RandomState> {
-    map: HashMap<T, (), S>,
+pub struct HashSet<T, S = RandomState, A: AllocRef = Global> {
+    map: HashMap<T, (), S, A>,
 }
 
 impl<T> HashSet<T, RandomState> {

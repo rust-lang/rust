@@ -2,14 +2,16 @@
 // to TreeMap
 
 use core::borrow::Borrow;
-use core::cmp::Ordering::{Equal, Greater, Less};
+use core::cmp::Ordering::{self, Equal, Greater, Less};
 use core::cmp::{max, min};
 use core::fmt::{self, Debug};
+use core::hash;
 use core::iter::{FromIterator, FusedIterator, Peekable};
 use core::ops::{BitAnd, BitOr, BitXor, RangeBounds, Sub};
 
 use super::map::{BTreeMap, Keys};
 use super::Recover;
+use crate::alloc::{AllocRef, Global};
 
 // FIXME(conventions): implement bounded iterators
 
@@ -56,10 +58,44 @@ use super::Recover;
 ///     println!("{}", book);
 /// }
 /// ```
-#[derive(Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct BTreeSet<T> {
-    map: BTreeMap<T, ()>,
+pub struct BTreeSet<T, A: AllocRef = Global> {
+    map: BTreeMap<T, (), A>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: PartialEq> PartialEq for BTreeSet<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.map.eq(&other.map)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Eq> Eq for BTreeSet<T> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: PartialOrd> PartialOrd for BTreeSet<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.map.partial_cmp(&other.map)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Ord> Ord for BTreeSet<T> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.map.cmp(&other.map)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: hash::Hash> hash::Hash for BTreeSet<T> {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.map.hash(state)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
