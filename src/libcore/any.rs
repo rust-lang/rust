@@ -452,7 +452,9 @@ impl TypeId {
 /// `"std::option::Option<std::string::String>"`.
 ///
 /// The returned string must not be considered to be a unique identifier of a
-/// type as multiple types may map to the same type name. In addition, the
+/// type as multiple types may map to the same type name. Similarly, there is no
+/// guarantee that all parts of a type will appear in the returned string: for
+/// example, lifetime specifiers are currently not included. In addition, the
 /// output may change between versions of the compiler.
 ///
 /// The current implementation uses the same infrastructure as compiler
