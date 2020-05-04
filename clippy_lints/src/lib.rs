@@ -221,7 +221,6 @@ mod formatting;
 mod functions;
 mod future_not_send;
 mod get_last_with_len;
-mod identity_conversion;
 mod identity_op;
 mod if_let_mutex;
 mod if_let_some_result;
@@ -324,6 +323,7 @@ mod unused_io_amount;
 mod unused_self;
 mod unwrap;
 mod use_self;
+mod useless_conversion;
 mod vec;
 mod verbose_file_reads;
 mod wildcard_dependencies;
@@ -577,7 +577,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &functions::TOO_MANY_LINES,
         &future_not_send::FUTURE_NOT_SEND,
         &get_last_with_len::GET_LAST_WITH_LEN,
-        &identity_conversion::IDENTITY_CONVERSION,
         &identity_op::IDENTITY_OP,
         &if_let_mutex::IF_LET_MUTEX,
         &if_let_some_result::IF_LET_SOME_RESULT,
@@ -843,6 +842,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unwrap::PANICKING_UNWRAP,
         &unwrap::UNNECESSARY_UNWRAP,
         &use_self::USE_SELF,
+        &useless_conversion::USELESS_CONVERSION,
         &utils::internal_lints::CLIPPY_LINTS_INTERNAL,
         &utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
         &utils::internal_lints::COMPILER_LINT_FUNCTIONS,
@@ -980,7 +980,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box bytecount::ByteCount);
     store.register_late_pass(|| box infinite_iter::InfiniteIter);
     store.register_late_pass(|| box inline_fn_without_body::InlineFnWithoutBody);
-    store.register_late_pass(|| box identity_conversion::IdentityConversion::default());
+    store.register_late_pass(|| box useless_conversion::UselessConversion::default());
     store.register_late_pass(|| box types::ImplicitHasher);
     store.register_late_pass(|| box fallible_impl_from::FallibleImplFrom);
     store.register_late_pass(|| box types::UnitArg);
@@ -1241,7 +1241,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&functions::NOT_UNSAFE_PTR_ARG_DEREF),
         LintId::of(&functions::TOO_MANY_ARGUMENTS),
         LintId::of(&get_last_with_len::GET_LAST_WITH_LEN),
-        LintId::of(&identity_conversion::IDENTITY_CONVERSION),
         LintId::of(&identity_op::IDENTITY_OP),
         LintId::of(&if_let_mutex::IF_LET_MUTEX),
         LintId::of(&if_let_some_result::IF_LET_SOME_RESULT),
@@ -1427,6 +1426,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unused_io_amount::UNUSED_IO_AMOUNT),
         LintId::of(&unwrap::PANICKING_UNWRAP),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
+        LintId::of(&useless_conversion::USELESS_CONVERSION),
         LintId::of(&vec::USELESS_VEC),
         LintId::of(&write::PRINTLN_EMPTY_STRING),
         LintId::of(&write::PRINT_LITERAL),
@@ -1546,7 +1546,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&format::USELESS_FORMAT),
         LintId::of(&functions::TOO_MANY_ARGUMENTS),
         LintId::of(&get_last_with_len::GET_LAST_WITH_LEN),
-        LintId::of(&identity_conversion::IDENTITY_CONVERSION),
         LintId::of(&identity_op::IDENTITY_OP),
         LintId::of(&int_plus_one::INT_PLUS_ONE),
         LintId::of(&lifetimes::EXTRA_UNUSED_LIFETIMES),
@@ -1605,6 +1604,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::UNNECESSARY_CAST),
         LintId::of(&types::VEC_BOX),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
+        LintId::of(&useless_conversion::USELESS_CONVERSION),
         LintId::of(&zero_div_zero::ZERO_DIVIDED_BY_ZERO),
     ]);
 
@@ -1795,6 +1795,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::result_expect_used", "clippy::expect_used");
     ls.register_renamed("clippy::for_loop_over_option", "clippy::for_loops_over_fallibles");
     ls.register_renamed("clippy::for_loop_over_result", "clippy::for_loops_over_fallibles");
+    ls.register_renamed("clippy::identity_conversion", "clippy::useless_conversion");
 }
 
 // only exists to let the dogfood integration test works.
