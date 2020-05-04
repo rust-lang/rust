@@ -1,8 +1,8 @@
 use crate::{Assist, AssistCtx, AssistId};
 
-use ast::{BlockExpr, Expr, ForExpr, IfExpr, LoopBodyOwner, LoopExpr, WhileExpr};
+use ast::LoopBodyOwner;
 use ra_fmt::unwrap_trivial_block;
-use ra_syntax::{ast, AstNode, TextRange, T};
+use ra_syntax::{ast, match_ast, AstNode, TextRange, T};
 
 // Assist: unwrap_block
 //
@@ -23,37 +23,38 @@ use ra_syntax::{ast, AstNode, TextRange, T};
 // ```
 pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
     let l_curly_token = ctx.find_token_at_offset(T!['{'])?;
+    let block = ast::BlockExpr::cast(l_curly_token.parent())?;
+    let parent = block.syntax().parent()?;
+    let (expr, expr_to_unwrap) = match_ast! {
+        match parent {
+            ast::IfExpr(if_expr) => {
+                let expr_to_unwrap = if_expr.blocks().find_map(|expr| extract_expr(ctx.frange.range, expr));
+                let expr_to_unwrap = expr_to_unwrap?;
+                // Find if we are in a else if block
+                let ancestor = if_expr.syntax().parent().and_then(ast::IfExpr::cast);
 
-    let (expr, expr_to_unwrap) = if let Some(if_expr) =
-        l_curly_token.ancestors().find_map(IfExpr::cast)
-    {
-        // if expression
-        let expr_to_unwrap = if_expr.blocks().find_map(|expr| extract_expr(ctx.frange.range, expr));
-        let expr_to_unwrap = expr_to_unwrap?;
-        // Find if we are in a else if block
-        let ancestor = if_expr.syntax().ancestors().skip(1).find_map(ast::IfExpr::cast);
-
-        match ancestor {
-            None => (ast::Expr::IfExpr(if_expr), expr_to_unwrap),
-            Some(ancestor) => (ast::Expr::IfExpr(ancestor), expr_to_unwrap),
+                match ancestor {
+                    None => (ast::Expr::IfExpr(if_expr), expr_to_unwrap),
+                    Some(ancestor) => (ast::Expr::IfExpr(ancestor), expr_to_unwrap),
+                }
+            },
+            ast::ForExpr(for_expr) => {
+                let block_expr = for_expr.loop_body()?;
+                let expr_to_unwrap = extract_expr(ctx.frange.range, block_expr)?;
+                (ast::Expr::ForExpr(for_expr), expr_to_unwrap)
+            },
+            ast::WhileExpr(while_expr) => {
+                let block_expr = while_expr.loop_body()?;
+                let expr_to_unwrap = extract_expr(ctx.frange.range, block_expr)?;
+                (ast::Expr::WhileExpr(while_expr), expr_to_unwrap)
+            },
+            ast::LoopExpr(loop_expr) => {
+                let block_expr = loop_expr.loop_body()?;
+                let expr_to_unwrap = extract_expr(ctx.frange.range, block_expr)?;
+                (ast::Expr::LoopExpr(loop_expr), expr_to_unwrap)
+            },
+            _ => return None,
         }
-    } else if let Some(for_expr) = l_curly_token.ancestors().find_map(ForExpr::cast) {
-        // for expression
-        let block_expr = for_expr.loop_body()?;
-        let expr_to_unwrap = extract_expr(ctx.frange.range, block_expr)?;
-        (ast::Expr::ForExpr(for_expr), expr_to_unwrap)
-    } else if let Some(while_expr) = l_curly_token.ancestors().find_map(WhileExpr::cast) {
-        // while expression
-        let block_expr = while_expr.loop_body()?;
-        let expr_to_unwrap = extract_expr(ctx.frange.range, block_expr)?;
-        (ast::Expr::WhileExpr(while_expr), expr_to_unwrap)
-    } else if let Some(loop_expr) = l_curly_token.ancestors().find_map(LoopExpr::cast) {
-        // loop expression
-        let block_expr = loop_expr.loop_body()?;
-        let expr_to_unwrap = extract_expr(ctx.frange.range, block_expr)?;
-        (ast::Expr::LoopExpr(loop_expr), expr_to_unwrap)
-    } else {
-        return None;
     };
 
     ctx.add_assist(AssistId("unwrap_block"), "Unwrap block", |edit| {
@@ -76,7 +77,7 @@ pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
     })
 }
 
-fn extract_expr(cursor_range: TextRange, block: BlockExpr) -> Option<Expr> {
+fn extract_expr(cursor_range: TextRange, block: ast::BlockExpr) -> Option<ast::Expr> {
     let cursor_in_range = block.l_curly_token()?.text_range().contains_range(cursor_range);
 
     if cursor_in_range {
