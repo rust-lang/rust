@@ -2290,36 +2290,54 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 right,
             ) => {
                 let ty_left = left.ty(body, tcx);
-                if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.kind {
-                    let ty_right = right.ty(body, tcx);
-                    let common_ty = self.infcx.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::MiscVariable,
-                        span: body.source_info(location).span,
-                    });
-                    self.sub_types(
-                        common_ty,
-                        ty_left,
-                        location.to_locations(),
-                        ConstraintCategory::Boring,
-                    )
-                    .unwrap_or_else(|err| {
-                        bug!("Could not equate type variable with {:?}: {:?}", ty_left, err)
-                    });
-                    if let Err(terr) = self.sub_types(
-                        common_ty,
-                        ty_right,
-                        location.to_locations(),
-                        ConstraintCategory::Boring,
-                    ) {
-                        span_mirbug!(
-                            self,
-                            rvalue,
-                            "unexpected comparison types {:?} and {:?} yields {:?}",
+                match ty_left.kind {
+                    // Types with regions are comparable if they have a common super-type.
+                    ty::RawPtr(_) | ty::FnPtr(_) => {
+                        let ty_right = right.ty(body, tcx);
+                        let common_ty = self.infcx.next_ty_var(TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::MiscVariable,
+                            span: body.source_info(location).span,
+                        });
+                        self.relate_types(
+                            common_ty,
+                            ty::Variance::Contravariant,
                             ty_left,
-                            ty_right,
-                            terr
+                            location.to_locations(),
+                            ConstraintCategory::Boring,
                         )
+                        .unwrap_or_else(|err| {
+                            bug!("Could not equate type variable with {:?}: {:?}", ty_left, err)
+                        });
+                        if let Err(terr) = self.relate_types(
+                            common_ty,
+                            ty::Variance::Contravariant,
+                            ty_right,
+                            location.to_locations(),
+                            ConstraintCategory::Boring,
+                        ) {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "unexpected comparison types {:?} and {:?} yields {:?}",
+                                ty_left,
+                                ty_right,
+                                terr
+                            )
+                        }
                     }
+                    // For types with no regions we can just check that the
+                    // both operands have the same type.
+                    ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_)
+                        if ty_left == right.ty(body, tcx) => {}
+                    // Other types are compared by trait methods, not by
+                    // `Rvalue::BinaryOp`.
+                    _ => span_mirbug!(
+                        self,
+                        rvalue,
+                        "unexpected comparison types {:?} and {:?}",
+                        ty_left,
+                        right.ty(body, tcx)
+                    ),
                 }
             }
 

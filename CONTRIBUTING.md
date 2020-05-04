@@ -193,7 +193,7 @@ it can be found [here][rctd].
 As a developer to this repository, you don't have to treat the following external projects
 differently from other crates that are directly in this repo:
 
-* none so far, see https://github.com/rust-lang/rust/issues/70651 for more info
+* Clippy
 
 They are just regular files and directories. This is in contrast to `submodule` dependencies
 (see below for those). Only tool authors will actually use any operations here.
@@ -247,7 +247,7 @@ git subtree add -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git
 This will create a new commit, which you may not rebase under any circumstances! Delete the commit
 and redo the operation if you need to rebase.
 
-Now you're done, the `src/tools/clippy` directory behaves as if clippy were part of the rustc
+Now you're done, the `src/tools/clippy` directory behaves as if Clippy were part of the rustc
 monorepo, so no one but you (or others that synchronize subtrees) actually needs to use `git subtree`.
 
 
@@ -255,7 +255,6 @@ monorepo, so no one but you (or others that synchronize subtrees) actually needs
 
 Currently building Rust will also build the following external projects:
 
-* [clippy](https://github.com/rust-lang/rust-clippy)
 * [miri](https://github.com/rust-lang/miri)
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rls](https://github.com/rust-lang/rls/)
@@ -393,10 +392,18 @@ You can find documentation style guidelines in [RFC 1574][rfc1574].
 
 [rfc1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
 
-In many cases, you don't need a full `./x.py doc`. You can use `rustdoc` directly
-to check small fixes. For example, `rustdoc src/doc/reference.md` will render
-reference to `doc/reference.html`. The CSS might be messed up, but you can
-verify that the HTML is right.
+In many cases, you don't need a full `./x.py doc`, which will build the entire
+stage 2 compiler and compile the various books published on
+[doc.rust-lang.org]. When updating documentation for the standard library,
+first try `./x.py doc --stage 0 src/libstd`. If that fails, or if you need to
+see the output from the latest version of `rustdoc`, use `--stage 1` instead of
+`--stage 0`. Results should appear in `build/$TARGET/crate-docs`.
+
+[doc.rust-lang.org]: htts://doc.rust-lang.org
+
+You can also use `rustdoc` directly to check small fixes. For example,
+`rustdoc src/doc/reference.md` will render reference to `doc/reference.html`.
+The CSS might be messed up, but you can verify that the HTML is right.
 
 Additionally, contributions to the [rustc-dev-guide] are always welcome. Contributions
 can be made directly at [the
@@ -511,7 +518,7 @@ are:
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
 [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
-[gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
+[gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
 [rr]: https://doc.rust-lang.org/book/README.html
