@@ -2055,7 +2055,7 @@ fn test<I: Iterator<Item: Iterator<Item = u32>>>() {
 #[test]
 fn proc_macro_server_types() {
     assert_snapshot!(
-        infer_with_mismatches(r#"
+        infer(r#"
 macro_rules! with_api {
     ($S:ident, $self:ident, $m:ident) => {
         $m! {
@@ -2069,9 +2069,9 @@ macro_rules! with_api {
 }
 macro_rules! associated_item {
     (type TokenStream) =>
-        (type TokenStream: 'static + Clone;);
+        (type TokenStream: 'static;);
     (type Group) =>
-        (type Group: 'static + Clone;);
+        (type Group: 'static;);
     ($($item:tt)*) => ($($item)*;)
 }
 macro_rules! declare_server_traits {
@@ -2083,21 +2083,23 @@ macro_rules! declare_server_traits {
         }
 
         $(pub trait $name: Types {
-            $(associated_item!(fn $method(&mut self, $($arg: $arg_ty),*) $(-> $ret_ty)?);)*
+            $(associated_item!(fn $method($($arg: $arg_ty),*) $(-> $ret_ty)?);)*
         })*
 
         pub trait Server: Types $(+ $name)* {}
         impl<S: Types $(+ $name)*> Server for S {}
     }
 }
+
 with_api!(Self, self_, declare_server_traits);
-struct Group {}
-struct TokenStream {}
+struct G {}
+struct T {}
 struct Rustc;
 impl Types for Rustc {
-    type TokenStream = TokenStream;
-    type Group = Group;
+    type TokenStream = T;
+    type Group = G;
 }
+
 fn make<T>() -> T { loop {} }
 impl TokenStream for Rustc {
     fn new() -> Self::TokenStream {
@@ -2105,17 +2107,17 @@ impl TokenStream for Rustc {
         make()
     }
 }
-"#, true),
+"#),
         @r###"
-    1115..1126 '{ loop {} }': T
-    1117..1124 'loop {}': !
-    1122..1124 '{}': ()
-    1190..1253 '{     ...     }': {unknown}
-    1204..1209 'group': {unknown}
-    1225..1229 'make': fn make<{unknown}>() -> {unknown}
-    1225..1231 'make()': {unknown}
-    1241..1245 'make': fn make<{unknown}>() -> {unknown}
-    1241..1247 'make()': {unknown}
+    1062..1073 '{ loop {} }': T
+    1064..1071 'loop {}': !
+    1069..1071 '{}': ()
+    1137..1200 '{     ...     }': T
+    1151..1156 'group': G
+    1172..1176 'make': fn make<G>() -> G
+    1172..1178 'make()': G
+    1188..1192 'make': fn make<T>() -> T
+    1188..1194 'make()': T
     "###
     );
 }
