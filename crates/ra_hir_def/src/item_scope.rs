@@ -156,7 +156,7 @@ impl PerNs {
             ModuleDefId::ModuleId(_) => PerNs::types(def, v),
             ModuleDefId::FunctionId(_) => PerNs::values(def, v),
             ModuleDefId::AdtId(adt) => match adt {
-                AdtId::UnionId(_) => PerNs::both(def, def, v),
+                AdtId::UnionId(_) => PerNs::types(def, v),
                 AdtId::EnumId(_) => PerNs::types(def, v),
                 AdtId::StructId(_) => {
                     if !has_constructor {

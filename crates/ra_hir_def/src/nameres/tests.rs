@@ -67,7 +67,7 @@ fn crate_def_map_smoke_test() {
         ⋮Baz: t v
         ⋮E: t
         ⋮EXT: v
-        ⋮U: t v
+        ⋮U: t
         ⋮ext: v
     "###)
 }
