@@ -90,7 +90,7 @@ set -x
 for tool in clang clang++; do
   tool_path=/usr/local/bin/${triple}-${tool}
   cat > "$tool_path" <<EOF
-#!/bin/sh
+#!/bin/bash
 exec $tool --sysroot=$sysroot --prefix=${sysroot}/bin "\$@" --target=$triple
 EOF
   chmod +x "$tool_path"

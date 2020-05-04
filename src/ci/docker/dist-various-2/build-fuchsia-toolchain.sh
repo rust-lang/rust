@@ -45,7 +45,7 @@ rm -rf zircon
 for arch in x86_64 aarch64; do
   for tool in clang clang++; do
     cat >/usr/local/bin/${arch}-fuchsia-${tool} <<EOF
-#!/bin/sh
+#!/bin/bash
 ${tool} --target=${arch}-fuchsia --sysroot=/usr/local/${arch}-fuchsia "\$@"
 EOF
     chmod +x /usr/local/bin/${arch}-fuchsia-${tool}

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 case $1 in
 --version) echo  4.0.1;;

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 source_dir="$(dirname "$0")"
 dest_dir="$2"

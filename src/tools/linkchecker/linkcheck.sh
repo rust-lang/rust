@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # This is a script that can be used in each book's CI to validate links using
 # the same tool as rust-lang/rust.

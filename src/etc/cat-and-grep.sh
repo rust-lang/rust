@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -eu
 
 # Performs `cat` and `grep` simultaneously for `run-make` tests in the Rust CI.
