@@ -25,7 +25,7 @@ use crate::num::FpCategory;
 /// // deprecated way
 /// let r = std::f32::RADIX;
 ///
-/// // correct way
+/// // intended way
 /// let r = f32::RADIX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -40,7 +40,7 @@ pub const RADIX: u32 = f32::RADIX;
 /// // deprecated way
 /// let d = std::f32::MANTISSA_DIGITS;
 ///
-/// // correct way
+/// // intended way
 /// let d = f32::MANTISSA_DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -55,7 +55,7 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 /// // deprecated way
 /// let d = std::f32::DIGITS;
 ///
-/// // correct way
+/// // intended way
 /// let d = f32::DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -74,7 +74,7 @@ pub const DIGITS: u32 = f32::DIGITS;
 /// // deprecated way
 /// let e = std::f32::EPSILON;
 ///
-/// // correct way
+/// // intended way
 /// let e = f32::EPSILON;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -89,7 +89,7 @@ pub const EPSILON: f32 = f32::EPSILON;
 /// // deprecated way
 /// let min = std::f32::MIN;
 ///
-/// // correct way
+/// // intended way
 /// let min = f32::MIN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -104,7 +104,7 @@ pub const MIN: f32 = f32::MIN;
 /// // deprecated way
 /// let min = std::f32::MIN_POSITIVE;
 ///
-/// // correct way
+/// // intended way
 /// let min = f32::MIN_POSITIVE;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -119,7 +119,7 @@ pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 /// // deprecated way
 /// let max = std::f32::MAX;
 ///
-/// // correct way
+/// // intended way
 /// let max = f32::MAX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -134,7 +134,7 @@ pub const MAX: f32 = f32::MAX;
 /// // deprecated way
 /// let min = std::f32::MIN_EXP;
 ///
-/// // correct way
+/// // intended way
 /// let min = f32::MIN_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -149,7 +149,7 @@ pub const MIN_EXP: i32 = f32::MIN_EXP;
 /// // deprecated way
 /// let max = std::f32::MAX_EXP;
 ///
-/// // correct way
+/// // intended way
 /// let max = f32::MAX_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -164,7 +164,7 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 /// // deprecated way
 /// let min = std::f32::MIN_10_EXP;
 ///
-/// // correct way
+/// // intended way
 /// let min = f32::MIN_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -179,7 +179,7 @@ pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 /// // deprecated way
 /// let max = std::f32::MAX_10_EXP;
 ///
-/// // correct way
+/// // intended way
 /// let max = f32::MAX_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -194,7 +194,7 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 /// // deprecated way
 /// let nan = std::f32::NAN;
 ///
-/// // correct way
+/// // intended way
 /// let nan = f32::NAN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -209,7 +209,7 @@ pub const NAN: f32 = f32::NAN;
 /// // deprecated way
 /// let inf = std::f32::INFINITY;
 ///
-/// // correct way
+/// // intended way
 /// let inf = f32::INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -224,7 +224,7 @@ pub const INFINITY: f32 = f32::INFINITY;
 /// // deprecated way
 /// let ninf = std::f32::NEG_INFINITY;
 ///
-/// // correct way
+/// // intended way
 /// let ninf = f32::NEG_INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
