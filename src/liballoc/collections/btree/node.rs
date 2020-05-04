@@ -142,10 +142,11 @@ impl<K, V> BoxedNode<K, V> {
 /// An owned tree.
 ///
 /// Note that this does not have a destructor, and must be cleaned up manually.
-pub struct Root<K, V> {
+pub struct Root<K, V, A: AllocRef = Global> {
     node: BoxedNode<K, V>,
     /// The number of levels below the root node.
     height: usize,
+    alloc: PhantomData<A>,
 }
 
 unsafe impl<K: Sync, V: Sync> Sync for Root<K, V> {}
@@ -154,7 +155,11 @@ unsafe impl<K: Send, V: Send> Send for Root<K, V> {}
 impl<K, V> Root<K, V> {
     /// Returns a new owned tree, with its own root node that is initially empty.
     pub fn new_leaf() -> Self {
-        Root { node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })), height: 0 }
+        Root {
+            node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })),
+            height: 0,
+            alloc: PhantomData,
+        }
     }
 
     pub fn as_ref(&self) -> NodeRef<marker::Immut<'_>, K, V, marker::LeafOrInternal> {
@@ -174,7 +179,9 @@ impl<K, V> Root<K, V> {
             _marker: PhantomData,
         }
     }
+}
 
+impl<K, V, A: AllocRef> Root<K, V, A> {
     pub fn into_ref(self) -> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         NodeRef {
             height: self.height,
@@ -183,7 +190,9 @@ impl<K, V> Root<K, V> {
             _marker: PhantomData,
         }
     }
+}
 
+impl<K, V> Root<K, V> {
     /// Adds a new internal node with a single edge, pointing to the previous root, and make that
     /// new node the root. This increases the height by 1 and is the opposite of `pop_level`.
     pub fn push_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
@@ -615,7 +624,8 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 ForceResult::Internal(internal) => {
                     let edge =
                         ptr::read(internal.as_internal().edges.get_unchecked(idx + 1).as_ptr());
-                    let mut new_root = Root { node: edge, height: internal.height - 1 };
+                    let mut new_root =
+                        Root { node: edge, height: internal.height - 1, alloc: PhantomData };
                     (*new_root.as_mut().as_leaf_mut()).parent = ptr::null();
                     Some(new_root)
                 }
@@ -647,7 +657,8 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                         0,
                     );
 
-                    let mut new_root = Root { node: edge, height: internal.height - 1 };
+                    let mut new_root =
+                        Root { node: edge, height: internal.height - 1, alloc: PhantomData };
                     (*new_root.as_mut().as_leaf_mut()).parent = ptr::null();
 
                     for i in 0..old_len {
@@ -1026,7 +1037,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
             (*self.node.as_leaf_mut()).len = self.idx as u16;
             new_node.len = new_len as u16;
 
-            (self.node, k, v, Root { node: BoxedNode::from_leaf(new_node), height: 0 })
+            (
+                self.node,
+                k,
+                v,
+                Root { node: BoxedNode::from_leaf(new_node), height: 0, alloc: PhantomData },
+            )
         }
     }
 
@@ -1081,7 +1097,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             (*self.node.as_leaf_mut()).len = self.idx as u16;
             new_node.data.len = new_len as u16;
 
-            let mut new_root = Root { node: BoxedNode::from_internal(new_node), height };
+            let mut new_root =
+                Root { node: BoxedNode::from_internal(new_node), height, alloc: PhantomData };
 
             for i in 0..(new_len + 1) {
                 Handle::new_edge(new_root.as_mut().cast_unchecked(), i).correct_parent_link();

@@ -10,17 +10,16 @@
 // gdb-command: run
 
 // gdb-command: print vec
-// gdb-check:$1 = Vec<i32>(len: [...], cap: [...])[...]
-
+// gdb-check:$1 = Vec<i32, alloc::alloc::Global>(len: [...], cap: [...])[...]
 
 #![allow(unused_variables)]
 
 fn main() {
-
     let vec;
     zzz(); // #break
     vec = vec![0];
-
 }
 
-fn zzz() { () }
+fn zzz() {
+    ()
+}

@@ -6,7 +6,7 @@ LL |     fn iceman(c: Vec<[i32]>) {}
    | 
   ::: $SRC_DIR/liballoc/vec.rs:LL:COL
    |
-LL | pub struct Vec<T> {
+LL | pub struct Vec<T, A: AllocRef = Global> {
    |                - required by this bound in `std::vec::Vec`
    |
    = help: the trait `std::marker::Sized` is not implemented for `[i32]`

@@ -124,9 +124,8 @@ use UnderflowResult::*;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BTreeMap<K, V, A: AllocRef = Global> {
-    root: Option<node::Root<K, V>>,
+    root: Option<node::Root<K, V, A>>,
     length: usize,
-    alloc: PhantomData<A>,
 }
 
 #[stable(feature = "btree_drop", since = "1.7.0")]
@@ -150,11 +149,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
         {
             match node.force() {
                 Leaf(leaf) => {
-                    let mut out_tree = BTreeMap {
-                        root: Some(node::Root::new_leaf()),
-                        length: 0,
-                        alloc: PhantomData,
-                    };
+                    let mut out_tree = BTreeMap { root: Some(node::Root::new_leaf()), length: 0 };
 
                     {
                         let root = out_tree.root.as_mut().unwrap();
@@ -216,7 +211,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
         if self.is_empty() {
             // Ideally we'd call `BTreeMap::new` here, but that has the `K:
             // Ord` constraint, which this method lacks.
-            BTreeMap { root: None, length: 0, alloc: PhantomData }
+            BTreeMap { root: None, length: 0 }
         } else {
             clone_subtree(self.root.as_ref().unwrap().as_ref())
         }

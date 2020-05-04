@@ -3,13 +3,13 @@ fn main() {
 
     let v2 = Vec::new();
 
-    v.into_iter().map(|s|s.to_owned()).collect::<Vec<_>>();
+    v.into_iter().map(|s| s.to_owned()).collect::<Vec<_>>();
 
     let mut a = String::new();
     for i in v {
         a = *i.to_string();
-        //~^ ERROR mismatched types
-        //~| NOTE expected struct `std::string::String`, found `str`
+        //~^ ERROR mismatched types [E0308]
+        //~| expected struct `std::string::String`, found `str`
         v2.push(a);
     }
 }
