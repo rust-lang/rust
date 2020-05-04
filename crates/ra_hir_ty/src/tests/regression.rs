@@ -535,6 +535,35 @@ fn foo(b: Bar) {
 }
 
 #[test]
+fn issue_4235_name_conflicts() {
+    assert_snapshot!(
+        infer(r#"
+struct FOO {}
+static FOO:FOO = FOO {};
+
+impl FOO {
+    fn foo(&self) {}
+}
+
+fn main() {
+    let a = &FOO;
+    a.foo();
+}
+"#), @r###"
+    32..38 'FOO {}': FOO
+    64..68 'self': &FOO
+    70..72 '{}': ()
+    86..120 '{     ...o(); }': ()
+    96..97 'a': &FOO
+    100..104 '&FOO': &FOO
+    101..104 'FOO': FOO
+    110..111 'a': &FOO
+    110..117 'a.foo()': ()
+"###
+    );
+}
+
+#[test]
 fn issue_4053_diesel_where_clauses() {
     assert_snapshot!(
         infer(r#"
