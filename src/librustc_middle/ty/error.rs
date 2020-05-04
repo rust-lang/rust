@@ -410,8 +410,11 @@ impl<'tcx> TyCtxt<'tcx> {
                         }
                         let hir = self.hir();
                         let mut note = true;
-                        if let Some(generics) = hir
-                            .as_local_hir_id(generics.type_param(p, self).def_id)
+                        if let Some(generics) = generics
+                            .type_param(p, self)
+                            .def_id
+                            .as_local()
+                            .map(|id| hir.as_local_hir_id(id))
                             .and_then(|id| self.hir().find(self.hir().get_parent_node(id)))
                             .as_ref()
                             .and_then(|node| node.generics())

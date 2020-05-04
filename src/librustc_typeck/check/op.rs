@@ -954,8 +954,9 @@ fn suggest_constraining_param(
     let def_id = hir.body_owner_def_id(hir::BodyId { hir_id: body_id });
     let generics = tcx.generics_of(def_id);
     let param_def_id = generics.type_param(&p, tcx).def_id;
-    if let Some(generics) = hir
-        .as_local_hir_id(param_def_id)
+    if let Some(generics) = param_def_id
+        .as_local()
+        .map(|id| hir.as_local_hir_id(id))
         .and_then(|id| hir.find(hir.get_parent_item(id)))
         .as_ref()
         .and_then(|node| node.generics())
