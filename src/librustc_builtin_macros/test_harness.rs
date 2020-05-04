@@ -255,8 +255,8 @@ fn generate_test_harness(
 ///
 /// The expansion here can be controlled by two attributes:
 ///
-/// `reexport_test_harness_main` provides a different name for the `main`
-/// function and `test_runner` provides a path that replaces
+/// [`TestCtxt::reexport_test_harness_main`] provides a different name for the `main`
+/// function and [`TestCtxt::test_runner`] provides a path that replaces
 /// `test::test_main_static`.
 fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let sp = cx.def_site;

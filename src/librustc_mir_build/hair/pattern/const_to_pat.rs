@@ -111,20 +111,21 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             }
 
             if let Some(non_sm_ty) = structural {
-                let adt_def = match non_sm_ty {
-                    traits::NonStructuralMatchTy::Adt(adt_def) => adt_def,
+                let msg = match non_sm_ty {
+                    traits::NonStructuralMatchTy::Adt(adt_def) => {
+                        let path = self.tcx().def_path_str(adt_def.did);
+                        format!(
+                            "to use a constant of type `{}` in a pattern, \
+                             `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                            path, path,
+                        )
+                    }
+                    traits::NonStructuralMatchTy::Dynamic => {
+                        format!("trait objects cannot be used in patterns")
+                    }
                     traits::NonStructuralMatchTy::Param => {
                         bug!("use of constant whose type is a parameter inside a pattern")
                     }
-                };
-                let path = self.tcx().def_path_str(adt_def.did);
-
-                let make_msg = || -> String {
-                    format!(
-                        "to use a constant of type `{}` in a pattern, \
-                         `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                        path, path,
-                    )
                 };
 
                 // double-check there even *is* a semantic `PartialEq` to dispatch to.
@@ -155,13 +156,13 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
                 if !ty_is_partial_eq {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
-                    self.tcx().sess.span_fatal(self.span, &make_msg());
+                    self.tcx().sess.span_fatal(self.span, &msg);
                 } else if mir_structural_match_violation {
                     self.tcx().struct_span_lint_hir(
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         self.id,
                         self.span,
-                        |lint| lint.build(&make_msg()).emit(),
+                        |lint| lint.build(&msg).emit(),
                     );
                 } else {
                     debug!(
