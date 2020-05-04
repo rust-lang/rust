@@ -124,7 +124,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
                 let impl_item_def_id = cx.tcx.hir().local_def_id(impl_item.id.hir_id);
                 let mut fpu = FindPanicUnwrap {
                     lcx: cx,
-                    tables: cx.tcx.typeck_tables_of(impl_item_def_id),
+                    tables: cx.tcx.typeck_tables_of(cx.tcx.with_opt_param(impl_item_def_id)),
                     result: Vec::new(),
                 };
                 fpu.visit_expr(&body.value);

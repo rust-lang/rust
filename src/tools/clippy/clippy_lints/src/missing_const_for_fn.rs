@@ -116,7 +116,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
             FnKind::Closure(..) => return,
         }
 
-        let mir = cx.tcx.optimized_mir(def_id);
+        let mir = cx.tcx.optimized_mir(cx.tcx.with_opt_param(def_id.to_def_id()));
 
         if let Err((span, err)) = is_min_const_fn(cx.tcx, def_id.to_def_id(), &mir) {
             if rustc_mir::const_eval::is_min_const_fn(cx.tcx, def_id.to_def_id()) {

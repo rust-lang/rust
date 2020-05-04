@@ -84,7 +84,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
             return;
         }
 
-        let mir = cx.tcx.optimized_mir(def_id.to_def_id());
+        let mir = cx.tcx.optimized_mir(cx.tcx.with_opt_param(def_id.to_def_id()));
 
         let maybe_storage_live_result = MaybeStorageLive
             .into_engine(cx.tcx, mir, def_id.to_def_id())

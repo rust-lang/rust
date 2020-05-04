@@ -59,7 +59,7 @@ impl LateLintPass<'_, '_> for AwaitHoldingLock {
                 hir_id: body.value.hir_id,
             };
             let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-            let tables = cx.tcx.typeck_tables_of(def_id);
+            let tables = cx.tcx.typeck_tables_of(cx.tcx.with_opt_param(def_id));
             check_interior_types(cx, &tables.generator_interior_types, body.value.span);
         }
     }

@@ -291,7 +291,7 @@ pub fn qpath_res(cx: &LateContext<'_, '_>, qpath: &hir::QPath<'_>, id: hir::HirI
         hir::QPath::TypeRelative(..) => {
             if cx.tcx.has_typeck_tables(id.owner.to_def_id()) {
                 cx.tcx
-                    .typeck_tables_of(id.owner.to_def_id().expect_local())
+                    .typeck_tables_of(cx.tcx.with_opt_param(id.owner))
                     .qpath_res(qpath, id)
             } else {
                 Res::Err

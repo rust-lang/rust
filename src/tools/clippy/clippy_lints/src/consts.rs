@@ -332,7 +332,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 let result = self
                     .lcx
                     .tcx
-                    .const_eval_resolve(self.param_env, def_id, substs, None, None)
+                    .const_eval_resolve(self.param_env, self.lcx.tcx.with_opt_param(def_id), substs, None, None)
                     .ok()
                     .map(|val| rustc_middle::ty::Const::from_value(self.lcx.tcx, val, ty))?;
                 let result = miri_to_const(&result);

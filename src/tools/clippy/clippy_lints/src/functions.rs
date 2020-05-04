@@ -497,7 +497,7 @@ fn is_mutable_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, tys: &mut FxHash
     if cx.tcx.has_typeck_tables(def_id) {
         is_mutable_ty(
             cx,
-            &cx.tcx.typeck_tables_of(def_id.expect_local()).pat_ty(pat),
+            &cx.tcx.typeck_tables_of(cx.tcx.with_opt_param(def_id.expect_local())).pat_ty(pat),
             pat.span,
             tys,
         )
@@ -617,7 +617,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                     if self.cx.tcx.has_typeck_tables(def_id)
                         && is_mutable_ty(
                             self.cx,
-                            self.cx.tcx.typeck_tables_of(def_id.expect_local()).expr_ty(arg),
+                            self.cx.tcx.typeck_tables_of(self.cx.tcx.with_opt_param(def_id.expect_local())).expr_ty(arg),
                             arg.span,
                             &mut tys,
                         )

@@ -139,7 +139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
             return;
         }
 
-        let mir = cx.tcx.optimized_mir(def_id.to_def_id());
+        let mir = cx.tcx.optimized_mir(cx.tcx.with_opt_param(def_id.to_def_id()));
 
         // checking return type through MIR, HIR is not able to determine inferred closure return types
         // make sure it's not a macro
