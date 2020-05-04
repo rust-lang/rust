@@ -156,9 +156,16 @@ pub(super) struct DefData {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub(super) enum StructDefKind {
+    Record,
+    Tuple,
+    Unit,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(super) enum DefKind {
     Function(FileAstId<ast::FnDef>),
-    Struct(FileAstId<ast::StructDef>),
+    Struct(FileAstId<ast::StructDef>, StructDefKind),
     Union(FileAstId<ast::UnionDef>),
     Enum(FileAstId<ast::EnumDef>),
     Const(FileAstId<ast::ConstDef>),
@@ -171,7 +178,7 @@ impl DefKind {
     pub fn ast_id(&self) -> FileAstId<ast::ModuleItem> {
         match self {
             DefKind::Function(it) => it.upcast(),
-            DefKind::Struct(it) => it.upcast(),
+            DefKind::Struct(it, _) => it.upcast(),
             DefKind::Union(it) => it.upcast(),
             DefKind::Enum(it) => it.upcast(),
             DefKind::Const(it) => it.upcast(),
@@ -236,9 +243,14 @@ impl RawItemsCollector {
                 return;
             }
             ast::ModuleItem::StructDef(it) => {
+                let kind = match it.kind() {
+                    ast::StructKind::Record(_) => StructDefKind::Record,
+                    ast::StructKind::Tuple(_) => StructDefKind::Tuple,
+                    ast::StructKind::Unit => StructDefKind::Unit,
+                };
                 let id = self.source_ast_id_map.ast_id(&it);
                 let name = it.name();
-                (DefKind::Struct(id), name)
+                (DefKind::Struct(id, kind), name)
             }
             ast::ModuleItem::UnionDef(it) => {
                 let id = self.source_ast_id_map.ast_id(&it);
