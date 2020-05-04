@@ -2499,15 +2499,14 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     ///
     /// ```
     /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
     ///
-    /// let mut count: BTreeMap<&str, usize> = BTreeMap::new();
+    /// let mut map: BTreeMap<&str, u32> = BTreeMap::new();
     ///
-    /// // count the number of occurrences of letters in the vec
-    /// for x in vec!["a","b","a","c","a","b"] {
-    ///     *count.entry(x).or_insert(0) += 1;
+    /// if let Entry::Vacant(o) = map.entry("poneyland") {
+    ///     o.insert(37);
     /// }
-    ///
-    /// assert_eq!(count["a"], 3);
+    /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
