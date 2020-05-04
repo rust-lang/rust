@@ -376,16 +376,20 @@ impl ToNav for hir::Local {
 impl ToNav for hir::TypeParam {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let range = match src.value {
+        let full_range = match &src.value {
             Either::Left(it) => it.syntax().text_range(),
             Either::Right(it) => it.syntax().text_range(),
+        };
+        let focus_range = match &src.value {
+            Either::Left(_) => None,
+            Either::Right(it) => it.name().map(|it| it.syntax().text_range()),
         };
         NavigationTarget {
             file_id: src.file_id.original_file(db),
             name: self.name(db).to_string().into(),
             kind: TYPE_PARAM,
-            full_range: range,
-            focus_range: None,
+            full_range,
+            focus_range,
             container_name: None,
             description: None,
             docs: None,

@@ -754,14 +754,14 @@ mod tests {
     #[test]
     fn goto_for_type_param() {
         check_goto(
-            "
+            r#"
             //- /lib.rs
-            struct Foo<T> {
+            struct Foo<T: Clone> {
                 t: <|>T,
             }
-            ",
-            "T TYPE_PARAM FileId(1) 11..12",
-            "T",
+            "#,
+            "T TYPE_PARAM FileId(1) 11..19 11..12",
+            "T: Clone|T",
         );
     }
 
