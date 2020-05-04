@@ -1,7 +1,5 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 
-#![feature(const_raw_ptr_deref)]
-#![feature(const_mut_refs)]
 #![allow(const_err)]
 
 use std::cell::UnsafeCell;

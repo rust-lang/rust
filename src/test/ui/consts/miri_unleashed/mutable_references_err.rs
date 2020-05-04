@@ -4,7 +4,7 @@
 
 use std::cell::UnsafeCell;
 
-// this test ICEs to ensure that our mutability story is sound
+// this test ensures that our mutability story is sound
 
 struct Meh {
     x: &'static UnsafeCell<i32>,
