@@ -2,16 +2,21 @@
 
 use hir::{Adt, HasVisibility, PathResolution, ScopeDef};
 use ra_syntax::AstNode;
+use rustc_hash::FxHashSet;
 use test_utils::tested_by;
 
 use crate::completion::{CompletionContext, Completions};
-use rustc_hash::FxHashSet;
 
 pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     let path = match &ctx.path_prefix {
         Some(path) => path.clone(),
-        _ => return,
+        None => return,
     };
+
+    if ctx.attribute_under_caret.is_some() {
+        return;
+    }
+
     let scope = ctx.scope();
     let context_module = scope.module();
 
@@ -1324,5 +1329,19 @@ mod tests {
         ]
         "###
         );
+    }
+
+    #[test]
+    fn dont_complete_attr() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                r"
+                mod foo { pub struct Foo; }
+                #[foo::<|>]
+                fn f() {}
+                "
+            ),
+            @r###"[]"###
+        )
     }
 }
