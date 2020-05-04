@@ -18,7 +18,7 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
-    adt::{self, StructKind},
+    adt::StructKind,
     body::{Body, BodySourceMap, Expander, PatPtr, SyntheticSyntax},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
@@ -577,7 +577,7 @@ impl ExprCollector<'_> {
                 let vis = crate::visibility::Visibility::Public; // FIXME determine correctly
                 let favor_types = match def {
                     ModuleDefId::AdtId(AdtId::StructId(s)) => {
-                        self.db.struct_data(s).variant_data.kind() == adt::StructKind::Record
+                        self.db.struct_data(s).variant_data.kind() == StructKind::Record
                     }
                     _ => false,
                 };
