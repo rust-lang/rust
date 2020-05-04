@@ -4,6 +4,9 @@ name = "ra_flycheck"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 crossbeam-channel = "0.4.0"
 lsp-types = { version = "0.74.0", features = ["proposed"] }
