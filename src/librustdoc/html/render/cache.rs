@@ -328,15 +328,7 @@ impl DocFolder for Cache {
                             search_type: get_index_search_type(&item),
                         });
 
-                        for alias in item
-                            .attrs
-                            .lists(sym::doc)
-                            .filter(|a| a.check_name(sym::alias))
-                            .filter_map(|a| a.value_str().map(|s| s.to_string().replace("\"", "")))
-                            .filter(|v| !v.is_empty())
-                            .collect::<FxHashSet<_>>()
-                            .into_iter()
-                        {
+                        for alias in item.attrs.get_doc_aliases() {
                             self.aliases
                                 .entry(alias.to_lowercase())
                                 .or_insert(Vec::with_capacity(1))
@@ -378,9 +370,6 @@ impl DocFolder for Cache {
             | clean::MacroItem(..)
             | clean::ProcMacroItem(..)
             | clean::VariantItem(..)
-            | clean::StructFieldItem(..)
-            | clean::TyMethodItem(..)
-            | clean::MethodItem(..)
                 if !self.stripped_mod =>
             {
                 // Re-exported items mean that the same id can show up twice
@@ -564,15 +553,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
             });
-            for alias in item
-                .attrs
-                .lists(sym::doc)
-                .filter(|a| a.check_name(sym::alias))
-                .filter_map(|a| a.value_str().map(|s| s.to_string().replace("\"", "")))
-                .filter(|v| !v.is_empty())
-                .collect::<FxHashSet<_>>()
-                .into_iter()
-            {
+            for alias in item.attrs.get_doc_aliases().into_iter() {
                 aliases
                     .entry(alias.to_lowercase())
                     .or_insert(Vec::with_capacity(1))
@@ -619,22 +600,8 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         .map(|module| shorten(plain_summary_line(module.doc_value())))
         .unwrap_or(String::new());
 
-    let crate_aliases = aliases
-        .iter()
-        .map(|(k, values)| {
-            (
-                k.clone(),
-                values
-                    .iter()
-                    .filter_map(|v| {
-                        let x = &crate_items[*v];
-                        if x.parent_idx.is_some() == x.parent.is_some() { Some(*v) } else { None }
-                    })
-                    .collect::<Vec<_>>(),
-            )
-        })
-        .filter(|(_, values)| !values.is_empty())
-        .collect::<Vec<_>>();
+    let crate_aliases =
+        aliases.iter().map(|(k, values)| (k.clone(), values.clone())).collect::<Vec<_>>();
 
     #[derive(Serialize)]
     struct CrateData<'a> {

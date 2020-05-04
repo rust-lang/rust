@@ -278,7 +278,7 @@ pub struct RenderInfo {
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
 #[derive(Debug)]
-pub struct IndexItem {
+struct IndexItem {
     ty: ItemType,
     name: String,
     path: String,

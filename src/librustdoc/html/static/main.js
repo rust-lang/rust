@@ -972,7 +972,7 @@ function getSearchElement() {
                     desc: item.desc,
                     ty: item.ty,
                     parent: item.parent,
-                    type: item.parent,
+                    type: item.type,
                     is_alias: true,
                 };
             }
