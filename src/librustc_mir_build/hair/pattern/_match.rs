@@ -1025,7 +1025,8 @@ impl<'tcx> Constructor<'tcx> {
 }
 
 /// The fields of a variant, like `Option::Some` or `(,)`. This handles uninhabited fields and
-/// `non_exhaustive` field lists under the hood.
+/// `non_exhaustive` field lists under the hood. This in particular filters out fields whose
+/// uninhabitedness should not be visible to the user.
 #[derive(Debug, Clone)]
 struct VariantFields<'p, 'tcx> {
     fields: SmallVec<[VariantField<'p, 'tcx>; 2]>,
@@ -1035,7 +1036,7 @@ struct VariantFields<'p, 'tcx> {
 #[derive(Debug, Clone)]
 enum VariantField<'p, 'tcx> {
     Kept(&'p Pat<'tcx>),
-    // Hidden(Ty<'tcx>),
+    Hidden(Ty<'tcx>),
 }
 
 impl<'p, 'tcx> VariantField<'p, 'tcx> {
@@ -1047,14 +1048,14 @@ impl<'p, 'tcx> VariantField<'p, 'tcx> {
     fn kept(&self) -> Option<&'p Pat<'tcx>> {
         match self {
             VariantField::Kept(p) => Some(p),
-            // VariantField::Hidden(_) => None,
+            VariantField::Hidden(_) => None,
         }
     }
 
     fn into_pattern(self) -> Pat<'tcx> {
         match self {
             VariantField::Kept(p) => p.clone(),
-            // VariantField::Hidden(ty) => Pat::wildcard_from_ty(ty),
+            VariantField::Hidden(ty) => Pat::wildcard_from_ty(ty),
         }
     }
 }
@@ -1067,15 +1068,16 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
         ty: Ty<'tcx>,
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> Self {
-        // There are `arity()` patterns in there.
-        let mut pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
+        // There should be `arity()` patterns in there.
+        let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
 
+        let mut pats_iter = pats.iter();
         let mut fields = Self::wildcards(cx, constructor, ty);
         for f in &mut fields.fields {
             if let VariantField::Kept(p) = f {
-                let (pat, rest) = pats.split_first().unwrap();
+                // We take one input pattern for each `Kept` field, in order.
+                let pat = pats_iter.next().unwrap();
                 *p = pat;
-                pats = rest;
             }
         }
         fields
@@ -1105,15 +1107,14 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
                         .fields
                         .iter()
                         .map(|field| {
-                            // Treat hidden fields as TyErr so we don't know they are
-                            // uninhabited.
+                            let field_ty = field.ty(cx.tcx, substs);
+                            // Filter out hidden fields so we don't know they are uninhabited.
                             if cx.hide_uninhabited_field(ty, variant, field) {
-                                cx.tcx.types.err
+                                VariantField::Hidden(field_ty)
                             } else {
-                                field.ty(cx.tcx, substs)
+                                VariantField::wildcard_from_ty(cx, field_ty)
                             }
                         })
-                        .map(|ty| VariantField::wildcard_from_ty(cx, ty))
                         .collect()
                 }
             }
@@ -1134,7 +1135,12 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
             ty::Tuple(ref fs) => fs.len() as u64,
             ty::Ref(..) => 1,
             ty::Adt(adt, _) => {
-                adt.variants[constructor.variant_index_for_adt(cx, adt)].fields.len() as u64
+                let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
+                variant
+                    .fields
+                    .iter()
+                    .filter(|field| !cx.hide_uninhabited_field(ty, variant, field))
+                    .count() as u64
             }
             ty::Slice(..) | ty::Array(..) => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             _ => 0,
@@ -1144,12 +1150,11 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
     /// Overrides some of the fields with the provided patterns
     fn override_fieldpatterns(
         mut self,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
         pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>,
     ) -> Self {
         for pat in pats {
-            if !self.is_non_exhaustive || !cx.is_uninhabited(pat.pattern.ty) {
-                self.fields[pat.field.index()] = VariantField::Kept(&pat.pattern);
+            if let VariantField::Kept(p) = &mut self.fields[pat.field.index()] {
+                *p = &pat.pattern
             }
         }
         self
@@ -2464,7 +2469,7 @@ fn specialize_one_pattern<'p, 'tcx>(
             if constructor == &pat_ctor {
                 Some(
                     VariantFields::wildcards(cx, constructor, pat.ty)
-                        .override_fieldpatterns(cx, subpatterns)
+                        .override_fieldpatterns(subpatterns)
                         .into_patstack(),
                 )
             } else {
@@ -2474,7 +2479,7 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Leaf { ref subpatterns } => Some(
             VariantFields::wildcards(cx, constructor, pat.ty)
-                .override_fieldpatterns(cx, subpatterns)
+                .override_fieldpatterns(subpatterns)
                 .into_patstack(),
         ),
 
