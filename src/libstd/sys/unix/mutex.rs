@@ -30,13 +30,15 @@ impl Mutex {
         // a type of PTHREAD_MUTEX_DEFAULT, which has undefined behavior if you
         // try to re-lock it from the same thread when you already hold a lock
         // (https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_mutex_init.html).
+        // This is the case even if PTHREAD_MUTEX_DEFAULT == PTHREAD_MUTEX_NORMAL
+        // (https://github.com/rust-lang/rust/issues/33770#issuecomment-220847521) -- in that
+        // case, `pthread_mutexattr_settype(PTHREAD_MUTEX_DEFAULT)` will of course be the same
+        // as setting it to `PTHREAD_MUTEX_NORMAL`, but not setting any mode will result in
+        // a Mutex where re-locking is UB.
         //
         // In practice, glibc takes advantage of this undefined behavior to
         // implement hardware lock elision, which uses hardware transactional
-        // memory to avoid acquiring the lock.
-        // This is the case even if PTHREAD_MUTEX_DEFAULT == PTHREAD_MUTEX_NORMAL
-        // (https://github.com/rust-lang/rust/issues/33770#issuecomment-220847521).
-        // As a consequence, while a transaction is in
+        // memory to avoid acquiring the lock. While a transaction is in
         // progress, the lock appears to be unlocked. This isn't a problem for
         // other threads since the transactional memory will abort if a conflict
         // is detected, however no abort is generated when re-locking from the
