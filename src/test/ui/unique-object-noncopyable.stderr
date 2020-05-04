@@ -12,8 +12,8 @@ LL |     let _z = y.clone();
    | 
   ::: $SRC_DIR/liballoc/boxed.rs:LL:COL
    |
-LL | pub struct Box<T: ?Sized>(Unique<T>);
-   | ------------------------------------- doesn't satisfy `std::boxed::Box<dyn Foo>: std::clone::Clone`
+LL | pub struct Box<T: ?Sized, A: AllocRef = Global>(Unique<T>, A);
+   | -------------------------------------------------------------- doesn't satisfy `std::boxed::Box<dyn Foo>: std::clone::Clone`
    | 
   ::: $SRC_DIR/libcore/clone.rs:LL:COL
    |

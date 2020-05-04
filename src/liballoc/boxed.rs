@@ -156,7 +156,7 @@ use crate::vec::Vec;
 #[lang = "owned_box"]
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Box<T: ?Sized>(Unique<T>);
+pub struct Box<T: ?Sized, A: AllocRef = Global>(Unique<T>, A);
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
@@ -392,7 +392,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Box(Unique::new_unchecked(raw))
+        Box(Unique::new_unchecked(raw), Global)
     }
 
     /// Consumes the `Box`, returning a wrapped raw pointer.
@@ -567,7 +567,7 @@ impl<T: ?Sized> Box<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<#[may_dangle] T: ?Sized> Drop for Box<T> {
+unsafe impl<#[may_dangle] T: ?Sized, A: AllocRef> Drop for Box<T, A> {
     fn drop(&mut self) {
         // FIXME: Do nothing, drop is currently performed by compiler.
     }

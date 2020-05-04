@@ -997,7 +997,7 @@ impl<T: ?Sized> Rc<T> {
             );
 
             // Free the allocation without dropping its contents
-            box_free(box_unique);
+            box_free(box_unique, Global);
 
             Self::from_ptr(ptr)
         }
