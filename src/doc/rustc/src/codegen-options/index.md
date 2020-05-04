@@ -98,6 +98,18 @@ values:
 The default behaviour, if frame pointers are not force-enabled, depends on the
 target.
 
+## force-unwind-tables
+
+This flag forces the generation of unwind tables. It takes one of the following
+values:
+
+* `y`, `yes`, `on`, or no value: Unwind tables are forced to be generated.
+* `n`, `no`, or `off`: Unwind tables are not forced to be generated. If unwind
+  tables are required by the target or `-C panic=unwind`, an error will be
+  emitted.
+
+The default if not specified depends on the target.
+
 ## incremental
 
 This flag allows you to enable incremental compilation, which allows `rustc`
