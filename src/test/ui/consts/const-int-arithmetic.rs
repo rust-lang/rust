@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(saturating_neg)]
 #![feature(const_checked_int_methods)]
 #![feature(const_euclidean_int_methods)]
 #![feature(const_overflowing_int_methods)]

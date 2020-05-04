@@ -1114,8 +1114,7 @@ instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "#![feature(saturating_neg)]
-assert_eq!(100", stringify!($SelfT), ".saturating_neg(), -100);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_neg(), -100);
 assert_eq!((-100", stringify!($SelfT), ").saturating_neg(), 100);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_neg(), ", stringify!($SelfT),
 "::MAX);
@@ -1124,7 +1123,7 @@ assert_eq!(", stringify!($SelfT), "::MAX.saturating_neg(), ", stringify!($SelfT)
 $EndFeature, "
 ```"),
 
-            #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[stable(feature = "saturating_neg", since = "1.45.0")]
             #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[inline]
             pub const fn saturating_neg(self) -> Self {
@@ -1141,8 +1140,7 @@ MIN` instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "#![feature(saturating_neg)]
-assert_eq!(100", stringify!($SelfT), ".saturating_abs(), 100);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_abs(), 100);
 assert_eq!((-100", stringify!($SelfT), ").saturating_abs(), 100);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_abs(), ", stringify!($SelfT),
 "::MAX);
@@ -1151,7 +1149,7 @@ assert_eq!((", stringify!($SelfT), "::MIN + 1).saturating_abs(), ", stringify!($
 $EndFeature, "
 ```"),
 
-            #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[stable(feature = "saturating_neg", since = "1.45.0")]
             #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[inline]
             pub const fn saturating_abs(self) -> Self {
