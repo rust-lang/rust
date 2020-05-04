@@ -236,12 +236,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "LeaveCriticalSection"
             | "DeleteCriticalSection" if this.frame().instance.to_string().starts_with("std::sys::windows::")
             => {
+                assert_eq!(this.get_total_thread_count()?, 1, "concurrency on Windows not supported");
                 // Nothing to do, not even a return value.
                 // (Windows locks are reentrant, and we have only 1 thread,
                 // so not doing any futher checks here is at least not incorrect.)
             }
             "TryEnterCriticalSection" if this.frame().instance.to_string().starts_with("std::sys::windows::")
             => {
+                assert_eq!(this.get_total_thread_count()?, 1, "concurrency on Windows not supported");
                 // There is only one thread, so this always succeeds and returns TRUE
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
