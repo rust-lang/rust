@@ -888,35 +888,7 @@ impl<'tcx> Constructor<'tcx> {
         debug!("wildcard_subpatterns({:#?}, {:?})", self, ty);
 
         match self {
-            Single | Variant(_) => match ty.kind {
-                ty::Tuple(ref fs) => {
-                    fs.into_iter().map(|t| t.expect_ty()).map(Pat::wildcard_from_ty).collect()
-                }
-                ty::Ref(_, rty, _) => vec![Pat::wildcard_from_ty(rty)],
-                ty::Adt(adt, substs) => {
-                    if adt.is_box() {
-                        // Use T as the sub pattern type of Box<T>.
-                        vec![Pat::wildcard_from_ty(substs.type_at(0))]
-                    } else {
-                        let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
-                        variant
-                            .fields
-                            .iter()
-                            .map(|field| {
-                                // Treat hidden fields as TyErr so we don't know they are
-                                // uninhabited.
-                                if cx.hide_uninhabited_field(ty, variant, field) {
-                                    cx.tcx.types.err
-                                } else {
-                                    field.ty(cx.tcx, substs)
-                                }
-                            })
-                            .map(Pat::wildcard_from_ty)
-                            .collect()
-                    }
-                }
-                _ => vec![],
-            },
+            Single | Variant(_) => VariantFields::wildcards(cx, self, ty).into_vec(),
             Slice(slice) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = slice.arity();
@@ -1076,11 +1048,40 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
         constructor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
     ) -> Self {
-        Self::from_patterns(cx, constructor, ty, constructor.wildcard_subpatterns(cx, ty))
+        let subpatterns = match ty.kind {
+            ty::Tuple(ref fs) => {
+                fs.into_iter().map(|t| t.expect_ty()).map(Pat::wildcard_from_ty).collect()
+            }
+            ty::Ref(_, rty, _) => vec![Pat::wildcard_from_ty(rty)],
+            ty::Adt(adt, substs) => {
+                if adt.is_box() {
+                    // Use T as the sub pattern type of Box<T>.
+                    vec![Pat::wildcard_from_ty(substs.type_at(0))]
+                } else {
+                    let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
+                    variant
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            // Treat hidden fields as TyErr so we don't know they are
+                            // uninhabited.
+                            if cx.hide_uninhabited_field(ty, variant, field) {
+                                cx.tcx.types.err
+                            } else {
+                                field.ty(cx.tcx, substs)
+                            }
+                        })
+                        .map(Pat::wildcard_from_ty)
+                        .collect()
+                }
+            }
+            _ => vec![],
+        };
+        Self::from_patterns(cx, constructor, ty, subpatterns)
     }
 
     /// Overrides some of the fields with the provided patterns
-    fn override_patterns(
+    fn override_fieldpatterns(
         mut self,
         cx: &mut MatchCheckCtxt<'p, 'tcx>,
         pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>,
@@ -1095,6 +1096,10 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
 
     fn into_patstack(self) -> PatStack<'p, 'tcx> {
         PatStack::from_vec(self.fields)
+    }
+
+    fn into_vec(self) -> Vec<Pat<'tcx>> {
+        self.fields.into_iter().cloned().collect()
     }
 
     fn into_fieldpats(self) -> impl Iterator<Item = FieldPat<'tcx>> + 'p {
@@ -2402,7 +2407,7 @@ fn specialize_one_pattern<'p, 'tcx>(
             if constructor == &pat_ctor {
                 Some(
                     VariantFields::wildcards(cx, constructor, pat.ty)
-                        .override_patterns(cx, subpatterns)
+                        .override_fieldpatterns(cx, subpatterns)
                         .into_patstack(),
                 )
             } else {
@@ -2412,7 +2417,7 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Leaf { ref subpatterns } => Some(
             VariantFields::wildcards(cx, constructor, pat.ty)
-                .override_patterns(cx, subpatterns)
+                .override_fieldpatterns(cx, subpatterns)
                 .into_patstack(),
         ),
 
