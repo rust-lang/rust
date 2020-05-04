@@ -1505,7 +1505,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// is removed and `None` is returned.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn remove_current_as_list(&mut self) -> Option<LinkedList<T>> {
-        let unlinked_node = self.current?;
+        let mut unlinked_node = self.current?;
         unsafe {
             self.current = unlinked_node.as_ref().next;
             self.list.unlink_node(unlinked_node);
