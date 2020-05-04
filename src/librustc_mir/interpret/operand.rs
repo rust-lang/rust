@@ -240,6 +240,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         {
             Some(ptr) => ptr,
             None => {
+                if let Scalar::Ptr(ptr) = mplace.ptr {
+                    // We may be reading from a static.
+                    // In order to ensure that `static FOO: Type = FOO;` causes a cycle error
+                    // instead of magically pulling *any* ZST value from the ether, we need to
+                    // actually access the referenced allocation.
+                    self.memory.get_raw(ptr.alloc_id)?;
+                }
                 return Ok(Some(ImmTy {
                     // zero-sized type
                     imm: Scalar::zst().into(),
