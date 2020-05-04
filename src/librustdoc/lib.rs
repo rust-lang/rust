@@ -457,7 +457,13 @@ fn main_options(options: config::Options) -> i32 {
         (true, true) => return markdown::test(options, &diag),
         (true, false) => return test::run(options),
         (false, true) => {
-            return markdown::render(options.input, options.render_options, &diag, options.edition);
+            match markdown::render(&options.input, options.render_options, options.edition) {
+                Ok(()) => return 0,
+                Err(err) => {
+                    diag.struct_err(&err).emit();
+                    return 1;
+                }
+            }
         }
         (false, false) => {}
     }
