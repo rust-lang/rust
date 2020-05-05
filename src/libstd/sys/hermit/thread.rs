@@ -16,25 +16,24 @@ pub struct Thread {
 unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
-pub const DEFAULT_MIN_STACK_SIZE: usize = 262144;
+pub const DEFAULT_MIN_STACK_SIZE: usize = 1 << 20;
 
 impl Thread {
     pub unsafe fn new_with_coreid(
-        _stack: usize,
+        stack: usize,
         p: Box<dyn FnOnce()>,
         core_id: isize,
     ) -> io::Result<Thread> {
         let p = Box::into_raw(box p);
-        let mut tid: Tid = u32::MAX;
-        let ret = abi::spawn(
-            &mut tid as *mut Tid,
+        let tid = abi::spawn2(
             thread_start,
-            &*p as *const _ as *const u8 as usize,
+            p as usize,
             abi::Priority::into(abi::NORMAL_PRIO),
+            stack,
             core_id,
         );
 
-        return if ret != 0 {
+        return if tid == 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
             drop(Box::from_raw(p));
