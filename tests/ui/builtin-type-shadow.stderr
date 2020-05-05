@@ -18,8 +18,6 @@ LL |     42
    |
    = note: expected type parameter `u32`
                         found type `{integer}`
-   = help: type parameters must be constrained to match other types
-   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error: aborting due to 2 previous errors
 
