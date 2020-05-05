@@ -950,13 +950,6 @@ impl<'tcx> Constructor<'tcx> {
     }
 }
 
-/// The fields of a struct, a tuple, or an enum variant. This hides away fields whose
-/// uninhabitedness should not be visible to the user.
-#[derive(Debug, Clone)]
-struct StructFields<'p, 'tcx> {
-    fields: SmallVec<[StructField<'p, 'tcx>; 2]>,
-}
-
 #[derive(Debug, Copy, Clone)]
 enum StructField<'p, 'tcx> {
     Kept(&'p Pat<'tcx>),
@@ -984,97 +977,6 @@ impl<'p, 'tcx> StructField<'p, 'tcx> {
     }
 }
 
-impl<'p, 'tcx> StructFields<'p, 'tcx> {
-    /// Creates a new list of wildcard fields for a given constructor. `constructor`
-    /// must be `Variant` or `Single`.
-    fn wildcards(
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        constructor: &Constructor<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Self {
-        let fields = match ty.kind {
-            ty::Tuple(ref fs) => fs
-                .into_iter()
-                .map(|t| t.expect_ty())
-                .map(|ty| StructField::wildcard_from_ty(cx, ty))
-                .collect(),
-            ty::Ref(_, rty, _) => smallvec![StructField::wildcard_from_ty(cx, rty)],
-            ty::Adt(adt, substs) => {
-                if adt.is_box() {
-                    // Use T as the sub pattern type of Box<T>.
-                    smallvec![StructField::wildcard_from_ty(cx, substs.type_at(0))]
-                } else {
-                    let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
-                    // Whether we must not match the fields of this variant exhaustively.
-                    let is_non_exhaustive =
-                        variant.is_field_list_non_exhaustive() && !adt.did.is_local();
-                    variant
-                        .fields
-                        .iter()
-                        .map(|field| {
-                            let field_ty = field.ty(cx.tcx, substs);
-                            let is_visible =
-                                adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
-                            let is_uninhabited = cx.is_uninhabited(field_ty);
-
-                            // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
-                            // uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
-                            if is_uninhabited && (!is_visible || is_non_exhaustive) {
-                                StructField::Hidden(field_ty)
-                            } else {
-                                StructField::wildcard_from_ty(cx, field_ty)
-                            }
-                        })
-                        .collect()
-                }
-            }
-            _ => smallvec![],
-        };
-        StructFields { fields }
-    }
-
-    /// Number of (filtered) patterns contained.
-    fn arity(&self) -> usize {
-        self.fields.iter().filter(|p| p.kept().is_some()).count()
-    }
-
-    /// Overrides some of the fields with the provided patterns in the order provided.
-    fn replace_fields(&self, pats: impl IntoIterator<Item = &'p Pat<'tcx>>) -> Self {
-        // There should be `arity()` patterns in there.
-        let mut pats_iter = pats.into_iter();
-        let mut fields = self.clone();
-        for f in &mut fields.fields {
-            if let StructField::Kept(p) = f {
-                // We take one input pattern for each `Kept` field, in order.
-                let pat = pats_iter.next().unwrap();
-                *p = pat;
-            }
-        }
-        fields
-    }
-
-    /// Overrides some of the fields with the provided patterns.
-    fn replace_fields_indexed(&self, pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>) -> Self {
-        let mut res = self.clone();
-        for pat in pats {
-            if let StructField::Kept(p) = &mut res.fields[pat.field.index()] {
-                *p = &pat.pattern
-            }
-        }
-        res
-    }
-
-    /// Iterate over the exhaustive list of patterns.
-    fn iter_all_patterns<'a>(&'a self) -> impl Iterator<Item = Pat<'tcx>> + Captures<'a> {
-        self.fields.iter().map(|p| p.to_pattern())
-    }
-
-    /// Returns the filtered list of patterns, to be stored in the matrix.
-    fn filtered_patterns(&self) -> SmallVec<[&'p Pat<'tcx>; 2]> {
-        self.fields.iter().filter_map(|p| p.kept()).collect()
-    }
-}
-
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
 /// those fields, generalized to allow patterns in each field. See also `Constructor`.
 ///
@@ -1085,11 +987,11 @@ impl<'p, 'tcx> StructFields<'p, 'tcx> {
 /// full fields.
 #[derive(Debug, Clone)]
 enum Fields<'p, 'tcx> {
-    /// Fields of a struct, with special handling of uninhabited types.
-    Struct(StructFields<'p, 'tcx>),
+    /// Fields of a struct/tuple/variant, with special handling of uninhabited types.
+    Struct(SmallVec<[StructField<'p, 'tcx>; 2]>),
     /// Non-struct list of patterns
     Other(SmallVec<[&'p Pat<'tcx>; 2]>),
-    /// Optimization for slices
+    /// Optimization for slices of wildcards
     WildcardSlice { arity: usize, wild: &'p Pat<'tcx> },
 }
 
@@ -1113,7 +1015,44 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         debug!("Fields::wildcards({:#?}, {:?})", constructor, ty);
 
         match constructor {
-            Single | Variant(_) => Fields::Struct(StructFields::wildcards(cx, constructor, ty)),
+            Single | Variant(_) => Fields::Struct(match ty.kind {
+                ty::Tuple(ref fs) => fs
+                    .into_iter()
+                    .map(|t| t.expect_ty())
+                    .map(|ty| StructField::wildcard_from_ty(cx, ty))
+                    .collect(),
+                ty::Ref(_, rty, _) => smallvec![StructField::wildcard_from_ty(cx, rty)],
+                ty::Adt(adt, substs) => {
+                    if adt.is_box() {
+                        // Use T as the sub pattern type of Box<T>.
+                        smallvec![StructField::wildcard_from_ty(cx, substs.type_at(0))]
+                    } else {
+                        let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
+                        // Whether we must not match the fields of this variant exhaustively.
+                        let is_non_exhaustive =
+                            variant.is_field_list_non_exhaustive() && !adt.did.is_local();
+                        variant
+                            .fields
+                            .iter()
+                            .map(|field| {
+                                let field_ty = field.ty(cx.tcx, substs);
+                                let is_visible = adt.is_enum()
+                                    || field.vis.is_accessible_from(cx.module, cx.tcx);
+                                let is_uninhabited = cx.is_uninhabited(field_ty);
+
+                                // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
+                                // uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
+                                if is_uninhabited && (!is_visible || is_non_exhaustive) {
+                                    StructField::Hidden(field_ty)
+                                } else {
+                                    StructField::wildcard_from_ty(cx, field_ty)
+                                }
+                            })
+                            .collect()
+                    }
+                }
+                _ => smallvec![],
+            }),
             Slice(slice) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let wild = &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
@@ -1128,7 +1067,18 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 
     /// Overrides some of the fields with the provided patterns. Panics if `self` is not `Struct`.
     fn replace_fields_indexed(&self, pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>) -> Self {
-        Fields::Struct(self.as_structfields().unwrap().replace_fields_indexed(pats))
+        match self {
+            Fields::Struct(fields) => {
+                let mut fields = fields.clone();
+                for pat in pats {
+                    if let StructField::Kept(p) = &mut fields[pat.field.index()] {
+                        *p = &pat.pattern
+                    }
+                }
+                Fields::Struct(fields)
+            }
+            _ => bug!("`replace_fields_indexed` called on the wrong kind of `Fields`"),
+        }
     }
 
     /// Replaces contained fields with the given filtered list of patterns, e.g. taken from the
@@ -1138,33 +1088,38 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         cx: &MatchCheckCtxt<'p, 'tcx>,
         pats: impl IntoIterator<Item = Pat<'tcx>>,
     ) -> Self {
+        // There should be `arity()` patterns in there.
         let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
+        let mut pats = pats.iter();
+
         match self {
-            Fields::Struct(sf) => Fields::Struct(sf.replace_fields(pats)),
-            _ => Fields::Other(pats.iter().collect()),
+            Fields::Struct(fields) => {
+                let mut fields = fields.clone();
+                for f in &mut fields {
+                    if let StructField::Kept(p) = f {
+                        // We take one input pattern for each `Kept` field, in order.
+                        *p = pats.next().unwrap();
+                    }
+                }
+                Fields::Struct(fields)
+            }
+            _ => Fields::Other(pats.collect()),
         }
     }
 
     /// Number of (filtered) patterns contained.
     fn arity(&self) -> usize {
         match self {
-            Fields::Struct(sf) => sf.arity(),
+            Fields::Struct(fields) => fields.iter().filter(|p| p.kept().is_some()).count(),
             Fields::Other(pats) => pats.len(),
             &Fields::WildcardSlice { arity, .. } => arity,
-        }
-    }
-
-    fn as_structfields(&self) -> Option<&StructFields<'p, 'tcx>> {
-        match self {
-            Fields::Struct(sf) => Some(sf),
-            _ => None,
         }
     }
 
     /// Returns the exhaustive list of patterns.
     fn all_patterns(&self) -> SmallVec<[Pat<'tcx>; 2]> {
         match self {
-            Fields::Struct(sf) => sf.iter_all_patterns().collect(),
+            Fields::Struct(fields) => fields.iter().map(|p| p.to_pattern()).collect(),
             Fields::Other(pats) => pats.iter().copied().cloned().collect(),
             &Fields::WildcardSlice { arity, wild } => (0..arity).map(|_| wild).cloned().collect(),
         }
@@ -1173,7 +1128,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     /// Returns the filtered list of patterns, to be stored in the matrix.
     fn filtered_patterns(self) -> SmallVec<[&'p Pat<'tcx>; 2]> {
         match self {
-            Fields::Struct(sf) => sf.filtered_patterns(),
+            Fields::Struct(fields) => fields.into_iter().filter_map(|p| p.kept()).collect(),
             Fields::Other(pats) => pats,
             Fields::WildcardSlice { arity, wild } => (0..arity).map(|_| wild).collect(),
         }
