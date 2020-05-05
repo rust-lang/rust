@@ -1,6 +1,9 @@
 import * as cp from 'child_process';
+import * as os from 'os';
+import * as path from 'path';
 import * as readline from 'readline';
 import { OutputChannel } from 'vscode';
+import { isValidExecutable } from './util';
 
 interface CompilationArtifact {
     fileName: string;
@@ -63,7 +66,14 @@ export class Cargo {
         onStderrString: (data: string) => void
     ): Promise<number> {
         return new Promise((resolve, reject) => {
-            const cargo = cp.spawn('cargo', cargoArgs, {
+            let cargoPath;
+            try {
+                cargoPath = getCargoPathOrFail();
+            } catch (err) {
+                return reject(err);
+            }
+
+            const cargo = cp.spawn(cargoPath, cargoArgs, {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 cwd: this.rootFolder
             });
@@ -86,4 +96,28 @@ export class Cargo {
             });
         });
     }
+}
+
+// Mirrors `ra_env::get_path_for_executable` implementation
+function getCargoPathOrFail(): string {
+    const envVar = process.env.CARGO;
+    const executableName = "cargo";
+
+    if (envVar) {
+        if (isValidExecutable(envVar)) return envVar;
+
+        throw new Error(`\`${envVar}\` environment variable points to something that's not a valid executable`);
+    }
+
+    if (isValidExecutable(executableName)) return executableName;
+
+    const standardLocation = path.join(os.homedir(), '.cargo', 'bin', executableName);
+
+    if (isValidExecutable(standardLocation)) return standardLocation;
+
+    throw new Error(
+        `Failed to find \`${executableName}\` executable. ` +
+        `Make sure \`${executableName}\` is in \`$PATH\`, ` +
+        `or set \`${envVar}\` to point to a valid executable.`
+    );
 }

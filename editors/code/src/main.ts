@@ -8,10 +8,9 @@ import { activateInlayHints } from './inlay_hints';
 import { activateStatusDisplay } from './status_display';
 import { Ctx } from './ctx';
 import { Config, NIGHTLY_TAG } from './config';
-import { log, assert } from './util';
+import { log, assert, isValidExecutable } from './util';
 import { PersistentState } from './persistent_state';
 import { fetchRelease, download } from './net';
-import { spawnSync } from 'child_process';
 import { activateTaskProvider } from './tasks';
 
 let ctx: Ctx | undefined;
@@ -179,10 +178,7 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
 
     log.debug("Using server binary at", path);
 
-    const res = spawnSync(path, ["--version"], { encoding: 'utf8' });
-    log.debug("Checked binary availability via --version", res);
-    log.debug(res, "--version output:", res.output);
-    if (res.status !== 0) {
+    if (!isValidExecutable(path)) {
         throw new Error(`Failed to execute ${path} --version`);
     }
 
