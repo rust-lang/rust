@@ -58,7 +58,7 @@ pub struct CargoConfig {
     pub load_out_dirs_from_check: bool,
 
     /// rustc target
-    pub default_target: Option<String>,
+    pub target: Option<String>,
 }
 
 impl Default for CargoConfig {
@@ -68,7 +68,7 @@ impl Default for CargoConfig {
             all_features: true,
             features: Vec::new(),
             load_out_dirs_from_check: false,
-            default_target: None,
+            target: None,
         }
     }
 }
@@ -164,7 +164,7 @@ impl CargoWorkspace {
         if let Some(parent) = cargo_toml.parent() {
             meta.current_dir(parent);
         }
-        if let Some(target) = cargo_features.default_target.as_ref() {
+        if let Some(target) = cargo_features.target.as_ref() {
             meta.other_options(&[String::from("--filter-platform"), target.clone()]);
         }
         let meta = meta.exec().with_context(|| {
