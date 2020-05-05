@@ -242,7 +242,7 @@ use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
 use rustc_middle::mir::Field;
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Const, FieldDef, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
@@ -614,36 +614,6 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
             _ => false,
         }
     }
-
-    /// Returns whether the given variant is from another crate and has its fields declared
-    /// `#[non_exhaustive]`.
-    fn is_foreign_non_exhaustive_variant(&self, ty: Ty<'tcx>, variant: &VariantDef) -> bool {
-        match ty.kind {
-            ty::Adt(def, ..) => variant.is_field_list_non_exhaustive() && !def.did.is_local(),
-            _ => false,
-        }
-    }
-
-    /// In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
-    /// uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
-    fn hide_uninhabited_field(
-        &self,
-        adt_ty: Ty<'tcx>,
-        variant: &VariantDef,
-        field: &FieldDef,
-    ) -> bool {
-        match adt_ty.kind {
-            ty::Adt(adt, substs) => {
-                let is_non_exhaustive = self.is_foreign_non_exhaustive_variant(adt_ty, variant);
-                let field_ty = field.ty(self.tcx, substs);
-                let is_visible =
-                    adt.is_enum() || field.vis.is_accessible_from(self.module, self.tcx);
-                let is_uninhabited = self.is_uninhabited(field_ty);
-                is_uninhabited && (!is_visible || is_non_exhaustive)
-            }
-            _ => false,
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -785,21 +755,6 @@ impl<'tcx> Constructor<'tcx> {
     fn is_slice(&self) -> bool {
         match self {
             Slice(_) => true,
-            _ => false,
-        }
-    }
-
-    /// Returns whether the fields of this constructor should be treated as `non_exhaustive`.
-    fn is_field_list_non_exhaustive<'a>(
-        &self,
-        cx: &MatchCheckCtxt<'a, 'tcx>,
-        ty: Ty<'tcx>,
-    ) -> bool {
-        match ty.kind {
-            ty::Adt(adt, _) => {
-                let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
-                cx.is_foreign_non_exhaustive_variant(ty, variant)
-            }
             _ => false,
         }
     }
@@ -1000,7 +955,6 @@ impl<'tcx> Constructor<'tcx> {
 #[derive(Debug, Clone)]
 struct StructFields<'p, 'tcx> {
     fields: SmallVec<[StructField<'p, 'tcx>; 2]>,
-    is_non_exhaustive: bool,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -1051,13 +1005,21 @@ impl<'p, 'tcx> StructFields<'p, 'tcx> {
                     smallvec![StructField::wildcard_from_ty(cx, substs.type_at(0))]
                 } else {
                     let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
+                    // Whether we must not match the fields of this variant exhaustively.
+                    let is_non_exhaustive =
+                        variant.is_field_list_non_exhaustive() && !adt.did.is_local();
                     variant
                         .fields
                         .iter()
                         .map(|field| {
                             let field_ty = field.ty(cx.tcx, substs);
-                            // Filter out hidden fields so we don't know they are uninhabited.
-                            if cx.hide_uninhabited_field(ty, variant, field) {
+                            let is_visible =
+                                adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
+                            let is_uninhabited = cx.is_uninhabited(field_ty);
+
+                            // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
+                            // uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
+                            if is_uninhabited && (!is_visible || is_non_exhaustive) {
                                 StructField::Hidden(field_ty)
                             } else {
                                 StructField::wildcard_from_ty(cx, field_ty)
@@ -1068,8 +1030,7 @@ impl<'p, 'tcx> StructFields<'p, 'tcx> {
             }
             _ => smallvec![],
         };
-        let is_non_exhaustive = constructor.is_field_list_non_exhaustive(cx, ty);
-        StructFields { fields, is_non_exhaustive }
+        StructFields { fields }
     }
 
     /// Number of (filtered) patterns contained.
