@@ -363,6 +363,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "atomic_singlethreadfence_acqrel"
             | "atomic_singlethreadfence"
             => {
+                let &[] = check_arg_count(args)?;
                 // we are inherently singlethreaded and singlecored, this is a nop
             }
 

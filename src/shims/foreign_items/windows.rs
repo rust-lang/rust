@@ -251,22 +251,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Just fake a HANDLE
                 this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
             }
-            "GetModuleHandleW" if this.frame().instance.to_string().starts_with("std::sys::windows::")
-            => {
+            "GetModuleHandleW" if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 #[allow(non_snake_case)]
                 let &[_lpModuleName] = check_arg_count(args)?;
                 // Pretend this does not exist / nothing happened, by returning zero.
                 this.write_null(dest)?;
             }
-            "GetProcAddress" if this.frame().instance.to_string().starts_with("std::sys::windows::")
-            => {
+            "GetProcAddress" if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 #[allow(non_snake_case)]
                 let &[_hModule, _lpProcName] = check_arg_count(args)?;
                 // Pretend this does not exist / nothing happened, by returning zero.
                 this.write_null(dest)?;
             }
-            "SetConsoleTextAttribute" if this.frame().instance.to_string().starts_with("std::sys::windows::")
-            => {
+            "SetConsoleTextAttribute" if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 #[allow(non_snake_case)]
                 let &[_hConsoleOutput, _wAttribute] = check_arg_count(args)?;
                 // Pretend these does not exist / nothing happened, by returning zero.
@@ -281,8 +278,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "InitializeCriticalSection"
             | "EnterCriticalSection"
             | "LeaveCriticalSection"
-            | "DeleteCriticalSection" if this.frame().instance.to_string().starts_with("std::sys::windows::")
-            => {
+            | "DeleteCriticalSection"
+            if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 #[allow(non_snake_case)]
                 let &[_lpCriticalSection] = check_arg_count(args)?;
                 assert_eq!(this.get_total_thread_count()?, 1, "concurrency on Windows not supported");
@@ -290,8 +287,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // (Windows locks are reentrant, and we have only 1 thread,
                 // so not doing any futher checks here is at least not incorrect.)
             }
-            "TryEnterCriticalSection" if this.frame().instance.to_string().starts_with("std::sys::windows::")
-            => {
+            "TryEnterCriticalSection"
+            if this.frame().instance.to_string().starts_with("std::sys::windows::") => {
                 #[allow(non_snake_case)]
                 let &[_lpCriticalSection] = check_arg_count(args)?;
                 assert_eq!(this.get_total_thread_count()?, 1, "concurrency on Windows not supported");

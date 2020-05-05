@@ -379,19 +379,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
-            | "pthread_attr_init"
-            | "pthread_attr_destroy"
-            | "pthread_attr_setstacksize"
-            | "pthread_condattr_init"
-            | "pthread_condattr_setclock"
-            | "pthread_cond_init"
-            | "pthread_condattr_destroy"
-            | "pthread_cond_destroy" if this.frame().instance.to_string().starts_with("std::sys::unix::")
-            => {
-                this.write_null(dest)?;
-            }
-            "pthread_attr_getguardsize" if this.frame().instance.to_string().starts_with("std::sys::unix::")
-            => {
+            "pthread_attr_getguardsize"
+            if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
                 let &[_attr, guard_size] = check_arg_count(args)?;
                 let guard_size = this.deref_operand(guard_size)?;
                 let guard_size_layout = this.libc_ty_layout("size_t")?;
@@ -401,11 +390,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
 
+            | "pthread_attr_init"
+            | "pthread_attr_destroy"
+            | "pthread_condattr_init"
+            | "pthread_condattr_destroy"
+            | "pthread_cond_destroy"
+            if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
+                let &[_] = check_arg_count(args)?;
+                this.write_null(dest)?;
+            }
+            | "pthread_cond_init"
+            | "pthread_attr_setstacksize"
+            | "pthread_condattr_setclock"
+            if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
+                let &[_, _] = check_arg_count(args)?;
+                this.write_null(dest)?;
+            }
+
             | "signal"
-            | "sigaction"
             | "sigaltstack"
-            | "mprotect" if this.frame().instance.to_string().starts_with("std::sys::unix::")
-            => {
+            if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
+                let &[_, _] = check_arg_count(args)?;
+                this.write_null(dest)?;
+            }
+            | "sigaction"
+            | "mprotect"
+            if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
+                let &[_, _, _] = check_arg_count(args)?;
                 this.write_null(dest)?;
             }
 
