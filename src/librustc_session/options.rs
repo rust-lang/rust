@@ -938,9 +938,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "enable origins tracking in MemorySanitizer"),
     sanitizer_recover: Vec<Sanitizer> = (vec![], parse_sanitizer_list, [TRACKED],
         "enable recovery for selected sanitizers"),
-    saturating_float_casts: bool = (false, parse_bool, [TRACKED],
+    saturating_float_casts: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make float->int casts UB-free: numbers outside the integer type's range are clipped to \
-        the max/min integer respectively, and NaN is mapped to 0 (default: no)"),
+        the max/min integer respectively, and NaN is mapped to 0 (default: yes)"),
     save_analysis: bool = (false, parse_bool, [UNTRACKED],
         "write syntax and type analysis (in JSON format) information, in \
         addition to normal output (default: no)"),
