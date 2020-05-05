@@ -4,7 +4,7 @@
 // 1. Vec::new()
 // 2. String::new()
 // 3. BTreeMap::new()
-// 3. BTreeSet::new()
+// 4. BTreeSet::new()
 
 #![feature(const_btree_new)]
 
