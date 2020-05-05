@@ -331,6 +331,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if args.len() < 2 {
             throw_ub_format!("incorrect number of arguments for fcntl: got {}, expected at least 2", args.len());
         }
+        let fd = this.read_scalar(args[0])?.to_i32()?;
         let cmd = this.read_scalar(args[1])?.to_i32()?;
         // We only support getting the flags for a descriptor.
         if cmd == this.eval_libc_i32("F_GETFD")? {
@@ -338,8 +339,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
             // always sets this flag when opening a file. However we still need to check that the
             // file itself is open.
-            let &[fd, _] = check_arg_count(args)?;
-            let fd = this.read_scalar(fd)?.to_i32()?;
+            let &[_, _] = check_arg_count(args)?;
             if this.machine.file_handler.handles.contains_key(&fd) {
                 Ok(this.eval_libc_i32("FD_CLOEXEC")?)
             } else {
@@ -352,8 +352,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
             // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
             // thus they can share the same implementation here.
-            let &[fd, _, start] = check_arg_count(args)?;
-            let fd = this.read_scalar(fd)?.to_i32()?;
+            let &[_, _, start] = check_arg_count(args)?;
             let start = this.read_scalar(start)?.to_i32()?;
             if fd < MIN_NORMAL_FILE_FD {
                 throw_unsup_format!("duplicating file descriptors for stdin, stdout, or stderr is not supported")
