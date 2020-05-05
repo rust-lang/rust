@@ -13,7 +13,7 @@ $ ./test.sh --release
 
 ## Usage
 
-`$cg_clif_dir` is the directory you cloned this repo into in the following instruction.
+`$cg_clif_dir` is the directory you cloned this repo into in the following instructions.
 
 ### Cargo
 
@@ -29,6 +29,24 @@ If you compiled cg_clif in debug mode (aka you didn't pass `--release` to `./tes
 
 ```bash
 $ rustc +$(cat $cg_clif_dir/rust-toolchain) -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/release/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot my_crate.rs
+```
+
+### Shell
+
+These are a few functions that allow you to easily run rust code from the shell using cg_clif as jit.
+
+```bash
+function jit_naked() {
+    echo "$@" | CG_CLIF_JIT=1 rustc -Zcodegen-backend=$cg_clif_dir/target/release/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot - -Cprefer-dynamic
+}
+
+function jit() {
+    jit_naked "fn main() { $@ }"
+}
+
+function jit_calc() {
+    jit 'println!("0x{:x}", ' $@ ');';
+}
 ```
 
 ## Env vars
