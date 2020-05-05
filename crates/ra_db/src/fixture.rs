@@ -1,4 +1,48 @@
-//! FIXME: write short doc here
+//! Fixtures are strings containing rust source code with optional metadata.
+//! A fixture without metadata is parsed into a single source file.
+//! Use this to test functionality local to one file.
+//!
+//! Example:
+//! ```
+//! r#"
+//! fn main() {
+//!     println!("Hello World")
+//! }
+//! "#
+//! ```
+//!
+//! Metadata can be added to a fixture after a `//-` comment.
+//! The basic form is specifying filenames,
+//! which is also how to define multiple files in a single test fixture
+//!
+//! Example:
+//! ```
+//! "
+//! //- /main.rs
+//! mod foo;
+//! fn main() {
+//!     foo::bar();
+//! }
+//!
+//! //- /foo.rs
+//! pub fn bar() {}
+//! "
+//! ```
+//!
+//! Metadata allows specifying all settings and variables
+//! that are available in a real rust project:
+//! - crate names via `crate:cratename`
+//! - dependencies via `deps:dep1,dep2`
+//! - configuration settings via `cfg:dbg=false,opt_level=2`
+//! - environment variables via `env:PATH=/bin,RUST_LOG=debug`
+//!
+//! Example:
+//! ```
+//! "
+//! //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
+//! fn insert_source_code_here() {}
+//! "
+//! ```
 
 use std::str::FromStr;
 use std::sync::Arc;
