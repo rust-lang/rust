@@ -34,7 +34,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "setenv" => {
-                let &[name, value, _overwrite] = check_arg_count(args)?;
+                let &[name, value, overwrite] = check_arg_count(args)?;
+                this.read_scalar(overwrite)?.to_i32()?;
                 let result = this.setenv(name, value)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
@@ -51,8 +52,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // File related shims
             "open" | "open64" => {
-                let &[path, flag, _mode] = check_arg_count(args)?;
-                let result = this.open(path, flag)?;
+                let &[path, flag, mode] = check_arg_count(args)?;
+                let result = this.open(path, flag, mode)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "fcntl" => {

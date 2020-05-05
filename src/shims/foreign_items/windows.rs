@@ -63,7 +63,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_machine_isize(which.into(), this), dest)?;
             }
             "WriteFile" => {
-                let &[handle, buf, n, written_ptr, _overlapped] = check_arg_count(args)?;
+                let &[handle, buf, n, written_ptr, overlapped] = check_arg_count(args)?;
+                this.read_scalar(overlapped)?.to_machine_usize(this)?; // this is a poiner, that we ignore
                 let handle = this.read_scalar(handle)?.to_machine_isize(this)?;
                 let buf = this.read_scalar(buf)?.not_undef()?;
                 let n = this.read_scalar(n)?.to_u32()?;
