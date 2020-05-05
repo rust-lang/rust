@@ -1164,13 +1164,33 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             let parent_id = tcx.hir().get_parent_item(hir_id);
             Some(tcx.hir().local_def_id(parent_id).to_def_id())
         }
-
+        // FIXME(#43408) always enable this once we use `lazy_normalization` is
+        // stable enough and does not need a feature gate anymore.
         Node::AnonConst(_) => {
-            if tcx.features().lazy_normalization_consts {
-                let parent_id = tcx.hir().get_parent_item(hir_id);
-                Some(tcx.hir().local_def_id(parent_id).to_def_id())
+            let parent_id = tcx.hir().get_parent_item(hir_id);
+            let parent_def_id = tcx.hir().local_def_id(parent_id);
+
+            // HACK(eddyb) this provides the correct generics when
+            // `feature(const_generics)` is enabled, so that const expressions
+            // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
+            if tcx.features().const_generics || tcx.features().lazy_normalization_consts {
+                Some(parent_def_id.to_def_id())
             } else {
-                None
+                let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
+                match parent_node {
+                    // HACK(eddyb) this provides the correct generics for repeat
+                    // expressions' count (i.e. `N` in `[x; N]`), and explicit
+                    // `enum` discriminants (i.e. `D` in `enum Foo { Bar = D }`),
+                    // as they shouldn't be able to cause query cycle errors.
+                    Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
+                    | Node::Variant(Variant { disr_expr: Some(ref constant), .. })
+                        if constant.hir_id == hir_id =>
+                    {
+                        Some(parent_def_id.to_def_id())
+                    }
+
+                    _ => None,
+                }
             }
         }
 
