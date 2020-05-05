@@ -999,7 +999,7 @@ impl<'tcx> Constructor<'tcx> {
     /// Like `apply`, but where all the subpatterns are wildcards `_`.
     fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
         let subpatterns = Fields::wildcards(cx, self, ty).to_patstack();
-        self.apply(cx, ty, subpatterns.iter().cloned().rev())
+        self.apply(cx, ty, subpatterns.iter().cloned())
     }
 }
 
