@@ -835,6 +835,7 @@ pub fn handle_code_lens(
     for runnable in world.analysis().runnables(file_id)? {
         let title = match &runnable.kind {
             RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => "▶️\u{fe0e}Run Test",
+            RunnableKind::DocTest { .. } => "▶️\u{fe0e}Run Doctest",
             RunnableKind::Bench { .. } => "Run Bench",
             RunnableKind::Bin => "Run",
         }
@@ -1018,6 +1019,7 @@ fn to_lsp_runnable(
         RunnableKind::Test { test_id, .. } => format!("test {}", test_id),
         RunnableKind::TestMod { path } => format!("test-mod {}", path),
         RunnableKind::Bench { test_id } => format!("bench {}", test_id),
+        RunnableKind::DocTest { test_id, .. } => format!("doctest {}", test_id),
         RunnableKind::Bin => "run binary".to_string(),
     };
     Ok(req::Runnable {
