@@ -573,9 +573,16 @@ impl ExprCollector<'_> {
             self.body.item_scope.define_def(def);
             if let Some(name) = name {
                 let vis = crate::visibility::Visibility::Public; // FIXME determine correctly
-                self.body
-                    .item_scope
-                    .push_res(name.as_name(), crate::per_ns::PerNs::from_def(def, vis));
+                let has_constructor = match def {
+                    ModuleDefId::AdtId(AdtId::StructId(s)) => {
+                        self.db.struct_data(s).variant_data.kind() != StructKind::Record
+                    }
+                    _ => true,
+                };
+                self.body.item_scope.push_res(
+                    name.as_name(),
+                    crate::per_ns::PerNs::from_def(def, vis, has_constructor),
+                );
             }
         }
     }
