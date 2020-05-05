@@ -23,6 +23,6 @@ codespan-reporting = { version = "0.5", optional = true }
 rustc-workspace-hack = "1.0.0"
 
 [dependencies.mdbook]
-version = "0.3.0"
+version = "0.3.7"
 default-features = false
 features = ["search"]
