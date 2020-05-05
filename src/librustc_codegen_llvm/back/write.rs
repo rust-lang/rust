@@ -853,7 +853,9 @@ unsafe fn embed_bitcode(
         || cgcx.opts.target_triple.triple().starts_with("asmjs")
     {
         // nothing to do here
-    } else if cgcx.opts.target_triple.triple().contains("windows") {
+    } else if cgcx.opts.target_triple.triple().contains("windows")
+        || cgcx.opts.target_triple.triple().contains("uefi")
+    {
         let asm = "
             .section .llvmbc,\"n\"
             .section .llvmcmd,\"n\"

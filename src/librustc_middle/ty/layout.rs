@@ -2607,7 +2607,7 @@ where
 
                     // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
                     // for the entire duration of the function as they can be deallocated
-                    // any time. Set their valid size to 0.
+                    // at any time. Set their valid size to 0.
                     attrs.pointee_size = match kind {
                         PointerKind::UniqueOwned => Size::ZERO,
                         _ => pointee.size,

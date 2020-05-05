@@ -1753,7 +1753,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         potential_assoc_types: Vec<Span>,
         trait_bounds: &[hir::PolyTraitRef<'_>],
     ) {
-        if !associated_types.values().any(|v| !v.is_empty()) {
+        if associated_types.values().all(|v| v.is_empty()) {
             return;
         }
         let tcx = self.tcx();
