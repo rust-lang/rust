@@ -1,9 +1,11 @@
 //! The underlying OsString/OsStr implementation on Unix and many other
 //! systems: just a `Vec<u8>`/`[u8]`.
 
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::Cow;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
+use crate::hash;
 use crate::mem;
 use crate::rc::Rc;
 use crate::str;
@@ -13,9 +15,22 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 use core::str::lossy::Utf8Lossy;
 
-#[derive(Clone, Hash)]
-pub(crate) struct Buf {
-    pub inner: Vec<u8>,
+pub(crate) struct Buf<A: AllocRef = Global> {
+    pub inner: Vec<u8, A>,
+}
+
+impl Clone for Buf {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone() }
+    }
+}
+
+impl hash::Hash for Buf {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.inner.hash(state)
+    }
 }
 
 // FIXME:

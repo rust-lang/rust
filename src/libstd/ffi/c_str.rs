@@ -1,8 +1,10 @@
+use crate::alloc::{AllocRef, Global};
 use crate::ascii;
 use crate::borrow::{Borrow, Cow};
 use crate::cmp::Ordering;
 use crate::error::Error;
 use crate::fmt::{self, Write};
+use crate::hash;
 use crate::io;
 use crate::mem;
 use crate::memchr;
@@ -114,13 +116,55 @@ use crate::sys;
 /// of `CString` instances can lead to invalid memory accesses, memory leaks,
 /// and other memory errors.
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct CString {
+pub struct CString<A: AllocRef = Global> {
     // Invariant 1: the slice ends with a zero byte and has a length of at least one.
     // Invariant 2: the slice contains only one zero byte.
     // Improper usage of unsafe function can break Invariant 2, but not Invariant 1.
-    inner: Box<[u8]>,
+    inner: Box<[u8], A>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialEq for CString {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.eq(&other.inner)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Eq for CString {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialOrd for CString {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.inner.partial_cmp(&other.inner)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Ord for CString {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.inner.cmp(&other.inner)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl hash::Hash for CString {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.inner.hash(state)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for CString {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone() }
+    }
 }
 
 /// Representation of a borrowed C string.
@@ -638,7 +682,7 @@ impl CString {
 // memory-unsafe code from working by accident. Inline
 // to prevent LLVM from optimizing it away in debug builds.
 #[stable(feature = "cstring_drop", since = "1.13.0")]
-impl Drop for CString {
+impl<A: AllocRef> Drop for CString<A> {
     #[inline]
     fn drop(&mut self) {
         unsafe {

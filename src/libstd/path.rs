@@ -69,6 +69,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::{Borrow, Cow};
 use crate::cmp;
 use crate::error::Error;
@@ -1079,7 +1080,6 @@ impl FusedIterator for Ancestors<'_> {}
 /// ```
 ///
 /// Which method works best depends on what kind of situation you're in.
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `PathBuf::as_mut_vec` current implementation relies
@@ -1087,8 +1087,16 @@ impl FusedIterator for Ancestors<'_> {}
 // When attribute privacy is implemented, `PathBuf` should be annotated as `#[repr(transparent)]`.
 // Anyway, `PathBuf` representation and layout are considered implementation detail, are
 // not documented and must not be relied upon.
-pub struct PathBuf {
-    inner: OsString,
+pub struct PathBuf<A: AllocRef = Global> {
+    inner: OsString<A>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for PathBuf {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone() }
+    }
 }
 
 impl PathBuf {

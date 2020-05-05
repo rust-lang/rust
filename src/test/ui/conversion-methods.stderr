@@ -20,6 +20,9 @@ LL |     let _just_to_make_bliss: PathBuf = Path::new("/ern/her/own/surprise");
    |                              |         expected struct `std::path::PathBuf`, found `&std::path::Path`
    |                              |         help: try using a conversion method: `Path::new("/ern/her/own/surprise").to_path_buf()`
    |                              expected due to this
+   |
+   = note: expected struct `std::path::PathBuf`
+           found reference `&std::path::Path`
 
 error[E0308]: mismatched types
   --> $DIR/conversion-methods.rs:9:40

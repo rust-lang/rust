@@ -1,3 +1,4 @@
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::{Borrow, Cow};
 use crate::cmp;
 use crate::fmt;
@@ -75,10 +76,17 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [`push`]: #method.push
 /// [`as_os_str`]: #method.as_os_str
 /// [conversions]: index.html#conversions
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct OsString {
-    inner: Buf,
+pub struct OsString<A: AllocRef = Global> {
+    inner: Buf<A>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for OsString {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone() }
+    }
 }
 
 /// Borrowed reference to an OS string (see [`OsString`]).
@@ -1155,14 +1163,14 @@ impl AsRef<OsStr> for String {
     }
 }
 
-impl FromInner<Buf> for OsString {
-    fn from_inner(buf: Buf) -> OsString {
-        OsString { inner: buf }
+impl<A: AllocRef> FromInner<Buf<A>> for OsString<A> {
+    fn from_inner(buf: Buf<A>) -> OsString<A> {
+        Self { inner: buf }
     }
 }
 
-impl IntoInner<Buf> for OsString {
-    fn into_inner(self) -> Buf {
+impl<A: AllocRef> IntoInner<Buf<A>> for OsString<A> {
+    fn into_inner(self) -> Buf<A> {
         self.inner
     }
 }
