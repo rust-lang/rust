@@ -122,7 +122,7 @@ fn rename_mod(
         source_file_edits.extend(ref_edits);
     }
 
-    Some(SourceChange::from_edits("rename", source_file_edits, file_system_edits))
+    Some(SourceChange::from_edits("Rename", source_file_edits, file_system_edits))
 }
 
 fn rename_reference(
@@ -141,7 +141,7 @@ fn rename_reference(
         return None;
     }
 
-    Some(RangeInfo::new(range, SourceChange::source_file_edits("rename", edit)))
+    Some(RangeInfo::new(range, SourceChange::source_file_edits("Rename", edit)))
 }
 
 #[cfg(test)]
@@ -530,7 +530,7 @@ mod tests {
             RangeInfo {
                 range: 4..7,
                 info: SourceChange {
-                    label: "rename",
+                    label: "Rename",
                     source_file_edits: [
                         SourceFileEdit {
                             file_id: FileId(
@@ -582,7 +582,7 @@ mod tests {
             RangeInfo {
                 range: 4..7,
                 info: SourceChange {
-                    label: "rename",
+                    label: "Rename",
                     source_file_edits: [
                         SourceFileEdit {
                             file_id: FileId(
@@ -665,7 +665,7 @@ mod tests {
             RangeInfo {
                 range: 8..11,
                 info: SourceChange {
-                    label: "rename",
+                    label: "Rename",
                     source_file_edits: [
                         SourceFileEdit {
                             file_id: FileId(

@@ -44,7 +44,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
 
     Some(
         SourceChange::source_file_edit(
-            "on enter",
+            "On enter",
             SourceFileEdit { edit, file_id: position.file_id },
         )
         .with_cursor(FilePosition { offset: cursor_position, file_id: position.file_id }),
