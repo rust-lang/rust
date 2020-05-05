@@ -816,6 +816,10 @@ pub struct LocalDecl<'tcx> {
     pub source_info: SourceInfo,
 }
 
+// `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(LocalDecl<'_>, 128);
+
 /// Extra information about a local that's used for diagnostics.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum LocalInfo<'tcx> {
