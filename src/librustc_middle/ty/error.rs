@@ -1,4 +1,5 @@
 use crate::traits::{ObligationCause, ObligationCauseCode};
+use crate::ty::diagnostics::suggest_constraining_type_param;
 use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
 use rustc_ast::ast;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
@@ -401,8 +402,46 @@ impl<'tcx> TyCtxt<'tcx> {
                     (ty::Projection(_), ty::Projection(_)) => {
                         db.note("an associated type was expected, but a different one was found");
                     }
-                    (ty::Param(_), ty::Projection(_)) | (ty::Projection(_), ty::Param(_)) => {
-                        db.note("you might be missing a type parameter or trait bound");
+                    (ty::Param(p), ty::Projection(proj)) | (ty::Projection(proj), ty::Param(p)) => {
+                        let generics = self.generics_of(body_owner_def_id);
+                        let p_span = self.def_span(generics.type_param(p, self).def_id);
+                        if !sp.contains(p_span) {
+                            db.span_label(p_span, "this type parameter");
+                        }
+                        let hir = self.hir();
+                        let mut note = true;
+                        if let Some(generics) = generics
+                            .type_param(p, self)
+                            .def_id
+                            .as_local()
+                            .map(|id| hir.as_local_hir_id(id))
+                            .and_then(|id| self.hir().find(self.hir().get_parent_node(id)))
+                            .as_ref()
+                            .and_then(|node| node.generics())
+                        {
+                            // Synthesize the associated type restriction `Add<Output = Expected>`.
+                            // FIXME: extract this logic for use in other diagnostics.
+                            let trait_ref = proj.trait_ref(self);
+                            let path =
+                                self.def_path_str_with_substs(trait_ref.def_id, trait_ref.substs);
+                            let item_name = self.item_name(proj.item_def_id);
+                            let path = if path.ends_with('>') {
+                                format!("{}, {} = {}>", &path[..path.len() - 1], item_name, p)
+                            } else {
+                                format!("{}<{} = {}>", path, item_name, p)
+                            };
+                            note = !suggest_constraining_type_param(
+                                self,
+                                generics,
+                                db,
+                                &format!("{}", proj.self_ty()),
+                                &path,
+                                None,
+                            );
+                        }
+                        if note {
+                            db.note("you might be missing a type parameter or trait bound");
+                        }
                     }
                     (ty::Param(p), ty::Dynamic(..) | ty::Opaque(..))
                     | (ty::Dynamic(..) | ty::Opaque(..), ty::Param(p)) => {

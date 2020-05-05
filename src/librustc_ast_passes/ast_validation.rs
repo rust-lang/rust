@@ -23,6 +23,7 @@ use rustc_session::Session;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use std::mem;
+use std::ops::DerefMut;
 
 const MORE_EXTERN: &str =
     "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
@@ -1113,17 +1114,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(ref predicate) = *predicate {
-                self.err_handler()
-                    .struct_span_err(
-                        predicate.span,
-                        "equality constraints are not yet supported in `where` clauses",
-                    )
-                    .span_label(predicate.span, "not supported")
-                    .note(
-                        "see issue #20041 <https://github.com/rust-lang/rust/issues/20041> \
-                         for more information",
-                    )
-                    .emit();
+                deny_equality_constraints(self, predicate, generics);
             }
         }
 
@@ -1298,6 +1289,89 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         self.with_in_trait_impl(false, |this| visit::walk_assoc_item(this, item, ctxt));
     }
+}
+
+/// When encountering an equality constraint in a `where` clause, emit an error. If the code seems
+/// like it's setting an associated type, provide an appropriate suggestion.
+fn deny_equality_constraints(
+    this: &mut AstValidator<'_>,
+    predicate: &WhereEqPredicate,
+    generics: &Generics,
+) {
+    let mut err = this.err_handler().struct_span_err(
+        predicate.span,
+        "equality constraints are not yet supported in `where` clauses",
+    );
+    err.span_label(predicate.span, "not supported");
+
+    // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
+    if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind {
+        if let TyKind::Path(None, path) = &qself.ty.kind {
+            match &path.segments[..] {
+                [PathSegment { ident, args: None, .. }] => {
+                    for param in &generics.params {
+                        if param.ident == *ident {
+                            let param = ident;
+                            match &full_path.segments[qself.position..] {
+                                [PathSegment { ident, .. }] => {
+                                    // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
+                                    let mut assoc_path = full_path.clone();
+                                    // Remove `Bar` from `Foo::Bar`.
+                                    assoc_path.segments.pop();
+                                    let len = assoc_path.segments.len() - 1;
+                                    // Build `<Bar = RhsTy>`.
+                                    let arg = AngleBracketedArg::Constraint(AssocTyConstraint {
+                                        id: rustc_ast::node_id::DUMMY_NODE_ID,
+                                        ident: *ident,
+                                        kind: AssocTyConstraintKind::Equality {
+                                            ty: predicate.rhs_ty.clone(),
+                                        },
+                                        span: ident.span,
+                                    });
+                                    // Add `<Bar = RhsTy>` to `Foo`.
+                                    match &mut assoc_path.segments[len].args {
+                                        Some(args) => match args.deref_mut() {
+                                            GenericArgs::Parenthesized(_) => continue,
+                                            GenericArgs::AngleBracketed(args) => {
+                                                args.args.push(arg);
+                                            }
+                                        },
+                                        empty_args => {
+                                            *empty_args = AngleBracketedArgs {
+                                                span: ident.span,
+                                                args: vec![arg],
+                                            }
+                                            .into();
+                                        }
+                                    }
+                                    err.span_suggestion_verbose(
+                                        predicate.span,
+                                        &format!(
+                                            "if `{}` is an associated type you're trying to set, \
+                                            use the associated type binding syntax",
+                                            ident
+                                        ),
+                                        format!(
+                                            "{}: {}",
+                                            param,
+                                            pprust::path_to_string(&assoc_path)
+                                        ),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
+                                _ => {}
+                            };
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    err.note(
+        "see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information",
+    );
+    err.emit();
 }
 
 pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> bool {
