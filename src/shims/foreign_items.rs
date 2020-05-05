@@ -11,6 +11,7 @@ use rustc_span::symbol::sym;
 use rustc_ast::attr;
 
 use crate::*;
+use helpers::check_arg_count;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -139,8 +140,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 | "exit"
                 | "ExitProcess"
                 => {
+                    let &[code] = check_arg_count(args)?;
                     // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
-                    let code = this.read_scalar(args[0])?.to_i32()?;
+                    let code = this.read_scalar(code)?.to_i32()?;
                     throw_machine_stop!(TerminationInfo::Exit(code.into()));
                 }
                 _ => throw_unsup_format!("can't call (diverging) foreign function: {}", link_name),
@@ -197,25 +199,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match link_name {
             // Standard C allocation
             "malloc" => {
-                let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
+                let &[size] = check_arg_count(args)?;
+                let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let res = this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
             }
             "calloc" => {
-                let items = this.read_scalar(args[0])?.to_machine_usize(this)?;
-                let len = this.read_scalar(args[1])?.to_machine_usize(this)?;
+                let &[items, len] = check_arg_count(args)?;
+                let items = this.read_scalar(items)?.to_machine_usize(this)?;
+                let len = this.read_scalar(len)?.to_machine_usize(this)?;
                 let size =
                     items.checked_mul(len).ok_or_else(|| err_ub_format!("overflow during calloc size computation"))?;
                 let res = this.malloc(size, /*zero_init:*/ true, MiriMemoryKind::C);
                 this.write_scalar(res, dest)?;
             }
             "free" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
+                let &[ptr] = check_arg_count(args)?;
+                let ptr = this.read_scalar(ptr)?.not_undef()?;
                 this.free(ptr, MiriMemoryKind::C)?;
             }
             "realloc" => {
-                let old_ptr = this.read_scalar(args[0])?.not_undef()?;
-                let new_size = this.read_scalar(args[1])?.to_machine_usize(this)?;
+                let &[old_ptr, new_size] = check_arg_count(args)?;
+                let old_ptr = this.read_scalar(old_ptr)?.not_undef()?;
+                let new_size = this.read_scalar(new_size)?.to_machine_usize(this)?;
                 let res = this.realloc(old_ptr, new_size, MiriMemoryKind::C)?;
                 this.write_scalar(res, dest)?;
             }
@@ -224,8 +230,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // (Usually these would be forwarded to to `#[global_allocator]`; we instead implement a generic
             // allocation that also checks that all conditions are met, such as not permitting zero-sized allocations.)
             "__rust_alloc" => {
-                let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
-                let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
+                let &[size, align] = check_arg_count(args)?;
+                let size = this.read_scalar(size)?.to_machine_usize(this)?;
+                let align = this.read_scalar(align)?.to_machine_usize(this)?;
                 Self::check_alloc_request(size, align)?;
                 let ptr = this.memory.allocate(
                     Size::from_bytes(size),
@@ -235,8 +242,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(ptr, dest)?;
             }
             "__rust_alloc_zeroed" => {
-                let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
-                let align = this.read_scalar(args[1])?.to_machine_usize(this)?;
+                let &[size, align] = check_arg_count(args)?;
+                let size = this.read_scalar(size)?.to_machine_usize(this)?;
+                let align = this.read_scalar(align)?.to_machine_usize(this)?;
                 Self::check_alloc_request(size, align)?;
                 let ptr = this.memory.allocate(
                     Size::from_bytes(size),
@@ -248,9 +256,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(ptr, dest)?;
             }
             "__rust_dealloc" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let old_size = this.read_scalar(args[1])?.to_machine_usize(this)?;
-                let align = this.read_scalar(args[2])?.to_machine_usize(this)?;
+                let &[ptr, old_size, align] = check_arg_count(args)?;
+                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let old_size = this.read_scalar(old_size)?.to_machine_usize(this)?;
+                let align = this.read_scalar(align)?.to_machine_usize(this)?;
                 // No need to check old_size/align; we anyway check that they match the allocation.
                 let ptr = this.force_ptr(ptr)?;
                 this.memory.deallocate(
@@ -260,12 +269,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )?;
             }
             "__rust_realloc" => {
-                let old_size = this.read_scalar(args[1])?.to_machine_usize(this)?;
-                let align = this.read_scalar(args[2])?.to_machine_usize(this)?;
-                let new_size = this.read_scalar(args[3])?.to_machine_usize(this)?;
+                let &[ptr, old_size, align, new_size] = check_arg_count(args)?;
+                let ptr = this.force_ptr(this.read_scalar(ptr)?.not_undef()?)?;
+                let old_size = this.read_scalar(old_size)?.to_machine_usize(this)?;
+                let align = this.read_scalar(align)?.to_machine_usize(this)?;
+                let new_size = this.read_scalar(new_size)?.to_machine_usize(this)?;
                 Self::check_alloc_request(new_size, align)?;
                 // No need to check old_size; we anyway check that they match the allocation.
-                let ptr = this.force_ptr(this.read_scalar(args[0])?.not_undef()?)?;
                 let align = Align::from_bytes(align).unwrap();
                 let new_ptr = this.memory.reallocate(
                     ptr,
@@ -279,9 +289,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // C memory handling functions
             "memcmp" => {
-                let left = this.read_scalar(args[0])?.not_undef()?;
-                let right = this.read_scalar(args[1])?.not_undef()?;
-                let n = Size::from_bytes(this.read_scalar(args[2])?.to_machine_usize(this)?);
+                let &[left, right, n] = check_arg_count(args)?;
+                let left = this.read_scalar(left)?.not_undef()?;
+                let right = this.read_scalar(right)?.not_undef()?;
+                let n = Size::from_bytes(this.read_scalar(n)?.to_machine_usize(this)?);
 
                 let result = {
                     let left_bytes = this.memory.read_bytes(left, n)?;
@@ -298,9 +309,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "memrchr" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let val = this.read_scalar(args[1])?.to_i32()? as u8;
-                let num = this.read_scalar(args[2])?.to_machine_usize(this)?;
+                let &[ptr, val, num] = check_arg_count(args)?;
+                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let val = this.read_scalar(val)?.to_i32()? as u8;
+                let num = this.read_scalar(num)?.to_machine_usize(this)?;
                 if let Some(idx) = this
                     .memory
                     .read_bytes(ptr, Size::from_bytes(num))?
@@ -315,9 +327,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
             "memchr" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
-                let val = this.read_scalar(args[1])?.to_i32()? as u8;
-                let num = this.read_scalar(args[2])?.to_machine_usize(this)?;
+                let &[ptr, val, num] = check_arg_count(args)?;
+                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let val = this.read_scalar(val)?.to_i32()? as u8;
+                let num = this.read_scalar(num)?.to_machine_usize(this)?;
                 let idx = this
                     .memory
                     .read_bytes(ptr, Size::from_bytes(num))?
@@ -331,7 +344,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
             "strlen" => {
-                let ptr = this.read_scalar(args[0])?.not_undef()?;
+                let &[ptr] = check_arg_count(args)?;
+                let ptr = this.read_scalar(ptr)?.not_undef()?;
                 let n = this.memory.read_c_str(ptr)?.len();
                 this.write_scalar(Scalar::from_machine_usize(u64::try_from(n).unwrap(), this), dest)?;
             }
@@ -345,8 +359,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "asinf"
             | "atanf"
             => {
+                let &[f] = check_arg_count(args)?;
                 // FIXME: Using host floats.
-                let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
+                let f = f32::from_bits(this.read_scalar(f)?.to_u32()?);
                 let f = match link_name {
                     "cbrtf" => f.cbrt(),
                     "coshf" => f.cosh(),
@@ -363,11 +378,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "hypotf"
             | "atan2f"
             => {
+                let &[f1, f2] = check_arg_count(args)?;
                 // underscore case for windows, here and below
                 // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
                 // FIXME: Using host floats.
-                let f1 = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
-                let f2 = f32::from_bits(this.read_scalar(args[1])?.to_u32()?);
+                let f1 = f32::from_bits(this.read_scalar(f1)?.to_u32()?);
+                let f2 = f32::from_bits(this.read_scalar(f2)?.to_u32()?);
                 let n = match link_name {
                     "_hypotf" | "hypotf" => f1.hypot(f2),
                     "atan2f" => f1.atan2(f2),
@@ -383,8 +399,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "asin"
             | "atan"
             => {
+                let &[f] = check_arg_count(args)?;
                 // FIXME: Using host floats.
-                let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+                let f = f64::from_bits(this.read_scalar(f)?.to_u64()?);
                 let f = match link_name {
                     "cbrt" => f.cbrt(),
                     "cosh" => f.cosh(),
@@ -401,9 +418,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "hypot"
             | "atan2"
             => {
+                let &[f1, f2] = check_arg_count(args)?;
                 // FIXME: Using host floats.
-                let f1 = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
-                let f2 = f64::from_bits(this.read_scalar(args[1])?.to_u64()?);
+                let f1 = f64::from_bits(this.read_scalar(f1)?.to_u64()?);
+                let f2 = f64::from_bits(this.read_scalar(f2)?.to_u64()?);
                 let n = match link_name {
                     "_hypot" | "hypot" => f1.hypot(f2),
                     "atan2" => f1.atan2(f2),
@@ -415,9 +433,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "ldexp"
             | "scalbn"
             => {
+                let &[x, exp] = check_arg_count(args)?;
                 // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
-                let x = this.read_scalar(args[0])?.to_f64()?;
-                let exp = this.read_scalar(args[1])?.to_i32()?;
+                let x = this.read_scalar(x)?.to_f64()?;
+                let exp = this.read_scalar(exp)?.to_i32()?;
 
                 // Saturating cast to i16. Even those are outside the valid exponent range to
                 // `scalbn` below will do its over/underflow handling.
@@ -435,6 +454,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Architecture-specific shims
             "llvm.x86.sse2.pause" if this.tcx.sess.target.target.arch == "x86" || this.tcx.sess.target.target.arch == "x86_64" => {
+                let &[] = check_arg_count(args)?;
                 this.sched_yield()?;
             }
 

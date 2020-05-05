@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::num::NonZeroUsize;
 
@@ -469,6 +469,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
     }
+}
+
+/// Check that the number of args is what we expect.
+pub fn check_arg_count<'a, 'tcx, const N: usize>(args: &'a [OpTy<'tcx, Tag>]) -> InterpResult<'tcx, &'a [OpTy<'tcx, Tag>; N]>
+    where &'a [OpTy<'tcx, Tag>; N]: TryFrom<&'a [OpTy<'tcx, Tag>]> {
+    if let Ok(ops) = args.try_into() {
+        return Ok(ops);
+    }
+    throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
 }
 
 pub fn immty_from_int_checked<'tcx>(

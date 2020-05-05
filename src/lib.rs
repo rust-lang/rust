@@ -7,6 +7,9 @@
 #![warn(rust_2018_idioms)]
 #![allow(clippy::cast_lossless)]
 
+#![allow(incomplete_features)]
+#![feature(const_generics)]
+
 extern crate rustc_apfloat;
 extern crate rustc_ast;
 #[macro_use] extern crate rustc_middle;
