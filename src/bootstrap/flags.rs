@@ -106,18 +106,18 @@ impl Flags {
 Usage: x.py <subcommand> [options] [<paths>...]
 
 Subcommands:
-    build       Compile either the compiler or libraries
-    check       Compile either the compiler or libraries, using cargo check
+    build, b    Compile either the compiler or libraries
+    check, c    Compile either the compiler or libraries, using cargo check
     clippy      Run clippy (uses rustup/cargo-installed clippy binary)
     fix         Run cargo fix
     fmt         Run rustfmt
-    test        Build and run some test suites
+    test, t     Build and run some test suites
     bench       Build and run some benchmarks
     doc         Build documentation
     clean       Clean out build directories
     dist        Build distribution artifacts
     install     Install distribution artifacts
-    run         Run tools contained in this repository
+    run, r      Run tools contained in this repository
 
 To learn more about a subcommand, run `./x.py <subcommand> -h`",
         );
@@ -184,17 +184,21 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         // there on out.
         let subcommand = args.iter().find(|&s| {
             (s == "build")
+                || (s == "b")
                 || (s == "check")
+                || (s == "c")
                 || (s == "clippy")
                 || (s == "fix")
                 || (s == "fmt")
                 || (s == "test")
+                || (s == "t")
                 || (s == "bench")
                 || (s == "doc")
                 || (s == "clean")
                 || (s == "dist")
                 || (s == "install")
                 || (s == "run")
+                || (s == "r")
         });
         let subcommand = match subcommand {
             Some(s) => s,
@@ -210,7 +214,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
 
         // Some subcommands get extra options
         match subcommand.as_str() {
-            "test" => {
+            "test" | "t" => {
                 opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
                 opts.optmulti(
@@ -285,7 +289,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         }
         // Extra help text for some commands
         match subcommand.as_str() {
-            "build" => {
+            "build" | "b" => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -312,7 +316,7 @@ Arguments:
     Once this is done, build/$ARCH/stage1 contains a usable compiler.",
                 );
             }
-            "check" => {
+            "check" | "c" => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -362,7 +366,7 @@ Arguments:
         ./x.py fmt --check",
                 );
             }
-            "test" => {
+            "test" | "t" => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -407,7 +411,7 @@ Arguments:
         ./x.py doc --stage 1",
                 );
             }
-            "run" => {
+            "run" | "r" => {
                 subcommand_help.push_str(
                     "\n
 Arguments:
@@ -453,11 +457,11 @@ Arguments:
         }
 
         let cmd = match subcommand.as_str() {
-            "build" => Subcommand::Build { paths },
-            "check" => Subcommand::Check { paths },
+            "build" | "b" => Subcommand::Build { paths },
+            "check" | "c" => Subcommand::Check { paths },
             "clippy" => Subcommand::Clippy { paths },
             "fix" => Subcommand::Fix { paths },
-            "test" => Subcommand::Test {
+            "test" | "t" => Subcommand::Test {
                 paths,
                 bless: matches.opt_present("bless"),
                 compare_mode: matches.opt_str("compare-mode"),
@@ -487,7 +491,7 @@ Arguments:
             "fmt" => Subcommand::Format { check: matches.opt_present("check") },
             "dist" => Subcommand::Dist { paths },
             "install" => Subcommand::Install { paths },
-            "run" => {
+            "run" | "r" => {
                 if paths.is_empty() {
                     println!("\nrun requires at least a path!\n");
                     usage(1, &opts, &subcommand_help, &extra_help);
