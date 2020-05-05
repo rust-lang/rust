@@ -938,13 +938,13 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "derive-new"
-version = "0.5.6"
+version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ca414e896ae072546f4d789f452daaecf60ddee4c9df5dc6d5936d769e3d87c"
+checksum = "71f31892cd5c62e414316f2963c5689242c43d8e7bbcaaeca97e5e28c95d91d9"
 dependencies = [
- "proc-macro2 0.4.30",
- "quote 0.6.12",
- "syn 0.15.35",
+ "proc-macro2 1.0.3",
+ "quote 1.0.2",
+ "syn 1.0.11",
 ]
 
 [[package]]
