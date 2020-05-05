@@ -17,6 +17,8 @@ path = "lib.rs"
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
 features = [
+  "aclapi",
+  "accctrl",
   "basetsd",
   "consoleapi",
   "errhandlingapi",
@@ -72,7 +74,6 @@ url = { version = "2.0", features = ['serde'] }
 
 [target.'cfg(not(windows))'.dependencies]
 openssl = { version = "0.10.12", optional = true }
-
 
 [features]
 all-static = ['openssl/vendored', 'curl-sys/static-curl', 'curl-sys/force-system-lib-on-osx']
