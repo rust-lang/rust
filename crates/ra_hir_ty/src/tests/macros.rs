@@ -269,7 +269,7 @@ fn test() { S.foo()<|>; }
 }
 
 #[test]
-fn infer_impl_items_generated_by_macros() {
+fn infer_assoc_items_generated_by_macros() {
     let t = type_at(
         r#"
 //- /main.rs
@@ -288,7 +288,7 @@ fn test() { S.foo()<|>; }
 }
 
 #[test]
-fn infer_impl_items_generated_by_macros_chain() {
+fn infer_assoc_items_generated_by_macros_chain() {
     let t = type_at(
         r#"
 //- /main.rs
