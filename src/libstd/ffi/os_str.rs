@@ -1163,14 +1163,14 @@ impl AsRef<OsStr> for String {
     }
 }
 
-impl<A: AllocRef> FromInner<Buf<A>> for OsString<A> {
-    fn from_inner(buf: Buf<A>) -> OsString<A> {
-        Self { inner: buf }
+impl FromInner<Buf> for OsString {
+    fn from_inner(buf: Buf) -> OsString {
+        OsString { inner: buf }
     }
 }
 
-impl<A: AllocRef> IntoInner<Buf<A>> for OsString<A> {
-    fn into_inner(self) -> Buf<A> {
+impl IntoInner<Buf> for OsString {
+    fn into_inner(self) -> Buf {
         self.inner
     }
 }
