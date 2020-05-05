@@ -24,7 +24,7 @@ struct Person {
 enum E { A=1, B }
 
 fn hash<T: Hash>(t: &T) -> u64 {
-    let mut s = SipHasher::new_with_keys(0, 0);
+    let mut s = SipHasher::new();
     t.hash(&mut s);
     s.finish()
 }
