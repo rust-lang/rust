@@ -10,17 +10,9 @@ interface CompilationArtifact {
 }
 
 export class Cargo {
-    rootFolder: string;
-    env?: Record<string, string>;
-    output: OutputChannel;
+    constructor(readonly rootFolder: string, readonly output: OutputChannel) { }
 
-    public constructor(cargoTomlFolder: string, output: OutputChannel, env: Record<string, string> | undefined = undefined) {
-        this.rootFolder = cargoTomlFolder;
-        this.output = output;
-        this.env = env;
-    }
-
-    public async artifactsFromArgs(cargoArgs: string[]): Promise<CompilationArtifact[]> {
+    private async artifactsFromArgs(cargoArgs: string[]): Promise<CompilationArtifact[]> {
         const artifacts: CompilationArtifact[] = [];
 
         try {
@@ -37,17 +29,13 @@ export class Cargo {
                                 isTest: message.profile.test
                             });
                         }
-                    }
-                    else if (message.reason === 'compiler-message') {
+                    } else if (message.reason === 'compiler-message') {
                         this.output.append(message.message.rendered);
                     }
                 },
-                stderr => {
-                    this.output.append(stderr);
-                }
+                stderr => this.output.append(stderr),
             );
-        }
-        catch (err) {
+        } catch (err) {
             this.output.show(true);
             throw new Error(`Cargo invocation has failed: ${err}`);
         }
@@ -55,9 +43,8 @@ export class Cargo {
         return artifacts;
     }
 
-    public async executableFromArgs(args: string[]): Promise<string> {
-        const cargoArgs = [...args]; // to remain  args unchanged
-        cargoArgs.push("--message-format=json");
+    async executableFromArgs(args: readonly string[]): Promise<string> {
+        const cargoArgs = [...args, "--message-format=json"];
 
         const artifacts = await this.artifactsFromArgs(cargoArgs);
 
@@ -70,24 +57,20 @@ export class Cargo {
         return artifacts[0].fileName;
     }
 
-    runCargo(
+    private runCargo(
         cargoArgs: string[],
         onStdoutJson: (obj: any) => void,
         onStderrString: (data: string) => void
     ): Promise<number> {
-        return new Promise<number>((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             const cargo = cp.spawn('cargo', cargoArgs, {
                 stdio: ['ignore', 'pipe', 'pipe'],
-                cwd: this.rootFolder,
-                env: this.env,
+                cwd: this.rootFolder
             });
 
-            cargo.on('error', err => {
-                reject(new Error(`could not launch cargo: ${err}`));
-            });
-            cargo.stderr.on('data', chunk => {
-                onStderrString(chunk.toString());
-            });
+            cargo.on('error', err => reject(new Error(`could not launch cargo: ${err}`)));
+
+            cargo.stderr.on('data', chunk => onStderrString(chunk.toString()));
 
             const rl = readline.createInterface({ input: cargo.stdout });
             rl.on('line', line => {
