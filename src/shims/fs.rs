@@ -246,18 +246,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let flag = this.read_scalar(flag_op)?.to_i32()?;
 
-        // Check mode (size depends on platform).
-        // FIXME: should we do something with the mode?
-        match this.tcx.sess.target.target.target_os.as_str() {
-            "macos" => {
-                // FIXME: I think `mode` should be `u16` on macOS, but see
-                // <https://github.com/rust-lang/rust/issues/71915>.
-                // For now, just don't check on macos.
-            }
-            _ => {
-                this.read_scalar(mode_op)?.to_u32()?;
-            }
-        };
+        // Get the mode.  On macOS, the argument type `mode_t` is actually `u16`, but
+        // C integer promotion rules mean that on the ABI level, it gets passed as `u32`
+        // (see https://github.com/rust-lang/rust/issues/71915).
+        let mode = this.read_scalar(mode_op)?.to_u32()?;
+        if mode != 0o666 {
+            throw_unsup_format!("non-default mode 0o{:o} is not supported", mode);
+        }
 
         let mut options = OpenOptions::new();
 
