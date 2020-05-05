@@ -2557,15 +2557,15 @@ dependencies = [
 
 [[package]]
 name = "pest_generator"
-version = "2.1.0"
+version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63120576c4efd69615b5537d3d052257328a4ca82876771d6944424ccfd9f646"
+checksum = "99b8db626e31e5b81787b9783425769681b347011cc59471e33ea46d2ea0cf55"
 dependencies = [
  "pest",
  "pest_meta",
- "proc-macro2 0.4.30",
- "quote 0.6.12",
- "syn 0.15.35",
+ "proc-macro2 1.0.3",
+ "quote 1.0.2",
+ "syn 1.0.11",
 ]
 
 [[package]]
