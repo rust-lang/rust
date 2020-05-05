@@ -296,6 +296,11 @@
                     "default": true,
                     "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)"
                 },
+                "rust-analyzer.checkOnSave.allFeatures": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Check with all features (will be passed as `--all-features`)"
+                },
                 "rust-analyzer.inlayHints.typeHints": {
                     "type": "boolean",
                     "default": true,

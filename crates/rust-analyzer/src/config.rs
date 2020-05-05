@@ -89,6 +89,7 @@ impl Default for Config {
             check: Some(FlycheckConfig::CargoCommand {
                 command: "check".to_string(),
                 all_targets: true,
+                all_features: true,
                 extra_args: Vec::new(),
             }),
 
@@ -173,12 +174,13 @@ impl Config {
                 }
                 // otherwise configure command customizations
                 _ => {
-                    if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets })
+                    if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets, all_features })
                         = &mut self.check
                     {
                         set(value, "/checkOnSave/extraArgs", extra_args);
                         set(value, "/checkOnSave/command", command);
                         set(value, "/checkOnSave/allTargets", all_targets);
+                        set(value, "/checkOnSave/allFeatures", all_features);
                     }
                 }
             };
