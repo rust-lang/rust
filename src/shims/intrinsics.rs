@@ -364,7 +364,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "atomic_singlethreadfence"
             => {
                 let &[] = check_arg_count(args)?;
-                // we are inherently singlethreaded and singlecored, this is a nop
+                // FIXME: this will become relevant once we try to detect data races.
             }
 
             _ if intrinsic_name.starts_with("atomic_xchg") => {
