@@ -38,8 +38,7 @@ impl AssistInfo {
 
     pub(crate) fn into_resolved(self) -> Option<ResolvedAssist> {
         let label = self.label;
-        let group_label = self.group_label;
-        self.action.map(|action| ResolvedAssist { label, group_label, action })
+        self.action.map(|action| ResolvedAssist { label, action })
     }
 }
 
@@ -100,7 +99,7 @@ impl<'a> AssistCtx<'a> {
         label: impl Into<String>,
         f: impl FnOnce(&mut ActionBuilder),
     ) -> Option<Assist> {
-        let label = AssistLabel::new(id, label.into());
+        let label = AssistLabel::new(id, label.into(), None);
 
         let mut info = AssistInfo::new(label);
         if self.should_compute_edit {
@@ -158,7 +157,7 @@ impl<'a> AssistGroup<'a> {
         label: impl Into<String>,
         f: impl FnOnce(&mut ActionBuilder),
     ) {
-        let label = AssistLabel::new(id, label.into());
+        let label = AssistLabel::new(id, label.into(), Some(self.group.clone()));
 
         let mut info = AssistInfo::new(label).with_group(self.group.clone());
         if self.ctx.should_compute_edit {

@@ -35,16 +35,17 @@ pub struct AssistLabel {
     pub id: AssistId,
     /// Short description of the assist, as shown in the UI.
     pub label: String,
+    pub group: Option<GroupLabel>,
 }
 
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);
 
 impl AssistLabel {
-    pub(crate) fn new(id: AssistId, label: String) -> AssistLabel {
+    pub(crate) fn new(id: AssistId, label: String, group: Option<GroupLabel>) -> AssistLabel {
         // FIXME: make fields private, so that this invariant can't be broken
         assert!(label.starts_with(|c: char| c.is_uppercase()));
-        AssistLabel { label, id }
+        AssistLabel { id, label, group }
     }
 }
 
@@ -60,7 +61,6 @@ pub struct AssistAction {
 #[derive(Debug, Clone)]
 pub struct ResolvedAssist {
     pub label: AssistLabel,
-    pub group_label: Option<GroupLabel>,
     pub action: AssistAction,
 }
 
