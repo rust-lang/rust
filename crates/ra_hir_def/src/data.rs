@@ -335,8 +335,7 @@ fn collect_items(
         .filter_map(|item_node| match item_node {
             ast::ImplItem::FnDef(it) => {
                 let name = it.name().map_or_else(Name::missing, |it| it.as_name());
-                let attrs = expander.parse_attrs(&it);
-                if !expander.is_cfg_enabled(&attrs) {
+                if !expander.is_cfg_enabled(&it) {
                     return None;
                 }
                 let def = FunctionLoc { container, ast_id: AstId::new(file_id, items.ast_id(&it)) }

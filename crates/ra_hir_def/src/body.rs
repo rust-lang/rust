@@ -60,7 +60,8 @@ impl CfgExpander {
         Attrs::new(owner, &self.hygiene)
     }
 
-    pub(crate) fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
+    pub(crate) fn is_cfg_enabled(&self, owner: &dyn ast::AttrsOwner) -> bool {
+        let attrs = self.parse_attrs(owner);
         attrs.is_cfg_enabled(&self.cfg_options)
     }
 }
@@ -141,12 +142,8 @@ impl Expander {
         InFile { file_id: self.current_file_id, value }
     }
 
-    pub(crate) fn parse_attrs(&self, owner: &dyn ast::AttrsOwner) -> Attrs {
-        self.cfg_expander.parse_attrs(owner)
-    }
-
-    pub(crate) fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
-        self.cfg_expander.is_cfg_enabled(attrs)
+    pub(crate) fn is_cfg_enabled(&self, owner: &dyn ast::AttrsOwner) -> bool {
+        self.cfg_expander.is_cfg_enabled(owner)
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
