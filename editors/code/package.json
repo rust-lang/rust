@@ -33,7 +33,6 @@
         "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src --fix"
     },
     "dependencies": {
-        "jsonc-parser": "^2.2.1",
         "node-fetch": "^2.6.0",
         "vscode-languageclient": "7.0.0-next.1"
     },
