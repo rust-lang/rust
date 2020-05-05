@@ -197,11 +197,6 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
 
         if let Some(ref mcr) = &context.mach_compile_result {
             for &MachSrcLoc { start, end, loc } in mcr.sections.get_srclocs_sorted() {
-                // FIXME get_srclocs_sorted omits default srclocs
-                if func_end < start {
-                    line_program.row().address_offset = func_end as u64;
-                    create_row_for_span(line_program, self.mir.span);
-                }
                 line_program.row().address_offset = start as u64;
                 if !loc.is_default() {
                     let source_info = *source_info_set.get_index(loc.bits() as usize).unwrap();
@@ -211,12 +206,10 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                 }
                 func_end = end;
             }
-            // FIXME get_srclocs_sorted omits default srclocs
-            if func_end < mcr.sections.total_size() {
-                line_program.row().address_offset = func_end as u64;
-                create_row_for_span(line_program, self.mir.span);
-                func_end = mcr.sections.total_size();
-            }
+
+            line_program.end_sequence(func_end as u64);
+
+            func_end = mcr.sections.total_size();
         } else {
             let encinfo = isa.encoding_info();
             let mut blocks = func.layout.blocks().collect::<Vec<_>>();
@@ -235,11 +228,10 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
                     func_end = offset + size;
                 }
             }
+            line_program.end_sequence(func_end as u64);
         }
 
         assert_ne!(func_end, 0);
-
-        line_program.end_sequence(func_end as u64);
 
         let entry = self.debug_context.dwarf.unit.get_mut(self.entry_id);
         entry.set(

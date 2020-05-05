@@ -9,7 +9,7 @@ use crate::backend::WriteDebugInfo;
 pub(crate) struct UnwindContext<'tcx> {
     tcx: TyCtxt<'tcx>,
     frame_table: FrameTable,
-    cie_id: CieId,
+    cie_id: Option<CieId>,
 }
 
 impl<'tcx> UnwindContext<'tcx> {
@@ -18,9 +18,13 @@ impl<'tcx> UnwindContext<'tcx> {
         module: &mut Module<impl Backend>,
     ) -> Self {
         let mut frame_table = FrameTable::default();
-        let cie = module.isa().create_systemv_cie().expect("SystemV unwind info CIE");
 
-        let cie_id = frame_table.add_cie(cie);
+
+        let cie_id = if let Some(cie) = module.isa().create_systemv_cie() {
+            Some(frame_table.add_cie(cie))
+        } else {
+            None
+        };
 
         UnwindContext {
             tcx,
@@ -38,7 +42,7 @@ impl<'tcx> UnwindContext<'tcx> {
 
         match unwind_info {
             UnwindInfo::SystemV(unwind_info) => {
-                self.frame_table.add_fde(self.cie_id, unwind_info.to_fde(Address::Symbol {
+                self.frame_table.add_fde(self.cie_id.unwrap(), unwind_info.to_fde(Address::Symbol {
                     symbol: func_id.as_u32() as usize,
                     addend: 0,
                 }));
