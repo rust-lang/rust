@@ -23,7 +23,10 @@ pub fn get_path_for_executable(executable_name: impl AsRef<str>) -> Result<Strin
         if is_valid_executable(&path) {
             Ok(path)
         } else {
-            Err(Error::msg(format!("`{}` environment variable points to something that's not a valid executable", env_var)))
+            Err(Error::msg(format!(
+                "`{}` environment variable points to something that's not a valid executable",
+                env_var
+            )))
         }
     } else {
         let final_path: Option<String> = if is_valid_executable(executable_name) {
