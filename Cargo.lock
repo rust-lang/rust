@@ -3102,7 +3102,6 @@ version = "0.6.0"
 dependencies = [
  "clippy_lints",
  "env_logger 0.7.1",
- "failure",
  "futures",
  "log",
  "rand 0.7.3",
@@ -3504,11 +3503,14 @@ name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
  "crossbeam-utils 0.7.2",
+ "proc-macro2 1.0.3",
+ "quote 1.0.2",
  "serde",
  "serde_json",
  "smallvec 0.6.10",
  "smallvec 1.4.0",
  "syn 0.15.35",
+ "syn 1.0.11",
  "url 2.1.0",
  "winapi 0.3.8",
 ]
