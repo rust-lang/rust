@@ -44,7 +44,7 @@ use pulldown_cmark::{html, CodeBlockKind, CowStr, Event, Options, Parser, Tag};
 mod tests;
 
 fn opts() -> Options {
-    Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES
+    Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES | Options::ENABLE_STRIKETHROUGH
 }
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to
@@ -933,7 +933,11 @@ impl MarkdownSummaryLine<'_> {
             }
         };
 
-        let p = Parser::new_with_broken_link_callback(md, Options::empty(), Some(&replacer));
+        let p = Parser::new_with_broken_link_callback(
+            md,
+            Options::ENABLE_STRIKETHROUGH,
+            Some(&replacer),
+        );
 
         let mut s = String::new();
 
@@ -975,7 +979,11 @@ pub fn plain_summary_line(md: &str) -> String {
         }
     }
     let mut s = String::with_capacity(md.len() * 3 / 2);
-    let p = ParserWrapper { inner: Parser::new(md), is_in: 0, is_first: true };
+    let p = ParserWrapper {
+        inner: Parser::new_ext(md, Options::ENABLE_STRIKETHROUGH),
+        is_in: 0,
+        is_first: true,
+    };
     p.filter(|t| !t.is_empty()).for_each(|i| s.push_str(&i));
     s
 }
