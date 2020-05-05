@@ -12,3 +12,5 @@ warning: the feature `lazy_normalization_consts` is incomplete and may cause the
 LL | #![feature(lazy_normalization_consts)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
+warning: 2 warnings emitted
+

@@ -14,7 +14,7 @@ LL | #![feature(lazy_normalization_consts)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
-  --> $DIR/issue-61336-2.rs:9:5
+  --> $DIR/issue-61336-2.rs:11:5
    |
 LL |     [x; { N }]
    |     ^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
@@ -25,6 +25,6 @@ help: consider restricting type parameter `T`
 LL | fn g<T: std::marker::Copy, const N: usize>(x: T) -> [T; N] {
    |       ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0277`.

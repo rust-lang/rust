@@ -1164,7 +1164,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             let parent_id = tcx.hir().get_parent_item(hir_id);
             Some(tcx.hir().local_def_id(parent_id).to_def_id())
         }
-        // FIXME(#43408) always enable this once we use `lazy_normalization` is
+        // FIXME(#43408) always enable this once `lazy_normalization` is
         // stable enough and does not need a feature gate anymore.
         Node::AnonConst(_) => {
             let parent_id = tcx.hir().get_parent_item(hir_id);
@@ -1193,7 +1193,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 }
             }
         }
-
         Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
             Some(tcx.closure_base_def_id(def_id))
         }
