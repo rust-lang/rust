@@ -558,7 +558,7 @@ declare_features! (
 
     /// Allow negative trait implementations.
     (active, negative_impls, "1.44.0", Some(68318), None),
-    
+
     /// Lazily evaluate constants. Which allows constants to depend on type parameters.
     (active, lazy_normalization_consts, "1.44.0", Some(60471), None),
 

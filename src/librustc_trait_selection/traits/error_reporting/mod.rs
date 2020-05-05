@@ -616,7 +616,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         )
                     }
 
-                    
                     ty::Predicate::ConstEquate(..) => {
                         // Errors for `ConstEquate` predicates show up as
                         // `SelectionError::ConstEvalFailure`,

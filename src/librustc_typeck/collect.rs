@@ -1168,7 +1168,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         Node::AnonConst(_) => {
             if tcx.features().lazy_normalization_consts {
                 let parent_id = tcx.hir().get_parent_item(hir_id);
-                Some(tcx.hir().local_def_id(parent_id))
+                Some(tcx.hir().local_def_id(parent_id).to_def_id())
             } else {
                 None
             }
