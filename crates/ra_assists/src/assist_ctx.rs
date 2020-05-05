@@ -100,7 +100,7 @@ impl<'a> AssistCtx<'a> {
         label: impl Into<String>,
         f: impl FnOnce(&mut ActionBuilder),
     ) -> Option<Assist> {
-        let label = AssistLabel::new(label.into(), id);
+        let label = AssistLabel::new(id, label.into());
 
         let mut info = AssistInfo::new(label);
         if self.should_compute_edit {
@@ -157,7 +157,7 @@ impl<'a> AssistGroup<'a> {
         label: impl Into<String>,
         f: impl FnOnce(&mut ActionBuilder),
     ) {
-        let label = AssistLabel::new(label.into(), id);
+        let label = AssistLabel::new(id, label.into());
 
         let mut info = AssistInfo::new(label).with_group(GroupLabel(self.group_name.clone()));
         if self.ctx.should_compute_edit {

@@ -32,16 +32,16 @@ pub struct AssistId(pub &'static str);
 
 #[derive(Debug, Clone)]
 pub struct AssistLabel {
+    pub id: AssistId,
     /// Short description of the assist, as shown in the UI.
     pub label: String,
-    pub id: AssistId,
 }
 
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);
 
 impl AssistLabel {
-    pub(crate) fn new(label: String, id: AssistId) -> AssistLabel {
+    pub(crate) fn new(id: AssistId, label: String) -> AssistLabel {
         // FIXME: make fields private, so that this invariant can't be broken
         assert!(label.starts_with(|c: char| c.is_uppercase()));
         AssistLabel { label, id }
