@@ -46,7 +46,9 @@ impl RWLock {
             }
             panic!("rwlock read lock would result in deadlock");
         } else {
-            assert_eq!(r, 0);
+            // According to POSIX, for a properly initialized rwlock this can only
+            // return EAGAIN or EDEADLK or 0. We rely on that.
+            debug_assert_eq!(r, 0);
             self.num_readers.fetch_add(1, Ordering::Relaxed);
         }
     }
@@ -83,7 +85,9 @@ impl RWLock {
             }
             panic!("rwlock write lock would result in deadlock");
         } else {
-            assert_eq!(r, 0);
+            // According to POSIX, for a properly initialized rwlock this can only
+            // return EDEADLK or 0. We rely on that.
+            debug_assert_eq!(r, 0);
         }
         *self.write_locked.get() = true;
     }
