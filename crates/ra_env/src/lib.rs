@@ -1,3 +1,7 @@
+//! This crate contains a single public function
+//! [`get_path_for_executable`](fn.get_path_for_executable.html).
+//! See docs there for more information.
+
 use anyhow::{Error, Result};
 use std::env;
 use std::path::Path;
