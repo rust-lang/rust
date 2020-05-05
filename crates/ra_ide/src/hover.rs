@@ -208,7 +208,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     }?;
 
-    res.extend(Some(rust_code_markup(&ty.display_truncated(db, None))));
+    res.extend(Some(rust_code_markup(&ty.display(db))));
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
