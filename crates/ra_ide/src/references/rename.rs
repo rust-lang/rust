@@ -537,10 +537,10 @@ mod tests {
                                 2,
                             ),
                             edit: TextEdit {
-                                atoms: [
-                                    AtomTextEdit {
-                                        delete: 4..7,
+                                indels: [
+                                    Indel {
                                         insert: "foo2",
+                                        delete: 4..7,
                                     },
                                 ],
                             },
@@ -589,10 +589,10 @@ mod tests {
                                 1,
                             ),
                             edit: TextEdit {
-                                atoms: [
-                                    AtomTextEdit {
-                                        delete: 4..7,
+                                indels: [
+                                    Indel {
                                         insert: "foo2",
+                                        delete: 4..7,
                                     },
                                 ],
                             },
@@ -672,10 +672,10 @@ mod tests {
                                 2,
                             ),
                             edit: TextEdit {
-                                atoms: [
-                                    AtomTextEdit {
-                                        delete: 8..11,
+                                indels: [
+                                    Indel {
                                         insert: "foo2",
+                                        delete: 8..11,
                                     },
                                 ],
                             },
@@ -685,10 +685,10 @@ mod tests {
                                 1,
                             ),
                             edit: TextEdit {
-                                atoms: [
-                                    AtomTextEdit {
-                                        delete: 27..30,
+                                indels: [
+                                    Indel {
                                         insert: "foo2",
+                                        delete: 27..30,
                                     },
                                 ],
                             },
@@ -720,13 +720,13 @@ mod tests {
         if let Some(change) = source_change {
             for edit in change.info.source_file_edits {
                 file_id = Some(edit.file_id);
-                for atom in edit.edit.as_atoms() {
-                    text_edit_builder.replace(atom.delete, atom.insert.clone());
+                for indel in edit.edit.as_indels() {
+                    text_edit_builder.replace(indel.delete, indel.insert.clone());
                 }
             }
         }
-        let result =
-            text_edit_builder.finish().apply(&*analysis.file_text(file_id.unwrap()).unwrap());
+        let mut result = analysis.file_text(file_id.unwrap()).unwrap().to_string();
+        text_edit_builder.finish().apply(&mut result);
         assert_eq_text!(expected, &*result);
     }
 }

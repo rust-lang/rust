@@ -241,7 +241,11 @@ mod tests {
             diagnostics.pop().unwrap_or_else(|| panic!("no diagnostics for:\n{}\n", before));
         let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_file_edits.pop().unwrap().edit;
-        let actual = edit.apply(&before);
+        let actual = {
+            let mut actual = before.to_string();
+            edit.apply(&mut actual);
+            actual
+        };
         assert_eq_text!(after, &actual);
     }
 
@@ -256,7 +260,11 @@ mod tests {
         let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_file_edits.pop().unwrap().edit;
         let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
-        let actual = edit.apply(&target_file_contents);
+        let actual = {
+            let mut actual = target_file_contents.to_string();
+            edit.apply(&mut actual);
+            actual
+        };
 
         // Strip indent and empty lines from `after`, to match the behaviour of
         // `parse_fixture` called from `analysis_and_position`.
@@ -288,7 +296,11 @@ mod tests {
         let diagnostic = analysis.diagnostics(file_id).unwrap().pop().unwrap();
         let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_file_edits.pop().unwrap().edit;
-        let actual = edit.apply(&before);
+        let actual = {
+            let mut actual = before.to_string();
+            edit.apply(&mut actual);
+            actual
+        };
         assert_eq_text!(after, &actual);
     }
 
@@ -662,10 +674,10 @@ mod tests {
                                     1,
                                 ),
                                 edit: TextEdit {
-                                    atoms: [
-                                        AtomTextEdit {
-                                            delete: 3..9,
+                                    indels: [
+                                        Indel {
                                             insert: "{a:42, b: ()}",
+                                            delete: 3..9,
                                         },
                                     ],
                                 },
