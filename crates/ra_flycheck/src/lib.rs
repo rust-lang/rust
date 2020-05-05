@@ -24,7 +24,7 @@ pub use crate::conv::url_from_path_with_drive_lowercasing;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
-    CargoCommand { command: String, all_targets: bool, extra_args: Vec<String> },
+    CargoCommand { command: String, all_targets: bool, all_features: bool, extra_args: Vec<String> },
     CustomCommand { command: String, args: Vec<String> },
 }
 
@@ -215,13 +215,16 @@ impl FlycheckThread {
         self.check_process = None;
 
         let mut cmd = match &self.config {
-            FlycheckConfig::CargoCommand { command, all_targets, extra_args } => {
+            FlycheckConfig::CargoCommand { command, all_targets, all_features, extra_args } => {
                 let mut cmd = Command::new(cargo_binary());
                 cmd.arg(command);
                 cmd.args(&["--workspace", "--message-format=json", "--manifest-path"]);
                 cmd.arg(self.workspace_root.join("Cargo.toml"));
                 if *all_targets {
                     cmd.arg("--all-targets");
+                }
+                if *all_features {
+                    cmd.arg("--all-features");
                 }
                 cmd.args(extra_args);
                 cmd
