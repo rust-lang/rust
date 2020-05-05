@@ -380,6 +380,8 @@ pub enum UndefinedBehaviorInfo {
     InvalidDiscriminant(ScalarMaybeUndef),
     /// Using a pointer-not-to-a-function as function pointer.
     InvalidFunctionPointer(Pointer),
+    /// Using a string that is not valid UTF-8,
+    InvalidStr(std::str::Utf8Error),
     /// Using uninitialized data where it is not allowed.
     InvalidUndefBytes(Option<Pointer>),
     /// Working with a local that is not currently live.
@@ -445,6 +447,9 @@ impl fmt::Display for UndefinedBehaviorInfo {
             InvalidDiscriminant(val) => write!(f, "enum value has invalid discriminant: {}", val),
             InvalidFunctionPointer(p) => {
                 write!(f, "using {} as function pointer but it does not point to a function", p)
+            }
+            InvalidStr(err) => {
+                write!(f, "this string is not valid UTF-8: {}", err)
             }
             InvalidUndefBytes(Some(p)) => write!(
                 f,

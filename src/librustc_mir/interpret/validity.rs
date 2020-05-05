@@ -38,12 +38,12 @@ macro_rules! throw_validation_failure {
 }
 
 /// Returns a validation failure for any Err value of $e.
-// FIXME: Replace all usages of try_validation! with try_validation_pat!.
-macro_rules! try_validation {
+// FIXME: Replace all usages of try_validation_catchall! with try_validation!.
+macro_rules! try_validation_catchall {
     ($e:expr, $what:expr, $where:expr $(, $expected:expr )?) => {{
-        try_validation_pat!($e, $where, {
+        try_validation!($e, $where,
             _ => { "{}", $what } $( expected { "{}", $expected } )?,
-        })
+        )
     }};
 }
 /// Like try_validation, but will throw a validation error if any of the patterns in $p are
@@ -51,7 +51,7 @@ macro_rules! try_validation {
 /// as a kind of validation blacklist:
 ///
 /// ```
-/// let v = try_validation_pat!(some_fn(), some_path, {
+/// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "some failure" },
 /// });
 /// // Failures that match $p are thrown up as validation errors, but other errors are passed back
@@ -61,7 +61,7 @@ macro_rules! try_validation {
 /// An additional expected parameter can also be added to the failure message:
 ///
 /// ```
-/// let v = try_validation_pat!(some_fn(), some_path, {
+/// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "some failure" } expected { "something that wasn't a failure" },
 /// });
 /// ```
@@ -70,14 +70,15 @@ macro_rules! try_validation {
 /// the format string in directly:
 ///
 /// ```
-/// let v = try_validation_pat!(some_fn(), some_path, {
+/// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "{:?}", some_failure } expected { "{}", expected_value },
 /// });
 /// ```
 ///
-macro_rules! try_validation_pat {
-    ($e:expr, $where:expr, { $( $p:pat )|+ =>
-        { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? $( , )?}) => {{
+macro_rules! try_validation {
+    ($e:expr, $where:expr,
+     $( $p:pat )|+ => { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? $( , )?
+    ) => {{
         match $e {
             Ok(x) => x,
             // We catch the error and turn it into a validation failure. We are okay with
@@ -303,21 +304,28 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         match tail.kind {
             ty::Dynamic(..) => {
                 let vtable = meta.unwrap_meta();
+                // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
                 try_validation!(
-                    self.ecx.memory.check_ptr_access(
+                    self.ecx.memory.check_ptr_access_align(
                         vtable,
                         3 * self.ecx.tcx.data_layout.pointer_size, // drop, size, align
-                        self.ecx.tcx.data_layout.pointer_align.abi,
+                        Some(self.ecx.tcx.data_layout.pointer_align.abi),
+                        CheckInAllocMsg::InboundsTest,
                     ),
-                    "dangling or unaligned vtable pointer in wide pointer or too small vtable",
-                    self.path
+                    self.path,
+                    err_ub!(PointerOutOfBounds { .. }) |
+                    err_ub!(AlignmentCheckFailed { .. }) |
+                    err_ub!(DanglingIntPointer(..)) |
+                    err_unsup!(ReadBytesAsPointer) => {
+                        "dangling or unaligned vtable pointer in wide pointer or too small vtable"
+                    },
                 );
-                try_validation!(
+                try_validation_catchall!(
                     self.ecx.read_drop_type_from_vtable(vtable),
                     "invalid drop fn in vtable",
                     self.path
                 );
-                try_validation!(
+                try_validation_catchall!(
                     self.ecx.read_size_and_align_from_vtable(vtable),
                     "invalid size or align in vtable",
                     self.path
@@ -327,8 +335,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             ty::Slice(..) | ty::Str => {
                 let _len = try_validation!(
                     meta.unwrap_meta().to_machine_usize(self.ecx),
-                    "non-integer slice length in wide pointer",
-                    self.path
+                    self.path,
+                    err_unsup!(ReadPointerAsBytes) => { "non-integer slice length in wide pointer" },
                 );
                 // We do not check that `len * elem_size <= isize::MAX`:
                 // that is only required for references, and there it falls out of the
@@ -354,8 +362,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         // Check metadata early, for better diagnostics
         let place = try_validation!(
             self.ecx.ref_to_mplace(value),
-            format_args!("uninitialized {}", kind),
-            self.path
+            self.path,
+            err_ub!(InvalidUndefBytes(..)) => { "uninitialized {}", kind },
         );
         if place.layout.is_unsized() {
             self.check_wide_ptr_meta(place.meta, place.layout)?;
@@ -376,6 +384,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             // alignment and size determined by the layout (size will be 0,
             // alignment should take attributes into account).
             .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
+        // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
         let ptr: Option<_> = match self.ecx.memory.check_ptr_access_align(
             place.ptr,
             size,
@@ -489,12 +498,20 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         match ty.kind {
             ty::Bool => {
                 let value = self.ecx.read_scalar(value)?;
-                try_validation!(value.to_bool(), value, self.path, "a boolean");
+                try_validation!(
+                    value.to_bool(),
+                    self.path,
+                    err_ub!(InvalidBool(..)) => { "{}", value } expected { "a boolean" },
+                );
                 Ok(true)
             }
             ty::Char => {
                 let value = self.ecx.read_scalar(value)?;
-                try_validation!(value.to_char(), value, self.path, "a valid unicode codepoint");
+                try_validation!(
+                    value.to_char(),
+                    self.path,
+                    err_ub!(InvalidChar(..)) => { "{}", value } expected { "a valid unicode codepoint" },
+                );
                 Ok(true)
             }
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
@@ -521,9 +538,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // We are conservative with undef for integers, but try to
                 // actually enforce the strict rules for raw pointers (mostly because
                 // that lets us re-use `ref_to_mplace`).
-                let place = try_validation_pat!(self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?), self.path, {
+                let place = try_validation!(
+                    self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
+                    self.path,
                     err_ub!(InvalidUndefBytes(..)) => { "uninitialized raw pointer" },
-                });
+                );
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
                 }
@@ -539,7 +558,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             }
             ty::FnPtr(_sig) => {
                 let value = self.ecx.read_scalar(value)?;
-                let _fn = try_validation!(
+                let _fn = try_validation_catchall!(
                     value.not_undef().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
                     value,
                     self.path,
@@ -598,9 +617,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         // At least one value is excluded. Get the bits.
         let value = try_validation!(
             value.not_undef(),
-            value,
             self.path,
-            format_args!("something {}", wrapping_range_format(valid_range, max_hi),)
+            err_ub!(InvalidUndefBytes(..)) => { "{}", value }
+                expected { "something {}", wrapping_range_format(valid_range, max_hi) },
         );
         let bits = match value.to_bits_or_ptr(op.layout.size, self.ecx) {
             Err(ptr) => {
@@ -761,8 +780,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 let mplace = op.assert_mem_place(self.ecx); // strings are never immediate
                 try_validation!(
                     self.ecx.read_str(mplace),
-                    "uninitialized or non-UTF-8 data in str",
-                    self.path
+                    self.path,
+                    err_ub!(InvalidStr(..)) => { "uninitialized or non-UTF-8 data in str" },
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
