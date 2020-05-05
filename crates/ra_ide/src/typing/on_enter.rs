@@ -96,7 +96,8 @@ mod tests {
         let result = analysis.on_enter(FilePosition { offset, file_id }).unwrap()?;
 
         assert_eq!(result.source_file_edits.len(), 1);
-        let actual = result.source_file_edits[0].edit.apply(&before);
+        let mut actual = before.to_string();
+        result.source_file_edits[0].edit.apply(&mut actual);
         let actual = add_cursor(&actual, result.cursor_position.unwrap().offset);
         Some(actual)
     }

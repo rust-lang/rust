@@ -30,6 +30,10 @@ fn check(assist_id: &str, before: &str, after: &str) {
             )
         });
 
-    let actual = assist.action.edit.apply(&before);
+    let actual = {
+        let mut actual = before.clone();
+        assist.action.edit.apply(&mut actual);
+        actual
+    };
     assert_eq_text!(after, &actual);
 }

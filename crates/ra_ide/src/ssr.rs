@@ -511,7 +511,9 @@ mod tests {
         );
 
         let edit = replace(&matches, &query.template);
-        assert_eq!(edit.apply(input), "fn main() { bar(1+2); }");
+        let mut after = input.to_string();
+        edit.apply(&mut after);
+        assert_eq!(after, "fn main() { bar(1+2); }");
     }
 
     fn assert_ssr_transform(query: &str, input: &str, result: &str) {
@@ -519,7 +521,9 @@ mod tests {
         let code = SourceFile::parse(input).tree();
         let matches = find(&query.pattern, code.syntax());
         let edit = replace(&matches, &query.template);
-        assert_eq!(edit.apply(input), result);
+        let mut after = input.to_string();
+        edit.apply(&mut after);
+        assert_eq!(after, result);
     }
 
     #[test]

@@ -199,12 +199,12 @@ mod handlers {
 mod helpers {
     use std::sync::Arc;
 
+    use hir::Semantics;
     use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
     use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
     use test_utils::{add_cursor, assert_eq_text, extract_range_or_offset, RangeOrOffset};
 
-    use crate::{AssistCtx, AssistFile, AssistHandler};
-    use hir::Semantics;
+    use crate::{handlers::Handler, AssistCtx, AssistFile};
 
     pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
         let (mut db, file_id) = RootDatabase::with_single_file(text);
@@ -214,22 +214,18 @@ mod helpers {
         (db, file_id)
     }
 
-    pub(crate) fn check_assist(
-        assist: AssistHandler,
-        ra_fixture_before: &str,
-        ra_fixture_after: &str,
-    ) {
+    pub(crate) fn check_assist(assist: Handler, ra_fixture_before: &str, ra_fixture_after: &str) {
         check(assist, ra_fixture_before, ExpectedResult::After(ra_fixture_after));
     }
 
     // FIXME: instead of having a separate function here, maybe use
     // `extract_ranges` and mark the target as `<target> </target>` in the
     // fixuture?
-    pub(crate) fn check_assist_target(assist: AssistHandler, ra_fixture: &str, target: &str) {
+    pub(crate) fn check_assist_target(assist: Handler, ra_fixture: &str, target: &str) {
         check(assist, ra_fixture, ExpectedResult::Target(target));
     }
 
-    pub(crate) fn check_assist_not_applicable(assist: AssistHandler, ra_fixture: &str) {
+    pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
         check(assist, ra_fixture, ExpectedResult::NotApplicable);
     }
 
@@ -239,7 +235,7 @@ mod helpers {
         Target(&'a str),
     }
 
-    fn check(assist: AssistHandler, before: &str, expected: ExpectedResult) {
+    fn check(assist: Handler, before: &str, expected: ExpectedResult) {
         let (text_without_caret, file_with_caret_id, range_or_offset, db) =
             if before.contains("//-") {
                 let (mut db, position) = RootDatabase::with_position(before);
@@ -265,13 +261,13 @@ mod helpers {
             (Some(assist), ExpectedResult::After(after)) => {
                 let action = assist.0[0].action.clone().unwrap();
 
-                let assisted_file_text = if let AssistFile::TargetFile(file_id) = action.file {
+                let mut actual = if let AssistFile::TargetFile(file_id) = action.file {
                     db.file_text(file_id).as_ref().to_owned()
                 } else {
                     text_without_caret
                 };
+                action.edit.apply(&mut actual);
 
-                let mut actual = action.edit.apply(&assisted_file_text);
                 match action.cursor_position {
                     None => {
                         if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {
