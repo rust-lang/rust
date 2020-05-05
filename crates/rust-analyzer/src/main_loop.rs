@@ -1083,5 +1083,17 @@ mod tests {
         assert_eq!(text, "the quick foxes\nDREAM\nthey have quiet dreams\nDON'T THEY?\n");
         run(&mut text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
         assert_eq!(text, "the quick \nthey have quiet dreams\n");
+
+        text = String::from("❤️");
+        run(&mut text, c![0, 0; 0, 0 => "a"]);
+        assert_eq!(text, "a❤️");
+
+        text = String::from("a\nb");
+        run(&mut text, c![0, 1; 1, 0 => "\nțc", 0, 1; 1, 1 => "d"]);
+        assert_eq!(text, "adcb");
+
+        text = String::from("a\nb");
+        run(&mut text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
+        assert_eq!(text, "ațc\ncb");
     }
 }
