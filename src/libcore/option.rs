@@ -1387,7 +1387,7 @@ impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
     /// ```
     /// let s: Option<String> = Some(String::from("Hello, Rustaceans!"));
     /// let o: Option<usize> = Option::from(&s).map(|ss: &String| ss.len());
-    /// println!("Can still print s: {}", s);
+    /// println!("Can still print s: {:?}", s);
     /// assert_eq!(o, Some(18));
     /// ```
     fn from(o: &'a Option<T>) -> Option<&'a T> {
