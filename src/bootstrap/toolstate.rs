@@ -78,7 +78,6 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
     ("edition-guide", "src/doc/edition-guide"),
     ("rls", "src/tools/rls"),
     ("rustfmt", "src/tools/rustfmt"),
-    ("clippy-driver", "src/tools/clippy"),
 ];
 
 // These tools are permitted to not build on the beta/stable channels.

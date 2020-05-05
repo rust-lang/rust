@@ -528,7 +528,7 @@ impl Step for Clippy {
                 host,
                 "test",
                 "src/tools/clippy",
-                SourceType::Submodule,
+                SourceType::InTree,
                 &[],
             );
 

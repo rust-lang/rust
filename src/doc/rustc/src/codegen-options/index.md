@@ -62,23 +62,39 @@ the linker.
 
 ## embed-bitcode
 
-This flag controls whether or not the compiler puts LLVM bitcode into generated
-rlibs. It takes one of the following values:
+This flag controls whether or not the compiler embeds LLVM bitcode into object
+files. It takes one of the following values:
 
 * `y`, `yes`, `on`, or no value: put bitcode in rlibs (the default).
 * `n`, `no`, or `off`: omit bitcode from rlibs.
 
-LLVM bitcode is only needed when link-time optimization (LTO) is being
-performed, but it is enabled by default for backwards compatibility reasons.
+LLVM bitcode is required when rustc is performing link-time optimization (LTO).
+It is also required on some targets like iOS ones where vendors look for LLVM
+bitcode. Embedded bitcode will appear in rustc-generated object files inside of
+a section whose name is defined by the target platform. Most of the time this is
+`.llvmbc`.
 
 The use of `-C embed-bitcode=no` can significantly improve compile times and
-reduce generated file sizes. For these reasons, Cargo uses `-C
-embed-bitcode=no` whenever possible. Likewise, if you are building directly
-with `rustc` we recommend using `-C embed-bitcode=no` whenever you are not
-using LTO.
+reduce generated file sizes if your compilation does not actually need bitcode
+(e.g. if you're not compiling for iOS or you're not performing LTO). For these
+reasons, Cargo uses `-C embed-bitcode=no` whenever possible. Likewise, if you
+are building directly with `rustc` we recommend using `-C embed-bitcode=no`
+whenever you are not using LTO.
 
 If combined with `-C lto`, `-C embed-bitcode=no` will cause `rustc` to abort
 at start-up, because the combination is invalid.
+
+> **Note**: if you're building Rust code with LTO then you probably don't even
+> need the `embed-bitcode` option turned on. You'll likely want to use
+> `-Clinker-plugin-lto` instead which skips generating object files entirely and
+> simply replaces object files with LLVM bitcode. The only purpose for
+> `-Cembed-bitcode` is when you're generating an rlib that is both being used
+> with and without LTO. For example Rust's standard library ships with embedded
+> bitcode since users link to it both with and without LTO.
+>
+> This also may make you wonder why the default is `yes` for this option. The
+> reason for that is that it's how it was for rustc 1.44 and prior. In 1.45 this
+> option was added to turn off what had always been the default.
 
 ## extra-filename
 
@@ -97,6 +113,18 @@ values:
 
 The default behaviour, if frame pointers are not force-enabled, depends on the
 target.
+
+## force-unwind-tables
+
+This flag forces the generation of unwind tables. It takes one of the following
+values:
+
+* `y`, `yes`, `on`, or no value: Unwind tables are forced to be generated.
+* `n`, `no`, or `off`: Unwind tables are not forced to be generated. If unwind
+  tables are required by the target or `-C panic=unwind`, an error will be
+  emitted.
+
+The default if not specified depends on the target.
 
 ## incremental
 
@@ -186,6 +214,18 @@ the following values:
 * `y`, `yes`, `on`, or no value: enable linker plugin LTO.
 * `n`, `no`, or `off`: disable linker plugin LTO (the default).
 * A path to the linker plugin.
+
+More specifically this flag will cause the compiler to replace its typical
+object file output with LLVM bitcode files. For example an rlib produced with
+`-Clinker-plugin-lto` will still have `*.o` files in it, but they'll all be LLVM
+bitcode instead of actual machine code. It is expected that the native platform
+linker is capable of loading these LLVM bitcode files and generating code at
+link time (typically after performing optimizations).
+
+Note that rustc can also read its own object files produced with
+`-Clinker-plugin-lto`. If an rlib is only ever going to get used later with a
+`-Clto` compilation then you can pass `-Clinker-plugin-lto` to speed up
+compilation and avoid generating object files that aren't used.
 
 ## llvm-args
 
