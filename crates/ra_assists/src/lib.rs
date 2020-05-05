@@ -17,13 +17,13 @@ mod doc_tests;
 pub mod utils;
 pub mod ast_transform;
 
+use hir::Semantics;
 use ra_db::{FileId, FileRange};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{TextRange, TextSize};
 use ra_text_edit::TextEdit;
 
 pub(crate) use crate::assist_ctx::{Assist, AssistCtx, AssistHandler};
-use hir::Semantics;
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
