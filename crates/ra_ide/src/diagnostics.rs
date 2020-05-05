@@ -64,7 +64,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             .unwrap_or_else(|| RelativePath::new(""))
             .join(&d.candidate);
         let create_file = FileSystemEdit::CreateFile { source_root, path };
-        let fix = SourceChange::file_system_edit("create module", create_file);
+        let fix = SourceChange::file_system_edit("Create module", create_file);
         res.borrow_mut().push(Diagnostic {
             range: sema.diagnostics_range(d).range,
             message: d.message(),
@@ -92,7 +92,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             algo::diff(&d.ast(db).syntax(), &field_list.syntax()).into_text_edit(&mut builder);
 
             Some(SourceChange::source_file_edit_from(
-                "fill struct fields",
+                "Fill struct fields",
                 file_id,
                 builder.finish(),
             ))
@@ -117,7 +117,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let node = d.ast(db);
         let replacement = format!("Ok({})", node.syntax());
         let edit = TextEdit::replace(node.syntax().text_range(), replacement);
-        let fix = SourceChange::source_file_edit_from("wrap with ok", file_id, edit);
+        let fix = SourceChange::source_file_edit_from("Wrap with ok", file_id, edit);
         res.borrow_mut().push(Diagnostic {
             range: sema.diagnostics_range(d).range,
             message: d.message(),
@@ -199,7 +199,7 @@ fn check_struct_shorthand_initialization(
                     message: "Shorthand struct initialization".to_string(),
                     severity: Severity::WeakWarning,
                     fix: Some(SourceChange::source_file_edit(
-                        "use struct shorthand initialization",
+                        "Use struct shorthand initialization",
                         SourceFileEdit { file_id, edit },
                     )),
                 });
@@ -606,7 +606,7 @@ mod tests {
                 range: 0..8,
                 fix: Some(
                     SourceChange {
-                        label: "create module",
+                        label: "Create module",
                         source_file_edits: [],
                         file_system_edits: [
                             CreateFile {
@@ -655,7 +655,7 @@ mod tests {
                 range: 224..233,
                 fix: Some(
                     SourceChange {
-                        label: "fill struct fields",
+                        label: "Fill struct fields",
                         source_file_edits: [
                             SourceFileEdit {
                                 file_id: FileId(

@@ -337,7 +337,7 @@ fn main() {}
               "arguments": [
                 {
                   "cursorPosition": null,
-                  "label": "create module",
+                  "label": "Create module",
                   "workspaceEdit": {
                     "documentChanges": [
                       {
@@ -349,9 +349,9 @@ fn main() {}
                 }
               ],
               "command": "rust-analyzer.applySourceChange",
-              "title": "create module"
+              "title": "Create module"
             },
-            "title": "create module"
+            "title": "Create module"
           }
         ]),
     );
@@ -420,7 +420,7 @@ fn main() {{}}
               "arguments": [
                 {
                   "cursorPosition": null,
-                  "label": "create module",
+                  "label": "Create module",
                   "workspaceEdit": {
                     "documentChanges": [
                       {
@@ -432,9 +432,9 @@ fn main() {{}}
                 }
               ],
               "command": "rust-analyzer.applySourceChange",
-              "title": "create module"
+              "title": "Create module"
             },
-            "title": "create module"
+            "title": "Create module"
           }
         ]),
     );
@@ -500,7 +500,7 @@ fn main() {{}}
             "position": { "character": 4, "line": 1 },
             "textDocument": { "uri": "file:///[..]src/m0.rs" }
           },
-          "label": "on enter",
+          "label": "On enter",
           "workspaceEdit": {
             "documentChanges": [
               {
@@ -552,7 +552,7 @@ version = \"0.0.0\"
             "position": { "line": 1, "character": 4 },
             "textDocument": { "uri": "file:///[..]src/main.rs" }
           },
-          "label": "on enter",
+          "label": "On enter",
           "workspaceEdit": {
             "documentChanges": [
               {

@@ -35,8 +35,10 @@ impl SourceChange {
     /// Creates a new SourceChange with the given label,
     /// containing only the given `SourceFileEdits`.
     pub(crate) fn source_file_edits<L: Into<String>>(label: L, edits: Vec<SourceFileEdit>) -> Self {
+        let label = label.into();
+        assert!(label.starts_with(char::is_uppercase));
         SourceChange {
-            label: label.into(),
+            label: label,
             source_file_edits: edits,
             file_system_edits: vec![],
             cursor_position: None,

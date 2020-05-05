@@ -17,13 +17,13 @@ mod doc_tests;
 pub mod utils;
 pub mod ast_transform;
 
+use hir::Semantics;
 use ra_db::{FileId, FileRange};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{TextRange, TextSize};
 use ra_text_edit::TextEdit;
 
 pub(crate) use crate::assist_ctx::{Assist, AssistCtx, AssistHandler};
-use hir::Semantics;
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
@@ -32,19 +32,20 @@ pub struct AssistId(pub &'static str);
 
 #[derive(Debug, Clone)]
 pub struct AssistLabel {
+    pub id: AssistId,
     /// Short description of the assist, as shown in the UI.
     pub label: String,
-    pub id: AssistId,
+    pub group: Option<GroupLabel>,
 }
 
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);
 
 impl AssistLabel {
-    pub(crate) fn new(label: String, id: AssistId) -> AssistLabel {
+    pub(crate) fn new(id: AssistId, label: String, group: Option<GroupLabel>) -> AssistLabel {
         // FIXME: make fields private, so that this invariant can't be broken
         assert!(label.starts_with(|c: char| c.is_uppercase()));
-        AssistLabel { label, id }
+        AssistLabel { id, label, group }
     }
 }
 
@@ -60,7 +61,6 @@ pub struct AssistAction {
 #[derive(Debug, Clone)]
 pub struct ResolvedAssist {
     pub label: AssistLabel,
-    pub group_label: Option<GroupLabel>,
     pub action: AssistAction,
 }
 
