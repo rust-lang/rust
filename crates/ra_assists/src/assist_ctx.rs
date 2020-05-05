@@ -42,7 +42,6 @@ impl AssistInfo {
     }
 }
 
-pub(crate) type AssistHandler = fn(AssistCtx) -> Option<Assist>;
 
 /// `AssistCtx` allows to apply an assist or check if it could be applied.
 ///

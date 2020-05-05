@@ -23,7 +23,7 @@ use ra_ide_db::RootDatabase;
 use ra_syntax::{TextRange, TextSize};
 use ra_text_edit::TextEdit;
 
-pub(crate) use crate::assist_ctx::{Assist, AssistCtx, AssistHandler};
+pub(crate) use crate::assist_ctx::{Assist, AssistCtx};
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
@@ -109,7 +109,9 @@ pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssi
 }
 
 mod handlers {
-    use crate::AssistHandler;
+    use crate::{Assist, AssistCtx};
+
+    pub(crate) type Handler = fn(AssistCtx) -> Option<Assist>;
 
     mod add_custom_impl;
     mod add_derive;
@@ -145,12 +147,13 @@ mod handlers {
     mod reorder_fields;
     mod unwrap_block;
 
-    pub(crate) fn all() -> &'static [AssistHandler] {
+    pub(crate) fn all() -> &'static [Handler] {
         &[
             // These are alphabetic for the foolish consistency
             add_custom_impl::add_custom_impl,
             add_derive::add_derive,
             add_explicit_type::add_explicit_type,
+            add_from_impl_for_enum::add_from_impl_for_enum,
             add_function::add_function,
             add_impl::add_impl,
             add_new::add_new,
@@ -176,17 +179,18 @@ mod handlers {
             raw_string::remove_hash,
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
+            reorder_fields::reorder_fields,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_let_with_if_let::replace_let_with_if_let,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
-            add_from_impl_for_enum::add_from_impl_for_enum,
             unwrap_block::unwrap_block,
             // These are manually sorted for better priorities
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
-            reorder_fields::reorder_fields,
+            // Are you sure you want to add new assist here, and not to the
+            // sorted list above?
         ]
     }
 }
