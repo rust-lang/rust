@@ -17,8 +17,10 @@
 
 use core::str::next_code_point;
 
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::Cow;
 use crate::char;
+use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::iter::FromIterator;
@@ -110,9 +112,43 @@ impl CodePoint {
 ///
 /// Similar to `String`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
-#[derive(Eq, PartialEq, Ord, PartialOrd, Clone)]
-pub struct Wtf8Buf {
-    bytes: Vec<u8>,
+pub struct Wtf8Buf<A: AllocRef = Global> {
+    bytes: Vec<u8, A>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialEq for Wtf8Buf {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.bytes.eq(&other.bytes)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Eq for Wtf8Buf {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialOrd for Wtf8Buf {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.bytes.partial_cmp(&other.bytes)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Ord for Wtf8Buf {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.bytes.cmp(&other.bytes)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for Wtf8Buf {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { bytes: self.bytes.clone() }
+    }
 }
 
 impl ops::Deref for Wtf8Buf {

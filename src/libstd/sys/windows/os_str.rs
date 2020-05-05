@@ -1,16 +1,33 @@
+use crate::alloc::{AllocRef, Global};
 /// The underlying OsString/OsStr implementation on Windows is a
 /// wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
 use crate::borrow::Cow;
 use crate::fmt;
+use crate::hash;
 use crate::mem;
 use crate::rc::Rc;
 use crate::sync::Arc;
 use crate::sys_common::wtf8::{Wtf8, Wtf8Buf};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
-#[derive(Clone, Hash)]
-pub struct Buf {
-    pub inner: Wtf8Buf,
+pub struct Buf<A: AllocRef = Global> {
+    pub inner: Wtf8Buf<A>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl hash::Hash for Buf {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.inner.hash(state)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for Buf {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone() }
+    }
 }
 
 impl IntoInner<Wtf8Buf> for Buf {
