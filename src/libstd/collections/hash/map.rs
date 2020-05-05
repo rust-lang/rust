@@ -2062,7 +2062,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// let mut map: HashMap<usize, &str> = HashMap::new();
     /// map.insert(42, "asdf");
     ///
-    /// let maybe_replaced = map.entry(42).occupied().map(|o| o.insert("hee hee"));
+    /// let maybe_replaced = map.entry(42).occupied().map(|mut o| o.insert("hee hee"));
     ///
     /// assert_eq!(maybe_replaced, Some("asdf"));
     /// assert_eq!(map[&42], "hee hee");
