@@ -131,6 +131,7 @@ impl Config {
         set(value, "/cargo/allFeatures", &mut self.cargo.all_features);
         set(value, "/cargo/features", &mut self.cargo.features);
         set(value, "/cargo/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
+        set(value, "/cargo/target", &mut self.cargo.target);
 
         match get(value, "/procMacro/enable") {
             Some(true) => {
