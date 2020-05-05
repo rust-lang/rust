@@ -1454,26 +1454,27 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
                 );
 
-            span.push_span_label(
-                target_span,
-                format!("has type `{}` which {}", target_ty, trait_explanation),
-            );
-
-            // If available, use the scope span to annotate the drop location.
-            if let Some(scope_span) = scope_span {
                 span.push_span_label(
-                    source_map.end_point(*scope_span),
-                    format!("`{}` is later dropped here", snippet),
+                    target_span,
+                    format!("has type `{}` which {}", target_ty, trait_explanation),
+                );
+
+                // If available, use the scope span to annotate the drop location.
+                if let Some(scope_span) = scope_span {
+                    span.push_span_label(
+                        source_map.end_point(*scope_span),
+                        format!("`{}` is later dropped here", snippet),
+                    );
+                }
+
+                err.span_note(
+                    span,
+                    &format!(
+                        "{} {} as this value is used across {}",
+                        future_or_generator, trait_explanation, an_await_or_yield
+                    ),
                 );
             }
-
-            err.span_note(
-                span,
-                &format!(
-                    "{} {} as this value is used across {}",
-                    future_or_generator, trait_explanation, an_await_or_yield
-                ),
-            );
         }
 
         if let Some(expr_id) = expr {
