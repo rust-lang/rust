@@ -755,6 +755,13 @@ impl Slice {
     }
 }
 
+/// A value can be decomposed into a constructor applied to some fields. This struct represents
+/// the constructor. See also `Fields`.
+///
+/// `pat_constructor` retrieves the constructor corresponding to a pattern.
+/// `specialize_one_pattern` returns the list of fields corresponding to a pattern, given a
+/// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
+/// `Fields`.
 #[derive(Clone, Debug, PartialEq)]
 enum Constructor<'tcx> {
     /// The constructor for patterns that have a single constructor, like tuples, struct patterns
@@ -1107,8 +1114,14 @@ impl<'p, 'tcx> StructFields<'p, 'tcx> {
     }
 }
 
-/// A value can be decomposed into a Constructor applied to some Fields. This struct represents
-/// those fields, generalized to allow patterns in each field.
+/// A value can be decomposed into a constructor applied to some fields. This struct represents
+/// those fields, generalized to allow patterns in each field. See also `Constructor`.
+///
+/// In some special cases of uninhabited types, we filter out those fields in the matrix so that
+/// the code can't observe they are uninhabited. But we do need to handle the full list of fields
+/// when going to/from a `Pat`, hence the distinction between filtered and unfiltered fields. As a
+/// rule, when going to/from the matrix, use the filtered fields; when going to/from `Pat`, use the
+/// full fields.
 #[derive(Debug, Clone)]
 enum Fields<'p, 'tcx> {
     /// Fields of a struct, with special handling of uninhabited types.
