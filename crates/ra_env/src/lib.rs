@@ -13,7 +13,7 @@ pub fn get_path_for_executable(executable_name: impl AsRef<str>) -> Result<Strin
     // 1) Appropriate environment variable (erroring if this is set but not a usable executable)
     //      example: for cargo, this checks $CARGO environment variable; for rustc, $RUSTC; etc
     // 2) `<executable_name>`
-    //      example: for cargo, this tries just `cargo`, which will succeed if `cargo` in on the $PATH
+    //      example: for cargo, this tries just `cargo`, which will succeed if `cargo` is on the $PATH
     // 3) `~/.cargo/bin/<executable_name>`
     //      example: for cargo, this tries ~/.cargo/bin/cargo
     //      It seems that this is a reasonable place to try for cargo, rustc, and rustup

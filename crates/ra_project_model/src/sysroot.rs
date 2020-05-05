@@ -1,6 +1,5 @@
 //! FIXME: write short doc here
 
-use super::find_executables::get_path_for_executable;
 use anyhow::{bail, Context, Result};
 use std::{
     env, ops,
@@ -9,6 +8,7 @@ use std::{
 };
 
 use ra_arena::{Arena, Idx};
+use ra_env::get_path_for_executable;
 
 #[derive(Default, Debug, Clone)]
 pub struct Sysroot {
@@ -122,7 +122,8 @@ fn get_or_install_rust_src(cargo_toml: &Path) -> Result<PathBuf> {
     let src_path = sysroot_path.join("lib/rustlib/src/rust/src");
 
     if !src_path.exists() {
-        run_command_in_cargo_dir(cargo_toml, "rustup", &["component", "add", "rust-src"])?;
+        let rustup = get_path_for_executable("rustup")?;
+        run_command_in_cargo_dir(cargo_toml, &rustup, &["component", "add", "rust-src"])?;
     }
     if !src_path.exists() {
         bail!(

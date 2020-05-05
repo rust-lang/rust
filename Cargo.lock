@@ -1000,6 +1000,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ra_env"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dirs",
+]
+
+[[package]]
 name = "ra_flycheck"
 version = "0.1.0"
 dependencies = [
@@ -1009,6 +1017,7 @@ dependencies = [
  "jod-thread",
  "log",
  "lsp-types",
+ "ra_env",
  "serde_json",
 ]
 
@@ -1209,11 +1218,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "cargo_metadata",
- "dirs",
  "log",
  "ra_arena",
  "ra_cfg",
  "ra_db",
+ "ra_env",
  "ra_proc_macro",
  "rustc-hash",
  "serde",
