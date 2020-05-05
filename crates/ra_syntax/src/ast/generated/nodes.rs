@@ -196,7 +196,7 @@ pub struct ItemList {
 impl ast::ModuleItemOwner for ItemList {}
 impl ItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn impl_items(&self) -> AstChildren<ImplItem> { support::children(&self.syntax) }
+    pub fn assoc_items(&self) -> AstChildren<AssocItem> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 
@@ -1429,13 +1429,13 @@ impl ast::AttrsOwner for ModuleItem {}
 impl ast::VisibilityOwner for ModuleItem {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ImplItem {
+pub enum AssocItem {
     FnDef(FnDef),
     TypeAliasDef(TypeAliasDef),
     ConstDef(ConstDef),
 }
-impl ast::NameOwner for ImplItem {}
-impl ast::AttrsOwner for ImplItem {}
+impl ast::NameOwner for AssocItem {}
+impl ast::AttrsOwner for AssocItem {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExternItem {
@@ -3167,16 +3167,16 @@ impl AstNode for ModuleItem {
         }
     }
 }
-impl From<FnDef> for ImplItem {
-    fn from(node: FnDef) -> ImplItem { ImplItem::FnDef(node) }
+impl From<FnDef> for AssocItem {
+    fn from(node: FnDef) -> AssocItem { AssocItem::FnDef(node) }
 }
-impl From<TypeAliasDef> for ImplItem {
-    fn from(node: TypeAliasDef) -> ImplItem { ImplItem::TypeAliasDef(node) }
+impl From<TypeAliasDef> for AssocItem {
+    fn from(node: TypeAliasDef) -> AssocItem { AssocItem::TypeAliasDef(node) }
 }
-impl From<ConstDef> for ImplItem {
-    fn from(node: ConstDef) -> ImplItem { ImplItem::ConstDef(node) }
+impl From<ConstDef> for AssocItem {
+    fn from(node: ConstDef) -> AssocItem { AssocItem::ConstDef(node) }
 }
-impl AstNode for ImplItem {
+impl AstNode for AssocItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             FN_DEF | TYPE_ALIAS_DEF | CONST_DEF => true,
@@ -3185,18 +3185,18 @@ impl AstNode for ImplItem {
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            FN_DEF => ImplItem::FnDef(FnDef { syntax }),
-            TYPE_ALIAS_DEF => ImplItem::TypeAliasDef(TypeAliasDef { syntax }),
-            CONST_DEF => ImplItem::ConstDef(ConstDef { syntax }),
+            FN_DEF => AssocItem::FnDef(FnDef { syntax }),
+            TYPE_ALIAS_DEF => AssocItem::TypeAliasDef(TypeAliasDef { syntax }),
+            CONST_DEF => AssocItem::ConstDef(ConstDef { syntax }),
             _ => return None,
         };
         Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            ImplItem::FnDef(it) => &it.syntax,
-            ImplItem::TypeAliasDef(it) => &it.syntax,
-            ImplItem::ConstDef(it) => &it.syntax,
+            AssocItem::FnDef(it) => &it.syntax,
+            AssocItem::TypeAliasDef(it) => &it.syntax,
+            AssocItem::ConstDef(it) => &it.syntax,
         }
     }
 }
@@ -3641,7 +3641,7 @@ impl std::fmt::Display for ModuleItem {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for ImplItem {
+impl std::fmt::Display for AssocItem {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

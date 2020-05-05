@@ -32,7 +32,7 @@
 //! ```
 
 use hir::{self, Docs, HasSource};
-use ra_assists::utils::get_missing_impl_items;
+use ra_assists::utils::get_missing_assoc_items;
 use ra_syntax::{
     ast::{self, edit, ImplDef},
     AstNode, SyntaxKind, SyntaxNode, TextRange, T,
@@ -50,7 +50,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
     if let Some((trigger, impl_def)) = completion_match(ctx) {
         match trigger.kind() {
             SyntaxKind::NAME_REF => {
-                get_missing_impl_items(&ctx.sema, &impl_def).iter().for_each(|item| match item {
+                get_missing_assoc_items(&ctx.sema, &impl_def).iter().for_each(|item| match item {
                     hir::AssocItem::Function(fn_item) => {
                         add_function_impl(&trigger, acc, ctx, &fn_item)
                     }
@@ -64,34 +64,40 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
             }
 
             SyntaxKind::FN_DEF => {
-                for missing_fn in get_missing_impl_items(&ctx.sema, &impl_def).iter().filter_map(
-                    |item| match item {
-                        hir::AssocItem::Function(fn_item) => Some(fn_item),
-                        _ => None,
-                    },
-                ) {
+                for missing_fn in
+                    get_missing_assoc_items(&ctx.sema, &impl_def).iter().filter_map(|item| {
+                        match item {
+                            hir::AssocItem::Function(fn_item) => Some(fn_item),
+                            _ => None,
+                        }
+                    })
+                {
                     add_function_impl(&trigger, acc, ctx, &missing_fn);
                 }
             }
 
             SyntaxKind::TYPE_ALIAS_DEF => {
-                for missing_fn in get_missing_impl_items(&ctx.sema, &impl_def).iter().filter_map(
-                    |item| match item {
-                        hir::AssocItem::TypeAlias(type_item) => Some(type_item),
-                        _ => None,
-                    },
-                ) {
+                for missing_fn in
+                    get_missing_assoc_items(&ctx.sema, &impl_def).iter().filter_map(|item| {
+                        match item {
+                            hir::AssocItem::TypeAlias(type_item) => Some(type_item),
+                            _ => None,
+                        }
+                    })
+                {
                     add_type_alias_impl(&trigger, acc, ctx, &missing_fn);
                 }
             }
 
             SyntaxKind::CONST_DEF => {
-                for missing_fn in get_missing_impl_items(&ctx.sema, &impl_def).iter().filter_map(
-                    |item| match item {
-                        hir::AssocItem::Const(const_item) => Some(const_item),
-                        _ => None,
-                    },
-                ) {
+                for missing_fn in
+                    get_missing_assoc_items(&ctx.sema, &impl_def).iter().filter_map(|item| {
+                        match item {
+                            hir::AssocItem::Const(const_item) => Some(const_item),
+                            _ => None,
+                        }
+                    })
+                {
                     add_const_impl(&trigger, acc, ctx, &missing_fn);
                 }
             }

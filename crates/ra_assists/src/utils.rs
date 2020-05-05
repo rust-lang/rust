@@ -13,7 +13,7 @@ use rustc_hash::FxHashSet;
 
 pub(crate) use insert_use::insert_use_statement;
 
-pub fn get_missing_impl_items(
+pub fn get_missing_assoc_items(
     sema: &Semantics<RootDatabase>,
     impl_def: &ast::ImplDef,
 ) -> Vec<hir::AssocItem> {
@@ -23,21 +23,21 @@ pub fn get_missing_impl_items(
     let mut impl_type = FxHashSet::default();
 
     if let Some(item_list) = impl_def.item_list() {
-        for item in item_list.impl_items() {
+        for item in item_list.assoc_items() {
             match item {
-                ast::ImplItem::FnDef(f) => {
+                ast::AssocItem::FnDef(f) => {
                     if let Some(n) = f.name() {
                         impl_fns_consts.insert(n.syntax().to_string());
                     }
                 }
 
-                ast::ImplItem::TypeAliasDef(t) => {
+                ast::AssocItem::TypeAliasDef(t) => {
                     if let Some(n) = t.name() {
                         impl_type.insert(n.syntax().to_string());
                     }
                 }
 
-                ast::ImplItem::ConstDef(c) => {
+                ast::AssocItem::ConstDef(c) => {
                     if let Some(n) = c.name() {
                         impl_fns_consts.insert(n.syntax().to_string());
                     }

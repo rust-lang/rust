@@ -10,7 +10,7 @@ use ra_syntax::{
 
 use crate::{
     ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
-    utils::{get_missing_impl_items, resolve_target_trait},
+    utils::{get_missing_assoc_items, resolve_target_trait},
     Assist, AssistCtx, AssistId,
 };
 
@@ -112,25 +112,25 @@ fn add_missing_impl_members_inner(
 
     let trait_ = resolve_target_trait(&ctx.sema, &impl_node)?;
 
-    let def_name = |item: &ast::ImplItem| -> Option<SmolStr> {
+    let def_name = |item: &ast::AssocItem| -> Option<SmolStr> {
         match item {
-            ast::ImplItem::FnDef(def) => def.name(),
-            ast::ImplItem::TypeAliasDef(def) => def.name(),
-            ast::ImplItem::ConstDef(def) => def.name(),
+            ast::AssocItem::FnDef(def) => def.name(),
+            ast::AssocItem::TypeAliasDef(def) => def.name(),
+            ast::AssocItem::ConstDef(def) => def.name(),
         }
         .map(|it| it.text().clone())
     };
 
-    let missing_items = get_missing_impl_items(&ctx.sema, &impl_node)
+    let missing_items = get_missing_assoc_items(&ctx.sema, &impl_node)
         .iter()
         .map(|i| match i {
-            hir::AssocItem::Function(i) => ast::ImplItem::FnDef(i.source(ctx.db).value),
-            hir::AssocItem::TypeAlias(i) => ast::ImplItem::TypeAliasDef(i.source(ctx.db).value),
-            hir::AssocItem::Const(i) => ast::ImplItem::ConstDef(i.source(ctx.db).value),
+            hir::AssocItem::Function(i) => ast::AssocItem::FnDef(i.source(ctx.db).value),
+            hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAliasDef(i.source(ctx.db).value),
+            hir::AssocItem::Const(i) => ast::AssocItem::ConstDef(i.source(ctx.db).value),
         })
         .filter(|t| def_name(&t).is_some())
         .filter(|t| match t {
-            ast::ImplItem::FnDef(def) => match mode {
+            ast::AssocItem::FnDef(def) => match mode {
                 AddMissingImplMembersMode::DefaultMethodsOnly => def.body().is_some(),
                 AddMissingImplMembersMode::NoDefaultMethods => def.body().is_none(),
             },
@@ -145,7 +145,7 @@ fn add_missing_impl_members_inner(
     let sema = ctx.sema;
 
     ctx.add_assist(AssistId(assist_id), label, |edit| {
-        let n_existing_items = impl_item_list.impl_items().count();
+        let n_existing_items = impl_item_list.assoc_items().count();
         let source_scope = sema.scope_for_def(trait_);
         let target_scope = sema.scope(impl_item_list.syntax());
         let ast_transform = QualifyPaths::new(&target_scope, &source_scope)
@@ -154,13 +154,13 @@ fn add_missing_impl_members_inner(
             .into_iter()
             .map(|it| ast_transform::apply(&*ast_transform, it))
             .map(|it| match it {
-                ast::ImplItem::FnDef(def) => ast::ImplItem::FnDef(add_body(def)),
+                ast::AssocItem::FnDef(def) => ast::AssocItem::FnDef(add_body(def)),
                 _ => it,
             })
             .map(|it| edit::remove_attrs_and_docs(&it));
         let new_impl_item_list = impl_item_list.append_items(items);
         let cursor_position = {
-            let first_new_item = new_impl_item_list.impl_items().nth(n_existing_items).unwrap();
+            let first_new_item = new_impl_item_list.assoc_items().nth(n_existing_items).unwrap();
             first_new_item.syntax().text_range().start()
         };
 

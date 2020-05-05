@@ -1211,7 +1211,7 @@ impl Type {
 
     // This would be nicer if it just returned an iterator, but that runs into
     // lifetime problems, because we need to borrow temp `CrateImplDefs`.
-    pub fn iterate_impl_items<T>(
+    pub fn iterate_assoc_items<T>(
         self,
         db: &dyn HirDatabase,
         krate: Crate,

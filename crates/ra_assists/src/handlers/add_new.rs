@@ -162,8 +162,8 @@ fn find_struct_impl(ctx: &AssistCtx, strukt: &ast::StructDef) -> Option<Option<a
 
 fn has_new_fn(imp: &ast::ImplDef) -> bool {
     if let Some(il) = imp.item_list() {
-        for item in il.impl_items() {
-            if let ast::ImplItem::FnDef(f) = item {
+        for item in il.assoc_items() {
+            if let ast::AssocItem::FnDef(f) = item {
                 if let Some(name) = f.name() {
                     if name.text().eq_ignore_ascii_case("new") {
                         return true;

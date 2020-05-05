@@ -373,7 +373,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
 
         struct ItemList: ModuleItemOwner {
             T!['{'],
-            impl_items: [ImplItem],
+            assoc_items: [AssocItem],
             T!['}']
         }
 
@@ -685,7 +685,7 @@ pub(crate) const AST_SRC: AstSrc = AstSrc {
         }
 
         /* impl blocks can also contain MacroCall */
-        enum ImplItem: NameOwner, AttrsOwner {
+        enum AssocItem: NameOwner, AttrsOwner {
             FnDef, TypeAliasDef, ConstDef
         }
 

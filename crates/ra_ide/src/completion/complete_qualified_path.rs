@@ -84,7 +84,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 });
 
                 // Iterate assoc types separately
-                ty.iterate_impl_items(ctx.db, krate, |item| {
+                ty.iterate_assoc_items(ctx.db, krate, |item| {
                     if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
                         return None;
                     }
