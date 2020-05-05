@@ -109,14 +109,14 @@ fn reparse_block<'node>(
 }
 
 fn get_text_after_edit(element: SyntaxElement, edit: &Indel) -> String {
-    let edit =
-        Indel::replace(edit.delete - element.text_range().start(), edit.insert.clone());
+    let edit = Indel::replace(edit.delete - element.text_range().start(), edit.insert.clone());
 
-    let text = match element {
+    let mut text = match element {
         NodeOrToken::Token(token) => token.text().to_string(),
         NodeOrToken::Node(node) => node.text().to_string(),
     };
-    edit.apply(text)
+    edit.apply(&mut text);
+    text
 }
 
 fn is_contextual_kw(text: &str) -> bool {
@@ -199,7 +199,11 @@ mod tests {
     fn do_check(before: &str, replace_with: &str, reparsed_len: u32) {
         let (range, before) = extract_range(before);
         let edit = Indel::replace(range, replace_with.to_owned());
-        let after = edit.apply(before.clone());
+        let after = {
+            let mut after = before.clone();
+            edit.apply(&mut after);
+            after
+        };
 
         let fully_reparsed = SourceFile::parse(&after);
         let incrementally_reparsed: Parse<SourceFile> = {

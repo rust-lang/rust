@@ -142,7 +142,8 @@ impl Parse<SourceFile> {
     }
 
     fn full_reparse(&self, indel: &Indel) -> Parse<SourceFile> {
-        let text = indel.apply(self.tree().syntax().text().to_string());
+        let mut text = self.tree().syntax().text().to_string();
+        indel.apply(&mut text);
         SourceFile::parse(&text)
     }
 }

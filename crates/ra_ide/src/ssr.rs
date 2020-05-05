@@ -401,16 +401,22 @@ fn render_replace(
     ignored_comments: &Vec<Comment>,
     template: &SsrTemplate,
 ) -> String {
-    let mut builder = TextEditBuilder::default();
-    for element in template.template.descendants() {
-        if let Some(var) = template.placeholders.get(&element) {
-            builder.replace(element.text_range(), binding[var].to_string())
+    let edit = {
+        let mut builder = TextEditBuilder::default();
+        for element in template.template.descendants() {
+            if let Some(var) = template.placeholders.get(&element) {
+                builder.replace(element.text_range(), binding[var].to_string())
+            }
         }
-    }
-    for comment in ignored_comments {
-        builder.insert(template.template.text_range().end(), comment.syntax().to_string())
-    }
-    builder.finish().apply(&template.template.text().to_string())
+        for comment in ignored_comments {
+            builder.insert(template.template.text_range().end(), comment.syntax().to_string())
+        }
+        builder.finish()
+    };
+
+    let mut text = template.template.text().to_string();
+    edit.apply(&mut text);
+    text
 }
 
 #[cfg(test)]

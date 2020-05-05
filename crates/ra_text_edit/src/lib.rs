@@ -37,11 +37,10 @@ impl Indel {
         Indel { delete: range, insert: replace_with }
     }
 
-    pub fn apply(&self, mut text: String) -> String {
+    pub fn apply(&self, text: &mut String) {
         let start: usize = self.delete.start().into();
         let end: usize = self.delete.end().into();
         text.replace_range(start..end, &self.insert);
-        text
     }
 }
 
@@ -76,8 +75,17 @@ impl TextEdit {
         &self.indels
     }
 
-    pub fn apply(&self, text: &str) -> String {
-        let mut total_len = TextSize::of(text);
+    pub fn apply(&self, text: &mut String) {
+        match self.indels.len() {
+            0 => return,
+            1 => {
+                self.indels[0].apply(text);
+                return;
+            }
+            _ => (),
+        }
+
+        let mut total_len = TextSize::of(&*text);
         for indel in self.indels.iter() {
             total_len += TextSize::of(&indel.insert);
             total_len -= indel.delete.end() - indel.delete.start();
@@ -95,7 +103,10 @@ impl TextEdit {
         }
         buf.push_str(&text[prev..text.len()]);
         assert_eq!(TextSize::of(&buf), total_len);
-        buf
+
+        // FIXME: figure out a way to mutate the text in-place or reuse the
+        // memory in some other way
+        *text = buf
     }
 
     pub fn apply_to_offset(&self, offset: TextSize) -> Option<TextSize> {
