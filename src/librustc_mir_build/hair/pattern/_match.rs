@@ -903,7 +903,7 @@ impl<'tcx> Constructor<'tcx> {
         debug!("wildcard_subpatterns({:#?}, {:?})", self, ty);
 
         match self {
-            Single | Variant(_) => VariantFields::wildcards(cx, self, ty).into_patstack(),
+            Single | Variant(_) => StructFields::wildcards(cx, self, ty).into_patstack(),
             Slice(slice) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let wild = &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
@@ -928,7 +928,7 @@ impl<'tcx> Constructor<'tcx> {
     fn arity<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> u64 {
         debug!("Constructor::arity({:#?}, {:?})", self, ty);
         match self {
-            Single | Variant(_) => VariantFields::ctor_arity(cx, self, ty),
+            Single | Variant(_) => StructFields::ctor_arity(cx, self, ty),
             Slice(slice) => slice.arity(),
             ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => 0,
         }
@@ -960,7 +960,7 @@ impl<'tcx> Constructor<'tcx> {
         let pat = match self {
             Single | Variant(_) => match ty.kind {
                 ty::Adt(..) | ty::Tuple(..) => {
-                    let subpatterns = VariantFields::from_patterns(cx, self, ty, subpatterns)
+                    let subpatterns = StructFields::from_patterns(cx, self, ty, subpatterns)
                         .into_fieldpats()
                         .collect();
 
@@ -1024,43 +1024,42 @@ impl<'tcx> Constructor<'tcx> {
     }
 }
 
-/// The fields of a variant, like `Option::Some` or `(,)`. This handles uninhabited fields and
-/// `non_exhaustive` field lists under the hood. This in particular filters out fields whose
+/// The fields of a struct, a tuple, or an enum variant. This hides away fields whose
 /// uninhabitedness should not be visible to the user.
 #[derive(Debug, Clone)]
-struct VariantFields<'p, 'tcx> {
-    fields: SmallVec<[VariantField<'p, 'tcx>; 2]>,
+struct StructFields<'p, 'tcx> {
+    fields: SmallVec<[StructField<'p, 'tcx>; 2]>,
     is_non_exhaustive: bool,
 }
 
 #[derive(Debug, Clone)]
-enum VariantField<'p, 'tcx> {
+enum StructField<'p, 'tcx> {
     Kept(&'p Pat<'tcx>),
     Hidden(Ty<'tcx>),
 }
 
-impl<'p, 'tcx> VariantField<'p, 'tcx> {
+impl<'p, 'tcx> StructField<'p, 'tcx> {
     fn wildcard_from_ty(cx: &MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
         let wild = &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
-        VariantField::Kept(wild)
+        StructField::Kept(wild)
     }
 
     fn kept(&self) -> Option<&'p Pat<'tcx>> {
         match self {
-            VariantField::Kept(p) => Some(p),
-            VariantField::Hidden(_) => None,
+            StructField::Kept(p) => Some(p),
+            StructField::Hidden(_) => None,
         }
     }
 
     fn into_pattern(self) -> Pat<'tcx> {
         match self {
-            VariantField::Kept(p) => p.clone(),
-            VariantField::Hidden(ty) => Pat::wildcard_from_ty(ty),
+            StructField::Kept(p) => p.clone(),
+            StructField::Hidden(ty) => Pat::wildcard_from_ty(ty),
         }
     }
 }
 
-impl<'p, 'tcx> VariantFields<'p, 'tcx> {
+impl<'p, 'tcx> StructFields<'p, 'tcx> {
     // Takes an already filtered list of patterns, e.g. taken from the matrix.
     fn from_patterns(
         cx: &MatchCheckCtxt<'p, 'tcx>,
@@ -1074,7 +1073,7 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
         let mut pats_iter = pats.iter();
         let mut fields = Self::wildcards(cx, constructor, ty);
         for f in &mut fields.fields {
-            if let VariantField::Kept(p) = f {
+            if let StructField::Kept(p) = f {
                 // We take one input pattern for each `Kept` field, in order.
                 let pat = pats_iter.next().unwrap();
                 *p = pat;
@@ -1094,13 +1093,13 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
             ty::Tuple(ref fs) => fs
                 .into_iter()
                 .map(|t| t.expect_ty())
-                .map(|ty| VariantField::wildcard_from_ty(cx, ty))
+                .map(|ty| StructField::wildcard_from_ty(cx, ty))
                 .collect(),
-            ty::Ref(_, rty, _) => smallvec![VariantField::wildcard_from_ty(cx, rty)],
+            ty::Ref(_, rty, _) => smallvec![StructField::wildcard_from_ty(cx, rty)],
             ty::Adt(adt, substs) => {
                 if adt.is_box() {
                     // Use T as the sub pattern type of Box<T>.
-                    smallvec![VariantField::wildcard_from_ty(cx, substs.type_at(0))]
+                    smallvec![StructField::wildcard_from_ty(cx, substs.type_at(0))]
                 } else {
                     let variant = &adt.variants[constructor.variant_index_for_adt(cx, adt)];
                     variant
@@ -1110,9 +1109,9 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
                             let field_ty = field.ty(cx.tcx, substs);
                             // Filter out hidden fields so we don't know they are uninhabited.
                             if cx.hide_uninhabited_field(ty, variant, field) {
-                                VariantField::Hidden(field_ty)
+                                StructField::Hidden(field_ty)
                             } else {
-                                VariantField::wildcard_from_ty(cx, field_ty)
+                                StructField::wildcard_from_ty(cx, field_ty)
                             }
                         })
                         .collect()
@@ -1121,7 +1120,7 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
             _ => smallvec![],
         };
         let is_non_exhaustive = constructor.is_field_list_non_exhaustive(cx, ty);
-        VariantFields { fields, is_non_exhaustive }
+        StructFields { fields, is_non_exhaustive }
     }
 
     /// Calculates the number of fields of a given constructor. `constructor` must be `Variant` or
@@ -1153,7 +1152,7 @@ impl<'p, 'tcx> VariantFields<'p, 'tcx> {
         pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>,
     ) -> Self {
         for pat in pats {
-            if let VariantField::Kept(p) = &mut self.fields[pat.field.index()] {
+            if let StructField::Kept(p) = &mut self.fields[pat.field.index()] {
                 *p = &pat.pattern
             }
         }
@@ -2468,7 +2467,7 @@ fn specialize_one_pattern<'p, 'tcx>(
             let pat_ctor = Variant(adt_def.variants[variant_index].def_id);
             if constructor == &pat_ctor {
                 Some(
-                    VariantFields::wildcards(cx, constructor, pat.ty)
+                    StructFields::wildcards(cx, constructor, pat.ty)
                         .override_fieldpatterns(subpatterns)
                         .into_patstack(),
                 )
@@ -2478,7 +2477,7 @@ fn specialize_one_pattern<'p, 'tcx>(
         }
 
         PatKind::Leaf { ref subpatterns } => Some(
-            VariantFields::wildcards(cx, constructor, pat.ty)
+            StructFields::wildcards(cx, constructor, pat.ty)
                 .override_fieldpatterns(subpatterns)
                 .into_patstack(),
         ),
