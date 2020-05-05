@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use super::find_executables::get_path_for_executable;
 use anyhow::{bail, Context, Result};
 use std::{
     env, ops,
@@ -114,7 +115,8 @@ fn get_or_install_rust_src(cargo_toml: &Path) -> Result<PathBuf> {
     if let Ok(path) = env::var("RUST_SRC_PATH") {
         return Ok(path.into());
     }
-    let rustc_output = run_command_in_cargo_dir(cargo_toml, "rustc", &["--print", "sysroot"])?;
+    let rustc = get_path_for_executable("rustc")?;
+    let rustc_output = run_command_in_cargo_dir(cargo_toml, &rustc, &["--print", "sysroot"])?;
     let stdout = String::from_utf8(rustc_output.stdout)?;
     let sysroot_path = Path::new(stdout.trim());
     let src_path = sysroot_path.join("lib/rustlib/src/rust/src");

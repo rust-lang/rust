@@ -1,14 +1,14 @@
 //! FIXME: write short doc here
 
 use std::{
-    env,
     ffi::OsStr,
     ops,
     path::{Path, PathBuf},
     process::Command,
 };
 
-use anyhow::{Context, Error, Result};
+use super::find_executables::get_path_for_executable;
+use anyhow::{Context, Result};
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
 use ra_arena::{Arena, Idx};
 use ra_db::Edition;
@@ -146,7 +146,7 @@ impl CargoWorkspace {
         cargo_features: &CargoConfig,
     ) -> Result<CargoWorkspace> {
         let mut meta = MetadataCommand::new();
-        meta.cargo_path(cargo_binary()?);
+        meta.cargo_path(get_path_for_executable("cargo")?);
         meta.manifest_path(cargo_toml);
         if cargo_features.all_features {
             meta.features(CargoOpt::AllFeatures);
@@ -284,7 +284,7 @@ pub fn load_extern_resources(
     cargo_toml: &Path,
     cargo_features: &CargoConfig,
 ) -> Result<ExternResources> {
-    let mut cmd = Command::new(cargo_binary()?);
+    let mut cmd = Command::new(get_path_for_executable("cargo")?);
     cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
     if cargo_features.all_features {
         cmd.arg("--all-features");
@@ -331,53 +331,4 @@ fn is_dylib(path: &Path) -> bool {
         None => false,
         Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
     }
-}
-
-/// Return a `String` to use for executable `cargo`.
-///
-/// E.g., this may just be `cargo` if that gives a valid Cargo executable; or it
-/// may be a full path to a valid Cargo.
-fn cargo_binary() -> Result<String> {
-    // The current implementation checks three places for a `cargo` to use:
-    // 1) $CARGO environment variable (erroring if this is set but not a usable Cargo)
-    // 2) `cargo`
-    // 3) `~/.cargo/bin/cargo`
-    if let Ok(path) = env::var("CARGO") {
-        if is_valid_cargo(&path) {
-            Ok(path)
-        } else {
-            Err(Error::msg("`CARGO` environment variable points to something that's not a valid Cargo executable"))
-        }
-    } else {
-        let final_path: Option<String> = if is_valid_cargo("cargo") {
-            Some("cargo".to_owned())
-        } else {
-            if let Some(mut path) = dirs::home_dir() {
-                path.push(".cargo");
-                path.push("bin");
-                path.push("cargo");
-                if is_valid_cargo(&path) {
-                    Some(path.into_os_string().into_string().expect("Invalid Unicode in path"))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        };
-        final_path.ok_or(
-            // This error message may also be caused by $PATH or $CARGO not being set correctly for VSCode,
-            // even if they are set correctly in a terminal.
-            // On macOS in particular, launching VSCode from terminal with `code <dirname>` causes VSCode
-            // to inherit environment variables including $PATH and $CARGO from that terminal; but
-            // launching VSCode from Dock does not inherit environment variables from a terminal.
-            // For more discussion, see #3118.
-            Error::msg("Failed to find `cargo` executable. Make sure `cargo` is in `$PATH`, or set `$CARGO` to point to a valid Cargo executable.")
-        )
-    }
-}
-
-/// Does the given `Path` point to a usable `Cargo`?
-fn is_valid_cargo(p: impl AsRef<Path>) -> bool {
-    Command::new(p.as_ref()).arg("--version").output().is_ok()
 }
