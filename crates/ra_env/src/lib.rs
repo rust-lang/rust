@@ -33,31 +33,24 @@ pub fn get_path_for_executable(executable_name: impl AsRef<str>) -> Result<Strin
             )))
         }
     } else {
-        let final_path: Option<String> = if is_valid_executable(executable_name) {
-            Some(executable_name.to_owned())
-        } else {
-            if let Some(mut path) = dirs::home_dir() {
-                path.push(".cargo");
-                path.push("bin");
-                path.push(executable_name);
-                if is_valid_executable(&path) {
-                    Some(path.into_os_string().into_string().expect("Invalid Unicode in path"))
-                } else {
-                    None
-                }
-            } else {
-                None
+        if is_valid_executable(executable_name) {
+            return Ok(executable_name.to_owned());
+        }
+        if let Some(mut path) = dirs::home_dir() {
+            path.push(".cargo");
+            path.push("bin");
+            path.push(executable_name);
+            if is_valid_executable(&path) {
+                return Ok(path.into_os_string().into_string().expect("Invalid Unicode in path"));
             }
-        };
-        final_path.ok_or(
-            // This error message may also be caused by $PATH or $CARGO/$RUSTC/etc not being set correctly
-            // for VSCode, even if they are set correctly in a terminal.
-            // On macOS in particular, launching VSCode from terminal with `code <dirname>` causes VSCode
-            // to inherit environment variables including $PATH, $CARGO, $RUSTC, etc from that terminal;
-            // but launching VSCode from Dock does not inherit environment variables from a terminal.
-            // For more discussion, see #3118.
-            Error::msg(format!("Failed to find `{}` executable. Make sure `{}` is in `$PATH`, or set `${}` to point to a valid executable.", executable_name, executable_name, env_var))
-        )
+        }
+        // This error message may also be caused by $PATH or $CARGO/$RUSTC/etc not being set correctly
+        // for VSCode, even if they are set correctly in a terminal.
+        // On macOS in particular, launching VSCode from terminal with `code <dirname>` causes VSCode
+        // to inherit environment variables including $PATH, $CARGO, $RUSTC, etc from that terminal;
+        // but launching VSCode from Dock does not inherit environment variables from a terminal.
+        // For more discussion, see #3118.
+        Err(Error::msg(format!("Failed to find `{}` executable. Make sure `{}` is in `$PATH`, or set `${}` to point to a valid executable.", executable_name, executable_name, env_var)))
     }
 }
 
