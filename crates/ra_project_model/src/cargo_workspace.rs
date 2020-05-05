@@ -83,7 +83,7 @@ pub struct PackageData {
     pub dependencies: Vec<PackageDependency>,
     pub edition: Edition,
     pub features: Vec<String>,
-    pub cfgs: Vec<PathBuf>,
+    pub cfgs: Vec<String>,
     pub out_dir: Option<PathBuf>,
     pub proc_macro_dylib_path: Option<PathBuf>,
 }
@@ -279,7 +279,7 @@ impl CargoWorkspace {
 pub struct ExternResources {
     out_dirs: FxHashMap<PackageId, PathBuf>,
     proc_dylib_paths: FxHashMap<PackageId, PathBuf>,
-    cfgs: FxHashMap<PackageId, Vec<PathBuf>>,
+    cfgs: FxHashMap<PackageId, Vec<String>>,
 }
 
 pub fn load_extern_resources(
@@ -307,7 +307,12 @@ pub fn load_extern_resources(
             match message {
                 Message::BuildScriptExecuted(BuildScript { package_id, out_dir, cfgs, .. }) => {
                     res.out_dirs.insert(package_id.clone(), out_dir);
-                    res.cfgs.insert(package_id, cfgs);
+                    res.cfgs.insert(
+                        package_id,
+                        // FIXME: Current `cargo_metadata` uses `PathBuf` instead of `String`,
+                        // change when https://github.com/oli-obk/cargo_metadata/pulls/112 reaches crates.io
+                        cfgs.iter().filter_map(|c| c.to_str().map(|s| s.to_owned())).collect(),
+                    );
                 }
 
                 Message::CompilerArtifact(message) => {
