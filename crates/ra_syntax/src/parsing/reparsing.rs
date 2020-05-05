@@ -7,7 +7,7 @@
 //!     and try to parse only this block.
 
 use ra_parser::Reparser;
-use ra_text_edit::AtomTextEdit;
+use ra_text_edit::Indel;
 
 use crate::{
     algo,
@@ -24,7 +24,7 @@ use crate::{
 
 pub(crate) fn incremental_reparse(
     node: &SyntaxNode,
-    edit: &AtomTextEdit,
+    edit: &Indel,
     errors: Vec<SyntaxError>,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     if let Some((green, new_errors, old_range)) = reparse_token(node, &edit) {
@@ -39,7 +39,7 @@ pub(crate) fn incremental_reparse(
 
 fn reparse_token<'node>(
     root: &'node SyntaxNode,
-    edit: &AtomTextEdit,
+    edit: &Indel,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let prev_token = algo::find_covering_element(root, edit.delete).as_token()?.clone();
     let prev_token_kind = prev_token.kind();
@@ -88,7 +88,7 @@ fn reparse_token<'node>(
 
 fn reparse_block<'node>(
     root: &'node SyntaxNode,
-    edit: &AtomTextEdit,
+    edit: &Indel,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
     let (node, reparser) = find_reparsable_node(root, edit.delete)?;
     let text = get_text_after_edit(node.clone().into(), edit);
@@ -108,9 +108,9 @@ fn reparse_block<'node>(
     Some((node.replace_with(green), new_parser_errors, node.text_range()))
 }
 
-fn get_text_after_edit(element: SyntaxElement, edit: &AtomTextEdit) -> String {
+fn get_text_after_edit(element: SyntaxElement, edit: &Indel) -> String {
     let edit =
-        AtomTextEdit::replace(edit.delete - element.text_range().start(), edit.insert.clone());
+        Indel::replace(edit.delete - element.text_range().start(), edit.insert.clone());
 
     let text = match element {
         NodeOrToken::Token(token) => token.text().to_string(),
@@ -167,7 +167,7 @@ fn merge_errors(
     old_errors: Vec<SyntaxError>,
     new_errors: Vec<SyntaxError>,
     range_before_reparse: TextRange,
-    edit: &AtomTextEdit,
+    edit: &Indel,
 ) -> Vec<SyntaxError> {
     let mut res = Vec::new();
 
@@ -198,7 +198,7 @@ mod tests {
 
     fn do_check(before: &str, replace_with: &str, reparsed_len: u32) {
         let (range, before) = extract_range(before);
-        let edit = AtomTextEdit::replace(range, replace_with.to_owned());
+        let edit = Indel::replace(range, replace_with.to_owned());
         let after = edit.apply(before.clone());
 
         let fully_reparsed = SourceFile::parse(&after);

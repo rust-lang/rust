@@ -10,7 +10,7 @@
 use std::convert::TryInto;
 
 use ra_syntax::{TextRange, TextSize};
-use ra_text_edit::{AtomTextEdit, TextEdit};
+use ra_text_edit::{Indel, TextEdit};
 
 use crate::line_index::{LineCol, LineIndex, Utf16Char};
 
@@ -182,14 +182,14 @@ struct TranslatedEdit<'a> {
 }
 
 struct Edits<'a> {
-    edits: &'a [AtomTextEdit],
+    edits: &'a [Indel],
     current: Option<TranslatedEdit<'a>>,
     acc_diff: i64,
 }
 
 impl<'a> Edits<'a> {
     fn from_text_edit(text_edit: &'a TextEdit) -> Edits<'a> {
-        let mut x = Edits { edits: text_edit.as_atoms(), current: None, acc_diff: 0 };
+        let mut x = Edits { edits: text_edit.as_indels(), current: None, acc_diff: 0 };
         x.advance_edit();
         x
     }

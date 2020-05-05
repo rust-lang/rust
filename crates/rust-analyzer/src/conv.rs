@@ -15,7 +15,7 @@ use ra_ide::{
     ReferenceAccess, Severity, SourceChange, SourceFileEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
-use ra_text_edit::{AtomTextEdit, TextEdit};
+use ra_text_edit::{Indel, TextEdit};
 use ra_vfs::LineEndings;
 
 use crate::{
@@ -124,23 +124,22 @@ impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
         let mut text_edit = None;
         // LSP does not allow arbitrary edits in completion, so we have to do a
         // non-trivial mapping here.
-        for atom_edit in self.text_edit().as_atoms() {
-            if atom_edit.delete.contains_range(self.source_range()) {
-                text_edit = Some(if atom_edit.delete == self.source_range() {
-                    atom_edit.conv_with((ctx.0, ctx.1))
+        for indel in self.text_edit().as_indels() {
+            if indel.delete.contains_range(self.source_range()) {
+                text_edit = Some(if indel.delete == self.source_range() {
+                    indel.conv_with((ctx.0, ctx.1))
                 } else {
-                    assert!(self.source_range().end() == atom_edit.delete.end());
-                    let range1 =
-                        TextRange::new(atom_edit.delete.start(), self.source_range().start());
+                    assert!(self.source_range().end() == indel.delete.end());
+                    let range1 = TextRange::new(indel.delete.start(), self.source_range().start());
                     let range2 = self.source_range();
-                    let edit1 = AtomTextEdit::replace(range1, String::new());
-                    let edit2 = AtomTextEdit::replace(range2, atom_edit.insert.clone());
+                    let edit1 = Indel::replace(range1, String::new());
+                    let edit2 = Indel::replace(range2, indel.insert.clone());
                     additional_text_edits.push(edit1.conv_with((ctx.0, ctx.1)));
                     edit2.conv_with((ctx.0, ctx.1))
                 })
             } else {
-                assert!(self.source_range().intersect(atom_edit.delete).is_none());
-                additional_text_edits.push(atom_edit.conv_with((ctx.0, ctx.1)));
+                assert!(self.source_range().intersect(indel.delete).is_none());
+                additional_text_edits.push(indel.conv_with((ctx.0, ctx.1)));
             }
         }
         let text_edit = text_edit.unwrap();
@@ -257,11 +256,11 @@ impl ConvWith<(&LineIndex, LineEndings)> for TextEdit {
     type Output = Vec<lsp_types::TextEdit>;
 
     fn conv_with(self, ctx: (&LineIndex, LineEndings)) -> Vec<lsp_types::TextEdit> {
-        self.as_atoms().iter().map_conv_with(ctx).collect()
+        self.as_indels().iter().map_conv_with(ctx).collect()
     }
 }
 
-impl ConvWith<(&LineIndex, LineEndings)> for &AtomTextEdit {
+impl ConvWith<(&LineIndex, LineEndings)> for &Indel {
     type Output = lsp_types::TextEdit;
 
     fn conv_with(
@@ -522,7 +521,7 @@ impl TryConvWith<&WorldSnapshot> for SourceFileEdit {
         let line_index = world.analysis().file_line_index(self.file_id)?;
         let line_endings = world.file_line_endings(self.file_id);
         let edits =
-            self.edit.as_atoms().iter().map_conv_with((&line_index, line_endings)).collect();
+            self.edit.as_indels().iter().map_conv_with((&line_index, line_endings)).collect();
         Ok(TextDocumentEdit { text_document, edits })
     }
 }

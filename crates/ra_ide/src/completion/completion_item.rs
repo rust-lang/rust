@@ -62,8 +62,8 @@ impl fmt::Debug for CompletionItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = f.debug_struct("CompletionItem");
         s.field("label", &self.label()).field("source_range", &self.source_range());
-        if self.text_edit().as_atoms().len() == 1 {
-            let atom = &self.text_edit().as_atoms()[0];
+        if self.text_edit().as_indels().len() == 1 {
+            let atom = &self.text_edit().as_indels()[0];
             s.field("delete", &atom.delete);
             s.field("insert", &atom.insert);
         } else {

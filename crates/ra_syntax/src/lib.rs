@@ -39,7 +39,7 @@ pub mod fuzz;
 
 use std::{marker::PhantomData, sync::Arc};
 
-use ra_text_edit::AtomTextEdit;
+use ra_text_edit::Indel;
 use stdx::format_to;
 
 use crate::syntax_node::GreenNode;
@@ -126,13 +126,13 @@ impl Parse<SourceFile> {
         buf
     }
 
-    pub fn reparse(&self, edit: &AtomTextEdit) -> Parse<SourceFile> {
-        self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
+    pub fn reparse(&self, indel: &Indel) -> Parse<SourceFile> {
+        self.incremental_reparse(indel).unwrap_or_else(|| self.full_reparse(indel))
     }
 
-    fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<Parse<SourceFile>> {
+    fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
         // FIXME: validation errors are not handled here
-        parsing::incremental_reparse(self.tree().syntax(), edit, self.errors.to_vec()).map(
+        parsing::incremental_reparse(self.tree().syntax(), indel, self.errors.to_vec()).map(
             |(green_node, errors, _reparsed_range)| Parse {
                 green: green_node,
                 errors: Arc::new(errors),
@@ -141,8 +141,8 @@ impl Parse<SourceFile> {
         )
     }
 
-    fn full_reparse(&self, edit: &AtomTextEdit) -> Parse<SourceFile> {
-        let text = edit.apply(self.tree().syntax().text().to_string());
+    fn full_reparse(&self, indel: &Indel) -> Parse<SourceFile> {
+        let text = indel.apply(self.tree().syntax().text().to_string());
         SourceFile::parse(&text)
     }
 }

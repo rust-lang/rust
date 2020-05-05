@@ -5,7 +5,7 @@ use std::{
     str::{self, FromStr},
 };
 
-use ra_text_edit::AtomTextEdit;
+use ra_text_edit::Indel;
 
 use crate::{validation, AstNode, SourceFile, TextRange};
 
@@ -22,7 +22,7 @@ pub fn check_parser(text: &str) {
 #[derive(Debug, Clone)]
 pub struct CheckReparse {
     text: String,
-    edit: AtomTextEdit,
+    edit: Indel,
     edited_text: String,
 }
 
@@ -43,7 +43,7 @@ impl CheckReparse {
             TextRange::at(delete_start.try_into().unwrap(), delete_len.try_into().unwrap());
         let edited_text =
             format!("{}{}{}", &text[..delete_start], &insert, &text[delete_start + delete_len..]);
-        let edit = AtomTextEdit { delete, insert };
+        let edit = Indel { delete, insert };
         Some(CheckReparse { text, edit, edited_text })
     }
 

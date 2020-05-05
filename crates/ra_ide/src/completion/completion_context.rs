@@ -9,7 +9,7 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
-use ra_text_edit::AtomTextEdit;
+use ra_text_edit::Indel;
 
 use crate::{call_info::ActiveParameter, completion::CompletionConfig, FilePosition};
 
@@ -76,7 +76,7 @@ impl<'a> CompletionContext<'a> {
         // actual completion.
         let file_with_fake_ident = {
             let parse = db.parse(position.file_id);
-            let edit = AtomTextEdit::insert(position.offset, "intellijRulezz".to_string());
+            let edit = Indel::insert(position.offset, "intellijRulezz".to_string());
             parse.reparse(&edit).tree()
         };
         let fake_ident_token =

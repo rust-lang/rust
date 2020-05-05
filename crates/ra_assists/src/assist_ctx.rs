@@ -4,14 +4,13 @@ use ra_db::FileRange;
 use ra_fmt::{leading_indent, reindent};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
-    algo::{self, find_covering_element, find_node_at_offset},
+    algo::{self, find_covering_element, find_node_at_offset, SyntaxRewriter},
     AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
     TokenAtOffset,
 };
 use ra_text_edit::TextEditBuilder;
 
 use crate::{AssistAction, AssistFile, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
-use algo::SyntaxRewriter;
 
 #[derive(Clone, Debug)]
 pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
@@ -41,7 +40,6 @@ impl AssistInfo {
         self.action.map(|action| ResolvedAssist { label, action })
     }
 }
-
 
 /// `AssistCtx` allows to apply an assist or check if it could be applied.
 ///

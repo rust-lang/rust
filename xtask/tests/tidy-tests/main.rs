@@ -115,7 +115,6 @@ impl TidyDocs {
             "ra_prof",
             "ra_project_model",
             "ra_syntax",
-            "ra_text_edit",
             "ra_tt",
             "ra_hir_ty",
         ];
