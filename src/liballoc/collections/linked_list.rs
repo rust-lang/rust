@@ -1524,6 +1524,7 @@ impl<'a, T> CursorMut<'a, T> {
                 tail: Some(unlinked_node),
                 len: 1,
                 marker: PhantomData,
+                alloc: PhantomData,
             })
         }
     }
