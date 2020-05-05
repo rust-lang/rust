@@ -116,7 +116,8 @@ impl<'a> AssistCtx<'a> {
     }
 
     pub(crate) fn add_assist_group(self, group_name: impl Into<String>) -> AssistGroup<'a> {
-        AssistGroup { ctx: self, group: group_name.into(), assists: Vec::new() }
+        let group = GroupLabel(group_name.into());
+        AssistGroup { ctx: self, group, assists: Vec::new() }
     }
 
     pub(crate) fn token_at_offset(&self) -> TokenAtOffset<SyntaxToken> {
@@ -146,7 +147,7 @@ impl<'a> AssistCtx<'a> {
 
 pub(crate) struct AssistGroup<'a> {
     ctx: AssistCtx<'a>,
-    group: String,
+    group: GroupLabel,
     assists: Vec<AssistInfo>,
 }
 
@@ -159,7 +160,7 @@ impl<'a> AssistGroup<'a> {
     ) {
         let label = AssistLabel::new(id, label.into());
 
-        let mut info = AssistInfo::new(label).with_group(GroupLabel(self.group.clone()));
+        let mut info = AssistInfo::new(label).with_group(self.group.clone());
         if self.ctx.should_compute_edit {
             let action = {
                 let mut edit = ActionBuilder::new(&self.ctx);
