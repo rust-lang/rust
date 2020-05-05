@@ -558,18 +558,12 @@ pub fn get_rustc_cfg_options(target: Option<&String>) -> CfgOptions {
 
     match (|| -> Result<String> {
         // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
-        let output = if let Some(target) = target {
-            Command::new("rustc")
-                .args(&["--print", "cfg", "-O", "--target", target.as_str()])
-                .output()
-                .context("Failed to get output from rustc --print cfg -O")?
-        } else {
-            Command::new("rustc")
-                .args(&["--print", "cfg", "-O"])
-                .output()
-                .context("Failed to get output from rustc --print cfg -O")?
-        };
-
+        let mut cmd = Command::new("rustc");
+        cmd.args(&["--print", "cfg", "-O"]);
+        if let Some(target) = target {
+            cmd.args(&["--target", target.as_str()]);
+        }
+        let output = cmd.output().context("Failed to get output from rustc --print cfg -O")?;
         if !output.status.success() {
             bail!(
                 "rustc --print cfg -O exited with exit code ({})",
