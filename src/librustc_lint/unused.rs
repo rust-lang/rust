@@ -381,12 +381,20 @@ trait UnusedDelimLint {
 
     fn is_expr_delims_necessary(inner: &ast::Expr, followed_by_block: bool) -> bool {
         // Prevent false-positives in cases like `fn x() -> u8 { ({ 0 } + 1) }`
-        let lhs_needs_parens = match &inner.kind {
-            ExprKind::Binary(_, lhs, _rhs) => {
-                !rustc_ast::util::classify::expr_requires_semi_to_be_stmt(&*lhs)
+        let lhs_needs_parens = {
+            let mut innermost = inner;
+            loop {
+                if let ExprKind::Binary(_, lhs, _rhs) = &innermost.kind {
+                    innermost = lhs;
+                    if !rustc_ast::util::classify::expr_requires_semi_to_be_stmt(innermost) {
+                        break true;
+                    }
+                } else {
+                    break false;
+                }
             }
-            _ => false,
         };
+
         lhs_needs_parens
             || (followed_by_block
                 && match inner.kind {
