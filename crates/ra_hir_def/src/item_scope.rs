@@ -159,10 +159,10 @@ impl PerNs {
                 AdtId::UnionId(_) => PerNs::types(def, v),
                 AdtId::EnumId(_) => PerNs::types(def, v),
                 AdtId::StructId(_) => {
-                    if !has_constructor {
-                        PerNs::types(def, v)
-                    } else {
+                    if has_constructor {
                         PerNs::both(def, def, v)
+                    } else {
+                        PerNs::types(def, v)
                     }
                 }
             },
