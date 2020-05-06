@@ -89,7 +89,11 @@ fn create_command_text(program: &str, args: &[&str]) -> String {
     format!("{} {}", program, args.join(" "))
 }
 
-fn run_command_in_cargo_dir(cargo_toml: impl AsRef<Path>, program: impl AsRef<Path>, args: &[&str]) -> Result<Output> {
+fn run_command_in_cargo_dir(
+    cargo_toml: impl AsRef<Path>,
+    program: impl AsRef<Path>,
+    args: &[&str],
+) -> Result<Output> {
     let program = program.as_ref().as_os_str().to_str().expect("Invalid Unicode in path");
     let output = Command::new(program)
         .current_dir(cargo_toml.as_ref().parent().unwrap())
