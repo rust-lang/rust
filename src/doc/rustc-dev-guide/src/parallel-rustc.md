@@ -31,8 +31,8 @@ However, there are two blockers:
 - There is a lot of lock contention, which actually degrades performance as the
   number of threads increases beyond 4.
 
-Here are some resources that can used to learn more (note that some of them are
-a bit out of date):
+Here are some resources that can be used to learn more (note that some of them
+are a bit out of date):
 
 - [This IRLO thread by Zoxc, when of the pioneers of the effort][irlo0]
 - [This list of interior mutability in the compiler by nikomatsakis][imlist]
