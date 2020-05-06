@@ -405,7 +405,7 @@
                         "ms-vscode.cpptools"
                     ],
                     "default": "auto",
-                    "description": "Preffered debug engine.",
+                    "description": "Preferred debug engine.",
                     "markdownEnumDescriptions": [
                         "First try to use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb), if it's not installed try to use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools).",
                         "Use [CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)",
