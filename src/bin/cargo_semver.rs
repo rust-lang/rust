@@ -72,15 +72,9 @@ fn main() {
         cli::exit_with_error(&config, e);
     }
 
-    let quiet = if matches.opt_present("q") {
-        Some(true)
-    } else {
-        None
-    };
-
     let config_res = config.configure(
         0, // verbose
-        quiet,
+        matches.opt_present("q"), // quiet
         None,  // color
         false, // frozen
         false, // locked
