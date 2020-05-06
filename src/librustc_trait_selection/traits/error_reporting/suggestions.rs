@@ -1168,7 +1168,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
         let mut generator = None;
         let mut outer_generator = None;
-        let mut generator_substs = None;
         let mut next_code = Some(&obligation.cause.code);
         while let Some(code) = next_code {
             debug!("maybe_note_obligation_cause_for_async_await: code={:?}", code);
@@ -1184,9 +1183,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     );
 
                     match ty.kind {
-                        ty::Generator(did, substs, ..) => {
+                        ty::Generator(did, ..) => {
                             generator = generator.or(Some(did));
-                            generator_substs = generator_substs.or(Some(substs));
                             outer_generator = Some(did);
                         }
                         ty::GeneratorWitness(..) => {}
@@ -1209,13 +1207,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 target_ty={:?}",
             generator, trait_ref, target_ty
         );
-        let (generator_did, _generator_substs, trait_ref, target_ty) =
-            match (generator, generator_substs, trait_ref, target_ty) {
-                (Some(generator_did), Some(generator_substs), Some(trait_ref), Some(target_ty)) => {
-                    (generator_did, generator_substs, trait_ref, target_ty)
-                }
-                _ => return false,
-            };
+        let (generator_did, trait_ref, target_ty) = match (generator, trait_ref, target_ty) {
+            (Some(generator_did), Some(trait_ref), Some(target_ty)) => {
+                (generator_did, trait_ref, target_ty)
+            }
+            _ => return false,
+        };
 
         let span = self.tcx.def_span(generator_did);
 
