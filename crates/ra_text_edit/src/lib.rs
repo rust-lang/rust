@@ -71,6 +71,10 @@ impl TextEdit {
         TextEdit { indels }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.indels.is_empty()
+    }
+
     pub fn as_indels(&self) -> &[Indel] {
         &self.indels
     }

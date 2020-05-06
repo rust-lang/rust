@@ -58,13 +58,11 @@ pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
     let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
 
     let target = call.syntax().text_range();
-    // TODO: assert here?
     ctx.add_assist(AssistId("add_function"), "Add function", target, |edit| {
-        if let Some(function_template) = function_builder.render() {
-            edit.set_file(function_template.file);
-            edit.set_cursor(function_template.cursor_offset);
-            edit.insert(function_template.insert_offset, function_template.fn_def.to_string());
-        }
+        let function_template = function_builder.render();
+        edit.set_file(function_template.file);
+        edit.set_cursor(function_template.cursor_offset);
+        edit.insert(function_template.insert_offset, function_template.fn_def.to_string());
     })
 }
 
@@ -107,7 +105,7 @@ impl FunctionBuilder {
         Some(Self { target, fn_name, type_params, params, file, needs_pub })
     }
 
-    fn render(self) -> Option<FunctionTemplate> {
+    fn render(self) -> FunctionTemplate {
         let placeholder_expr = ast::make::expr_todo();
         let fn_body = ast::make::block_expr(vec![], Some(placeholder_expr));
         let mut fn_def = ast::make::fn_def(self.fn_name, self.type_params, self.params, fn_body);
@@ -133,15 +131,11 @@ impl FunctionBuilder {
             }
         };
 
-        let cursor_offset_from_fn_start = fn_def
-            .syntax()
-            .descendants()
-            .find_map(ast::MacroCall::cast)?
-            .syntax()
-            .text_range()
-            .start();
+        let placeholder_expr =
+            fn_def.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+        let cursor_offset_from_fn_start = placeholder_expr.syntax().text_range().start();
         let cursor_offset = insert_offset + cursor_offset_from_fn_start;
-        Some(FunctionTemplate { insert_offset, cursor_offset, fn_def, file: self.file })
+        FunctionTemplate { insert_offset, cursor_offset, fn_def, file: self.file }
     }
 }
 

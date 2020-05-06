@@ -256,10 +256,10 @@ impl<'a, 'b> ActionBuilder<'a, 'b> {
     }
 
     fn build(self) -> AssistAction {
-        AssistAction {
-            edit: self.edit.finish(),
-            cursor_position: self.cursor_position,
-            file: self.file,
+        let edit = self.edit.finish();
+        if edit.is_empty() && self.cursor_position.is_none() {
+            panic!("Only call `add_assist` if the assist can be applied")
         }
+        AssistAction { edit, cursor_position: self.cursor_position, file: self.file }
     }
 }
