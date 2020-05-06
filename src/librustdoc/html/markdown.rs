@@ -1129,9 +1129,36 @@ pub struct IdMap {
     map: FxHashMap<String, usize>,
 }
 
+fn init_id_map() -> FxHashMap<String, usize> {
+    let mut map = FxHashMap::default();
+    // This is the list of IDs used by rustdoc templates.
+    map.insert("mainThemeStyle".to_owned(), 1);
+    map.insert("themeStyle".to_owned(), 1);
+    map.insert("theme-picker".to_owned(), 1);
+    map.insert("theme-choices".to_owned(), 1);
+    map.insert("settings-menu".to_owned(), 1);
+    map.insert("main".to_owned(), 1);
+    map.insert("search".to_owned(), 1);
+    map.insert("crate-search".to_owned(), 1);
+    map.insert("render-detail".to_owned(), 1);
+    map.insert("toggle-all-docs".to_owned(), 1);
+    map.insert("all-types".to_owned(), 1);
+    // This is the list of IDs used by rustdoc sections.
+    map.insert("fields".to_owned(), 1);
+    map.insert("variants".to_owned(), 1);
+    map.insert("implementors-list".to_owned(), 1);
+    map.insert("synthetic-implementors-list".to_owned(), 1);
+    map.insert("implementations".to_owned(), 1);
+    map.insert("trait-implementations".to_owned(), 1);
+    map.insert("synthetic-implementations".to_owned(), 1);
+    map.insert("blanket-implementations".to_owned(), 1);
+    map.insert("deref-methods".to_owned(), 1);
+    map
+}
+
 impl IdMap {
     pub fn new() -> Self {
-        IdMap::default()
+        IdMap { map: init_id_map() }
     }
 
     pub fn populate<I: IntoIterator<Item = String>>(&mut self, ids: I) {
@@ -1141,7 +1168,7 @@ impl IdMap {
     }
 
     pub fn reset(&mut self) {
-        self.map = FxHashMap::default();
+        self.map = init_id_map();
     }
 
     pub fn derive(&mut self, candidate: String) -> String {

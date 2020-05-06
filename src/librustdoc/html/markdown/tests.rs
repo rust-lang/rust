@@ -29,8 +29,8 @@ fn test_unique_id() {
         "examples-2",
         "method.into_iter-1",
         "foo-1",
-        "main",
-        "search",
+        "main-1",
+        "search-1",
         "methods",
         "examples-3",
         "method.into_iter-2",
@@ -191,8 +191,8 @@ fn test_header_ids_multiple_blocks() {
     t(
         &mut map,
         "# Main",
-        "<h1 id=\"main\" class=\"section-header\">\
-        <a href=\"#main\">Main</a></h1>",
+        "<h1 id=\"main-1\" class=\"section-header\">\
+        <a href=\"#main-1\">Main</a></h1>",
     );
     t(
         &mut map,

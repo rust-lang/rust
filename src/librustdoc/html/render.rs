@@ -3413,8 +3413,8 @@ fn render_assoc_items(
                 write!(
                     w,
                     "\
-                    <h2 id='methods' class='small-section-header'>\
-                      Methods<a href='#methods' class='anchor'></a>\
+                    <h2 id='implementations' class='small-section-header'>\
+                      Implementations<a href='#implementations' class='anchor'></a>\
                     </h2>\
                 "
                 );
@@ -3475,10 +3475,10 @@ fn render_assoc_items(
             write!(
                 w,
                 "\
-                <h2 id='implementations' class='small-section-header'>\
-                  Trait Implementations<a href='#implementations' class='anchor'></a>\
+                <h2 id='trait-implementations' class='small-section-header'>\
+                  Trait Implementations<a href='#trait-implementations' class='anchor'></a>\
                 </h2>\
-                <div id='implementations-list'>{}</div>",
+                <div id='trait-implementations-list'>{}</div>",
                 impls
             );
         }
@@ -4097,8 +4097,8 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             ret.sort();
             if !ret.is_empty() {
                 out.push_str(&format!(
-                    "<a class=\"sidebar-title\" href=\"#methods\">Methods\
-                                       </a><div class=\"sidebar-links\">{}</div>",
+                    "<a class=\"sidebar-title\" href=\"#implementations\">Methods</a>\
+                     <div class=\"sidebar-links\">{}</div>",
                     ret.join("")
                 ));
             }
@@ -4191,8 +4191,8 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
 
             if !concrete_format.is_empty() {
                 out.push_str(
-                    "<a class=\"sidebar-title\" href=\"#implementations\">\
-                              Trait Implementations</a>",
+                    "<a class=\"sidebar-title\" href=\"#trait-implementations\">\
+                        Trait Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", concrete_format));
             }
@@ -4200,7 +4200,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             if !synthetic_format.is_empty() {
                 out.push_str(
                     "<a class=\"sidebar-title\" href=\"#synthetic-implementations\">\
-                              Auto Trait Implementations</a>",
+                        Auto Trait Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", synthetic_format));
             }
@@ -4208,7 +4208,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             if !blanket_format.is_empty() {
                 out.push_str(
                     "<a class=\"sidebar-title\" href=\"#blanket-implementations\">\
-                              Blanket Implementations</a>",
+                        Blanket Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", blanket_format));
             }

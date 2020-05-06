@@ -2180,7 +2180,7 @@ function getSearchElement() {
         if (collapse) {
             toggleAllDocs(pageId, true);
         } else if (getCurrentValue("rustdoc-auto-hide-trait-implementations") !== "false") {
-            var impl_list = document.getElementById("implementations-list");
+            var impl_list = document.getElementById("trait-implementations-list");
 
             if (impl_list !== null) {
                 onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
