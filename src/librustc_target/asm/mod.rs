@@ -1,7 +1,7 @@
 use crate::abi::Size;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_macros::HashStable_Generic;
-use rustc_span::{Span, Symbol};
+use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
 
@@ -414,60 +414,6 @@ impl fmt::Display for InlineAsmRegOrRegClass {
             Self::Reg(r) => write!(f, "\"{}\"", r.name()),
             Self::RegClass(r) => f.write_str(r.name()),
         }
-    }
-}
-
-bitflags::bitflags! {
-    #[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
-    pub struct InlineAsmOptions: u8 {
-        const PURE = 1 << 0;
-        const NOMEM = 1 << 1;
-        const READONLY = 1 << 2;
-        const PRESERVES_FLAGS = 1 << 3;
-        const NORETURN = 1 << 4;
-        const NOSTACK = 1 << 5;
-        const ATT_SYNTAX = 1 << 6;
-    }
-}
-
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
-pub enum InlineAsmTemplatePiece {
-    String(String),
-    Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
-}
-
-impl fmt::Display for InlineAsmTemplatePiece {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::String(s) => {
-                for c in s.chars() {
-                    match c {
-                        '{' => f.write_str("{{")?,
-                        '}' => f.write_str("}}")?,
-                        _ => write!(f, "{}", c.escape_debug())?,
-                    }
-                }
-                Ok(())
-            }
-            Self::Placeholder { operand_idx, modifier: Some(modifier), .. } => {
-                write!(f, "{{{}:{}}}", operand_idx, modifier)
-            }
-            Self::Placeholder { operand_idx, modifier: None, .. } => {
-                write!(f, "{{{}}}", operand_idx)
-            }
-        }
-    }
-}
-
-impl InlineAsmTemplatePiece {
-    /// Rebuilds the asm template string from its pieces.
-    pub fn to_string(s: &[Self]) -> String {
-        use fmt::Write;
-        let mut out = String::new();
-        for p in s.iter() {
-            let _ = write!(out, "{}", p);
-        }
-        out
     }
 }
 

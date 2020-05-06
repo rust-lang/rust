@@ -19,6 +19,7 @@ use rustc_target::abi::VariantIdx;
 
 use polonius_engine::Atom;
 pub use rustc_ast::ast::Mutability;
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
@@ -28,7 +29,7 @@ use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::asm::{InlineAsmOptions, InlineAsmRegOrRegClass, InlineAsmTemplatePiece};
+use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{Index, IndexMut};

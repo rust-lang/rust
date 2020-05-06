@@ -3625,13 +3625,13 @@ dependencies = [
 name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "log",
  "rustc_data_structures",
  "rustc_index",
  "rustc_lexer",
  "rustc_macros",
  "rustc_span",
- "rustc_target",
  "scoped-tls",
  "serialize",
  "smallvec 1.4.0",

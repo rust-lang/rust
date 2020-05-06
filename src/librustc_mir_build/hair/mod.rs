@@ -5,6 +5,7 @@
 //! structures.
 
 use self::cx::Cx;
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::infer::canonical::Canonical;
@@ -15,7 +16,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{AdtDef, Const, Ty, UpvarSubsts, UserType};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
-use rustc_target::asm::{InlineAsmOptions, InlineAsmRegOrRegClass, InlineAsmTemplatePiece};
+use rustc_target::asm::InlineAsmRegOrRegClass;
 
 crate mod constant;
 crate mod cx;

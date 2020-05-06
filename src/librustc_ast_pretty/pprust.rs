@@ -5,6 +5,7 @@ use rustc_ast::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use rustc_ast::ast::{Attribute, GenericArg, MacArgs};
 use rustc_ast::ast::{GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
@@ -15,7 +16,6 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
 use rustc_span::{BytePos, FileName, Span};
-use rustc_target::asm::{InlineAsmOptions, InlineAsmTemplatePiece};
 
 use std::borrow::Cow;
 

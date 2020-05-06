@@ -38,7 +38,6 @@ use rustc_middle::ty::{AdtKind, Visibility};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_target::asm::InlineAsmOptions;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 use std::fmt::Display;
@@ -1873,7 +1872,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if asm.options.contains(InlineAsmOptions::NORETURN) {
+        if asm.options.contains(ast::InlineAsmOptions::NORETURN) {
             self.tcx.types.never
         } else {
             self.tcx.mk_unit()

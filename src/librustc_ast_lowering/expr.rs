@@ -980,7 +980,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             struct_span_err!(self.sess, sp, E0472, "asm! is unsupported on this target").emit();
             return hir::ExprKind::Err;
         };
-        if asm.options.contains(asm::InlineAsmOptions::ATT_SYNTAX) {
+        if asm.options.contains(InlineAsmOptions::ATT_SYNTAX) {
             match asm_arch {
                 asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64 => {}
                 _ => self
@@ -1070,7 +1070,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Validate template modifiers against the register classes for the operands
         for p in &asm.template {
-            if let asm::InlineAsmTemplatePiece::Placeholder {
+            if let InlineAsmTemplatePiece::Placeholder {
                 operand_idx,
                 modifier: Some(modifier),
                 span: placeholder_span,

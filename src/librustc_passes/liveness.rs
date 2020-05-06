@@ -96,6 +96,7 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
+use rustc_ast::ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -109,7 +110,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use rustc_target::asm::InlineAsmOptions;
 
 use std::collections::VecDeque;
 use std::fmt;

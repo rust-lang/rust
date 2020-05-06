@@ -1,4 +1,4 @@
-use rustc_ast::ast::{FloatTy, IntTy, UintTy};
+use rustc_ast::ast::{FloatTy, InlineAsmTemplatePiece, IntTy, UintTy};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -11,7 +11,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};
-use rustc_target::asm::{InlineAsmRegOrRegClass, InlineAsmTemplatePiece, InlineAsmType};
+use rustc_target::asm::{InlineAsmRegOrRegClass, InlineAsmType};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 
 fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: DefId) {

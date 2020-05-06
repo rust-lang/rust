@@ -7,6 +7,7 @@ use rustc_ast::ast::{self, CrateSugar, LlvmAsmDialect};
 use rustc_ast::ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
 pub use rustc_ast::ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use rustc_ast::ast::{CaptureBy, Movability, Mutability};
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
@@ -15,7 +16,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
-use rustc_target::asm::{InlineAsmOptions, InlineAsmRegOrRegClass, InlineAsmTemplatePiece};
+use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 
 use smallvec::SmallVec;

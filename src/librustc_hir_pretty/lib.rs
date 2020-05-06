@@ -12,7 +12,6 @@ use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
 use rustc_span::{self, BytePos, FileName};
-use rustc_target::asm::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_target::spec::abi::Abi;
 
 use std::borrow::Cow;
@@ -1414,11 +1413,11 @@ impl<'a> State<'a> {
                 enum AsmArg<'a> {
                     Template(String),
                     Operand(&'a hir::InlineAsmOperand<'a>),
-                    Options(InlineAsmOptions),
+                    Options(ast::InlineAsmOptions),
                 }
 
                 let mut args = vec![];
-                args.push(AsmArg::Template(InlineAsmTemplatePiece::to_string(&a.template)));
+                args.push(AsmArg::Template(ast::InlineAsmTemplatePiece::to_string(&a.template)));
                 args.extend(a.operands.iter().map(|o| AsmArg::Operand(o)));
                 if !a.options.is_empty() {
                     args.push(AsmArg::Options(a.options));
@@ -1485,25 +1484,25 @@ impl<'a> State<'a> {
                         s.word("options");
                         s.popen();
                         let mut options = vec![];
-                        if opts.contains(InlineAsmOptions::PURE) {
+                        if opts.contains(ast::InlineAsmOptions::PURE) {
                             options.push("pure");
                         }
-                        if opts.contains(InlineAsmOptions::NOMEM) {
+                        if opts.contains(ast::InlineAsmOptions::NOMEM) {
                             options.push("nomem");
                         }
-                        if opts.contains(InlineAsmOptions::READONLY) {
+                        if opts.contains(ast::InlineAsmOptions::READONLY) {
                             options.push("readonly");
                         }
-                        if opts.contains(InlineAsmOptions::PRESERVES_FLAGS) {
+                        if opts.contains(ast::InlineAsmOptions::PRESERVES_FLAGS) {
                             options.push("preserves_flags");
                         }
-                        if opts.contains(InlineAsmOptions::NORETURN) {
+                        if opts.contains(ast::InlineAsmOptions::NORETURN) {
                             options.push("noreturn");
                         }
-                        if opts.contains(InlineAsmOptions::NOSTACK) {
+                        if opts.contains(ast::InlineAsmOptions::NOSTACK) {
                             options.push("nostack");
                         }
-                        if opts.contains(InlineAsmOptions::ATT_SYNTAX) {
+                        if opts.contains(ast::InlineAsmOptions::ATT_SYNTAX) {
                             options.push("att_syntax");
                         }
                         s.commasep(Inconsistent, &options, |s, &opt| {

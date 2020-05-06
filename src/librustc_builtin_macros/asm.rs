@@ -10,14 +10,13 @@ use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{InnerSpan, Span};
-use rustc_target::asm::{InlineAsmOptions, InlineAsmTemplatePiece};
 
 struct AsmArgs {
     template: P<ast::Expr>,
     operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxHashMap<Symbol, usize>,
     reg_args: FxHashSet<usize>,
-    options: InlineAsmOptions,
+    options: ast::InlineAsmOptions,
     options_span: Option<Span>,
 }
 
@@ -57,7 +56,7 @@ fn parse_args<'a>(
         operands: vec![],
         named_args: FxHashMap::default(),
         reg_args: FxHashSet::default(),
-        options: InlineAsmOptions::empty(),
+        options: ast::InlineAsmOptions::empty(),
         options_span: None,
     };
 
@@ -204,22 +203,22 @@ fn parse_args<'a>(
         }
     }
 
-    if args.options.contains(InlineAsmOptions::NOMEM)
-        && args.options.contains(InlineAsmOptions::READONLY)
+    if args.options.contains(ast::InlineAsmOptions::NOMEM)
+        && args.options.contains(ast::InlineAsmOptions::READONLY)
     {
         let span = args.options_span.unwrap();
         ecx.struct_span_err(span, "the `nomem` and `readonly` options are mutually exclusive")
             .emit();
     }
-    if args.options.contains(InlineAsmOptions::PURE)
-        && args.options.contains(InlineAsmOptions::NORETURN)
+    if args.options.contains(ast::InlineAsmOptions::PURE)
+        && args.options.contains(ast::InlineAsmOptions::NORETURN)
     {
         let span = args.options_span.unwrap();
         ecx.struct_span_err(span, "the `pure` and `noreturn` options are mutually exclusive")
             .emit();
     }
-    if args.options.contains(InlineAsmOptions::PURE)
-        && !args.options.intersects(InlineAsmOptions::NOMEM | InlineAsmOptions::READONLY)
+    if args.options.contains(ast::InlineAsmOptions::PURE)
+        && !args.options.intersects(ast::InlineAsmOptions::NOMEM | ast::InlineAsmOptions::READONLY)
     {
         let span = args.options_span.unwrap();
         ecx.struct_span_err(
@@ -245,14 +244,14 @@ fn parse_args<'a>(
             _ => {}
         }
     }
-    if args.options.contains(InlineAsmOptions::PURE) && !have_real_output {
+    if args.options.contains(ast::InlineAsmOptions::PURE) && !have_real_output {
         ecx.struct_span_err(
             args.options_span.unwrap(),
             "asm with `pure` option must have at least one output",
         )
         .emit();
     }
-    if args.options.contains(InlineAsmOptions::NORETURN) && !outputs_sp.is_empty() {
+    if args.options.contains(ast::InlineAsmOptions::NORETURN) && !outputs_sp.is_empty() {
         let err = ecx
             .struct_span_err(outputs_sp, "asm outputs are not allowed with the `noreturn` option");
 
@@ -270,20 +269,20 @@ fn parse_options<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> Result<(), Diagn
 
     while !p.eat(&token::CloseDelim(token::DelimToken::Paren)) {
         if p.eat(&token::Ident(sym::pure, false)) {
-            args.options |= InlineAsmOptions::PURE;
+            args.options |= ast::InlineAsmOptions::PURE;
         } else if p.eat(&token::Ident(sym::nomem, false)) {
-            args.options |= InlineAsmOptions::NOMEM;
+            args.options |= ast::InlineAsmOptions::NOMEM;
         } else if p.eat(&token::Ident(sym::readonly, false)) {
-            args.options |= InlineAsmOptions::READONLY;
+            args.options |= ast::InlineAsmOptions::READONLY;
         } else if p.eat(&token::Ident(sym::preserves_flags, false)) {
-            args.options |= InlineAsmOptions::PRESERVES_FLAGS;
+            args.options |= ast::InlineAsmOptions::PRESERVES_FLAGS;
         } else if p.eat(&token::Ident(sym::noreturn, false)) {
-            args.options |= InlineAsmOptions::NORETURN;
+            args.options |= ast::InlineAsmOptions::NORETURN;
         } else if p.eat(&token::Ident(sym::nostack, false)) {
-            args.options |= InlineAsmOptions::NOSTACK;
+            args.options |= ast::InlineAsmOptions::NOSTACK;
         } else {
             p.expect(&token::Ident(sym::att_syntax, false))?;
-            args.options |= InlineAsmOptions::ATT_SYNTAX;
+            args.options |= ast::InlineAsmOptions::ATT_SYNTAX;
         }
 
         // Allow trailing commas
@@ -395,7 +394,9 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
     let mut template = vec![];
     for piece in unverified_pieces {
         match piece {
-            parse::Piece::String(s) => template.push(InlineAsmTemplatePiece::String(s.to_string())),
+            parse::Piece::String(s) => {
+                template.push(ast::InlineAsmTemplatePiece::String(s.to_string()))
+            }
             parse::Piece::NextArgument(arg) => {
                 let span = arg_spans.next().unwrap_or(template_sp);
 
@@ -467,7 +468,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
 
                 if let Some(operand_idx) = operand_idx {
                     used[operand_idx] = true;
-                    template.push(InlineAsmTemplatePiece::Placeholder {
+                    template.push(ast::InlineAsmTemplatePiece::Placeholder {
                         operand_idx,
                         modifier,
                         span,
