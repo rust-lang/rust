@@ -50,8 +50,8 @@
 //! The internal iterator over the argument has not been advanced by the time
 //! the first `{}` is seen, so it prints the first argument. Then upon reaching
 //! the second `{}`, the iterator has advanced forward to the second argument.
-//! Essentially, parameters which explicitly name their argument do not affect
-//! parameters which do not name an argument in terms of positional specifiers.
+//! Essentially, parameters that explicitly name their argument do not affect
+//! parameters that do not name an argument in terms of positional specifiers.
 //!
 //! A format string is required to use all of its arguments, otherwise it is a
 //! compile-time error. You may refer to the same argument more than once in the
@@ -60,7 +60,7 @@
 //! ## Named parameters
 //!
 //! Rust itself does not have a Python-like equivalent of named parameters to a
-//! function, but the [`format!`] macro is a syntax extension which allows it to
+//! function, but the [`format!`] macro is a syntax extension that allows it to
 //! leverage named parameters. Named parameters are listed at the end of the
 //! argument list and have the syntax:
 //!
@@ -77,7 +77,7 @@
 //! ```
 //!
 //! It is not valid to put positional parameters (those without names) after
-//! arguments which have names. Like with positional parameters, it is not
+//! arguments that have names. Like with positional parameters, it is not
 //! valid to provide named parameters that are unused by the format string.
 //!
 //! # Formatting Parameters
