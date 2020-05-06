@@ -11,10 +11,10 @@ LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
 error: associated function is never used: `foo`
-  --> $DIR/lint-dead-code-3.rs:15:5
+  --> $DIR/lint-dead-code-3.rs:15:8
    |
 LL |     fn foo(&self) {
-   |     ^^^^^^^^^^^^^
+   |        ^^^
 
 error: function is never used: `bar`
   --> $DIR/lint-dead-code-3.rs:20:4
