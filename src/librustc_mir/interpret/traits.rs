@@ -149,10 +149,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if args.len() != 1 {
             throw_ub!(InvalidDropFn(fn_sig));
         }
-        let ty = args[0]
-            .builtin_deref(true)
-            .ok_or_else(|| err_ub!(InvalidDropFn(fn_sig)))?
-            .ty;
+        let ty = args[0].builtin_deref(true).ok_or_else(|| err_ub!(InvalidDropFn(fn_sig)))?.ty;
         Ok((drop_instance, ty))
     }
 

@@ -73,17 +73,18 @@ macro_rules! throw_validation_failure {
 ///
 macro_rules! try_validation {
     ($e:expr, $where:expr,
-     $( $p:pat )|+ => { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? $( , )?
+     $( $( $p:pat )|+ => { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? ),+ $(,)?
     ) => {{
         match $e {
             Ok(x) => x,
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            $( Err(InterpErrorInfo { kind: $p, .. }) )|+ =>
+            $( $( Err(InterpErrorInfo { kind: $p, .. }) )|+ =>
                 throw_validation_failure!(
                     $where,
                     { $( $what_fmt ),+ } $( expected { $( $expected_fmt ),+ } )?
                 ),
+            )+
             #[allow(unreachable_patterns)]
             Err(e) => Err::<!, _>(e)?,
         }
@@ -367,66 +368,45 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             self.check_wide_ptr_meta(place.meta, place.layout)?;
         }
         // Make sure this is dereferenceable and all.
-        let size_and_align = match self.ecx.size_and_align_of(place.meta, place.layout) {
-            Ok(res) => res,
-            Err(err) => match err.kind {
-                err_ub!(InvalidMeta(msg)) => throw_validation_failure!(self.path,
-                    { "invalid {} metadata: {}", kind, msg }
-                ),
-                _ => bug!("unexpected error during ptr size_and_align_of: {}", err),
-            },
-        };
+        let size_and_align = try_validation!(
+            self.ecx.size_and_align_of(place.meta, place.layout),
+            self.path,
+            err_ub!(InvalidMeta(msg)) => { "invalid {} metadata: {}", kind, msg },
+        );
         let (size, align) = size_and_align
             // for the purpose of validity, consider foreign types to have
             // alignment and size determined by the layout (size will be 0,
             // alignment should take attributes into account).
             .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
         // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
-        let ptr: Option<_> = match self.ecx.memory.check_ptr_access_align(
-            place.ptr,
-            size,
-            Some(align),
-            CheckInAllocMsg::InboundsTest,
-        ) {
-            Ok(ptr) => ptr,
-            Err(err) => {
-                info!(
-                    "{:?} did not pass access check for size {:?}, align {:?}",
-                    place.ptr, size, align
-                );
-                match err.kind {
-                    err_ub!(DanglingIntPointer(0, _)) => {
-                        throw_validation_failure!(self.path,
-                            { "a NULL {}", kind }
-                        )
-                    }
-                    err_ub!(DanglingIntPointer(i, _)) => throw_validation_failure!(self.path,
-                        { "a {} to unallocated address {}", kind, i }
-                    ),
-                    err_ub!(AlignmentCheckFailed { required, has }) => throw_validation_failure!(
-                        self.path,
-                        {
-                            "an unaligned {} (required {} byte alignment but found {})",
-                            kind,
-                            required.bytes(),
-                            has.bytes()
-                        }
-                    ),
-                    err_unsup!(ReadBytesAsPointer) => throw_validation_failure!(self.path,
-                        { "a dangling {} (created from integer)", kind }
-                    ),
-                    err_ub!(PointerOutOfBounds { .. }) => throw_validation_failure!(self.path,
-                        { "a dangling {} (going beyond the bounds of its allocation)", kind }
-                    ),
-                    // This cannot happen during const-eval (because interning already detects
-                    // dangling pointers), but it can happen in Miri.
-                    err_ub!(PointerUseAfterFree(_)) => throw_validation_failure!(self.path,
-                        { "a dangling {} (use-after-free)", kind }
-                    ),
-                    _ => bug!("Unexpected error during ptr inbounds test: {}", err),
-                }
-            }
-        };
+        let ptr: Option<_> = try_validation!(
+            self.ecx.memory.check_ptr_access_align(
+                place.ptr,
+                size,
+                Some(align),
+                CheckInAllocMsg::InboundsTest,
+            ),
+            self.path,
+            err_ub!(DanglingIntPointer(0, _)) =>
+                { "a NULL {}", kind },
+            err_ub!(DanglingIntPointer(i, _)) =>
+                { "a {} to unallocated address {}", kind, i },
+            err_ub!(AlignmentCheckFailed { required, has }) =>
+                {
+                    "an unaligned {} (required {} byte alignment but found {})",
+                    kind,
+                    required.bytes(),
+                    has.bytes()
+                },
+            err_unsup!(ReadBytesAsPointer) =>
+                { "a dangling {} (created from integer)", kind },
+            err_ub!(PointerOutOfBounds { .. }) =>
+                { "a dangling {} (going beyond the bounds of its allocation)", kind },
+            // This cannot happen during const-eval (because interning already detects
+            // dangling pointers), but it can happen in Miri.
+            err_ub!(PointerUseAfterFree(_)) =>
+                { "a dangling {} (use-after-free)", kind },
+        );
         // Recursive checking
         if let Some(ref mut ref_tracking) = self.ref_tracking_for_consts {
             if let Some(ptr) = ptr {
@@ -710,23 +690,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         assert!(op.layout.ty.builtin_deref(true).is_none());
 
         // Recursively walk the type. Translate some possible errors to something nicer.
-        match self.walk_value(op) {
-            Ok(()) => {}
-            Err(err) => match err.kind {
-                err_ub!(InvalidDiscriminant(val)) => {
-                    throw_validation_failure!(self.path,
-                        { "{}", val } expected { "a valid enum discriminant" }
-                    )
-                }
-                err_unsup!(ReadPointerAsBytes) => {
-                    throw_validation_failure!(self.path,
-                        { "a pointer" } expected { "plain (non-pointer) bytes" }
-                    )
-                }
-                // Propagate upwards (that will also check for unexpected errors).
-                _ => return Err(err),
-            },
-        }
+        try_validation!(
+            self.walk_value(op),
+            self.path,
+            err_ub!(InvalidDiscriminant(val)) =>
+                { "{}", val } expected { "a valid enum discriminant" },
+            err_unsup!(ReadPointerAsBytes) =>
+                { "a pointer" } expected { "plain (non-pointer) bytes" },
+        );
 
         // *After* all of this, check the ABI.  We need to check the ABI to handle
         // types like `NonNull` where the `Scalar` info is more restrictive than what
@@ -825,7 +796,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Ok(()) => {}
                     // Some error happened, try to provide a more detailed description.
                     Err(err) => {
-                        // For some errors we might be able to provide extra information
+                        // For some errors we might be able to provide extra information.
+                        // (This custom logic does not fit the `try_validation!` macro.)
                         match err.kind {
                             err_ub!(InvalidUndefBytes(Some(ptr))) => {
                                 // Some byte was uninitialized, determine which
