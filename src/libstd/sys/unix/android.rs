@@ -18,10 +18,7 @@
 
 #![cfg(target_os = "android")]
 
-use libc::{c_int, sighandler_t, ssize_t};
-
-use super::{cvt, cvt_r};
-use crate::io;
+use libc::{c_int, sighandler_t};
 
 // The `log2` and `log2f` functions apparently appeared in android-18, or at
 // least you can see they're not present in the android-17 header [1] and they

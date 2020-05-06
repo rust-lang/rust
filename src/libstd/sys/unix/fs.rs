@@ -30,8 +30,8 @@ use libc::fstatat64;
 use libc::readdir_r as readdir64_r;
 #[cfg(target_os = "android")]
 use libc::{
-    dirent as dirent64, fstat as fstat64, fstatat as fstatat64, lseek64, lstat as lstat64,
-    open as open64, stat as stat64,
+    dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64,
+    lstat as lstat64, off64_t, open as open64, stat as stat64,
 };
 #[cfg(not(any(
     target_os = "linux",

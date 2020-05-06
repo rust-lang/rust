@@ -81,9 +81,9 @@ impl FileDesc {
             count: usize,
             offset: i64,
         ) -> io::Result<isize> {
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(not(any(target_os = "linux", target_os = "android")))]
             use libc::pread as pread64;
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             use libc::pread64;
             cvt(pread64(fd, buf, count, offset))
         }
@@ -129,9 +129,9 @@ impl FileDesc {
             count: usize,
             offset: i64,
         ) -> io::Result<isize> {
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(not(any(target_os = "linux", target_os = "android")))]
             use libc::pwrite as pwrite64;
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             use libc::pwrite64;
             cvt(pwrite64(fd, buf, count, offset))
         }
