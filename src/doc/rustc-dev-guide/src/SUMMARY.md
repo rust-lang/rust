@@ -44,6 +44,7 @@
         - [Profiling Queries](./queries/profiling.md)
         - [Salsa](./salsa.md)
     - [Memory Management in Rustc](./memory.md)
+    - [Parallel Compilation](./parallel-rustc.md)
 
 - [Part 3: Source Code Representations](./part-3-intro.md)
     - [The Rustc Driver and Interface](./rustc-driver.md)
