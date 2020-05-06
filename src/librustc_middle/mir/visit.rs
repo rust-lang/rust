@@ -715,8 +715,10 @@ macro_rules! make_mir_visitor {
                     local,
                     source_info: *source_info,
                 });
-                for (user_ty, _) in & $($mutability)? user_ty.contents {
-                    self.visit_user_type_projection(user_ty);
+                if let Some(user_ty) = user_ty {
+                    for (user_ty, _) in & $($mutability)? user_ty.contents {
+                        self.visit_user_type_projection(user_ty);
+                    }
                 }
                 self.visit_source_info(source_info);
             }

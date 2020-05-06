@@ -732,7 +732,7 @@ pub struct LocalDecl<'tcx> {
     /// borrow checker needs this information since it can affect
     /// region inference.
     // FIXME(matthewjasper) Don't store in this in `Body`
-    pub user_ty: UserTypeProjections,
+    pub user_ty: Option<Box<UserTypeProjections>>,
 
     /// The *syntactic* (i.e., not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
@@ -818,7 +818,7 @@ pub struct LocalDecl<'tcx> {
 
 // `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(LocalDecl<'_>, 72);
+static_assert_size!(LocalDecl<'_>, 56);
 
 /// Extra information about a some locals that's used for diagnostics. (Not
 /// used for non-StaticRef temporaries, the return place, or anonymous function
@@ -937,7 +937,7 @@ impl<'tcx> LocalDecl<'tcx> {
             internal: false,
             is_block_tail: None,
             ty,
-            user_ty: UserTypeProjections::none(),
+            user_ty: None,
             source_info,
         }
     }
@@ -2451,12 +2451,16 @@ impl Constant<'tcx> {
 /// &'static str`.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct UserTypeProjections {
-    pub(crate) contents: Vec<(UserTypeProjection, Span)>,
+    pub contents: Vec<(UserTypeProjection, Span)>,
 }
 
 impl<'tcx> UserTypeProjections {
     pub fn none() -> Self {
         UserTypeProjections { contents: vec![] }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.contents.is_empty()
     }
 
     pub fn from_projections(projs: impl Iterator<Item = (UserTypeProjection, Span)>) -> Self {

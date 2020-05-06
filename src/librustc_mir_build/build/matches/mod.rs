@@ -1949,7 +1949,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty,
-            user_ty,
+            user_ty: if user_ty.is_empty() { None } else { Some(box user_ty) },
             source_info,
             internal: false,
             is_block_tail: None,
@@ -1976,7 +1976,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // immutable to avoid the unused mut lint.
                 mutability: Mutability::Not,
                 ty: tcx.mk_imm_ref(tcx.lifetimes.re_erased, var_ty),
-                user_ty: UserTypeProjections::none(),
+                user_ty: None,
                 source_info,
                 internal: false,
                 is_block_tail: None,

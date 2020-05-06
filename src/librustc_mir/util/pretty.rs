@@ -472,8 +472,10 @@ fn write_scope_tree(
 
         let mut indented_decl =
             format!("{0:1$}let {2}{3:?}: {4:?}", INDENT, indent, mut_str, local, local_decl.ty);
-        for user_ty in local_decl.user_ty.projections() {
-            write!(indented_decl, " as {:?}", user_ty).unwrap();
+        if let Some(user_ty) = &local_decl.user_ty {
+            for user_ty in user_ty.projections() {
+                write!(indented_decl, " as {:?}", user_ty).unwrap();
+            }
         }
         indented_decl.push_str(";");
 
