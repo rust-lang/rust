@@ -3,9 +3,10 @@ use ra_syntax::{
     SyntaxKind, SyntaxNode, TextSize,
 };
 
-use crate::{Assist, AssistCtx, AssistFile, AssistId};
+use crate::{Assist, AssistCtx, AssistId};
 use ast::{edit::IndentLevel, ArgListOwner, ModuleItemOwner};
 use hir::HirDisplay;
+use ra_db::FileId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 // Assist: add_function
@@ -70,7 +71,7 @@ struct FunctionTemplate {
     insert_offset: TextSize,
     cursor_offset: TextSize,
     fn_def: ast::SourceFile,
-    file: AssistFile,
+    file: FileId,
 }
 
 struct FunctionBuilder {
@@ -78,7 +79,7 @@ struct FunctionBuilder {
     fn_name: ast::Name,
     type_params: Option<ast::TypeParamList>,
     params: ast::ParamList,
-    file: AssistFile,
+    file: FileId,
     needs_pub: bool,
 }
 
@@ -92,7 +93,7 @@ impl FunctionBuilder {
         target_module: Option<hir::InFile<hir::ModuleSource>>,
     ) -> Option<Self> {
         let needs_pub = target_module.is_some();
-        let mut file = AssistFile::default();
+        let mut file = ctx.frange.file_id;
         let target = if let Some(target_module) = target_module {
             let (in_file, target) = next_space_for_fn_in_module(ctx.sema.db, target_module)?;
             file = in_file;
@@ -253,9 +254,8 @@ fn next_space_for_fn_after_call_site(expr: &ast::CallExpr) -> Option<GeneratedFu
 fn next_space_for_fn_in_module(
     db: &dyn hir::db::AstDatabase,
     module: hir::InFile<hir::ModuleSource>,
-) -> Option<(AssistFile, GeneratedFunctionTarget)> {
+) -> Option<(FileId, GeneratedFunctionTarget)> {
     let file = module.file_id.original_file(db);
-    let assist_file = AssistFile::TargetFile(file);
     let assist_item = match module.value {
         hir::ModuleSource::SourceFile(it) => {
             if let Some(last_item) = it.items().last() {
@@ -272,7 +272,7 @@ fn next_space_for_fn_in_module(
             }
         }
     };
-    Some((assist_file, assist_item))
+    Some((file, assist_item))
 }
 
 #[cfg(test)]

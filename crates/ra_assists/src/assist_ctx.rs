@@ -13,7 +13,7 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::{AssistFile, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
+use crate::{AssistId, AssistLabel, GroupLabel, ResolvedAssist};
 
 #[derive(Clone, Debug)]
 pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
@@ -107,7 +107,7 @@ impl<'a> AssistCtx<'a> {
             let source_change = {
                 let mut edit = ActionBuilder::new(&self);
                 f(&mut edit);
-                edit.build(change_label, self.frange.file_id)
+                edit.build(change_label)
             };
             info = info.resolved(source_change)
         };
@@ -166,7 +166,7 @@ impl<'a> AssistGroup<'a> {
             let source_change = {
                 let mut edit = ActionBuilder::new(&self.ctx);
                 f(&mut edit);
-                edit.build(change_label, self.ctx.frange.file_id)
+                edit.build(change_label)
             };
             info = info.resolved(source_change)
         };
@@ -186,7 +186,7 @@ impl<'a> AssistGroup<'a> {
 pub(crate) struct ActionBuilder<'a, 'b> {
     edit: TextEditBuilder,
     cursor_position: Option<TextSize>,
-    file: AssistFile,
+    file: FileId,
     ctx: &'a AssistCtx<'b>,
 }
 
@@ -195,7 +195,7 @@ impl<'a, 'b> ActionBuilder<'a, 'b> {
         Self {
             edit: TextEditBuilder::default(),
             cursor_position: None,
-            file: AssistFile::default(),
+            file: ctx.frange.file_id,
             ctx,
         }
     }
@@ -254,20 +254,16 @@ impl<'a, 'b> ActionBuilder<'a, 'b> {
         algo::diff(&node, &new).into_text_edit(&mut self.edit)
     }
 
-    pub(crate) fn set_file(&mut self, assist_file: AssistFile) {
-        self.file = assist_file
+    pub(crate) fn set_file(&mut self, assist_file: FileId) {
+        self.file = assist_file;
     }
 
-    fn build(self, change_label: String, current_file: FileId) -> SourceChange {
+    fn build(self, change_label: String) -> SourceChange {
         let edit = self.edit.finish();
         if edit.is_empty() && self.cursor_position.is_none() {
             panic!("Only call `add_assist` if the assist can be applied")
         }
-        let file = match self.file {
-            AssistFile::CurrentFile => current_file,
-            AssistFile::TargetFile(it) => it,
-        };
         SingleFileChange { label: change_label, edit, cursor_position: self.cursor_position }
-            .into_source_change(file)
+            .into_source_change(self.file)
     }
 }
