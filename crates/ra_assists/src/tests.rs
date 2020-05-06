@@ -1,3 +1,5 @@
+mod generated;
+
 use std::sync::Arc;
 
 use hir::Semantics;

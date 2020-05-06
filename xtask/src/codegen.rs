@@ -27,7 +27,7 @@ const AST_NODES: &str = "crates/ra_syntax/src/ast/generated/nodes.rs";
 const AST_TOKENS: &str = "crates/ra_syntax/src/ast/generated/tokens.rs";
 
 const ASSISTS_DIR: &str = "crates/ra_assists/src/handlers";
-const ASSISTS_TESTS: &str = "crates/ra_assists/src/doc_tests/generated.rs";
+const ASSISTS_TESTS: &str = "crates/ra_assists/src/tests/generated.rs";
 const ASSISTS_DOCS: &str = "docs/user/assists.md";
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
