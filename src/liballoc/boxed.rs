@@ -158,7 +158,7 @@ use crate::vec::Vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Box<T: ?Sized, A: AllocRef = Global>(Unique<T>, A);
 
-impl<T> Box<T> {
+impl<T> Box<T, Global> {
     /// Allocates memory on the heap and then places `x` into it.
     ///
     /// This doesn't actually allocate if `T` is zero-sized.
@@ -170,7 +170,7 @@ impl<T> Box<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline(always)]
-    pub fn new(x: T) -> Box<T> {
+    pub fn new(x: T) -> Self {
         box x
     }
 
@@ -192,15 +192,10 @@ impl<T> Box<T> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
-        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        let ptr = Global
-            .alloc(layout, AllocInit::Uninitialized)
-            .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .ptr
-            .cast();
-        unsafe { Box::from_raw(ptr.as_ptr()) }
+        Self::new_uninit_in(Global)
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
@@ -221,22 +216,17 @@ impl<T> Box<T> {
     /// ```
     ///
     /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
-        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        let ptr = Global
-            .alloc(layout, AllocInit::Zeroed)
-            .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .ptr
-            .cast();
-        unsafe { Box::from_raw(ptr.as_ptr()) }
+        Self::new_zeroed_in(Global)
     }
 
     /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
     /// `x` will be pinned in memory and unable to be moved.
-    #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn pin(x: T) -> Pin<Box<T>> {
+    #[stable(feature = "pin", since = "1.33.0")]
+    pub fn pin(x: T) -> Pin<Self> {
         (box x).into()
     }
 }
@@ -366,9 +356,10 @@ impl<T> Box<[T]> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
-        unsafe { RawVec::with_capacity(len).into_box(len) }
+        Self::new_uninit_slice_in(len, Global)
     }
 }
 
@@ -751,19 +742,19 @@ unsafe impl<#[may_dangle] T: ?Sized, A: AllocRef> Drop for Box<T, A> {
 impl<T: Default, A: AllocRef + Default> Default for Box<T, A> {
     /// Creates a `Box<T>`, with the `Default` value for T.
     fn default() -> Self {
-        Self::new_in(T::default(), A::default())
+        box T::default()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: AllocRef + Default> Default for Box<[T], A> {
+impl<T> Default for Box<[T]> {
     fn default() -> Self {
-        unsafe { Self::new_uninit_slice_in(0, A::default()).assume_init() }
+        Box::<[T; 0]>::new([])
     }
 }
 
 #[stable(feature = "default_box_extra", since = "1.17.0")]
-impl<A: AllocRef + Default> Default for Box<str, A> {
+impl Default for Box<str> {
     fn default() -> Self {
         unsafe { from_boxed_utf8_unchecked(Box::default()) }
     }
@@ -970,7 +961,7 @@ impl<T: Copy, A: AllocRef + Default> From<&[T]> for Box<[T], A> {
     /// ```
     fn from(slice: &[T]) -> Self {
         let len = slice.len();
-        let buf = RawVec::with_capacity_in(len, A::default());
+        let buf = RawVec::with_capacity_in(len, Global);
         unsafe {
             ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
             buf.into_box(slice.len()).assume_init()
@@ -1246,9 +1237,9 @@ impl<I> FromIterator<I> for Box<[I]> {
 }
 
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl<T: Clone> Clone for Box<[T]> {
+impl<T: Clone, A: AllocRef + Clone> Clone for Box<[T], A> {
     fn clone(&self) -> Self {
-        self.to_vec().into_boxed_slice()
+        self.to_vec_in(self.1.clone()).into_boxed_slice()
     }
 }
 
