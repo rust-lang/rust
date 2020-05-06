@@ -18,7 +18,7 @@ pub mod utils;
 pub mod ast_transform;
 
 use hir::Semantics;
-use ra_db::{FileId, FileRange};
+use ra_db::FileRange;
 use ra_ide_db::{source_change::SourceChange, RootDatabase};
 use ra_syntax::TextRange;
 
@@ -59,19 +59,7 @@ impl AssistLabel {
 #[derive(Debug, Clone)]
 pub struct ResolvedAssist {
     pub label: AssistLabel,
-    pub action: SourceChange,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum AssistFile {
-    CurrentFile,
-    TargetFile(FileId),
-}
-
-impl Default for AssistFile {
-    fn default() -> Self {
-        Self::CurrentFile
-    }
+    pub source_change: SourceChange,
 }
 
 /// Return all the assists applicable at the given position.

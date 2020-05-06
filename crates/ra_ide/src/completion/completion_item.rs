@@ -2,10 +2,11 @@
 
 use std::fmt;
 
-use super::completion_config::SnippetCap;
 use hir::Documentation;
 use ra_syntax::TextRange;
 use ra_text_edit::TextEdit;
+
+use crate::completion::completion_config::SnippetCap;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a

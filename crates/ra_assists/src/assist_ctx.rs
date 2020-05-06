@@ -13,7 +13,7 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::{AssistFile, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
+use crate::{AssistId, AssistLabel, GroupLabel, ResolvedAssist};
 
 #[derive(Clone, Debug)]
 pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
@@ -22,16 +22,16 @@ pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
 pub(crate) struct AssistInfo {
     pub(crate) label: AssistLabel,
     pub(crate) group_label: Option<GroupLabel>,
-    pub(crate) action: Option<SourceChange>,
+    pub(crate) source_change: Option<SourceChange>,
 }
 
 impl AssistInfo {
     fn new(label: AssistLabel) -> AssistInfo {
-        AssistInfo { label, group_label: None, action: None }
+        AssistInfo { label, group_label: None, source_change: None }
     }
 
-    fn resolved(self, action: SourceChange) -> AssistInfo {
-        AssistInfo { action: Some(action), ..self }
+    fn resolved(self, source_change: SourceChange) -> AssistInfo {
+        AssistInfo { source_change: Some(source_change), ..self }
     }
 
     fn with_group(self, group_label: GroupLabel) -> AssistInfo {
@@ -40,7 +40,7 @@ impl AssistInfo {
 
     pub(crate) fn into_resolved(self) -> Option<ResolvedAssist> {
         let label = self.label;
-        self.action.map(|action| ResolvedAssist { label, action })
+        self.source_change.map(|source_change| ResolvedAssist { label, source_change })
     }
 }
 
@@ -104,12 +104,12 @@ impl<'a> AssistCtx<'a> {
         let change_label = label.label.clone();
         let mut info = AssistInfo::new(label);
         if self.should_compute_edit {
-            let action = {
+            let source_change = {
                 let mut edit = ActionBuilder::new(&self);
                 f(&mut edit);
-                edit.build(change_label, self.frange.file_id)
+                edit.build(change_label)
             };
-            info = info.resolved(action)
+            info = info.resolved(source_change)
         };
 
         Some(Assist(vec![info]))
@@ -163,12 +163,12 @@ impl<'a> AssistGroup<'a> {
         let change_label = label.label.clone();
         let mut info = AssistInfo::new(label).with_group(self.group.clone());
         if self.ctx.should_compute_edit {
-            let action = {
+            let source_change = {
                 let mut edit = ActionBuilder::new(&self.ctx);
                 f(&mut edit);
-                edit.build(change_label, self.ctx.frange.file_id)
+                edit.build(change_label)
             };
-            info = info.resolved(action)
+            info = info.resolved(source_change)
         };
 
         self.assists.push(info)
@@ -186,7 +186,7 @@ impl<'a> AssistGroup<'a> {
 pub(crate) struct ActionBuilder<'a, 'b> {
     edit: TextEditBuilder,
     cursor_position: Option<TextSize>,
-    file: AssistFile,
+    file: FileId,
     ctx: &'a AssistCtx<'b>,
 }
 
@@ -195,7 +195,7 @@ impl<'a, 'b> ActionBuilder<'a, 'b> {
         Self {
             edit: TextEditBuilder::default(),
             cursor_position: None,
-            file: AssistFile::default(),
+            file: ctx.frange.file_id,
             ctx,
         }
     }
@@ -254,20 +254,16 @@ impl<'a, 'b> ActionBuilder<'a, 'b> {
         algo::diff(&node, &new).into_text_edit(&mut self.edit)
     }
 
-    pub(crate) fn set_file(&mut self, assist_file: AssistFile) {
-        self.file = assist_file
+    pub(crate) fn set_file(&mut self, assist_file: FileId) {
+        self.file = assist_file;
     }
 
-    fn build(self, change_label: String, current_file: FileId) -> SourceChange {
+    fn build(self, change_label: String) -> SourceChange {
         let edit = self.edit.finish();
         if edit.is_empty() && self.cursor_position.is_none() {
             panic!("Only call `add_assist` if the assist can be applied")
         }
-        let file = match self.file {
-            AssistFile::CurrentFile => current_file,
-            AssistFile::TargetFile(it) => it,
-        };
         SingleFileChange { label: change_label, edit, cursor_position: self.cursor_position }
-            .into_source_change(file)
+            .into_source_change(self.file)
     }
 }
