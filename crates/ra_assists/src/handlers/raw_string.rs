@@ -138,7 +138,7 @@ fn count_hashes(s: &str) -> usize {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn make_raw_string_target() {

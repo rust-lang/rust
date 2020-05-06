@@ -97,7 +97,7 @@ fn existing_from_impl(
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
     use test_utils::covers;
 
     #[test]

@@ -74,7 +74,7 @@ fn collect_hir_path_segments(path: &hir::Path) -> Option<Vec<SmolStr>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 

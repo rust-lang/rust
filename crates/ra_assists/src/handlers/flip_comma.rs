@@ -39,7 +39,7 @@ pub(crate) fn flip_comma(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_target};
+    use crate::tests::{check_assist, check_assist_target};
 
     #[test]
     fn flip_comma_works_for_function_parameters() {

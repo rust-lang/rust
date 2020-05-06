@@ -109,7 +109,7 @@ fn compute_fields_ranks(path: &Path, ctx: &AssistCtx) -> Option<HashMap<String, 
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 

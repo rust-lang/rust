@@ -89,7 +89,7 @@ fn extract_expr(cursor_range: TextRange, block: ast::BlockExpr) -> Option<ast::E
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 

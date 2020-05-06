@@ -43,7 +43,7 @@ pub(crate) fn flip_trait_bound(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn flip_trait_bound_assist_available() {

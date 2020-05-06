@@ -182,7 +182,7 @@ pub(crate) fn convert_to_guarded_return(ctx: AssistCtx) -> Option<Assist> {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 

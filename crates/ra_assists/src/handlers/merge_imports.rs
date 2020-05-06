@@ -125,7 +125,7 @@ fn first_path(path: &ast::Path) -> ast::Path {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::check_assist;
+    use crate::tests::check_assist;
 
     use super::*;
 

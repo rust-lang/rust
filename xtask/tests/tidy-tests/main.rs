@@ -24,7 +24,7 @@ fn check_todo(path: &Path, text: &str) {
         // This file itself is whitelisted since this test itself contains matches.
         "tests/cli.rs",
         // Some of our assists generate `todo!()` so those files are whitelisted.
-        "doc_tests/generated.rs",
+        "tests/generated.rs",
         "handlers/add_missing_impl_members.rs",
         "handlers/add_function.rs",
         // To support generating `todo!()` in assists, we have `expr_todo()` in ast::make.

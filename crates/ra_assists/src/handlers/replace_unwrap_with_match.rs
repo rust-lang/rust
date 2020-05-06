@@ -63,7 +63,7 @@ pub(crate) fn replace_unwrap_with_match(ctx: AssistCtx) -> Option<Assist> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{check_assist, check_assist_target};
+    use crate::tests::{check_assist, check_assist_target};
 
     #[test]
     fn test_replace_result_unwrap_with_match() {

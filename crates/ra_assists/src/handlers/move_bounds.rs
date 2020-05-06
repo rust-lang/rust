@@ -89,7 +89,7 @@ fn build_predicate(param: ast::TypeParam) -> Option<ast::WherePred> {
 mod tests {
     use super::*;
 
-    use crate::helpers::check_assist;
+    use crate::tests::check_assist;
 
     #[test]
     fn move_bounds_to_where_clause_fn() {

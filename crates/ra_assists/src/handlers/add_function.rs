@@ -283,7 +283,7 @@ fn next_space_for_fn_in_module(
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
