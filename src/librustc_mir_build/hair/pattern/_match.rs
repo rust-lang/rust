@@ -1033,7 +1033,7 @@ impl<'tcx> Constructor<'tcx> {
 
     /// Like `apply`, but where all the subpatterns are wildcards `_`.
     fn apply_wildcards<'a>(&self, cx: &MatchCheckCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
-        let subpatterns = self.wildcard_subpatterns(cx, ty).into_iter().rev();
+        let subpatterns = self.wildcard_subpatterns(cx, ty).into_iter();
         self.apply(cx, ty, subpatterns)
     }
 }
