@@ -37,25 +37,16 @@ macro_rules! throw_validation_failure {
     }};
 }
 
-/// Returns a validation failure for any Err value of $e.
-// FIXME: Replace all usages of try_validation_catchall! with try_validation!.
-macro_rules! try_validation_catchall {
-    ($e:expr, $what:expr, $where:expr $(, $expected:expr )?) => {{
-        try_validation!($e, $where,
-            _ => { "{}", $what } $( expected { "{}", $expected } )?,
-        )
-    }};
-}
-/// Like try_validation, but will throw a validation error if any of the patterns in $p are
-/// matched. Other errors are passed back to the caller, unchanged. This lets you use the patterns
-/// as a kind of validation blacklist:
+/// If $e throws an error matching the pattern, throw a validation failure.
+/// Other errors are passed back to the caller, unchanged -- and if they reach the root of
+/// the visitor, we make sure only validation errors and `InvalidProgram` errors are left.
+/// This lets you use the patterns as a kind of validation whitelist, asserting which errors
+/// can possibly happen:
 ///
 /// ```
 /// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "some failure" },
 /// });
-/// // Failures that match $p are thrown up as validation errors, but other errors are passed back
-/// // unchanged.
 /// ```
 ///
 /// An additional expected parameter can also be added to the failure message:
@@ -316,19 +307,21 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     err_ub!(PointerOutOfBounds { .. }) |
                     err_ub!(AlignmentCheckFailed { .. }) |
                     err_ub!(DanglingIntPointer(..)) |
-                    err_unsup!(ReadBytesAsPointer) => {
-                        "dangling or unaligned vtable pointer in wide pointer or too small vtable"
-                    },
+                    err_unsup!(ReadBytesAsPointer) =>
+                        { "dangling or unaligned vtable pointer in wide pointer or too small vtable" },
                 );
-                try_validation_catchall!(
+                try_validation!(
                     self.ecx.read_drop_type_from_vtable(vtable),
-                    "invalid drop fn in vtable",
-                    self.path
+                    self.path,
+                    err_ub!(DanglingIntPointer(..)) |
+                    err_ub!(InvalidFunctionPointer(..)) |
+                    err_unsup!(ReadBytesAsPointer) =>
+                        { "invalid drop fn in vtable" },
                 );
-                try_validation_catchall!(
+                try_validation!(
                     self.ecx.read_size_and_align_from_vtable(vtable),
-                    "invalid size or align in vtable",
-                    self.path
+                    self.path,
+                    err_unsup!(ReadPointerAsBytes) => { "invalid size or align in vtable" },
                 );
                 // FIXME: More checks for the vtable.
             }
@@ -558,11 +551,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             }
             ty::FnPtr(_sig) => {
                 let value = self.ecx.read_scalar(value)?;
-                let _fn = try_validation_catchall!(
+                let _fn = try_validation!(
                     value.not_undef().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
-                    value,
                     self.path,
-                    "a function pointer"
+                    err_ub!(DanglingIntPointer(..)) |
+                    err_ub!(InvalidFunctionPointer(..)) |
+                    err_unsup!(ReadBytesAsPointer) =>
+                        { "{}", value } expected { "a function pointer" },
                 );
                 // FIXME: Check if the signature matches
                 Ok(true)
@@ -895,7 +890,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // validate and each caller will know best what to do with them.
             Err(err) if matches!(err.kind, InterpError::InvalidProgram(_)) => Err(err),
             // Avoid other errors as those do not show *where* in the value the issue lies.
-            Err(err) => bug!("Unexpected error during validation: {}", err),
+            Err(err) => {
+                err.print_backtrace();
+                bug!("Unexpected error during validation: {}", err);
+            }
         }
     }
 
