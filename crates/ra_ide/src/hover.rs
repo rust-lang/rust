@@ -446,7 +446,7 @@ mod tests {
     }
 
     #[test]
-    fn hover_omits_default_generic_types() {
+    fn hover_default_generic_types() {
         check_hover_result(
             r#"
 //- /main.rs
@@ -458,7 +458,7 @@ struct Test<K, T = u8> {
 fn main() {
     let zz<|> = Test { t: 23, k: 33 };
 }"#,
-            &["Test<i32>"],
+            &["Test<i32, u8>"],
         );
     }
 
