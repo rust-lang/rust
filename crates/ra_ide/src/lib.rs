@@ -16,7 +16,6 @@ macro_rules! eprintln {
 }
 
 pub mod mock_analysis;
-mod source_change;
 
 mod prime_caches;
 mod status;
@@ -78,7 +77,6 @@ pub use crate::{
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
-    source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
     ssr::SsrError,
     syntax_highlighting::{
         Highlight, HighlightModifier, HighlightModifiers, HighlightTag, HighlightedRange,
@@ -94,6 +92,7 @@ pub use ra_ide_db::{
     line_index::{LineCol, LineIndex},
     line_index_utils::translate_offset_with_edit,
     search::SearchScope,
+    source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
     symbol_index::Query,
     RootDatabase,
 };

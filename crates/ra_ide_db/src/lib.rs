@@ -10,6 +10,7 @@ pub mod change;
 pub mod defs;
 pub mod search;
 pub mod imports_locator;
+pub mod source_change;
 mod wasm_shims;
 
 use std::sync::Arc;
