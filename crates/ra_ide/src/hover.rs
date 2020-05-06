@@ -143,7 +143,7 @@ fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<Strin
             ModuleDef::TypeAlias(it) => from_def_source(db, it, mod_path),
             ModuleDef::BuiltinType(it) => Some(it.to_string()),
         },
-        Definition::Local(it) => Some(rust_code_markup(&it.ty(db).display_truncated(db, None))),
+        Definition::Local(it) => Some(rust_code_markup(&it.ty(db).display(db))),
         Definition::TypeParam(_) | Definition::SelfType(_) => {
             // FIXME: Hover for generic param
             None
@@ -277,6 +277,47 @@ mod tests {
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(hover.range, TextRange::new(95.into(), 100.into()));
         assert_eq!(trim_markup_opt(hover.info.first()), Some("u32"));
+    }
+
+    #[test]
+    fn hover_shows_long_type_of_an_expression() {
+        check_hover_result(
+            r#"
+            //- /main.rs
+            struct Scan<A, B, C> {
+                a: A,
+                b: B,
+                c: C,
+            }
+
+            struct FakeIter<I> {
+                inner: I,
+            }
+
+            struct OtherStruct<T> {
+                i: T,
+            }
+
+            enum FakeOption<T> {
+                Some(T),
+                None,
+            }
+
+            fn scan<A, B, C>(a: A, b: B, c: C) -> FakeIter<Scan<OtherStruct<A>, B, C>> {
+                FakeIter { inner: Scan { a, b, c } }
+            }
+
+            fn main() {
+                let num: i32 = 55;
+                let closure = |memo: &mut u32, value: &u32, _another: &mut u32| -> FakeOption<u32> {
+                    FakeOption::Some(*memo + value)
+                };
+                let number = 5u32;
+                let mut iter<|> = scan(OtherStruct { i: num }, closure, number);
+            }
+            "#,
+            &["FakeIter<Scan<OtherStruct<OtherStruct<i32>>, |&mut u32, &u32, &mut u32| -> FakeOption<u32>, u32>>"],
+        );
     }
 
     #[test]
