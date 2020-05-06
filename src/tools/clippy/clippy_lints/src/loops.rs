@@ -16,8 +16,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    def_id, BinOpKind, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, GenericArg, HirId, LoopSource,
-    MatchSource, Mutability, Node, Pat, PatKind, QPath, Stmt, StmtKind,
+    def_id, BinOpKind, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, GenericArg, HirId, InlineAsmOperand,
+    LoopSource, MatchSource, Mutability, Node, Pat, PatKind, QPath, Stmt, StmtKind,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -693,6 +693,20 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
                 NeverLoopResult::AlwaysBreak
             }
         },
+        ExprKind::InlineAsm(ref asm) => asm
+            .operands
+            .iter()
+            .map(|o| match o {
+                InlineAsmOperand::In { expr, .. }
+                | InlineAsmOperand::InOut { expr, .. }
+                | InlineAsmOperand::Const { expr }
+                | InlineAsmOperand::Sym { expr } => never_loop_expr(expr, main_loop_id),
+                InlineAsmOperand::Out { expr, .. } => never_loop_expr_all(&mut expr.iter(), main_loop_id),
+                InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                    never_loop_expr_all(&mut once(in_expr).chain(out_expr.iter()), main_loop_id)
+                },
+            })
+            .fold(NeverLoopResult::Otherwise, combine_both),
         ExprKind::Struct(_, _, None)
         | ExprKind::Yield(_, _)
         | ExprKind::Closure(_, _, _, _, _)

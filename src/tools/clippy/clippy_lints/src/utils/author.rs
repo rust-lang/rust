@@ -469,6 +469,10 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     println!("Ret(None) = {};", current);
                 }
             },
+            ExprKind::InlineAsm(_) => {
+                println!("InlineAsm(_) = {};", current);
+                println!("    // unimplemented: `ExprKind::InlineAsm` is not further destructured at the moment");
+            },
             ExprKind::LlvmInlineAsm(_) => {
                 println!("LlvmInlineAsm(_) = {};", current);
                 println!("    // unimplemented: `ExprKind::LlvmInlineAsm` is not further destructured at the moment");
