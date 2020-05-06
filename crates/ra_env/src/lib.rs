@@ -2,7 +2,7 @@
 //! [`get_path_for_executable`](fn.get_path_for_executable.html).
 //! See docs there for more information.
 
-use anyhow::{Error, Result};
+use anyhow::{bail, Result};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -27,10 +27,10 @@ pub fn get_path_for_executable(executable_name: impl AsRef<str>) -> Result<PathB
         if is_valid_executable(&path) {
             Ok(path.into())
         } else {
-            Err(Error::msg(format!(
+            bail!(
                 "`{}` environment variable points to something that's not a valid executable",
                 env_var
-            )))
+            )
         }
     } else {
         if is_valid_executable(executable_name) {
@@ -50,7 +50,10 @@ pub fn get_path_for_executable(executable_name: impl AsRef<str>) -> Result<PathB
         // to inherit environment variables including $PATH, $CARGO, $RUSTC, etc from that terminal;
         // but launching VSCode from Dock does not inherit environment variables from a terminal.
         // For more discussion, see #3118.
-        Err(Error::msg(format!("Failed to find `{}` executable. Make sure `{}` is in `$PATH`, or set `${}` to point to a valid executable.", executable_name, executable_name, env_var)))
+        bail!(
+            "Failed to find `{}` executable. Make sure `{}` is in `$PATH`, or set `${}` to point to a valid executable.",
+            executable_name, executable_name, env_var
+        )
     }
 }
 
