@@ -1,3 +1,4 @@
+// no-system-llvm
 // assembly-output: emit-asm
 // compile-flags: -O
 // compile-flags: --target armv7-unknown-linux-gnueabihf

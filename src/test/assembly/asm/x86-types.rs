@@ -1,3 +1,4 @@
+// no-system-llvm
 // revisions: x86_64 i686
 // assembly-output: emit-asm
 //[x86_64] compile-flags: --target x86_64-unknown-linux-gnu

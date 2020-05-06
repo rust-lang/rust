@@ -1,3 +1,4 @@
+// no-system-llvm
 // assembly-output: emit-asm
 // compile-flags: -O
 // compile-flags: --target riscv64gc-unknown-linux-gnu
