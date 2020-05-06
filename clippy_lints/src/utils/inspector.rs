@@ -1,7 +1,7 @@
 //! checks for attributes
 
 use crate::utils::get_attr;
-use rustc_ast::ast::Attribute;
+use rustc_ast::ast::{Attribute, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::Session;
@@ -280,6 +280,31 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}Ret", ind);
             if let Some(ref e) = *e {
                 print_expr(cx, e, indent + 1);
+            }
+        },
+        hir::ExprKind::InlineAsm(ref asm) => {
+            println!("{}InlineAsm", ind);
+            println!("{}template: {}", ind, InlineAsmTemplatePiece::to_string(asm.template));
+            println!("{}options: {:?}", ind, asm.options);
+            println!("{}operands:", ind);
+            for op in asm.operands {
+                match op {
+                    hir::InlineAsmOperand::In { expr, .. } => print_expr(cx, expr, indent + 1),
+                    hir::InlineAsmOperand::Out { expr, .. } => {
+                        if let Some(expr) = expr {
+                            print_expr(cx, expr, indent + 1);
+                        }
+                    },
+                    hir::InlineAsmOperand::InOut { expr, .. } => print_expr(cx, expr, indent + 1),
+                    hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        print_expr(cx, in_expr, indent + 1);
+                        if let Some(out_expr) = out_expr {
+                            print_expr(cx, out_expr, indent + 1);
+                        }
+                    },
+                    hir::InlineAsmOperand::Const { expr } => print_expr(cx, expr, indent + 1),
+                    hir::InlineAsmOperand::Sym { expr } => print_expr(cx, expr, indent + 1),
+                }
             }
         },
         hir::ExprKind::LlvmInlineAsm(ref asm) => {
