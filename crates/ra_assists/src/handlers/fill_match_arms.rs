@@ -168,7 +168,7 @@ fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> O
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::fill_match_arms;
 

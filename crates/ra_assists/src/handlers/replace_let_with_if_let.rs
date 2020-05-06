@@ -74,7 +74,7 @@ pub(crate) fn replace_let_with_if_let(ctx: AssistCtx) -> Option<Assist> {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::check_assist;
+    use crate::tests::check_assist;
 
     use super::*;
 

@@ -37,7 +37,7 @@ pub(crate) fn split_import(ctx: AssistCtx) -> Option<Assist> {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
 

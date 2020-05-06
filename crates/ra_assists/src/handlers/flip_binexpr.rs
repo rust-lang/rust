@@ -69,7 +69,7 @@ impl From<BinOp> for FlipAction {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn flip_binexpr_target_is_the_op() {

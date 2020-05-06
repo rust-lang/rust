@@ -77,7 +77,7 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn add_explicit_type_target() {

@@ -62,7 +62,7 @@ pub(crate) fn invert_if(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     #[test]
     fn invert_if_remove_inequality() {

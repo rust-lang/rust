@@ -60,7 +60,7 @@ pub(crate) fn add_impl(ctx: AssistCtx) -> Option<Assist> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{check_assist, check_assist_target};
+    use crate::tests::{check_assist, check_assist_target};
 
     #[test]
     fn test_add_impl() {

@@ -181,7 +181,7 @@ fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 

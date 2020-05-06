@@ -136,7 +136,7 @@ fn anchor_stmt(expr: ast::Expr) -> Option<(SyntaxNode, bool)> {
 mod tests {
     use test_utils::covers;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
 

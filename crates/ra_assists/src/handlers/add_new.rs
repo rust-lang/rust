@@ -178,7 +178,7 @@ fn has_new_fn(imp: &ast::ImplDef) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
 

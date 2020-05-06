@@ -60,7 +60,7 @@ fn opposite_logic_op(kind: ast::BinOp) -> Option<&'static str> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     #[test]
     fn demorgan_turns_and_into_or() {

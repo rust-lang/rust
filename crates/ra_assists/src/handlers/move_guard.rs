@@ -132,7 +132,7 @@ pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn move_guard_to_arm_body_target() {

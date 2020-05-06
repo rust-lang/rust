@@ -12,7 +12,7 @@ use crate::resolved_assists;
 
 fn check(assist_id: &str, before: &str, after: &str) {
     let (selection, before) = extract_range_or_offset(before);
-    let (db, file_id) = crate::helpers::with_single_file(&before);
+    let (db, file_id) = crate::tests::with_single_file(&before);
     let frange = FileRange { file_id, range: selection.into() };
 
     let assist = resolved_assists(&db, frange)

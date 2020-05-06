@@ -74,7 +74,7 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use super::*;
 
-    use crate::helpers::{check_assist, check_assist_target};
+    use crate::tests::{check_assist, check_assist_target};
 
     #[test]
     fn test_replace_if_let_with_match_unwraps_simple_expressions() {

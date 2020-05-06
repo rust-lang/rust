@@ -125,7 +125,7 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
 mod tests {
     use test_utils::covers;
 
-    use crate::helpers::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
