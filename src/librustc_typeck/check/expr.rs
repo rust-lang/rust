@@ -570,7 +570,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // If the loop context is not a `loop { }`, then break with
                 // a value is illegal, and `opt_coerce_to` will be `None`.
                 // Just set expectation to error in that case.
-                let coerce_to = opt_coerce_to.unwrap_or(tcx.err());
+                let coerce_to = opt_coerce_to.unwrap_or_else(|| tcx.err());
 
                 // Recurse without `enclosing_breakables` borrowed.
                 e_ty = self.check_expr_with_hint(e, coerce_to);

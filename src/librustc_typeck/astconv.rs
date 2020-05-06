@@ -2769,7 +2769,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 };
                 self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, res, segment, false)
                     .map(|(ty, _, _)| ty)
-                    .unwrap_or(tcx.err())
+                    .unwrap_or_else(|_| tcx.err())
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir().local_def_id(length.hir_id);

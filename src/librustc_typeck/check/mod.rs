@@ -4451,7 +4451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 let result =
                     AstConv::associated_path_to_ty(self, hir_id, path_span, ty, res, segment, true);
-                let ty = result.map(|(ty, _, _)| ty).unwrap_or(self.tcx().err());
+                let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().err());
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
                 // Write back the new resolution.
