@@ -8,10 +8,11 @@ use ra_syntax::{
     SyntaxNode, TextRange, TextSize, T,
 };
 
-use hir::{db::HirDatabase, HasSource, PathResolution};
+use hir::{db::HirDatabase, HasSource, HasVisibility, PathResolution};
 use test_utils::tested_by;
 
 use crate::{AssistContext, AssistId, Assists};
+use ra_db::FileId;
 
 // Assist: change_visibility
 //
@@ -29,6 +30,8 @@ pub(crate) fn change_visibility(acc: &mut Assists, ctx: &AssistContext) -> Optio
         return change_vis(acc, vis);
     }
     add_vis(acc, ctx)
+        .or_else(|| add_vis_to_referenced_module_def(acc, ctx))
+        .or_else(|| add_vis_to_referenced_record_field(acc, ctx))
 }
 
 fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -74,86 +77,141 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     })
 }
 
-fn add_missing_vis(ctx: AssistCtx) -> Option<Assist> {
+fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let path: ast::Path = ctx.find_node_at_offset()?;
-    let path_res = dbg!(ctx.sema.resolve_path(&path))?;
+    let path_res = ctx.sema.resolve_path(&path)?;
     let def = match path_res {
         PathResolution::Def(def) => def,
         _ => return None,
     };
-    dbg!(&def);
 
-    let current_module = dbg!(ctx.sema.scope(&path.syntax()).module())?;
-    let target_module = dbg!(def.module(ctx.db))?;
+    let current_module = ctx.sema.scope(&path.syntax()).module()?;
+    let target_module = def.module(ctx.db)?;
 
-    let vis = dbg!(target_module.visibility_of(ctx.db, &def))?;
+    let vis = target_module.visibility_of(ctx.db, &def)?;
     if vis.is_visible_from(ctx.db, current_module.into()) {
         return None;
     };
-    let target_name;
 
-    let (offset, target) = match def {
+    let (offset, target, target_file, target_name) = target_data_for_def(ctx.db, def)?;
+
+    let missing_visibility =
+        if current_module.krate() == target_module.krate() { "pub(crate)" } else { "pub" };
+
+    let assist_label = match target_name {
+        None => format!("Change visibility to {}", missing_visibility),
+        Some(name) => format!("Change visibility of {} to {}", name, missing_visibility),
+    };
+
+    acc.add(AssistId("change_visibility"), assist_label, target, |edit| {
+        edit.set_file(target_file);
+        edit.insert(offset, format!("{} ", missing_visibility));
+        edit.set_cursor(offset);
+    })
+}
+
+fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+    let record_field: ast::RecordField = ctx.find_node_at_offset()?;
+    let (record_field_def, _) = ctx.sema.resolve_record_field(&record_field)?;
+
+    let current_module = ctx.sema.scope(record_field.syntax()).module()?;
+    let visibility = record_field_def.visibility(ctx.db);
+    if visibility.is_visible_from(ctx.db, current_module.into()) {
+        return None;
+    }
+
+    let parent = record_field_def.parent_def(ctx.db);
+    let parent_name = parent.name(ctx.db);
+    let target_module = parent.module(ctx.db);
+
+    let in_file_source = record_field_def.source(ctx.db);
+    let (offset, target) = match in_file_source.value {
+        hir::FieldSource::Named(it) => {
+            let s = it.syntax();
+            (vis_offset(s), s.text_range())
+        }
+        hir::FieldSource::Pos(it) => {
+            let s = it.syntax();
+            (vis_offset(s), s.text_range())
+        }
+    };
+
+    let missing_visibility =
+        if current_module.krate() == target_module.krate() { "pub(crate)" } else { "pub" };
+    let target_file = in_file_source.file_id.original_file(ctx.db);
+
+    let target_name = record_field_def.name(ctx.db);
+    let assist_label =
+        format!("Change visibility of {}.{} to {}", parent_name, target_name, missing_visibility);
+
+    acc.add(AssistId("change_visibility"), assist_label, target, |edit| {
+        edit.set_file(target_file);
+        edit.insert(offset, format!("{} ", missing_visibility));
+        edit.set_cursor(offset)
+    })
+}
+
+fn target_data_for_def(
+    db: &dyn HirDatabase,
+    def: hir::ModuleDef,
+) -> Option<(TextSize, TextRange, FileId, Option<hir::Name>)> {
+    fn offset_target_and_file_id<S, Ast>(
+        db: &dyn HirDatabase,
+        x: S,
+    ) -> (TextSize, TextRange, FileId)
+    where
+        S: HasSource<Ast = Ast>,
+        Ast: AstNode,
+    {
+        let source = x.source(db);
+        let in_file_syntax = source.syntax();
+        let file_id = in_file_syntax.file_id;
+        let syntax = in_file_syntax.value;
+        (vis_offset(syntax), syntax.text_range(), file_id.original_file(db.upcast()))
+    }
+
+    let target_name;
+    let (offset, target, target_file) = match def {
         hir::ModuleDef::Function(f) => {
-            target_name = Some(f.name(ctx.db));
-            offset_and_target(ctx.db, f)
+            target_name = Some(f.name(db));
+            offset_target_and_file_id(db, f)
         }
         hir::ModuleDef::Adt(adt) => {
-            target_name = Some(adt.name(ctx.db));
+            target_name = Some(adt.name(db));
             match adt {
-                hir::Adt::Struct(s) => offset_and_target(ctx.db, s),
-                hir::Adt::Union(u) => offset_and_target(ctx.db, u),
-                hir::Adt::Enum(e) => offset_and_target(ctx.db, e),
+                hir::Adt::Struct(s) => offset_target_and_file_id(db, s),
+                hir::Adt::Union(u) => offset_target_and_file_id(db, u),
+                hir::Adt::Enum(e) => offset_target_and_file_id(db, e),
             }
         }
         hir::ModuleDef::Const(c) => {
-            target_name = c.name(ctx.db);
-            offset_and_target(ctx.db, c)
+            target_name = c.name(db);
+            offset_target_and_file_id(db, c)
         }
         hir::ModuleDef::Static(s) => {
-            target_name = s.name(ctx.db);
-            offset_and_target(ctx.db, s)
+            target_name = s.name(db);
+            offset_target_and_file_id(db, s)
         }
         hir::ModuleDef::Trait(t) => {
-            target_name = Some(t.name(ctx.db));
-            offset_and_target(ctx.db, t)
+            target_name = Some(t.name(db));
+            offset_target_and_file_id(db, t)
         }
         hir::ModuleDef::TypeAlias(t) => {
-            target_name = Some(t.name(ctx.db));
-            offset_and_target(ctx.db, t)
+            target_name = Some(t.name(db));
+            offset_target_and_file_id(db, t)
         }
         hir::ModuleDef::Module(m) => {
-            target_name = m.name(ctx.db);
-            let source = dbg!(m.declaration_source(ctx.db))?.value;
-            let syntax = source.syntax();
-            (vis_offset(syntax), syntax.text_range())
+            target_name = m.name(db);
+            let in_file_source = m.declaration_source(db)?;
+            let file_id = in_file_source.file_id.original_file(db.upcast());
+            let syntax = in_file_source.value.syntax();
+            (vis_offset(syntax), syntax.text_range(), file_id)
         }
         // Enum variants can't be private, we can't modify builtin types
         hir::ModuleDef::EnumVariant(_) | hir::ModuleDef::BuiltinType(_) => return None,
     };
 
-    // FIXME if target is in another crate, add `pub` instead of `pub(crate)`
-
-    let assist_label = match target_name {
-        None => "Change visibility to pub(crate)".to_string(),
-        Some(name) => format!("Change visibility of {} to pub(crate)", name),
-    };
-    let target_file = target_module.definition_source(ctx.db).file_id.original_file(ctx.db);
-
-    ctx.add_assist(AssistId("change_visibility"), assist_label, target, |edit| {
-        edit.set_file(target_file);
-        edit.insert(offset, "pub(crate) ");
-        edit.set_cursor(offset);
-    })
-}
-
-fn offset_and_target<S, Ast>(db: &dyn HirDatabase, x: S) -> (TextSize, TextRange)
-where
-    S: HasSource<Ast = Ast>,
-    Ast: AstNode,
-{
-    let source = x.source(db);
-    let syntax = source.syntax().value;
-    (vis_offset(syntax), syntax.text_range())
+    Some((offset, target, target_file, target_name))
 }
 
 fn vis_offset(node: &SyntaxNode) -> TextSize {
@@ -350,7 +408,6 @@ mod tests {
     }
 
     #[test]
-    // FIXME this requires a separate implementation, struct fields are not a ast::Path
     fn change_visibility_of_struct_field_via_path() {
         check_assist(
             change_visibility,
@@ -359,10 +416,107 @@ mod tests {
             r"mod foo { pub struct Foo { <|>pub(crate) bar: (), } }
               fn main() { foo::Foo { bar: () }; } ",
         );
+        check_assist(
+            change_visibility,
+            r"//- /lib.rs
+              mod foo;
+              fn main() { foo::Foo { <|>bar: () }; }
+              //- /foo.rs
+              pub struct Foo { bar: () }
+              ",
+            r"pub struct Foo { <|>pub(crate) bar: () }
+
+",
+        );
         check_assist_not_applicable(
             change_visibility,
             r"mod foo { pub struct Foo { pub bar: (), } }
               fn main() { foo::Foo { <|>bar: () }; } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"//- /lib.rs
+              mod foo;
+              fn main() { foo::Foo { <|>bar: () }; }
+              //- /foo.rs
+              pub struct Foo { pub bar: () }
+              ",
+        );
+    }
+
+    #[test]
+    fn change_visibility_of_enum_variant_field_via_path() {
+        check_assist(
+            change_visibility,
+            r"mod foo { pub enum Foo { Bar { bar: () } } }
+              fn main() { foo::Foo::Bar { <|>bar: () }; } ",
+            r"mod foo { pub enum Foo { Bar { <|>pub(crate) bar: () } } }
+              fn main() { foo::Foo::Bar { bar: () }; } ",
+        );
+        check_assist(
+            change_visibility,
+            r"//- /lib.rs
+              mod foo;
+              fn main() { foo::Foo::Bar { <|>bar: () }; }
+              //- /foo.rs
+              pub enum Foo { Bar { bar: () } }
+              ",
+            r"pub enum Foo { Bar { <|>pub(crate) bar: () } }
+
+",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub struct Foo { pub bar: (), } }
+              fn main() { foo::Foo { <|>bar: () }; } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"//- /lib.rs
+              mod foo;
+              fn main() { foo::Foo { <|>bar: () }; }
+              //- /foo.rs
+              pub struct Foo { pub bar: () }
+              ",
+        );
+    }
+
+    #[test]
+    #[ignore]
+    // FIXME reenable this test when `Semantics::resolve_record_field` works with union fields
+    fn change_visibility_of_union_field_via_path() {
+        check_assist(
+            change_visibility,
+            r"mod foo { pub union Foo { bar: (), } }
+              fn main() { foo::Foo { <|>bar: () }; } ",
+            r"mod foo { pub union Foo { <|>pub(crate) bar: (), } }
+              fn main() { foo::Foo { bar: () }; } ",
+        );
+        check_assist(
+            change_visibility,
+            r"//- /lib.rs
+              mod foo;
+              fn main() { foo::Foo { <|>bar: () }; }
+              //- /foo.rs
+              pub union Foo { bar: () }
+              ",
+            r"pub union Foo { <|>pub(crate) bar: () }
+
+",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"mod foo { pub union Foo { pub bar: (), } }
+              fn main() { foo::Foo { <|>bar: () }; } ",
+        );
+        check_assist_not_applicable(
+            change_visibility,
+            r"//- /lib.rs
+              mod foo;
+              fn main() { foo::Foo { <|>bar: () }; }
+              //- /foo.rs
+              pub union Foo { pub bar: () }
+              ",
         );
     }
 
@@ -500,22 +654,55 @@ mod tests {
     fn change_visibility_of_module_declaration_in_other_file_via_path() {
         check_assist(
             change_visibility,
-            r"
-            //- /main.rs
-            mod foo;
-            fn main() { foo::bar<|>>::baz(); }
+            r"//- /main.rs
+              mod foo;
+              fn main() { foo::bar<|>>::baz(); }
 
-            //- /foo.rs
-            mod bar {
-                pub fn baz() {}
-            }
-            ",
+              //- /foo.rs
+              mod bar {
+                  pub fn baz() {}
+              }",
             r"<|>pub(crate) mod bar {
     pub fn baz() {}
 }
-
 ",
         );
+    }
+
+    #[test]
+    #[ignore]
+    // FIXME handle reexports properly
+    fn change_visibility_of_reexport() {
+        check_assist(
+            change_visibility,
+            r"
+            mod foo {
+                use bar::Baz;
+                mod bar { pub(super) struct Baz; }
+            }
+            foo::Baz<|>
+            ",
+            r"
+            mod foo {
+                <|>pub(crate) use bar::Baz;
+                mod bar { pub(super) struct Baz; }
+            }
+            foo::Baz
+            ",
+        )
+    }
+
+    #[test]
+    fn adds_pub_when_target_is_in_another_crate() {
+        check_assist(
+            change_visibility,
+            r"//- /main.rs crate:a deps:foo
+              foo::Bar<|>
+              //- /lib.rs crate:foo
+              struct Bar;",
+            r"<|>pub struct Bar;
+",
+        )
     }
 
     #[test]
