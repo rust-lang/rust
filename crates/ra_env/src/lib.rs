@@ -4,15 +4,15 @@
 
 use anyhow::{Error, Result};
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Return a `String` to use for the given executable.
+/// Return a `PathBuf` to use for the given executable.
 ///
 /// E.g., `get_path_for_executable("cargo")` may return just `cargo` if that
 /// gives a valid Cargo executable; or it may return a full path to a valid
 /// Cargo.
-pub fn get_path_for_executable(executable_name: impl AsRef<str>) -> Result<String> {
+pub fn get_path_for_executable(executable_name: impl AsRef<str>) -> Result<PathBuf> {
     // The current implementation checks three places for an executable to use:
     // 1) Appropriate environment variable (erroring if this is set but not a usable executable)
     //      example: for cargo, this checks $CARGO environment variable; for rustc, $RUSTC; etc
@@ -25,7 +25,7 @@ pub fn get_path_for_executable(executable_name: impl AsRef<str>) -> Result<Strin
     let env_var = executable_name.to_ascii_uppercase();
     if let Ok(path) = env::var(&env_var) {
         if is_valid_executable(&path) {
-            Ok(path)
+            Ok(path.into())
         } else {
             Err(Error::msg(format!(
                 "`{}` environment variable points to something that's not a valid executable",
@@ -34,14 +34,14 @@ pub fn get_path_for_executable(executable_name: impl AsRef<str>) -> Result<Strin
         }
     } else {
         if is_valid_executable(executable_name) {
-            return Ok(executable_name.to_owned());
+            return Ok(executable_name.into());
         }
         if let Some(mut path) = dirs::home_dir() {
             path.push(".cargo");
             path.push("bin");
             path.push(executable_name);
             if is_valid_executable(&path) {
-                return Ok(path.into_os_string().into_string().expect("Invalid Unicode in path"));
+                return Ok(path);
             }
         }
         // This error message may also be caused by $PATH or $CARGO/$RUSTC/etc not being set correctly
