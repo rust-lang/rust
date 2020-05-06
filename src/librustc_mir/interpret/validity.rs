@@ -25,43 +25,39 @@ use super::{
 };
 
 macro_rules! throw_validation_failure {
-    ($what:expr, $where:expr $(, $expected:expr )?) => {{
-        let mut msg = format!("encountered {}", $what);
+    ($where:expr, { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )?) => {{
+        let mut msg = String::new();
+        msg.push_str("encountered ");
+        write!(&mut msg, $($what_fmt),+).unwrap();
         let where_ = &$where;
         if !where_.is_empty() {
             msg.push_str(" at ");
             write_path(&mut msg, where_);
         }
-        $( write!(&mut msg, ", but expected {}", $expected).unwrap(); )?
+        $(
+            msg.push_str(", but expected ");
+            write!(&mut msg, $($expected_fmt),+).unwrap();
+        )?
         throw_ub!(ValidationFailure(msg))
     }};
 }
 
-/// Returns a validation failure for any Err value of $e.
-// FIXME: Replace all usages of try_validation! with try_validation_pat!.
-macro_rules! try_validation {
-    ($e:expr, $what:expr, $where:expr $(, $expected:expr )?) => {{
-        try_validation_pat!($e, $where, {
-            _ => { "{}", $what } $( expected { "{}", $expected } )?,
-        })
-    }};
-}
-/// Like try_validation, but will throw a validation error if any of the patterns in $p are
-/// matched. Other errors are passed back to the caller, unchanged. This lets you use the patterns
-/// as a kind of validation blacklist:
+/// If $e throws an error matching the pattern, throw a validation failure.
+/// Other errors are passed back to the caller, unchanged -- and if they reach the root of
+/// the visitor, we make sure only validation errors and `InvalidProgram` errors are left.
+/// This lets you use the patterns as a kind of validation whitelist, asserting which errors
+/// can possibly happen:
 ///
 /// ```
-/// let v = try_validation_pat!(some_fn(), some_path, {
+/// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "some failure" },
 /// });
-/// // Failures that match $p are thrown up as validation errors, but other errors are passed back
-/// // unchanged.
 /// ```
 ///
 /// An additional expected parameter can also be added to the failure message:
 ///
 /// ```
-/// let v = try_validation_pat!(some_fn(), some_path, {
+/// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "some failure" } expected { "something that wasn't a failure" },
 /// });
 /// ```
@@ -70,24 +66,25 @@ macro_rules! try_validation {
 /// the format string in directly:
 ///
 /// ```
-/// let v = try_validation_pat!(some_fn(), some_path, {
+/// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "{:?}", some_failure } expected { "{}", expected_value },
 /// });
 /// ```
 ///
-macro_rules! try_validation_pat {
-    ($e:expr, $where:expr, { $( $p:pat )|+ =>
-        { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? $( , )?}) => {{
+macro_rules! try_validation {
+    ($e:expr, $where:expr,
+     $( $( $p:pat )|+ => { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )? ),+ $(,)?
+    ) => {{
         match $e {
             Ok(x) => x,
             // We catch the error and turn it into a validation failure. We are okay with
             // allocation here as this can only slow down builds that fail anyway.
-            $( Err(InterpErrorInfo { kind: $p, .. }) )|+ =>
+            $( $( Err(InterpErrorInfo { kind: $p, .. }) )|+ =>
                 throw_validation_failure!(
-                    format_args!($( $what_fmt ),+),
-                    $where
-                    $(, format_args!($( $expected_fmt ),+))?
+                    $where,
+                    { $( $what_fmt ),+ } $( expected { $( $expected_fmt ),+ } )?
                 ),
+            )+
             #[allow(unreachable_patterns)]
             Err(e) => Err::<!, _>(e)?,
         }
@@ -303,32 +300,45 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         match tail.kind {
             ty::Dynamic(..) => {
                 let vtable = meta.unwrap_meta();
+                // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
                 try_validation!(
-                    self.ecx.memory.check_ptr_access(
+                    self.ecx.memory.check_ptr_access_align(
                         vtable,
                         3 * self.ecx.tcx.data_layout.pointer_size, // drop, size, align
-                        self.ecx.tcx.data_layout.pointer_align.abi,
+                        Some(self.ecx.tcx.data_layout.pointer_align.abi),
+                        CheckInAllocMsg::InboundsTest,
                     ),
-                    "dangling or unaligned vtable pointer in wide pointer or too small vtable",
-                    self.path
+                    self.path,
+                    err_ub!(DanglingIntPointer(..)) |
+                    err_ub!(PointerUseAfterFree(..)) |
+                    err_unsup!(ReadBytesAsPointer) =>
+                        { "dangling vtable pointer in wide pointer" },
+                    err_ub!(AlignmentCheckFailed { .. }) =>
+                        { "unaligned vtable pointer in wide pointer" },
+                    err_ub!(PointerOutOfBounds { .. }) =>
+                        { "too small vtable" },
                 );
                 try_validation!(
                     self.ecx.read_drop_type_from_vtable(vtable),
-                    "invalid drop fn in vtable",
-                    self.path
+                    self.path,
+                    err_ub!(InvalidDropFn(..)) |
+                    err_ub!(DanglingIntPointer(..)) |
+                    err_ub!(InvalidFunctionPointer(..)) |
+                    err_unsup!(ReadBytesAsPointer) =>
+                        { "invalid drop function pointer in vtable" },
                 );
                 try_validation!(
                     self.ecx.read_size_and_align_from_vtable(vtable),
-                    "invalid size or align in vtable",
-                    self.path
+                    self.path,
+                    err_unsup!(ReadPointerAsBytes) => { "invalid size or align in vtable" },
                 );
                 // FIXME: More checks for the vtable.
             }
             ty::Slice(..) | ty::Str => {
                 let _len = try_validation!(
                     meta.unwrap_meta().to_machine_usize(self.ecx),
-                    "non-integer slice length in wide pointer",
-                    self.path
+                    self.path,
+                    err_unsup!(ReadPointerAsBytes) => { "non-integer slice length in wide pointer" },
                 );
                 // We do not check that `len * elem_size <= isize::MAX`:
                 // that is only required for references, and there it falls out of the
@@ -354,78 +364,52 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         // Check metadata early, for better diagnostics
         let place = try_validation!(
             self.ecx.ref_to_mplace(value),
-            format_args!("uninitialized {}", kind),
-            self.path
+            self.path,
+            err_ub!(InvalidUndefBytes(..)) => { "uninitialized {}", kind },
         );
         if place.layout.is_unsized() {
             self.check_wide_ptr_meta(place.meta, place.layout)?;
         }
         // Make sure this is dereferenceable and all.
-        let size_and_align = match self.ecx.size_and_align_of(place.meta, place.layout) {
-            Ok(res) => res,
-            Err(err) => match err.kind {
-                err_ub!(InvalidMeta(msg)) => throw_validation_failure!(
-                    format_args!("invalid {} metadata: {}", kind, msg),
-                    self.path
-                ),
-                _ => bug!("unexpected error during ptr size_and_align_of: {}", err),
-            },
-        };
+        let size_and_align = try_validation!(
+            self.ecx.size_and_align_of(place.meta, place.layout),
+            self.path,
+            err_ub!(InvalidMeta(msg)) => { "invalid {} metadata: {}", kind, msg },
+        );
         let (size, align) = size_and_align
             // for the purpose of validity, consider foreign types to have
             // alignment and size determined by the layout (size will be 0,
             // alignment should take attributes into account).
             .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
-        let ptr: Option<_> = match self.ecx.memory.check_ptr_access_align(
-            place.ptr,
-            size,
-            Some(align),
-            CheckInAllocMsg::InboundsTest,
-        ) {
-            Ok(ptr) => ptr,
-            Err(err) => {
-                info!(
-                    "{:?} did not pass access check for size {:?}, align {:?}",
-                    place.ptr, size, align
-                );
-                match err.kind {
-                    err_ub!(DanglingIntPointer(0, _)) => {
-                        throw_validation_failure!(format_args!("a NULL {}", kind), self.path)
-                    }
-                    err_ub!(DanglingIntPointer(i, _)) => throw_validation_failure!(
-                        format_args!("a {} to unallocated address {}", kind, i),
-                        self.path
-                    ),
-                    err_ub!(AlignmentCheckFailed { required, has }) => throw_validation_failure!(
-                        format_args!(
-                            "an unaligned {} (required {} byte alignment but found {})",
-                            kind,
-                            required.bytes(),
-                            has.bytes()
-                        ),
-                        self.path
-                    ),
-                    err_unsup!(ReadBytesAsPointer) => throw_validation_failure!(
-                        format_args!("a dangling {} (created from integer)", kind),
-                        self.path
-                    ),
-                    err_ub!(PointerOutOfBounds { .. }) => throw_validation_failure!(
-                        format_args!(
-                            "a dangling {} (going beyond the bounds of its allocation)",
-                            kind
-                        ),
-                        self.path
-                    ),
-                    // This cannot happen during const-eval (because interning already detects
-                    // dangling pointers), but it can happen in Miri.
-                    err_ub!(PointerUseAfterFree(_)) => throw_validation_failure!(
-                        format_args!("a dangling {} (use-after-free)", kind),
-                        self.path
-                    ),
-                    _ => bug!("Unexpected error during ptr inbounds test: {}", err),
-                }
-            }
-        };
+        // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
+        let ptr: Option<_> = try_validation!(
+            self.ecx.memory.check_ptr_access_align(
+                place.ptr,
+                size,
+                Some(align),
+                CheckInAllocMsg::InboundsTest,
+            ),
+            self.path,
+            err_ub!(AlignmentCheckFailed { required, has }) =>
+                {
+                    "an unaligned {} (required {} byte alignment but found {})",
+                    kind,
+                    required.bytes(),
+                    has.bytes()
+                },
+            err_ub!(DanglingIntPointer(0, _)) =>
+                { "a NULL {}", kind },
+            err_ub!(DanglingIntPointer(i, _)) =>
+                { "a dangling {} (address {} is unallocated)", kind, i },
+            err_ub!(PointerOutOfBounds { .. }) =>
+                { "a dangling {} (going beyond the bounds of its allocation)", kind },
+            err_unsup!(ReadBytesAsPointer) =>
+                { "a dangling {} (created from integer)", kind },
+            // This cannot happen during const-eval (because interning already detects
+            // dangling pointers), but it can happen in Miri.
+            err_ub!(PointerUseAfterFree(..)) =>
+                { "a dangling {} (use-after-free)", kind },
+        );
         // Recursive checking
         if let Some(ref mut ref_tracking) = self.ref_tracking_for_consts {
             if let Some(ptr) = ptr {
@@ -440,9 +424,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     // We also need to do it here instead of going on to avoid running
                     // into the `before_access_global` check during validation.
                     if !self.may_ref_to_static && self.ecx.tcx.is_static(did) {
-                        throw_validation_failure!(
-                            format_args!("a {} pointing to a static variable", kind),
-                            self.path
+                        throw_validation_failure!(self.path,
+                            { "a {} pointing to a static variable", kind }
                         );
                     }
                     // `extern static` cannot be validated as they have no body.
@@ -489,12 +472,20 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         match ty.kind {
             ty::Bool => {
                 let value = self.ecx.read_scalar(value)?;
-                try_validation!(value.to_bool(), value, self.path, "a boolean");
+                try_validation!(
+                    value.to_bool(),
+                    self.path,
+                    err_ub!(InvalidBool(..)) => { "{}", value } expected { "a boolean" },
+                );
                 Ok(true)
             }
             ty::Char => {
                 let value = self.ecx.read_scalar(value)?;
-                try_validation!(value.to_char(), value, self.path, "a valid unicode codepoint");
+                try_validation!(
+                    value.to_char(),
+                    self.path,
+                    err_ub!(InvalidChar(..)) => { "{}", value } expected { "a valid unicode codepoint" },
+                );
                 Ok(true)
             }
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
@@ -505,10 +496,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
                     let is_bits = value.not_undef().map_or(false, |v| v.is_bits());
                     if !is_bits {
-                        throw_validation_failure!(
-                            value,
-                            self.path,
-                            "initialized plain (non-pointer) bytes"
+                        throw_validation_failure!(self.path,
+                            { "{}", value } expected { "initialized plain (non-pointer) bytes" }
                         )
                     }
                 } else {
@@ -521,9 +510,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // We are conservative with undef for integers, but try to
                 // actually enforce the strict rules for raw pointers (mostly because
                 // that lets us re-use `ref_to_mplace`).
-                let place = try_validation_pat!(self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?), self.path, {
+                let place = try_validation!(
+                    self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
+                    self.path,
                     err_ub!(InvalidUndefBytes(..)) => { "uninitialized raw pointer" },
-                });
+                );
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
                 }
@@ -541,14 +532,16 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let value = self.ecx.read_scalar(value)?;
                 let _fn = try_validation!(
                     value.not_undef().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
-                    value,
                     self.path,
-                    "a function pointer"
+                    err_ub!(DanglingIntPointer(..)) |
+                    err_ub!(InvalidFunctionPointer(..)) |
+                    err_unsup!(ReadBytesAsPointer) =>
+                        { "{}", value } expected { "a function pointer" },
                 );
                 // FIXME: Check if the signature matches
                 Ok(true)
             }
-            ty::Never => throw_validation_failure!("a value of the never type `!`", self.path),
+            ty::Never => throw_validation_failure!(self.path, { "a value of the never type `!`" }),
             ty::Foreign(..) | ty::FnDef(..) => {
                 // Nothing to check.
                 Ok(true)
@@ -598,35 +591,33 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         // At least one value is excluded. Get the bits.
         let value = try_validation!(
             value.not_undef(),
-            value,
             self.path,
-            format_args!("something {}", wrapping_range_format(valid_range, max_hi),)
+            err_ub!(InvalidUndefBytes(..)) => { "{}", value }
+                expected { "something {}", wrapping_range_format(valid_range, max_hi) },
         );
         let bits = match value.to_bits_or_ptr(op.layout.size, self.ecx) {
             Err(ptr) => {
                 if lo == 1 && hi == max_hi {
                     // Only NULL is the niche.  So make sure the ptr is NOT NULL.
                     if self.ecx.memory.ptr_may_be_null(ptr) {
-                        throw_validation_failure!(
-                            "a potentially NULL pointer",
-                            self.path,
-                            format_args!(
+                        throw_validation_failure!(self.path,
+                            { "a potentially NULL pointer" }
+                            expected {
                                 "something that cannot possibly fail to be {}",
                                 wrapping_range_format(valid_range, max_hi)
-                            )
+                            }
                         )
                     }
                     return Ok(());
                 } else {
                     // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
-                    throw_validation_failure!(
-                        "a pointer",
-                        self.path,
-                        format_args!(
+                    throw_validation_failure!(self.path,
+                        { "a pointer" }
+                        expected {
                             "something that cannot possibly fail to be {}",
                             wrapping_range_format(valid_range, max_hi)
-                        )
+                        }
                     )
                 }
             }
@@ -636,10 +627,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         if wrapping_range_contains(&valid_range, bits) {
             Ok(())
         } else {
-            throw_validation_failure!(
-                bits,
-                self.path,
-                format_args!("something {}", wrapping_range_format(valid_range, max_hi))
+            throw_validation_failure!(self.path,
+                { "{}", bits }
+                expected { "something {}", wrapping_range_format(valid_range, max_hi) }
             )
         }
     }
@@ -703,19 +693,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         assert!(op.layout.ty.builtin_deref(true).is_none());
 
         // Recursively walk the type. Translate some possible errors to something nicer.
-        match self.walk_value(op) {
-            Ok(()) => {}
-            Err(err) => match err.kind {
-                err_ub!(InvalidDiscriminant(val)) => {
-                    throw_validation_failure!(val, self.path, "a valid enum discriminant")
-                }
-                err_unsup!(ReadPointerAsBytes) => {
-                    throw_validation_failure!("a pointer", self.path, "plain (non-pointer) bytes")
-                }
-                // Propagate upwards (that will also check for unexpected errors).
-                _ => return Err(err),
-            },
-        }
+        try_validation!(
+            self.walk_value(op),
+            self.path,
+            err_ub!(InvalidDiscriminant(val)) =>
+                { "{}", val } expected { "a valid enum discriminant" },
+            err_unsup!(ReadPointerAsBytes) =>
+                { "a pointer" } expected { "plain (non-pointer) bytes" },
+        );
 
         // *After* all of this, check the ABI.  We need to check the ABI to handle
         // types like `NonNull` where the `Scalar` info is more restrictive than what
@@ -729,9 +714,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // MyNewtype and then the scalar in there).
         match op.layout.abi {
             Abi::Uninhabited => {
-                throw_validation_failure!(
-                    format_args!("a value of uninhabited type {:?}", op.layout.ty),
-                    self.path
+                throw_validation_failure!(self.path,
+                    { "a value of uninhabited type {:?}", op.layout.ty }
                 );
             }
             Abi::Scalar(ref scalar_layout) => {
@@ -761,8 +745,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 let mplace = op.assert_mem_place(self.ecx); // strings are never immediate
                 try_validation!(
                     self.ecx.read_str(mplace),
-                    "uninitialized or non-UTF-8 data in str",
-                    self.path
+                    self.path,
+                    err_ub!(InvalidStr(..)) => { "uninitialized or non-UTF-8 data in str" },
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
@@ -815,7 +799,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Ok(()) => {}
                     // Some error happened, try to provide a more detailed description.
                     Err(err) => {
-                        // For some errors we might be able to provide extra information
+                        // For some errors we might be able to provide extra information.
+                        // (This custom logic does not fit the `try_validation!` macro.)
                         match err.kind {
                             err_ub!(InvalidUndefBytes(Some(ptr))) => {
                                 // Some byte was uninitialized, determine which
@@ -825,7 +810,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                     .unwrap();
                                 self.path.push(PathElem::ArrayElem(i));
 
-                                throw_validation_failure!("uninitialized bytes", self.path)
+                                throw_validation_failure!(self.path, { "uninitialized bytes" })
                             }
                             // Propagate upwards (that will also check for unexpected errors).
                             _ => return Err(err),
@@ -876,7 +861,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // validate and each caller will know best what to do with them.
             Err(err) if matches!(err.kind, InterpError::InvalidProgram(_)) => Err(err),
             // Avoid other errors as those do not show *where* in the value the issue lies.
-            Err(err) => bug!("Unexpected error during validation: {}", err),
+            Err(err) => {
+                err.print_backtrace();
+                bug!("Unexpected error during validation: {}", err);
+            }
         }
     }
 
