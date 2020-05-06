@@ -32,13 +32,13 @@ use std::mem;
 use std::rc::Rc;
 
 use crate::dataflow;
+use crate::dataflow::impls::{
+    Borrows, EverInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
+};
 use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
 use crate::dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveError};
-use crate::dataflow::Borrows;
-use crate::dataflow::EverInitializedPlaces;
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{Analysis, BorrowckFlowState as Flows, BorrowckResults};
-use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use crate::transform::MirSource;
 
 use self::diagnostics::{AccessKind, RegionName};

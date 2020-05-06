@@ -1,10 +1,10 @@
 use crate::dataflow;
+use crate::dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use crate::dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use crate::dataflow::on_lookup_result_bits;
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use crate::dataflow::{Analysis, ResultsCursor};
-use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use crate::transform::{MirPass, MirSource};
 use crate::util::elaborate_drops::{elaborate_drop, DropFlagState, Unwind};
 use crate::util::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
