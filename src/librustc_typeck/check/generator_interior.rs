@@ -16,7 +16,6 @@ use rustc_span::Span;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
-    closure_def_id: DefId,
     types: FxHashMap<ty::GeneratorInteriorTypeCause<'tcx>, usize>,
     region_scope_tree: &'tcx region::ScopeTree,
     expr_count: usize,
@@ -31,7 +30,6 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
         scope: Option<region::Scope>,
         expr: Option<&'tcx Expr<'tcx>>,
         source_span: Span,
-        is_upvar: bool,
     ) {
         use rustc_span::DUMMY_SP;
 
@@ -119,20 +117,6 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     unresolved_type, unresolved_type_span
                 );
                 self.prev_unresolved_span = unresolved_type_span;
-            } else {
-                if is_upvar {
-                    let entries = self.types.len();
-                    let scope_span = scope.map(|s| s.span(self.fcx.tcx, self.region_scope_tree));
-                    self.types
-                        .entry(ty::GeneratorInteriorTypeCause {
-                            span: source_span,
-                            ty: &ty,
-                            scope_span,
-                            yield_span: None,
-                            expr: expr.map(|e| e.hir_id),
-                        })
-                        .or_insert(entries);
-                }
             }
         }
     }
@@ -147,11 +131,8 @@ pub fn resolve_interior<'a, 'tcx>(
 ) {
     let body = fcx.tcx.hir().body(body_id);
 
-    let closure_def_id = fcx.tcx.hir().body_owner_def_id(body_id).to_def_id();
-
     let mut visitor = InteriorVisitor {
         fcx,
-        closure_def_id,
         types: FxHashMap::default(),
         region_scope_tree: fcx.tcx.region_scope_tree(def_id),
         expr_count: 0,
@@ -243,7 +224,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         if let PatKind::Binding(..) = pat.kind {
             let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id);
             let ty = self.fcx.tables.borrow().pat_ty(pat);
-            self.record(ty, Some(scope), None, pat.span, false);
+            self.record(ty, Some(scope), None, pat.span);
         }
     }
 
@@ -284,7 +265,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // If there are adjustments, then record the final type --
         // this is the actual value that is being produced.
         if let Some(adjusted_ty) = self.fcx.tables.borrow().expr_ty_adjusted_opt(expr) {
-            self.record(adjusted_ty, scope, Some(expr), expr.span, false);
+            self.record(adjusted_ty, scope, Some(expr), expr.span);
         }
 
         // Also record the unadjusted type (which is the only type if
@@ -312,17 +293,9 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // The type table might not have information for this expression
         // if it is in a malformed scope. (#66387)
         if let Some(ty) = self.fcx.tables.borrow().expr_ty_opt(expr) {
-            self.record(ty, scope, Some(expr), expr.span, false);
+            self.record(ty, scope, Some(expr), expr.span);
         } else {
             self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
-        }
-
-        if let Some(upvars) = self.fcx.tcx.upvars(self.closure_def_id) {
-            for (upvar_id, upvar) in upvars.iter() {
-                let upvar_ty = self.fcx.tables.borrow().node_type(*upvar_id);
-                debug!("type of upvar: {:?}", upvar_ty);
-                self.record(upvar_ty, scope, Some(expr), upvar.span, true);
-            }
         }
     }
 }
