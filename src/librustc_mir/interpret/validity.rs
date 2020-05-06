@@ -313,6 +313,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 try_validation!(
                     self.ecx.read_drop_type_from_vtable(vtable),
                     self.path,
+                    err_ub!(InvalidDropFn(..)) |
                     err_ub!(DanglingIntPointer(..)) |
                     err_ub!(InvalidFunctionPointer(..)) |
                     err_unsup!(ReadBytesAsPointer) =>
