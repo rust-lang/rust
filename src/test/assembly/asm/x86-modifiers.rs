@@ -63,13 +63,6 @@ check!(reg "" reg "mov");
 #[cfg(x86_64)]
 check!(reg_l "l" reg "mov");
 
-// x86_64-LABEL: reg_h:
-// x86_64: #APP
-// x86_64: mov ah, ah
-// x86_64: #NO_APP
-#[cfg(x86_64)]
-check!(reg_h "h" reg "mov");
-
 // CHECK-LABEL: reg_x:
 // CHECK: #APP
 // CHECK: mov ax, ax

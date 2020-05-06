@@ -19,7 +19,7 @@ impl X86InlineAsmRegClass {
         match self {
             Self::reg => {
                 if arch == InlineAsmArch::X86_64 {
-                    &['l', 'h', 'x', 'e', 'r']
+                    &['l', 'x', 'e', 'r']
                 } else {
                     &['x', 'e']
                 }
