@@ -592,6 +592,12 @@
                     "keyword.unsafe": [
                         "keyword.other.unsafe"
                     ],
+                    "keyword": [
+                        "keyword"
+                    ],
+                    "keyword.controlFlow": [
+                        "keyword.control"
+                    ],
                     "variable.constant": [
                         "entity.name.constant"
                     ]
