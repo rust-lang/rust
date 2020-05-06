@@ -658,7 +658,7 @@ public:
             }
             placeholder->replaceAllUsesWith(newip);
             gutils->erase(placeholder);
-            gutils->invertedPointers[&LI] = newip;
+            gutils->invertedPointers[newi] = newip;
             break;
           }
 
@@ -667,13 +667,13 @@ public:
             if (gutils->can_modref_map->find(&LI)->second) {
               newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(&LI, CacheType::Shadow));
               assert(newip->getType() == type);
-              gutils->invertedPointers[&LI] = newip;
+              gutils->invertedPointers[newi] = newip;
             } else {
               newip = gutils->invertPointerM(newi, BuilderZ);
               assert(newip->getType() == type);
               placeholder->replaceAllUsesWith(newip);
               gutils->erase(placeholder);
-              gutils->invertedPointers[&LI] = newip;
+              gutils->invertedPointers[newi] = newip;
             }
             break;
           }
@@ -691,7 +691,7 @@ public:
 
     //! Store loads that need to be cached for use in reverse pass
     if (cache_reads_always || (!cache_reads_never && gutils->can_modref_map->find(&LI)->second && is_value_needed_in_reverse(TR, gutils, &LI, /*toplevel*/mode == DerivativeMode::Both))) {
-      IRBuilder<> BuilderZ(LI.getNextNode());
+      IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&LI)->getNextNode());
       auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
 
       inst = gutils->addMalloc(BuilderZ, newi, getIndex(&LI, CacheType::Self));
@@ -1104,7 +1104,10 @@ public:
         goto def;
       }
       default:def:;
-        llvm::errs() << *gutils->newFunc << "\n";
+        llvm::errs() << *gutils->oldFunc << "\n";
+        for(auto & pair : gutils->internal_isConstantInstruction) {
+          llvm::errs() << " constantinst[" << *pair.first << "] = " << pair.second << " val:" << gutils->internal_isConstantValue[pair.first] << " type: " << TR.query(pair.first).str() << "\n";
+        }
         llvm::errs() << "cannot handle unknown binary operator: " << BO << "\n";
         report_fatal_error("unknown binary operator");
     }
@@ -1136,7 +1139,7 @@ public:
     }
 
     if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
-      IRBuilder <>BuilderZ(&MS);
+      IRBuilder <>BuilderZ(gutils->getNewFromOriginal(&MS));
 
       SmallVector<Value*, 4> args;
       if (!gutils->isConstantValue(orig_op0)) {
@@ -1217,10 +1220,10 @@ public:
       //if represents pointer or integer type then only need to modify forward pass with the copy
       if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
         //It is questionable how the following case would even occur, but if the dst is constant, we shouldn't do anything extra
-        if (gutils->isConstantValue(op0)) return;
+        if (gutils->isConstantValue(orig_op0)) return;
 
         SmallVector<Value*, 4> args;
-        IRBuilder <>BuilderZ(&MTI);
+        IRBuilder <>BuilderZ(gutils->getNewFromOriginal(&MTI));
 
         //If src is inactive, then we should copy from the regular pointer (i.e. suppose we are copying constant memory representing dimensions into a tensor)
         //  to ensure that the differential tensor is well formed for use OUTSIDE the derivative generation (as enzyme doesn't need this), we should also perform the copy
@@ -1228,7 +1231,7 @@ public:
         //no need to update pointers, even if dst is active
         args.push_back(gutils->invertPointerM(op0, BuilderZ));
 
-        if (!gutils->isConstantValue(op1))
+        if (!gutils->isConstantValue(orig_op1))
             args.push_back(gutils->invertPointerM(op1, BuilderZ));
         else
             args.push_back(op1);
@@ -1256,8 +1259,12 @@ public:
 
     if (mode == DerivativeMode::Forward) {
       switch(II.getIntrinsicID()) {
-        case Intrinsic::stacksave:
-          gutils->getNewFromOriginal(&II)->replaceAllUsesWith(UndefValue::get(II.getType()));
+        case Intrinsic::stacksave:{
+          Instruction* newi = gutils->getNewFromOriginal(&II);
+          newi->replaceAllUsesWith(UndefValue::get(II.getType()));
+          gutils->erase(newi);
+          return;
+        }
         case Intrinsic::stackrestore:
           gutils->erase(gutils->getNewFromOriginal(&II));
           return;
@@ -1316,10 +1323,14 @@ public:
       }
 
       switch(II.getIntrinsicID()) {
-        case Intrinsic::stacksave:
-          II.replaceAllUsesWith(UndefValue::get(II.getType()));
+        case Intrinsic::stacksave:{
+          Instruction* newi = gutils->getNewFromOriginal(&II);
+          newi->replaceAllUsesWith(UndefValue::get(II.getType()));
+          gutils->erase(newi);
+          return;
+        }
         case Intrinsic::stackrestore:
-          gutils->erase(&II);
+          gutils->erase(gutils->getNewFromOriginal(&II));
           return;
 
         case Intrinsic::assume:
@@ -1486,7 +1497,7 @@ public:
           return;
         }
         case Intrinsic::sin: {
-          if (vdiff && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value *args[] = {lookup(ops[0], Builder2)};
             Type *tys[] = {ops[0]->getType()};
             Value* dif0 = Builder2.CreateFMul(vdiff,
@@ -1496,7 +1507,7 @@ public:
           return;
         }
         case Intrinsic::cos: {
-          if (vdiff && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value *args[] = {lookup(ops[0], Builder2)};
             Type *tys[] = {ops[0]->getType()};
             Value* dif0 = Builder2.CreateFMul(vdiff,
@@ -1894,7 +1905,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
       // Don't create derivatives for code that results in termination
       if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) continue;
 
-      if (!isa<ReturnInst>(term) && isa<BranchInst>(term) && !isa<SwitchInst>(term)) {
+      if (!isa<ReturnInst>(term) && !isa<BranchInst>(term) && !isa<SwitchInst>(term)) {
         llvm::errs() << *oBB.getParent() << "\n";
         llvm::errs() << "unknown terminator instance " << *term << "\n";
         assert(0 && "unknown terminator inst");
@@ -1904,7 +1915,8 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
       I++;
       for (; I != E; I++) {
         maker.visit(&*I);
-     }
+        assert(oBB.rend() == E);
+      }
   }
 
   auto nf = gutils->newFunc;
@@ -2207,10 +2219,8 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, Basic
           llvm::errs() << " for orig " << *orig << " saw " << TR.intType(orig, /*necessary*/false).str() << "\n";
         TR.intType(orig, /*necessary*/true);
         assert(PNfloatType);
-        llvm::errs() << "consindering phi orig: " << *orig << "\n";
         for (BasicBlock* pred : predecessors(BB)) {
           auto oval = orig->getIncomingValueForBlock(gutils->getOriginal(pred));
-          llvm::errs() << "+ oval: " << *oval << "\n";
           if (gutils->isConstantValue(oval)) {
             continue;
           }
@@ -3450,11 +3460,11 @@ badfn:;
   }
 
   if (augmentcall || cachereplace) {
-
     if (subretused) {
       Value* dcall = nullptr;
       if (augmentcall) {
         dcall = BuilderZ.CreateExtractValue(augmentcall, {returnIdx});
+        gutils->originalToNewFn[orig] = dcall;
         assert(dcall->getType() == op->getType());
       }
       if (cachereplace) {
@@ -3486,6 +3496,9 @@ badfn:;
         cast<Instruction>(dcall)->setName(name);
       }
     } else {
+      if (augmentcall) {
+        gutils->originalToNewFn[orig] = augmentcall;
+      }
       for(auto inst_orig : valuesOnlyUsedInUnnecessaryReturns) {
         if (isa<ReturnInst>(inst_orig)) continue;
         auto inst = gutils->getNewFromOriginal(inst_orig);
@@ -3836,6 +3849,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     I++;
     for (; I != E; I++) {
       maker.visit(&*I);
+      assert(oBB.rend() == E);
     }
     createInvertedTerminator(TR, gutils, cast<BasicBlock>(gutils->getNewFromOriginal(&oBB)), retAlloca, dretAlloca, 0 + (additionalArg ? 1 : 0) + (differentialReturn && todiff->getReturnType()->isFPOrFPVectorTy() ? 1 : 0));
   }

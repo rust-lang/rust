@@ -131,7 +131,14 @@ public:
     if (f == originalToNewFn.end()) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
-        dumpMap(originalToNewFn);
+        dumpMap(originalToNewFn, [&](const Value* const& v) -> bool {
+          if (isa<Instruction>(originst)) return isa<Instruction>(v);
+          if (isa<BasicBlock>(originst)) return isa<BasicBlock>(v);
+          if (isa<Function>(originst)) return isa<Function>(v);
+          if (isa<Argument>(originst)) return isa<Argument>(v);
+          if (isa<Constant>(originst)) return isa<Constant>(v);
+          return true;
+        });
         llvm::errs() << *originst << "\n";
     }
     assert(f != originalToNewFn.end());
@@ -384,8 +391,6 @@ public:
     cast<CallInst>(anti)->setDebugLoc(call->getDebugLoc());
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
-    cast<CallInst>(anti)->setMetadata("enzyme_activity_inst", MDNode::get(placeholder->getContext(), MDString::get(placeholder->getContext(), "active")));
-    cast<CallInst>(anti)->setMetadata("enzyme_activity_value", MDNode::get(placeholder->getContext(), MDString::get(placeholder->getContext(), "active")));
 
     invertedPointers[call] = anti;
     assert(placeholder != anti);
@@ -454,6 +459,7 @@ public:
   }
 
   Value* addMalloc(IRBuilder<> &BuilderQ, Value* malloc, unsigned idx) {
+    assert(BuilderQ.GetInsertBlock()->getParent() == newFunc);
 
     if (tape) {
       if (!tape->getType()->isStructTy()) {
@@ -471,11 +477,7 @@ public:
       assert(idx < cast<StructType>(tape->getType())->getNumElements());
       Instruction* ret = cast<Instruction>(BuilderQ.CreateExtractValue(tape, {idx}));
 
-      if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
-        if (MDNode* md = inst->getMetadata("enzyme_activity_value")) {
-            ret->setMetadata("enzyme_activity_value", md);
-        }
-        ret->setMetadata("enzyme_activity_inst", MDNode::get(ret->getContext(), {MDString::get(ret->getContext(), "const")}));
+      if (malloc && isa<Instruction>(malloc)) {
         //llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
         originalInstructions.insert(ret);
       }
@@ -545,10 +547,6 @@ public:
         if (malloc) {
           assert(v->getType() == malloc->getType());
           if (auto inst = dyn_cast<Instruction>(malloc)) {
-            if (MDNode* md = inst->getMetadata("enzyme_activity_value")) {
-                ret->setMetadata("enzyme_activity_value", md);
-            }
-            ret->setMetadata("enzyme_activity_inst", MDNode::get(ret->getContext(), {MDString::get(ret->getContext(), "const")}));
             originalInstructions.insert(inst);
           }
         }
@@ -766,6 +764,13 @@ public:
       for(const auto unused : getSubLimits(BuilderQ.GetInsertBlock()) ) {
         innerType = cast<PointerType>(innerType)->getElementType();
       }
+      if (innerType != malloc->getType()) {
+        llvm::errs() << "oldFunc:" << *oldFunc << "\n";
+        llvm::errs() << "newFunc: " << *newFunc << "\n";
+        llvm::errs() << " toadd: " << *toadd << "\n";
+        llvm::errs() << "innerType: " << *innerType << "\n";
+        llvm::errs() << "malloc: " << *malloc << "\n";
+      }
       assert(innerType == malloc->getType());
 
       addedMallocs.push_back(toadd);
@@ -891,26 +896,30 @@ public:
           assert(inst);
           I++;
 
+          if (isa<SwitchInst>(inst) || isa<BranchInst>(inst) || isa<ReturnInst>(inst)) continue;
+
           if (originalInstructions.find(inst) == originalInstructions.end()) continue;
 
-          if (!(isa<SwitchInst>(inst) || isa<BranchInst>(inst) || isa<ReturnInst>(inst)) && isConstantInstruction(getOriginal(inst)) && isConstantValue(getOriginal(inst)) ) {
-            if (inst->getNumUses() == 0) {
-                erase(inst);
-			    continue;
+          if (inst->getNumUses() == 0) {
+            if (isa<ExtractValueInst>(inst)) continue;
+            // TODO fix the need to getOriginal
+            if (!isConstantInstruction(getOriginal(inst)) && isConstantValue(getOriginal(inst)) ) {
+              erase(inst);
+			        continue;
             }
-          } else {
-            if (auto inti = dyn_cast<IntrinsicInst>(inst)) {
-                if (inti->getIntrinsicID() == Intrinsic::memset || inti->getIntrinsicID() == Intrinsic::memcpy || inti->getIntrinsicID() == Intrinsic::memmove) {
-                    erase(inst);
-                    continue;
-                }
+          }
+
+          if (auto inti = dyn_cast<IntrinsicInst>(inst)) {
+            if (inti->getIntrinsicID() == Intrinsic::memset || inti->getIntrinsicID() == Intrinsic::memcpy || inti->getIntrinsicID() == Intrinsic::memmove) {
+              erase(inst);
+              continue;
             }
-            if (replaceableCalls.find(inst) != replaceableCalls.end()) {
-                if (inst->getNumUses() != 0) {
-                } else {
-                    erase(inst);
-                    continue;
-                }
+          }
+          if (replaceableCalls.find(inst) != replaceableCalls.end()) {
+            if (inst->getNumUses() != 0) {
+            } else {
+              erase(inst);
+              continue;
             }
           }
         }
@@ -1025,6 +1034,13 @@ public:
 
     //if (originalInstructions.find(inst) == originalInstructions.end()) return true;
     assert(inst->getParent()->getParent() == oldFunc);
+    if (internal_isConstantInstruction.find(inst) == internal_isConstantInstruction.end()) {
+      llvm::errs() << *oldFunc << "\n";
+      for(auto & pair : internal_isConstantInstruction) {
+        llvm::errs() << " constantinst[" << *pair.first << "] = " << pair.second << "\n";
+      }
+      llvm::errs() << "inst: " << *inst << "\n";
+    }
     assert(internal_isConstantInstruction.find(inst) != internal_isConstantInstruction.end());
     return internal_isConstantInstruction.find(inst)->second;
     /*
@@ -1075,7 +1091,6 @@ public:
               IRBuilder<> BuilderZ(getNextNonDebugInstruction(inst));
               BuilderZ.setFastMathFlags(getFast());
               PHINode* anti = BuilderZ.CreatePHI(inst->getType(), 1, inst->getName() + "'il_phi");
-              anti->setMetadata("enzyme_activity_value", MDNode::get(anti->getContext(), MDString::get(anti->getContext(), "active")));
               invertedPointers[inst] = anti;
               continue;
           }
@@ -1108,7 +1123,6 @@ public:
             IRBuilder<> BuilderZ(getNextNonDebugInstruction(op));
             BuilderZ.setFastMathFlags(getFast());
             PHINode* anti = BuilderZ.CreatePHI(op->getType(), 1, op->getName() + "'ip_phi");
-            anti->setMetadata("enzyme_activity_value", MDNode::get(anti->getContext(), MDString::get(anti->getContext(), "active")));
             invertedPointers[op] = anti;
 
 			if ( called && (called->getName() == "malloc" || called->getName() == "_Znwm")) {
@@ -1765,12 +1779,6 @@ endCheck:
         unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
         if ((bsize & (bsize - 1)) == 0) {
             result->setAlignment(bsize);
-        }
-        if (auto inst = dyn_cast<Instruction>(cache)) {
-            if (MDNode* md = inst->getMetadata("enzyme_activity_value")) {
-                result->setMetadata("enzyme_activity_value", md);
-            }
-            result->setMetadata("enzyme_activity_inst", MDNode::get(result->getContext(), {MDString::get(result->getContext(), "const")}));
         }
         return result;
     }

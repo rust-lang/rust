@@ -390,19 +390,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       Value* op0 = SAFE(arg, getOperand(0));
       Value* op1 = SAFE(arg, getOperand(1));
       Value* op2 = SAFE(arg, getOperand(2));
-      //TODO FIX IS CONSTANT VALUE FROM HER
-      if (isConstantValue(op0) && isConstantValue(op1)) {
-        llvm::errs() << *oldFunc << "\n";
-        llvm::errs() << *newFunc << "\n";
-        llvm::errs() << *op0 << "\n";
-        llvm::errs() << *op1 << "\n";
-        llvm::errs() << *arg << "\n";
-      }
-
-      assert(!isConstantValue(op0) || !isConstantValue(op1));
-      Value* insertinto = isConstantValue(op0) ? op0 : invertPointerM(op0, bb);
-      Value* toinsert = isConstantValue(op1) ? op1 : invertPointerM(op1, bb);
-      auto result = bb.CreateInsertElement(insertinto, toinsert, op2, arg->getName()+"'ipie");
+      auto result = bb.CreateInsertElement(op0, op1, op2, arg->getName()+"'ipie");
       invertedPointers[arg] = result;
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<SelectInst>(val)) {
@@ -413,17 +401,6 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     } else if (auto arg = dyn_cast<LoadInst>(val)) {
       IRBuilder <> bb(arg);
       Value* op0 = SAFE(arg, getOperand(0));
-        if(isConstantValue(op0)) {
-            return lookupM(arg, BuilderM);
-            llvm::errs() << *oldFunc << "\n";
-            llvm::errs() << *newFunc << "\n";
-            dumpSet(this->originalInstructions);
-            if (auto arg = dyn_cast<Instruction>(val)) {
-                llvm::errs() << *arg->getParent()->getParent() << "\n";
-            }
-            llvm::errs() << *val << "\n";
-        }
-      assert(!isConstantValue(op0));
       auto li = bb.CreateLoad(invertPointerM(op0, bb), arg->getName()+"'ipl");
       li->setAlignment(arg->getAlignment());
       li->setVolatile(arg->isVolatile());
@@ -441,27 +418,8 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       Value* op1 = SAFE(arg, getOperand(1));
 
 
-      if (isConstantValue(op0) && isConstantValue(op1)) {
-        llvm::errs() << *oldFunc << "\n";
-        llvm::errs() << *newFunc << "\n";
-        dumpSet(this->originalInstructions);
-        llvm::errs() << *arg->getParent() << "\n";
-        llvm::errs() << " binary operator for ip has both operands as constant values " << *arg << "\n";
-        assert(0 && "binary bothops");
-      }
-
-      //if (isa<ConstantInt>(arg->getOperand(0))) {
-      if (isConstantValue(op0)) {
-        val0 = op0;
-        val1 = invertPointerM(op1, bb);
-      } else if (isConstantValue(op1)) {
-      //} else if (isa<ConstantInt>(arg->getOperand(1))) {
-        val0 = invertPointerM(op0, bb);
-        val1 = op1;
-      } else {
-        val0 = invertPointerM(op0, bb);
-        val1 = invertPointerM(op1, bb);
-      }
+      val0 = invertPointerM(op0, bb);
+      val1 = invertPointerM(op1, bb);
 
       auto li = bb.CreateBinOp(arg->getOpcode(), val0, val1, arg->getName());
       cast<BinaryOperator>(li)->copyIRFlags(arg);
@@ -556,29 +514,13 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
          IRBuilder <> bb(phi);
          auto which = bb.CreatePHI(phi->getType(), phi->getNumIncomingValues());
          invertedPointers[val] = which;
-         bool hasnonconst = false;
 
          for(unsigned int i=0; i<phi->getNumIncomingValues(); i++) {
             IRBuilder <>pre(phi->getIncomingBlock(i)->getTerminator());
             Value* ival = SAFE(phi, getIncomingValue(i));
-            Value* val;
-            if (isConstantValue(ival)) {
-                val = lookupM(ival, pre);
-            } else {
-                val = invertPointerM(ival, pre);
-                hasnonconst = true;
-            }
+            Value* val = invertPointerM(ival, pre);
             which->addIncoming(val, phi->getIncomingBlock(i));
          }
-         if (!hasnonconst) {
-            llvm::errs() << *oldFunc << "\n";
-            llvm::errs() << *newFunc << "\n";
-            llvm::errs() << *phi << "\n";
-            llvm::errs() << "WARNING: this should assert, but currently doesn't as we wait for interprocedural constant detection\n";
-         }
-         //This is okay to not assert as it isn't necessary (since we could return any undefined value if a value we wish to find the inverted pointer of is inactive
-         //  However, this usually is indicative of a bug elsewhere in the code, and thus this _should_ be turned on once activity analysis is able to handle returns interprocedurally
-         //assert(hasnonconst);
 
          return lookupM(which, BuilderM);
      }

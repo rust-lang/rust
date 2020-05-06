@@ -56,9 +56,12 @@ static inline std::string to_string(const std::set<T>& us) {
 
 
 template<typename T, typename N>
-static inline void dumpMap(const llvm::ValueMap<T, N> &o) {
+static inline void dumpMap(const llvm::ValueMap<T, N> &o, std::function<bool(const llvm::Value*)> shouldPrint = [](T){ return true; }) {
     llvm::errs() << "<begin dump>\n";
-    for(auto a : o) llvm::errs() << "key=" << *a.first << " val=" << *a.second << "\n";
+    for(auto a : o) {
+      if (shouldPrint(a.first))
+        llvm::errs() << "key=" << *a.first << " val=" << *a.second << "\n";
+    }
     llvm::errs() << "</end dump>\n";
 }
 
