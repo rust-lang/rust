@@ -349,8 +349,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn get_const(&self, local: Local) -> Option<OpTy<'tcx>> {
-        let op = self.ecx.access_local(self.ecx.frame(), local, None).ok();
+    fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
+        let op = self.ecx.eval_place_to_op(place, None).ok();
 
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
@@ -772,13 +772,25 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
         use rustc_middle::mir::visit::PlaceContext::*;
         match context {
-            // Constants must have at most one write
-            // FIXME(oli-obk): we could be more powerful here, if the multiple writes
-            // only occur in independent execution paths
-            MutatingUse(MutatingUseContext::Store) => {
+            // Projections are fine, because `&mut foo.x` will be caught by
+            // `MutatingUseContext::Borrow` elsewhere.
+            MutatingUse(MutatingUseContext::Projection)
+            | MutatingUse(MutatingUseContext::Store) => {
                 if !self.found_assignment.insert(local) {
-                    trace!("local {:?} can't be propagated because of multiple assignments", local);
-                    self.can_const_prop[local] = ConstPropMode::NoPropagation;
+                    match &mut self.can_const_prop[local] {
+                        // If the local can only get propagated in its own block, then we don't have
+                        // to worry about multiple assignments, as we'll nuke the const state at the
+                        // end of the block anyway, and inside the block we overwrite previous
+                        // states as applicable.
+                        ConstPropMode::OnlyInsideOwnBlock => {}
+                        other => {
+                            trace!(
+                                "local {:?} can't be propagated because of multiple assignments",
+                                local,
+                            );
+                            *other = ConstPropMode::NoPropagation;
+                        }
+                    }
                 }
             }
             // Reading constants is allowed an arbitrary number of times
@@ -787,12 +799,6 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             | NonMutatingUse(NonMutatingUseContext::Inspect)
             | NonMutatingUse(NonMutatingUseContext::Projection)
             | NonUse(_) => {}
-            // FIXME(felix91gr): explain the reasoning behind this
-            MutatingUse(MutatingUseContext::Projection) => {
-                if self.local_kinds[local] != LocalKind::Temp {
-                    self.can_const_prop[local] = ConstPropMode::NoPropagation;
-                }
-            }
             _ => {
                 trace!("local {:?} can't be propagaged because it's used: {:?}", local, context);
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
@@ -826,40 +832,50 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         if let StatementKind::Assign(box (place, ref mut rval)) = statement.kind {
             let place_ty: Ty<'tcx> = place.ty(&self.local_decls, self.tcx).ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
-                if let Some(local) = place.as_local() {
-                    let can_const_prop = self.can_const_prop[local];
-                    if let Some(()) = self.const_prop(rval, place_layout, source_info, place) {
-                        if can_const_prop != ConstPropMode::NoPropagation {
-                            // This will return None for Locals that are from other blocks,
-                            // so it should be okay to propagate from here on down.
-                            if let Some(value) = self.get_const(local) {
-                                if self.should_const_prop(value) {
-                                    trace!("replacing {:?} with {:?}", rval, value);
-                                    self.replace_with_const(rval, value, statement.source_info);
-                                    if can_const_prop == ConstPropMode::FullConstProp
-                                        || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
-                                    {
-                                        trace!("propagated into {:?}", local);
-                                    }
+                let can_const_prop = self.can_const_prop[place.local];
+                if let Some(()) = self.const_prop(rval, place_layout, source_info, place) {
+                    if can_const_prop != ConstPropMode::NoPropagation {
+                        // This will return None for variables that are from other blocks,
+                        // so it should be okay to propagate from here on down.
+                        if let Some(value) = self.get_const(place) {
+                            if self.should_const_prop(value) {
+                                trace!("replacing {:?} with {:?}", rval, value);
+                                self.replace_with_const(rval, value, statement.source_info);
+                                if can_const_prop == ConstPropMode::FullConstProp
+                                    || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
+                                {
+                                    trace!("propagated into {:?}", place);
                                 }
-                                if can_const_prop == ConstPropMode::OnlyInsideOwnBlock {
-                                    trace!(
-                                        "found local restricted to its block. Will remove it from const-prop after block is finished. Local: {:?}",
-                                        local
-                                    );
-                                    self.locals_of_current_block.insert(local);
-                                }
+                            }
+                            if can_const_prop == ConstPropMode::OnlyInsideOwnBlock {
+                                trace!(
+                                    "found local restricted to its block. Will remove it from const-prop after block is finished. Local: {:?}",
+                                    place.local
+                                );
+                                self.locals_of_current_block.insert(place.local);
                             }
                         }
                     }
-                    if self.can_const_prop[local] == ConstPropMode::OnlyPropagateInto
-                        || self.can_const_prop[local] == ConstPropMode::NoPropagation
+                    if can_const_prop == ConstPropMode::OnlyPropagateInto
+                        || can_const_prop == ConstPropMode::NoPropagation
                     {
-                        trace!("can't propagate into {:?}", local);
-                        if local != RETURN_PLACE {
-                            Self::remove_const(&mut self.ecx, local);
+                        trace!("can't propagate into {:?}", place);
+                        if place.local != RETURN_PLACE {
+                            Self::remove_const(&mut self.ecx, place.local);
                         }
                     }
+                } else {
+                    // Const prop failed, so erase the destination, ensuring that whatever happens
+                    // from here on, does not know about the previous value.
+                    // This is important in case we have
+                    // ```rust
+                    // let mut x = 42;
+                    // x = SOME_MUTABLE_STATIC;
+                    // // x must now be undefined
+                    // ```
+                    // FIXME: we overzealously erase the entire local, because that's easier to
+                    // implement.
+                    Self::remove_const(&mut self.ecx, place.local);
                 }
             }
         } else {
@@ -993,7 +1009,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                           arguments are of the variant `Operand::Copy`. This allows us to
                           simplify our handling of `Operands` in this case.
                         */
-                        if let Some(l) = opr.place().and_then(|p| p.as_local()) {
+                        if let Some(l) = opr.place() {
                             if let Some(value) = self.get_const(l) {
                                 if self.should_const_prop(value) {
                                     // FIXME(felix91gr): this code only handles `Scalar` cases.

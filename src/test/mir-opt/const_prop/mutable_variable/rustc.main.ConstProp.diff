@@ -1,0 +1,53 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/mutable_variable.rs:4:11: 4:11
+      let mut _1: i32;                     // in scope 0 at $DIR/mutable_variable.rs:5:9: 5:14
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/mutable_variable.rs:5:9: 5:14
+          let _2: i32;                     // in scope 1 at $DIR/mutable_variable.rs:7:9: 7:10
+          scope 2 {
+              debug y => _2;               // in scope 2 at $DIR/mutable_variable.rs:7:9: 7:10
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/mutable_variable.rs:5:9: 5:14
+          _1 = const 42i32;                // scope 0 at $DIR/mutable_variable.rs:5:17: 5:19
+                                           // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x0000002a))
+                                           // mir::Constant
+                                           // + span: $DIR/mutable_variable.rs:5:17: 5:19
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x0000002a)) }
+          _1 = const 99i32;                // scope 1 at $DIR/mutable_variable.rs:6:5: 6:11
+                                           // ty::Const
+                                           // + ty: i32
+                                           // + val: Value(Scalar(0x00000063))
+                                           // mir::Constant
+-                                          // + span: $DIR/mutable_variable.rs:6:9: 6:11
++                                          // + span: $DIR/mutable_variable.rs:6:5: 6:11
+                                           // + literal: Const { ty: i32, val: Value(Scalar(0x00000063)) }
+          StorageLive(_2);                 // scope 1 at $DIR/mutable_variable.rs:7:9: 7:10
+-         _2 = _1;                         // scope 1 at $DIR/mutable_variable.rs:7:13: 7:14
++         _2 = const 99i32;                // scope 1 at $DIR/mutable_variable.rs:7:13: 7:14
++                                          // ty::Const
++                                          // + ty: i32
++                                          // + val: Value(Scalar(0x00000063))
++                                          // mir::Constant
++                                          // + span: $DIR/mutable_variable.rs:7:13: 7:14
++                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000063)) }
+          _0 = const ();                   // scope 0 at $DIR/mutable_variable.rs:4:11: 8:2
+                                           // ty::Const
+                                           // + ty: ()
+                                           // + val: Value(Scalar(<ZST>))
+                                           // mir::Constant
+                                           // + span: $DIR/mutable_variable.rs:4:11: 8:2
+                                           // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
+          StorageDead(_2);                 // scope 1 at $DIR/mutable_variable.rs:8:1: 8:2
+          StorageDead(_1);                 // scope 0 at $DIR/mutable_variable.rs:8:1: 8:2
+          return;                          // scope 0 at $DIR/mutable_variable.rs:8:2: 8:2
+      }
+  }
+  
