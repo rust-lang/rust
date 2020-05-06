@@ -4,18 +4,18 @@
 
 ## Getting the type of an expression
 
-NOTE: For the example to compile, you will need to first run the following:
-
-    rustup component add rustc-dev
-
 To get the type of an expression, use the `global_ctxt` to get a `TyCtxt`:
 
 ```rust
-// In this example, config specifies the rust program:
-//   fn main() { let message = \"Hello, world!\"; println!(\"{}\", message); }
-// Our goal is to get the type of the string literal "Hello, world!".
-//
-// See https://github.com/rust-lang/rustc-dev-guide/blob/master/examples/rustc-driver-example.rs for a complete example of configuring rustc_interface
+// See https://github.com/rust-lang/rustc-dev-guide/blob/master/examples/rustc-driver-interacting-with-the-ast.rs for complete program.
+let config = rustc_interface::Config {
+    input: config::Input::Str {
+        name: source_map::FileName::Custom("main.rs".to_string()),
+        input: "fn main() { let message = \"Hello, world!\"; println!(\"{}\", message); }"
+            .to_string(),
+    },
+    /* other config */
+};
 rustc_interface::run_compiler(config, |compiler| {
     compiler.enter(|queries| {
         // Analyze the crate and inspect the types under the cursor.
