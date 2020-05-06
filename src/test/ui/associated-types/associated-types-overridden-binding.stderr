@@ -1,22 +1,18 @@
-error[E0284]: type annotations needed
+error[E0284]: type annotations needed: cannot satisfy `<Self as std::iter::Iterator>::Item == i32`
   --> $DIR/associated-types-overridden-binding.rs:4:12
    |
 LL | trait Foo: Iterator<Item = i32> {}
    |                     ---------- required by this bound in `Foo`
 LL | trait Bar: Foo<Item = u32> {}
-   |            ^^^^^^^^^^^^^^^ cannot infer type for type parameter `Self`
-   |
-   = note: cannot satisfy `<Self as std::iter::Iterator>::Item == i32`
+   |            ^^^^^^^^^^^^^^^ cannot satisfy `<Self as std::iter::Iterator>::Item == i32`
 
-error[E0284]: type annotations needed
+error[E0284]: type annotations needed: cannot satisfy `<Self as std::iter::Iterator>::Item == i32`
   --> $DIR/associated-types-overridden-binding.rs:7:21
    |
 LL | trait I32Iterator = Iterator<Item = i32>;
    |                              ---------- required by this bound in `I32Iterator`
 LL | trait U32Iterator = I32Iterator<Item = u32>;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `Self`
-   |
-   = note: cannot satisfy `<Self as std::iter::Iterator>::Item == i32`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `<Self as std::iter::Iterator>::Item == i32`
 
 error: aborting due to 2 previous errors
 
