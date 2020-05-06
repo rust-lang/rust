@@ -25,14 +25,19 @@ use super::{
 };
 
 macro_rules! throw_validation_failure {
-    ($what:expr, $where:expr $(, $expected:expr )?) => {{
-        let mut msg = format!("encountered {}", $what);
+    ($where:expr, { $( $what_fmt:expr ),+ } $( expected { $( $expected_fmt:expr ),+ } )?) => {{
+        let mut msg = String::new();
+        msg.push_str("encountered ");
+        write!(&mut msg, $($what_fmt),+).unwrap();
         let where_ = &$where;
         if !where_.is_empty() {
             msg.push_str(" at ");
             write_path(&mut msg, where_);
         }
-        $( write!(&mut msg, ", but expected {}", $expected).unwrap(); )?
+        $(
+            msg.push_str(", but expected ");
+            write!(&mut msg, $($expected_fmt),+).unwrap();
+        )?
         throw_ub!(ValidationFailure(msg))
     }};
 }
@@ -76,9 +81,8 @@ macro_rules! try_validation {
             // allocation here as this can only slow down builds that fail anyway.
             $( Err(InterpErrorInfo { kind: $p, .. }) )|+ =>
                 throw_validation_failure!(
-                    format_args!($( $what_fmt ),+),
-                    $where
-                    $(, format_args!($( $expected_fmt ),+))?
+                    $where,
+                    { $( $what_fmt ),+ } $( expected { $( $expected_fmt ),+ } )?
                 ),
             #[allow(unreachable_patterns)]
             Err(e) => Err::<!, _>(e)?,
@@ -366,9 +370,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let size_and_align = match self.ecx.size_and_align_of(place.meta, place.layout) {
             Ok(res) => res,
             Err(err) => match err.kind {
-                err_ub!(InvalidMeta(msg)) => throw_validation_failure!(
-                    format_args!("invalid {} metadata: {}", kind, msg),
-                    self.path
+                err_ub!(InvalidMeta(msg)) => throw_validation_failure!(self.path,
+                    { "invalid {} metadata: {}", kind, msg }
                 ),
                 _ => bug!("unexpected error during ptr size_and_align_of: {}", err),
             },
@@ -393,37 +396,32 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 );
                 match err.kind {
                     err_ub!(DanglingIntPointer(0, _)) => {
-                        throw_validation_failure!(format_args!("a NULL {}", kind), self.path)
+                        throw_validation_failure!(self.path,
+                            { "a NULL {}", kind }
+                        )
                     }
-                    err_ub!(DanglingIntPointer(i, _)) => throw_validation_failure!(
-                        format_args!("a {} to unallocated address {}", kind, i),
-                        self.path
+                    err_ub!(DanglingIntPointer(i, _)) => throw_validation_failure!(self.path,
+                        { "a {} to unallocated address {}", kind, i }
                     ),
                     err_ub!(AlignmentCheckFailed { required, has }) => throw_validation_failure!(
-                        format_args!(
+                        self.path,
+                        {
                             "an unaligned {} (required {} byte alignment but found {})",
                             kind,
                             required.bytes(),
                             has.bytes()
-                        ),
-                        self.path
+                        }
                     ),
-                    err_unsup!(ReadBytesAsPointer) => throw_validation_failure!(
-                        format_args!("a dangling {} (created from integer)", kind),
-                        self.path
+                    err_unsup!(ReadBytesAsPointer) => throw_validation_failure!(self.path,
+                        { "a dangling {} (created from integer)", kind }
                     ),
-                    err_ub!(PointerOutOfBounds { .. }) => throw_validation_failure!(
-                        format_args!(
-                            "a dangling {} (going beyond the bounds of its allocation)",
-                            kind
-                        ),
-                        self.path
+                    err_ub!(PointerOutOfBounds { .. }) => throw_validation_failure!(self.path,
+                        { "a dangling {} (going beyond the bounds of its allocation)", kind }
                     ),
                     // This cannot happen during const-eval (because interning already detects
                     // dangling pointers), but it can happen in Miri.
-                    err_ub!(PointerUseAfterFree(_)) => throw_validation_failure!(
-                        format_args!("a dangling {} (use-after-free)", kind),
-                        self.path
+                    err_ub!(PointerUseAfterFree(_)) => throw_validation_failure!(self.path,
+                        { "a dangling {} (use-after-free)", kind }
                     ),
                     _ => bug!("Unexpected error during ptr inbounds test: {}", err),
                 }
@@ -443,9 +441,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     // We also need to do it here instead of going on to avoid running
                     // into the `before_access_global` check during validation.
                     if !self.may_ref_to_static && self.ecx.tcx.is_static(did) {
-                        throw_validation_failure!(
-                            format_args!("a {} pointing to a static variable", kind),
-                            self.path
+                        throw_validation_failure!(self.path,
+                            { "a {} pointing to a static variable", kind }
                         );
                     }
                     // `extern static` cannot be validated as they have no body.
@@ -516,10 +513,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
                     let is_bits = value.not_undef().map_or(false, |v| v.is_bits());
                     if !is_bits {
-                        throw_validation_failure!(
-                            value,
-                            self.path,
-                            "initialized plain (non-pointer) bytes"
+                        throw_validation_failure!(self.path,
+                            { "{}", value } expected { "initialized plain (non-pointer) bytes" }
                         )
                     }
                 } else {
@@ -563,7 +558,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // FIXME: Check if the signature matches
                 Ok(true)
             }
-            ty::Never => throw_validation_failure!("a value of the never type `!`", self.path),
+            ty::Never => throw_validation_failure!(self.path, { "a value of the never type `!`" }),
             ty::Foreign(..) | ty::FnDef(..) => {
                 // Nothing to check.
                 Ok(true)
@@ -622,26 +617,24 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if lo == 1 && hi == max_hi {
                     // Only NULL is the niche.  So make sure the ptr is NOT NULL.
                     if self.ecx.memory.ptr_may_be_null(ptr) {
-                        throw_validation_failure!(
-                            "a potentially NULL pointer",
-                            self.path,
-                            format_args!(
+                        throw_validation_failure!(self.path,
+                            { "a potentially NULL pointer" }
+                            expected {
                                 "something that cannot possibly fail to be {}",
                                 wrapping_range_format(valid_range, max_hi)
-                            )
+                            }
                         )
                     }
                     return Ok(());
                 } else {
                     // Conservatively, we reject, because the pointer *could* have a bad
                     // value.
-                    throw_validation_failure!(
-                        "a pointer",
-                        self.path,
-                        format_args!(
+                    throw_validation_failure!(self.path,
+                        { "a pointer" }
+                        expected {
                             "something that cannot possibly fail to be {}",
                             wrapping_range_format(valid_range, max_hi)
-                        )
+                        }
                     )
                 }
             }
@@ -651,10 +644,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         if wrapping_range_contains(&valid_range, bits) {
             Ok(())
         } else {
-            throw_validation_failure!(
-                bits,
-                self.path,
-                format_args!("something {}", wrapping_range_format(valid_range, max_hi))
+            throw_validation_failure!(self.path,
+                { "{}", bits }
+                expected { "something {}", wrapping_range_format(valid_range, max_hi) }
             )
         }
     }
@@ -722,10 +714,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             Ok(()) => {}
             Err(err) => match err.kind {
                 err_ub!(InvalidDiscriminant(val)) => {
-                    throw_validation_failure!(val, self.path, "a valid enum discriminant")
+                    throw_validation_failure!(self.path,
+                        { "{}", val } expected { "a valid enum discriminant" }
+                    )
                 }
                 err_unsup!(ReadPointerAsBytes) => {
-                    throw_validation_failure!("a pointer", self.path, "plain (non-pointer) bytes")
+                    throw_validation_failure!(self.path,
+                        { "a pointer" } expected { "plain (non-pointer) bytes" }
+                    )
                 }
                 // Propagate upwards (that will also check for unexpected errors).
                 _ => return Err(err),
@@ -744,9 +740,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // MyNewtype and then the scalar in there).
         match op.layout.abi {
             Abi::Uninhabited => {
-                throw_validation_failure!(
-                    format_args!("a value of uninhabited type {:?}", op.layout.ty),
-                    self.path
+                throw_validation_failure!(self.path,
+                    { "a value of uninhabited type {:?}", op.layout.ty }
                 );
             }
             Abi::Scalar(ref scalar_layout) => {
@@ -840,7 +835,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                     .unwrap();
                                 self.path.push(PathElem::ArrayElem(i));
 
-                                throw_validation_failure!("uninitialized bytes", self.path)
+                                throw_validation_failure!(self.path, { "uninitialized bytes" })
                             }
                             // Propagate upwards (that will also check for unexpected errors).
                             _ => return Err(err),
