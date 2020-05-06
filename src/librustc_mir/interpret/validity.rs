@@ -309,11 +309,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         CheckInAllocMsg::InboundsTest,
                     ),
                     self.path,
-                    err_ub!(PointerOutOfBounds { .. }) |
-                    err_ub!(AlignmentCheckFailed { .. }) |
                     err_ub!(DanglingIntPointer(..)) |
+                    err_ub!(PointerUseAfterFree(..)) |
                     err_unsup!(ReadBytesAsPointer) =>
-                        { "dangling or unaligned vtable pointer in wide pointer or too small vtable" },
+                        { "dangling vtable pointer in wide pointer" },
+                    err_ub!(AlignmentCheckFailed { .. }) =>
+                        { "unaligned vtable pointer in wide pointer" },
+                    err_ub!(PointerOutOfBounds { .. }) =>
+                        { "too small vtable" },
                 );
                 try_validation!(
                     self.ecx.read_drop_type_from_vtable(vtable),
@@ -322,7 +325,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     err_ub!(DanglingIntPointer(..)) |
                     err_ub!(InvalidFunctionPointer(..)) |
                     err_unsup!(ReadBytesAsPointer) =>
-                        { "invalid drop fn in vtable" },
+                        { "invalid drop function pointer in vtable" },
                 );
                 try_validation!(
                     self.ecx.read_size_and_align_from_vtable(vtable),
@@ -387,10 +390,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 CheckInAllocMsg::InboundsTest,
             ),
             self.path,
-            err_ub!(DanglingIntPointer(0, _)) =>
-                { "a NULL {}", kind },
-            err_ub!(DanglingIntPointer(i, _)) =>
-                { "a {} to unallocated address {}", kind, i },
             err_ub!(AlignmentCheckFailed { required, has }) =>
                 {
                     "an unaligned {} (required {} byte alignment but found {})",
@@ -398,13 +397,17 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     required.bytes(),
                     has.bytes()
                 },
-            err_unsup!(ReadBytesAsPointer) =>
-                { "a dangling {} (created from integer)", kind },
+            err_ub!(DanglingIntPointer(0, _)) =>
+                { "a NULL {}", kind },
+            err_ub!(DanglingIntPointer(i, _)) =>
+                { "a dangling {} (address {} is unallocated)", kind, i },
             err_ub!(PointerOutOfBounds { .. }) =>
                 { "a dangling {} (going beyond the bounds of its allocation)", kind },
+            err_unsup!(ReadBytesAsPointer) =>
+                { "a dangling {} (created from integer)", kind },
             // This cannot happen during const-eval (because interning already detects
             // dangling pointers), but it can happen in Miri.
-            err_ub!(PointerUseAfterFree(_)) =>
+            err_ub!(PointerUseAfterFree(..)) =>
                 { "a dangling {} (use-after-free)", kind },
         );
         // Recursive checking
