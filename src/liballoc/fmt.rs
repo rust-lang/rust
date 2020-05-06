@@ -161,7 +161,7 @@
 //!         `Signed` trait. This flag indicates that the correct sign (`+` or `-`)
 //!         should always be printed.
 //! * `-` - Currently not used
-//! * `#` - This flag is indicates that the "alternate" form of printing should
+//! * `#` - This flag indicates that the "alternate" form of printing should
 //!         be used. The alternate forms are:
 //!     * `#?` - pretty-print the [`Debug`] formatting
 //!     * `#x` - precedes the argument with a `0x`
