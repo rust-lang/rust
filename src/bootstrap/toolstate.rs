@@ -88,7 +88,7 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
 static NIGHTLY_TOOLS: &[(&str, &str)] = &[
     ("miri", "src/tools/miri"),
     ("embedded-book", "src/doc/embedded-book"),
-    ("rustc-dev-guide", "src/doc/rustc-dev-guide"),
+    // ("rustc-dev-guide", "src/doc/rustc-dev-guide"),
 ];
 
 fn print_error(tool: &str, submodule: &str) {
