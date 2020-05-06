@@ -5,7 +5,7 @@ use core::alloc::MemoryBlock;
 use core::cmp;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
-use core::ptr::{NonNull, Unique};
+use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
 use crate::alloc::{
@@ -560,9 +560,7 @@ impl<T, A: AllocRef> RawVec<T, A> {
         self.set_memory(memory);
         Ok(())
     }
-}
 
-impl<T> RawVec<T, Global> {
     /// Converts the entire buffer into `Box<[MaybeUninit<T>]>` with the specified `len`.
     ///
     /// Note that this will correctly reconstitute any `cap` changes
@@ -575,7 +573,7 @@ impl<T> RawVec<T, Global> {
     ///
     /// Note, that the requested capacity and `self.capacity()` could differ, as
     /// an allocator could overallocate and return a greater memory block than requested.
-    pub unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>]> {
+    pub unsafe fn into_box(self, len: usize) -> Box<[MaybeUninit<T>], A> {
         // Sanity-check one half of the safety requirement (we cannot check the other half).
         debug_assert!(
             len <= self.capacity(),
@@ -584,7 +582,7 @@ impl<T> RawVec<T, Global> {
 
         let me = ManuallyDrop::new(self);
         let slice = slice::from_raw_parts_mut(me.ptr() as *mut MaybeUninit<T>, len);
-        Box::from_raw(slice)
+        Box::from_raw_in(slice, ptr::read(&me.alloc))
     }
 }
 

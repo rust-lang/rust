@@ -6,7 +6,7 @@ LL |     let _ = Box::into_boxed_slice(boxed_slice);
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required by `std::boxed::Box::<T>::into_boxed_slice`
+   = note: required by `std::boxed::Box::<T, A>::into_boxed_slice`
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/box-into-boxed-slice-fail.rs:8:13
@@ -26,7 +26,7 @@ LL |     let _ = Box::into_boxed_slice(boxed_trait);
    |
    = help: the trait `std::marker::Sized` is not implemented for `dyn std::fmt::Debug`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required by `std::boxed::Box::<T>::into_boxed_slice`
+   = note: required by `std::boxed::Box::<T, A>::into_boxed_slice`
 
 error[E0277]: the size for values of type `dyn std::fmt::Debug` cannot be known at compilation time
   --> $DIR/box-into-boxed-slice-fail.rs:12:13
