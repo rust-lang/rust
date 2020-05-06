@@ -296,7 +296,7 @@ impl Analysis {
                 file_id: frange.file_id,
                 edit: join_lines::join_lines(&parse.tree(), frange.range),
             };
-            SourceChange::source_file_edit("join lines", file_edit)
+            SourceChange::source_file_edit("Join lines", file_edit)
         })
     }
 
@@ -490,7 +490,7 @@ impl Analysis {
     ) -> Cancelable<Result<SourceChange, SsrError>> {
         self.with_db(|db| {
             let edits = ssr::parse_search_replace(query, parse_only, db)?;
-            Ok(SourceChange::source_file_edits("ssr", edits))
+            Ok(SourceChange::source_file_edits("Structural Search Replace", edits))
         })
     }
 
