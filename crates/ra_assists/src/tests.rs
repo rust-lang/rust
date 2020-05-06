@@ -34,6 +34,34 @@ pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
     check(assist, ra_fixture, ExpectedResult::NotApplicable);
 }
 
+fn check_doc_test(assist_id: &str, before: &str, after: &str) {
+    let (selection, before) = extract_range_or_offset(before);
+    let (db, file_id) = crate::tests::with_single_file(&before);
+    let frange = FileRange { file_id, range: selection.into() };
+
+    let assist = resolved_assists(&db, frange)
+        .into_iter()
+        .find(|assist| assist.label.id.0 == assist_id)
+        .unwrap_or_else(|| {
+            panic!(
+                "\n\nAssist is not applicable: {}\nAvailable assists: {}",
+                assist_id,
+                resolved_assists(&db, frange)
+                    .into_iter()
+                    .map(|assist| assist.label.id.0)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        });
+
+    let actual = {
+        let mut actual = before.clone();
+        assist.action.edit.apply(&mut actual);
+        actual
+    };
+    assert_eq_text!(after, &actual);
+}
+
 enum ExpectedResult<'a> {
     NotApplicable,
     After(&'a str),

@@ -13,8 +13,6 @@ macro_rules! eprintln {
 mod assist_ctx;
 mod marks;
 #[cfg(test)]
-mod doc_tests;
-#[cfg(test)]
 mod tests;
 pub mod utils;
 pub mod ast_transform;
