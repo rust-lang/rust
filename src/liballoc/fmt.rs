@@ -251,7 +251,7 @@
 //!
 //! In some programming languages, the behavior of string formatting functions
 //! depends on the operating system's locale setting. The format functions
-//! provided by Rust's standard library do not have any concept of locale, and
+//! provided by Rust's standard library do not have any concept of locale and
 //! will produce the same results on all systems regardless of user
 //! configuration.
 //!
