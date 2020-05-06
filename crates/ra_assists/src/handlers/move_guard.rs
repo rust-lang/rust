@@ -40,8 +40,8 @@ pub(crate) fn move_guard_to_arm_body(ctx: AssistCtx) -> Option<Assist> {
     let arm_expr = match_arm.expr()?;
     let buf = format!("if {} {{ {} }}", guard_conditions.syntax().text(), arm_expr.syntax().text());
 
-    ctx.add_assist(AssistId("move_guard_to_arm_body"), "Move guard to arm body", |edit| {
-        edit.target(guard.syntax().text_range());
+    let target = guard.syntax().text_range();
+    ctx.add_assist(AssistId("move_guard_to_arm_body"), "Move guard to arm body", target, |edit| {
         let offseting_amount = match space_before_guard.and_then(|it| it.into_token()) {
             Some(tok) => {
                 if ast::Whitespace::cast(tok.clone()).is_some() {
@@ -108,11 +108,12 @@ pub(crate) fn move_arm_cond_to_match_guard(ctx: AssistCtx) -> Option<Assist> {
 
     let buf = format!(" if {}", cond.syntax().text());
 
+    let target = if_expr.syntax().text_range();
     ctx.add_assist(
         AssistId("move_arm_cond_to_match_guard"),
         "Move condition to match guard",
+        target,
         |edit| {
-            edit.target(if_expr.syntax().text_range());
             let then_only_expr = then_block.statements().next().is_none();
 
             match &then_block.expr() {

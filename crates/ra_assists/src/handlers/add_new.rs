@@ -41,9 +41,8 @@ pub(crate) fn add_new(ctx: AssistCtx) -> Option<Assist> {
     // Return early if we've found an existing new fn
     let impl_def = find_struct_impl(&ctx, &strukt)?;
 
-    ctx.add_assist(AssistId("add_new"), "Add default constructor", |edit| {
-        edit.target(strukt.syntax().text_range());
-
+    let target = strukt.syntax().text_range();
+    ctx.add_assist(AssistId("add_new"), "Add default constructor", target, |edit| {
         let mut buf = String::with_capacity(512);
 
         if impl_def.is_some() {

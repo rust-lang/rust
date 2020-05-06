@@ -42,7 +42,8 @@ pub(crate) fn introduce_variable(ctx: AssistCtx) -> Option<Assist> {
     if indent.kind() != WHITESPACE {
         return None;
     }
-    ctx.add_assist(AssistId("introduce_variable"), "Extract into variable", move |edit| {
+    let target = expr.syntax().text_range();
+    ctx.add_assist(AssistId("introduce_variable"), "Extract into variable", target, move |edit| {
         let mut buf = String::new();
 
         let cursor_offset = if wrap_in_block {
@@ -79,7 +80,6 @@ pub(crate) fn introduce_variable(ctx: AssistCtx) -> Option<Assist> {
                 buf.push_str(text);
             }
 
-            edit.target(expr.syntax().text_range());
             edit.replace(expr.syntax().text_range(), "var_name".to_string());
             edit.insert(anchor_stmt.text_range().start(), buf);
             if wrap_in_block {

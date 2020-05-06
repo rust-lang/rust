@@ -48,8 +48,7 @@ pub(crate) fn auto_import(ctx: AssistCtx) -> Option<Assist> {
     let range = ctx.sema.original_range(&auto_import_assets.syntax_under_caret).range;
     let mut group = ctx.add_assist_group(auto_import_assets.get_import_group_message());
     for import in proposed_imports {
-        group.add_assist(AssistId("auto_import"), format!("Import `{}`", &import), |edit| {
-            edit.target(range);
+        group.add_assist(AssistId("auto_import"), format!("Import `{}`", &import), range, |edit| {
             insert_use_statement(&auto_import_assets.syntax_under_caret, &import, edit);
         });
     }

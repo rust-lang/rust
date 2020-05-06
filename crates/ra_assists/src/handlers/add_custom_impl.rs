@@ -48,9 +48,8 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
     let label =
         format!("Add custom impl '{}' for '{}'", trait_token.text().as_str(), annotated_name);
 
-    ctx.add_assist(AssistId("add_custom_impl"), label, |edit| {
-        edit.target(attr.syntax().text_range());
-
+    let target = attr.syntax().text_range();
+    ctx.add_assist(AssistId("add_custom_impl"), label, target, |edit| {
         let new_attr_input = input
             .syntax()
             .descendants_with_tokens()

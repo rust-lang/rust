@@ -32,8 +32,8 @@ pub(crate) fn flip_trait_bound(ctx: AssistCtx) -> Option<Assist> {
         non_trivia_sibling(plus.clone().into(), Direction::Next)?,
     );
 
-    ctx.add_assist(AssistId("flip_trait_bound"), "Flip trait bounds", |edit| {
-        edit.target(plus.text_range());
+    let target = plus.text_range();
+    ctx.add_assist(AssistId("flip_trait_bound"), "Flip trait bounds", target, |edit| {
         edit.replace(before.text_range(), after.to_string());
         edit.replace(after.text_range(), before.to_string());
     })

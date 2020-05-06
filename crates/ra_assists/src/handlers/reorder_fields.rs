@@ -50,11 +50,11 @@ fn reorder<R: AstNode>(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("reorder_fields"), "Reorder record fields", |edit| {
+    let target = record.syntax().text_range();
+    ctx.add_assist(AssistId("reorder_fields"), "Reorder record fields", target, |edit| {
         for (old, new) in fields.iter().zip(&sorted_fields) {
             algo::diff(old, new).into_text_edit(edit.text_edit_builder());
         }
-        edit.target(record.syntax().text_range())
     })
 }
 

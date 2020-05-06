@@ -66,11 +66,15 @@ fn add_vis(ctx: AssistCtx) -> Option<Assist> {
         return None;
     };
 
-    ctx.add_assist(AssistId("change_visibility"), "Change visibility to pub(crate)", |edit| {
-        edit.target(target);
-        edit.insert(offset, "pub(crate) ");
-        edit.set_cursor(offset);
-    })
+    ctx.add_assist(
+        AssistId("change_visibility"),
+        "Change visibility to pub(crate)",
+        target,
+        |edit| {
+            edit.insert(offset, "pub(crate) ");
+            edit.set_cursor(offset);
+        },
+    )
 }
 
 fn vis_offset(node: &SyntaxNode) -> TextSize {
@@ -86,22 +90,28 @@ fn vis_offset(node: &SyntaxNode) -> TextSize {
 
 fn change_vis(ctx: AssistCtx, vis: ast::Visibility) -> Option<Assist> {
     if vis.syntax().text() == "pub" {
+        let target = vis.syntax().text_range();
         return ctx.add_assist(
             AssistId("change_visibility"),
             "Change Visibility to pub(crate)",
+            target,
             |edit| {
-                edit.target(vis.syntax().text_range());
                 edit.replace(vis.syntax().text_range(), "pub(crate)");
                 edit.set_cursor(vis.syntax().text_range().start())
             },
         );
     }
     if vis.syntax().text() == "pub(crate)" {
-        return ctx.add_assist(AssistId("change_visibility"), "Change visibility to pub", |edit| {
-            edit.target(vis.syntax().text_range());
-            edit.replace(vis.syntax().text_range(), "pub");
-            edit.set_cursor(vis.syntax().text_range().start());
-        });
+        let target = vis.syntax().text_range();
+        return ctx.add_assist(
+            AssistId("change_visibility"),
+            "Change visibility to pub",
+            target,
+            |edit| {
+                edit.replace(vis.syntax().text_range(), "pub");
+                edit.set_cursor(vis.syntax().text_range().start());
+            },
+        );
     }
     None
 }

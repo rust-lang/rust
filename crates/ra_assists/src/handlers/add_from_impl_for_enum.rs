@@ -47,9 +47,11 @@ pub(crate) fn add_from_impl_for_enum(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
+    let target = variant.syntax().text_range();
     ctx.add_assist(
         AssistId("add_from_impl_for_enum"),
         "Add From impl for this enum variant",
+        target,
         |edit| {
             let start_offset = variant.parent_enum().syntax().text_range().end();
             let mut buf = String::new();

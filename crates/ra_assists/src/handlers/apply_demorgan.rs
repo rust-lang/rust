@@ -39,8 +39,7 @@ pub(crate) fn apply_demorgan(ctx: AssistCtx) -> Option<Assist> {
     let rhs_range = rhs.syntax().text_range();
     let not_rhs = invert_boolean_expression(rhs);
 
-    ctx.add_assist(AssistId("apply_demorgan"), "Apply De Morgan's law", |edit| {
-        edit.target(op_range);
+    ctx.add_assist(AssistId("apply_demorgan"), "Apply De Morgan's law", op_range, |edit| {
         edit.replace(op_range, opposite_op);
         edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
         edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));

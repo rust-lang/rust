@@ -36,16 +36,24 @@ pub struct AssistLabel {
     /// Short description of the assist, as shown in the UI.
     pub label: String,
     pub group: Option<GroupLabel>,
+    /// Target ranges are used to sort assists: the smaller the target range,
+    /// the more specific assist is, and so it should be sorted first.
+    pub target: TextRange,
 }
 
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);
 
 impl AssistLabel {
-    pub(crate) fn new(id: AssistId, label: String, group: Option<GroupLabel>) -> AssistLabel {
+    pub(crate) fn new(
+        id: AssistId,
+        label: String,
+        group: Option<GroupLabel>,
+        target: TextRange,
+    ) -> AssistLabel {
         // FIXME: make fields private, so that this invariant can't be broken
         assert!(label.starts_with(|c: char| c.is_uppercase()));
-        AssistLabel { id, label, group }
+        AssistLabel { id, label, group, target }
     }
 }
 
@@ -53,8 +61,6 @@ impl AssistLabel {
 pub struct AssistAction {
     pub edit: TextEdit,
     pub cursor_position: Option<TextSize>,
-    // FIXME: This belongs to `AssistLabel`
-    pub target: Option<TextRange>,
     pub file: AssistFile,
 }
 
@@ -104,7 +110,7 @@ pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssi
         .flat_map(|it| it.0)
         .map(|it| it.into_resolved().unwrap())
         .collect::<Vec<_>>();
-    a.sort_by_key(|it| it.action.target.map_or(TextSize::from(!0u32), |it| it.len()));
+    a.sort_by_key(|it| it.label.target.len());
     a
 }
 

@@ -57,9 +57,9 @@ pub(crate) fn unwrap_block(ctx: AssistCtx) -> Option<Assist> {
         }
     };
 
-    ctx.add_assist(AssistId("unwrap_block"), "Unwrap block", |edit| {
+    let target = expr_to_unwrap.syntax().text_range();
+    ctx.add_assist(AssistId("unwrap_block"), "Unwrap block", target, |edit| {
         edit.set_cursor(expr.syntax().text_range().start());
-        edit.target(expr_to_unwrap.syntax().text_range());
 
         let pat_start: &[_] = &[' ', '{', '\n'];
         let expr_to_unwrap = expr_to_unwrap.to_string();

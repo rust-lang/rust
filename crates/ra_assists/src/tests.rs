@@ -118,8 +118,7 @@ fn check(assist: Handler, before: &str, expected: ExpectedResult) {
             assert_eq_text!(after, &actual);
         }
         (Some(assist), ExpectedResult::Target(target)) => {
-            let action = assist.0[0].action.clone().unwrap();
-            let range = action.target.expect("expected target on action");
+            let range = assist.0[0].label.target;
             assert_eq_text!(&text_without_caret[range], target);
         }
         (Some(_), ExpectedResult::NotApplicable) => panic!("assist should not be applicable!"),

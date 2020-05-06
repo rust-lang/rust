@@ -52,7 +52,8 @@ pub(crate) fn merge_imports(ctx: AssistCtx) -> Option<Assist> {
         }
     };
 
-    ctx.add_assist(AssistId("merge_imports"), "Merge imports", |edit| {
+    let target = tree.syntax().text_range();
+    ctx.add_assist(AssistId("merge_imports"), "Merge imports", target, |edit| {
         edit.rewrite(rewriter);
         // FIXME: we only need because our diff is imprecise
         edit.set_cursor(offset);
