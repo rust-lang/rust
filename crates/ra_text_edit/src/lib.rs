@@ -4,7 +4,7 @@
 //! so `TextEdit` is the ultimate representation of the work done by
 //! rust-analyzer.
 
-use text_size::{TextRange, TextSize};
+pub use text_size::{TextRange, TextSize};
 
 /// `InsertDelete` -- a single "atomic" change to text
 ///

@@ -17,15 +17,16 @@ mod on_enter;
 
 use ra_db::{FilePosition, SourceDatabase};
 use ra_fmt::leading_indent;
-use ra_ide_db::RootDatabase;
+use ra_ide_db::{source_change::SingleFileChange, RootDatabase};
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, AstToken},
     AstNode, SourceFile, TextRange, TextSize,
 };
+
 use ra_text_edit::TextEdit;
 
-use crate::{source_change::SingleFileChange, SourceChange};
+use crate::SourceChange;
 
 pub(crate) use on_enter::on_enter;
 

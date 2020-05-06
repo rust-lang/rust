@@ -1,18 +1,18 @@
 //!  structural search replace
 
-use crate::source_change::SourceFileEdit;
+use std::{collections::HashMap, iter::once, str::FromStr};
+
 use ra_db::{SourceDatabase, SourceDatabaseExt};
-use ra_ide_db::symbol_index::SymbolsDatabase;
-use ra_ide_db::RootDatabase;
-use ra_syntax::ast::make::try_expr_from_text;
+use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
 use ra_syntax::ast::{
-    ArgList, AstToken, CallExpr, Comment, Expr, MethodCallExpr, RecordField, RecordLit,
+    make::try_expr_from_text, ArgList, AstToken, CallExpr, Comment, Expr, MethodCallExpr,
+    RecordField, RecordLit,
 };
 use ra_syntax::{AstNode, SyntaxElement, SyntaxKind, SyntaxNode};
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use rustc_hash::FxHashMap;
-use std::collections::HashMap;
-use std::{iter::once, str::FromStr};
+
+use crate::SourceFileEdit;
 
 #[derive(Debug, PartialEq)]
 pub struct SsrError(String);

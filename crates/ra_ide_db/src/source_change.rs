@@ -3,13 +3,12 @@
 //!
 //! It can be viewed as a dual for `AnalysisChange`.
 
-use ra_db::RelativePathBuf;
-use ra_text_edit::TextEdit;
-
-use crate::{FileId, FilePosition, SourceRootId, TextSize};
+use ra_db::{FileId, FilePosition, RelativePathBuf, SourceRootId};
+use ra_text_edit::{TextEdit, TextSize};
 
 #[derive(Debug)]
 pub struct SourceChange {
+    /// For display in the undo log in the editor
     pub label: String,
     pub source_file_edits: Vec<SourceFileEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
@@ -19,7 +18,7 @@ pub struct SourceChange {
 impl SourceChange {
     /// Creates a new SourceChange with the given label
     /// from the edits.
-    pub(crate) fn from_edits<L: Into<String>>(
+    pub fn from_edits<L: Into<String>>(
         label: L,
         source_file_edits: Vec<SourceFileEdit>,
         file_system_edits: Vec<FileSystemEdit>,
@@ -34,7 +33,7 @@ impl SourceChange {
 
     /// Creates a new SourceChange with the given label,
     /// containing only the given `SourceFileEdits`.
-    pub(crate) fn source_file_edits<L: Into<String>>(label: L, edits: Vec<SourceFileEdit>) -> Self {
+    pub fn source_file_edits<L: Into<String>>(label: L, edits: Vec<SourceFileEdit>) -> Self {
         let label = label.into();
         assert!(label.starts_with(char::is_uppercase));
         SourceChange {
@@ -58,13 +57,13 @@ impl SourceChange {
 
     /// Creates a new SourceChange with the given label,
     /// containing only a single `SourceFileEdit`.
-    pub(crate) fn source_file_edit<L: Into<String>>(label: L, edit: SourceFileEdit) -> Self {
+    pub fn source_file_edit<L: Into<String>>(label: L, edit: SourceFileEdit) -> Self {
         SourceChange::source_file_edits(label, vec![edit])
     }
 
     /// Creates a new SourceChange with the given label
     /// from the given `FileId` and `TextEdit`
-    pub(crate) fn source_file_edit_from<L: Into<String>>(
+    pub fn source_file_edit_from<L: Into<String>>(
         label: L,
         file_id: FileId,
         edit: TextEdit,
@@ -74,18 +73,18 @@ impl SourceChange {
 
     /// Creates a new SourceChange with the given label
     /// from the given `FileId` and `TextEdit`
-    pub(crate) fn file_system_edit<L: Into<String>>(label: L, edit: FileSystemEdit) -> Self {
+    pub fn file_system_edit<L: Into<String>>(label: L, edit: FileSystemEdit) -> Self {
         SourceChange::file_system_edits(label, vec![edit])
     }
 
     /// Sets the cursor position to the given `FilePosition`
-    pub(crate) fn with_cursor(mut self, cursor_position: FilePosition) -> Self {
+    pub fn with_cursor(mut self, cursor_position: FilePosition) -> Self {
         self.cursor_position = Some(cursor_position);
         self
     }
 
     /// Sets the cursor position to the given `FilePosition`
-    pub(crate) fn with_cursor_opt(mut self, cursor_position: Option<FilePosition>) -> Self {
+    pub fn with_cursor_opt(mut self, cursor_position: Option<FilePosition>) -> Self {
         self.cursor_position = cursor_position;
         self
     }
@@ -103,14 +102,14 @@ pub enum FileSystemEdit {
     MoveFile { src: FileId, dst_source_root: SourceRootId, dst_path: RelativePathBuf },
 }
 
-pub(crate) struct SingleFileChange {
+pub struct SingleFileChange {
     pub label: String,
     pub edit: TextEdit,
     pub cursor_position: Option<TextSize>,
 }
 
 impl SingleFileChange {
-    pub(crate) fn into_source_change(self, file_id: FileId) -> SourceChange {
+    pub fn into_source_change(self, file_id: FileId) -> SourceChange {
         SourceChange {
             label: self.label,
             source_file_edits: vec![SourceFileEdit { file_id, edit: self.edit }],
