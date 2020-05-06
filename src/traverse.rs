@@ -642,7 +642,7 @@ fn diff_traits<'tcx>(
                 );
 
                 diff_generics(changes, id_mapping, tcx, true, old_def_id, new_def_id);
-                diff_method(changes, tcx, old_item, new_item);
+                diff_method(changes, tcx, *old_item, *new_item);
             }
             (Some(old_item), None) => {
                 let change_type = ChangeType::TraitItemRemoved {
@@ -1076,8 +1076,8 @@ fn diff_inherent_impls<'tcx>(
                             tcx,
                             orig_impl_def_id,
                             target_impl_def_id,
-                            orig_assoc_item,
-                            target_assoc_item,
+                            *orig_assoc_item,
+                            *target_assoc_item,
                         )
                     });
 
