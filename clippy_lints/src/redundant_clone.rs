@@ -591,7 +591,7 @@ struct PossibleBorrowerMap<'a, 'tcx> {
 impl PossibleBorrowerMap<'_, '_> {
     /// Returns true if the set of borrowers of `borrowed` living at `at` matches with `borrowers`.
     fn only_borrowers(&mut self, borrowers: &[mir::Local], borrowed: mir::Local, at: mir::Location) -> bool {
-        self.maybe_live.seek_after(at);
+        self.maybe_live.seek_after_primary_effect(at);
 
         self.bitset.0.clear();
         let maybe_live = &mut self.maybe_live;
