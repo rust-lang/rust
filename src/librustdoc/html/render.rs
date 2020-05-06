@@ -4344,20 +4344,19 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         let mut res = implementors
             .iter()
             .filter(|i| i.inner_impl().for_.def_id().map_or(false, |d| !c.paths.contains_key(&d)))
-            .filter_map(|i| match extract_for_impl_name(&i.impl_item) {
-                Some((ref name, ref id)) => {
-                    Some(format!("<a href=\"#{}\">{}</a>", id, Escape(name)))
-                }
-                _ => None,
-            })
-            .collect::<Vec<String>>();
+            .filter_map(|i| extract_for_impl_name(&i.impl_item))
+            .collect::<Vec<_>>();
+
         if !res.is_empty() {
             res.sort();
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#foreign-impls\">\
                                        Implementations on Foreign Types</a><div \
                                        class=\"sidebar-links\">{}</div>",
-                res.join("")
+                res.into_iter()
+                    .map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name)))
+                    .collect::<Vec<_>>()
+                    .join("")
             ));
         }
     }
