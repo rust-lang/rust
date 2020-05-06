@@ -768,7 +768,7 @@ fn cast_float_to_int<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Bx::Value {
     let fptosui_result = if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
 
-    if !bx.cx().sess().opts.debugging_opts.saturating_float_casts {
+    if let Some(false) = bx.cx().sess().opts.debugging_opts.saturating_float_casts {
         return fptosui_result;
     }
 

@@ -559,7 +559,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(sanitizer, Some(Sanitizer::Address));
     tracked!(sanitizer_memory_track_origins, 2);
     tracked!(sanitizer_recover, vec![Sanitizer::Address]);
-    tracked!(saturating_float_casts, true);
+    tracked!(saturating_float_casts, Some(true));
     tracked!(share_generics, Some(true));
     tracked!(show_span, Some(String::from("abc")));
     tracked!(src_hash_algorithm, Some(SourceFileHashAlgorithm::Sha1));
