@@ -447,16 +447,16 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, Va
       }
       if (op->getOpcode() == Instruction::FMul) {
         bool needed = false;
-        if (op->getOperand(0) == inst && !gutils->isConstantValue(gutils->getNewFromOriginal(op->getOperand(1)))) needed = true;
-        if (op->getOperand(1) == inst && !gutils->isConstantValue(gutils->getNewFromOriginal(op->getOperand(0)))) needed = true;
+        if (op->getOperand(0) == inst && !gutils->isConstantValue(op->getOperand(1))) needed = true;
+        if (op->getOperand(1) == inst && !gutils->isConstantValue(op->getOperand(0))) needed = true;
         //llvm::errs() << "needed " << *inst << " in mul " << *op << " - needed:" << needed << "\n";
         if (!needed) continue;
       }
 
       if (op->getOpcode() == Instruction::FDiv) {
         bool needed = false;
-        if (op->getOperand(1) == inst && !gutils->isConstantValue(gutils->getNewFromOriginal(op->getOperand(1)))) needed = true;
-        if (op->getOperand(1) == inst && !gutils->isConstantValue(gutils->getNewFromOriginal(op->getOperand(0)))) needed = true;
+        if (op->getOperand(1) == inst && !gutils->isConstantValue(op->getOperand(1))) needed = true;
+        if (op->getOperand(1) == inst && !gutils->isConstantValue(op->getOperand(0))) needed = true;
         if (!needed) continue;
       }
     }
@@ -493,7 +493,7 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, Va
     // nonconstant
     if (isa<CallInst>(user) && (gutils->originalToNewFn.find(user) == gutils->originalToNewFn.end() || isa<ExtractValueInst>(gutils->getNewFromOriginal(user)))) {
 
-    } else if (gutils->isConstantInstruction(gutils->getNewFromOriginal(user))) {
+    } else if (gutils->isConstantInstruction(user)) {
         //llvm::errs() << " skipping constant use : " << *user << " of " <<  *inst << "\n";
         continue;
     }
@@ -623,20 +623,23 @@ public:
   }
 
   void visitAllocaInst(llvm::AllocaInst &I) {}
+  void visitICmpInst(llvm::ICmpInst &I) {}
+  void visitFCmpInst(llvm::FCmpInst &I) {}
 
   void visitLoadInst(llvm::LoadInst &LI) {
     bool constantval = gutils->isConstantValue(&LI);
-    LoadInst* orig = cast<LoadInst>(gutils->getOriginal(&LI));
     auto alignment = LI.getAlignment();
-    Value* ptr  = gutils->getNewFromOriginal(orig->getPointerOperand());
+    Value* ptr  = gutils->getNewFromOriginal(LI.getPointerOperand());
     BasicBlock* parent = LI.getParent();
     Type*  type = LI.getType();
 
+    LoadInst* newi = dyn_cast<LoadInst>(gutils->getNewFromOriginal(&LI));
+
     //! Store inverted pointer loads that need to be cached for use in reverse pass
-    if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() && TR.query(gutils->getOriginal(&LI))[{}].isPossiblePointer()) {
-      PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[&LI]);
+    if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() && TR.query(&LI)[{}].isPossiblePointer()) {
+      PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[newi]);
       assert(placeholder->getType() == type);
-      gutils->invertedPointers.erase(&LI);
+      gutils->invertedPointers.erase(newi);
 
       //TODO consider optimizing when you know it isnt a pointer and thus don't need to store
       if (!constantval) {
@@ -647,11 +650,11 @@ public:
 
           case DerivativeMode::Forward:
           case DerivativeMode::Both:{
-            newip = gutils->invertPointerM(&LI, BuilderZ);
+            newip = gutils->invertPointerM(newi, BuilderZ);
             assert(newip->getType() == type);
 
-            if (mode == DerivativeMode::Forward && gutils->can_modref_map->find(orig)->second) {
-              gutils->addMalloc(BuilderZ, newip, getIndex(orig, CacheType::Shadow));
+            if (mode == DerivativeMode::Forward && gutils->can_modref_map->find(&LI)->second) {
+              gutils->addMalloc(BuilderZ, newip, getIndex(&LI, CacheType::Shadow));
             }
             placeholder->replaceAllUsesWith(newip);
             gutils->erase(placeholder);
@@ -661,12 +664,12 @@ public:
 
           case DerivativeMode::Reverse:{
             //only make shadow where caching needed
-            if (gutils->can_modref_map->find(orig)->second) {
-              newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(orig, CacheType::Shadow));
+            if (gutils->can_modref_map->find(&LI)->second) {
+              newip = gutils->addMalloc(BuilderZ, placeholder, getIndex(&LI, CacheType::Shadow));
               assert(newip->getType() == type);
               gutils->invertedPointers[&LI] = newip;
             } else {
-              newip = gutils->invertPointerM(&LI, BuilderZ);
+              newip = gutils->invertPointerM(newi, BuilderZ);
               assert(newip->getType() == type);
               placeholder->replaceAllUsesWith(newip);
               gutils->erase(placeholder);
@@ -684,24 +687,22 @@ public:
     // Allow forcing cache reads to be on or off using flags.
     assert(!(cache_reads_always && cache_reads_never) && "Both cache_reads_always and cache_reads_never are true. This doesn't make sense.");
 
-    Instruction* inst = &LI;
+    Instruction* inst = newi;
 
     //! Store loads that need to be cached for use in reverse pass
-    if (cache_reads_always || (!cache_reads_never && gutils->can_modref_map->find(orig)->second && is_value_needed_in_reverse(TR, gutils, orig, /*toplevel*/mode == DerivativeMode::Both))) {
+    if (cache_reads_always || (!cache_reads_never && gutils->can_modref_map->find(&LI)->second && is_value_needed_in_reverse(TR, gutils, &LI, /*toplevel*/mode == DerivativeMode::Both))) {
       IRBuilder<> BuilderZ(LI.getNextNode());
       auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
 
-      inst = gutils->addMalloc(BuilderZ, &LI, getIndex(orig, CacheType::Self));
+      inst = gutils->addMalloc(BuilderZ, newi, getIndex(&LI, CacheType::Self));
       assert(inst->getType() == type);
 
       if (mode == DerivativeMode::Reverse) {
-        assert(inst != &LI);
-        inst->setMetadata("enzyme_activity_inst", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), "const")}));
+        assert(inst != newi);
         if (!constantval) {
           gutils->nonconstant_values.insert(inst);
           gutils->nonconstant.insert(inst);
         }
-        inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), constantval ? "const" : "active")}));
         if (tbaa) {
           inst->setMetadata(LLVMContext::MD_tbaa, tbaa);
           assert(fakeTBAA);
@@ -709,7 +710,7 @@ public:
         }
         gutils->originalInstructions.insert(inst);
       } else {
-        assert(inst == &LI);
+        assert(inst == newi);
       }
     }
 
@@ -729,10 +730,10 @@ public:
       }
     }
 
-    if (type->isFPOrFPVectorTy() || (type->isIntOrIntVectorTy() && TR.intType(orig).isFloat() )) {
+    if (type->isFPOrFPVectorTy() || (type->isIntOrIntVectorTy() && TR.intType(&LI).isFloat() )) {
       IRBuilder<> Builder2 = getReverseBuilder(parent);
-      auto prediff = diffe(orig, Builder2);
-      setDiffe(orig, Constant::getNullValue(type), Builder2);
+      auto prediff = diffe(&LI, Builder2);
+      setDiffe(&LI, Constant::getNullValue(type), Builder2);
       //llvm::errs() << "  + doing load propagation: orig:" << *oorig << " inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " << *inverted_operand << "\n";
 
       Value* inverted_operand = gutils->invertPointerM(ptr, Builder2);
@@ -742,12 +743,13 @@ public:
   }
 
   void visitStoreInst(llvm::StoreInst &SI) {
-    StoreInst* orig = cast<StoreInst>(gutils->getOriginal(&SI));
-    Value* ptr  = gutils->getNewFromOriginal(orig->getPointerOperand());
-    Value* val  = gutils->getNewFromOriginal(orig->getValueOperand());
-    Type* valType = val->getType();
+    Value* orig_ptr = SI.getPointerOperand();
+    Value* orig_val = SI.getValueOperand();
+    Value* ptr  = gutils->getNewFromOriginal(orig_ptr);
+    Value* val  = gutils->getNewFromOriginal(orig_val);
+    Type* valType = orig_val->getType();
 
-    if (gutils->isConstantValue(ptr)) return;
+    if (gutils->isConstantValue(orig_ptr)) return;
 
     //TODO allow recognition of other types that could contain pointers [e.g. {void*, void*} or <2 x i64> ]
     StoreInst* ts = nullptr;
@@ -759,7 +761,7 @@ public:
     if (valType->isFPOrFPVectorTy()) {
       FT = valType->getScalarType();
     } else if (!valType->isPointerTy()) {
-      FT = TR.firstPointer(storeSize, orig->getPointerOperand(), /*errifnotfound*/true, /*pointerIntSame*/true).isFloat();
+      FT = TR.firstPointer(storeSize, orig_ptr, /*errifnotfound*/true, /*pointerIntSame*/true).isFloat();
     }
 
     if (FT) {
@@ -767,27 +769,26 @@ public:
       if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
         IRBuilder<> Builder2 = getReverseBuilder(SI.getParent());
 
-        if (gutils->isConstantValue(val)) {
+        if (gutils->isConstantValue(orig_val)) {
           ts = setPtrDiffe(ptr, Constant::getNullValue(valType), Builder2);
         } else {
           auto dif1 = Builder2.CreateLoad(gutils->invertPointerM(ptr, Builder2));
           dif1->setAlignment(SI.getAlignment());
           ts = setPtrDiffe(ptr, Constant::getNullValue(valType), Builder2);
-          addToDiffe(orig->getValueOperand(), dif1, Builder2, FT);
+          addToDiffe(orig_val, dif1, Builder2, FT);
         }
       }
 
     //! Storing an integer or pointer
     } else {
-      //if (gutils->isConstantValue(ptr)) return;
       //! Only need to update the forward function
       if (mode == DerivativeMode::Forward || mode == DerivativeMode::Both) {
-        IRBuilder <> storeBuilder(&SI);
+        IRBuilder <> storeBuilder(gutils->getNewFromOriginal(&SI));
 
         Value* valueop = nullptr;
 
         //Fallback mechanism, TODO check
-        if (gutils->isConstantValue(val)) {
+        if (gutils->isConstantValue(orig_val)) {
             valueop = val; //Constant::getNullValue(op->getValueOperand()->getType());
         } else {
             valueop = gutils->invertPointerM(val, storeBuilder);
@@ -815,28 +816,28 @@ public:
 
     if (mode == DerivativeMode::Forward) return;
 
-    CastInst* orig = cast<CastInst>(gutils->getOriginal(&I));
-    Value* op0 = gutils->getNewFromOriginal(orig->getOperand(0));
+    Value* orig_op0 = I.getOperand(0);
+    Value* op0 = gutils->getNewFromOriginal(orig_op0);
 
     IRBuilder<> Builder2 = getReverseBuilder(I.getParent());
 
-    if (!gutils->isConstantValue(op0)) {
-      Value* dif = diffe(orig, Builder2);
+    if (!gutils->isConstantValue(orig_op0)) {
+      Value* dif = diffe(&I, Builder2);
       if (I.getOpcode()==CastInst::CastOps::FPTrunc || I.getOpcode()==CastInst::CastOps::FPExt) {
-        addToDiffe(orig->getOperand(0), Builder2.CreateFPCast (dif, op0->getType()), Builder2, TR.intType(orig->getOperand(0), false).isFloat());
+        addToDiffe(orig_op0, Builder2.CreateFPCast (dif, op0->getType()), Builder2, TR.intType(orig_op0, false).isFloat());
       } else if (I.getOpcode()==CastInst::CastOps::BitCast) {
-        addToDiffe(orig->getOperand(0), Builder2.CreateBitCast(dif, op0->getType()), Builder2, TR.intType(orig->getOperand(0), false).isFloat());
+        addToDiffe(orig_op0, Builder2.CreateBitCast(dif, op0->getType()), Builder2, TR.intType(orig_op0, false).isFloat());
       } else if (I.getOpcode()==CastInst::CastOps::Trunc) {
         //TODO CHECK THIS
         auto trunced = Builder2.CreateZExt(dif, op0->getType());
-        addToDiffe(orig->getOperand(0), trunced, Builder2, TR.intType(orig->getOperand(0), false).isFloat());
+        addToDiffe(orig_op0, trunced, Builder2, TR.intType(orig_op0, false).isFloat());
       } else {
         llvm::errs() << *I.getParent()->getParent() << "\n" << *I.getParent() << "\n";
         llvm::errs() << "cannot handle above cast " << I << "\n";
         report_fatal_error("unknown instruction");
       }
     }
-    setDiffe(orig, Constant::getNullValue(I.getType()), Builder2);
+    setDiffe(&I, Constant::getNullValue(I.getType()), Builder2);
   }
 
   void visitSelectInst(llvm::SelectInst &SI) {
@@ -845,74 +846,75 @@ public:
 
     if (mode == DerivativeMode::Forward) return;
 
-    SelectInst* orig = cast<SelectInst>(gutils->getOriginal(&SI));
-    Value* op0 = gutils->getNewFromOriginal(orig->getOperand(0));
-    Value* op1 = gutils->getNewFromOriginal(orig->getOperand(1));
-    Value* op2 = gutils->getNewFromOriginal(orig->getOperand(2));
+    Value* op0 = gutils->getNewFromOriginal(SI.getOperand(0));
+    Value* orig_op1 = SI.getOperand(1);
+    Value* op1 = gutils->getNewFromOriginal(orig_op1);
+    Value* orig_op2 = SI.getOperand(2);
+    Value* op2 = gutils->getNewFromOriginal(orig_op2);
 
+    //TODO fix all the reverse builders
     IRBuilder<> Builder2 = getReverseBuilder(SI.getParent());
 
     Value* dif1 = nullptr;
     Value* dif2 = nullptr;
 
-    if (!gutils->isConstantValue(op1))
-      dif1 = Builder2.CreateSelect(lookup(op0, Builder2), diffe(orig, Builder2), Constant::getNullValue(op1->getType()), "diffe"+op1->getName());
-    if (!gutils->isConstantValue(op2))
-      dif2 = Builder2.CreateSelect(lookup(op0, Builder2), Constant::getNullValue(op2->getType()), diffe(orig, Builder2), "diffe"+op2->getName());
+    if (!gutils->isConstantValue(orig_op1))
+      dif1 = Builder2.CreateSelect(lookup(op0, Builder2), diffe(&SI, Builder2), Constant::getNullValue(op1->getType()), "diffe"+op1->getName());
+    if (!gutils->isConstantValue(orig_op2))
+      dif2 = Builder2.CreateSelect(lookup(op0, Builder2), Constant::getNullValue(op2->getType()), diffe(&SI, Builder2), "diffe"+op2->getName());
 
-    setDiffe(orig, Constant::getNullValue(SI.getType()), Builder2);
-    if (dif1) addToDiffe(orig->getOperand(1), dif1, Builder2, TR.intType(orig->getOperand(1), false).isFloat());
-    if (dif2) addToDiffe(orig->getOperand(2), dif2, Builder2, TR.intType(orig->getOperand(2), false).isFloat());
+    setDiffe(&SI, Constant::getNullValue(SI.getType()), Builder2);
+    if (dif1) addToDiffe(orig_op1, dif1, Builder2, TR.intType(orig_op1, false).isFloat());
+    if (dif2) addToDiffe(orig_op2, dif2, Builder2, TR.intType(orig_op2, false).isFloat());
   }
 
   void visitExtractElementInst(llvm::ExtractElementInst &EEI) {
     if (gutils->isConstantValue(&EEI)) return;
     if (mode == DerivativeMode::Forward) return;
-    ExtractElementInst* orig = cast<ExtractElementInst>(gutils->getOriginal(&EEI));
 
     IRBuilder<> Builder2 = getReverseBuilder(EEI.getParent());
 
-    Value* vec = gutils->getNewFromOriginal(orig->getVectorOperand());
-    Value* index = gutils->getNewFromOriginal(orig->getIndexOperand());
+    Value* orig_vec = EEI.getVectorOperand();
 
-    if (!gutils->isConstantValue(vec)) {
+    if (!gutils->isConstantValue(orig_vec)) {
       SmallVector<Value*,4> sv;
-      sv.push_back(index);
-      ((DiffeGradientUtils*)gutils)->addToDiffeIndexed(orig->getVectorOperand(), diffe(orig, Builder2), sv, Builder2);
+      sv.push_back(gutils->getNewFromOriginal(EEI.getIndexOperand()));
+      ((DiffeGradientUtils*)gutils)->addToDiffeIndexed(orig_vec, diffe(&EEI, Builder2), sv, Builder2);
     }
-    setDiffe(orig, Constant::getNullValue(EEI.getType()), Builder2);
+    setDiffe(&EEI, Constant::getNullValue(EEI.getType()), Builder2);
   }
 
   void visitInsertElementInst(llvm::InsertElementInst &IEI) {
     if (gutils->isConstantValue(&IEI)) return;
     if (mode == DerivativeMode::Forward) return;
-    InsertElementInst* orig = cast<InsertElementInst>(gutils->getOriginal(&IEI));
 
     IRBuilder<> Builder2 = getReverseBuilder(IEI.getParent());
 
-    Value* dif1 = diffe(orig, Builder2);
-    Value* op0 = gutils->getNewFromOriginal(orig->getOperand(0));
-    Value* op1 = gutils->getNewFromOriginal(orig->getOperand(1));
-    Value* op2 = gutils->getNewFromOriginal(orig->getOperand(2));
+    Value* dif1 = diffe(&IEI, Builder2);
 
-    if (!gutils->isConstantValue(op0))
-      addToDiffe(orig->getOperand(0), Builder2.CreateInsertElement(dif1, Constant::getNullValue(op1->getType()), lookup(op2, Builder2)), Builder2, TR.intType(orig->getOperand(0), false).isFloat());
 
-    if (!gutils->isConstantValue(op1))
-      addToDiffe(orig->getOperand(1), Builder2.CreateExtractElement(dif1, lookup(op2, Builder2)), Builder2, TR.intType(orig->getOperand(1), false).isFloat());
+    Value* orig_op0 = IEI.getOperand(0);
+    Value* orig_op1 = IEI.getOperand(1);
+    Value* op1 = gutils->getNewFromOriginal(orig_op1);
+    Value* op2 = gutils->getNewFromOriginal(IEI.getOperand(2));
 
-    setDiffe(orig, Constant::getNullValue(IEI.getType()), Builder2);
+    if (!gutils->isConstantValue(orig_op0))
+      addToDiffe(orig_op0, Builder2.CreateInsertElement(dif1, Constant::getNullValue(op1->getType()), lookup(op2, Builder2)), Builder2, TR.intType(orig_op0, false).isFloat());
+
+    if (!gutils->isConstantValue(orig_op1))
+      addToDiffe(orig_op1, Builder2.CreateExtractElement(dif1, lookup(op2, Builder2)), Builder2, TR.intType(orig_op1, false).isFloat());
+
+    setDiffe(&IEI, Constant::getNullValue(IEI.getType()), Builder2);
   }
 
   void visitShuffleVectorInst(llvm::ShuffleVectorInst &SVI) {
     if (gutils->isConstantValue(&SVI)) return;
     if (mode == DerivativeMode::Forward) return;
 
-    ShuffleVectorInst* orig = cast<ShuffleVectorInst>(gutils->getOriginal(&SVI));
 
     IRBuilder<> Builder2 = getReverseBuilder(SVI.getParent());
 
-    auto loaded = diffe(orig, Builder2);
+    auto loaded = diffe(&SVI, Builder2);
     size_t l1 = cast<VectorType>(SVI.getOperand(0)->getType())->getNumElements();
     uint64_t instidx = 0;
 
@@ -921,11 +923,11 @@ public:
       auto opidx = (idx < l1) ? idx : (idx-l1);
       SmallVector<Value*,4> sv;
       sv.push_back(ConstantInt::get(Type::getInt32Ty(SVI.getContext()), opidx));
-      if (!gutils->isConstantValue(gutils->getNewFromOriginal(orig->getOperand(opnum))))
-        ((DiffeGradientUtils*)gutils)->addToDiffeIndexed(orig->getOperand(opnum), Builder2.CreateExtractElement(loaded, instidx), sv, Builder2);
+      if (!gutils->isConstantValue(SVI.getOperand(opnum)))
+        ((DiffeGradientUtils*)gutils)->addToDiffeIndexed(SVI.getOperand(opnum), Builder2.CreateExtractElement(loaded, instidx), sv, Builder2);
       instidx++;
     }
-    setDiffe(orig, Constant::getNullValue(SVI.getType()), Builder2);
+    setDiffe(&SVI, Constant::getNullValue(SVI.getType()), Builder2);
   }
 
   void visitExtractValueInst(llvm::ExtractValueInst &EVI) {
@@ -934,31 +936,28 @@ public:
 
     if (mode == DerivativeMode::Forward) return;
 
-    ExtractValueInst* orig = cast<ExtractValueInst>(gutils->getOriginal(&EVI));
 
-    Value* op0 = gutils->getNewFromOriginal(orig->getOperand(0));
+    Value* orig_op0 = EVI.getOperand(0);
 
     IRBuilder<> Builder2 = getReverseBuilder(EVI.getParent());
 
-    auto prediff = diffe(orig, Builder2);
+    auto prediff = diffe(&EVI, Builder2);
 
     //todo const
-    if (!gutils->isConstantValue(op0)) {
+    if (!gutils->isConstantValue(orig_op0)) {
       SmallVector<Value*,4> sv;
       for(auto i : EVI.getIndices())
         sv.push_back(ConstantInt::get(Type::getInt32Ty(EVI.getContext()), i));
-      ((DiffeGradientUtils*)gutils)->addToDiffeIndexed(orig->getOperand(0), prediff, sv, Builder2);
+      ((DiffeGradientUtils*)gutils)->addToDiffeIndexed(orig_op0, prediff, sv, Builder2);
     }
 
-    setDiffe(orig, Constant::getNullValue(EVI.getType()), Builder2);
+    setDiffe(&EVI, Constant::getNullValue(EVI.getType()), Builder2);
   }
 
   void visitInsertValueInst(llvm::InsertValueInst &IVI) {
     if (gutils->isConstantValue(&IVI)) return;
 
     if (mode == DerivativeMode::Forward) return;
-
-    InsertValueInst* orig = cast<InsertValueInst>(gutils->getOriginal(&IVI));
 
     auto st = cast<StructType>(IVI.getType());
     bool hasNonPointer = false;
@@ -971,26 +970,27 @@ public:
 
     IRBuilder<> Builder2 = getReverseBuilder(IVI.getParent());
 
-    Value* inserted_value = gutils->getNewFromOriginal(orig->getInsertedValueOperand());
-    Value* agg_value = gutils->getNewFromOriginal(orig->getAggregateOperand());
+    Value* orig_inserted = IVI.getInsertedValueOperand();
+    Value* orig_agg = IVI.getAggregateOperand();
 
-    if (!gutils->isConstantValue(inserted_value) && !inserted_value->getType()->isPointerTy()) {
-      auto prediff = diffe(orig, Builder2);
+    if (!gutils->isConstantValue(orig_inserted) && !orig_inserted->getType()->isPointerTy()) {
+      auto prediff = diffe(&IVI, Builder2);
       auto dindex = Builder2.CreateExtractValue(prediff, IVI.getIndices());
-      addToDiffe(orig->getInsertedValueOperand(), dindex, Builder2, TR.intType(orig->getInsertedValueOperand(), false).isFloat());
+      addToDiffe(orig_inserted, dindex, Builder2, TR.intType(orig_inserted, false).isFloat());
     }
 
-    if (!gutils->isConstantValue(agg_value) && !agg_value->getType()->isPointerTy()) {
-      auto prediff = diffe(orig, Builder2);
-      auto dindex = Builder2.CreateInsertValue(prediff, Constant::getNullValue(inserted_value->getType()), IVI.getIndices());
-      addToDiffe(orig->getAggregateOperand(), dindex, Builder2, TR.intType(orig->getAggregateOperand(), false).isFloat());
+    if (!gutils->isConstantValue(orig_agg) && !orig_agg->getType()->isPointerTy()) {
+      auto prediff = diffe(&IVI, Builder2);
+      auto dindex = Builder2.CreateInsertValue(prediff, Constant::getNullValue(orig_agg->getType()), IVI.getIndices());
+      addToDiffe(orig_agg, dindex, Builder2, TR.intType(orig_agg, false).isFloat());
     }
 
-    setDiffe(orig, Constant::getNullValue(IVI.getType()), Builder2);
+    setDiffe(&IVI, Constant::getNullValue(IVI.getType()), Builder2);
   }
 
-  inline IRBuilder<> getReverseBuilder(BasicBlock* BB) {
-    auto BB2 = gutils->reverseBlocks[BB];
+  inline IRBuilder<> getReverseBuilder(BasicBlock* oBB) {
+    BasicBlock* BB = cast<BasicBlock>(gutils->getNewFromOriginal(oBB));
+    BasicBlock* BB2 = gutils->reverseBlocks[BB];
     if (!BB2) {
       llvm::errs() << "oldFunc: " << *gutils->oldFunc << "\n";
       llvm::errs() << "newFunc: " << *gutils->newFunc << "\n";
@@ -1030,21 +1030,18 @@ public:
   }
 
   void visitBinaryOperator(llvm::BinaryOperator &BO) {
-    if (mode != DerivativeMode::Reverse && mode != DerivativeMode::Both) return;
     if (gutils->isConstantValue(&BO)) return;
+    if (mode != DerivativeMode::Reverse && mode != DerivativeMode::Both) return;
 
-    auto po = gutils->getOriginal(&BO);
-    if (!isa<BinaryOperator>(po)) {
-      llvm::errs() << " BO: " << BO << " po:" << *po << "\n";
-    }
-    BinaryOperator* orig = cast<BinaryOperator>(gutils->getOriginal(&BO));
-    Value* op0 = gutils->getNewFromOriginal(orig->getOperand(0));
-    Value* op1 = gutils->getNewFromOriginal(orig->getOperand(1));
-    bool constantval0 = gutils->isConstantValue(op0);
-    bool constantval1 = gutils->isConstantValue(op1);
+    Value* orig_op0 = BO.getOperand(0);
+    Value* orig_op1 = BO.getOperand(1);
+    Value* op0 = gutils->getNewFromOriginal(orig_op0);
+    Value* op1 = gutils->getNewFromOriginal(orig_op1);
+    bool constantval0 = gutils->isConstantValue(orig_op0);
+    bool constantval1 = gutils->isConstantValue(orig_op1);
 
 
-    if (BO.getType()->isIntOrIntVectorTy() && TR.intType(orig, /*errifnotfound*/false) == IntType::Pointer) {
+    if (BO.getType()->isIntOrIntVectorTy() && TR.intType(&BO, /*errifnotfound*/false) == IntType::Pointer) {
       return;
     }
 
@@ -1052,7 +1049,7 @@ public:
 
     Value* dif0 = nullptr;
     Value* dif1 = nullptr;
-    Value* idiff = diffe(orig, Builder2);
+    Value* idiff = diffe(&BO, Builder2);
 
     Type* addingType = BO.getType();
 
@@ -1081,18 +1078,20 @@ public:
       case Instruction::FDiv:{
         if (!constantval0)
           dif0 = Builder2.CreateFDiv(idiff, lookup(op1, Builder2), "d0diffe"+op0->getName());
-        if (!constantval1)
+        if (!constantval1) {
+          Value* lop1 = lookup(op1, Builder2);
           dif1 = Builder2.CreateFNeg(
-            Builder2.CreateFDiv(
-              Builder2.CreateFMul(idiff, lookup(&BO, Builder2)),
-              lookup(op1, Builder2))
+            Builder2.CreateFMul(idiff,
+              Builder2.CreateFDiv(lookup(gutils->getNewFromOriginal(&BO), Builder2), lop1)
+            )
           );
+        }
         break;
       }
       case Instruction::LShr:{
         if (!constantval0) {
           if (auto ci = dyn_cast<ConstantInt>(op1)) {
-            if (Type* flt = TR.intType(orig->getOperand(0), /*necessary*/false).isFloat()) {
+            if (Type* flt = TR.intType(orig_op0, /*necessary*/false).isFloat()) {
               auto bits = gutils->newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(flt);
               if (ci->getSExtValue() >= (int64_t)bits && ci->getSExtValue() % bits == 0) {
                 dif0 = Builder2.CreateShl(idiff, ci);
@@ -1111,27 +1110,27 @@ public:
     }
 
     done:;
-    if (dif0 || dif1) setDiffe(orig, Constant::getNullValue(BO.getType()), Builder2);
-    if (dif0) addToDiffe(orig->getOperand(0), dif0, Builder2, addingType);
-    if (dif1) addToDiffe(orig->getOperand(1), dif1, Builder2, addingType);
+    if (dif0 || dif1) setDiffe(&BO, Constant::getNullValue(BO.getType()), Builder2);
+    if (dif0) addToDiffe(orig_op0, dif0, Builder2, addingType);
+    if (dif1) addToDiffe(orig_op1, dif1, Builder2, addingType);
   }
 
   void visitCallInst(llvm::CallInst &call);
 
   void visitMemSetInst(llvm::MemSetInst &MS) {
     if (gutils->isConstantInstruction(&MS)) return;
-    llvm::MemSetInst* orig = cast<MemSetInst>(gutils->getOriginal(&MS));
 
-    Value* op0 = gutils->getNewFromOriginal(orig->getOperand(0));
-    Value* op1 = gutils->getNewFromOriginal(orig->getOperand(1));
-    Value* op2 = gutils->getNewFromOriginal(orig->getOperand(2));
-    Value* op3 = gutils->getNewFromOriginal(orig->getOperand(3));
-    // TODO THE ORIGIFICATION FROM HERE DOWN
+    Value* orig_op0 = MS.getOperand(0);
+    Value* op0 = gutils->getNewFromOriginal(orig_op0);
+    Value* orig_op1 = MS.getOperand(1);
+    Value* op1 = gutils->getNewFromOriginal(orig_op1);
+    Value* op2 = gutils->getNewFromOriginal(MS.getOperand(2));
+    Value* op3 = gutils->getNewFromOriginal(MS.getOperand(3));
 
     //TODO this should 1) assert that the value being meset is constant
     //                 2) duplicate the memset for the inverted pointer
 
-    if (!gutils->isConstantValue(op1)) {
+    if (!gutils->isConstantValue(orig_op1)) {
         llvm::errs() << "couldn't handle non constant inst in memset to propagate differential to\n" << MS;
         report_fatal_error("non constant in memset");
     }
@@ -1140,7 +1139,7 @@ public:
       IRBuilder <>BuilderZ(&MS);
 
       SmallVector<Value*, 4> args;
-      if (!gutils->isConstantValue(op0)) {
+      if (!gutils->isConstantValue(orig_op0)) {
         args.push_back(gutils->invertPointerM(op0, BuilderZ));
       } else {
         //If constant destination then no operation needs doing
@@ -1167,15 +1166,15 @@ public:
   void visitMemTransferInst(llvm::MemTransferInst& MTI) {
     if (gutils->isConstantInstruction(&MTI)) return;
 
-    llvm::MemTransferInst* orig = cast<MemTransferInst>(gutils->getOriginal(&MTI));
-
-    Value* op0 = gutils->getNewFromOriginal(orig->getOperand(0));
-    Value* op1 = gutils->getNewFromOriginal(orig->getOperand(1));
-    Value* op2 = gutils->getNewFromOriginal(orig->getOperand(2));
-    Value* op3 = gutils->getNewFromOriginal(orig->getOperand(3));
+    Value* orig_op0 = MTI.getOperand(0);
+    Value* op0 = gutils->getNewFromOriginal(orig_op0);
+    Value* orig_op1 = MTI.getOperand(1);
+    Value* op1 = gutils->getNewFromOriginal(orig_op1);
+    Value* op2 = gutils->getNewFromOriginal(MTI.getOperand(2));
+    Value* op3 = gutils->getNewFromOriginal(MTI.getOperand(3));
 
     // copying into nullptr is invalid (not sure why it exists here), but we shouldn't do it in reverse pass or shadow
-    if (isa<ConstantPointerNull>(op0) || TR.query(orig->getOperand(0))[{}] == IntType::Anything) return;
+    if (isa<ConstantPointerNull>(op0) || TR.query(orig_op0)[{}] == IntType::Anything) return;
 
     size_t size = 1;
     if (auto ci = dyn_cast<ConstantInt>(op2)) {
@@ -1188,7 +1187,7 @@ public:
     //TR.dump();
     //llvm::errs() << "MIT: " << MTI << "|size: " << size << " dr: " << tr.str() << "\n";
 
-    if (Type* secretty = TR.firstPointer(size, orig->getOperand(0), /*errifnotfound*/true, /*pointerIntSame*/true).isFloat()) {
+    if (Type* secretty = TR.firstPointer(size, orig_op0, /*errifnotfound*/true, /*pointerIntSame*/true).isFloat()) {
       //no change to forward pass if represents floats
       if (mode == DerivativeMode::Reverse || mode == DerivativeMode::Both) {
         IRBuilder<> Builder2 = getReverseBuilder(MTI.getParent());
@@ -1247,19 +1246,20 @@ public:
   }
 
   void visitIntrinsicInst(llvm::IntrinsicInst &II) {
-    llvm::IntrinsicInst* orig = cast<IntrinsicInst>(gutils->getOriginal(&II));
-    Value* ops[orig->getNumOperands()];
+    Value* orig_ops[II.getNumOperands()];
+    Value* ops[II.getNumOperands()];
 
-    for(unsigned i=0; i<orig->getNumOperands(); i++) {
-      ops[i] = gutils->getNewFromOriginal(orig->getOperand(i));
+    for(unsigned i=0; i<II.getNumOperands(); i++) {
+      orig_ops[i] = II.getOperand(i);
+      ops[i] = gutils->getNewFromOriginal(orig_ops[i]);
     }
 
     if (mode == DerivativeMode::Forward) {
       switch(II.getIntrinsicID()) {
         case Intrinsic::stacksave:
-          II.replaceAllUsesWith(UndefValue::get(II.getType()));
+          gutils->getNewFromOriginal(&II)->replaceAllUsesWith(UndefValue::get(II.getType()));
         case Intrinsic::stackrestore:
-          gutils->erase(&II);
+          gutils->erase(gutils->getNewFromOriginal(&II));
           return;
 
         case Intrinsic::prefetch:
@@ -1311,8 +1311,8 @@ public:
 
       Value* vdiff = nullptr;
       if (!gutils->isConstantValue(&II)) {
-        vdiff = diffe(orig, Builder2);
-        setDiffe(orig, Constant::getNullValue(II.getType()), Builder2);
+        vdiff = diffe(&II, Builder2);
+        setDiffe(&II, Constant::getNullValue(II.getType()), Builder2);
       }
 
       switch(II.getIntrinsicID()) {
@@ -1351,26 +1351,26 @@ public:
         }
 
         case Intrinsic::lifetime_end:{
-          gutils->erase(&II);
+          gutils->erase(gutils->getNewFromOriginal(&II));
           return;
         }
 
         case Intrinsic::sqrt: {
-          if (vdiff && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* dif0 = Builder2.CreateBinOp(Instruction::FDiv,
               Builder2.CreateFMul(ConstantFP::get(II.getType(), 0.5), vdiff),
-              lookup(&II, Builder2)
+              lookup(gutils->getNewFromOriginal(&II), Builder2)
             );
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
         }
 
         case Intrinsic::fabs: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
-            Value* cmp  = Builder2.CreateFCmpOLT(lookup(ops[0], Builder2), ConstantFP::get(ops[0]->getType(), 0));
-            Value* dif0 = Builder2.CreateFMul(Builder2.CreateSelect(cmp, ConstantFP::get(ops[0]->getType(), -1), ConstantFP::get(ops[0]->getType(), 1)), vdiff);
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
+            Value* cmp  = Builder2.CreateFCmpOLT(lookup(ops[0], Builder2), ConstantFP::get(orig_ops[0]->getType(), 0));
+            Value* dif0 = Builder2.CreateFMul(Builder2.CreateSelect(cmp, ConstantFP::get(orig_ops[0]->getType(), -1), ConstantFP::get(orig_ops[0]->getType(), 1)), vdiff);
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1378,15 +1378,15 @@ public:
         case Intrinsic::x86_sse_max_ss:
         case Intrinsic::x86_sse_max_ps:
         case Intrinsic::maxnum: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* cmp  = Builder2.CreateFCmpOLT(lookup(ops[0], Builder2), lookup(ops[1], Builder2));
             Value* dif0 = Builder2.CreateSelect(cmp, ConstantFP::get(ops[0]->getType(), 0), vdiff);
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[1])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[1])) {
             Value* cmp  = Builder2.CreateFCmpOLT(lookup(ops[0], Builder2), lookup(ops[1], Builder2));
             Value* dif1 = Builder2.CreateSelect(cmp, vdiff, ConstantFP::get(ops[0]->getType(), 0));
-            addToDiffe(orig->getOperand(1), dif1, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif1, Builder2, II.getType());
           }
           return;
         }
@@ -1394,64 +1394,64 @@ public:
         case Intrinsic::x86_sse_min_ss:
         case Intrinsic::x86_sse_min_ps:
         case Intrinsic::minnum: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* cmp = Builder2.CreateFCmpOLT(lookup(ops[0], Builder2), lookup(ops[1], Builder2));
             Value* dif0 = Builder2.CreateSelect(cmp, vdiff, ConstantFP::get(ops[0]->getType(), 0));
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[1])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[1])) {
             Value* cmp = Builder2.CreateFCmpOLT(lookup(ops[0], Builder2), lookup(ops[1], Builder2));
             Value* dif1 = Builder2.CreateSelect(cmp, ConstantFP::get(ops[0]->getType(), 0), vdiff);
-            addToDiffe(orig->getOperand(1), dif1, Builder2, II.getType());
+            addToDiffe(orig_ops[1], dif1, Builder2, II.getType());
           }
           return;
         }
 
         case Intrinsic::log: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* dif0 = Builder2.CreateFDiv(vdiff, lookup(ops[0], Builder2));
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
         }
 
         case Intrinsic::log2: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* dif0 = Builder2.CreateFDiv(vdiff,
               Builder2.CreateFMul(ConstantFP::get(II.getType(), 0.6931471805599453), lookup(ops[0], Builder2))
             );
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
         }
         case Intrinsic::log10: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* dif0 = Builder2.CreateFDiv(vdiff,
               Builder2.CreateFMul(ConstantFP::get(II.getType(), 2.302585092994046), lookup(ops[0], Builder2))
             );
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
         }
 
         case Intrinsic::exp: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* dif0 = Builder2.CreateFMul(vdiff, lookup(&II, Builder2));
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
         }
         case Intrinsic::exp2: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* dif0 = Builder2.CreateFMul(
               Builder2.CreateFMul(vdiff, lookup(&II, Builder2)), ConstantFP::get(II.getType(), 0.6931471805599453)
             );
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
         }
         case Intrinsic::pow: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
 
             /*
             dif0 = Builder2.CreateFMul(
@@ -1469,10 +1469,10 @@ public:
               Builder2.CreateFMul(vdiff, cal)
               , lookup(ops[1], Builder2)
             );
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
 
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[1])) {
+          if (vdiff && !gutils->isConstantValue(orig_ops[1])) {
             Value *args[] = {lookup(ops[0], Builder2)};
             Type *tys[] = {ops[1]->getType()};
 
@@ -1480,30 +1480,30 @@ public:
               Builder2.CreateFMul(vdiff, lookup(&II, Builder2)),
               Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::log, tys), args)
             );
-            addToDiffe(orig->getOperand(1), dif1, Builder2, II.getType());
+            addToDiffe(orig_ops[1], dif1, Builder2, II.getType());
           }
 
           return;
         }
         case Intrinsic::sin: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(ops[0])) {
             Value *args[] = {lookup(ops[0], Builder2)};
             Type *tys[] = {ops[0]->getType()};
             Value* dif0 = Builder2.CreateFMul(vdiff,
               Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::cos, tys), args) );
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
         }
         case Intrinsic::cos: {
-          if (!gutils->isConstantValue(&II) && !gutils->isConstantValue(ops[0])) {
+          if (vdiff && !gutils->isConstantValue(ops[0])) {
             Value *args[] = {lookup(ops[0], Builder2)};
             Type *tys[] = {ops[0]->getType()};
             Value* dif0 = Builder2.CreateFMul(vdiff,
               Builder2.CreateFNeg(
                 Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::sin, tys), args) )
             );
-            addToDiffe(orig->getOperand(0), dif0, Builder2, II.getType());
+            addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
         }
@@ -1524,25 +1524,25 @@ public:
 template <>
 void DerivativeMaker<AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
   assert(mode == DerivativeMode::Forward);
-  CallInst* orig = cast<CallInst>(gutils->getOriginal(&call));
+  CallInst* newi = cast<CallInst>(gutils->getNewFromOriginal(&call));
 
-  if(uncacheable_args_map.find(orig) == uncacheable_args_map.end()) {
+  if(uncacheable_args_map.find(&call) == uncacheable_args_map.end()) {
     llvm::errs() << " call: " << call << "\n";
-    llvm::errs() << " orig: " << *orig << "\n";
+    llvm::errs() << " newi: " << *newi << "\n";
     for(auto & pair: uncacheable_args_map) {
       llvm::errs() << " + " << *pair.first << "\n";
     }
   }
 
-  assert(uncacheable_args_map.find(orig) != uncacheable_args_map.end());
+  assert(uncacheable_args_map.find(&call) != uncacheable_args_map.end());
   assert(augmentedReturn);
-  handleAugmentedCallInst(TR, &call, gutils, uncacheable_args_map.find(orig)->second, *returnuses, valuesOnlyUsedInUnnecessaryReturns, getIndex, augmentedReturn->subaugmentations);
+  handleAugmentedCallInst(TR, newi, gutils, uncacheable_args_map.find(&call)->second, *returnuses, valuesOnlyUsedInUnnecessaryReturns, getIndex, augmentedReturn->subaugmentations);
 }
 
 template <>
 void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call) {
   assert(mode == DerivativeMode::Both || mode == DerivativeMode::Reverse);
-  CallInst* orig = cast<CallInst>(gutils->getOriginal(&call));
+  CallInst* newi = cast<CallInst>(gutils->getNewFromOriginal(&call));
 
   IRBuilder<> Builder2 = getReverseBuilder(call.getParent());
 
@@ -1550,23 +1550,23 @@ void DerivativeMaker<const AugmentedReturn*>::visitCallInst(llvm::CallInst &call
   //llvm::errs() << " consdering op: " << *op << " toplevel" << topLevel << " ad: " << augmentedReturn << "\n";
   if (mode == DerivativeMode::Reverse) {
     if (augmentedReturn) {
-        auto fd = augmentedReturn->subaugmentations.find(orig);
+        auto fd = augmentedReturn->subaugmentations.find(&call);
         if (fd != augmentedReturn->subaugmentations.end()) {
             subdata = fd->second;
         }
     }
   }
 
-  if (uncacheable_args_map.find(orig) == uncacheable_args_map.end()) {
-      llvm::errs() << "call: " << call << "(" << call.getParent()->getParent()->getName() << ") " << " orig:" << *orig << "(" << call.getParent()->getParent()->getName() << ")\n";
+  if (uncacheable_args_map.find(&call) == uncacheable_args_map.end()) {
+      llvm::errs() << "newi: " << *newi << "(" << newi->getParent()->getParent()->getName() << ") " << " orig:" << call << "(" << call.getParent()->getParent()->getName() << ")\n";
       llvm::errs() << "uncacheable_args_map:\n";
       for(auto a : uncacheable_args_map) {
         llvm::errs() << " + " << *a.first << "(" << a.first->getParent()->getParent()->getName() << ")\n";
       }
   }
-  assert(uncacheable_args_map.find(orig) != uncacheable_args_map.end());
+  assert(uncacheable_args_map.find(&call) != uncacheable_args_map.end());
   assert(replacedReturns);
-  handleGradientCallInst(TR, Builder2, &call, (DiffeGradientUtils*)gutils, /*topLevel*/mode == DerivativeMode::Both, *replacedReturns, valuesOnlyUsedInUnnecessaryReturns, dretAlloca, uncacheable_args_map.find(orig)->second, getIndex, subdata);
+  handleGradientCallInst(TR, Builder2, newi, (DiffeGradientUtils*)gutils, /*topLevel*/mode == DerivativeMode::Both, *replacedReturns, valuesOnlyUsedInUnnecessaryReturns, dretAlloca, uncacheable_args_map.find(&call)->second, getIndex, subdata);
 }
 
 // TODO note this doesn't go through [loop, unreachable], and we could get more performance by doing this
@@ -1842,7 +1842,8 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
 
   for(BasicBlock* BB: gutils->originalBlocks) {
     if(auto ri = dyn_cast<ReturnInst>(BB->getTerminator())) {
-        auto oldval = ri->getReturnValue();
+        Value* orig_oldval = cast<ReturnInst>(gutils->getOriginal(ri))->getReturnValue();
+        Value* oldval = orig_oldval ? gutils->getNewFromOriginal(orig_oldval) : nullptr;
         IRBuilder <>ib(ri);
         Value* rt = UndefValue::get(gutils->newFunc->getReturnType());
         if (oldval && returnUsed) {
@@ -1862,7 +1863,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
         if (differentialReturn && oldval && !oldval->getType()->isFPOrFPVectorTy()) {
             // We need to still get even if not a constant value so the other end can handle all returns with a reasonable value
             //   That said, if we return a constant value (i.e. nullptr) we shouldn't try inverting the pointer and return undef instead (since it [hopefully] shouldn't be used)
-            if (!gutils->isConstantValue(oldval)) {
+            if (!gutils->isConstantValue(orig_oldval)) {
                 invertedRetPs[newri] = gutils->invertPointerM(oldval, ib);
             } else {
                 invertedRetPs[newri] = UndefValue::get(oldval->getType());
@@ -1886,30 +1887,23 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, const std::set<un
 
   DerivativeMaker<AugmentedReturn*> maker(DerivativeMode::Forward, gutils, TR, getIndex, uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second, nullptr, nullptr, valuesOnlyUsedInUnnecessaryReturns, nullptr);
 
-  for(BasicBlock* BB: gutils->originalBlocks) {
-      auto term = BB->getTerminator();
+  for(BasicBlock& oBB: *gutils->oldFunc) {
+      auto term = oBB.getTerminator();
       assert(term);
-      BasicBlock* oBB = gutils->getOriginal(BB);
 
       // Don't create derivatives for code that results in termination
-      if (guaranteedUnreachable.find(oBB) != guaranteedUnreachable.end()) continue;
+      if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) continue;
 
-      if (isa<ReturnInst>(term) || isa<BranchInst>(term) || isa<SwitchInst>(term)) {
-      } else {
-        assert(BB);
-        assert(BB->getParent());
-        assert(term);
-        llvm::errs() << *BB->getParent() << "\n";
+      if (!isa<ReturnInst>(term) && isa<BranchInst>(term) && !isa<SwitchInst>(term)) {
+        llvm::errs() << *oBB.getParent() << "\n";
         llvm::errs() << "unknown terminator instance " << *term << "\n";
         assert(0 && "unknown terminator inst");
       }
 
-      BasicBlock::reverse_iterator I = oBB->rbegin(), E = oBB->rend();
+      BasicBlock::reverse_iterator I = oBB.rbegin(), E = oBB.rend();
       I++;
       for (; I != E; I++) {
-        Instruction* inst = gutils->getNewFromOriginal(&*I);
-        assert(inst);
-        maker.visit(*inst);
+        maker.visit(&*I);
      }
   }
 
@@ -2161,7 +2155,6 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, Basic
           auto result = Builder.CreateLoad(retAlloca, "retreload");
           //TODO reintroduce invariant load/group
           //result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(retAlloca->getContext(), {}));
-          assert(gutils->isConstantInstruction(result));
           retargs.push_back(result);
         }
 
@@ -2169,12 +2162,11 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, Basic
           auto result = Builder.CreateLoad(dretAlloca, "dretreload");
           //TODO reintroduce invariant load/group
           //result->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(dretAlloca->getContext(), {}));
-          assert(gutils->isConstantInstruction(result));
           retargs.push_back(result);
         }
 
         for (auto& I: gutils->oldFunc->args()) {
-          if (!gutils->isConstantValue(gutils->getNewFromOriginal(&I)) && whatType(I.getType()) == DIFFE_TYPE::OUT_DIFF ) {
+          if (!gutils->isConstantValue(&I) && whatType(I.getType()) == DIFFE_TYPE::OUT_DIFF ) {
             retargs.push_back(gutils->diffe(&I, Builder));
           }
         }
@@ -2196,37 +2188,34 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, Basic
     bool setphi = false;
 
     // Ensure phi values have their derivatives propagated
-    for (auto I = BB->begin(), E = BB->end(); I != E; I++) {
-      if(PHINode* PN = dyn_cast<PHINode>(&*I)) {
-        if (gutils->isConstantValue(PN)) continue;
-        PHINode* orig = cast<PHINode>(gutils->getOriginal(PN));
+    BasicBlock* oBB = gutils->getOriginal(BB);
+    for (auto I = oBB->begin(), E = oBB->end(); I != E; I++) {
+      if(PHINode* orig = dyn_cast<PHINode>(&*I)) {
+        if (gutils->isConstantValue(orig)) continue;
         auto PNtype = TR.intType(orig, /*necessary*/false);
 
         //TODO remove explicit type check and only use PNtype
-        if (PNtype == IntType::Pointer || PN->getType()->isPointerTy()) continue;
-
-        //TODO consider skipping if not a secret float
-        //if (!isIntASecretFloat(PN))) continue;
+        if (PNtype == IntType::Pointer || orig->getType()->isPointerTy()) continue;
 
         auto prediff = gutils->diffe(orig, Builder);
-        gutils->setDiffe(orig, Constant::getNullValue(PN->getType()), Builder);
+        gutils->setDiffe(orig, Constant::getNullValue(orig->getType()), Builder);
 
         //TODO make the necessary flag just true.
         //
         Type* PNfloatType = PNtype.isFloat();
         if (!PNfloatType)
-          llvm::errs() << " for PN " << *PN << " saw " << TR.intType(orig, /*necessary*/false).str() << "\n";
+          llvm::errs() << " for orig " << *orig << " saw " << TR.intType(orig, /*necessary*/false).str() << "\n";
         TR.intType(orig, /*necessary*/true);
         assert(PNfloatType);
-
+        llvm::errs() << "consindering phi orig: " << *orig << "\n";
         for (BasicBlock* pred : predecessors(BB)) {
           auto oval = orig->getIncomingValueForBlock(gutils->getOriginal(pred));
-          auto val = gutils->getNewFromOriginal(oval);
-          if (gutils->isConstantValue(val)) {
+          llvm::errs() << "+ oval: " << *oval << "\n";
+          if (gutils->isConstantValue(oval)) {
             continue;
           }
 
-          if (PN->getNumIncomingValues() == 1) {
+          if (orig->getNumIncomingValues() == 1) {
             gutils->addToDiffe(oval, prediff, Builder, PNfloatType);
           } else {
             if (replacePHIs.find(pred) == replacePHIs.end()) {
@@ -2335,6 +2324,8 @@ void createInvertedTerminator(TypeResults& TR, DiffeGradientUtils* gutils, Basic
 }
 
 static bool shouldAugmentCall(CallInst* op, const GradientUtils* gutils) {
+  assert(op->getParent()->getParent() == gutils->oldFunc);
+
   Function *called = op->getCalledFunction();
 
   bool modifyPrimal = !called || !called->hasFnAttribute(Attribute::ReadNone);
@@ -2375,6 +2366,8 @@ static bool shouldAugmentCall(CallInst* op, const GradientUtils* gutils) {
 }
 
 void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const gutils, const std::map<Argument*, bool> uncacheable_args, const SmallPtrSetImpl<Instruction*> &returnuses, const SmallPtrSetImpl<Instruction*> &valuesOnlyUsedInUnnecessaryReturns, std::function<unsigned(Instruction*, CacheType)> getIndex, std::map<const llvm::CallInst*, const AugmentedReturn*> &subaugmentations) {
+    CallInst* orig = cast<CallInst>(gutils->getOriginal(op));
+
     Function *called = op->getCalledFunction();
 
     if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -2400,12 +2393,12 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
     }
 
     if (called && (called->getName()=="malloc" || called->getName()=="_Znwm")) {
-        if (is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false)) {
+        if (is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false)) {
             IRBuilder<> BuilderZ(op);
-            gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self) );
+            gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
         }
-        if (!gutils->isConstantValue(op)) {
-            gutils->createAntiMalloc(op, getIndex(gutils->getOriginal(op), CacheType::Shadow));
+        if (!gutils->isConstantValue(orig)) {
+            gutils->createAntiMalloc(op, getIndex(orig, CacheType::Shadow));
         }
         return;
     }
@@ -2417,10 +2410,10 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         return;
     }
 
-    if (gutils->isConstantInstruction(op)) {
-        if (op->getNumUses() != 0 && !op->doesNotAccessMemory() && is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false)) {
+    if (gutils->isConstantInstruction(orig)) {
+        if (op->getNumUses() != 0 && !op->doesNotAccessMemory() && is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false)) {
             IRBuilder<> BuilderZ(op);
-            gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self) );
+            gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
         }
         return;
     }
@@ -2431,29 +2424,29 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
 
       SmallVector<Value*, 8> args;
       SmallVector<DIFFE_TYPE, 8> argsInverted;
-      const bool modifyPrimal = shouldAugmentCall(op, gutils);
+      const bool modifyPrimal = shouldAugmentCall(orig, gutils);
 
       IRBuilder<> BuilderZ(op);
       BuilderZ.setFastMathFlags(getFast());
 
       for(unsigned i=0;i<op->getNumArgOperands(); i++) {
-        args.push_back(op->getArgOperand(i));
+        args.push_back(gutils->getNewFromOriginal(orig->getArgOperand(i)));
         //llvm::errs() << " considering arg " << *op << " operand: " << *op->getArgOperand(i) << "\n";
 
         // For constant args, we should use the more efficient formulation; however, if given a function we call that is either empty or unknown
         //   we will fall back to an implementation that assumes no arguments are constant
-        if (gutils->isConstantValue(op->getArgOperand(i)) && called && !called->empty()) {
+        if (gutils->isConstantValue(orig->getArgOperand(i)) && called && !called->empty()) {
             subconstant_args.insert(i);
             argsInverted.push_back(DIFFE_TYPE::CONSTANT);
             continue;
         }
 
-        auto argType = op->getArgOperand(i)->getType();
+        auto argType = orig->getArgOperand(i)->getType();
 
         //if (!argType->isFPOrFPVectorTy() && TR.query(gutils->getOriginal(op->getArgOperand(i)))[{}].isPossiblePointer()) {
         if (!argType->isFPOrFPVectorTy()) {
             argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
-            args.push_back(gutils->invertPointerM(op->getArgOperand(i), BuilderZ));
+            args.push_back(gutils->invertPointerM(gutils->getNewFromOriginal(orig->getArgOperand(i)), BuilderZ));
 
             //Note sometimes whattype mistakenly says something should be constant [because composed of integer pointers alone]
             assert(whatType(argType) == DIFFE_TYPE::DUP_ARG || whatType(argType) == DIFFE_TYPE::CONSTANT);
@@ -2463,12 +2456,12 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         }
       }
 
-      bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(gutils->getOriginal(op)) == valuesOnlyUsedInUnnecessaryReturns.end() || is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false));
+      bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(orig) == valuesOnlyUsedInUnnecessaryReturns.end() || is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false));
       //llvm::errs() << "aug subretused: " << subretused << " op: " << *op << "\n";
 
       //We check uses of the original function as that includes potential uses in the return,
       //  specifically consider case where the value returned isn't necessary but the subdifferentialreturn is
-      bool subdifferentialreturn = (!gutils->isConstantValue(op));// && (gutils->getOriginal(op)->getNumUses() != 0);
+      bool subdifferentialreturn = (!gutils->isConstantValue(orig));// && (gutils->getOriginal(op)->getNumUses() != 0);
 
       //! We only need to cache something if it is used in a non return setting (since the backard pass doesnt need to use it if just returned)
         bool hasNonReturnUse = false;//outermostAugmentation;
@@ -2482,8 +2475,8 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
       //llvm::errs() << " augmp op: " << *op << " modifyPrimal: " << modifyPrimal << " subretused: " << subretused << " subdifferentialreturn: " << subdifferentialreturn << " opuses: " << op->getNumUses() << " ipcount: " << gutils->invertedPointers.count(op) << " constantval: " << gutils->isConstantValue(op) << "\n";
 
       if (!modifyPrimal) {
-        if (hasNonReturnUse && !op->doesNotAccessMemory() && is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false)) {
-          gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), CacheType::Self));
+        if (hasNonReturnUse && !op->doesNotAccessMemory() && is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false)) {
+          gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self));
         }
         return;
       }
@@ -2500,8 +2493,8 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         int argnum = 0;
 
         for(auto &arg : called->args()) {
-            nextTypeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, TR.query(gutils->getOriginal(op->getArgOperand(argnum)))));
-            nextTypeInfo.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&arg, TR.isConstantInt(gutils->getOriginal(op->getArgOperand(argnum)))));
+            nextTypeInfo.first.insert(std::pair<Argument*, ValueData>(&arg, TR.query(orig->getArgOperand(argnum))));
+            nextTypeInfo.knownValues.insert(std::pair<Argument*, std::set<int64_t>>(&arg, TR.isConstantInt(orig->getArgOperand(argnum))));
             argnum++;
         }
         nextTypeInfo.second = TR.query(gutils->getOriginal(op));
@@ -2530,6 +2523,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
             differeturnIdx = 2;
         }
         IRBuilder<> pre(op);
+        //TODO consider making called value use orig
         newcalled = gutils->invertPointerM(op->getCalledValue(), pre);
 
         auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
@@ -2546,11 +2540,9 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
 
         gutils->originalInstructions.insert(augmentcall);
         gutils->nonconstant.insert(augmentcall);
-        augmentcall->setMetadata("enzyme_activity_inst", MDNode::get(augmentcall->getContext(), {MDString::get(augmentcall->getContext(), "active")}));
-        if (!gutils->isConstantValue(op)) {
+        if (!gutils->isConstantValue(orig)) {
           gutils->nonconstant_values.insert(augmentcall);
         }
-        op->setMetadata("enzyme_activity_value", MDNode::get(op->getContext(), {MDString::get(op->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
 
         augmentcall->setName(op->getName()+"_augmented");
 
@@ -2561,7 +2553,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
             tp = UndefValue::get(tpt);
         }
 
-        gutils->addMalloc(BuilderZ, tp, getIndex(gutils->getOriginal(op), CacheType::Tape) );
+        gutils->addMalloc(BuilderZ, tp, getIndex(orig, CacheType::Tape) );
         if (gutils->invertedPointers.count(op) != 0) {
             auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
             gutils->invertedPointers.erase(op);
@@ -2573,7 +2565,7 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
               placeholder->replaceAllUsesWith(antiptr);
 
               if (hasNonReturnUse) {
-                  gutils->addMalloc(BuilderZ, antiptr, getIndex(gutils->getOriginal(op), CacheType::Shadow) );
+                  gutils->addMalloc(BuilderZ, antiptr, getIndex(orig, CacheType::Shadow) );
               }
             }
             gutils->erase(placeholder);
@@ -2584,11 +2576,9 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
           assert(rv->getType() == op->getType());
           gutils->originalInstructions.insert(rv);
           gutils->nonconstant.insert(rv);
-          rv->setMetadata("enzyme_activity_inst", MDNode::get(rv->getContext(), {MDString::get(rv->getContext(), "const")}));
-          if (!gutils->isConstantValue(op)) {
+          if (!gutils->isConstantValue(orig)) {
             gutils->nonconstant_values.insert(rv);
           }
-          rv->setMetadata("enzyme_activity_value", MDNode::get(rv->getContext(), {MDString::get(rv->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
           assert(op->getType() == rv->getType());
 
           if (gutils->invertedPointers.count(op) != 0) {
@@ -2596,16 +2586,16 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
               gutils->invertedPointers.erase(op);
           }
 
-          if (hasNonReturnUse && is_value_needed_in_reverse(TR, gutils, gutils->getOriginal(op), /*topLevel*/false)) {
-            gutils->addMalloc(BuilderZ, rv, getIndex(gutils->getOriginal(op), CacheType::Self) );
+          if (hasNonReturnUse && is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false)) {
+            gutils->addMalloc(BuilderZ, rv, getIndex(orig, CacheType::Self) );
           }
-          gutils->originalToNewFn[gutils->getOriginal(op)] = rv;
+          gutils->originalToNewFn[orig] = rv;
           gutils->replaceAWithB(op,rv);
           std::string nm = op->getName().str();
           op->setName("");
           rv->setName(nm);
         } else {
-          gutils->originalToNewFn[gutils->getOriginal(op)] = augmentcall;
+          gutils->originalToNewFn[orig] = augmentcall;
         }
 
         gutils->erase(op);
@@ -2891,7 +2881,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   //llvm::errs() << "grad subretused: " << subretused << " op: " << *op << "\n";
 
   if (called && isAllocationFunction(*called, gutils->TLI)) {
-    bool constval = gutils->isConstantValue(op);
+    bool constval = gutils->isConstantValue(orig);
     if (!constval) {
       auto anti = gutils->createAntiMalloc(op, getIndex(orig, CacheType::Shadow));
       Value* tofree = gutils->lookupM(anti, Builder2);
@@ -2910,14 +2900,10 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
       if (is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/topLevel)) {
           IRBuilder<> BuilderZ(op);
           inst = gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
-          inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), constval ? "const" : "active")}));
       } else {
           //Note that here we cannot simply replace with null as users who try to find the shadow pointer will use the shadow of null rather than the true shadow of this
           IRBuilder<> BuilderZ(op);
           auto pn = BuilderZ.CreatePHI(op->getType(), 1, (op->getName()+"_replacement").str());
-
-          pn->setMetadata("enzyme_activity_value", op->getMetadata("enzyme_activity_value"));
-          pn->setMetadata("enzyme_activity_inst", op->getMetadata("enzyme_activity_inst"));
           gutils->originalInstructions.insert(pn);
 
           gutils->fictiousPHIs.push_back(pn);
@@ -2998,13 +2984,12 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
       }
   }
 
-  //llvm::errs() << " considering op: " << *op << " isConstantInstruction:" << gutils->isConstantInstruction(op) << " subretused: " << subretused << " !op->doesNotAccessMemory: " << !op->doesNotAccessMemory() << "\n";
-  if (gutils->isConstantInstruction(op)) {
+  //llvm::errs() << " considering op: " << *op << " isConstantInstruction:" << gutils->isConstantInstruction(orig) << " subretused: " << subretused << " !op->doesNotAccessMemory: " << !op->doesNotAccessMemory() << "\n";
+  if (gutils->isConstantInstruction(orig)) {
     if (!topLevel && subretused && !op->doesNotAccessMemory()) {
       if (is_value_needed_in_reverse(TR, gutils, orig, topLevel)) {
         IRBuilder<> BuilderZ(op);
-        auto inst = gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
-        inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), "const")}));
+        gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
       } else {
         op->replaceAllUsesWith(UndefValue::get(op->getType()));
         gutils->erase(op);
@@ -3013,7 +2998,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
     return;
   }
 
-  bool modifyPrimal = shouldAugmentCall(op, gutils);
+  bool modifyPrimal = shouldAugmentCall(orig, gutils);
 
   bool foreignFunction = called == nullptr || called->empty();
 
@@ -3031,7 +3016,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
     args.push_back(gutils->lookupM(argops[i], Builder2));
     pre_args.push_back(argops[i]);
 
-    if (gutils->isConstantValue(argops[i]) && !foreignFunction) {
+    if (gutils->isConstantValue(orig->getArgOperand(i)) && !foreignFunction) {
       subconstant_args.insert(i);
       argsInverted.push_back(DIFFE_TYPE::CONSTANT);
       continue;
@@ -3069,7 +3054,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   CallInst* augmentcall = nullptr;
   Value* cachereplace = nullptr;
 
-  bool constval = gutils->isConstantValue(op);
+  bool constval = gutils->isConstantValue(orig);
 
   NewFnTypeInfo nextTypeInfo(called);
   int argnum = 0;
@@ -3096,7 +3081,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
     Value* newcalled = nullptr;
     const AugmentedReturn* fnandtapetype = nullptr;
 
-    bool subdifferentialreturn = (!gutils->isConstantValue(op));// && augmentedsubdifferet;
+    bool subdifferentialreturn = (!gutils->isConstantValue(orig));// && augmentedsubdifferet;
 
     if (!called) {
         IRBuilder<> pre(op);
@@ -3182,12 +3167,10 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
 
           gutils->originalInstructions.insert(augmentcall);
           gutils->nonconstant.insert(augmentcall);
-          augmentcall->setMetadata("enzyme_activity_inst", MDNode::get(augmentcall->getContext(), {MDString::get(augmentcall->getContext(), "active")}));
 
           if (!constval) {
             gutils->nonconstant_values.insert(augmentcall);
           }
-          augmentcall->setMetadata("enzyme_activity_value", MDNode::get(augmentcall->getContext(), {MDString::get(augmentcall->getContext(), constval ? "const" : "active")}));
 
           augmentcall->setName(op->getName()+"_augmented");
 
@@ -3204,7 +3187,6 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
             if (is_value_needed_in_reverse(TR, gutils, orig, topLevel)) {
               cachereplace = BuilderZ.CreatePHI(op->getType(), 1);
               cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(orig, CacheType::Self) );
-              cast<Instruction>(cachereplace)->setMetadata("enzyme_activity_value", MDNode::get(cachereplace->getContext(), {MDString::get(cachereplace->getContext(), constval ? "const" : "active")}));
             } else {
               cachereplace = UndefValue::get(op->getType());
             }
@@ -3217,7 +3199,7 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
             auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
             //llvm::errs() << " +  considering placeholder: " << *placeholder << "\n";
 
-            bool subcheck = subdifferentialreturn && !op->getType()->isFPOrFPVectorTy() && !gutils->isConstantValue(op);
+            bool subcheck = subdifferentialreturn && !op->getType()->isFPOrFPVectorTy() && !gutils->isConstantValue(orig);
 
             //! We only need the shadow pointer if it is used in a non return setting
                     bool hasNonReturnUse = false;//outermostAugmentation;
@@ -3281,7 +3263,6 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
         assert(!replaceFunction);
         cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
         cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(orig, CacheType::Self) );
-        cast<Instruction>(cachereplace)->setMetadata("enzyme_activity_value", MDNode::get(cachereplace->getContext(), {MDString::get(cachereplace->getContext(), constval ? "const" : "active")}));
       } else {
         cachereplace = UndefValue::get(op->getType());
       }
@@ -3291,8 +3272,8 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
   bool retUsed = replaceFunction && subretused;
   Value* newcalled = nullptr;
 
-  bool subdiffereturn = (!gutils->isConstantValue(op));
-  bool subdretptr = (!gutils->isConstantValue(op)) && ( op->getType()->isPointerTy() || op->getType()->isIntOrIntVectorTy()) && replaceFunction;
+  bool subdiffereturn = (!gutils->isConstantValue(orig));
+  bool subdretptr = (!gutils->isConstantValue(orig)) && ( op->getType()->isPointerTy() || op->getType()->isIntOrIntVectorTy()) && replaceFunction;
   //llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
   bool subtopLevel = replaceFunction || !modifyPrimal;
   if (called) {
@@ -3371,18 +3352,15 @@ badfn:;
   assert(cast<StructType>(diffes->getType())->getNumElements() == structidx);
 
   //TODO this shouldn't matter because this can't use itself, but setting null should be done before other sets but after load of diffe
-  if (!gutils->isConstantValue(op))
+  if (!gutils->isConstantValue(orig))
     gutils->setDiffe(orig, Constant::getNullValue(op->getType()), Builder2);
 
   gutils->originalInstructions.insert(diffes);
   gutils->nonconstant.insert(diffes);
 
-  diffes->setMetadata("enzyme_activity_inst", MDNode::get(diffes->getContext(), {MDString::get(diffes->getContext(), "active")}));
-
-  if (!gutils->isConstantValue(op)) {
+  if (!gutils->isConstantValue(orig)) {
     gutils->nonconstant_values.insert(diffes);
   }
-  diffes->setMetadata("enzyme_activity_value", MDNode::get(diffes->getContext(), {MDString::get(diffes->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
 
   if (replaceFunction) {
 
@@ -3417,11 +3395,9 @@ badfn:;
       retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
       gutils->originalInstructions.insert(retval);
       gutils->nonconstant.insert(retval);
-      retval->setMetadata("enzyme_activity_inst", MDNode::get(retval->getContext(), {MDString::get(retval->getContext(), "const")}));
-      if (!gutils->isConstantValue(op)) {
+      if (!gutils->isConstantValue(orig)) {
         gutils->nonconstant_values.insert(retval);
       }
-      retval->setMetadata("enzyme_activity_value", MDNode::get(retval->getContext(), {MDString::get(retval->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
 
       if (gutils->scopeMap.find(op) != gutils->scopeMap.end()) {
         AllocaInst* cache = cast<AllocaInst>(gutils->scopeMap[op]);
@@ -3480,9 +3456,6 @@ badfn:;
       if (augmentcall) {
         dcall = BuilderZ.CreateExtractValue(augmentcall, {returnIdx});
         assert(dcall->getType() == op->getType());
-        if (auto dinst = dyn_cast<Instruction>(dcall)) {
-          dinst->setMetadata("enzyme_activity_value", MDNode::get(dcall->getContext(), {MDString::get(dcall->getContext(), constval ? "const" : "active")}));
-        }
       }
       if (cachereplace) {
         assert(dcall == nullptr);
@@ -3493,11 +3466,11 @@ badfn:;
       if (Instruction* inst = dyn_cast<Instruction>(dcall)) {
         gutils->originalInstructions.insert(inst);
         gutils->nonconstant.insert(dcall);
-        if (!gutils->isConstantValue(op))
+        if (!gutils->isConstantValue(orig))
           gutils->nonconstant_values.insert(dcall);
       }
 
-      if (!gutils->isConstantValue(op)) {
+      if (!gutils->isConstantValue(orig)) {
         if (!op->getType()->isFPOrFPVectorTy() && TR.query(orig)[{}].isPossiblePointer()) {
           gutils->invertedPointers[dcall] = gutils->invertedPointers[op];
           gutils->invertedPointers.erase(op);
@@ -3817,19 +3790,17 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (retAlloca) {
         Value* retval = gutils->getNewFromOriginal(orig->getReturnValue());
         StoreInst* si = rb.CreateStore(retval, retAlloca);
-        replacedReturns[cast<ReturnInst>(gutils->getOriginal(op))] = si;
+        replacedReturns[orig] = si;
 
-        if (dretAlloca && !gutils->isConstantValue(retval)) {
+        if (dretAlloca && !gutils->isConstantValue(orig->getReturnValue())) {
             rb.CreateStore(gutils->invertPointerM(retval, rb), dretAlloca);
         }
       }
 
       //returns nonvoid value
       if (orig->getReturnValue() != nullptr) {
-          Value* retval = gutils->getNewFromOriginal(orig->getReturnValue());
-
           //differential float return
-          if (differentialReturn && todiff->getReturnType()->isFPOrFPVectorTy() && !gutils->isConstantValue(retval)) {
+          if (differentialReturn && todiff->getReturnType()->isFPOrFPVectorTy() && !gutils->isConstantValue(orig->getReturnValue())) {
             IRBuilder <>reverseB(gutils->reverseBlocks[BB]);
             gutils->setDiffe(orig->getReturnValue(), differetval, reverseB);
           }
@@ -3849,70 +3820,24 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
   DerivativeMaker<const AugmentedReturn*> maker( topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils, TR, getIndex, uncacheable_args_map, /*returnuses*/nullptr, augmenteddata, &fakeTBAA, &replacedReturns, valuesOnlyUsedInUnnecessaryReturns, dretAlloca);
 
-  for(BasicBlock* BB: gutils->originalBlocks) {
+  for(BasicBlock& oBB: *gutils->oldFunc) {
     // Don't create derivatives for code that results in termination
-    BasicBlock* oBB = gutils->getOriginal(BB);
-    if (guaranteedUnreachable.find(oBB) != guaranteedUnreachable.end()) continue;
+    if (guaranteedUnreachable.find(&oBB) != guaranteedUnreachable.end()) continue;
 
-    auto BB2 = gutils->reverseBlocks[BB];
-    assert(BB2);
-
-  auto term = BB->getTerminator();
-  assert(term);
-  if (isa<ReturnInst>(term) || isa<BranchInst>(term) || isa<SwitchInst>(term)) {
-
-  } else {
-    assert(BB);
-    assert(BB->getParent());
+    auto term = oBB.getTerminator();
     assert(term);
-    llvm::errs() << *BB->getParent() << "\n";
-    llvm::errs() << "unknown terminator instance " << *term << "\n";
-    assert(0 && "unknown terminator inst");
-  }
-
-  BasicBlock::reverse_iterator I = oBB->rbegin(), E = oBB->rend();
-  I++;
-  for (; I != E; I++) {
-    Instruction* inst = gutils->getNewFromOriginal(&*I);
-    assert(inst);
-
-    assert(TR.info.function == gutils->oldFunc);
-    //maker.visit(*inst);
-
-    if (isa<BinaryOperator>(inst)) {
-      maker.visit(*inst);
-    } else if(isa<CallInst>(inst)) {
-      maker.visit(*inst);
-    } else if(isa<SelectInst>(inst)) {
-      maker.visit(*inst);
-    } else if(isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
-      maker.visit(*inst);
-    } else if(isa<ExtractValueInst>(inst)) {
-      maker.visit(*inst);
-    } else if(isa<InsertValueInst>(inst)) {
-      maker.visit(*inst);
-    } else if (isa<ShuffleVectorInst>(inst)) {
-      maker.visit(*inst);
-    } else if(isa<ExtractElementInst>(inst)) {
-      maker.visit(*inst);
-    } else if(isa<InsertElementInst>(inst)) {
-      maker.visit(*inst);
-    } else if(isa<CastInst>(inst)) {
-      maker.visit(*inst);
-    } else if(isa<CmpInst>(inst) || isa<PHINode>(inst) || isa<BranchInst>(inst) || isa<SwitchInst>(inst) || isa<AllocaInst>(inst) || isa<CastInst>(inst) || isa<GetElementPtrInst>(inst)) {
-        continue;
-    } else {
-      assert(inst);
-      assert(inst->getParent());
-      assert(inst->getParent()->getParent());
-      llvm::errs() << *inst->getParent()->getParent() << "\n" << *inst->getParent() << "\n";
-      llvm::errs() << "cannot handle above inst " << *inst << "\n";
-      report_fatal_error("unknown instruction");
+    if (!isa<ReturnInst>(term) && !isa<BranchInst>(term) && !isa<SwitchInst>(term)) {
+      llvm::errs() << *oBB.getParent() << "\n";
+      llvm::errs() << "unknown terminator instance " << *term << "\n";
+      assert(0 && "unknown terminator inst");
     }
-  }
 
-    createInvertedTerminator(TR, gutils, BB, retAlloca, dretAlloca, 0 + (additionalArg ? 1 : 0) + (differentialReturn && todiff->getReturnType()->isFPOrFPVectorTy() ? 1 : 0));
-
+    BasicBlock::reverse_iterator I = oBB.rbegin(), E = oBB.rend();
+    I++;
+    for (; I != E; I++) {
+      maker.visit(&*I);
+    }
+    createInvertedTerminator(TR, gutils, cast<BasicBlock>(gutils->getNewFromOriginal(&oBB)), retAlloca, dretAlloca, 0 + (additionalArg ? 1 : 0) + (differentialReturn && todiff->getReturnType()->isFPOrFPVectorTy() ? 1 : 0));
   }
 
   if (!topLevel)

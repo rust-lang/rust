@@ -893,7 +893,7 @@ public:
 
           if (originalInstructions.find(inst) == originalInstructions.end()) continue;
 
-          if (!(isa<SwitchInst>(inst) || isa<BranchInst>(inst) || isa<ReturnInst>(inst)) && isConstantInstruction(inst) && isConstantValue(inst) ) {
+          if (!(isa<SwitchInst>(inst) || isa<BranchInst>(inst) || isa<ReturnInst>(inst)) && isConstantInstruction(getOriginal(inst)) && isConstantValue(getOriginal(inst)) ) {
             if (inst->getNumUses() == 0) {
                 erase(inst);
 			    continue;
@@ -917,34 +917,45 @@ public:
       }
   }
 
+  std::map<llvm::Value*, bool> internal_isConstantValue;
+  std::map<llvm::Instruction*, bool> internal_isConstantInstruction;
+
   void forceActiveDetection(AAResults &AA, TypeResults &TR) {
       for(auto a = oldFunc->arg_begin(); a != oldFunc->arg_end(); a++) {
         if (constants.find(a) == constants.end() && nonconstant.find(a) == nonconstant.end()) continue;
 
         bool const_value = isConstantValueInternal(a, AA, TR);
+
+        internal_isConstantValue[a] = const_value;
+
         //a->addAttr(llvm::Attribute::get(a->getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
-        cast<Argument>(getNewFromOriginal(a))->addAttr(llvm::Attribute::get(a->getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
+        //cast<Argument>(getNewFromOriginal(a))->addAttr(llvm::Attribute::get(a->getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
+
       }
 
       for(BasicBlock& BB: *oldFunc) {
           for(Instruction &I : BB) {
               bool const_inst = isConstantInstructionInternal(&I, AA, TR);
 
-              getNewFromOriginal(&I)->setMetadata("enzyme_activity_inst", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_inst ? "const" : "active")));
+              //I.setMetadata("enzyme_activity_inst", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_inst ? "const" : "active")));
               //I.setMetadata(const_inst ? "enzyme_constinst" : "enzyme_activeinst", MDNode::get(I.getContext(), {}));
 
               //I.addAttr(llvm::Attribute::get(I.getContext(), "enzyme_activity_inst", const_inst ? "const" : "active"));
               bool const_value = isConstantValueInternal(&I, AA, TR);
               //I.setMetadata(const_value ? "enzyme_constvalue" : "enzyme_activevalue", MDNode::get(I.getContext(), {}));
-              getNewFromOriginal(&I)->setMetadata("enzyme_activity_value", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_value ? "const" : "active")));
+              //I.setMetadata("enzyme_activity_value", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_value ? "const" : "active")));
               //I.addAttr(llvm::Attribute::get(I.getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
+
+
+              internal_isConstantValue[&I] = const_value;
+              internal_isConstantInstruction[&I] = const_inst;
           }
       }
   }
 
   void cleanupActiveDetection() {
       //llvm::errs() << "pre cleanup: " << *newFunc << "\n";
-
+      /*
       for(auto a = newFunc->arg_begin(); a != newFunc->arg_end(); a++) {
         a->getParent()->removeParamAttr(a->getArgNo(), "enzyme_activity_value");
         //a->getParent()->getAttributes().removeParamAttribute(a->getContext(), a->getArgNo(), "enzyme_activity_value");
@@ -956,6 +967,7 @@ public:
               I.setMetadata("enzyme_activity_value", nullptr);
           }
       }
+      */
       //llvm::errs() << "post cleanup: " << *newFunc << "\n";
   }
 
@@ -965,23 +977,20 @@ public:
 
   bool isConstantValue(Value* val) const {
     if (auto inst = dyn_cast<Instruction>(val)) {
-        if (originalInstructions.find(inst) == originalInstructions.end()) return true;
-        if (auto md = inst->getMetadata("enzyme_activity_value")) {
-            auto res = cast<MDString>(md->getOperand(0))->getString();
-            if (res == "const") return true;
-            if (res == "active") return false;
-        }
+      assert(inst->getParent()->getParent() == oldFunc);
+      assert(internal_isConstantValue.find(inst) != internal_isConstantValue.end());
+      return internal_isConstantValue.find(inst)->second;
     }
 
     if (auto arg = dyn_cast<Argument>(val)) {
-        auto res = getAttribute(arg, "enzyme_activity_value");
-        if (res == "const") return true;
-        if (res == "active") return false;
+      assert(arg->getParent() == oldFunc);
+      assert(internal_isConstantValue.find(arg) != internal_isConstantValue.end());
+      return internal_isConstantValue.find(arg)->second;
     }
 
     //! False so we can replace function with augmentation
     if (isa<Function>(val)) {
-        return false;
+      return false;
     }
 
     if (auto gv = dyn_cast<GlobalVariable>(val)) {
@@ -1013,8 +1022,12 @@ public:
   }
 
   bool isConstantInstruction(Instruction* inst) const {
-    if (originalInstructions.find(inst) == originalInstructions.end()) return true;
 
+    //if (originalInstructions.find(inst) == originalInstructions.end()) return true;
+    assert(inst->getParent()->getParent() == oldFunc);
+    assert(internal_isConstantInstruction.find(inst) != internal_isConstantInstruction.end());
+    return internal_isConstantInstruction.find(inst)->second;
+    /*
     if (MDNode* md = inst->getMetadata("enzyme_activity_inst")) {
         auto res = cast<MDString>(md->getOperand(0))->getString();
         if (res == "const") return true;
@@ -1027,6 +1040,7 @@ public:
     llvm::errs() << "  unknown did status attribute\n";
     assert(0 && "bad");
     exit(1);
+    */
   }
 
 
@@ -1076,7 +1090,7 @@ public:
 
           CallInst* op = dyn_cast<CallInst>(inst);
 
-          if (this->isConstantValue(op)) {
+          if (isConstantValue(getOriginal(op))) {
               continue;
           }
 
@@ -1109,6 +1123,15 @@ public:
   Value* unwrapM(Value* const val, IRBuilder<>& BuilderM, const ValueToValueMapTy& available, UnwrapMode mode) {//bool lookupIfAble, bool fullUnwrap=true) {
     assert(val);
     assert(val->getName() != "<badref>");
+    assert(val->getType());
+
+    for(auto pair : available) {
+      assert(pair.first);
+      assert(pair.second);
+      assert(pair.first->getType());
+      assert(pair.second->getType());
+      assert(pair.first->getType() == pair.second->getType());
+    }
 
     if (isa<LoadInst>(val) && cast<LoadInst>(val)->getMetadata("enzyme_mustcache")) {
       return val;
@@ -1128,7 +1151,9 @@ public:
     }
 
     if (available.count(val)) {
-      if(available.lookup(val)->getType() != val->getType()) {
+      auto avail = available.lookup(val);
+      assert(avail->getType());
+      if(avail->getType() != val->getType()) {
               llvm::errs() << "val: " << *val << "\n";
               llvm::errs() << "available[val]: " << *available.lookup(val) << "\n";
       }
@@ -1137,6 +1162,9 @@ public:
     }
 
     if (auto inst = dyn_cast<Instruction>(val)) {
+      //if (inst->getParent() == &newFunc->getEntryBlock()) {
+      //  return inst;
+      //}
       if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
           if (BuilderM.GetInsertBlock()->size() && BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
               if (DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
@@ -1155,8 +1183,11 @@ public:
     }
 
     #define SAFE(a, b) ({\
-      if (auto v = isOriginalT<typeof(*a)>(a)) cast<typeof(*a)>(getNewFromOriginal(v))->b;\
-      a->b;\
+      Value* res = nullptr;\
+      if (auto v = isOriginalT<typeof(*a)>(a)) res = cast<typeof(*a)>(getNewFromOriginal(v))->b;\
+      res = a->b;\
+      assert(res->getType());\
+      res;\
     })
 
     //llvm::errs() << "uwval: " << *val << "\n";
@@ -1376,7 +1407,7 @@ endCheck:
 
                 for(int j=contexts.size()-1; ; j--) {
                   if (allocationPreheaders[i] == contexts[j].preheader) break;
-                  prevMap[contexts[j].var] = prevMap[contexts[j].var];
+                  prevMap[contexts[j].var] = contexts[j].var;
                 }
 
                 IRBuilder <> allocationBuilder(&allocationPreheaders[i]->back());
@@ -1894,7 +1925,7 @@ public:
     if (auto inst = dyn_cast<Instruction>(val))
       assert(inst->getParent()->getParent() == oldFunc);
 
-    if (isConstantValue(getNewFromOriginal(val))) {
+    if (isConstantValue(val)) {
         llvm::errs() << *newFunc << "\n";
         llvm::errs() << *val << "\n";
     }
@@ -1965,12 +1996,12 @@ public:
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << *val << "\n";
       }
-      if (isConstantValue(getNewFromOriginal(val))) {
+      if (isConstantValue(val)) {
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << *val << "\n";
       }
       assert(!val->getType()->isPointerTy());
-      assert(!isConstantValue(getNewFromOriginal(val)));
+      assert(!isConstantValue(val));
       assert(val->getType() == dif->getType());
       auto old = diffe(val, BuilderM);
       assert(val->getType() == old->getType());
@@ -2043,11 +2074,11 @@ public:
       assert(arg->getParent() == oldFunc);
     if (auto inst = dyn_cast<Instruction>(val))
       assert(inst->getParent()->getParent() == oldFunc);
-    if (isConstantValue(getNewFromOriginal(val))) {
+    if (isConstantValue(val)) {
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << *val << "\n";
       }
-      assert(!isConstantValue(getNewFromOriginal(val)));
+      assert(!isConstantValue(val));
       Value* tostore = getDifferential(val);
       if (toset->getType() != cast<PointerType>(tostore->getType())->getElementType()) {
         llvm::errs() << "toset:" << *toset << "\n";
@@ -2062,7 +2093,7 @@ public:
       assert(arg->getParent() == oldFunc);
     if (auto inst = dyn_cast<Instruction>(val))
       assert(inst->getParent()->getParent() == oldFunc);
-      assert(!isConstantValue(getNewFromOriginal(val)));
+      assert(!isConstantValue(val));
       SmallVector<Value*,4> sv;
       sv.push_back(ConstantInt::get(Type::getInt32Ty(val->getContext()), 0));
       for(auto i : idxs)

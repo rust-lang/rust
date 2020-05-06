@@ -277,7 +277,9 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
         if (cint->isOne()) return cint;
     }
 
-    if(isConstantValue(val)) {
+    Value* oval = getOriginal(val);
+
+    if(isConstantValue(oval)) {
         //NOTE, this is legal and the correct resolution, however, our activity analysis honeypot no longer exists
         return lookupM(val, BuilderM);
         llvm::errs() << *oldFunc << "\n";
@@ -288,7 +290,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
         }
         llvm::errs() << *val << "\n";
     }
-    assert(!isConstantValue(val));
+    assert(!isConstantValue(oval));
 
     auto M = BuilderM.GetInsertBlock()->getParent()->getParent();
     assert(val);
@@ -388,6 +390,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       Value* op0 = SAFE(arg, getOperand(0));
       Value* op1 = SAFE(arg, getOperand(1));
       Value* op2 = SAFE(arg, getOperand(2));
+      //TODO FIX IS CONSTANT VALUE FROM HER
       if (isConstantValue(op0) && isConstantValue(op1)) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
@@ -1124,13 +1127,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
       assert(branch->getCondition()->getType() == T);
 
-      AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/true);
-      IRBuilder<> pbuilder(equivalentTerminator);
-      pbuilder.setFastMathFlags(getFast());
-      storeInstructionInCache(ctx, pbuilder, branch->getCondition(), cache);
-
-      Value* phi = lookupValueFromCache(BuilderM, ctx, cache);
-
+      Value* phi = lookupM(branch->getCondition(), BuilderM);
       if (replacePHIs == nullptr) {
           assert(BuilderM.GetInsertBlock()->size() == 0 || !isa<BranchInst>(BuilderM.GetInsertBlock()->back()));
           BuilderM.CreateCondBr(phi, *done[std::make_pair(block, branch->getSuccessor(0))].begin(), *done[std::make_pair(block, branch->getSuccessor(1))].begin());
@@ -1167,8 +1164,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
       Value* condition = si->getCondition();
       storeInstructionInCache(ctx, pbuilder, condition, cache);
 
-      Value* phi = lookupValueFromCache(BuilderM, ctx, cache);
-
+      Value* phi = lookupM(si->getCondition(), BuilderM);
 
       if (replacePHIs == nullptr) {
           SwitchInst* swtch = BuilderM.CreateSwitch(phi, *done[std::make_pair(block, si->getDefaultDest())].begin());
