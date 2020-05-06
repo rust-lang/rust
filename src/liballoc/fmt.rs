@@ -495,7 +495,7 @@
 //! This structure can then be passed to the [`write`] and [`format`] functions
 //! inside this module in order to process the format string.
 //! The goal of this macro is to even further prevent intermediate allocations
-//! when dealing formatting strings.
+//! when dealing with formatting strings.
 //!
 //! For example, a logging library could use the standard formatting syntax, but
 //! it would internally pass around this structure until it has been determined
