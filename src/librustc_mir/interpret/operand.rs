@@ -327,8 +327,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn read_str(&self, mplace: MPlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len))?;
-        let str = ::std::str::from_utf8(bytes)
-            .map_err(|err| err_ub_format!("this string is not valid UTF-8: {}", err))?;
+        let str = ::std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
         Ok(str)
     }
 

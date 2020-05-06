@@ -3,8 +3,7 @@ use super::{AllocId, Pointer, RawConst, ScalarMaybeUndef};
 use crate::mir::interpret::ConstValue;
 use crate::ty::layout::LayoutError;
 use crate::ty::query::TyCtxtAt;
-use crate::ty::tls;
-use crate::ty::{self, layout, Ty};
+use crate::ty::{self, layout, tls, FnSig, Ty};
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorReported};
@@ -329,7 +328,7 @@ impl fmt::Display for CheckInAllocMsg {
 }
 
 /// Error information for when the program caused Undefined Behavior.
-pub enum UndefinedBehaviorInfo {
+pub enum UndefinedBehaviorInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
     Ub(String),
     /// Unreachable code was executed.
@@ -347,6 +346,8 @@ pub enum UndefinedBehaviorInfo {
     PointerArithOverflow,
     /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
     InvalidMeta(&'static str),
+    /// Invalid drop function in vtable.
+    InvalidDropFn(FnSig<'tcx>),
     /// Reading a C string that does not end within its allocation.
     UnterminatedCString(Pointer),
     /// Dereferencing a dangling pointer after it got freed.
@@ -380,6 +381,8 @@ pub enum UndefinedBehaviorInfo {
     InvalidDiscriminant(ScalarMaybeUndef),
     /// Using a pointer-not-to-a-function as function pointer.
     InvalidFunctionPointer(Pointer),
+    /// Using a string that is not valid UTF-8,
+    InvalidStr(std::str::Utf8Error),
     /// Using uninitialized data where it is not allowed.
     InvalidUndefBytes(Option<Pointer>),
     /// Working with a local that is not currently live.
@@ -391,7 +394,7 @@ pub enum UndefinedBehaviorInfo {
     },
 }
 
-impl fmt::Display for UndefinedBehaviorInfo {
+impl fmt::Display for UndefinedBehaviorInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use UndefinedBehaviorInfo::*;
         match self {
@@ -404,6 +407,11 @@ impl fmt::Display for UndefinedBehaviorInfo {
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
             InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
+            InvalidDropFn(sig) => write!(
+                f,
+                "invalid drop function signature: got {}, expected exactly one argument which must be a pointer type",
+                sig
+            ),
             UnterminatedCString(p) => write!(
                 f,
                 "reading a null-terminated string starting at {} with no null found before end of allocation",
@@ -446,6 +454,7 @@ impl fmt::Display for UndefinedBehaviorInfo {
             InvalidFunctionPointer(p) => {
                 write!(f, "using {} as function pointer but it does not point to a function", p)
             }
+            InvalidStr(err) => write!(f, "this string is not valid UTF-8: {}", err),
             InvalidUndefBytes(Some(p)) => write!(
                 f,
                 "reading uninitialized memory at {}, but this operation requires initialized memory",
@@ -549,7 +558,7 @@ impl dyn MachineStopType {
 
 pub enum InterpError<'tcx> {
     /// The program caused undefined behavior.
-    UndefinedBehavior(UndefinedBehaviorInfo),
+    UndefinedBehavior(UndefinedBehaviorInfo<'tcx>),
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
     Unsupported(UnsupportedOpInfo),
