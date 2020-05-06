@@ -39,8 +39,8 @@ use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::{Fallible, NoSolution};
 use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligations};
 
+use crate::dataflow::impls::MaybeInitializedPlaces;
 use crate::dataflow::move_paths::MoveData;
-use crate::dataflow::MaybeInitializedPlaces;
 use crate::dataflow::ResultsCursor;
 use crate::transform::{
     check_consts::ConstCx,

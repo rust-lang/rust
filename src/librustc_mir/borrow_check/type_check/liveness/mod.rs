@@ -3,8 +3,8 @@ use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use std::rc::Rc;
 
+use crate::dataflow::impls::MaybeInitializedPlaces;
 use crate::dataflow::move_paths::MoveData;
-use crate::dataflow::MaybeInitializedPlaces;
 use crate::dataflow::ResultsCursor;
 
 use crate::borrow_check::{

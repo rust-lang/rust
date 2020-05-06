@@ -909,13 +909,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             cast_suggestion,
                             Applicability::MaybeIncorrect, // lossy conversion
                         );
-                        err.warn(
-                            "if the rounded value cannot be represented by the target \
-                                integer type, including `Inf` and `NaN`, casting will cause \
-                                undefined behavior \
-                                (see issue #10184 <https://github.com/rust-lang/rust/issues/10184> \
-                                for more information)",
-                        );
                     }
                     true
                 }

@@ -89,6 +89,7 @@ mod llvm_libunwind {
             cfg.flag("-fno-rtti");
             cfg.flag("-fstrict-aliasing");
             cfg.flag("-funwind-tables");
+            cfg.flag("-fvisibility=hidden");
         }
 
         let mut unwind_sources = vec![

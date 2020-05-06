@@ -9,14 +9,14 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
+use crate::dataflow::impls::{
+    DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeLiveLocals, MaybeMutBorrowedLocals,
+    MaybeUninitializedPlaces,
+};
 use crate::dataflow::move_paths::{HasMoveData, MoveData};
 use crate::dataflow::move_paths::{LookupResult, MovePathIndex};
-use crate::dataflow::MaybeMutBorrowedLocals;
 use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{Analysis, Results, ResultsCursor};
-use crate::dataflow::{
-    DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces,
-};
 
 pub struct SanityCheck;
 

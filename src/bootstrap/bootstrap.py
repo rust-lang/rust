@@ -79,6 +79,7 @@ def _download(path, url, probably_big, verbose, exception):
             option = "-#"
         else:
             option = "-s"
+        require(["curl", "--version"])
         run(["curl", option,
              "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
              "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
@@ -143,6 +144,21 @@ def run(args, verbose=False, exception=False, **kwargs):
         sys.exit(err)
 
 
+def require(cmd, exit=True):
+    '''Run a command, returning its output.
+    On error,
+        If `exit` is `True`, exit the process.
+        Otherwise, return None.'''
+    try:
+        return subprocess.check_output(cmd).strip()
+    except (subprocess.CalledProcessError, OSError) as exc:
+        if not exit:
+            return None
+        print("error: unable to run `{}`: {}".format(' '.join(cmd), exc))
+        print("Please make sure it's installed and in the path.")
+        sys.exit(1)
+
+
 def stage0_data(rust_root):
     """Build a dictionary from stage0.txt"""
     nightlies = os.path.join(rust_root, "src/stage0.txt")
@@ -164,16 +180,12 @@ def format_build_time(duration):
 def default_build_triple():
     """Build triple as in LLVM"""
     default_encoding = sys.getdefaultencoding()
-    try:
-        ostype = subprocess.check_output(
-            ['uname', '-s']).strip().decode(default_encoding)
-        cputype = subprocess.check_output(
-            ['uname', '-m']).strip().decode(default_encoding)
-    except (subprocess.CalledProcessError, OSError):
-        if sys.platform == 'win32':
-            return 'x86_64-pc-windows-msvc'
-        err = "uname not found"
-        sys.exit(err)
+    required = not sys.platform == 'win32'
+    ostype = require(["uname", "-s"], exit=required).decode(default_encoding)
+    cputype = require(['uname', '-m'], exit=required).decode(default_encoding)
+
+    if ostype is None or cputype is None:
+        return 'x86_64-pc-windows-msvc'
 
     # The goal here is to come up with the same triple as LLVM would,
     # at least for the subset of platforms we're willing to target.
@@ -203,12 +215,7 @@ def default_build_triple():
         # output from that option is too generic for our purposes (it will
         # always emit 'i386' on x86/amd64 systems).  As such, isainfo -k
         # must be used instead.
-        try:
-            cputype = subprocess.check_output(
-                ['isainfo', '-k']).strip().decode(default_encoding)
-        except (subprocess.CalledProcessError, OSError):
-            err = "isainfo not found"
-            sys.exit(err)
+        cputype = require(['isainfo', '-k']).decode(default_encoding)
     elif ostype.startswith('MINGW'):
         # msys' `uname` does not print gcc configuration, but prints msys
         # configuration. so we cannot believe `uname -m`:
@@ -766,13 +773,8 @@ class RustBuild(object):
         default_encoding = sys.getdefaultencoding()
 
         # check the existence and version of 'git' command
-        try:
-            git_version_output = subprocess.check_output(['git', '--version'])
-            git_version_str = git_version_output.strip().split()[2].decode(default_encoding)
-            self.git_version = distutils.version.LooseVersion(git_version_str)
-        except (subprocess.CalledProcessError, OSError):
-            print("error: `git` is not found, please make sure it's installed and in the path.")
-            sys.exit(1)
+        git_version_str = require(['git', '--version']).split()[2].decode(default_encoding)
+        self.git_version = distutils.version.LooseVersion(git_version_str)
 
         slow_submodules = self.get_toml('fast-submodules') == "false"
         start_time = time()

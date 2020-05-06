@@ -8,17 +8,12 @@ pub use self::framework::{
     BottomValue, Engine, Forward, GenKill, GenKillAnalysis, Results, ResultsCursor,
     ResultsRefCursor, ResultsVisitor,
 };
-pub use self::impls::{
-    borrows::Borrows, DefinitelyInitializedPlaces, EverInitializedPlaces, MaybeBorrowedLocals,
-    MaybeInitializedPlaces, MaybeLiveLocals, MaybeMutBorrowedLocals, MaybeRequiresStorage,
-    MaybeStorageLive, MaybeUninitializedPlaces,
-};
 
 use self::move_paths::MoveData;
 
 pub mod drop_flag_effects;
 mod framework;
-mod impls;
+pub mod impls;
 pub mod move_paths;
 
 pub(crate) mod indexes {
