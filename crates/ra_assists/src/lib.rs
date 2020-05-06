@@ -19,9 +19,8 @@ pub mod ast_transform;
 
 use hir::Semantics;
 use ra_db::{FileId, FileRange};
-use ra_ide_db::RootDatabase;
-use ra_syntax::{TextRange, TextSize};
-use ra_text_edit::TextEdit;
+use ra_ide_db::{source_change::SourceChange, RootDatabase};
+use ra_syntax::TextRange;
 
 pub(crate) use crate::assist_ctx::{Assist, AssistCtx};
 
@@ -58,20 +57,13 @@ impl AssistLabel {
 }
 
 #[derive(Debug, Clone)]
-pub struct AssistAction {
-    pub edit: TextEdit,
-    pub cursor_position: Option<TextSize>,
-    pub file: AssistFile,
-}
-
-#[derive(Debug, Clone)]
 pub struct ResolvedAssist {
     pub label: AssistLabel,
-    pub action: AssistAction,
+    pub action: SourceChange,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum AssistFile {
+enum AssistFile {
     CurrentFile,
     TargetFile(FileId),
 }

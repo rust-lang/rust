@@ -1,8 +1,11 @@
 //! This module defines `AssistCtx` -- the API surface that is exposed to assists.
 use hir::Semantics;
-use ra_db::FileRange;
+use ra_db::{FileId, FileRange};
 use ra_fmt::{leading_indent, reindent};
-use ra_ide_db::RootDatabase;
+use ra_ide_db::{
+    source_change::{SingleFileChange, SourceChange},
+    RootDatabase,
+};
 use ra_syntax::{
     algo::{self, find_covering_element, find_node_at_offset, SyntaxRewriter},
     AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -10,7 +13,7 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::{AssistAction, AssistFile, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
+use crate::{AssistFile, AssistId, AssistLabel, GroupLabel, ResolvedAssist};
 
 #[derive(Clone, Debug)]
 pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
@@ -19,7 +22,7 @@ pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
 pub(crate) struct AssistInfo {
     pub(crate) label: AssistLabel,
     pub(crate) group_label: Option<GroupLabel>,
-    pub(crate) action: Option<AssistAction>,
+    pub(crate) action: Option<SourceChange>,
 }
 
 impl AssistInfo {
@@ -27,7 +30,7 @@ impl AssistInfo {
         AssistInfo { label, group_label: None, action: None }
     }
 
-    fn resolved(self, action: AssistAction) -> AssistInfo {
+    fn resolved(self, action: SourceChange) -> AssistInfo {
         AssistInfo { action: Some(action), ..self }
     }
 
@@ -98,13 +101,13 @@ impl<'a> AssistCtx<'a> {
         f: impl FnOnce(&mut ActionBuilder),
     ) -> Option<Assist> {
         let label = AssistLabel::new(id, label.into(), None, target);
-
+        let change_label = label.label.clone();
         let mut info = AssistInfo::new(label);
         if self.should_compute_edit {
             let action = {
                 let mut edit = ActionBuilder::new(&self);
                 f(&mut edit);
-                edit.build()
+                edit.build(change_label, self.frange.file_id)
             };
             info = info.resolved(action)
         };
@@ -157,13 +160,13 @@ impl<'a> AssistGroup<'a> {
         f: impl FnOnce(&mut ActionBuilder),
     ) {
         let label = AssistLabel::new(id, label.into(), Some(self.group.clone()), target);
-
+        let change_label = label.label.clone();
         let mut info = AssistInfo::new(label).with_group(self.group.clone());
         if self.ctx.should_compute_edit {
             let action = {
                 let mut edit = ActionBuilder::new(&self.ctx);
                 f(&mut edit);
-                edit.build()
+                edit.build(change_label, self.ctx.frange.file_id)
             };
             info = info.resolved(action)
         };
@@ -255,11 +258,16 @@ impl<'a, 'b> ActionBuilder<'a, 'b> {
         self.file = assist_file
     }
 
-    fn build(self) -> AssistAction {
+    fn build(self, change_label: String, current_file: FileId) -> SourceChange {
         let edit = self.edit.finish();
         if edit.is_empty() && self.cursor_position.is_none() {
             panic!("Only call `add_assist` if the assist can be applied")
         }
-        AssistAction { edit, cursor_position: self.cursor_position, file: self.file }
+        let file = match self.file {
+            AssistFile::CurrentFile => current_file,
+            AssistFile::TargetFile(it) => it,
+        };
+        SingleFileChange { label: change_label, edit, cursor_position: self.cursor_position }
+            .into_source_change(file)
     }
 }
