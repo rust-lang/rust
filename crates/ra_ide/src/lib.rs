@@ -478,7 +478,7 @@ impl Analysis {
                     id: assist.label.id,
                     label: assist.label.label,
                     group_label: assist.label.group.map(|it| it.0),
-                    source_change: assist.action,
+                    source_change: assist.source_change,
                 })
                 .collect()
         })

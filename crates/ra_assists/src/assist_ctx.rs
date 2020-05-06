@@ -22,16 +22,16 @@ pub(crate) struct Assist(pub(crate) Vec<AssistInfo>);
 pub(crate) struct AssistInfo {
     pub(crate) label: AssistLabel,
     pub(crate) group_label: Option<GroupLabel>,
-    pub(crate) action: Option<SourceChange>,
+    pub(crate) source_change: Option<SourceChange>,
 }
 
 impl AssistInfo {
     fn new(label: AssistLabel) -> AssistInfo {
-        AssistInfo { label, group_label: None, action: None }
+        AssistInfo { label, group_label: None, source_change: None }
     }
 
-    fn resolved(self, action: SourceChange) -> AssistInfo {
-        AssistInfo { action: Some(action), ..self }
+    fn resolved(self, source_change: SourceChange) -> AssistInfo {
+        AssistInfo { source_change: Some(source_change), ..self }
     }
 
     fn with_group(self, group_label: GroupLabel) -> AssistInfo {
@@ -40,7 +40,7 @@ impl AssistInfo {
 
     pub(crate) fn into_resolved(self) -> Option<ResolvedAssist> {
         let label = self.label;
-        self.action.map(|action| ResolvedAssist { label, action })
+        self.source_change.map(|source_change| ResolvedAssist { label, source_change })
     }
 }
 
@@ -104,12 +104,12 @@ impl<'a> AssistCtx<'a> {
         let change_label = label.label.clone();
         let mut info = AssistInfo::new(label);
         if self.should_compute_edit {
-            let action = {
+            let source_change = {
                 let mut edit = ActionBuilder::new(&self);
                 f(&mut edit);
                 edit.build(change_label, self.frange.file_id)
             };
-            info = info.resolved(action)
+            info = info.resolved(source_change)
         };
 
         Some(Assist(vec![info]))
@@ -163,12 +163,12 @@ impl<'a> AssistGroup<'a> {
         let change_label = label.label.clone();
         let mut info = AssistInfo::new(label).with_group(self.group.clone());
         if self.ctx.should_compute_edit {
-            let action = {
+            let source_change = {
                 let mut edit = ActionBuilder::new(&self.ctx);
                 f(&mut edit);
                 edit.build(change_label, self.ctx.frange.file_id)
             };
-            info = info.resolved(action)
+            info = info.resolved(source_change)
         };
 
         self.assists.push(info)

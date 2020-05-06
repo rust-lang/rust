@@ -59,7 +59,7 @@ impl AssistLabel {
 #[derive(Debug, Clone)]
 pub struct ResolvedAssist {
     pub label: AssistLabel,
-    pub action: SourceChange,
+    pub source_change: SourceChange,
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -57,7 +57,7 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
         });
 
     let actual = {
-        let change = assist.action.source_file_edits.pop().unwrap();
+        let change = assist.source_change.source_file_edits.pop().unwrap();
         let mut actual = before.clone();
         change.edit.apply(&mut actual);
         actual
@@ -94,7 +94,7 @@ fn check(assist: Handler, before: &str, expected: ExpectedResult) {
 
     match (assist(assist_ctx), expected) {
         (Some(assist), ExpectedResult::After(after)) => {
-            let mut action = assist.0[0].action.clone().unwrap();
+            let mut action = assist.0[0].source_change.clone().unwrap();
             let change = action.source_file_edits.pop().unwrap();
 
             let mut actual = db.file_text(change.file_id).as_ref().to_owned();
