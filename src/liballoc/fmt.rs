@@ -130,7 +130,7 @@
 //!
 //! The default [fill/alignment](#fillalignment) for non-numerics is a space and
 //! left-aligned. The
-//! default for numeric formatters is also a space but with right-alignment. If
+//! default for numeric formatters is also a space character but with right-alignment. If
 //! the `0` flag (see below) is specified for numerics, then the implicit fill character is
 //! `0`.
 //!
