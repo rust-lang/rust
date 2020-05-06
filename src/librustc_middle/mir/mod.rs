@@ -918,10 +918,31 @@ impl<'tcx> LocalDecl<'tcx> {
         self.source_info.span.desugaring_kind().is_some()
     }
 
-    /// Creates a new `LocalDecl` for a temporary.
+    /// Creates a new `LocalDecl` for a temporary: mutable, non-internal.
     #[inline]
-    pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
-        Self::new_local(ty, Mutability::Mut, false, span)
+    pub fn new(ty: Ty<'tcx>, span: Span) -> Self {
+        Self::with_source_info(ty, SourceInfo::outermost(span))
+    }
+
+    /// Like `LocalDecl::new`, but takes a `SourceInfo` instead of a `Span`.
+    #[inline]
+    pub fn with_source_info(ty: Ty<'tcx>, source_info: SourceInfo) -> Self {
+        LocalDecl {
+            mutability: Mutability::Mut,
+            local_info: LocalInfo::Other,
+            internal: false,
+            is_block_tail: None,
+            ty,
+            user_ty: UserTypeProjections::none(),
+            source_info,
+        }
+    }
+
+    /// Converts `self` into same `LocalDecl` except tagged as internal.
+    #[inline]
+    pub fn internal(mut self) -> Self {
+        self.internal = true;
+        self
     }
 
     /// Converts `self` into same `LocalDecl` except tagged as immutable.
@@ -937,41 +958,6 @@ impl<'tcx> LocalDecl<'tcx> {
         assert!(self.is_block_tail.is_none());
         self.is_block_tail = Some(info);
         self
-    }
-
-    /// Creates a new `LocalDecl` for a internal temporary.
-    #[inline]
-    pub fn new_internal(ty: Ty<'tcx>, span: Span) -> Self {
-        Self::new_local(ty, Mutability::Mut, true, span)
-    }
-
-    #[inline]
-    fn new_local(ty: Ty<'tcx>, mutability: Mutability, internal: bool, span: Span) -> Self {
-        LocalDecl {
-            mutability,
-            ty,
-            user_ty: UserTypeProjections::none(),
-            source_info: SourceInfo::outermost(span),
-            internal,
-            local_info: LocalInfo::Other,
-            is_block_tail: None,
-        }
-    }
-
-    /// Builds a `LocalDecl` for the return place.
-    ///
-    /// This must be inserted into the `local_decls` list as the first local.
-    #[inline]
-    pub fn new_return_place(return_ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
-        LocalDecl {
-            mutability: Mutability::Mut,
-            ty: return_ty,
-            user_ty: UserTypeProjections::none(),
-            source_info: SourceInfo::outermost(span),
-            internal: false,
-            is_block_tail: None,
-            local_info: LocalInfo::Other,
-        }
     }
 }
 

@@ -83,14 +83,14 @@ impl<'tcx> MirPatch<'tcx> {
     pub fn new_temp(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
         let index = self.next_local;
         self.next_local += 1;
-        self.new_locals.push(LocalDecl::new_temp(ty, span));
+        self.new_locals.push(LocalDecl::new(ty, span));
         Local::new(index as usize)
     }
 
     pub fn new_internal(&mut self, ty: Ty<'tcx>, span: Span) -> Local {
         let index = self.next_local;
         self.next_local += 1;
-        self.new_locals.push(LocalDecl::new_internal(ty, span));
+        self.new_locals.push(LocalDecl::new(ty, span).internal());
         Local::new(index as usize)
     }
 

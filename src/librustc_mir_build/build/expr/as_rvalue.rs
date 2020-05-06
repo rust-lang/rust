@@ -97,7 +97,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // The `Box<T>` temporary created here is not a part of the HIR,
                 // and therefore is not considered during generator OIBIT
                 // determination. See the comment about `box` at `yield_in_scope`.
-                let result = this.local_decls.push(LocalDecl::new_internal(expr.ty, expr_span));
+                let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span).internal());
                 this.cfg.push(
                     block,
                     Statement { source_info, kind: StatementKind::StorageLive(result) },
@@ -377,7 +377,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let this = self;
 
         let source_info = this.source_info(upvar_span);
-        let temp = this.local_decls.push(LocalDecl::new_temp(upvar_ty, upvar_span));
+        let temp = this.local_decls.push(LocalDecl::new(upvar_ty, upvar_span));
 
         this.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
 

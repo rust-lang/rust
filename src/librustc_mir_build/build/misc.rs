@@ -15,7 +15,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// N.B., **No cleanup is scheduled for this temporary.** You should
     /// call `schedule_drop` once the temporary is initialized.
     crate fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
-        let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
+        let temp = self.local_decls.push(LocalDecl::new(ty, span));
         let place = Place::from(temp);
         debug!("temp: created temp {:?} with type {:?}", place, self.local_decls[temp].ty);
         place

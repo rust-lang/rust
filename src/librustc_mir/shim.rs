@@ -145,24 +145,12 @@ enum CallKind {
     Direct(DefId),
 }
 
-fn temp_decl(mutability: Mutability, ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
-    LocalDecl {
-        mutability,
-        ty,
-        user_ty: UserTypeProjections::none(),
-        source_info: SourceInfo::outermost(span),
-        internal: false,
-        local_info: LocalInfo::Other,
-        is_block_tail: None,
-    }
-}
-
 fn local_decls_for_sig<'tcx>(
     sig: &ty::FnSig<'tcx>,
     span: Span,
 ) -> IndexVec<Local, LocalDecl<'tcx>> {
-    iter::once(temp_decl(Mutability::Mut, sig.output(), span))
-        .chain(sig.inputs().iter().map(|ity| temp_decl(Mutability::Not, ity, span)))
+    iter::once(LocalDecl::new(sig.output(), span))
+        .chain(sig.inputs().iter().map(|ity| LocalDecl::new(ity, span).immutable()))
         .collect()
 }
 
@@ -413,7 +401,11 @@ impl CloneShimBuilder<'tcx> {
 
     fn make_place(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Place<'tcx> {
         let span = self.span;
-        Place::from(self.local_decls.push(temp_decl(mutability, ty, span)))
+        let mut local = LocalDecl::new(ty, span);
+        if mutability == Mutability::Not {
+            local = local.immutable();
+        }
+        Place::from(self.local_decls.push(local))
     }
 
     fn make_clone_call(
@@ -497,7 +489,7 @@ impl CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
         let span = self.span;
 
-        let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
+        let beg = self.local_decls.push(LocalDecl::new(tcx.types.usize, span));
         let end = self.make_place(Mutability::Not, tcx.types.usize);
 
         // BB #0
@@ -552,7 +544,7 @@ impl CloneShimBuilder<'tcx> {
         // `let mut beg = 0;`
         // goto #6;
         let end = beg;
-        let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
+        let beg = self.local_decls.push(LocalDecl::new(tcx.types.usize, span));
         let init = self.make_statement(StatementKind::Assign(box (
             Place::from(beg),
             Rvalue::Use(Operand::Constant(self.make_usize(0))),
@@ -700,14 +692,16 @@ fn build_call_shim<'tcx>(
         Adjustment::DerefMove => Operand::Move(tcx.mk_place_deref(rcvr_place())),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
-            let ref_rcvr = local_decls.push(temp_decl(
-                Mutability::Not,
-                tcx.mk_ref(
-                    tcx.lifetimes.re_erased,
-                    ty::TypeAndMut { ty: sig.inputs()[0], mutbl: hir::Mutability::Mut },
-                ),
-                span,
-            ));
+            let ref_rcvr = local_decls.push(
+                LocalDecl::new(
+                    tcx.mk_ref(
+                        tcx.lifetimes.re_erased,
+                        ty::TypeAndMut { ty: sig.inputs()[0], mutbl: hir::Mutability::Mut },
+                    ),
+                    span,
+                )
+                .immutable(),
+            );
             let borrow_kind = BorrowKind::Mut { allow_two_phase_borrow: false };
             statements.push(Statement {
                 source_info,

@@ -255,7 +255,7 @@ impl TransformVisitor<'tcx> {
 
     // Create a statement which reads the discriminant into a temporary
     fn get_discr(&self, body: &mut Body<'tcx>) -> (Statement<'tcx>, Place<'tcx>) {
-        let temp_decl = LocalDecl::new_internal(self.tcx.types.isize, body.span);
+        let temp_decl = LocalDecl::new(self.tcx.types.isize, body.span).internal();
         let local_decls_len = body.local_decls.push(temp_decl);
         let temp = Place::from(local_decls_len);
 
@@ -395,16 +395,7 @@ fn replace_local<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Local {
-    let source_info = SourceInfo::outermost(body.span);
-    let new_decl = LocalDecl {
-        mutability: Mutability::Mut,
-        ty,
-        user_ty: UserTypeProjections::none(),
-        source_info,
-        internal: false,
-        is_block_tail: None,
-        local_info: LocalInfo::Other,
-    };
+    let new_decl = LocalDecl::new(ty, body.span);
     let new_local = body.local_decls.push(new_decl);
     body.local_decls.swap(local, new_local);
 
@@ -877,28 +868,15 @@ fn create_generator_drop_shim<'tcx>(
     }
 
     // Replace the return variable
-    body.local_decls[RETURN_PLACE] = LocalDecl {
-        mutability: Mutability::Mut,
-        ty: tcx.mk_unit(),
-        user_ty: UserTypeProjections::none(),
-        source_info,
-        internal: false,
-        is_block_tail: None,
-        local_info: LocalInfo::Other,
-    };
+    body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(tcx.mk_unit(), source_info);
 
     make_generator_state_argument_indirect(tcx, &mut body);
 
     // Change the generator argument from &mut to *mut
-    body.local_decls[SELF_ARG] = LocalDecl {
-        mutability: Mutability::Mut,
-        ty: tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
-        user_ty: UserTypeProjections::none(),
+    body.local_decls[SELF_ARG] = LocalDecl::with_source_info(
+        tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
         source_info,
-        internal: false,
-        is_block_tail: None,
-        local_info: LocalInfo::Other,
-    };
+    );
     if tcx.sess.opts.debugging_opts.mir_emit_retag {
         // Alias tracking must know we changed the type
         body.basic_blocks_mut()[START_BLOCK].statements.insert(
