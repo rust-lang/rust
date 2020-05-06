@@ -703,6 +703,10 @@ impl File {
             | opts.get_access_mode()?
             | opts.get_creation_mode()?
             | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+        // The third argument of `open64` is documented to have type `mode_t`. On
+        // some platforms (like macOS, where `open64` is actually `open`), `mode_t` is `u16`.
+        // However, since this is a variadic function, C integer promotion rules mean that on
+        // the ABI level, this still gets passed as `c_int` (aka `u32` on Unix platforms).
         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
         let fd = FileDesc::new(fd);
 
