@@ -154,7 +154,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 self.tcx
                     .mk_const(ty::Const {
                         val: ty::ConstKind::Placeholder(placeholder_mapped),
-                        ty: self.tcx.types.err, // FIXME(const_generics)
+                        ty: self.tcx.ty_error(), // FIXME(const_generics)
                     })
                     .into()
             }

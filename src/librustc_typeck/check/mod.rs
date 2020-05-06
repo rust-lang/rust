@@ -967,8 +967,7 @@ fn diagnostic_only_typeck_tables_of<'tcx>(
 ) -> &ty::TypeckTables<'tcx> {
     let fallback = move || {
         let span = tcx.hir().span(tcx.hir().as_local_hir_id(def_id));
-        tcx.sess.delay_span_bug(span, "diagnostic only typeck table used");
-        tcx.types.err
+        tcx.ty_error_with_message(span, "diagnostic only typeck table used")
     };
     typeck_tables_of_with_fallback(tcx, def_id, fallback)
 }
@@ -3387,7 +3386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
         match self.tables.borrow().node_types().get(id) {
             Some(&t) => t,
-            None if self.is_tainted_by_errors() => self.tcx.types.err,
+            None if self.is_tainted_by_errors() => self.tcx.ty_error(),
             None => {
                 bug!(
                     "no type for node {}: {} in fcx {}",
@@ -3501,7 +3500,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         assert!(ty.is_ty_infer());
         let fallback = match self.type_is_unconstrained_numeric(ty) {
-            _ if self.is_tainted_by_errors() => self.tcx().types.err,
+            _ if self.is_tainted_by_errors() => self.tcx().ty_error(),
             UnconstrainedInt => self.tcx.types.i32,
             UnconstrainedFloat => self.tcx.types.f64,
             Neither if self.type_var_diverges(ty) => self.tcx.mk_diverging_default(),
@@ -3774,7 +3773,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tuple_arguments,
                 None,
             );
-            return self.tcx.types.err;
+            return self.tcx.ty_error();
         }
 
         let method = method.unwrap();
@@ -4161,7 +4160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
-        vec![self.tcx.types.err; len]
+        vec![self.tcx.ty_error(); len]
     }
 
     /// Given a vec of evaluated `FulfillmentError`s and an `fn` call argument expressions, we walk
@@ -4305,7 +4304,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 opt_ty.unwrap_or_else(|| self.next_float_var())
             }
             ast::LitKind::Bool(_) => tcx.types.bool,
-            ast::LitKind::Err(_) => tcx.types.err,
+            ast::LitKind::Err(_) => tcx.ty_error(),
         }
     }
 
@@ -4442,7 +4441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 let result =
                     AstConv::associated_path_to_ty(self, hir_id, path_span, ty, res, segment, true);
-                let ty = result.map(|(ty, _, _)| ty).unwrap_or(self.tcx().types.err);
+                let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().ty_error());
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
                 // Write back the new resolution.
@@ -4570,7 +4569,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) {
         if ty.references_error() {
-            // Override the types everywhere with `types.err` to avoid knock on errors.
+            // Override the types everywhere with `err()` to avoid knock on errors.
             self.write_ty(local.hir_id, ty);
             self.write_ty(local.pat.hir_id, ty);
             let local_ty = LocalTy { decl_ty, revealed_ty: ty };
@@ -4790,7 +4789,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut ty = ctxt.coerce.unwrap().complete(self);
 
         if self.has_errors.get() || ty.references_error() {
-            ty = self.tcx.types.err
+            ty = self.tcx.ty_error()
         }
 
         self.write_ty(blk.hir_id, ty);
@@ -5378,7 +5377,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return None,
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
-        if matches!(last_expr_ty.kind, ty::Error)
+        if matches!(last_expr_ty.kind, ty::Error(_))
             || self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err()
         {
             return None;
@@ -5538,7 +5537,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     err.emit();
 
-                    return (tcx.types.err, res);
+                    return (tcx.ty_error(), res);
                 }
             }
         } else {
@@ -5731,8 +5730,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .note("type must be known at this point")
                     .emit();
             }
-            self.demand_suptype(sp, self.tcx.types.err, ty);
-            self.tcx.types.err
+            let err = self.tcx.ty_error();
+            self.demand_suptype(sp, err, ty);
+            err
         }
     }
 

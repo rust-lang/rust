@@ -70,7 +70,7 @@ impl FlagComputation {
             | &ty::Str
             | &ty::Foreign(..) => {}
 
-            &ty::Error => self.add_flags(TypeFlags::HAS_ERROR),
+            &ty::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
 
             &ty::Param(_) => {
                 self.add_flags(TypeFlags::HAS_TY_PARAM);
@@ -227,7 +227,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
             ty::ConstKind::Value(_) => {}
-            ty::ConstKind::Error => self.add_flags(TypeFlags::HAS_ERROR),
+            ty::ConstKind::Error(_) => self.add_flags(TypeFlags::HAS_ERROR),
         }
     }
 

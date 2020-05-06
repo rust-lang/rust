@@ -478,7 +478,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                                     );
 
                                     // Not a real fn, but we're not reaching codegen anyways...
-                                    ty = cx.tcx.types.err;
+                                    ty = cx.tcx.ty_error();
                                     InlineAsmOperand::SymFn {
                                         expr: Expr {
                                             ty,

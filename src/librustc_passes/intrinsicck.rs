@@ -150,7 +150,7 @@ impl ExprVisitor<'tcx> {
             _ => unreachable!(),
         };
         let asm_ty = match ty.kind {
-            ty::Never | ty::Error => return None,
+            ty::Never | ty::Error(_) => return None,
             ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::I8),
             ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Some(InlineAsmType::I16),
             ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Some(InlineAsmType::I32),
@@ -167,7 +167,7 @@ impl ExprVisitor<'tcx> {
                 let fields = &adt.non_enum_variant().fields;
                 let elem_ty = fields[0].ty(self.tcx, substs);
                 match elem_ty.kind {
-                    ty::Never | ty::Error => return None,
+                    ty::Never | ty::Error(_) => return None,
                     ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => {
                         Some(InlineAsmType::VecI8(fields.len() as u64))
                     }

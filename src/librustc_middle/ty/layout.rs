@@ -1245,7 +1245,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 bug!("Layout::compute: unexpected type `{}`", ty)
             }
 
-            ty::Param(_) | ty::Error => {
+            ty::Param(_) | ty::Error(_) => {
                 return Err(LayoutError::Unknown(ty));
             }
         })
@@ -2141,7 +2141,7 @@ where
             | ty::Opaque(..)
             | ty::Param(_)
             | ty::Infer(_)
-            | ty::Error => bug!("TyAndLayout::field_type: unexpected type `{}`", this.ty),
+            | ty::Error(_) => bug!("TyAndLayout::field_type: unexpected type `{}`", this.ty),
         })
     }
 

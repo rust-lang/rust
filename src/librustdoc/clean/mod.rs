@@ -1717,7 +1717,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Placeholder(..) => panic!("Placeholder"),
             ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
             ty::Infer(..) => panic!("Infer"),
-            ty::Error => panic!("Error"),
+            ty::Error(_) => panic!("Error"),
         }
     }
 }

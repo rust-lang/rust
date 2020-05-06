@@ -391,7 +391,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 ));
                             }
                         }
-                        ty::ConstKind::Error
+                        ty::ConstKind::Error(_)
                         | ty::ConstKind::Param(_)
                         | ty::ConstKind::Bound(..)
                         | ty::ConstKind::Placeholder(..) => {
@@ -411,7 +411,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 | ty::Int(..)
                 | ty::Uint(..)
                 | ty::Float(..)
-                | ty::Error
+                | ty::Error(_)
                 | ty::Str
                 | ty::GeneratorWitness(..)
                 | ty::Never

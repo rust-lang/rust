@@ -50,7 +50,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Dynamic(_, _) => self.pretty_print_type(ty),
 
             // Placeholders (all printed as `_` to uniformize them).
-            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error => {
+            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {
                 write!(self, "_")?;
                 Ok(self)
             }

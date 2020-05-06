@@ -889,7 +889,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Param(..)
             | ty::Infer(..)
             | ty::Bound(..)
-            | ty::Error
+            | ty::Error(_)
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
