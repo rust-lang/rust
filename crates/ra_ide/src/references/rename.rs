@@ -712,6 +712,68 @@ mod tests {
         "###);
     }
 
+    #[test]
+    fn test_enum_variant_from_module_1() {
+        test_rename(
+            r#"
+    mod foo {
+        pub enum Foo {
+            Bar<|>,
+        }
+    }
+
+    fn func(f: foo::Foo) {
+        match f {
+            foo::Foo::Bar => {}
+        }
+    }
+    "#,
+            "Baz",
+            r#"
+    mod foo {
+        pub enum Foo {
+            Baz,
+        }
+    }
+
+    fn func(f: foo::Foo) {
+        match f {
+            foo::Foo::Baz => {}
+        }
+    }
+    "#,
+        );
+    }
+
+    #[test]
+    fn test_enum_variant_from_module_2() {
+        test_rename(
+            r#"
+    mod foo {
+        pub struct Foo {
+            pub bar<|>: uint,
+        }
+    }
+
+    fn foo(f: foo::Foo) {
+        let _ = f.bar;
+    }
+    "#,
+            "baz",
+            r#"
+    mod foo {
+        pub struct Foo {
+            pub baz: uint,
+        }
+    }
+
+    fn foo(f: foo::Foo) {
+        let _ = f.baz;
+    }
+    "#,
+        );
+    }
+
     fn test_rename(text: &str, new_name: &str, expected: &str) {
         let (analysis, position) = single_file_with_position(text);
         let source_change = analysis.rename(position, new_name).unwrap();
