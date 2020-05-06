@@ -375,6 +375,7 @@ where
     }
 }
 
+/// Implements comparison of arrays lexicographically.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, const N: usize> Ord for [T; N]
 where
