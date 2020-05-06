@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::iter::Iterator;
-use std::ops::Bound::{Excluded, Unbounded};
+use std::ops::RangeBounds;
 use std::vec::Vec;
 
 use rand::{seq::SliceRandom, thread_rng, Rng};
@@ -117,7 +117,7 @@ map_find_rand_bench! {find_rand_10_000, 10_000, BTreeMap}
 map_find_seq_bench! {find_seq_100,    100,    BTreeMap}
 map_find_seq_bench! {find_seq_10_000, 10_000, BTreeMap}
 
-fn bench_iter(b: &mut Bencher, size: i32) {
+fn bench_iteration(b: &mut Bencher, size: i32) {
     let mut map = BTreeMap::<i32, i32>::new();
     let mut rng = thread_rng();
 
@@ -133,21 +133,21 @@ fn bench_iter(b: &mut Bencher, size: i32) {
 }
 
 #[bench]
-pub fn iter_20(b: &mut Bencher) {
-    bench_iter(b, 20);
+pub fn iteration_20(b: &mut Bencher) {
+    bench_iteration(b, 20);
 }
 
 #[bench]
-pub fn iter_1000(b: &mut Bencher) {
-    bench_iter(b, 1000);
+pub fn iteration_1000(b: &mut Bencher) {
+    bench_iteration(b, 1000);
 }
 
 #[bench]
-pub fn iter_100000(b: &mut Bencher) {
-    bench_iter(b, 100000);
+pub fn iteration_100000(b: &mut Bencher) {
+    bench_iteration(b, 100000);
 }
 
-fn bench_iter_mut(b: &mut Bencher, size: i32) {
+fn bench_iteration_mut(b: &mut Bencher, size: i32) {
     let mut map = BTreeMap::<i32, i32>::new();
     let mut rng = thread_rng();
 
@@ -163,18 +163,18 @@ fn bench_iter_mut(b: &mut Bencher, size: i32) {
 }
 
 #[bench]
-pub fn iter_mut_20(b: &mut Bencher) {
-    bench_iter_mut(b, 20);
+pub fn iteration_mut_20(b: &mut Bencher) {
+    bench_iteration_mut(b, 20);
 }
 
 #[bench]
-pub fn iter_mut_1000(b: &mut Bencher) {
-    bench_iter_mut(b, 1000);
+pub fn iteration_mut_1000(b: &mut Bencher) {
+    bench_iteration_mut(b, 1000);
 }
 
 #[bench]
-pub fn iter_mut_100000(b: &mut Bencher) {
-    bench_iter_mut(b, 100000);
+pub fn iteration_mut_100000(b: &mut Bencher) {
+    bench_iteration_mut(b, 100000);
 }
 
 fn bench_first_and_last(b: &mut Bencher, size: i32) {
@@ -202,57 +202,83 @@ pub fn first_and_last_10k(b: &mut Bencher) {
     bench_first_and_last(b, 10_000);
 }
 
-#[bench]
-pub fn range_excluded_excluded(b: &mut Bencher) {
-    let size = 144;
-    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
+const BENCH_RANGE_SIZE: i32 = 145;
+const BENCH_RANGE_COUNT: i32 = BENCH_RANGE_SIZE * (BENCH_RANGE_SIZE - 1) / 2;
+
+fn bench_range<F, R>(b: &mut Bencher, f: F)
+where
+    F: Fn(i32, i32) -> R,
+    R: RangeBounds<i32>,
+{
+    let map: BTreeMap<_, _> = (0..BENCH_RANGE_SIZE).map(|i| (i, i)).collect();
     b.iter(|| {
-        for first in 0..size {
-            for last in first + 1..size {
-                black_box(map.range((Excluded(first), Excluded(last))));
+        let mut c = 0;
+        for i in 0..BENCH_RANGE_SIZE {
+            for j in i + 1..BENCH_RANGE_SIZE {
+                black_box(map.range(f(i, j)));
+                c += 1;
             }
         }
+        debug_assert_eq!(c, BENCH_RANGE_COUNT);
     });
 }
 
 #[bench]
-pub fn range_excluded_unbounded(b: &mut Bencher) {
-    let size = 144;
-    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-    b.iter(|| {
-        for first in 0..size {
-            black_box(map.range((Excluded(first), Unbounded)));
-        }
-    });
+pub fn range_included_excluded(b: &mut Bencher) {
+    bench_range(b, |i, j| i..j);
 }
 
 #[bench]
 pub fn range_included_included(b: &mut Bencher) {
-    let size = 144;
-    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-    b.iter(|| {
-        for first in 0..size {
-            for last in first..size {
-                black_box(map.range(first..=last));
-            }
-        }
-    });
+    bench_range(b, |i, j| i..=j);
 }
 
 #[bench]
 pub fn range_included_unbounded(b: &mut Bencher) {
-    let size = 144;
-    let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-    b.iter(|| {
-        for first in 0..size {
-            black_box(map.range(first..));
-        }
-    });
+    bench_range(b, |i, _| i..);
 }
 
 #[bench]
 pub fn range_unbounded_unbounded(b: &mut Bencher) {
-    let size = 144;
+    bench_range(b, |_, _| ..);
+}
+
+fn bench_iter(b: &mut Bencher, repeats: i32, size: i32) {
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
-    b.iter(|| map.range(..));
+    b.iter(|| {
+        for _ in 0..repeats {
+            black_box(map.iter());
+        }
+    });
+}
+
+/// Contrast range_unbounded_unbounded with `iter()`.
+#[bench]
+pub fn range_unbounded_vs_iter(b: &mut Bencher) {
+    bench_iter(b, BENCH_RANGE_COUNT, BENCH_RANGE_SIZE);
+}
+
+#[bench]
+pub fn iter_0(b: &mut Bencher) {
+    bench_iter(b, 1_000, 0);
+}
+
+#[bench]
+pub fn iter_1(b: &mut Bencher) {
+    bench_iter(b, 1_000, 1);
+}
+
+#[bench]
+pub fn iter_100(b: &mut Bencher) {
+    bench_iter(b, 1_000, 100);
+}
+
+#[bench]
+pub fn iter_10k(b: &mut Bencher) {
+    bench_iter(b, 1_000, 10_000);
+}
+
+#[bench]
+pub fn iter_1m(b: &mut Bencher) {
+    bench_iter(b, 1_000, 1_000_000);
 }
