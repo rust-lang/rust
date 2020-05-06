@@ -2632,9 +2632,9 @@ dependencies = [
 
 [[package]]
 name = "psm"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "586f7889555eb729b6074a71cabd2aec657406aa89a76734c8d69f428fbbac42"
+checksum = "659ecfea2142a458893bb7673134bad50b752fea932349c213d6a23874ce3aa7"
 dependencies = [
  "cc",
 ]
@@ -4669,9 +4669,9 @@ checksum = "ffbc596e092fe5f598b12ef46cc03754085ac2f4d8c739ad61c4ae266cc3b3fa"
 
 [[package]]
 name = "stacker"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a89b851ac6cb6bcd07a2693a552cad1dc743d3f822df2a484d44209209be3133"
+checksum = "32c2467b8abbb417e4e62fd62229719b9c9d77714a7fa989f1afad16ba9c9743"
 dependencies = [
  "cc",
  "cfg-if",
