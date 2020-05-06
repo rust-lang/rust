@@ -44,7 +44,6 @@ enum class IntType {
     Unknown
 };
 
-
 static inline std::string to_string(IntType t) {
     switch(t) {
         case IntType::Integer: return "Integer";

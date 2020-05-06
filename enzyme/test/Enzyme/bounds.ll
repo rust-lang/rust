@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -jump-threading -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -early-cse -instsimplify -jump-threading -adce -S | FileCheck %s
 
 %struct._IO_FILE = type { i32, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, %struct._IO_marker*, %struct._IO_FILE*, i32, i32, i64, i16, i8, [1 x i8], i8*, i64, i8*, i8*, i8*, i8*, i64, i32, [20 x i8] }
 %struct._IO_marker = type { %struct._IO_marker*, %struct._IO_FILE*, i32 }
@@ -253,8 +253,8 @@ attributes #10 = { cold }
 ; CHECK: invertfor.body:                                   ; preds = %incinvertfor.body, %mergeinvertfor.body_for.cond.cleanup.loopexit
 ; CHECK-NEXT:   %"add'de.0" = phi float [ %1, %mergeinvertfor.body_for.cond.cleanup.loopexit ], [ %4, %incinvertfor.body ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap1, %mergeinvertfor.body_for.cond.cleanup.loopexit ], [ %5, %incinvertfor.body ]
-; CHECK-NEXT:   %_unwrap3 = trunc i64 %"iv'ac.0" to i32
-; CHECK-NEXT:   %2 = call {} @diffelookup(float* %a, float* %"a'", i32 %_unwrap3, i32 %bound, float %"add'de.0", {} undef)
+; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %"iv'ac.0" to i32
+; CHECK-NEXT:   %2 = call {} @diffelookup(float* %a, float* %"a'", i32 %[[trunc]], i32 %bound, float %"add'de.0", {} undef)
 ; CHECK-NEXT:   %3 = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   %4 = select{{( fast)?}} i1 %3, float 0.000000e+00, float %"add'de.0"
 ; CHECK-NEXT:   br i1 %3, label %invertentry, label %incinvertfor.body
@@ -288,8 +288,8 @@ attributes #10 = { cold }
 ; CHECK-NEXT: invertentry:
 ; CHECK-NEXT:   %cmp = icmp slt i32 %i, %bound
 ; CHECK-NEXT:   call void @llvm.assume(i1 %cmp)
-; CHECK-NEXT:   %idxprom_unwrap = sext i32 %i to i64
-; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds float, float* %"data'", i64 %idxprom_unwrap
+; CHECK-NEXT:   %[[idxprom:.+]] = sext i32 %i to i64
+; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds float, float* %"data'", i64 %[[idxprom]]
 ; CHECK-NEXT:   %0 = load float, float* %[[arrayidxipg]], align 4
 ; CHECK-NEXT:   %1 = fadd fast float %0, %differeturn
 ; CHECK-NEXT:   store float %1, float* %[[arrayidxipg]], align 4

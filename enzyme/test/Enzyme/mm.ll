@@ -191,7 +191,7 @@ attributes #3 = { argmemonly nounwind }
 
 ; CHECK: invertfor.body23:                                 ; preds = %invertfor.inc44, %incinvertfor.body23
 ; CHECK-NEXT:   %"add'de.0" = phi float [ 0.000000e+00, %invertfor.inc44 ], [ %18, %incinvertfor.body23 ]
-; CHECK-NEXT:   %"iv3'ac.0" = phi i64 [ %_unwrap17, %invertfor.inc44 ], [ %24, %incinvertfor.body23 ]
+; CHECK-NEXT:   %"iv3'ac.0" = phi i64 [ %[[starting:.+]], %invertfor.inc44 ], [ %24, %incinvertfor.body23 ]
 ; CHECK-NEXT:   %"out_data'ipl_unwrap6" = load double*, double** %"out'", align 8, !invariant.group !16
 ; CHECK-NEXT:   %_unwrap7 = mul nsw i64 %"iv1'ac.0", %rows
 ; CHECK-NEXT:   %_unwrap8 = add nsw i64 %_unwrap7, %"iv'ac.0"
@@ -230,7 +230,7 @@ attributes #3 = { argmemonly nounwind }
 ; CHECK: invertfor.inc44:                                  ; preds = %invertfor.inc47, %incinvertfor.body5
 ; CHECK-NEXT:   %"iv1'ac.0.in" = phi i64 [ %cols, %invertfor.inc47 ], [ %"iv1'ac.0", %incinvertfor.body5 ]
 ; CHECK-NEXT:   %"iv1'ac.0" = add i64 %"iv1'ac.0.in", -1
-; CHECK-NEXT:   %_unwrap17 = add nsw i64 %smax, -2
+; CHECK-NEXT:   %[[starting]] = add nsw i64 %smax, -2
 ; CHECK-NEXT:   br label %invertfor.body23
 
 ; CHECK: invertfor.inc47:                                  ; preds = %invertfor.end49, %incinvertfor.cond2.preheader

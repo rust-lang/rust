@@ -853,9 +853,24 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
         vals.push_back(op);
     }
 
+    std::vector<BinaryOperator*> bos;
+
     while(vals.size()) {
         Value* todo = vals.front();
         vals.pop_front();
+
+        if (auto bo = dyn_cast<BinaryOperator>(todo)) {
+            if (bo->getOpcode() == BinaryOperator::Add) {
+                if (isa<ConstantInt>(bo->getOperand(0))) {
+                    bos.push_back(bo);
+                    todo = bo->getOperand(1);
+                }
+                if (isa<ConstantInt>(bo->getOperand(1))) {
+                    bos.push_back(bo);
+                    todo = bo->getOperand(0);
+                }
+            }
+        }
 
         if (seen.count(todo)) continue;
         seen.insert(todo);
@@ -874,6 +889,14 @@ void TypeAnalyzer::visitPHINode(PHINode& phi) {
 
         //llvm::errs() << " + sub" << *todo << " ga: " << getAnalysis(todo).str() << "\n";
         consider(getAnalysis(todo));
+    }
+
+    assert(set);
+    for(BinaryOperator* bo : bos) {
+        ValueData vd1 = isa<ConstantInt>(bo->getOperand(0)) ? getAnalysis(bo->getOperand(0)) : vd;
+        ValueData vd2 = isa<ConstantInt>(bo->getOperand(1)) ? getAnalysis(bo->getOperand(1)) : vd2;
+        vd1.pointerIntMerge(vd2, bo->getOpcode());
+        vd &= vd1;
     }
     //llvm::errs() << " -- res" << vd.str() << "\n";
 

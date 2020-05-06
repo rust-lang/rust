@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -early-cse -instsimplify -simplifycfg -S | FileCheck %s
 
 ; Function Attrs: noinline nounwind readnone uwtable
 define double @tester(double %x, double %y) {
@@ -20,9 +20,9 @@ declare double @__enzyme_autodiff(double (double, double)*, ...)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[diffex:.+]] = fdiv fast double %[[differet]], %y
 ; CHECK-NEXT:   %[[xdivy:.+]] = fdiv fast double %x, %y
-; CHECK-NEXT:   %[[xdivydret:.+]] = fmul fast double %[[differet]], %[[xdivy]]
-; CHECK-NEXT:   %[[xdivy2:.+]] = fdiv fast double %[[xdivydret]], %y
-; CHECK-NEXT:   %[[mxdivy2:.+]] = fsub fast double -0.000000e+00, %[[xdivy2]]
+; CHECK-NEXT:   %[[xdivy2:.+]] = fdiv fast double %[[xdivy]], %y
+; CHECK-NEXT:   %[[xdivydret:.+]] = fmul fast double %[[differet]], %[[xdivy2]]
+; CHECK-NEXT:   %[[mxdivy2:.+]] = fsub fast double -0.000000e+00, %[[xdivydret]]
 ; CHECK-NEXT:   %[[res1:.+]] = insertvalue { double, double } undef, double %[[diffex]], 0
 ; CHECK-NEXT:   %[[res2:.+]] = insertvalue { double, double } %[[res1:.+]], double %[[mxdivy2]], 1
 ; CHECK-NEXT:   ret { double, double } %[[res2]]

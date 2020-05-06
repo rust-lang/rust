@@ -685,27 +685,5 @@ void optimizeIntermediate(GradientUtils* gutils, bool topLevel, Function *F) {
 
  SimplifyCFGOptions scfgo(/*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false, /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true, /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
  SimplifyCFGPass(scfgo).run(*F, AM);
-
- if (!topLevel) {
- for(BasicBlock& BB: *F) {
-
-        for (auto I = BB.begin(), E = BB.end(); I != E;) {
-          Instruction* inst = &*I;
-          assert(inst);
-          I++;
-
-          if (gutils->originalInstructions.find(inst) == gutils->originalInstructions.end()) continue;
-
-          if (gutils->replaceableCalls.find(inst) != gutils->replaceableCalls.end()) {
-            if (inst->getNumUses() != 0 && !cast<CallInst>(inst)->getCalledFunction()->hasFnAttribute(Attribute::ReadNone) ) {
-                llvm::errs() << "found call ripe for replacement " << *inst;
-            } else {
-                    gutils->erase(inst);
-                    continue;
-            }
-          }
-        }
-      }
- }
  //LCSSAPass().run(*NewF, AM);
 }

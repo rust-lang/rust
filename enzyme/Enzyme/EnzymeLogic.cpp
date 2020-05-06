@@ -371,6 +371,7 @@ bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils* gutils, Va
     if (!topLevel) {
         //Proving that none of the uses (or uses' uses) are used in control flow allows us to safely not do this load
 
+        //TODO make this more aggressive and dont need to save loop latch
         if (isa<BranchInst>(use) || isa<SwitchInst>(use) || isa<CallInst>(use)) {
             //llvm::errs() << " had to use in reverse since used in branch/switch " << *inst << " use: " << *use << "\n";
             return seen[inst] = true;
@@ -1397,7 +1398,7 @@ public:
           if (vdiff && !gutils->isConstantValue(orig_ops[1])) {
             Value* cmp  = Builder2.CreateFCmpOLT(lookup(ops[0], Builder2), lookup(ops[1], Builder2));
             Value* dif1 = Builder2.CreateSelect(cmp, vdiff, ConstantFP::get(ops[0]->getType(), 0));
-            addToDiffe(orig_ops[0], dif1, Builder2, II.getType());
+            addToDiffe(orig_ops[1], dif1, Builder2, II.getType());
           }
           return;
         }
@@ -1447,7 +1448,7 @@ public:
 
         case Intrinsic::exp: {
           if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
-            Value* dif0 = Builder2.CreateFMul(vdiff, lookup(&II, Builder2));
+            Value* dif0 = Builder2.CreateFMul(vdiff, lookup(gutils->getNewFromOriginal(&II), Builder2));
             addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
           return;
@@ -1455,7 +1456,7 @@ public:
         case Intrinsic::exp2: {
           if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
             Value* dif0 = Builder2.CreateFMul(
-              Builder2.CreateFMul(vdiff, lookup(&II, Builder2)), ConstantFP::get(II.getType(), 0.6931471805599453)
+              Builder2.CreateFMul(vdiff, lookup(gutils->getNewFromOriginal(&II), Builder2)), ConstantFP::get(II.getType(), 0.6931471805599453)
             );
             addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
           }
@@ -1488,7 +1489,7 @@ public:
             Type *tys[] = {ops[1]->getType()};
 
             Value* dif1 = Builder2.CreateFMul(
-              Builder2.CreateFMul(vdiff, lookup(&II, Builder2)),
+              Builder2.CreateFMul(vdiff, lookup(gutils->getNewFromOriginal(&II), Builder2)),
               Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::log, tys), args)
             );
             addToDiffe(orig_ops[1], dif1, Builder2, II.getType());
@@ -1681,7 +1682,7 @@ void calculateUnusedValues(Function& oldFunc, SmallPtrSetImpl<Instruction*> &val
         }
         if (!bad) continue;
 
-        //llvm::errs() << " cannot use value: " << *inst << " because of user " << *user_val << "\n";
+        llvm::errs() << " need to keep instruction: " << *inst << " because of user " << *user_val << "\n";
         necessaryUse = true;
         break;
       }
@@ -1696,13 +1697,14 @@ void calculateUnusedValues(Function& oldFunc, SmallPtrSetImpl<Instruction*> &val
     }
   }
 
-  /*
+  #if 0
   llvm::errs() << "Prepping values for: " << oldFunc.getName() << " returnValue: " << returnValue << "\n";
   for(auto v : valuesOnlyUsedInUnnecessaryReturns) {
     llvm::errs() << "valuesOnlyUsedInUnnecessaryReturns: " << *v << "\n";
   }
   llvm::errs() << "</end>\n";
-  */
+  #endif
+
 }
 
 //! return structtype if recursive function
@@ -2420,10 +2422,16 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         return;
     }
 
+    bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(orig) == valuesOnlyUsedInUnnecessaryReturns.end() || is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false));
+
     if (gutils->isConstantInstruction(orig)) {
-        if (op->getNumUses() != 0 && !op->doesNotAccessMemory() && is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false)) {
-            IRBuilder<> BuilderZ(op);
-            gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
+
+        // If we need this value and it is illegal to recompute it (it writes or may load uncacheable data)
+        //    Store and reload it
+        if (/*!topLevel*/true && subretused && !op->doesNotAccessMemory()) {
+          IRBuilder<> BuilderZ(op);
+          gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self));
+          return;
         }
         return;
     }
@@ -2466,7 +2474,6 @@ void handleAugmentedCallInst(TypeResults &TR, CallInst* op, GradientUtils* const
         }
       }
 
-      bool subretused = (op->getNumUses() != 0) && (valuesOnlyUsedInUnnecessaryReturns.find(orig) == valuesOnlyUsedInUnnecessaryReturns.end() || is_value_needed_in_reverse(TR, gutils, orig, /*topLevel*/false));
       //llvm::errs() << "aug subretused: " << subretused << " op: " << *op << "\n";
 
       //We check uses of the original function as that includes potential uses in the return,
@@ -2996,14 +3003,28 @@ void handleGradientCallInst(TypeResults &TR, IRBuilder <>& Builder2, CallInst* o
 
   //llvm::errs() << " considering op: " << *op << " isConstantInstruction:" << gutils->isConstantInstruction(orig) << " subretused: " << subretused << " !op->doesNotAccessMemory: " << !op->doesNotAccessMemory() << "\n";
   if (gutils->isConstantInstruction(orig)) {
+
+    // If we need this value and it is illegal to recompute it (it writes or may load uncacheable data)
+    //    Store and reload it
     if (!topLevel && subretused && !op->doesNotAccessMemory()) {
-      if (is_value_needed_in_reverse(TR, gutils, orig, topLevel)) {
-        IRBuilder<> BuilderZ(op);
-        gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self) );
-      } else {
-        op->replaceAllUsesWith(UndefValue::get(op->getType()));
-        gutils->erase(op);
-      }
+      IRBuilder<> BuilderZ(op);
+      gutils->addMalloc(BuilderZ, op, getIndex(orig, CacheType::Self));
+      return;
+    }
+
+    // If this call may write to memory and is a copy (in the just reverse pass), erase it
+    //  Any uses of it should be handled by the case above so it is safe to RAUW
+    if (op->mayWriteToMemory() && !topLevel) {
+      op->replaceAllUsesWith(UndefValue::get(op->getType()));
+      gutils->erase(op);
+      return;
+    }
+
+    // if call does not write memory and isn't used, we can erase it
+    if (!op->mayWriteToMemory() && !subretused) {
+      op->replaceAllUsesWith(UndefValue::get(op->getType()));
+      gutils->erase(op);
+      return;
     }
     return;
   }
@@ -3512,10 +3533,20 @@ badfn:;
 
   gutils->erase(op);
 
-  if (augmentcall)
-    gutils->replaceableCalls.insert(augmentcall);
   } else {
-    gutils->replaceableCalls.insert(op);
+
+    if (!subretused) {
+      for(auto inst_orig : valuesOnlyUsedInUnnecessaryReturns) {
+        if (isa<ReturnInst>(inst_orig)) continue;
+        auto inst = gutils->getNewFromOriginal(inst_orig);
+        for(unsigned i=0; i<inst->getNumOperands(); i++) {
+          if (inst->getOperand(i) == op) {
+            inst->setOperand(i, UndefValue::get(inst->getType()));
+          }
+        }
+      }
+      gutils->erase(op);
+    }
   }
 }
 

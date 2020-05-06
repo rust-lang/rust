@@ -1069,12 +1069,12 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
       assert(branch->getCondition()->getType() == T);
 
-      Value* phi = lookupM(branch->getCondition(), BuilderM);
       if (replacePHIs == nullptr) {
           assert(BuilderM.GetInsertBlock()->size() == 0 || !isa<BranchInst>(BuilderM.GetInsertBlock()->back()));
-          BuilderM.CreateCondBr(phi, *done[std::make_pair(block, branch->getSuccessor(0))].begin(), *done[std::make_pair(block, branch->getSuccessor(1))].begin());
+          BuilderM.CreateCondBr(lookupM(branch->getCondition(), BuilderM), *done[std::make_pair(block, branch->getSuccessor(0))].begin(), *done[std::make_pair(block, branch->getSuccessor(1))].begin());
       } else {
           for (auto pair : *replacePHIs) {
+              Value* phi = lookupM(branch->getCondition(), BuilderM);
               Value* val = nullptr;
               if (pair.first == *done[std::make_pair(block, branch->getSuccessor(0))].begin()) {
                   val = phi;
@@ -1102,14 +1102,9 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
       IRBuilder<> pbuilder(equivalentTerminator);
       pbuilder.setFastMathFlags(getFast());
 
-      AllocaInst* cache = createCacheForScope(ctx, si->getCondition()->getType(), "", /*shouldFree*/true);
-      Value* condition = si->getCondition();
-      storeInstructionInCache(ctx, pbuilder, condition, cache);
-
-      Value* phi = lookupM(si->getCondition(), BuilderM);
 
       if (replacePHIs == nullptr) {
-          SwitchInst* swtch = BuilderM.CreateSwitch(phi, *done[std::make_pair(block, si->getDefaultDest())].begin());
+          SwitchInst* swtch = BuilderM.CreateSwitch(lookupM(si->getCondition(), BuilderM), *done[std::make_pair(block, si->getDefaultDest())].begin());
           for (auto switchcase : si->cases()) {
               swtch->addCase(switchcase.getCaseValue(), *done[std::make_pair(block, switchcase.getCaseSuccessor())].begin());
           }
@@ -1117,6 +1112,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
           for (auto pair : *replacePHIs) {
               Value* cas = si->findCaseDest(pair.first);
               Value* val = nullptr;
+              Value* phi = lookupM(si->getCondition(), BuilderM);
               if (cas) {
                   val = BuilderM.CreateICmpEQ(cas, phi);
               } else {

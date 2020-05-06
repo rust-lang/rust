@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -correlated-propagation -early-cse -instsimplify -adce -loop-deletion -simplifycfg -S | FileCheck %s
 
 ; Function Attrs: nounwind readnone speculatable
 declare double @llvm.fabs.f64(double) #1
@@ -106,11 +106,11 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %5 = load double, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"a.addr'ipa", align 8
 ; CHECK-NEXT:   %m0diffea = fmul fast double %5, %a
-; CHECK-NEXT:   %m1diffea = fmul fast double %5, %a
-; CHECK-NEXT:   %6 = fadd fast double %m0diffea, %m1diffea
+; CHECK-NEXT:   %6 = fadd fast double %m0diffea, %m0diffea
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertend:                                        ; preds = %if.true, %if.false
+; TODO ensure propagation
 ; CHECK-NEXT:   %7 = select{{( fast)?}} i1 %cmp, double 0.000000e+00, double %differeturn
 ; CHECK-NEXT:   %8 = select{{( fast)?}} i1 %cmp, double %differeturn, double 0.000000e+00
 ; CHECK-NEXT:   br i1 %cmp, label %invertif.true, label %invertif.false

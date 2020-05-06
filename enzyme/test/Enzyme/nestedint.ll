@@ -882,15 +882,15 @@ attributes #11 = { cold }
 
 ; CHECK: define internal {} @diffesub(double*, double* %"'", i64 %subsize, { { {} } } %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %tobool = icmp eq double* %0, null
-; CHECK-NEXT:   br i1 %tobool, label %[[ifend:.+]], label %invertentry
+; CHECK-NEXT:   %[[tobool:.+]] = icmp eq double* %0, null
+; CHECK-NEXT:   br i1 %[[tobool]], label %[[ifend:.+]], label %invertentry
+
+; CHECK: invertentry:
+; CHECK-NEXT:   ret {} undef
 
 ; CHECK: [[ifend]]:                                           ; preds = %entry
 ; CHECK-NEXT:   %1 = call {} @diffemetasub(double* %0, double* %"'", i64 %subsize, { {} } undef)
 ; CHECK-NEXT:   br label %invertentry
-
-; CHECK: invertentry:                                      ; preds = %entry, %if.end
-; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {} @diffemetasub(double* %array, double* %"array'", i64 %metasize, { {} } %tapeArg)

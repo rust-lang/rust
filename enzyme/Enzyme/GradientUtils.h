@@ -860,7 +860,6 @@ public:
     return isconstantM(TR, val, constants, nonconstant, constant_values, nonconstant_values, AA);
   }
 
-  SmallPtrSet<Instruction*,4> replaceableCalls;
   void eraseStructuralStoresAndCalls() {
 
       for(auto pp : fictiousPHIs) {
@@ -911,13 +910,6 @@ public:
 
           if (auto inti = dyn_cast<IntrinsicInst>(inst)) {
             if (inti->getIntrinsicID() == Intrinsic::memset || inti->getIntrinsicID() == Intrinsic::memcpy || inti->getIntrinsicID() == Intrinsic::memmove) {
-              erase(inst);
-              continue;
-            }
-          }
-          if (replaceableCalls.find(inst) != replaceableCalls.end()) {
-            if (inst->getNumUses() != 0) {
-            } else {
               erase(inst);
               continue;
             }
@@ -1226,6 +1218,7 @@ public:
       //if (isOriginal(op))
       //llvm::errs() << "op: " << *op << " op0: " << *op0 << " SAFE(op,getOperand(0)):" << *SAFE(op, getOperand(0)) << " orig:" << *getOriginal(op) << "\n";
       auto toreturn = BuilderM.CreateCast(op->getOpcode(), op0, op->getDestTy(), op->getName()+"_unwrap");
+      if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
@@ -1234,6 +1227,7 @@ public:
       if (op0 == nullptr) goto endCheck;
       auto toreturn = BuilderM.CreateExtractValue(op0, op->getIndices(), op->getName()+"_unwrap");
       unwrap_cache[cidx] = toreturn;
+      if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
       assert(val->getType() == toreturn->getType());
       return toreturn;
     } else if (auto op = dyn_cast<BinaryOperator>(val)) {
@@ -1242,7 +1236,7 @@ public:
       auto op1 = getOp(SAFE(op,getOperand(1)));
       if (op1 == nullptr) goto endCheck;
       auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1, op->getName()+"_unwrap");
-      cast<BinaryOperator>(toreturn)->copyIRFlags(op);
+      if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
@@ -1251,7 +1245,8 @@ public:
       if (op0 == nullptr) goto endCheck;
       auto op1 = getOp(SAFE(op,getOperand(1)));
       if (op1 == nullptr) goto endCheck;
-      auto toreturn = BuilderM.CreateICmp(op->getPredicate(), op0, op1);
+      auto toreturn = BuilderM.CreateICmp(op->getPredicate(), op0, op1, op->getName()+"_unwrap");
+      if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
@@ -1260,7 +1255,8 @@ public:
       if (op0 == nullptr) goto endCheck;
       auto op1 = getOp(SAFE(op,getOperand(1)));
       if (op1 == nullptr) goto endCheck;
-      auto toreturn = BuilderM.CreateFCmp(op->getPredicate(), op0, op1);
+      auto toreturn = BuilderM.CreateFCmp(op->getPredicate(), op0, op1, op->getName()+"_unwrap");
+      if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
@@ -1272,6 +1268,7 @@ public:
       auto op2 = getOp(SAFE(op,getOperand(2)));
       if (op2 == nullptr) goto endCheck;
       auto toreturn = BuilderM.CreateSelect(op0, op1, op2);
+      if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
@@ -1295,6 +1292,7 @@ public:
         //llvm::errs() << "safe: " << *SAFE(inst, getPointerOperand()) << "\n";
         //assert(0 && "illegal");
       }
+      if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(inst);
       unwrap_cache[cidx] = toreturn;
       assert(val->getType() == toreturn->getType());
       return toreturn;
@@ -1319,6 +1317,7 @@ public:
       }
       assert(idx->getType() == load->getOperand(0)->getType());
       auto toreturn = BuilderM.CreateLoad(idx, load->getName()+"_unwrap");
+      if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(load);
       toreturn->setAlignment(load->getAlignment());
       toreturn->setVolatile(load->isVolatile());
       toreturn->setOrdering(load->getOrdering());
@@ -1336,13 +1335,17 @@ public:
             Value *args[] = {getOp(SAFE(op,getOperand(0)))};
             if (args[0] == nullptr) goto endCheck;
             Type *tys[] = {op->getOperand(0)->getType()};
-            return BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::sin, tys), args);
+            auto toreturn = BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::sin, tys), args);
+            if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
+            return toreturn;
           }
           case Intrinsic::cos: {
             Value *args[] = {getOp(SAFE(op,getOperand(0)))};
             if (args[0] == nullptr) goto endCheck;
             Type *tys[] = {op->getOperand(0)->getType()};
-            return BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::cos, tys), args);
+            auto toreturn = BuilderM.CreateCall(Intrinsic::getDeclaration(op->getParent()->getParent()->getParent(), Intrinsic::cos, tys), args);
+            if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
+            return toreturn;
           }
           default:;
 
@@ -1353,6 +1356,7 @@ public:
           auto toreturn = getOp(SAFE(phi,getIncomingValue(0)));
           if (toreturn == nullptr) goto endCheck;
           assert(val->getType() == toreturn->getType());
+          if (auto newi = dyn_cast<Instruction>(toreturn)) newi->copyIRFlags(op);
           return toreturn;
       }
     }
@@ -1784,6 +1788,9 @@ endCheck:
     }
 
     void storeInstructionInCache(BasicBlock* ctx, IRBuilder <>& BuilderM, Value* val, AllocaInst* cache) {
+        assert(BuilderM.GetInsertBlock()->getParent() == newFunc);
+        if (auto inst = dyn_cast<Instruction>(val))
+          assert(inst->getParent()->getParent() == newFunc);
         IRBuilder <> v(BuilderM);
         v.setFastMathFlags(getFast());
 
