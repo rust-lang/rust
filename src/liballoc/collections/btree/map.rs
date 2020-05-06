@@ -1540,16 +1540,10 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
 
     fn into_iter(self) -> IntoIter<K, V> {
         let mut me = ManuallyDrop::new(self);
-        if let Some(root) = me.root.as_mut() {
-            let root1 = unsafe { ptr::read(root).into_ref() };
-            let root2 = unsafe { ptr::read(root).into_ref() };
-            let len = me.length;
+        if let Some(root) = me.root.take() {
+            let (f, b) = full_range_search(root.into_ref());
 
-            IntoIter {
-                front: Some(root1.first_leaf_edge()),
-                back: Some(root2.last_leaf_edge()),
-                length: len,
-            }
+            IntoIter { front: Some(f), back: Some(b), length: me.length }
         } else {
             IntoIter { front: None, back: None, length: 0 }
         }
@@ -2037,6 +2031,7 @@ where
     }
 }
 
+/// Finds the leaf edges delimiting a specified range in or underneath a node.
 fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeBounds<Q>>(
     root: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     range: R,
@@ -2122,6 +2117,33 @@ where
     }
 }
 
+/// Equivalent to `range_search(k, v, ..)` without the `Ord` bound.
+fn full_range_search<BorrowType, K, V>(
+    root: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
+) -> (
+    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+) {
+    // We duplicate the root NodeRef here -- we will never access it in a way
+    // that overlaps references obtained from the root.
+    let mut min_node = unsafe { ptr::read(&root) };
+    let mut max_node = root;
+    loop {
+        let front = min_node.first_edge();
+        let back = max_node.last_edge();
+        match (front.force(), back.force()) {
+            (Leaf(f), Leaf(b)) => {
+                return (f, b);
+            }
+            (Internal(min_int), Internal(max_int)) => {
+                min_node = min_int.descend();
+                max_node = max_int.descend();
+            }
+            _ => unreachable!("BTreeMap has different depths"),
+        };
+    }
+}
+
 impl<K, V> BTreeMap<K, V> {
     /// Gets an iterator over the entries of the map, sorted by key.
     ///
@@ -2146,12 +2168,12 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, K, V> {
-        Iter {
-            range: Range {
-                front: self.root.as_ref().map(|r| r.as_ref().first_leaf_edge()),
-                back: self.root.as_ref().map(|r| r.as_ref().last_leaf_edge()),
-            },
-            length: self.length,
+        if let Some(root) = &self.root {
+            let (f, b) = full_range_search(root.as_ref());
+
+            Iter { range: Range { front: Some(f), back: Some(b) }, length: self.length }
+        } else {
+            Iter { range: Range { front: None, back: None }, length: 0 }
         }
     }
 
@@ -2178,19 +2200,15 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
-        IterMut {
-            range: if let Some(root) = &mut self.root {
-                let root1 = root.as_mut();
-                let root2 = unsafe { ptr::read(&root1) };
-                RangeMut {
-                    front: Some(root1.first_leaf_edge()),
-                    back: Some(root2.last_leaf_edge()),
-                    _marker: PhantomData,
-                }
-            } else {
-                RangeMut { front: None, back: None, _marker: PhantomData }
-            },
-            length: self.length,
+        if let Some(root) = &mut self.root {
+            let (f, b) = full_range_search(root.as_mut());
+
+            IterMut {
+                range: RangeMut { front: Some(f), back: Some(b), _marker: PhantomData },
+                length: self.length,
+            }
+        } else {
+            IterMut { range: RangeMut { front: None, back: None, _marker: PhantomData }, length: 0 }
         }
     }
 
