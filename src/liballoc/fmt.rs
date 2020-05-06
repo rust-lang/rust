@@ -470,7 +470,7 @@
 //!
 //! ### `format_args!`
 //!
-//! This is a curious macro which is used to safely pass around
+//! This is a curious macro used to safely pass around
 //! an opaque object describing the format string. This object
 //! does not require any heap allocations to create, and it only
 //! references information on the stack. Under the hood, all of
