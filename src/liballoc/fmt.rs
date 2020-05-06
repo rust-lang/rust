@@ -173,9 +173,9 @@
 //!         like `{:08}` would yield `00000001` for the integer `1`, while the
 //!         same format would yield `-0000001` for the integer `-1`. Notice that
 //!         the negative version has one fewer zero than the positive version.
-//!         Note that padding zeroes are always placed after the sign (if any)
+//!         Note that padding zeros are always placed after the sign (if any)
 //!         and before the digits. When used together with the `#` flag, a similar
-//!         rule applies: padding zeroes are inserted after the prefix but before
+//!         rule applies: padding zeros are inserted after the prefix but before
 //!         the digits. The prefix is included in the total width.
 //!
 //! ## Precision
