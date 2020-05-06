@@ -11,7 +11,7 @@ use test_utils::{
     RangeOrOffset,
 };
 
-use crate::{handlers::Handler, resolved_assists, AssistCtx};
+use crate::{handlers::Handler, resolved_assists, AssistContext, Assists};
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
     let (mut db, file_id) = RootDatabase::with_single_file(text);
@@ -71,7 +71,7 @@ enum ExpectedResult<'a> {
     Target(&'a str),
 }
 
-fn check(assist: Handler, before: &str, expected: ExpectedResult) {
+fn check(handler: Handler, before: &str, expected: ExpectedResult) {
     let (text_without_caret, file_with_caret_id, range_or_offset, db) = if before.contains("//-") {
         let (mut db, position) = RootDatabase::with_position(before);
         db.set_local_roots(Arc::new(vec![db.file_source_root(position.file_id)]));
@@ -90,17 +90,20 @@ fn check(assist: Handler, before: &str, expected: ExpectedResult) {
     let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
 
     let sema = Semantics::new(&db);
-    let assist_ctx = AssistCtx::new(&sema, frange, true);
-
-    match (assist(assist_ctx), expected) {
+    let ctx = AssistContext::new(sema, frange);
+    let mut acc = Assists::new_resolved(&ctx);
+    handler(&mut acc, &ctx);
+    let mut res = acc.finish_resolved();
+    let assist = res.pop();
+    match (assist, expected) {
         (Some(assist), ExpectedResult::After(after)) => {
-            let mut action = assist.0[0].source_change.clone().unwrap();
-            let change = action.source_file_edits.pop().unwrap();
+            let mut source_change = assist.source_change;
+            let change = source_change.source_file_edits.pop().unwrap();
 
             let mut actual = db.file_text(change.file_id).as_ref().to_owned();
             change.edit.apply(&mut actual);
 
-            match action.cursor_position {
+            match source_change.cursor_position {
                 None => {
                     if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {
                         let off = change
@@ -116,7 +119,7 @@ fn check(assist: Handler, before: &str, expected: ExpectedResult) {
             assert_eq_text!(after, &actual);
         }
         (Some(assist), ExpectedResult::Target(target)) => {
-            let range = assist.0[0].label.target;
+            let range = assist.label.target;
             assert_eq_text!(&text_without_caret[range], target);
         }
         (Some(_), ExpectedResult::NotApplicable) => panic!("assist should not be applicable!"),

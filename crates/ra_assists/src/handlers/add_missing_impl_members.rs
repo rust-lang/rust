@@ -9,9 +9,10 @@ use ra_syntax::{
 };
 
 use crate::{
+    assist_context::{AssistContext, Assists},
     ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
     utils::{get_missing_assoc_items, resolve_target_trait},
-    Assist, AssistCtx, AssistId,
+    AssistId,
 };
 
 #[derive(PartialEq)]
@@ -50,8 +51,9 @@ enum AddMissingImplMembersMode {
 //
 // }
 // ```
-pub(crate) fn add_missing_impl_members(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     add_missing_impl_members_inner(
+        acc,
         ctx,
         AddMissingImplMembersMode::NoDefaultMethods,
         "add_impl_missing_members",
@@ -91,8 +93,9 @@ pub(crate) fn add_missing_impl_members(ctx: AssistCtx) -> Option<Assist> {
 //
 // }
 // ```
-pub(crate) fn add_missing_default_members(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_missing_default_members(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     add_missing_impl_members_inner(
+        acc,
         ctx,
         AddMissingImplMembersMode::DefaultMethodsOnly,
         "add_impl_default_members",
@@ -101,11 +104,12 @@ pub(crate) fn add_missing_default_members(ctx: AssistCtx) -> Option<Assist> {
 }
 
 fn add_missing_impl_members_inner(
-    ctx: AssistCtx,
+    acc: &mut Assists,
+    ctx: &AssistContext,
     mode: AddMissingImplMembersMode,
     assist_id: &'static str,
     label: &'static str,
-) -> Option<Assist> {
+) -> Option<()> {
     let _p = ra_prof::profile("add_missing_impl_members_inner");
     let impl_def = ctx.find_node_at_offset::<ast::ImplDef>()?;
     let impl_item_list = impl_def.item_list()?;
@@ -142,12 +146,11 @@ fn add_missing_impl_members_inner(
         return None;
     }
 
-    let sema = ctx.sema;
     let target = impl_def.syntax().text_range();
-    ctx.add_assist(AssistId(assist_id), label, target, |edit| {
+    acc.add(AssistId(assist_id), label, target, |edit| {
         let n_existing_items = impl_item_list.assoc_items().count();
-        let source_scope = sema.scope_for_def(trait_);
-        let target_scope = sema.scope(impl_item_list.syntax());
+        let source_scope = ctx.sema.scope_for_def(trait_);
+        let target_scope = ctx.sema.scope(impl_item_list.syntax());
         let ast_transform = QualifyPaths::new(&target_scope, &source_scope)
             .or(SubstituteTypeParams::for_trait_impl(&source_scope, trait_, impl_def));
         let items = missing_items
@@ -170,13 +173,12 @@ fn add_missing_impl_members_inner(
 }
 
 fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
-    if fn_def.body().is_none() {
-        let body = make::block_expr(None, Some(make::expr_todo()));
-        let body = IndentLevel(1).increase_indent(body);
-        fn_def.with_body(body)
-    } else {
-        fn_def
+    if fn_def.body().is_some() {
+        return fn_def;
     }
+    let body = make::block_expr(None, Some(make::expr_todo()));
+    let body = IndentLevel(1).increase_indent(body);
+    fn_def.with_body(body)
 }
 
 #[cfg(test)]

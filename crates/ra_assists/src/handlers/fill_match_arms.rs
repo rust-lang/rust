@@ -5,7 +5,7 @@ use itertools::Itertools;
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: fill_match_arms
 //
@@ -31,7 +31,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     }
 // }
 // ```
-pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let match_expr = ctx.find_node_at_offset::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
 
@@ -93,7 +93,7 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
     }
 
     let target = match_expr.syntax().text_range();
-    ctx.add_assist(AssistId("fill_match_arms"), "Fill match arms", target, |edit| {
+    acc.add(AssistId("fill_match_arms"), "Fill match arms", target, |edit| {
         let new_arm_list = match_arm_list.remove_placeholder().append_arms(missing_arms);
         edit.set_cursor(expr.syntax().text_range().start());
         edit.replace_ast(match_arm_list, new_arm_list);

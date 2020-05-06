@@ -9,11 +9,7 @@ use ra_syntax::{
     AstNode, T,
 };
 
-use crate::{
-    assist_ctx::{Assist, AssistCtx},
-    utils::TryEnum,
-    AssistId,
-};
+use crate::{utils::TryEnum, AssistContext, AssistId, Assists};
 
 // Assist: replace_let_with_if_let
 //
@@ -39,16 +35,16 @@ use crate::{
 //
 // fn compute() -> Option<i32> { None }
 // ```
-pub(crate) fn replace_let_with_if_let(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let let_kw = ctx.find_token_at_offset(T![let])?;
     let let_stmt = let_kw.ancestors().find_map(ast::LetStmt::cast)?;
     let init = let_stmt.initializer()?;
     let original_pat = let_stmt.pat()?;
     let ty = ctx.sema.type_of_expr(&init)?;
-    let happy_variant = TryEnum::from_ty(ctx.sema, &ty).map(|it| it.happy_case());
+    let happy_variant = TryEnum::from_ty(&ctx.sema, &ty).map(|it| it.happy_case());
 
     let target = let_kw.text_range();
-    ctx.add_assist(AssistId("replace_let_with_if_let"), "Replace with if-let", target, |edit| {
+    acc.add(AssistId("replace_let_with_if_let"), "Replace with if-let", target, |edit| {
         let with_placeholder: ast::Pat = match happy_variant {
             None => make::placeholder_pat().into(),
             Some(var_name) => make::tuple_struct_pat(

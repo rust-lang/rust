@@ -1,11 +1,7 @@
 use hir;
 use ra_syntax::{ast, AstNode, SmolStr, TextRange};
 
-use crate::{
-    assist_ctx::{Assist, AssistCtx},
-    utils::insert_use_statement,
-    AssistId,
-};
+use crate::{utils::insert_use_statement, AssistContext, AssistId, Assists};
 
 // Assist: replace_qualified_name_with_use
 //
@@ -20,7 +16,10 @@ use crate::{
 //
 // fn process(map: HashMap<String, String>) {}
 // ```
-pub(crate) fn replace_qualified_name_with_use(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn replace_qualified_name_with_use(
+    acc: &mut Assists,
+    ctx: &AssistContext,
+) -> Option<()> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
     if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
@@ -34,18 +33,18 @@ pub(crate) fn replace_qualified_name_with_use(ctx: AssistCtx) -> Option<Assist> 
     }
 
     let target = path.syntax().text_range();
-    ctx.add_assist(
+    acc.add(
         AssistId("replace_qualified_name_with_use"),
         "Replace qualified path with use",
         target,
-        |edit| {
+        |builder| {
             let path_to_import = hir_path.mod_path().clone();
-            insert_use_statement(path.syntax(), &path_to_import, edit);
+            insert_use_statement(path.syntax(), &path_to_import, ctx, builder);
 
             if let Some(last) = path.segment() {
                 // Here we are assuming the assist will provide a correct use statement
                 // so we can delete the path qualifier
-                edit.delete(TextRange::new(
+                builder.delete(TextRange::new(
                     path.syntax().text_range().start(),
                     last.syntax().text_range().start(),
                 ));
