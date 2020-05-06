@@ -129,6 +129,7 @@ mod handlers {
     mod replace_qualified_name_with_use;
     mod replace_unwrap_with_match;
     mod split_import;
+    mod change_return_type_to_result;
     mod add_from_impl_for_enum;
     mod reorder_fields;
     mod unwrap_block;
@@ -145,6 +146,7 @@ mod handlers {
             add_new::add_new,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
+            change_return_type_to_result::change_return_type_to_result,
             change_visibility::change_visibility,
             early_return::convert_to_guarded_return,
             fill_match_arms::fill_match_arms,
