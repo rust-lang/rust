@@ -56,6 +56,9 @@ pub struct CargoConfig {
 
     /// Runs cargo check on launch to figure out the correct values of OUT_DIR
     pub load_out_dirs_from_check: bool,
+
+    /// rustc target
+    pub target: Option<String>,
 }
 
 impl Default for CargoConfig {
@@ -65,6 +68,7 @@ impl Default for CargoConfig {
             all_features: true,
             features: Vec::new(),
             load_out_dirs_from_check: false,
+            target: None,
         }
     }
 }
@@ -159,6 +163,9 @@ impl CargoWorkspace {
         }
         if let Some(parent) = cargo_toml.parent() {
             meta.current_dir(parent);
+        }
+        if let Some(target) = cargo_features.target.as_ref() {
+            meta.other_options(&[String::from("--filter-platform"), target.clone()]);
         }
         let meta = meta.exec().with_context(|| {
             format!("Failed to run `cargo metadata --manifest-path {}`", cargo_toml.display())

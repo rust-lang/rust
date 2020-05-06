@@ -33,7 +33,6 @@
         "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src --fix"
     },
     "dependencies": {
-        "jsonc-parser": "^2.2.1",
         "node-fetch": "^2.6.0",
         "vscode-languageclient": "7.0.0-next.1"
     },
@@ -233,6 +232,14 @@
                     "default": false,
                     "markdownDescription": "Run `cargo check` on startup to get the correct value for package OUT_DIRs"
                 },
+                "rust-analyzer.cargo.target": {
+                    "type": [
+                        "null",
+                        "string"
+                    ],
+                    "default": null,
+                    "description": "Specify the compilation target"
+                },
                 "rust-analyzer.rustfmt.extraArgs": {
                     "type": "array",
                     "items": {
@@ -287,6 +294,11 @@
                     "type": "boolean",
                     "default": true,
                     "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)"
+                },
+                "rust-analyzer.checkOnSave.allFeatures": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Check with all features (will be passed as `--all-features`)"
                 },
                 "rust-analyzer.inlayHints.typeHints": {
                     "type": "boolean",

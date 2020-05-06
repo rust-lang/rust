@@ -142,10 +142,13 @@ mod tests {
     fn do_type_char(char_typed: char, before: &str) -> Option<(String, SingleFileChange)> {
         let (offset, before) = extract_offset(before);
         let edit = TextEdit::insert(offset, char_typed.to_string());
-        let before = edit.apply(&before);
+        let mut before = before.to_string();
+        edit.apply(&mut before);
         let parse = SourceFile::parse(&before);
-        on_char_typed_inner(&parse.tree(), offset, char_typed)
-            .map(|it| (it.edit.apply(&before), it))
+        on_char_typed_inner(&parse.tree(), offset, char_typed).map(|it| {
+            it.edit.apply(&mut before);
+            (before.to_string(), it)
+        })
     }
 
     fn type_char(char_typed: char, before: &str, after: &str) {

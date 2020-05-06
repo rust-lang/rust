@@ -401,16 +401,22 @@ fn render_replace(
     ignored_comments: &Vec<Comment>,
     template: &SsrTemplate,
 ) -> String {
-    let mut builder = TextEditBuilder::default();
-    for element in template.template.descendants() {
-        if let Some(var) = template.placeholders.get(&element) {
-            builder.replace(element.text_range(), binding[var].to_string())
+    let edit = {
+        let mut builder = TextEditBuilder::default();
+        for element in template.template.descendants() {
+            if let Some(var) = template.placeholders.get(&element) {
+                builder.replace(element.text_range(), binding[var].to_string())
+            }
         }
-    }
-    for comment in ignored_comments {
-        builder.insert(template.template.text_range().end(), comment.syntax().to_string())
-    }
-    builder.finish().apply(&template.template.text().to_string())
+        for comment in ignored_comments {
+            builder.insert(template.template.text_range().end(), comment.syntax().to_string())
+        }
+        builder.finish()
+    };
+
+    let mut text = template.template.text().to_string();
+    edit.apply(&mut text);
+    text
 }
 
 #[cfg(test)]
@@ -505,7 +511,9 @@ mod tests {
         );
 
         let edit = replace(&matches, &query.template);
-        assert_eq!(edit.apply(input), "fn main() { bar(1+2); }");
+        let mut after = input.to_string();
+        edit.apply(&mut after);
+        assert_eq!(after, "fn main() { bar(1+2); }");
     }
 
     fn assert_ssr_transform(query: &str, input: &str, result: &str) {
@@ -513,7 +521,9 @@ mod tests {
         let code = SourceFile::parse(input).tree();
         let matches = find(&query.pattern, code.syntax());
         let edit = replace(&matches, &query.template);
-        assert_eq!(edit.apply(input), result);
+        let mut after = input.to_string();
+        edit.apply(&mut after);
+        assert_eq!(after, result);
     }
 
     #[test]

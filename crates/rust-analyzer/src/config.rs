@@ -89,6 +89,7 @@ impl Default for Config {
             check: Some(FlycheckConfig::CargoCommand {
                 command: "check".to_string(),
                 all_targets: true,
+                all_features: true,
                 extra_args: Vec::new(),
             }),
 
@@ -131,6 +132,7 @@ impl Config {
         set(value, "/cargo/allFeatures", &mut self.cargo.all_features);
         set(value, "/cargo/features", &mut self.cargo.features);
         set(value, "/cargo/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
+        set(value, "/cargo/target", &mut self.cargo.target);
 
         match get(value, "/procMacro/enable") {
             Some(true) => {
@@ -172,12 +174,13 @@ impl Config {
                 }
                 // otherwise configure command customizations
                 _ => {
-                    if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets })
+                    if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets, all_features })
                         = &mut self.check
                     {
                         set(value, "/checkOnSave/extraArgs", extra_args);
                         set(value, "/checkOnSave/command", command);
                         set(value, "/checkOnSave/allTargets", all_targets);
+                        set(value, "/checkOnSave/allFeatures", all_features);
                     }
                 }
             };

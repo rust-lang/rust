@@ -131,7 +131,7 @@ impl WorldState {
 
         // FIXME: Read default cfgs from config
         let default_cfg_options = {
-            let mut opts = get_rustc_cfg_options();
+            let mut opts = get_rustc_cfg_options(config.cargo.target.as_ref());
             opts.insert_atom("test".into());
             opts.insert_atom("debug_assertion".into());
             opts

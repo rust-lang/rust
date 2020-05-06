@@ -63,7 +63,7 @@ pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, Toke
 // * Items(SmallVec<[P<ast::Item>; 1]>)     -> token_tree_to_items
 //
 // * TraitItems(SmallVec<[ast::TraitItem; 1]>)
-// * ImplItems(SmallVec<[ast::ImplItem; 1]>)
+// * AssocItems(SmallVec<[ast::AssocItem; 1]>)
 // * ForeignItems(SmallVec<[ast::ForeignItem; 1]>
 
 pub fn token_tree_to_syntax_node(

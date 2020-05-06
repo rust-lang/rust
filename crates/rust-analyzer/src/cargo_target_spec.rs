@@ -27,7 +27,7 @@ impl CargoTargetSpec {
             RunnableKind::Test { test_id, attr } => {
                 args.push("test".to_string());
                 if let Some(spec) = spec {
-                    spec.push_to(&mut args);
+                    spec.push_to(&mut args, kind);
                 }
                 extra_args.push(test_id.to_string());
                 if let TestId::Path(_) = test_id {
@@ -35,13 +35,13 @@ impl CargoTargetSpec {
                 }
                 extra_args.push("--nocapture".to_string());
                 if attr.ignore {
-                    extra_args.push("--ignored".to_string())
+                    extra_args.push("--ignored".to_string());
                 }
             }
             RunnableKind::TestMod { path } => {
                 args.push("test".to_string());
                 if let Some(spec) = spec {
-                    spec.push_to(&mut args);
+                    spec.push_to(&mut args, kind);
                 }
                 extra_args.push(path.to_string());
                 extra_args.push("--nocapture".to_string());
@@ -49,7 +49,7 @@ impl CargoTargetSpec {
             RunnableKind::Bench { test_id } => {
                 args.push("bench".to_string());
                 if let Some(spec) = spec {
-                    spec.push_to(&mut args);
+                    spec.push_to(&mut args, kind);
                 }
                 extra_args.push(test_id.to_string());
                 if let TestId::Path(_) = test_id {
@@ -57,10 +57,19 @@ impl CargoTargetSpec {
                 }
                 extra_args.push("--nocapture".to_string());
             }
+            RunnableKind::DocTest { test_id } => {
+                args.push("test".to_string());
+                args.push("--doc".to_string());
+                if let Some(spec) = spec {
+                    spec.push_to(&mut args, kind);
+                }
+                extra_args.push(test_id.to_string());
+                extra_args.push("--nocapture".to_string());
+            }
             RunnableKind::Bin => {
                 args.push("run".to_string());
                 if let Some(spec) = spec {
-                    spec.push_to(&mut args);
+                    spec.push_to(&mut args, kind);
                 }
             }
         }
@@ -91,9 +100,14 @@ impl CargoTargetSpec {
         Ok(res)
     }
 
-    pub(crate) fn push_to(self, buf: &mut Vec<String>) {
+    pub(crate) fn push_to(self, buf: &mut Vec<String>, kind: &RunnableKind) {
         buf.push("--package".to_string());
         buf.push(self.package);
+
+        // Can't mix --doc with other target flags
+        if let RunnableKind::DocTest { .. } = kind {
+            return;
+        }
         match self.target_kind {
             TargetKind::Bin => {
                 buf.push("--bin".to_string());

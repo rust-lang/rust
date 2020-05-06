@@ -569,7 +569,11 @@ fn foo() {
         let (sel, before) = extract_range(before);
         let parse = SourceFile::parse(&before);
         let result = join_lines(&parse.tree(), sel);
-        let actual = result.apply(&before);
+        let actual = {
+            let mut actual = before.to_string();
+            result.apply(&mut actual);
+            actual
+        };
         assert_eq_text!(after, &actual);
     }
 

@@ -57,7 +57,11 @@ To disable this notification put the following to `settings.json`
 ----
 ====
 
-The server binary is stored in `~/.config/Code/User/globalStorage/matklad.rust-analyzer` (Linux) or in `~/.Library/Application Support/Code/User/globalStorage/matklad.rust-analyzer` (macOS) or in `%APPDATA%\Code\User\globalStorage` (Windows).
+The server binary is stored in:
+
+* Linux: `~/.config/Code/User/globalStorage/matklad.rust-analyzer`
+* macOS: `~/Library/Application Support/Code/User/globalStorage/matklad.rust-analyzer`
+* Windows: `%APPDATA%\Code\User\globalStorage`
 
 Note that we only support the latest version of VS Code.
 
@@ -159,11 +163,11 @@ Emacs support is maintained as part of the https://github.com/emacs-lsp/lsp-mode
 3. Run `lsp` in a Rust buffer.
 4. (Optionally) bind commands like `lsp-rust-analyzer-join-lines`, `lsp-extend-selection` and `lsp-rust-analyzer-expand-macro` to keys.
 
-=== Vim
+=== Vim/NeoVim
 
-Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
+Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>. Not needed if the extension can install/update it on its own, coc-rust-analyzer is one example.
 
-The are several LSP client implementations for vim:
+The are several LSP client implementations for vim or neovim:
 
 ==== coc-rust-analyzer
 

@@ -9,6 +9,7 @@ use ra_syntax::{
 };
 
 use crate::FileId;
+use ast::DocCommentsOwner;
 use std::fmt::Display;
 
 #[derive(Debug)]
@@ -37,6 +38,7 @@ pub enum RunnableKind {
     Test { test_id: TestId, attr: TestAttr },
     TestMod { path: String },
     Bench { test_id: TestId },
+    DocTest { test_id: TestId },
     Bin,
 }
 
@@ -81,6 +83,8 @@ fn runnable_fn(sema: &Semantics<RootDatabase>, fn_def: ast::FnDef) -> Option<Run
             RunnableKind::Test { test_id, attr }
         } else if fn_def.has_atom_attr("bench") {
             RunnableKind::Bench { test_id }
+        } else if has_doc_test(&fn_def) {
+            RunnableKind::DocTest { test_id }
         } else {
             return None;
         }
@@ -115,6 +119,10 @@ fn has_test_related_attribute(fn_def: &ast::FnDef) -> bool {
         .filter_map(|attr| attr.path())
         .map(|path| path.syntax().to_string().to_lowercase())
         .any(|attribute_text| attribute_text.contains("test"))
+}
+
+fn has_doc_test(fn_def: &ast::FnDef) -> bool {
+    fn_def.doc_comment_text().map_or(false, |comment| comment.contains("```"))
 }
 
 fn runnable_mod(sema: &Semantics<RootDatabase>, module: ast::Module) -> Option<Runnable> {
@@ -187,6 +195,41 @@ mod tests {
                     attr: TestAttr {
                         ignore: true,
                     },
+                },
+            },
+        ]
+        "###
+                );
+    }
+
+    #[test]
+    fn test_runnables_doc_test() {
+        let (analysis, pos) = analysis_and_position(
+            r#"
+        //- /lib.rs
+        <|> //empty
+        fn main() {}
+
+        /// ```
+        /// let x = 5;
+        /// ```
+        fn foo() {}
+        "#,
+        );
+        let runnables = analysis.runnables(pos.file_id).unwrap();
+        assert_debug_snapshot!(&runnables,
+        @r###"
+        [
+            Runnable {
+                range: 1..21,
+                kind: Bin,
+            },
+            Runnable {
+                range: 22..64,
+                kind: DocTest {
+                    test_id: Path(
+                        "foo",
+                    ),
                 },
             },
         ]

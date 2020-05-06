@@ -162,8 +162,7 @@ impl ExprCollector<'_> {
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
         let syntax_ptr = AstPtr::new(&expr);
-        let attrs = self.expander.parse_attrs(&expr);
-        if !self.expander.is_cfg_enabled(&attrs) {
+        if !self.expander.is_cfg_enabled(&expr) {
             return self.missing_expr();
         }
         match expr {
@@ -329,8 +328,7 @@ impl ExprCollector<'_> {
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
                         .filter_map(|field| {
-                            let attrs = self.expander.parse_attrs(&field);
-                            if !self.expander.is_cfg_enabled(&attrs) {
+                            if !self.expander.is_cfg_enabled(&field) {
                                 return None;
                             }
                             let name = field.field_name()?.as_name();
@@ -575,9 +573,16 @@ impl ExprCollector<'_> {
             self.body.item_scope.define_def(def);
             if let Some(name) = name {
                 let vis = crate::visibility::Visibility::Public; // FIXME determine correctly
-                self.body
-                    .item_scope
-                    .push_res(name.as_name(), crate::per_ns::PerNs::from_def(def, vis));
+                let has_constructor = match def {
+                    ModuleDefId::AdtId(AdtId::StructId(s)) => {
+                        self.db.struct_data(s).variant_data.kind() != StructKind::Record
+                    }
+                    _ => true,
+                };
+                self.body.item_scope.push_res(
+                    name.as_name(),
+                    crate::per_ns::PerNs::from_def(def, vis, has_constructor),
+                );
             }
         }
     }

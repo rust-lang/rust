@@ -830,7 +830,7 @@ impl ModCollector<'_, '_> {
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: res };
         let def: ModuleDefId = module.into();
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
-        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis))], vis);
+        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis, false))], vis);
         res
     }
 
@@ -844,6 +844,8 @@ impl ModCollector<'_, '_> {
         let name = def.name.clone();
         let container = ContainerId::ModuleId(module);
         let vis = &def.visibility;
+        let mut has_constructor = false;
+
         let def: ModuleDefId = match def.kind {
             raw::DefKind::Function(ast_id) => FunctionLoc {
                 container: container.into(),
@@ -851,7 +853,8 @@ impl ModCollector<'_, '_> {
             }
             .intern(self.def_collector.db)
             .into(),
-            raw::DefKind::Struct(ast_id) => {
+            raw::DefKind::Struct(ast_id, mode) => {
+                has_constructor = mode != raw::StructDefKind::Record;
                 StructLoc { container, ast_id: AstId::new(self.file_id, ast_id) }
                     .intern(self.def_collector.db)
                     .into()
@@ -894,7 +897,11 @@ impl ModCollector<'_, '_> {
             .def_map
             .resolve_visibility(self.def_collector.db, self.module_id, vis)
             .unwrap_or(Visibility::Public);
-        self.def_collector.update(self.module_id, &[(name, PerNs::from_def(def, vis))], vis)
+        self.def_collector.update(
+            self.module_id,
+            &[(name, PerNs::from_def(def, vis, has_constructor))],
+            vis,
+        )
     }
 
     fn collect_derives(&mut self, attrs: &Attrs, def: &raw::DefData) {

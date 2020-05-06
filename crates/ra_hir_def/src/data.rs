@@ -9,7 +9,7 @@ use hir_expand::{
 };
 use ra_prof::profile;
 use ra_syntax::ast::{
-    self, AstNode, ImplItem, ModuleItemOwner, NameOwner, TypeAscriptionOwner, TypeBoundsOwner,
+    self, AssocItem, AstNode, ModuleItemOwner, NameOwner, TypeAscriptionOwner, TypeBoundsOwner,
     VisibilityOwner,
 };
 
@@ -164,7 +164,7 @@ impl TraitData {
             items.extend(collect_items(
                 db,
                 &mut expander,
-                item_list.impl_items(),
+                item_list.assoc_items(),
                 src.file_id,
                 container,
             ));
@@ -219,7 +219,7 @@ impl ImplData {
         if let Some(item_list) = src.value.item_list() {
             let mut expander = Expander::new(db, impl_loc.ast_id.file_id, module_id);
             items.extend(
-                collect_items(db, &mut expander, item_list.impl_items(), src.file_id, container)
+                collect_items(db, &mut expander, item_list.assoc_items(), src.file_id, container)
                     .into_iter()
                     .map(|(_, item)| item),
             );
@@ -304,7 +304,7 @@ fn collect_items_in_macro(
         let mut res = collect_items(
             db,
             expander,
-            items.value.items().filter_map(|it| ImplItem::cast(it.syntax().clone())),
+            items.value.items().filter_map(|it| AssocItem::cast(it.syntax().clone())),
             items.file_id,
             container,
         );
@@ -325,31 +325,30 @@ fn collect_items_in_macro(
 fn collect_items(
     db: &dyn DefDatabase,
     expander: &mut Expander,
-    impl_items: impl Iterator<Item = ImplItem>,
+    assoc_items: impl Iterator<Item = AssocItem>,
     file_id: crate::HirFileId,
     container: AssocContainerId,
 ) -> Vec<(Name, AssocItemId)> {
     let items = db.ast_id_map(file_id);
 
-    impl_items
+    assoc_items
         .filter_map(|item_node| match item_node {
-            ast::ImplItem::FnDef(it) => {
+            ast::AssocItem::FnDef(it) => {
                 let name = it.name().map_or_else(Name::missing, |it| it.as_name());
-                let attrs = expander.parse_attrs(&it);
-                if !expander.is_cfg_enabled(&attrs) {
+                if !expander.is_cfg_enabled(&it) {
                     return None;
                 }
                 let def = FunctionLoc { container, ast_id: AstId::new(file_id, items.ast_id(&it)) }
                     .intern(db);
                 Some((name, def.into()))
             }
-            ast::ImplItem::ConstDef(it) => {
+            ast::AssocItem::ConstDef(it) => {
                 let name = it.name().map_or_else(Name::missing, |it| it.as_name());
                 let def = ConstLoc { container, ast_id: AstId::new(file_id, items.ast_id(&it)) }
                     .intern(db);
                 Some((name, def.into()))
             }
-            ast::ImplItem::TypeAliasDef(it) => {
+            ast::AssocItem::TypeAliasDef(it) => {
                 let name = it.name().map_or_else(Name::missing, |it| it.as_name());
                 let def =
                     TypeAliasLoc { container, ast_id: AstId::new(file_id, items.ast_id(&it)) }

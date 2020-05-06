@@ -118,11 +118,12 @@ fn lower_enum(
     module_id: ModuleId,
 ) {
     let expander = CfgExpander::new(db, ast.file_id, module_id.krate);
-    let variants =
-        ast.value.variant_list().into_iter().flat_map(|it| it.variants()).filter(|var| {
-            let attrs = expander.parse_attrs(var);
-            expander.is_cfg_enabled(&attrs)
-        });
+    let variants = ast
+        .value
+        .variant_list()
+        .into_iter()
+        .flat_map(|it| it.variants())
+        .filter(|var| expander.is_cfg_enabled(var));
     for var in variants {
         trace.alloc(
             || var.clone(),
@@ -215,8 +216,7 @@ fn lower_struct(
     match &ast.value {
         ast::StructKind::Tuple(fl) => {
             for (i, fd) in fl.fields().enumerate() {
-                let attrs = expander.parse_attrs(&fd);
-                if !expander.is_cfg_enabled(&attrs) {
+                if !expander.is_cfg_enabled(&fd) {
                     continue;
                 }
 
@@ -233,8 +233,7 @@ fn lower_struct(
         }
         ast::StructKind::Record(fl) => {
             for fd in fl.fields() {
-                let attrs = expander.parse_attrs(&fd);
-                if !expander.is_cfg_enabled(&attrs) {
+                if !expander.is_cfg_enabled(&fd) {
                     continue;
                 }
 

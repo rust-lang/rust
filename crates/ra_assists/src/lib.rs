@@ -17,13 +17,13 @@ mod doc_tests;
 pub mod utils;
 pub mod ast_transform;
 
+use hir::Semantics;
 use ra_db::{FileId, FileRange};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{TextRange, TextSize};
 use ra_text_edit::TextEdit;
 
-pub(crate) use crate::assist_ctx::{Assist, AssistCtx, AssistHandler};
-use hir::Semantics;
+pub(crate) use crate::assist_ctx::{Assist, AssistCtx};
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
@@ -32,19 +32,20 @@ pub struct AssistId(pub &'static str);
 
 #[derive(Debug, Clone)]
 pub struct AssistLabel {
+    pub id: AssistId,
     /// Short description of the assist, as shown in the UI.
     pub label: String,
-    pub id: AssistId,
+    pub group: Option<GroupLabel>,
 }
 
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);
 
 impl AssistLabel {
-    pub(crate) fn new(label: String, id: AssistId) -> AssistLabel {
+    pub(crate) fn new(id: AssistId, label: String, group: Option<GroupLabel>) -> AssistLabel {
         // FIXME: make fields private, so that this invariant can't be broken
         assert!(label.starts_with(|c: char| c.is_uppercase()));
-        AssistLabel { label, id }
+        AssistLabel { id, label, group }
     }
 }
 
@@ -60,7 +61,6 @@ pub struct AssistAction {
 #[derive(Debug, Clone)]
 pub struct ResolvedAssist {
     pub label: AssistLabel,
-    pub group_label: Option<GroupLabel>,
     pub action: AssistAction,
 }
 
@@ -109,7 +109,9 @@ pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssi
 }
 
 mod handlers {
-    use crate::AssistHandler;
+    use crate::{Assist, AssistCtx};
+
+    pub(crate) type Handler = fn(AssistCtx) -> Option<Assist>;
 
     mod add_custom_impl;
     mod add_derive;
@@ -145,12 +147,13 @@ mod handlers {
     mod reorder_fields;
     mod unwrap_block;
 
-    pub(crate) fn all() -> &'static [AssistHandler] {
+    pub(crate) fn all() -> &'static [Handler] {
         &[
             // These are alphabetic for the foolish consistency
             add_custom_impl::add_custom_impl,
             add_derive::add_derive,
             add_explicit_type::add_explicit_type,
+            add_from_impl_for_enum::add_from_impl_for_enum,
             add_function::add_function,
             add_impl::add_impl,
             add_new::add_new,
@@ -176,17 +179,18 @@ mod handlers {
             raw_string::remove_hash,
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
+            reorder_fields::reorder_fields,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_let_with_if_let::replace_let_with_if_let,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
-            add_from_impl_for_enum::add_from_impl_for_enum,
             unwrap_block::unwrap_block,
             // These are manually sorted for better priorities
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
-            reorder_fields::reorder_fields,
+            // Are you sure you want to add new assist here, and not to the
+            // sorted list above?
         ]
     }
 }
@@ -195,12 +199,12 @@ mod handlers {
 mod helpers {
     use std::sync::Arc;
 
+    use hir::Semantics;
     use ra_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
     use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
     use test_utils::{add_cursor, assert_eq_text, extract_range_or_offset, RangeOrOffset};
 
-    use crate::{AssistCtx, AssistFile, AssistHandler};
-    use hir::Semantics;
+    use crate::{handlers::Handler, AssistCtx, AssistFile};
 
     pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
         let (mut db, file_id) = RootDatabase::with_single_file(text);
@@ -210,22 +214,18 @@ mod helpers {
         (db, file_id)
     }
 
-    pub(crate) fn check_assist(
-        assist: AssistHandler,
-        ra_fixture_before: &str,
-        ra_fixture_after: &str,
-    ) {
+    pub(crate) fn check_assist(assist: Handler, ra_fixture_before: &str, ra_fixture_after: &str) {
         check(assist, ra_fixture_before, ExpectedResult::After(ra_fixture_after));
     }
 
     // FIXME: instead of having a separate function here, maybe use
     // `extract_ranges` and mark the target as `<target> </target>` in the
     // fixuture?
-    pub(crate) fn check_assist_target(assist: AssistHandler, ra_fixture: &str, target: &str) {
+    pub(crate) fn check_assist_target(assist: Handler, ra_fixture: &str, target: &str) {
         check(assist, ra_fixture, ExpectedResult::Target(target));
     }
 
-    pub(crate) fn check_assist_not_applicable(assist: AssistHandler, ra_fixture: &str) {
+    pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
         check(assist, ra_fixture, ExpectedResult::NotApplicable);
     }
 
@@ -235,7 +235,7 @@ mod helpers {
         Target(&'a str),
     }
 
-    fn check(assist: AssistHandler, before: &str, expected: ExpectedResult) {
+    fn check(assist: Handler, before: &str, expected: ExpectedResult) {
         let (text_without_caret, file_with_caret_id, range_or_offset, db) =
             if before.contains("//-") {
                 let (mut db, position) = RootDatabase::with_position(before);
@@ -261,13 +261,13 @@ mod helpers {
             (Some(assist), ExpectedResult::After(after)) => {
                 let action = assist.0[0].action.clone().unwrap();
 
-                let assisted_file_text = if let AssistFile::TargetFile(file_id) = action.file {
+                let mut actual = if let AssistFile::TargetFile(file_id) = action.file {
                     db.file_text(file_id).as_ref().to_owned()
                 } else {
                     text_without_caret
                 };
+                action.edit.apply(&mut actual);
 
-                let mut actual = action.edit.apply(&assisted_file_text);
                 match action.cursor_position {
                     None => {
                         if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {

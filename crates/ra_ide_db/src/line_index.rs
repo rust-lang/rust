@@ -31,8 +31,18 @@ pub(crate) struct Utf16Char {
 }
 
 impl Utf16Char {
+    /// Returns the length in 8-bit UTF-8 code units.
     fn len(&self) -> TextSize {
         self.end - self.start
+    }
+
+    /// Returns the length in 16-bit UTF-16 code units.
+    fn len_utf16(&self) -> usize {
+        if self.len() == TextSize::from(4) {
+            2
+        } else {
+            1
+        }
     }
 }
 
@@ -110,7 +120,7 @@ impl LineIndex {
         if let Some(utf16_chars) = self.utf16_lines.get(&line) {
             for c in utf16_chars {
                 if c.end <= col {
-                    res -= usize::from(c.len()) - 1;
+                    res -= usize::from(c.len()) - c.len_utf16();
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
@@ -125,7 +135,7 @@ impl LineIndex {
         if let Some(utf16_chars) = self.utf16_lines.get(&line) {
             for c in utf16_chars {
                 if col > u32::from(c.start) {
-                    col += u32::from(c.len()) - 1;
+                    col += u32::from(c.len()) - c.len_utf16() as u32;
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
@@ -204,6 +214,9 @@ const C: char = 'メ';
 
         // UTF-16 to UTF-8
         assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextSize::from(21));
+
+        let col_index = LineIndex::new("a𐐏b");
+        assert_eq!(col_index.utf16_to_utf8_col(0, 3), TextSize::from(5));
     }
 
     #[test]

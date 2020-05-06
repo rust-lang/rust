@@ -676,13 +676,13 @@ fn apply_document_changes(
     // remember the last valid line in the index and only rebuild it if needed.
     enum IndexValid {
         All,
-        UpToLine(u64),
+        UpToLineExclusive(u64),
     }
 
     impl IndexValid {
         fn covers(&self, line: u64) -> bool {
             match *self {
-                IndexValid::UpToLine(to) => to >= line,
+                IndexValid::UpToLineExclusive(to) => to > line,
                 _ => true,
             }
         }
@@ -692,10 +692,10 @@ fn apply_document_changes(
     for change in content_changes {
         match change.range {
             Some(range) => {
-                if !index_valid.covers(range.start.line) {
+                if !index_valid.covers(range.end.line) {
                     line_index = Cow::Owned(LineIndex::new(&old_text));
                 }
-                index_valid = IndexValid::UpToLine(range.start.line);
+                index_valid = IndexValid::UpToLineExclusive(range.start.line);
                 let range = range.conv_with(&line_index);
                 let mut text = old_text.to_owned();
                 match std::panic::catch_unwind(move || {
@@ -713,7 +713,7 @@ fn apply_document_changes(
             }
             None => {
                 *old_text = change.text;
-                index_valid = IndexValid::UpToLine(0);
+                index_valid = IndexValid::UpToLineExclusive(0);
             }
         }
     }
@@ -1083,5 +1083,17 @@ mod tests {
         assert_eq!(text, "the quick foxes\nDREAM\nthey have quiet dreams\nDON'T THEY?\n");
         run(&mut text, c![0, 10; 1, 5 => "", 2, 0; 2, 12 => ""]);
         assert_eq!(text, "the quick \nthey have quiet dreams\n");
+
+        text = String::from("❤️");
+        run(&mut text, c![0, 0; 0, 0 => "a"]);
+        assert_eq!(text, "a❤️");
+
+        text = String::from("a\nb");
+        run(&mut text, c![0, 1; 1, 0 => "\nțc", 0, 1; 1, 1 => "d"]);
+        assert_eq!(text, "adcb");
+
+        text = String::from("a\nb");
+        run(&mut text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
+        assert_eq!(text, "ațc\ncb");
     }
 }

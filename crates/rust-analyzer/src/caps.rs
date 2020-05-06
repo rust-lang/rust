@@ -17,10 +17,10 @@ pub fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
             open_close: Some(true),
-            change: Some(if env::var("RA_PROFILE").is_ok() {
-                TextDocumentSyncKind::Incremental
-            } else {
+            change: Some(if env::var("RA_NO_INCREMENTAL_SYNC").is_ok() {
                 TextDocumentSyncKind::Full
+            } else {
+                TextDocumentSyncKind::Incremental
             }),
             will_save: None,
             will_save_wait_until: None,
