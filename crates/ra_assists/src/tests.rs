@@ -11,7 +11,7 @@ use test_utils::{
     RangeOrOffset,
 };
 
-use crate::{handlers::Handler, resolved_assists, AssistCtx, AssistFile};
+use crate::{handlers::Handler, resolved_assists, AssistCtx};
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
     let (mut db, file_id) = RootDatabase::with_single_file(text);
@@ -41,7 +41,7 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let (db, file_id) = crate::tests::with_single_file(&before);
     let frange = FileRange { file_id, range: selection.into() };
 
-    let assist = resolved_assists(&db, frange)
+    let mut assist = resolved_assists(&db, frange)
         .into_iter()
         .find(|assist| assist.label.id.0 == assist_id)
         .unwrap_or_else(|| {
@@ -57,8 +57,9 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
         });
 
     let actual = {
+        let change = assist.action.source_file_edits.pop().unwrap();
         let mut actual = before.clone();
-        assist.action.edit.apply(&mut actual);
+        change.edit.apply(&mut actual);
         actual
     };
     assert_eq_text!(after, &actual);
@@ -93,26 +94,23 @@ fn check(assist: Handler, before: &str, expected: ExpectedResult) {
 
     match (assist(assist_ctx), expected) {
         (Some(assist), ExpectedResult::After(after)) => {
-            let action = assist.0[0].action.clone().unwrap();
+            let mut action = assist.0[0].action.clone().unwrap();
+            let change = action.source_file_edits.pop().unwrap();
 
-            let mut actual = if let AssistFile::TargetFile(file_id) = action.file {
-                db.file_text(file_id).as_ref().to_owned()
-            } else {
-                text_without_caret
-            };
-            action.edit.apply(&mut actual);
+            let mut actual = db.file_text(change.file_id).as_ref().to_owned();
+            change.edit.apply(&mut actual);
 
             match action.cursor_position {
                 None => {
                     if let RangeOrOffset::Offset(before_cursor_pos) = range_or_offset {
-                        let off = action
+                        let off = change
                             .edit
                             .apply_to_offset(before_cursor_pos)
                             .expect("cursor position is affected by the edit");
                         actual = add_cursor(&actual, off)
                     }
                 }
-                Some(off) => actual = add_cursor(&actual, off),
+                Some(off) => actual = add_cursor(&actual, off.offset),
             };
 
             assert_eq_text!(after, &actual);

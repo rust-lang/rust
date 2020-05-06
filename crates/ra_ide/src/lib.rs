@@ -31,7 +31,6 @@ mod syntax_highlighting;
 mod parent_module;
 mod references;
 mod impls;
-mod assists;
 mod diagnostics;
 mod syntax_tree;
 mod folding_ranges;
@@ -64,7 +63,6 @@ use ra_syntax::{SourceFile, TextRange, TextSize};
 use crate::display::ToNav;
 
 pub use crate::{
-    assists::{Assist, AssistId},
     call_hierarchy::CallItem,
     completion::{
         CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
@@ -84,6 +82,7 @@ pub use crate::{
 };
 
 pub use hir::Documentation;
+pub use ra_assists::AssistId;
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRootId,
 };
@@ -134,10 +133,12 @@ pub struct AnalysisHost {
     db: RootDatabase,
 }
 
-impl Default for AnalysisHost {
-    fn default() -> AnalysisHost {
-        AnalysisHost::new(None)
-    }
+#[derive(Debug)]
+pub struct Assist {
+    pub id: AssistId,
+    pub label: String,
+    pub group_label: Option<String>,
+    pub source_change: SourceChange,
 }
 
 impl AnalysisHost {
@@ -184,6 +185,12 @@ impl AnalysisHost {
         &mut self,
     ) -> &mut (impl hir::db::HirDatabase + salsa::Database + ra_db::SourceDatabaseExt) {
         &mut self.db
+    }
+}
+
+impl Default for AnalysisHost {
+    fn default() -> AnalysisHost {
+        AnalysisHost::new(None)
     }
 }
 
@@ -464,7 +471,17 @@ impl Analysis {
     /// Computes assists (aka code actions aka intentions) for the given
     /// position.
     pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<Assist>> {
-        self.with_db(|db| assists::assists(db, frange))
+        self.with_db(|db| {
+            ra_assists::resolved_assists(db, frange)
+                .into_iter()
+                .map(|assist| Assist {
+                    id: assist.label.id,
+                    label: assist.label.label,
+                    group_label: assist.label.group.map(|it| it.0),
+                    source_change: assist.action,
+                })
+                .collect()
+        })
     }
 
     /// Computes the set of diagnostics for the given file.
