@@ -3,19 +3,68 @@ use rustc_middle::ty::{self, Ty, TyVid};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
+use crate::infer::InferCtxtUndoLogs;
+
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
 use std::cmp;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-pub struct TypeVariableTable<'tcx> {
-    values: sv::SnapshotVec<Delegate>,
+use rustc_data_structures::undo_log::{Rollback, UndoLogs};
+
+/// Represents a single undo-able action that affects a type inference variable.
+pub(crate) enum UndoLog<'tcx> {
+    EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
+    SubRelation(sv::UndoLog<ut::Delegate<ty::TyVid>>),
+    Values(sv::UndoLog<Delegate>),
+}
+
+/// Convert from a specific kind of undo to the more general UndoLog
+impl<'tcx> From<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>) -> Self {
+        UndoLog::EqRelation(l)
+    }
+}
+
+/// Convert from a specific kind of undo to the more general UndoLog
+impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::TyVid>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<ty::TyVid>>) -> Self {
+        UndoLog::SubRelation(l)
+    }
+}
+
+/// Convert from a specific kind of undo to the more general UndoLog
+impl<'tcx> From<sv::UndoLog<Delegate>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<Delegate>) -> Self {
+        UndoLog::Values(l)
+    }
+}
+
+/// Convert from a specific kind of undo to the more general UndoLog
+impl<'tcx> From<Instantiate> for UndoLog<'tcx> {
+    fn from(l: Instantiate) -> Self {
+        UndoLog::Values(sv::UndoLog::Other(l))
+    }
+}
+
+impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
+    fn reverse(&mut self, undo: UndoLog<'tcx>) {
+        match undo {
+            UndoLog::EqRelation(undo) => self.eq_relations.reverse(undo),
+            UndoLog::SubRelation(undo) => self.sub_relations.reverse(undo),
+            UndoLog::Values(undo) => self.values.reverse(undo),
+        }
+    }
+}
+
+pub struct TypeVariableStorage<'tcx> {
+    values: sv::SnapshotVecStorage<Delegate>,
 
     /// Two variables are unified in `eq_relations` when we have a
     /// constraint `?X == ?Y`. This table also stores, for each key,
     /// the known value.
-    eq_relations: ut::UnificationTable<ut::InPlace<TyVidEqKey<'tcx>>>,
+    eq_relations: ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
 
     /// Two variables are unified in `sub_relations` when we have a
     /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
@@ -34,7 +83,17 @@ pub struct TypeVariableTable<'tcx> {
     /// This is reasonable because, in Rust, subtypes have the same
     /// "skeleton" and hence there is no possible type such that
     /// (e.g.)  `Box<?3> <: ?3` for any `?3`.
-    sub_relations: ut::UnificationTable<ut::InPlace<ty::TyVid>>,
+    sub_relations: ut::UnificationTableStorage<ty::TyVid>,
+}
+
+pub struct TypeVariableTable<'a, 'tcx> {
+    values: &'a mut sv::SnapshotVecStorage<Delegate>,
+
+    eq_relations: &'a mut ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
+
+    sub_relations: &'a mut ut::UnificationTableStorage<ty::TyVid>,
+
+    undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -62,7 +121,7 @@ pub enum TypeVariableOriginKind {
     LatticeVariable,
 }
 
-struct TypeVariableData {
+pub(crate) struct TypeVariableData {
     origin: TypeVariableOrigin,
     diverging: bool,
 }
@@ -91,27 +150,31 @@ impl<'tcx> TypeVariableValue<'tcx> {
     }
 }
 
-pub struct Snapshot<'tcx> {
-    snapshot: sv::Snapshot,
-    eq_snapshot: ut::Snapshot<ut::InPlace<TyVidEqKey<'tcx>>>,
-    sub_snapshot: ut::Snapshot<ut::InPlace<ty::TyVid>>,
-}
-
-struct Instantiate {
+pub(crate) struct Instantiate {
     vid: ty::TyVid,
 }
 
-struct Delegate;
+pub(crate) struct Delegate;
 
-impl<'tcx> TypeVariableTable<'tcx> {
-    pub fn new() -> TypeVariableTable<'tcx> {
-        TypeVariableTable {
-            values: sv::SnapshotVec::new(),
-            eq_relations: ut::UnificationTable::new(),
-            sub_relations: ut::UnificationTable::new(),
+impl<'tcx> TypeVariableStorage<'tcx> {
+    pub fn new() -> TypeVariableStorage<'tcx> {
+        TypeVariableStorage {
+            values: sv::SnapshotVecStorage::new(),
+            eq_relations: ut::UnificationTableStorage::new(),
+            sub_relations: ut::UnificationTableStorage::new(),
         }
     }
 
+    pub(crate) fn with_log<'a>(
+        &'a mut self,
+        undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
+    ) -> TypeVariableTable<'a, 'tcx> {
+        let TypeVariableStorage { values, eq_relations, sub_relations } = self;
+        TypeVariableTable { values, eq_relations, sub_relations, undo_log }
+    }
+}
+
+impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Returns the diverges flag given when `vid` was created.
     ///
     /// Note that this function does not return care whether
@@ -134,8 +197,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn equate(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
-        self.eq_relations.union(a, b);
-        self.sub_relations.union(a, b);
+        self.eq_relations().union(a, b);
+        self.sub_relations().union(a, b);
     }
 
     /// Records that `a <: b`, depending on `dir`.
@@ -144,7 +207,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn sub(&mut self, a: ty::TyVid, b: ty::TyVid) {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
-        self.sub_relations.union(a, b);
+        self.sub_relations().union(a, b);
     }
 
     /// Instantiates `vid` with the type `ty`.
@@ -154,18 +217,18 @@ impl<'tcx> TypeVariableTable<'tcx> {
         let vid = self.root_var(vid);
         debug_assert!(self.probe(vid).is_unknown());
         debug_assert!(
-            self.eq_relations.probe_value(vid).is_unknown(),
+            self.eq_relations().probe_value(vid).is_unknown(),
             "instantiating type variable `{:?}` twice: new-value = {:?}, old-value={:?}",
             vid,
             ty,
-            self.eq_relations.probe_value(vid)
+            self.eq_relations().probe_value(vid)
         );
-        self.eq_relations.union_value(vid, TypeVariableValue::Known { value: ty });
+        self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });
 
         // Hack: we only need this so that `types_escaping_snapshot`
         // can see what has been unified; see the Delegate impl for
         // more details.
-        self.values.record(Instantiate { vid });
+        self.undo_log.push(Instantiate { vid });
     }
 
     /// Creates a new type variable.
@@ -184,12 +247,12 @@ impl<'tcx> TypeVariableTable<'tcx> {
         diverging: bool,
         origin: TypeVariableOrigin,
     ) -> ty::TyVid {
-        let eq_key = self.eq_relations.new_key(TypeVariableValue::Unknown { universe });
+        let eq_key = self.eq_relations().new_key(TypeVariableValue::Unknown { universe });
 
-        let sub_key = self.sub_relations.new_key(());
+        let sub_key = self.sub_relations().new_key(());
         assert_eq!(eq_key.vid, sub_key);
 
-        let index = self.values.push(TypeVariableData { origin, diverging });
+        let index = self.values().push(TypeVariableData { origin, diverging });
         assert_eq!(eq_key.vid.index, index as u32);
 
         debug!(
@@ -211,7 +274,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// algorithm), so `root_var(a) == root_var(b)` implies that `a ==
     /// b` (transitively).
     pub fn root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
-        self.eq_relations.find(vid).vid
+        self.eq_relations().find(vid).vid
     }
 
     /// Returns the "root" variable of `vid` in the `sub_relations`
@@ -222,7 +285,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     ///
     ///     exists X. (a <: X || X <: a) && (b <: X || X <: b)
     pub fn sub_root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
-        self.sub_relations.find(vid)
+        self.sub_relations().find(vid)
     }
 
     /// Returns `true` if `a` and `b` have same "sub-root" (i.e., exists some
@@ -240,7 +303,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// An always-inlined variant of `probe`, for very hot call sites.
     #[inline(always)]
     pub fn inlined_probe(&mut self, vid: ty::TyVid) -> TypeVariableValue<'tcx> {
-        self.eq_relations.inlined_probe_value(vid)
+        self.eq_relations().inlined_probe_value(vid)
     }
 
     /// If `t` is a type-inference variable, and it has been
@@ -256,56 +319,29 @@ impl<'tcx> TypeVariableTable<'tcx> {
         }
     }
 
-    /// Creates a snapshot of the type variable state. This snapshot
-    /// must later be committed (`commit()`) or rolled back
-    /// (`rollback_to()`). Nested snapshots are permitted, but must
-    /// be processed in a stack-like fashion.
-    pub fn snapshot(&mut self) -> Snapshot<'tcx> {
-        Snapshot {
-            snapshot: self.values.start_snapshot(),
-            eq_snapshot: self.eq_relations.snapshot(),
-            sub_snapshot: self.sub_relations.snapshot(),
-        }
+    fn values(
+        &mut self,
+    ) -> sv::SnapshotVec<Delegate, &mut Vec<TypeVariableData>, &mut InferCtxtUndoLogs<'tcx>> {
+        self.values.with_log(self.undo_log)
     }
 
-    /// Undoes all changes since the snapshot was created. Any
-    /// snapshots created since that point must already have been
-    /// committed or rolled back.
-    pub fn rollback_to(&mut self, s: Snapshot<'tcx>) {
-        debug!("rollback_to{:?}", {
-            for action in self.values.actions_since_snapshot(&s.snapshot) {
-                if let sv::UndoLog::NewElem(index) = *action {
-                    debug!("inference variable _#{}t popped", index)
-                }
-            }
-        });
-
-        let Snapshot { snapshot, eq_snapshot, sub_snapshot } = s;
-        self.values.rollback_to(snapshot);
-        self.eq_relations.rollback_to(eq_snapshot);
-        self.sub_relations.rollback_to(sub_snapshot);
+    fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
+        self.eq_relations.with_log(self.undo_log)
     }
 
-    /// Commits all changes since the snapshot was created, making
-    /// them permanent (unless this snapshot was created within
-    /// another snapshot). Any snapshots created since that point
-    /// must already have been committed or rolled back.
-    pub fn commit(&mut self, s: Snapshot<'tcx>) {
-        let Snapshot { snapshot, eq_snapshot, sub_snapshot } = s;
-        self.values.commit(snapshot);
-        self.eq_relations.commit(eq_snapshot);
-        self.sub_relations.commit(sub_snapshot);
+    fn sub_relations(&mut self) -> super::UnificationTable<'_, 'tcx, ty::TyVid> {
+        self.sub_relations.with_log(self.undo_log)
     }
 
     /// Returns a range of the type variables created during the snapshot.
     pub fn vars_since_snapshot(
         &mut self,
-        s: &Snapshot<'tcx>,
+        value_count: usize,
     ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
-        let range = self.eq_relations.vars_since_snapshot(&s.eq_snapshot);
+        let range = TyVid { index: value_count as u32 }..TyVid { index: self.num_vars() as u32 };
         (
-            range.start.vid..range.end.vid,
-            (range.start.vid.index..range.end.vid.index)
+            range.start..range.end,
+            (range.start.index..range.end.index)
                 .map(|index| self.values.get(index as usize).origin)
                 .collect(),
         )
@@ -317,14 +353,15 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// a type variable `V0`, then we started the snapshot, then we
     /// created a type variable `V1`, unified `V0` with `T0`, and
     /// unified `V1` with `T1`, this function would return `{T0}`.
-    pub fn types_escaping_snapshot(&mut self, s: &Snapshot<'tcx>) -> Vec<Ty<'tcx>> {
+    pub fn types_escaping_snapshot(&mut self, s: &super::Snapshot<'tcx>) -> Vec<Ty<'tcx>> {
         let mut new_elem_threshold = u32::MAX;
         let mut escaping_types = Vec::new();
-        let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
+        let actions_since_snapshot = self.undo_log.actions_since_snapshot(s);
         debug!("actions_since_snapshot.len() = {}", actions_since_snapshot.len());
-        for action in actions_since_snapshot {
-            match *action {
-                sv::UndoLog::NewElem(index) => {
+        for i in 0..actions_since_snapshot.len() {
+            let actions_since_snapshot = self.undo_log.actions_since_snapshot(s);
+            match actions_since_snapshot[i] {
+                super::UndoLog::TypeVariables(UndoLog::Values(sv::UndoLog::NewElem(index))) => {
                     // if any new variables were created during the
                     // snapshot, remember the lower index (which will
                     // always be the first one we see). Note that this
@@ -334,11 +371,17 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
                 }
 
-                sv::UndoLog::Other(Instantiate { vid, .. }) => {
+                super::UndoLog::TypeVariables(UndoLog::Values(sv::UndoLog::Other(
+                    Instantiate { vid, .. },
+                ))) => {
                     if vid.index < new_elem_threshold {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
-                        let escaping_type = match self.eq_relations.probe_value(vid) {
+                        let mut eq_relations = ut::UnificationTable::with_log(
+                            &mut *self.eq_relations,
+                            &mut *self.undo_log,
+                        );
+                        let escaping_type = match eq_relations.probe_value(vid) {
                             TypeVariableValue::Unknown { .. } => bug!(),
                             TypeVariableValue::Known { value } => value,
                         };
@@ -395,7 +438,7 @@ impl sv::SnapshotVecDelegate for Delegate {
 /// for the `eq_relations`; they carry a `TypeVariableValue` along
 /// with them.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-struct TyVidEqKey<'tcx> {
+pub(crate) struct TyVidEqKey<'tcx> {
     vid: ty::TyVid,
 
     // in the table, we map each ty-vid to one of these:

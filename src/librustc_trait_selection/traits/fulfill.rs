@@ -240,9 +240,15 @@ struct FulfillProcessor<'a, 'b, 'tcx> {
     register_region_obligations: bool,
 }
 
-fn mk_pending(os: Vec<PredicateObligation<'tcx>>) -> Vec<PendingPredicateObligation<'tcx>> {
+fn mk_pending(
+    infcx: &InferCtxt<'_, 'tcx>,
+    os: Vec<PredicateObligation<'tcx>>,
+) -> Vec<PendingPredicateObligation<'tcx>> {
     os.into_iter()
-        .map(|o| PendingPredicateObligation { obligation: o, stalled_on: vec![] })
+        .map(|mut o| {
+            o.predicate = infcx.resolve_vars_if_possible(&o.predicate);
+            PendingPredicateObligation { obligation: o, stalled_on: vec![] }
+        })
         .collect()
 }
 
@@ -312,6 +318,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
         debug!("process_obligation: obligation = {:?} cause = {:?}", obligation, obligation.cause);
 
+        let infcx = self.selcx.infcx();
+
         match obligation.predicate {
             ty::Predicate::Trait(ref data, _) => {
                 let trait_obligation = obligation.with(*data);
@@ -319,7 +327,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 if data.is_global() {
                     // no type variables present, can use evaluation for better caching.
                     // FIXME: consider caching errors too.
-                    if self.selcx.infcx().predicate_must_hold_considering_regions(&obligation) {
+                    if infcx.predicate_must_hold_considering_regions(&obligation) {
                         debug!(
                             "selecting trait `{:?}` at depth {} evaluated to holds",
                             data, obligation.recursion_depth
@@ -334,7 +342,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             "selecting trait `{:?}` at depth {} yielded Ok(Some)",
                             data, obligation.recursion_depth
                         );
-                        ProcessResult::Changed(mk_pending(vtable.nested_obligations()))
+                        ProcessResult::Changed(mk_pending(infcx, vtable.nested_obligations()))
                     }
                     Ok(None) => {
                         debug!(
@@ -351,7 +359,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
 
                         debug!(
                             "process_predicate: pending obligation {:?} now stalled on {:?}",
-                            self.selcx.infcx().resolve_vars_if_possible(obligation),
+                            infcx.resolve_vars_if_possible(obligation),
                             pending_obligation.stalled_on
                         );
 
@@ -369,7 +377,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::RegionOutlives(ref binder) => {
-                match self.selcx.infcx().region_outlives_predicate(&obligation.cause, binder) {
+                match infcx.region_outlives_predicate(&obligation.cause, binder) {
                     Ok(()) => ProcessResult::Changed(vec![]),
                     Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
                 }
@@ -428,7 +436,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             trait_ref_type_vars(self.selcx, data.to_poly_trait_ref(tcx));
                         ProcessResult::Unchanged
                     }
-                    Ok(Some(os)) => ProcessResult::Changed(mk_pending(os)),
+                    Ok(Some(os)) => ProcessResult::Changed(mk_pending(infcx, os)),
                     Err(e) => ProcessResult::Error(CodeProjectionError(e)),
                 }
             }
@@ -467,7 +475,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             vec![TyOrConstInferVar::maybe_from_ty(ty).unwrap()];
                         ProcessResult::Unchanged
                     }
-                    Some(os) => ProcessResult::Changed(mk_pending(os)),
+                    Some(os) => ProcessResult::Changed(mk_pending(infcx, os)),
                 }
             }
 
@@ -485,7 +493,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         ];
                         ProcessResult::Unchanged
                     }
-                    Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),
+                    Some(Ok(ok)) => ProcessResult::Changed(mk_pending(infcx, ok.obligations)),
                     Some(Err(err)) => {
                         let expected_found = ExpectedFound::new(
                             subtype.skip_binder().a_is_expected,

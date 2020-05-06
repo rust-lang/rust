@@ -195,7 +195,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             let body_id_map: FxHashMap<_, _> = infcx
                 .inner
                 .borrow()
-                .region_obligations
+                .region_obligations()
                 .iter()
                 .map(|&(id, _)| (id, vec![]))
                 .collect();

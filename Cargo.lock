@@ -994,6 +994,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ena"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7402b94a93c24e742487327a7cd839dc9d36fec9de9fb25b09f2dae459f36c3"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3234,7 +3243,7 @@ dependencies = [
  "bitflags",
  "cfg-if",
  "crossbeam-utils 0.7.2",
- "ena",
+ "ena 0.13.1",
  "indexmap",
  "jobserver",
  "lazy_static 1.4.0",
@@ -3683,7 +3692,7 @@ dependencies = [
  "bitflags",
  "cfg-if",
  "crossbeam-utils 0.7.2",
- "ena",
+ "ena 0.14.0",
  "graphviz",
  "indexmap",
  "jobserver",

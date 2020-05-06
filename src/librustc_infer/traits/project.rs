@@ -2,11 +2,18 @@
 
 use super::PredicateObligation;
 
-use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
-use rustc_middle::ty::fold::TypeFoldable;
+use crate::infer::InferCtxtUndoLogs;
+
+use rustc_data_structures::{
+    snapshot_map::{self, SnapshotMapRef, SnapshotMapStorage},
+    undo_log::Rollback,
+};
 use rustc_middle::ty::{self, Ty};
 
 pub use rustc_middle::traits::Reveal;
+
+pub(crate) type UndoLog<'tcx> =
+    snapshot_map::UndoLog<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>;
 
 #[derive(Clone)]
 pub struct MismatchedProjectionTypes<'tcx> {
@@ -58,9 +65,14 @@ impl<'tcx, T> Normalized<'tcx, T> {
 //
 // FIXME: we probably also want some sort of cross-infcx cache here to
 // reduce the amount of duplication. Let's see what we get with the Chalk reforms.
+pub struct ProjectionCache<'a, 'tcx> {
+    map: &'a mut SnapshotMapStorage<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>,
+    undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
+}
+
 #[derive(Default)]
-pub struct ProjectionCache<'tcx> {
-    map: SnapshotMap<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>,
+pub struct ProjectionCacheStorage<'tcx> {
+    map: SnapshotMapStorage<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>,
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -82,30 +94,29 @@ pub enum ProjectionCacheEntry<'tcx> {
     NormalizedTy(NormalizedTy<'tcx>),
 }
 
-// N.B., intentionally not Clone
-pub struct ProjectionCacheSnapshot {
-    snapshot: Snapshot,
+impl<'tcx> ProjectionCacheStorage<'tcx> {
+    pub(crate) fn with_log<'a>(
+        &'a mut self,
+        undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
+    ) -> ProjectionCache<'a, 'tcx> {
+        ProjectionCache { map: &mut self.map, undo_log }
+    }
 }
 
-impl<'tcx> ProjectionCache<'tcx> {
+impl<'tcx> ProjectionCache<'_, 'tcx> {
+    fn map(
+        &mut self,
+    ) -> SnapshotMapRef<
+        '_,
+        ProjectionCacheKey<'tcx>,
+        ProjectionCacheEntry<'tcx>,
+        InferCtxtUndoLogs<'tcx>,
+    > {
+        self.map.with_log(self.undo_log)
+    }
+
     pub fn clear(&mut self) {
-        self.map.clear();
-    }
-
-    pub fn snapshot(&mut self) -> ProjectionCacheSnapshot {
-        ProjectionCacheSnapshot { snapshot: self.map.snapshot() }
-    }
-
-    pub fn rollback_to(&mut self, snapshot: ProjectionCacheSnapshot) {
-        self.map.rollback_to(snapshot.snapshot);
-    }
-
-    pub fn rollback_placeholder(&mut self, snapshot: &ProjectionCacheSnapshot) {
-        self.map.partial_rollback(&snapshot.snapshot, &|k| k.ty.has_re_placeholders());
-    }
-
-    pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
-        self.map.commit(snapshot.snapshot);
+        self.map().clear();
     }
 
     /// Try to start normalize `key`; returns an error if
@@ -115,11 +126,12 @@ impl<'tcx> ProjectionCache<'tcx> {
         &mut self,
         key: ProjectionCacheKey<'tcx>,
     ) -> Result<(), ProjectionCacheEntry<'tcx>> {
-        if let Some(entry) = self.map.get(&key) {
+        let mut map = self.map();
+        if let Some(entry) = map.get(&key) {
             return Err(entry.clone());
         }
 
-        self.map.insert(key, ProjectionCacheEntry::InProgress);
+        map.insert(key, ProjectionCacheEntry::InProgress);
         Ok(())
     }
 
@@ -129,7 +141,7 @@ impl<'tcx> ProjectionCache<'tcx> {
             "ProjectionCacheEntry::insert_ty: adding cache entry: key={:?}, value={:?}",
             key, value
         );
-        let fresh_key = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value));
+        let fresh_key = self.map().insert(key, ProjectionCacheEntry::NormalizedTy(value));
         assert!(!fresh_key, "never started projecting `{:?}`", key);
     }
 
@@ -138,7 +150,8 @@ impl<'tcx> ProjectionCache<'tcx> {
     /// snapshot - if the snapshot is rolled back, the obligations will be
     /// marked as incomplete again).
     pub fn complete(&mut self, key: ProjectionCacheKey<'tcx>) {
-        let ty = match self.map.get(&key) {
+        let mut map = self.map();
+        let ty = match map.get(&key) {
             Some(&ProjectionCacheEntry::NormalizedTy(ref ty)) => {
                 debug!("ProjectionCacheEntry::complete({:?}) - completing {:?}", key, ty);
                 ty.value
@@ -151,7 +164,7 @@ impl<'tcx> ProjectionCache<'tcx> {
             }
         };
 
-        self.map.insert(
+        map.insert(
             key,
             ProjectionCacheEntry::NormalizedTy(Normalized { value: ty, obligations: vec![] }),
         );
@@ -163,7 +176,7 @@ impl<'tcx> ProjectionCache<'tcx> {
         // We want to insert `ty` with no obligations. If the existing value
         // already has no obligations (as is common) we don't insert anything.
         if !ty.obligations.is_empty() {
-            self.map.insert(
+            self.map().insert(
                 key,
                 ProjectionCacheEntry::NormalizedTy(Normalized {
                     value: ty.value,
@@ -178,14 +191,20 @@ impl<'tcx> ProjectionCache<'tcx> {
     /// type information (in which case, the "fully resolved" key will
     /// be different).
     pub fn ambiguous(&mut self, key: ProjectionCacheKey<'tcx>) {
-        let fresh = self.map.insert(key, ProjectionCacheEntry::Ambiguous);
+        let fresh = self.map().insert(key, ProjectionCacheEntry::Ambiguous);
         assert!(!fresh, "never started projecting `{:?}`", key);
     }
 
     /// Indicates that trying to normalize `key` resulted in
     /// error.
     pub fn error(&mut self, key: ProjectionCacheKey<'tcx>) {
-        let fresh = self.map.insert(key, ProjectionCacheEntry::Error);
+        let fresh = self.map().insert(key, ProjectionCacheEntry::Error);
         assert!(!fresh, "never started projecting `{:?}`", key);
+    }
+}
+
+impl<'tcx> Rollback<UndoLog<'tcx>> for ProjectionCacheStorage<'tcx> {
+    fn reverse(&mut self, undo: UndoLog<'tcx>) {
+        self.map.reverse(undo);
     }
 }

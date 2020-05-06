@@ -84,6 +84,7 @@ pub mod sync;
 pub mod thin_vec;
 pub mod tiny_list;
 pub mod transitive_relation;
+pub use ena::undo_log;
 pub use ena::unify;
 mod atomic_ref;
 pub mod fingerprint;

@@ -72,14 +72,14 @@ impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
         }
 
         let infcx = self.fields.infcx;
-        let a = infcx.inner.borrow_mut().type_variables.replace_if_possible(a);
-        let b = infcx.inner.borrow_mut().type_variables.replace_if_possible(b);
+        let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
+        let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
 
         debug!("{}.tys: replacements ({:?}, {:?})", self.tag(), a, b);
 
         match (&a.kind, &b.kind) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
-                infcx.inner.borrow_mut().type_variables.equate(a_id, b_id);
+                infcx.inner.borrow_mut().type_variables().equate(a_id, b_id);
             }
 
             (&ty::Infer(TyVar(a_id)), _) => {

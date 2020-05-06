@@ -20,9 +20,10 @@ pub use self::Vtable::*;
 
 pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::project::MismatchedProjectionTypes;
+pub(crate) use self::project::UndoLog;
 pub use self::project::{
     Normalized, NormalizedTy, ProjectionCache, ProjectionCacheEntry, ProjectionCacheKey,
-    ProjectionCacheSnapshot, Reveal,
+    ProjectionCacheStorage, Reveal,
 };
 crate use self::util::elaborate_predicates;
 
