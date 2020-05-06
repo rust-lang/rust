@@ -25,8 +25,8 @@ use crate::{Assist, AssistCtx, AssistId};
 pub(crate) fn make_raw_string(ctx: AssistCtx) -> Option<Assist> {
     let token = ctx.find_token_at_offset(STRING).and_then(ast::String::cast)?;
     let value = token.value()?;
-    ctx.add_assist(AssistId("make_raw_string"), "Rewrite as raw string", |edit| {
-        edit.target(token.syntax().text_range());
+    let target = token.syntax().text_range();
+    ctx.add_assist(AssistId("make_raw_string"), "Rewrite as raw string", target, |edit| {
         let max_hash_streak = count_hashes(&value);
         let mut hashes = String::with_capacity(max_hash_streak + 1);
         for _ in 0..hashes.capacity() {
@@ -54,8 +54,8 @@ pub(crate) fn make_raw_string(ctx: AssistCtx) -> Option<Assist> {
 pub(crate) fn make_usual_string(ctx: AssistCtx) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING).and_then(ast::RawString::cast)?;
     let value = token.value()?;
-    ctx.add_assist(AssistId("make_usual_string"), "Rewrite as regular string", |edit| {
-        edit.target(token.syntax().text_range());
+    let target = token.syntax().text_range();
+    ctx.add_assist(AssistId("make_usual_string"), "Rewrite as regular string", target, |edit| {
         // parse inside string to escape `"`
         let escaped = value.escape_default().to_string();
         edit.replace(token.syntax().text_range(), format!("\"{}\"", escaped));
@@ -79,8 +79,8 @@ pub(crate) fn make_usual_string(ctx: AssistCtx) -> Option<Assist> {
 // ```
 pub(crate) fn add_hash(ctx: AssistCtx) -> Option<Assist> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
-    ctx.add_assist(AssistId("add_hash"), "Add # to raw string", |edit| {
-        edit.target(token.text_range());
+    let target = token.text_range();
+    ctx.add_assist(AssistId("add_hash"), "Add # to raw string", target, |edit| {
         edit.insert(token.text_range().start() + TextSize::of('r'), "#");
         edit.insert(token.text_range().end(), "#");
     })
@@ -108,8 +108,8 @@ pub(crate) fn remove_hash(ctx: AssistCtx) -> Option<Assist> {
         // no hash to remove
         return None;
     }
-    ctx.add_assist(AssistId("remove_hash"), "Remove hash from raw string", |edit| {
-        edit.target(token.text_range());
+    let target = token.text_range();
+    ctx.add_assist(AssistId("remove_hash"), "Remove hash from raw string", target, |edit| {
         let result = &text[2..text.len() - 1];
         let result = if result.starts_with('\"') {
             // FIXME: this logic is wrong, not only the last has has to handled specially

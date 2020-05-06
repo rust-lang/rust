@@ -106,9 +106,11 @@ pub(crate) fn inline_local_variable(ctx: AssistCtx) -> Option<Assist> {
     let init_str = initializer_expr.syntax().text().to_string();
     let init_in_paren = format!("({})", &init_str);
 
+    let target = bind_pat.syntax().text_range();
     ctx.add_assist(
         AssistId("inline_local_variable"),
         "Inline variable",
+        target,
         move |edit: &mut ActionBuilder| {
             edit.delete(delete_range);
             for (desc, should_wrap) in refs.iter().zip(wrap_in_parens) {

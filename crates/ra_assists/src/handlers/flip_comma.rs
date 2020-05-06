@@ -28,8 +28,7 @@ pub(crate) fn flip_comma(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("flip_comma"), "Flip comma", |edit| {
-        edit.target(comma.text_range());
+    ctx.add_assist(AssistId("flip_comma"), "Flip comma", comma.text_range(), |edit| {
         edit.replace(prev.text_range(), next.to_string());
         edit.replace(next.text_range(), prev.to_string());
     })

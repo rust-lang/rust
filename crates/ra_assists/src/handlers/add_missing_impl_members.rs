@@ -107,10 +107,10 @@ fn add_missing_impl_members_inner(
     label: &'static str,
 ) -> Option<Assist> {
     let _p = ra_prof::profile("add_missing_impl_members_inner");
-    let impl_node = ctx.find_node_at_offset::<ast::ImplDef>()?;
-    let impl_item_list = impl_node.item_list()?;
+    let impl_def = ctx.find_node_at_offset::<ast::ImplDef>()?;
+    let impl_item_list = impl_def.item_list()?;
 
-    let trait_ = resolve_target_trait(&ctx.sema, &impl_node)?;
+    let trait_ = resolve_target_trait(&ctx.sema, &impl_def)?;
 
     let def_name = |item: &ast::AssocItem| -> Option<SmolStr> {
         match item {
@@ -121,7 +121,7 @@ fn add_missing_impl_members_inner(
         .map(|it| it.text().clone())
     };
 
-    let missing_items = get_missing_assoc_items(&ctx.sema, &impl_node)
+    let missing_items = get_missing_assoc_items(&ctx.sema, &impl_def)
         .iter()
         .map(|i| match i {
             hir::AssocItem::Function(i) => ast::AssocItem::FnDef(i.source(ctx.db).value),
@@ -143,13 +143,13 @@ fn add_missing_impl_members_inner(
     }
 
     let sema = ctx.sema;
-
-    ctx.add_assist(AssistId(assist_id), label, |edit| {
+    let target = impl_def.syntax().text_range();
+    ctx.add_assist(AssistId(assist_id), label, target, |edit| {
         let n_existing_items = impl_item_list.assoc_items().count();
         let source_scope = sema.scope_for_def(trait_);
         let target_scope = sema.scope(impl_item_list.syntax());
         let ast_transform = QualifyPaths::new(&target_scope, &source_scope)
-            .or(SubstituteTypeParams::for_trait_impl(&source_scope, trait_, impl_node));
+            .or(SubstituteTypeParams::for_trait_impl(&source_scope, trait_, impl_def));
         let items = missing_items
             .into_iter()
             .map(|it| ast_transform::apply(&*ast_transform, it))

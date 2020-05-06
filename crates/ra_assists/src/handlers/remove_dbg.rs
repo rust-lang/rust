@@ -57,8 +57,8 @@ pub(crate) fn remove_dbg(ctx: AssistCtx) -> Option<Assist> {
         text.slice(without_parens).to_string()
     };
 
-    ctx.add_assist(AssistId("remove_dbg"), "Remove dbg!()", |edit| {
-        edit.target(macro_call.syntax().text_range());
+    let target = macro_call.syntax().text_range();
+    ctx.add_assist(AssistId("remove_dbg"), "Remove dbg!()", target, |edit| {
         edit.replace(macro_range, macro_content);
         edit.set_cursor(cursor_pos);
     })

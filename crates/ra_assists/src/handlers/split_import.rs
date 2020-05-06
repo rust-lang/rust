@@ -28,8 +28,8 @@ pub(crate) fn split_import(ctx: AssistCtx) -> Option<Assist> {
     }
     let cursor = ctx.frange.range.start();
 
-    ctx.add_assist(AssistId("split_import"), "Split import", |edit| {
-        edit.target(colon_colon.text_range());
+    let target = colon_colon.text_range();
+    ctx.add_assist(AssistId("split_import"), "Split import", target, |edit| {
         edit.replace_ast(use_tree, new_tree);
         edit.set_cursor(cursor);
     })

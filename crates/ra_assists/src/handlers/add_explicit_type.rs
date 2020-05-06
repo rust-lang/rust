@@ -62,8 +62,8 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
     ctx.add_assist(
         AssistId("add_explicit_type"),
         format!("Insert explicit type '{}'", new_type_string),
+        pat_range,
         |edit| {
-            edit.target(pat_range);
             if let Some(ascribed_ty) = ascribed_ty {
                 edit.replace(ascribed_ty.syntax().text_range(), new_type_string);
             } else {

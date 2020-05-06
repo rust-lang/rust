@@ -44,30 +44,35 @@ pub(crate) fn replace_if_let_with_match(ctx: AssistCtx) -> Option<Assist> {
     };
 
     let sema = ctx.sema;
-    ctx.add_assist(AssistId("replace_if_let_with_match"), "Replace with match", move |edit| {
-        let match_expr = {
-            let then_arm = {
-                let then_expr = unwrap_trivial_block(then_block);
-                make::match_arm(vec![pat.clone()], then_expr)
+    let target = if_expr.syntax().text_range();
+    ctx.add_assist(
+        AssistId("replace_if_let_with_match"),
+        "Replace with match",
+        target,
+        move |edit| {
+            let match_expr = {
+                let then_arm = {
+                    let then_expr = unwrap_trivial_block(then_block);
+                    make::match_arm(vec![pat.clone()], then_expr)
+                };
+                let else_arm = {
+                    let pattern = sema
+                        .type_of_pat(&pat)
+                        .and_then(|ty| TryEnum::from_ty(sema, &ty))
+                        .map(|it| it.sad_pattern())
+                        .unwrap_or_else(|| make::placeholder_pat().into());
+                    let else_expr = unwrap_trivial_block(else_block);
+                    make::match_arm(vec![pattern], else_expr)
+                };
+                make::expr_match(expr, make::match_arm_list(vec![then_arm, else_arm]))
             };
-            let else_arm = {
-                let pattern = sema
-                    .type_of_pat(&pat)
-                    .and_then(|ty| TryEnum::from_ty(sema, &ty))
-                    .map(|it| it.sad_pattern())
-                    .unwrap_or_else(|| make::placeholder_pat().into());
-                let else_expr = unwrap_trivial_block(else_block);
-                make::match_arm(vec![pattern], else_expr)
-            };
-            make::expr_match(expr, make::match_arm_list(vec![then_arm, else_arm]))
-        };
 
-        let match_expr = IndentLevel::from_node(if_expr.syntax()).increase_indent(match_expr);
+            let match_expr = IndentLevel::from_node(if_expr.syntax()).increase_indent(match_expr);
 
-        edit.target(if_expr.syntax().text_range());
-        edit.set_cursor(if_expr.syntax().text_range().start());
-        edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr);
-    })
+            edit.set_cursor(if_expr.syntax().text_range().start());
+            edit.replace_ast::<ast::Expr>(if_expr.into(), match_expr);
+        },
+    )
 }
 
 #[cfg(test)]

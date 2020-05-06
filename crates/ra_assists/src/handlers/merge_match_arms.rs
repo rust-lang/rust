@@ -70,7 +70,7 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("merge_match_arms"), "Merge match arms", |edit| {
+    ctx.add_assist(AssistId("merge_match_arms"), "Merge match arms", current_text_range, |edit| {
         let pats = if arms_to_merge.iter().any(contains_placeholder) {
             "_".into()
         } else {
@@ -87,7 +87,6 @@ pub(crate) fn merge_match_arms(ctx: AssistCtx) -> Option<Assist> {
         let start = arms_to_merge.first().unwrap().syntax().text_range().start();
         let end = arms_to_merge.last().unwrap().syntax().text_range().end();
 
-        edit.target(current_text_range);
         edit.set_cursor(match cursor_pos {
             CursorPos::InExpr(back_offset) => start + TextSize::of(&arm) - back_offset,
             CursorPos::InPat(offset) => offset,

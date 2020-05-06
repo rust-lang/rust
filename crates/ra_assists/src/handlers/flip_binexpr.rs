@@ -33,8 +33,7 @@ pub(crate) fn flip_binexpr(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("flip_binexpr"), "Flip binary expression", |edit| {
-        edit.target(op_range);
+    ctx.add_assist(AssistId("flip_binexpr"), "Flip binary expression", op_range, |edit| {
         if let FlipAction::FlipAndReplaceOp(new_op) = action {
             edit.replace(op_range, new_op);
         }

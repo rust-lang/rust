@@ -94,9 +94,10 @@ impl<'a> AssistCtx<'a> {
         self,
         id: AssistId,
         label: impl Into<String>,
+        target: TextRange,
         f: impl FnOnce(&mut ActionBuilder),
     ) -> Option<Assist> {
-        let label = AssistLabel::new(id, label.into(), None);
+        let label = AssistLabel::new(id, label.into(), None, target);
 
         let mut info = AssistInfo::new(label);
         if self.should_compute_edit {
@@ -152,9 +153,10 @@ impl<'a> AssistGroup<'a> {
         &mut self,
         id: AssistId,
         label: impl Into<String>,
+        target: TextRange,
         f: impl FnOnce(&mut ActionBuilder),
     ) {
-        let label = AssistLabel::new(id, label.into(), Some(self.group.clone()));
+        let label = AssistLabel::new(id, label.into(), Some(self.group.clone()), target);
 
         let mut info = AssistInfo::new(label).with_group(self.group.clone());
         if self.ctx.should_compute_edit {
@@ -181,7 +183,6 @@ impl<'a> AssistGroup<'a> {
 pub(crate) struct ActionBuilder<'a, 'b> {
     edit: TextEditBuilder,
     cursor_position: Option<TextSize>,
-    target: Option<TextRange>,
     file: AssistFile,
     ctx: &'a AssistCtx<'b>,
 }
@@ -191,7 +192,6 @@ impl<'a, 'b> ActionBuilder<'a, 'b> {
         Self {
             edit: TextEditBuilder::default(),
             cursor_position: None,
-            target: None,
             file: AssistFile::default(),
             ctx,
         }
@@ -237,14 +237,6 @@ impl<'a, 'b> ActionBuilder<'a, 'b> {
         self.cursor_position = Some(offset)
     }
 
-    /// Specify that the assist should be active withing the `target` range.
-    ///
-    /// Target ranges are used to sort assists: the smaller the target range,
-    /// the more specific assist is, and so it should be sorted first.
-    pub(crate) fn target(&mut self, target: TextRange) {
-        self.target = Some(target)
-    }
-
     /// Get access to the raw `TextEditBuilder`.
     pub(crate) fn text_edit_builder(&mut self) -> &mut TextEditBuilder {
         &mut self.edit
@@ -267,7 +259,6 @@ impl<'a, 'b> ActionBuilder<'a, 'b> {
         AssistAction {
             edit: self.edit.finish(),
             cursor_position: self.cursor_position,
-            target: self.target,
             file: self.file,
         }
     }

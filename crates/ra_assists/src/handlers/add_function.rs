@@ -57,9 +57,9 @@ pub(crate) fn add_function(ctx: AssistCtx) -> Option<Assist> {
 
     let function_builder = FunctionBuilder::from_call(&ctx, &call, &path, target_module)?;
 
-    ctx.add_assist(AssistId("add_function"), "Add function", |edit| {
-        edit.target(call.syntax().text_range());
-
+    let target = call.syntax().text_range();
+    // TODO: assert here?
+    ctx.add_assist(AssistId("add_function"), "Add function", target, |edit| {
         if let Some(function_template) = function_builder.render() {
             edit.set_file(function_template.file);
             edit.set_cursor(function_template.cursor_offset);

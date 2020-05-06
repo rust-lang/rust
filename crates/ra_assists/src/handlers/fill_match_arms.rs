@@ -92,10 +92,9 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("fill_match_arms"), "Fill match arms", |edit| {
+    let target = match_expr.syntax().text_range();
+    ctx.add_assist(AssistId("fill_match_arms"), "Fill match arms", target, |edit| {
         let new_arm_list = match_arm_list.remove_placeholder().append_arms(missing_arms);
-
-        edit.target(match_expr.syntax().text_range());
         edit.set_cursor(expr.syntax().text_range().start());
         edit.replace_ast(match_arm_list, new_arm_list);
     })
