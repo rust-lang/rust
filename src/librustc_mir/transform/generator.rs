@@ -622,6 +622,10 @@ fn compute_storage_conflicts(
             record_conflicts_at_curr_loc(&mut local_conflicts, &init, &borrowed);
         }
 
+        // We need to look for conflicts at the end of the block as well, otherwise we would not
+        // observe the dataflow state after the terminator effect is applied. As long as neither
+        // `init` nor `borrowed` has a "before" effect, we will observe all possible dataflow
+        // states here or in the loop above.
         trace!("record conflicts at end of {:?}", block);
         init.seek_to_block_end(block);
         borrowed.seek_to_block_end(block);
