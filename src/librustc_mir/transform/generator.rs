@@ -261,7 +261,7 @@ impl TransformVisitor<'tcx> {
 
         let self_place = Place::from(SELF_ARG);
         let assign = Statement {
-            source_info: source_info(body),
+            source_info: SourceInfo::outermost(body.span),
             kind: StatementKind::Assign(box (temp, Rvalue::Discriminant(self_place))),
         };
         (assign, temp)
@@ -395,7 +395,7 @@ fn replace_local<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Local {
-    let source_info = source_info(body);
+    let source_info = SourceInfo::outermost(body.span);
     let new_decl = LocalDecl {
         mutability: Mutability::Mut,
         ty,
@@ -784,7 +784,7 @@ fn insert_switch<'tcx>(
         targets: cases.iter().map(|&(_, d)| d).chain(iter::once(default_block)).collect(),
     };
 
-    let source_info = source_info(body);
+    let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().raw.insert(
         0,
         BasicBlockData {
@@ -858,7 +858,7 @@ fn create_generator_drop_shim<'tcx>(
     let mut body = body.clone();
     body.arg_count = 1; // make sure the resume argument is not included here
 
-    let source_info = source_info(&body);
+    let source_info = SourceInfo::outermost(body.span);
 
     let mut cases = create_cases(&mut body, transform, Operation::Drop);
 
@@ -922,7 +922,7 @@ fn create_generator_drop_shim<'tcx>(
 }
 
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
-    let source_info = source_info(body);
+    let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData {
         statements: Vec::new(),
         terminator: Some(Terminator { source_info, kind }),
@@ -948,7 +948,7 @@ fn insert_panic_block<'tcx>(
         cleanup: None,
     };
 
-    let source_info = source_info(body);
+    let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData {
         statements: Vec::new(),
         terminator: Some(Terminator { source_info, kind: term }),
@@ -1025,7 +1025,7 @@ fn create_generator_resume_function<'tcx>(
 
     // Poison the generator when it unwinds
     if can_unwind {
-        let source_info = source_info(body);
+        let source_info = SourceInfo::outermost(body.span);
         let poison_block = body.basic_blocks_mut().push(BasicBlockData {
             statements: vec![transform.set_discr(VariantIdx::new(POISONED), source_info)],
             terminator: Some(Terminator { source_info, kind: TerminatorKind::Resume }),
@@ -1092,10 +1092,6 @@ fn create_generator_resume_function<'tcx>(
     dump_mir(tcx, None, "generator_resume", &0, source, body, |_, _| Ok(()));
 }
 
-fn source_info(body: &Body<'_>) -> SourceInfo {
-    SourceInfo { span: body.span, scope: OUTERMOST_SOURCE_SCOPE }
-}
-
 fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
@@ -1104,7 +1100,7 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
         target: return_block,
         unwind: None,
     };
-    let source_info = source_info(body);
+    let source_info = SourceInfo::outermost(body.span);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     body.basic_blocks_mut().push(BasicBlockData {
@@ -1135,7 +1131,7 @@ fn create_cases<'tcx>(
     transform: &TransformVisitor<'tcx>,
     operation: Operation,
 ) -> Vec<(usize, BasicBlock)> {
-    let source_info = source_info(body);
+    let source_info = SourceInfo::outermost(body.span);
 
     transform
         .suspension_points
@@ -1241,7 +1237,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             replace_local(resume_local, body.local_decls[resume_local].ty, body, tcx);
 
         // When first entering the generator, move the resume argument into its new local.
-        let source_info = source_info(body);
+        let source_info = SourceInfo::outermost(body.span);
         let stmts = &mut body.basic_blocks_mut()[BasicBlock::new(0)].statements;
         stmts.insert(
             0,

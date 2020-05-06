@@ -50,7 +50,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             const_context,
             min_const_fn,
             violations: vec![],
-            source_info: SourceInfo { span: body.span, scope: OUTERMOST_SOURCE_SCOPE },
+            source_info: SourceInfo::outermost(body.span),
             tcx,
             param_env,
             used_unsafe: Default::default(),

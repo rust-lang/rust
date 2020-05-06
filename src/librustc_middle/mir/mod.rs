@@ -474,6 +474,13 @@ pub struct SourceInfo {
     pub scope: SourceScope,
 }
 
+impl SourceInfo {
+    #[inline]
+    pub fn outermost(span: Span) -> Self {
+        SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Borrow kinds
 
@@ -944,7 +951,7 @@ impl<'tcx> LocalDecl<'tcx> {
             mutability,
             ty,
             user_ty: UserTypeProjections::none(),
-            source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
+            source_info: SourceInfo::outermost(span),
             internal,
             local_info: LocalInfo::Other,
             is_block_tail: None,
@@ -960,7 +967,7 @@ impl<'tcx> LocalDecl<'tcx> {
             mutability: Mutability::Mut,
             ty: return_ty,
             user_ty: UserTypeProjections::none(),
-            source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
+            source_info: SourceInfo::outermost(span),
             internal: false,
             is_block_tail: None,
             local_info: LocalInfo::Other,
@@ -1406,10 +1413,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
         self.statements.resize(
             gap.end,
-            Statement {
-                source_info: SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
-                kind: StatementKind::Nop,
-            },
+            Statement { source_info: SourceInfo::outermost(DUMMY_SP), kind: StatementKind::Nop },
         );
         for (splice_start, new_stmts) in splices.into_iter().rev() {
             let splice_end = splice_start + new_stmts.size_hint().0;

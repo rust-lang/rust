@@ -775,7 +775,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         self.promoted.basic_blocks_mut().push(BasicBlockData {
             statements: vec![],
             terminator: Some(Terminator {
-                source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
+                source_info: SourceInfo::outermost(span),
                 kind: TerminatorKind::Return,
             }),
             is_cleanup: false,
@@ -786,7 +786,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let last = self.promoted.basic_blocks().last().unwrap();
         let data = &mut self.promoted[last];
         data.statements.push(Statement {
-            source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
+            source_info: SourceInfo::outermost(span),
             kind: StatementKind::Assign(box (Place::from(dest), rvalue)),
         });
     }

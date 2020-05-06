@@ -146,12 +146,11 @@ enum CallKind {
 }
 
 fn temp_decl(mutability: Mutability, ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
-    let source_info = SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span };
     LocalDecl {
         mutability,
         ty,
         user_ty: UserTypeProjections::none(),
-        source_info,
+        source_info: SourceInfo::outermost(span),
         internal: false,
         local_info: LocalInfo::Other,
         is_block_tail: None,
@@ -185,7 +184,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     let sig = tcx.erase_late_bound_regions(&sig);
     let span = tcx.def_span(def_id);
 
-    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
+    let source_info = SourceInfo::outermost(span);
 
     let return_block = BasicBlock::new(1);
     let mut blocks = IndexVec::with_capacity(2);
@@ -374,7 +373,7 @@ impl CloneShimBuilder<'tcx> {
     }
 
     fn source_info(&self) -> SourceInfo {
-        SourceInfo { span: self.span, scope: OUTERMOST_SOURCE_SCOPE }
+        SourceInfo::outermost(self.span)
     }
 
     fn block(
@@ -687,7 +686,7 @@ fn build_call_shim<'tcx>(
     debug!("build_call_shim: sig={:?}", sig);
 
     let mut local_decls = local_decls_for_sig(&sig, span);
-    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
+    let source_info = SourceInfo::outermost(span);
 
     let rcvr_place = || {
         assert!(rcvr_adjustment.is_some());
@@ -849,7 +848,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
     let local_decls = local_decls_for_sig(&sig, span);
 
-    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
+    let source_info = SourceInfo::outermost(span);
 
     let variant_index = if adt_def.is_enum() {
         adt_def.variant_index_with_ctor_id(ctor_id)

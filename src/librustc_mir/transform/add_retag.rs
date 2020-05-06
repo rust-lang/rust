@@ -77,11 +77,9 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         // PART 1
         // Retag arguments at the beginning of the start block.
         {
-            let source_info = SourceInfo {
-                scope: OUTERMOST_SOURCE_SCOPE,
-                span, // FIXME: Consider using just the span covering the function
-                      // argument declaration.
-            };
+            // FIXME: Consider using just the span covering the function
+            // argument declaration.
+            let source_info = SourceInfo::outermost(span);
             // Gather all arguments, skip return value.
             let places = local_decls
                 .iter_enumerated()

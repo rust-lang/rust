@@ -804,10 +804,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
-            let source_info = SourceInfo {
-                scope: OUTERMOST_SOURCE_SCOPE,
-                span: arg_opt.map_or(self.fn_span, |arg| arg.pat.span),
-            };
+            let source_info =
+                SourceInfo::outermost(arg_opt.map_or(self.fn_span, |arg| arg.pat.span));
             let arg_local = self.local_decls.push(LocalDecl {
                 mutability: Mutability::Mut,
                 ty,
@@ -885,10 +883,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     self.var_debug_info.push(VarDebugInfo {
                         name,
-                        source_info: SourceInfo {
-                            scope: OUTERMOST_SOURCE_SCOPE,
-                            span: tcx_hir.span(var_id),
-                        },
+                        source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
                         place: Place {
                             local: closure_env_arg,
                             projection: tcx.intern_place_elems(&projs),

@@ -50,7 +50,7 @@ impl<'tcx> MirPatch<'tcx> {
             result.new_block(BasicBlockData {
                 statements: vec![],
                 terminator: Some(Terminator {
-                    source_info: SourceInfo { span: body.span, scope: OUTERMOST_SOURCE_SCOPE },
+                    source_info: SourceInfo::outermost(body.span),
                     kind: TerminatorKind::Resume,
                 }),
                 is_cleanup: true,

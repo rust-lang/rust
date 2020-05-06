@@ -16,7 +16,7 @@ use crate::dataflow::BottomValue;
 /// This is the `Body` that will be used by the `MockAnalysis` below. The shape of its CFG is not
 /// important.
 fn mock_body() -> mir::Body<'static> {
-    let source_info = mir::SourceInfo { scope: mir::OUTERMOST_SOURCE_SCOPE, span: DUMMY_SP };
+    let source_info = mir::SourceInfo::outermost(DUMMY_SP);
 
     let mut blocks = IndexVec::new();
     let mut block = |n, kind| {
