@@ -894,12 +894,12 @@ impl<'tcx> Constructor<'tcx> {
                                 match (is_visible, is_non_exhaustive, is_uninhabited) {
                                     // Treat all uninhabited types in non-exhaustive variants as
                                     // `TyErr`.
-                                    (_, true, true) => cx.tcx.types.err,
+                                    (_, true, true) => cx.tcx.err(),
                                     // Treat all non-visible fields as `TyErr`. They can't appear
                                     // in any other pattern from this match (because they are
                                     // private), so their type does not matter - but we don't want
                                     // to know they are uninhabited.
-                                    (false, ..) => cx.tcx.types.err,
+                                    (false, ..) => cx.tcx.err(),
                                     (true, ..) => {
                                         let ty = field.ty(cx.tcx, substs);
                                         match ty.kind {
@@ -910,7 +910,7 @@ impl<'tcx> Constructor<'tcx> {
                                                     .try_eval_usize(cx.tcx, cx.param_env)
                                                     .is_none() =>
                                             {
-                                                cx.tcx.types.err
+                                                cx.tcx.err()
                                             }
                                             _ => ty,
                                         }

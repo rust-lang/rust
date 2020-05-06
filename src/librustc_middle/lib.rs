@@ -52,6 +52,7 @@
 #![feature(rustc_attrs)]
 #![feature(hash_raw_entry)]
 #![feature(int_error_matching)]
+#![feature(track_caller)]
 #![recursion_limit = "512"]
 
 #[macro_use]

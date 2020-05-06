@@ -212,7 +212,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         e.span,
                         &format!("bad index {:?} for base: `{:?}`", index, base),
                     );
-                    self.fcx.tcx.types.err
+                    self.fcx.tcx.err()
                 });
                 let index_ty = self.fcx.resolve_vars_if_possible(&index_ty);
 
@@ -668,7 +668,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 self.report_error(t);
                 self.replaced_with_error = true;
-                self.tcx().types.err
+                self.tcx().err()
             }
         }
     }
@@ -686,7 +686,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 // FIXME: we'd like to use `self.report_error`, but it doesn't yet
                 // accept a &'tcx ty::Const.
                 self.replaced_with_error = true;
-                self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty: ct.ty })
+                self.tcx().err_const(ct.ty)
             }
         }
     }

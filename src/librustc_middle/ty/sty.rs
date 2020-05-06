@@ -2378,9 +2378,7 @@ impl<'tcx> Const<'tcx> {
                 // can leak through `val` into the const we return.
                 Ok(val) => Const::from_value(tcx, val, self.ty),
                 Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
-                Err(ErrorHandled::Reported(ErrorReported)) => {
-                    tcx.mk_const(ty::Const { val: ty::ConstKind::Error, ty: self.ty })
-                }
+                Err(ErrorHandled::Reported(ErrorReported)) => tcx.err_const(self.ty),
             }
         } else {
             self

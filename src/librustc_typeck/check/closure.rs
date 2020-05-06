@@ -178,7 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match expected_ty.kind {
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
-                    let pb = pb.with_self_ty(self.tcx, self.tcx.types.err);
+                    let pb = pb.with_self_ty(self.tcx, self.tcx.err());
                     self.deduce_sig_from_projection(None, &pb)
                 });
                 let kind = object_type
@@ -714,7 +714,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.
             astconv.ast_ty_to_ty(a);
-            self.tcx.types.err
+            self.tcx.err()
         });
 
         if let hir::FnRetTy::Return(ref output) = decl.output {
@@ -723,7 +723,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let result = ty::Binder::bind(self.tcx.mk_fn_sig(
             supplied_arguments,
-            self.tcx.types.err,
+            self.tcx.err(),
             decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,

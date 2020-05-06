@@ -780,7 +780,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.allow_ty_infer()) {
                         inferred_params.push(ty.span);
-                        tcx.types.err.into()
+                        tcx.err().into()
                     } else {
                         self.ast_ty_to_ty(&ty).into()
                     }
@@ -806,7 +806,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             // careful!
                             if default_needs_object_self(param) {
                                 missing_type_params.push(param.name.to_string());
-                                tcx.types.err.into()
+                                tcx.err().into()
                             } else {
                                 // This is a default type parameter.
                                 self.normalize_ty(
@@ -826,7 +826,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             self.ty_infer(param, span).into()
                         } else {
                             // We've already errored above about the mismatch.
-                            tcx.types.err.into()
+                            tcx.err().into()
                         }
                     }
                     GenericParamDefKind::Const => {
@@ -837,7 +837,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             self.ct_infer(ty, Some(param), span).into()
                         } else {
                             // We've already errored above about the mismatch.
-                            tcx.mk_const(ty::Const { val: ty::ConstKind::Error, ty }).into()
+                            tcx.err_const(ty).into()
                         }
                     }
                 }
@@ -1564,7 +1564,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "at least one trait is required for an object type"
             )
             .emit();
-            return tcx.types.err;
+            return tcx.err();
         }
 
         // Check that there are no gross object safety violations;
@@ -1581,7 +1581,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     &object_safety_violations[..],
                 )
                 .emit();
-                return tcx.types.err;
+                return tcx.err();
             }
         }
 
@@ -2391,7 +2391,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 &path_str,
                 item_segment.ident.name,
             );
-            return tcx.types.err;
+            return tcx.err();
         };
 
         debug!("qpath_to_ty: self_type={:?}", self_ty);
@@ -2708,7 +2708,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             Res::Err => {
                 self.set_tainted_by_errors();
-                self.tcx().types.err
+                self.tcx().err()
             }
             _ => span_bug!(span, "unexpected resolution: {:?}", path.res),
         }
@@ -2769,7 +2769,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 };
                 self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, res, segment, false)
                     .map(|(ty, _, _)| ty)
-                    .unwrap_or(tcx.types.err)
+                    .unwrap_or(tcx.err())
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir().local_def_id(length.hir_id);
@@ -2787,7 +2787,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .span_label(ast_ty.span, "reserved keyword")
                 .emit();
 
-                tcx.types.err
+                tcx.err()
             }
             hir::TyKind::Infer => {
                 // Infer also appears as the type of arguments or return
@@ -2796,7 +2796,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, ast_ty.span)
             }
-            hir::TyKind::Err => tcx.types.err,
+            hir::TyKind::Err => tcx.err(),
         };
 
         debug!("ast_ty_to_ty: result_ty={:?}", result_ty);

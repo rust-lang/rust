@@ -15,7 +15,7 @@ impl<'tcx, T> Value<'tcx> for T {
 
 impl<'tcx> Value<'tcx> for Ty<'tcx> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        tcx.types.err
+        tcx.err()
     }
 }
 
@@ -27,6 +27,6 @@ impl<'tcx> Value<'tcx> for ty::SymbolName {
 
 impl<'tcx> Value<'tcx> for AdtSizedConstraint<'tcx> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>) -> Self {
-        AdtSizedConstraint(tcx.intern_type_list(&[tcx.types.err]))
+        AdtSizedConstraint(tcx.intern_type_list(&[tcx.err()]))
     }
 }

@@ -939,7 +939,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                             )
                             .emit();
 
-                        self.tcx().types.err
+                        self.tcx().err()
                     }
                 }
             }
@@ -972,7 +972,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
                             )
                             .emit();
 
-                        self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty: ct.ty })
+                        self.tcx().err_const(ct.ty)
                     }
                 }
             }
@@ -1000,7 +1000,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             tcx,
             ty_op: |ty| {
                 if ty.references_error() {
-                    return tcx.types.err;
+                    return tcx.err();
                 } else if let ty::Opaque(def_id, substs) = ty.kind {
                     // Check that this is `impl Trait` type is
                     // declared by `parent_def_id` -- i.e., one whose

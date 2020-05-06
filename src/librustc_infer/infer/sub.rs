@@ -119,7 +119,7 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
 
             (&ty::Error, _) | (_, &ty::Error) => {
                 infcx.set_tainted_by_errors();
-                Ok(self.tcx().types.err)
+                Ok(self.tcx().err())
             }
 
             _ => {

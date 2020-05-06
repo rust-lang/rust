@@ -188,15 +188,15 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
             match t.kind {
                 ty::Infer(ty::TyVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedTy(vid));
-                    self.tcx().types.err
+                    self.tcx().err()
                 }
                 ty::Infer(ty::IntVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedIntTy(vid));
-                    self.tcx().types.err
+                    self.tcx().err()
                 }
                 ty::Infer(ty::FloatVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedFloatTy(vid));
-                    self.tcx().types.err
+                    self.tcx().err()
                 }
                 ty::Infer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
@@ -227,7 +227,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
             match c.val {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     self.err = Some(FixupError::UnresolvedConst(vid));
-                    return self.tcx().mk_const(ty::Const { val: ty::ConstKind::Error, ty: c.ty });
+                    return self.tcx().err_const(c.ty);
                 }
                 ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);

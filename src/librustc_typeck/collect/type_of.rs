@@ -143,7 +143,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 // Some error in the
                                 // owner fn prevented us from populating
                                 // the `concrete_opaque_types` table.
-                                tcx.types.err
+                                tcx.err()
                             } else {
                                 // We failed to resolve the opaque type or it
                                 // resolves to itself. Return the non-revealed
@@ -244,7 +244,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 DUMMY_SP,
                                 &format!("unexpected const parent path {:?}", parent_node),
                             );
-                            return tcx.types.err;
+                            return tcx.err();
                         }
                     };
 
@@ -284,7 +284,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                     res, path,
                                 ),
                             );
-                            return tcx.types.err;
+                            return tcx.err();
                         }
                     };
 
@@ -313,7 +313,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 parent_node, res
                             ),
                         );
-                        tcx.types.err
+                        tcx.err()
                     }
                 }
 
@@ -322,7 +322,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         DUMMY_SP,
                         &format!("unexpected const parent in type_of_def_id(): {:?}", x),
                     );
-                    tcx.types.err
+                    tcx.err()
                 }
             }
         }
@@ -591,7 +591,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         None => {
             let span = tcx.def_span(def_id);
             tcx.sess.span_err(span, "could not find defining uses");
-            tcx.types.err
+            tcx.err()
         }
     }
 }
@@ -624,7 +624,7 @@ fn infer_placeholder_type(
         }
         None => {
             let mut diag = bad_placeholder_type(tcx, vec![span]);
-            if ty != tcx.types.err {
+            if ty != tcx.err() {
                 diag.span_suggestion(
                     span,
                     "replace `_` with the correct type",

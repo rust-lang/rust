@@ -354,7 +354,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
             bug!("bound types encountered in super_relate_tys")
         }
 
-        (&ty::Error, _) | (_, &ty::Error) => Ok(tcx.types.err),
+        (&ty::Error, _) | (_, &ty::Error) => Ok(tcx.err()),
 
         (&ty::Never, _)
         | (&ty::Char, _)
