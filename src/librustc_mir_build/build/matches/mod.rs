@@ -470,9 +470,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for binding in &candidate_ref.bindings {
                     let local = self.var_local_id(binding.var_id, OutsideGuard);
 
-                    if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                    if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                         VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
-                    ))) = self.local_decls[local].local_info
+                    )))) = self.local_decls[local].local_info
                     {
                         *match_place = Some(initializer);
                     } else {
@@ -1953,7 +1953,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             source_info,
             internal: false,
             is_block_tail: None,
-            local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+            local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode,
                 // hypothetically, `visit_bindings` could try to unzip
                 // an outermost hir::Ty as we descend, matching up
@@ -1962,7 +1962,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 opt_ty_info: None,
                 opt_match_place,
                 pat_span,
-            }))),
+            })))),
         };
         let for_arm_body = self.local_decls.push(local);
         self.var_debug_info.push(VarDebugInfo {
@@ -1980,7 +1980,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 source_info,
                 internal: false,
                 is_block_tail: None,
-                local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)),
+                local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))),
             });
             self.var_debug_info.push(VarDebugInfo {
                 name,
