@@ -136,7 +136,6 @@ impl TidyDocs {
         }
 
         let whitelist = [
-            "ra_db",
             "ra_hir",
             "ra_hir_expand",
             "ra_ide",
