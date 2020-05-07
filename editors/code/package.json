@@ -589,6 +589,9 @@
                     "union": [
                         "entity.name.union"
                     ],
+                    "struct": [
+                        "entity.name.type.struct"
+                    ],
                     "keyword.unsafe": [
                         "keyword.other.unsafe"
                     ],
