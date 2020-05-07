@@ -93,22 +93,28 @@ LL | |         *;
    | |_________^ help: try: `crate:: fn_mod::foo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:172:13
+  --> $DIR/wildcard_imports.rs:164:13
+   |
+LL |         use super::*;
+   |             ^^^^^^^^ help: try: `super::foofoo`
+
+error: usage of wildcard import
+  --> $DIR/wildcard_imports.rs:180:13
    |
 LL |         use test_super_imports::*;
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `test_super_imports::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:181:17
+  --> $DIR/wildcard_imports.rs:189:17
    |
 LL |             use super::super::*;
    |                 ^^^^^^^^^^^^^^^ help: try: `super::super::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:190:13
+  --> $DIR/wildcard_imports.rs:198:13
    |
 LL |         use super::super::test_super_imports::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::test_super_imports::foofoo`
 
-error: aborting due to 18 previous errors
+error: aborting due to 19 previous errors
 

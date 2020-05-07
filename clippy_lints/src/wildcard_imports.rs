@@ -84,7 +84,7 @@ impl LateLintPass<'_, '_> for WildcardImports {
             if !in_macro(item.span);
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
             if !is_prelude_import(use_path.segments);
-            if !is_super_only_import_in_test(use_path.segments);
+            if !(is_super_only_import(use_path.segments) && is_in_test_module(cx, item));
             let used_imports = cx.tcx.names_imported_by_glob_use(item.hir_id.owner);
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
@@ -109,8 +109,7 @@ impl LateLintPass<'_, '_> for WildcardImports {
                         span = use_path.span.with_hi(item.span.hi() - BytePos(1));
                     }
                     (
-                        span,
-                        false,
+                        span, false,
                     )
                 };
 
@@ -164,8 +163,14 @@ fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
         .map_or(false, |ps| ps.ident.as_str() == "prelude")
 }
 
-// Allow "super::*" imports.
-// This is intended primarily to ease the process of writing unit tests.
-fn is_super_only_import_in_test(segments: &[PathSegment<'_>]) -> bool {
-    segments.iter().len() == 1 && segments.first().map_or(false, |ps| ps.ident.as_str() == "super")
+// Allow "super::*" imports in tests.
+fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
+    segments.len() == 1 && segments[0].ident.as_str() == "super"
+}
+
+fn is_in_test_module(cx: &LateContext<'_, '_>, item: &Item<'_>) -> bool {
+    let parent = cx.tcx.hir().get_parent_node(item.hir_id);
+    let parent_item = cx.tcx.hir().expect_item(parent);
+    let parent_name = parent_item.ident.name.as_str();
+    parent_name.contains("test")
 }
