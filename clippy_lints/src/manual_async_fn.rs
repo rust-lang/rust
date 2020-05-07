@@ -1,5 +1,5 @@
-use crate::utils::paths::{FUTURE_CORE, FUTURE_FROM_GENERATOR, FUTURE_STD};
-use crate::utils::{match_function_call, match_path, snippet_block, snippet_opt, span_lint_and_then};
+use crate::utils::paths::FUTURE_FROM_GENERATOR;
+use crate::utils::{match_function_call, snippet_block, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ManualAsyncFn {
                     cx,
                     MANUAL_ASYNC_FN,
                     header_span,
-                    "this function can be simplified using async syntax",
+                    "this function can be simplified using the `async fn` syntax",
                     |diag| {
                         if_chain! {
                             if let Some(header_snip) = snippet_opt(cx, header_span);
@@ -104,8 +104,7 @@ fn future_trait_ref<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &'tcx Ty<'tcx>) -> Opt
         if let ItemKind::OpaqueTy(opaque) = &item.kind;
         if opaque.bounds.len() == 1;
         if let GenericBound::Trait(poly, _) = &opaque.bounds[0];
-        let path = poly.trait_ref.path;
-        if match_path(&path, &FUTURE_CORE) || match_path(&path, &FUTURE_STD);
+        if poly.trait_ref.trait_def_id() == cx.tcx.lang_items().future_trait();
         then {
             return Some(&poly.trait_ref);
         }

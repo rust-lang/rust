@@ -36,7 +36,19 @@ async fn already_async() -> impl Future<Output = i32> {
 struct S {}
 impl S {
     fn inh_fut() -> impl Future<Output = i32> {
-        async { 42 }
+        async {
+            // NOTE: this code is here just to check that the identation is correct in the suggested fix
+            let a = 42;
+            let b = 21;
+            if a < b {
+                let c = 21;
+                let d = 42;
+                if c < d {
+                    let _ = 42;
+                }
+            }
+            42
+        }
     }
 
     fn meth_fut(&self) -> impl Future<Output = i32> {
