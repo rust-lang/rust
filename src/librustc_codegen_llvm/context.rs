@@ -217,7 +217,16 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         // attributes in LLVM IR as well as native dependencies (in C these
         // correspond to `__declspec(dllimport)`).
         //
-        // Whenever a dynamic library is built by MSVC it must have its public
+        // LD (BFD) in MinGW mode can often correctly guess `dllexport` but
+        // relying on that can result in issues like #50176.
+        // LLD won't support that and expects symbols with proper attributes.
+        // Because of that we make MinGW target emit dllexport just like MSVC.
+        // When it comes to dllimport we use it for constants but for functions
+        // rely on the linker to do the right thing. Opposed to dllexport this
+        // task is easy for them (both LD and LLD) and allows us to easily use
+        // symbols from static libraries in shared libraries.
+        //
+        // Whenever a dynamic library is built on Windows it must have its public
         // interface specified by functions tagged with `dllexport` or otherwise
         // they're not available to be linked against. This poses a few problems
         // for the compiler, some of which are somewhat fundamental, but we use
@@ -254,8 +263,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         // this effect) by marking very little as `dllimport` and praying the
         // linker will take care of everything. Fixing this problem will likely
         // require adding a few attributes to Rust itself (feature gated at the
-        // start) and then strongly recommending static linkage on MSVC!
-        let use_dll_storage_attrs = tcx.sess.target.target.options.is_like_msvc;
+        // start) and then strongly recommending static linkage on Windows!
+        let use_dll_storage_attrs = tcx.sess.target.target.options.is_like_windows;
 
         let check_overflow = tcx.sess.overflow_checks();
 

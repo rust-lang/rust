@@ -523,8 +523,9 @@ impl<'a> Linker for GccLinker<'a> {
             return;
         }
 
+        let is_windows = self.sess.target.target.options.is_like_windows;
         let mut arg = OsString::new();
-        let path = tmpdir.join("list");
+        let path = tmpdir.join(if is_windows { "list.def" } else { "list" });
 
         debug!("EXPORTED SYMBOLS:");
 
@@ -539,6 +540,21 @@ impl<'a> Linker for GccLinker<'a> {
             };
             if let Err(e) = res {
                 self.sess.fatal(&format!("failed to write lib.def file: {}", e));
+            }
+        } else if is_windows {
+            let res: io::Result<()> = try {
+                let mut f = BufWriter::new(File::create(&path)?);
+
+                // .def file similar to MSVC one but without LIBRARY section
+                // because LD doesn't like when it's empty
+                writeln!(f, "EXPORTS")?;
+                for symbol in self.info.exports[&crate_type].iter() {
+                    debug!("  _{}", symbol);
+                    writeln!(f, "  {}", symbol)?;
+                }
+            };
+            if let Err(e) = res {
+                self.sess.fatal(&format!("failed to write list.def file: {}", e));
             }
         } else {
             // Write an LD version script
@@ -573,7 +589,10 @@ impl<'a> Linker for GccLinker<'a> {
             if !self.is_ld {
                 arg.push("-Wl,")
             }
-            arg.push("--version-script=");
+            // Both LD and LLD accept export list in *.def file form, there are no flags required
+            if !is_windows {
+                arg.push("--version-script=")
+            }
         }
 
         arg.push(&path);
