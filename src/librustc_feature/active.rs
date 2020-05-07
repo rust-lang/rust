@@ -228,7 +228,6 @@ declare_features! (
     (active, hexagon_target_feature, "1.27.0", Some(44839), None),
     (active, powerpc_target_feature, "1.27.0", Some(44839), None),
     (active, mips_target_feature, "1.27.0", Some(44839), None),
-    (active, riscv_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),
     (active, mmx_target_feature, "1.27.0", Some(44839), None),
     (active, sse4a_target_feature, "1.27.0", Some(44839), None),
@@ -239,6 +238,7 @@ declare_features! (
     (active, movbe_target_feature, "1.34.0", Some(44839), None),
     (active, rtm_target_feature, "1.35.0", Some(44839), None),
     (active, f16c_target_feature, "1.36.0", Some(44839), None),
+    (active, riscv_target_feature, "1.45.0", Some(44839), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates (target features)

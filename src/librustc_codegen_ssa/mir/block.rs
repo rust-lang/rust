@@ -975,7 +975,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
                         mir::InlineAsmOperand::SymFn { ref value } => {
-                            if let ty::FnDef(def_id, substs) = value.literal.ty.kind {
+                            let literal = self.monomorphize(&value.literal);
+                            if let ty::FnDef(def_id, substs) = literal.ty.kind {
                                 let instance = ty::Instance::resolve(
                                     bx.tcx(),
                                     ty::ParamEnv::reveal_all(),
