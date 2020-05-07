@@ -2,6 +2,7 @@ use crate::infer::{InferCtxt, TyOrConstInferVar};
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
+use rustc_errors::ErrorReported;
 use rustc_infer::traits::{TraitEngine, TraitEngineExt as _};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
@@ -544,11 +545,9 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                                         .filter_map(|ty| TyOrConstInferVar::maybe_from_ty(ty))
                                         .collect(),
                                 );
-                                Err(ProcessResult::Unchanged)
+                                Err(ErrorHandled::TooGeneric)
                             }
-                            Err(err) => {
-                                Err(ProcessResult::Error(CodeSelectionError(ConstEvalFailure(err))))
-                            }
+                            Err(err) => Err(err),
                         }
                     } else {
                         Ok(c)
@@ -572,14 +571,16 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                             }
                         }
                     }
-                    // FIXME(skinny121) How to report both errors if both produces errors?
-                    (Err(result @ ProcessResult::Error(_)), _)
-                    | (_, Err(result @ ProcessResult::Error(_))) => result,
-                    (Err(ProcessResult::Unchanged), _) | (_, Err(ProcessResult::Unchanged)) => {
+                    (Err(ErrorHandled::Reported(ErrorReported)), _)
+                    | (_, Err(ErrorHandled::Reported(ErrorReported))) => ProcessResult::Error(
+                        CodeSelectionError(ConstEvalFailure(ErrorHandled::Reported(ErrorReported))),
+                    ),
+                    (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => span_bug!(
+                        obligation.cause.span(self.selcx.tcx()),
+                        "ConstEquate: const_eval_resolve returned an unexpected error"
+                    ),
+                    (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
                         ProcessResult::Unchanged
-                    }
-                    _ => {
-                        unreachable!("evaluate shouldn't itself return ProcessResult::Changed(..)")
                     }
                 }
             }
