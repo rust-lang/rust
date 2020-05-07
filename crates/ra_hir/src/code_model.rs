@@ -1083,6 +1083,28 @@ impl Type {
         matches!(self.ty.value, Ty::Apply(ApplicationTy { ctor: TypeCtor::Bool, .. }))
     }
 
+    pub fn is_option(&self, db: &dyn HirDatabase) -> bool {
+        if let Some(adt_ty) = self.as_adt() {
+            if let Adt::Enum(_) = adt_ty {
+                if self.display(db).to_string().starts_with("Option<") {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    pub fn is_result(&self, db: &dyn HirDatabase) -> bool {
+        if let Some(adt_ty) = self.as_adt() {
+            if let Adt::Enum(_) = adt_ty {
+                if self.display(db).to_string().starts_with("Result<") {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     pub fn is_mutable_reference(&self) -> bool {
         matches!(
             self.ty.value,
