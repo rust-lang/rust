@@ -147,6 +147,8 @@ impl ModuleConfig {
             || sess.opts.cg.linker_plugin_lto.enabled()
         {
             EmitObj::Bitcode
+        } else if sess.target.target.options.forces_embed_bitcode {
+            EmitObj::ObjectCode(BitcodeSection::Full)
         } else if need_crate_bitcode_for_rlib(sess) {
             let force_full = need_crate_bitcode_for_rlib(sess);
             match sess.opts.optimize {
