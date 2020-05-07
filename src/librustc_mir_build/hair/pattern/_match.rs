@@ -580,21 +580,11 @@ crate struct MatchCheckCtxt<'a, 'tcx> {
     /// outside it's module and should not be matchable with an empty match
     /// statement.
     crate module: DefId,
-    param_env: ty::ParamEnv<'tcx>,
+    crate param_env: ty::ParamEnv<'tcx>,
     crate pattern_arena: &'a TypedArena<Pat<'tcx>>,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
-    crate fn create_and_enter<R>(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        pattern_arena: &'a TypedArena<Pat<'tcx>>,
-        module: DefId,
-        f: impl FnOnce(MatchCheckCtxt<'a, 'tcx>) -> R,
-    ) -> R {
-        f(MatchCheckCtxt { tcx, param_env, module, pattern_arena })
-    }
-
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         if self.tcx.features().exhaustive_patterns {
             self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)

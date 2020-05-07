@@ -149,13 +149,13 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
 
     fn check_in_cx(&self, hir_id: HirId, f: impl FnOnce(MatchCheckCtxt<'_, 'tcx>)) {
         let module = self.tcx.parent_module(hir_id);
-        MatchCheckCtxt::create_and_enter(
-            self.tcx,
-            self.param_env,
-            &self.pattern_arena,
-            module.to_def_id(),
-            f,
-        );
+        let cx = MatchCheckCtxt {
+            tcx: self.tcx,
+            param_env: self.param_env,
+            module: module.to_def_id(),
+            pattern_arena: &self.pattern_arena,
+        };
+        f(cx);
     }
 
     fn check_match(
