@@ -6,4 +6,4 @@ authors = ["rust-analyzer developers"]
 
 [dependencies]
 anyhow = "1.0.26"
-dirs = "2.0"
+home = "0.5.3"

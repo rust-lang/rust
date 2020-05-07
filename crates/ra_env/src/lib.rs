@@ -36,7 +36,7 @@ pub fn get_path_for_executable(executable_name: impl AsRef<str>) -> Result<PathB
         if is_valid_executable(executable_name) {
             return Ok(executable_name.into());
         }
-        if let Some(mut path) = dirs::home_dir() {
+        if let Some(mut path) = ::home::home_dir() {
             path.push(".cargo");
             path.push("bin");
             path.push(executable_name);
