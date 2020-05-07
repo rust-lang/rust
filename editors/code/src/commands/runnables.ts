@@ -72,7 +72,8 @@ function getLldbDebugConfig(config: ra.Runnable, executable: string, sourceFileM
         program: executable,
         args: config.extraArgs,
         cwd: config.cwd,
-        sourceMap: sourceFileMap
+        sourceMap: sourceFileMap,
+        sourceLanguages: ["rust"]
     };
 }
 
