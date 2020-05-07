@@ -3,5 +3,5 @@
 use std::mem;
 
 fn main() {
-    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR reference to unallocated address 16
+    let _x: &i32 = unsafe { mem::transmute(16usize) }; //~ ERROR encountered a dangling reference (address 16 is unallocated)
 }
