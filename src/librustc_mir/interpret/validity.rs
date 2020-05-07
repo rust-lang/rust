@@ -321,11 +321,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 try_validation!(
                     self.ecx.read_drop_type_from_vtable(vtable),
                     self.path,
-                    err_ub!(InvalidDropFn(..)) |
                     err_ub!(DanglingIntPointer(..)) |
                     err_ub!(InvalidFunctionPointer(..)) |
                     err_unsup!(ReadBytesAsPointer) =>
-                        { "invalid drop function pointer in vtable" },
+                        { "invalid drop function pointer in vtable (not pointing to a function)" },
+                    err_ub!(InvalidDropFn(..)) =>
+                        { "invalid drop function pointer in vtable (function has incompatible signature)" },
                 );
                 try_validation!(
                     self.ecx.read_size_and_align_from_vtable(vtable),
@@ -400,7 +401,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             err_ub!(DanglingIntPointer(0, _)) =>
                 { "a NULL {}", kind },
             err_ub!(DanglingIntPointer(i, _)) =>
-                { "a dangling {} (address {} is unallocated)", kind, i },
+                { "a dangling {} (address 0x{:x} is unallocated)", kind, i },
             err_ub!(PointerOutOfBounds { .. }) =>
                 { "a dangling {} (going beyond the bounds of its allocation)", kind },
             err_unsup!(ReadBytesAsPointer) =>
