@@ -151,7 +151,11 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             };
             (
                 format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
-                format!("not found in {}", mod_str),
+                if path_str == "async" && expected.starts_with("struct") {
+                    "`async` blocks are only allowed in the 2018 edition".to_string()
+                } else {
+                    format!("not found in {}", mod_str)
+                },
                 item_span,
                 false,
             )
