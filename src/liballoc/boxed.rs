@@ -739,7 +739,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: AllocRef> Drop for Box<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Default, A: AllocRef + Default> Default for Box<T, A> {
+impl<T: Default> Default for Box<T> {
     /// Creates a `Box<T>`, with the `Default` value for T.
     fn default() -> Self {
         box T::default()
@@ -916,7 +916,7 @@ impl<T: ?Sized + Hasher, A: AllocRef> Hasher for Box<T, A> {
 }
 
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
-impl<T, A: AllocRef + Default> From<T> for Box<T, A> {
+impl<T> From<T> for Box<T> {
     /// Converts a generic type `T` into a `Box<T>`
     ///
     /// The conversion allocates on the heap and moves `t`
@@ -930,7 +930,7 @@ impl<T, A: AllocRef + Default> From<T> for Box<T, A> {
     /// assert_eq!(Box::from(x), boxed);
     /// ```
     fn from(t: T) -> Self {
-        Box::new_in(t, A::default())
+        Box::new(t)
     }
 }
 
@@ -945,7 +945,7 @@ impl<T: ?Sized, A: AllocRef> From<Box<T, A>> for Pin<Box<T, A>> {
 }
 
 #[stable(feature = "box_from_slice", since = "1.17.0")]
-impl<T: Copy, A: AllocRef + Default> From<&[T]> for Box<[T], A> {
+impl<T: Copy> From<&[T]> for Box<[T]> {
     /// Converts a `&[T]` into a `Box<[T]>`
     ///
     /// This conversion allocates on the heap
@@ -970,7 +970,7 @@ impl<T: Copy, A: AllocRef + Default> From<&[T]> for Box<[T], A> {
 }
 
 #[stable(feature = "box_from_slice", since = "1.17.0")]
-impl<A: AllocRef + Default> From<&str> for Box<str, A> {
+impl From<&str> for Box<str> {
     /// Converts a `&str` into a `Box<str>`
     ///
     /// This conversion allocates on the heap
@@ -1237,9 +1237,9 @@ impl<I> FromIterator<I> for Box<[I]> {
 }
 
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl<T: Clone, A: AllocRef + Clone> Clone for Box<[T], A> {
+impl<T: Clone> Clone for Box<[T]> {
     fn clone(&self) -> Self {
-        self.to_vec_in(self.1.clone()).into_boxed_slice()
+        self.to_vec().into_boxed_slice()
     }
 }
 

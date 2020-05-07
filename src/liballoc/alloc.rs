@@ -2,8 +2,13 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-use core::intrinsics::{self, min_align_of_val, size_of_val};
-use core::ptr::{NonNull, Unique};
+#[cfg(not(test))]
+use core::intrinsics;
+#[cfg(not(test))]
+use core::ptr::NonNull;
+
+use core::intrinsics::{min_align_of_val, size_of_val};
+use core::ptr::Unique;
 
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
@@ -40,7 +45,11 @@ extern "Rust" {
 /// [`AllocRef`]: trait.AllocRef.html
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
+#[cfg(not(test))]
 pub struct Global;
+
+#[cfg(test)]
+pub use std::alloc::Global;
 
 /// Allocate memory with the global allocator.
 ///
@@ -162,6 +171,7 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
+#[cfg(not(test))]
 unsafe impl AllocRef for Global {
     #[inline]
     fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr> {
