@@ -189,7 +189,8 @@ use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::respan;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym};
+
 use rustc_span::Span;
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
@@ -687,16 +688,8 @@ impl<'a> TraitDef<'a> {
         // Just mark it now since we know that it'll end up used downstream
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
-        let unused_qual = {
-            let word = rustc_ast::attr::mk_nested_word_item(Ident::new(
-                Symbol::intern("unused_qualifications"),
-                self.span,
-            ));
-            let list = rustc_ast::attr::mk_list_item(Ident::new(sym::allow, self.span), vec![word]);
-            cx.attribute(list)
-        };
 
-        let mut a = vec![attr, unused_qual];
+        let mut a = vec![attr];
         a.extend(self.attributes.iter().cloned());
 
         let unsafety = if self.is_unsafe { ast::Unsafe::Yes(self.span) } else { ast::Unsafe::No };
