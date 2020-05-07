@@ -22,6 +22,14 @@ use std::fmt;
 use super::InferCtxtPrivExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
+#[derive(Debug)]
+pub enum GeneratorInteriorOrUpvar {
+    // span of interior type
+    Interior(Span),
+    // span of upvar
+    Upvar(Span),
+}
+
 // This trait is public to expose the diagnostics methods to clippy.
 pub trait InferCtxtExt<'tcx> {
     fn suggest_restricting_param_bound(
@@ -125,8 +133,8 @@ pub trait InferCtxtExt<'tcx> {
     fn note_obligation_cause_for_async_await(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        interior: Option<(Span, Option<Span>, Option<Span>, Option<hir::HirId>, Option<Span>)>,
-        upvar: Option<(Ty<'tcx>, Span)>,
+        interior_or_upvar_span: GeneratorInteriorOrUpvar,
+        interior_extra_info: Option<(Option<Span>, Span, Option<hir::HirId>, Option<Span>)>,
         inner_generator_body: Option<&hir::Body<'_>>,
         outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'_>,
@@ -1280,7 +1288,23 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             );
             eq
         };
-        let interior = tables
+
+        let mut interior_or_upvar_span = None;
+        let mut interior_extra_info = None;
+
+        if let Some(upvars) = self.tcx.upvars(generator_did) {
+            interior_or_upvar_span = upvars.iter().find_map(|(upvar_id, upvar)| {
+                let upvar_ty = tables.node_type(*upvar_id);
+                let upvar_ty = self.resolve_vars_if_possible(&upvar_ty);
+                if ty_matches(&upvar_ty) {
+                    Some(GeneratorInteriorOrUpvar::Upvar(upvar.span))
+                } else {
+                    None
+                }
+            });
+        };
+
+        tables
             .generator_interior_types
             .iter()
             .find(|ty::GeneratorInteriorTypeCause { ty, .. }| ty_matches(ty))
@@ -1301,29 +1325,21 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .map(|expr| expr.span);
                 let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } =
                     cause;
-                (*span, *scope_span, *yield_span, *expr, from_awaited_ty)
+
+                interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(*span));
+                interior_extra_info = Some((*scope_span, *yield_span, *expr, from_awaited_ty));
             });
 
-        let upvar = if let Some(upvars) = self.tcx.upvars(generator_did) {
-            upvars.iter().find_map(|(upvar_id, upvar)| {
-                let upvar_ty = tables.node_type(*upvar_id);
-                let upvar_ty = self.resolve_vars_if_possible(&upvar_ty);
-                if ty_matches(&upvar_ty) { Some((upvar_ty, upvar.span)) } else { None }
-            })
-        } else {
-            None
-        };
-
         debug!(
-            "maybe_note_obligation_cause_for_async_await: interior={:?} \
-                generator_interior_types={:?} upvar: {:?}",
-            interior, tables.generator_interior_types, upvar
+            "maybe_note_obligation_cause_for_async_await: interior_or_upvar={:?} \
+                generator_interior_types={:?}",
+            interior_or_upvar_span, tables.generator_interior_types
         );
-        if interior.is_some() || upvar.is_some() {
+        if let Some(interior_or_upvar_span) = interior_or_upvar_span {
             self.note_obligation_cause_for_async_await(
                 err,
-                interior,
-                upvar,
+                interior_or_upvar_span,
+                interior_extra_info,
                 generator_body,
                 outer_generator,
                 trait_ref,
@@ -1343,8 +1359,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     fn note_obligation_cause_for_async_await(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        interior: Option<(Span, Option<Span>, Option<Span>, Option<hir::HirId>, Option<Span>)>,
-        upvar: Option<(Ty<'tcx>, Span)>,
+        interior_or_upvar_span: GeneratorInteriorOrUpvar,
+        interior_extra_info: Option<(Option<Span>, Span, Option<hir::HirId>, Option<Span>)>,
         inner_generator_body: Option<&hir::Body<'_>>,
         outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'_>,
@@ -1412,121 +1428,118 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             format!("does not implement `{}`", trait_ref.print_only_trait_path())
         };
 
-        if let Some((target_span, scope_span, yield_span, expr, from_awaited_ty)) = interior {
-            if let Some(await_span) = from_awaited_ty {
-                // The type causing this obligation is one being awaited at await_span.
-                let mut span = MultiSpan::from_span(await_span);
-
+        let mut explain_yield = |interior_span: Span,
+                                 yield_span: Span,
+                                 scope_span: Option<Span>| {
+            let mut span = MultiSpan::from_span(yield_span);
+            if let Ok(snippet) = source_map.span_to_snippet(interior_span) {
                 span.push_span_label(
-                    await_span,
-                    format!(
-                        "await occurs here on type `{}`, which {}",
-                        target_ty, trait_explanation
-                    ),
+                    yield_span,
+                    format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet),
                 );
+                // If available, use the scope span to annotate the drop location.
+                if let Some(scope_span) = scope_span {
+                    span.push_span_label(
+                        source_map.end_point(scope_span),
+                        format!("`{}` is later dropped here", snippet),
+                    );
+                }
+            }
+            span.push_span_label(
+                interior_span,
+                format!("has type `{}` which {}", target_ty, trait_explanation),
+            );
 
-                err.span_note(
-                    span,
-                    &format!(
-                        "future {not_trait} as it awaits another future which {not_trait}",
-                        not_trait = trait_explanation
-                    ),
-                );
-            } else {
-                // Look at the last interior type to get a span for the `.await`.
-                debug!(
-                    "note_obligation_cause_for_async_await generator_interior_types: {:#?}",
-                    tables.generator_interior_types
-                );
-
-                if let Some(yield_span) = yield_span {
-                    let mut span = MultiSpan::from_span(yield_span);
-                    if let Ok(snippet) = source_map.span_to_snippet(target_span) {
+            err.span_note(
+                span,
+                &format!(
+                    "{} {} as this value is used across {}",
+                    future_or_generator, trait_explanation, an_await_or_yield
+                ),
+            );
+        };
+        match interior_or_upvar_span {
+            GeneratorInteriorOrUpvar::Interior(interior_span) => {
+                if let Some((scope_span, yield_span, expr, from_awaited_ty)) = interior_extra_info {
+                    if let Some(await_span) = from_awaited_ty {
+                        // The type causing this obligation is one being awaited at await_span.
+                        let mut span = MultiSpan::from_span(await_span);
                         span.push_span_label(
-                            yield_span,
+                            await_span,
                             format!(
-                                "{} occurs here, with `{}` maybe used later",
-                                await_or_yield, snippet
+                                "await occurs here on type `{}`, which {}",
+                                target_ty, trait_explanation
                             ),
                         );
-                        // If available, use the scope span to annotate the drop location.
-                        if let Some(scope_span) = scope_span {
-                            span.push_span_label(
-                                source_map.end_point(scope_span),
-                                format!("`{}` is later dropped here", snippet),
-                            );
+                        err.span_note(
+                            span,
+                            &format!(
+                                "future {not_trait} as it awaits another future which {not_trait}",
+                                not_trait = trait_explanation
+                            ),
+                        );
+                    } else {
+                        // Look at the last interior type to get a span for the `.await`.
+                        debug!(
+                            "note_obligation_cause_for_async_await generator_interior_types: {:#?}",
+                            tables.generator_interior_types
+                        );
+                        explain_yield(interior_span, yield_span, scope_span);
+                    }
+
+                    if let Some(expr_id) = expr {
+                        let expr = hir.expect_expr(expr_id);
+                        debug!("target_ty evaluated from {:?}", expr);
+
+                        let parent = hir.get_parent_node(expr_id);
+                        if let Some(hir::Node::Expr(e)) = hir.find(parent) {
+                            let parent_span = hir.span(parent);
+                            let parent_did = parent.owner.to_def_id();
+                            // ```rust
+                            // impl T {
+                            //     fn foo(&self) -> i32 {}
+                            // }
+                            // T.foo();
+                            // ^^^^^^^ a temporary `&T` created inside this method call due to `&self`
+                            // ```
+                            //
+                            let is_region_borrow = tables
+                                .expr_adjustments(expr)
+                                .iter()
+                                .any(|adj| adj.is_region_borrow());
+
+                            // ```rust
+                            // struct Foo(*const u8);
+                            // bar(Foo(std::ptr::null())).await;
+                            //     ^^^^^^^^^^^^^^^^^^^^^ raw-ptr `*T` created inside this struct ctor.
+                            // ```
+                            debug!("parent_def_kind: {:?}", self.tcx.def_kind(parent_did));
+                            let is_raw_borrow_inside_fn_like_call =
+                                match self.tcx.def_kind(parent_did) {
+                                    DefKind::Fn | DefKind::Ctor(..) => target_ty.is_unsafe_ptr(),
+                                    _ => false,
+                                };
+
+                            if (tables.is_method_call(e) && is_region_borrow)
+                                || is_raw_borrow_inside_fn_like_call
+                            {
+                                err.span_help(
+                                    parent_span,
+                                    "consider moving this into a `let` \
+                        binding to create a shorter lived borrow",
+                                );
+                            }
                         }
                     }
-                    span.push_span_label(
-                        target_span,
-                        format!("has type `{}` which {}", target_ty, trait_explanation),
-                    );
-
-                    err.span_note(
-                        span,
-                        &format!(
-                            "{} {} as this value is used across {}",
-                            future_or_generator, trait_explanation, an_await_or_yield
-                        ),
-                    );
                 }
             }
-            if let Some((_, upvar_span)) = upvar {
+            GeneratorInteriorOrUpvar::Upvar(upvar_span) => {
                 let mut span = MultiSpan::from_span(upvar_span);
                 span.push_span_label(
                     upvar_span,
                     format!("has type `{}` which {}", target_ty, trait_explanation),
                 );
-            }
-            if let Some(expr_id) = expr {
-                let expr = hir.expect_expr(expr_id);
-                debug!("target_ty evaluated from {:?}", expr);
-
-                let parent = hir.get_parent_node(expr_id);
-                if let Some(hir::Node::Expr(e)) = hir.find(parent) {
-                    let parent_span = hir.span(parent);
-                    let parent_did = parent.owner.to_def_id();
-                    // ```rust
-                    // impl T {
-                    //     fn foo(&self) -> i32 {}
-                    // }
-                    // T.foo();
-                    // ^^^^^^^ a temporary `&T` created inside this method call due to `&self`
-                    // ```
-                    //
-                    let is_region_borrow =
-                        tables.expr_adjustments(expr).iter().any(|adj| adj.is_region_borrow());
-
-                    // ```rust
-                    // struct Foo(*const u8);
-                    // bar(Foo(std::ptr::null())).await;
-                    //     ^^^^^^^^^^^^^^^^^^^^^ raw-ptr `*T` created inside this struct ctor.
-                    // ```
-                    debug!("parent_def_kind: {:?}", self.tcx.def_kind(parent_did));
-                    let is_raw_borrow_inside_fn_like_call = match self.tcx.def_kind(parent_did) {
-                        DefKind::Fn | DefKind::Ctor(..) => target_ty.is_unsafe_ptr(),
-                        _ => false,
-                    };
-
-                    if (tables.is_method_call(e) && is_region_borrow)
-                        || is_raw_borrow_inside_fn_like_call
-                    {
-                        err.span_help(
-                            parent_span,
-                            "consider moving this into a `let` \
-                        binding to create a shorter lived borrow",
-                        );
-                    }
-                }
-            }
-        } else {
-            if let Some((_, upvar_span)) = upvar {
-                let mut span = MultiSpan::from_span(upvar_span);
-                span.push_span_label(
-                    upvar_span,
-                    format!("has type `{}` which {}", target_ty, trait_explanation),
-                );
-                err.span_note(span, &format!("captured outer value {}", trait_explanation));
+                err.span_note(span, &format!("captured value {}", trait_explanation));
             }
         }
 

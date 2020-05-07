@@ -96,7 +96,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         span: source_span,
                         ty: &ty,
                         scope_span,
-                        yield_span: Some(yield_data.span),
+                        yield_span: yield_data.span,
                         expr: expr.map(|e| e.hir_id),
                     })
                     .or_insert(entries);
@@ -130,7 +130,6 @@ pub fn resolve_interior<'a, 'tcx>(
     kind: hir::GeneratorKind,
 ) {
     let body = fcx.tcx.hir().body(body_id);
-
     let mut visitor = InteriorVisitor {
         fcx,
         types: FxHashMap::default(),
