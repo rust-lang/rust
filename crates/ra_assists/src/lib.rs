@@ -29,6 +29,9 @@ pub(crate) use crate::assist_context::{AssistContext, Assists};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AssistId(pub &'static str);
 
+#[derive(Clone, Debug)]
+pub struct GroupLabel(pub String);
+
 #[derive(Debug, Clone)]
 pub struct Assist {
     pub id: AssistId,
@@ -40,10 +43,41 @@ pub struct Assist {
     pub target: TextRange,
 }
 
-#[derive(Clone, Debug)]
-pub struct GroupLabel(pub String);
+#[derive(Debug, Clone)]
+pub struct ResolvedAssist {
+    pub assist: Assist,
+    pub source_change: SourceChange,
+}
 
 impl Assist {
+    /// Return all the assists applicable at the given position.
+    ///
+    /// Assists are returned in the "unresolved" state, that is only labels are
+    /// returned, without actual edits.
+    pub fn unresolved(db: &RootDatabase, range: FileRange) -> Vec<Assist> {
+        let sema = Semantics::new(db);
+        let ctx = AssistContext::new(sema, range);
+        let mut acc = Assists::new_unresolved(&ctx);
+        handlers::all().iter().for_each(|handler| {
+            handler(&mut acc, &ctx);
+        });
+        acc.finish_unresolved()
+    }
+
+    /// Return all the assists applicable at the given position.
+    ///
+    /// Assists are returned in the "resolved" state, that is with edit fully
+    /// computed.
+    pub fn resolved(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
+        let sema = Semantics::new(db);
+        let ctx = AssistContext::new(sema, range);
+        let mut acc = Assists::new_resolved(&ctx);
+        handlers::all().iter().for_each(|handler| {
+            handler(&mut acc, &ctx);
+        });
+        acc.finish_resolved()
+    }
+
     pub(crate) fn new(
         id: AssistId,
         label: String,
@@ -54,40 +88,6 @@ impl Assist {
         assert!(label.starts_with(|c: char| c.is_uppercase()));
         Assist { id, label, group, target }
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct ResolvedAssist {
-    pub assist: Assist,
-    pub source_change: SourceChange,
-}
-
-/// Return all the assists applicable at the given position.
-///
-/// Assists are returned in the "unresolved" state, that is only labels are
-/// returned, without actual edits.
-pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<Assist> {
-    let sema = Semantics::new(db);
-    let ctx = AssistContext::new(sema, range);
-    let mut acc = Assists::new_unresolved(&ctx);
-    handlers::all().iter().for_each(|handler| {
-        handler(&mut acc, &ctx);
-    });
-    acc.finish_unresolved()
-}
-
-/// Return all the assists applicable at the given position.
-///
-/// Assists are returned in the "resolved" state, that is with edit fully
-/// computed.
-pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
-    let sema = Semantics::new(db);
-    let ctx = AssistContext::new(sema, range);
-    let mut acc = Assists::new_resolved(&ctx);
-    handlers::all().iter().for_each(|handler| {
-        handler(&mut acc, &ctx);
-    });
-    acc.finish_resolved()
 }
 
 mod handlers {

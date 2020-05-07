@@ -472,7 +472,7 @@ impl Analysis {
     /// position.
     pub fn assists(&self, frange: FileRange) -> Cancelable<Vec<Assist>> {
         self.with_db(|db| {
-            ra_assists::resolved_assists(db, frange)
+            ra_assists::Assist::resolved(db, frange)
                 .into_iter()
                 .map(|assist| Assist {
                     id: assist.assist.id,
