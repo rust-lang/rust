@@ -12,7 +12,7 @@ use rustc_ast::ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKin
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, TokenKind};
 use rustc_ast::util::classify;
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{struct_span_err, Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
 
@@ -217,7 +217,32 @@ impl<'a> Parser<'a> {
 
     /// Parses the RHS of a local variable declaration (e.g., '= 14;').
     fn parse_initializer(&mut self, skip_eq: bool) -> PResult<'a, Option<P<Expr>>> {
-        if self.eat(&token::Eq) || skip_eq { Ok(Some(self.parse_expr()?)) } else { Ok(None) }
+        let parse = if !self.eat(&token::Eq) && !skip_eq {
+            // Error recovery for `let x += 1`
+            if matches!(self.token.kind, TokenKind::BinOpEq(_)) {
+                struct_span_err!(
+                    self.sess.span_diagnostic,
+                    self.token.span,
+                    E0067,
+                    "can't reassign to a uninitialized variable"
+                )
+                .span_suggestion_short(
+                    self.token.span,
+                    "replace with `=` to initialize the variable",
+                    "=".to_string(),
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
+                self.bump();
+                true
+            } else {
+                false
+            }
+        } else {
+            true
+        };
+
+        if parse { Ok(Some(self.parse_expr()?)) } else { Ok(None) }
     }
 
     /// Parses a block. No inner attributes are allowed.

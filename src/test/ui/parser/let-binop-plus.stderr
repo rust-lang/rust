@@ -1,0 +1,9 @@
+error[E0404]: expected trait, found builtin type `i8`
+  --> $DIR/let-binop-plus.rs:4:12
+   |
+LL |     let a: i8 += 1;
+   |            ^^ not a trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0404`.
