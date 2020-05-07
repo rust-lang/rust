@@ -368,6 +368,7 @@ rust_dbg_unpack_option_u64(struct U8TaggedEnumOptionU64 o, uint64_t *into) {
         return 0;
     default:
         assert(0 && "unexpected tag");
+        return 0;
     }
 }
 
@@ -411,5 +412,6 @@ rust_dbg_unpack_option_u64u64(struct U8TaggedEnumOptionU64U64 o, uint64_t *a, ui
         return 0;
     default:
         assert(0 && "unexpected tag");
+        return 0;
     }
 }
