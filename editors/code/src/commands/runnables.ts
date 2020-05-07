@@ -91,8 +91,6 @@ function getCppvsDebugConfig(config: ra.Runnable, executable: string, sourceFile
 const debugOutput = vscode.window.createOutputChannel("Debug");
 
 async function getDebugExecutable(config: ra.Runnable): Promise<string> {
-    debugOutput.clear();
-
     const cargo = new Cargo(config.cwd || '.', debugOutput);
     const executable = await cargo.executableFromArgs(config.args);
 
@@ -130,8 +128,16 @@ export function debugSingle(ctx: Ctx): Cmd {
             return;
         }
 
+        debugOutput.clear();
+        if (ctx.config.debug.openUpDebugPane) {
+            debugOutput.show(true);
+        }
+
         const executable = await getDebugExecutable(config);
-        const debugConfig = knownEngines[debugEngine.id](config, executable, debugOptions.sourceFileMap);
+        let debugConfig = knownEngines[debugEngine.id](config, executable, debugOptions.sourceFileMap);
+        for (var key in debugOptions.engineSettings) {
+            debugConfig[key] = (debugOptions.engineSettings as any)[key];
+        }
 
         debugOutput.appendLine("Launching debug configuration:");
         debugOutput.appendLine(JSON.stringify(debugConfig, null, 2));
