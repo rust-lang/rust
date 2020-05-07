@@ -45,7 +45,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
         InExpr(TextSize),
         InPat(TextSize),
     }
-    let cursor_pos = ctx.frange.range.start();
+    let cursor_pos = ctx.offset();
     let cursor_pos = if current_expr.syntax().text_range().contains(cursor_pos) {
         CursorPos::InExpr(current_text_range.end() - cursor_pos)
     } else {

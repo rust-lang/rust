@@ -76,8 +76,7 @@ impl<'a> AssistContext<'a> {
         find_node_at_offset(self.source_file.syntax(), self.offset())
     }
     pub(crate) fn find_node_at_offset_with_descend<N: AstNode>(&self) -> Option<N> {
-        self.sema
-            .find_node_at_offset_with_descend(self.source_file.syntax(), self.frange.range.start())
+        self.sema.find_node_at_offset_with_descend(self.source_file.syntax(), self.offset())
     }
     pub(crate) fn covering_element(&self) -> SyntaxElement {
         find_covering_element(self.source_file.syntax(), self.frange.range)

@@ -93,7 +93,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
     }
 
     then_block.syntax().last_child_or_token().filter(|t| t.kind() == R_CURLY)?;
-    let cursor_position = ctx.frange.range.start();
+    let cursor_position = ctx.offset();
 
     let target = if_expr.syntax().text_range();
     acc.add(AssistId("convert_to_guarded_return"), "Convert to guarded return", target, |edit| {

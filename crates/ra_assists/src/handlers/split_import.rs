@@ -26,7 +26,7 @@ pub(crate) fn split_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     if new_tree == use_tree {
         return None;
     }
-    let cursor = ctx.frange.range.start();
+    let cursor = ctx.offset();
 
     let target = colon_colon.text_range();
     acc.add(AssistId("split_import"), "Split import", target, |edit| {
