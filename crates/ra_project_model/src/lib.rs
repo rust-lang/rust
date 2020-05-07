@@ -399,6 +399,7 @@ impl ProjectWorkspace {
                             let cfg_options = {
                                 let mut opts = default_cfg_options.clone();
                                 opts.insert_features(cargo[pkg].features.iter().map(Into::into));
+                                opts.insert_cfgs(cargo[pkg].cfgs.iter().map(Into::into));
                                 opts
                             };
                             let mut env = Env::default();

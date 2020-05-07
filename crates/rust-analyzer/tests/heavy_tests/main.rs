@@ -9,7 +9,8 @@ use lsp_types::{
 };
 use rust_analyzer::req::{
     CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
-    Formatting, GotoDefinition, HoverRequest, OnEnter, Runnables, RunnablesParams,
+    Formatting, GotoDefinition, GotoTypeDefinition, HoverRequest, OnEnter, Runnables,
+    RunnablesParams,
 };
 use serde_json::json;
 use tempfile::TempDir;
@@ -574,7 +575,7 @@ version = \"0.0.0\"
 }
 
 #[test]
-fn resolve_include_concat_env() {
+fn out_dirs_check() {
     if skip_slow_tests() {
         return;
     }
@@ -597,10 +598,27 @@ fn main() {
         r#"pub fn message() -> &'static str { "Hello, World!" }"#,
     )
     .unwrap();
+    println!("cargo:rustc-cfg=atom_cfg");
+    println!("cargo:rustc-cfg=featlike=\"set\"");
     println!("cargo:rerun-if-changed=build.rs");
 }
 //- src/main.rs
 include!(concat!(env!("OUT_DIR"), "/hello.rs"));
+
+#[cfg(atom_cfg)]
+struct A;
+#[cfg(bad_atom_cfg)]
+struct A;
+#[cfg(featlike = "set")]
+struct B;
+#[cfg(featlike = "not_set")]
+struct B;
+
+fn main() {
+    let va = A;
+    let vb = B;
+    message();
+}
 
 fn main() { message(); }
 "###,
@@ -613,12 +631,98 @@ fn main() { message(); }
     let res = server.send_request::<GotoDefinition>(GotoDefinitionParams {
         text_document_position_params: TextDocumentPositionParams::new(
             server.doc_id("src/main.rs"),
-            Position::new(2, 15),
+            Position::new(14, 8),
         ),
         work_done_progress_params: Default::default(),
         partial_result_params: Default::default(),
     });
     assert!(format!("{}", res).contains("hello.rs"));
+    server.request::<GotoTypeDefinition>(
+        GotoDefinitionParams {
+            text_document_position_params: TextDocumentPositionParams::new(
+                server.doc_id("src/main.rs"),
+                Position::new(12, 9),
+            ),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([{
+            "originSelectionRange": {
+                "end": {
+                    "character": 10,
+                    "line": 12
+                },
+                "start": {
+                    "character": 8,
+                    "line": 12
+                }
+            },
+            "targetRange": {
+                "end": {
+                    "character": 9,
+                    "line": 3
+                },
+                "start": {
+                    "character": 0,
+                    "line": 2
+                }
+            },
+            "targetSelectionRange": {
+                "end": {
+                    "character": 8,
+                    "line": 3
+                },
+                "start": {
+                    "character": 7,
+                    "line": 3
+                }
+            },
+            "targetUri": "file:///[..]src/main.rs"
+        }]),
+    );
+    server.request::<GotoTypeDefinition>(
+        GotoDefinitionParams {
+            text_document_position_params: TextDocumentPositionParams::new(
+                server.doc_id("src/main.rs"),
+                Position::new(13, 9),
+            ),
+            work_done_progress_params: Default::default(),
+            partial_result_params: Default::default(),
+        },
+        json!([{
+            "originSelectionRange": {
+                "end": {
+                    "character": 10,
+                    "line": 13
+                },
+                "start": {
+                    "character": 8,
+                    "line":13
+                }
+            },
+            "targetRange": {
+                "end": {
+                    "character": 9,
+                    "line": 7
+                },
+                "start": {
+                    "character": 0,
+                    "line":6
+                }
+            },
+            "targetSelectionRange": {
+                "end": {
+                    "character": 8,
+                    "line": 7
+                },
+                "start": {
+                    "character": 7,
+                    "line": 7
+                }
+            },
+            "targetUri": "file:///[..]src/main.rs"
+        }]),
+    );
 }
 
 #[test]
