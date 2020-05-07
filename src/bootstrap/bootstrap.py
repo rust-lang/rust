@@ -332,7 +332,7 @@ class RustBuild(object):
         self.rustc_channel = ''
         self.rustfmt_channel = ''
         self.build = ''
-        self.build_dir = os.path.join(os.getcwd(), "build")
+        self.build_dir = ''
         self.clean = False
         self.config_toml = ''
         self.rust_root = ''
@@ -891,7 +891,11 @@ def bootstrap(help_triggered):
     build.clean = args.clean
 
     try:
-        with open(args.config or 'config.toml') as config:
+        toml_path = args.config or 'config.toml'
+        if not os.path.exists(toml_path):
+            toml_path = os.path.join(build.rust_root, toml_path)
+
+        with open(toml_path) as config:
             build.config_toml = config.read()
     except (OSError, IOError):
         pass
@@ -905,6 +909,9 @@ def bootstrap(help_triggered):
     build.use_locked_deps = build.get_toml('locked-deps', 'build') == 'true'
 
     build.check_vendored_status()
+
+    build_dir = build.get_toml('build-dir', 'build') or 'build'
+    build.build_dir = os.path.abspath(build_dir.replace("$ROOT", build.rust_root))
 
     data = stage0_data(build.rust_root)
     build.date = data['date']
