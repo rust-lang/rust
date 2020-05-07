@@ -1,9 +1,16 @@
+error[E0067]: can't reassign to a uninitialized variable
+  --> $DIR/let-binop-plus.rs:4:16
+   |
+LL |     let a: i8 += 1;
+   |                ^ help: replace with `=` to initialize the variable
+
 error[E0404]: expected trait, found builtin type `i8`
   --> $DIR/let-binop-plus.rs:4:12
    |
 LL |     let a: i8 += 1;
    |            ^^ not a trait
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0404`.
+Some errors have detailed explanations: E0067, E0404.
+For more information about an error, try `rustc --explain E0067`.

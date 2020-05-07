@@ -222,44 +222,43 @@ impl<'a> Parser<'a> {
         has_ty: bool,
         skip_eq: bool,
     ) -> PResult<'a, Option<P<Expr>>> {
-        let parse = if !self.eat(&token::Eq) && !skip_eq {
+        // In case of code like `let x: i8 += 1`, `i8` is interpreted as a trait consuming the `+`
+        // from `+=`.
+        let ate_plus = self.prev_token.is_like_plus() && has_ty;
+        let parse = if !skip_eq && (ate_plus || matches!(self.token.kind, TokenKind::BinOpEq(_))) {
             // Error recovery for `let x += 1`
-            if matches!(self.token.kind, TokenKind::BinOpEq(_)) {
-                let mut err = struct_span_err!(
-                    self.sess.span_diagnostic,
-                    self.token.span,
-                    E0067,
-                    "can't reassign to a uninitialized variable"
-                );
+            let mut err = struct_span_err!(
+                self.sess.span_diagnostic,
+                self.token.span,
+                E0067,
+                "can't reassign to a uninitialized variable"
+            );
+            err.span_suggestion_short(
+                self.token.span,
+                "replace with `=` to initialize the variable",
+                "=".to_string(),
+                if has_ty {
+                    // for `let x: i8 += 1` it's highly likely that the `+` is a typo
+                    Applicability::MachineApplicable
+                } else {
+                    // for `let x += 1` it's a bit less likely that the `+` is a typo
+                    Applicability::MaybeIncorrect
+                },
+            );
+            // In case of code like `let x += 1` it's possible the user may have meant to write `x += 1`
+            if !has_ty {
                 err.span_suggestion_short(
-                    self.token.span,
-                    "replace with `=` to initialize the variable",
-                    "=".to_string(),
-                    if has_ty {
-                        // for `let x: i8 += 1` it's highly likely that the `+` is a typo
-                        Applicability::MachineApplicable
-                    } else {
-                        // for `let x += 1` it's a bit less likely that the `+` is a typo
-                        Applicability::MaybeIncorrect
-                    },
+                    let_span,
+                    "remove to reassign to a previously initialized variable",
+                    "".to_string(),
+                    Applicability::MaybeIncorrect,
                 );
-                // In case of code like `let x += 1` it's possible the user may have meant to write `x += 1`
-                if !has_ty {
-                    err.span_suggestion_short(
-                        let_span,
-                        "remove to reassign to a previously initialized variable",
-                        "".to_string(),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                err.emit();
-                self.bump();
-                true
-            } else {
-                false
             }
-        } else {
+            err.emit();
+            self.bump();
             true
+        } else {
+            self.eat(&token::Eq) || skip_eq
         };
 
         if parse { Ok(Some(self.parse_expr()?)) } else { Ok(None) }
