@@ -1,6 +1,6 @@
 //! Contains the logic to lower rustc types into Chalk types
 //!
-//! In many there is a 1:1 relationship between a rustc type and a Chalk type.
+//! In many cases there is a 1:1 relationship between a rustc type and a Chalk type.
 //! For example, a `SubstsRef` maps almost directly to a `Substitution`. In some
 //! other cases, such as `Param`s, there is no Chalk type, so we have to handle
 //! accordingly.
