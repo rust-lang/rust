@@ -267,10 +267,11 @@ impl<T, A: AllocRef> Box<T, A> {
     ///
     /// ```
     /// #![feature(allocator_api)]
+    /// #![feature(new_uninit)]
     ///
     /// use std::alloc::System;
     ///
-    /// let mut five = Box::<u32>::new_uninit_in(System);
+    /// let mut five = Box::<u32, _>::new_uninit_in(System);
     ///
     /// let five = unsafe {
     ///     // Deferred initialization:
@@ -302,10 +303,11 @@ impl<T, A: AllocRef> Box<T, A> {
     ///
     /// ```
     /// #![feature(allocator_api)]
+    /// #![feature(new_uninit)]
     ///
     /// use std::alloc::System;
     ///
-    /// let zero = Box::<u32>::new_zeroed_in(System);
+    /// let zero = Box::<u32, _>::new_zeroed_in(System);
     /// let zero = unsafe { zero.assume_init() };
     ///
     /// assert_eq!(*zero, 0)
@@ -520,13 +522,16 @@ impl<T: ?Sized, A: AllocRef> Box<T, A> {
     /// ```
     /// Manually create a `Box` from scratch by using the global allocator:
     /// ```
-    /// use std::alloc::{alloc, Layout, AllocRef, AllocInit};
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::{Layout, AllocRef, AllocInit, System};
     ///
     /// unsafe {
-    ///     let ptr = System.alloc(Layout::new::<i32>(), AllocInit::Uninitialized) as *mut i32;
+    ///     let ptr = System.alloc(Layout::new::<i32>(), AllocInit::Uninitialized)?.ptr.as_ptr();
     ///     *ptr = 5;
     ///     let x = Box::from_raw_in(ptr, System);
     /// }
+    /// # Ok::<_, std::alloc::AllocErr>(())
     /// ```
     ///
     /// [memory layout]: index.html#memory-layout
