@@ -148,6 +148,7 @@ use core::task::{Context, Poll};
 use crate::alloc::{self, AllocInit, AllocRef, Global};
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
+use crate::string::String;
 use crate::vec::Vec;
 
 /// A pointer type for heap allocation.
@@ -998,6 +999,26 @@ impl From<&str> for Box<str> {
     #[inline]
     fn from(s: &str) -> Self {
         unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
+    }
+}
+
+#[stable(feature = "box_from_str", since = "1.20.0")]
+impl<A: AllocRef> From<String<A>> for Box<str, A> {
+    /// Converts the given `String` to a boxed `str` slice that is owned.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s1: String = String::from("hello world");
+    /// let s2: Box<str> = Box::from(s1);
+    /// let s3: String = String::from(s2);
+    ///
+    /// assert_eq!("hello world", s3)
+    /// ```
+    fn from(s: String<A>) -> Self {
+        s.into_boxed_str()
     }
 }
 

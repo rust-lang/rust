@@ -183,7 +183,7 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Borrow<str> for String {
+impl<A: AllocRef> Borrow<str> for String<A> {
     #[inline]
     fn borrow(&self) -> &str {
         &self[..]
@@ -191,7 +191,7 @@ impl Borrow<str> for String {
 }
 
 #[stable(feature = "string_borrow_mut", since = "1.36.0")]
-impl BorrowMut<str> for String {
+impl<A: AllocRef> BorrowMut<str> for String<A> {
     #[inline]
     fn borrow_mut(&mut self) -> &mut str {
         &mut self[..]
