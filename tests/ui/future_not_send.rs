@@ -41,6 +41,7 @@ impl Dummy {
         self.private_future().await;
     }
 
+    #[allow(clippy::manual_async_fn)]
     pub fn public_send(&self) -> impl std::future::Future<Output = bool> {
         async { false }
     }
