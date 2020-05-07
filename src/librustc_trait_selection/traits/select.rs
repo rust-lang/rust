@@ -38,6 +38,7 @@ use crate::traits::project::ProjectionCacheKeyExt;
 use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items;
@@ -514,17 +515,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 let evaluate = |c: &'tcx ty::Const<'tcx>| {
                     if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = c.val {
-                        match self.infcx.const_eval_resolve(
-                            obligation.param_env,
-                            def_id,
-                            substs,
-                            promoted,
-                            Some(obligation.cause.span),
-                        ) {
-                            Ok(val) => Ok(ty::Const::from_value(self.tcx(), val, c.ty)),
-                            Err(ErrorHandled::TooGeneric) => Err(EvaluatedToAmbig),
-                            Err(_) => Err(EvaluatedToErr),
-                        }
+                        self.infcx
+                            .const_eval_resolve(
+                                obligation.param_env,
+                                def_id,
+                                substs,
+                                promoted,
+                                Some(obligation.cause.span),
+                            )
+                            .map(|val| ty::Const::from_value(self.tcx(), val, c.ty))
                     } else {
                         Ok(c)
                     }
@@ -537,8 +536,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             Err(_) => Ok(EvaluatedToErr),
                         }
                     }
-                    (Err(EvaluatedToErr), _) | (_, Err(EvaluatedToErr)) => Ok(EvaluatedToErr),
-                    _ => Ok(EvaluatedToAmbig),
+                    (Err(ErrorHandled::Reported(ErrorReported)), _)
+                    | (_, Err(ErrorHandled::Reported(ErrorReported))) => Ok(EvaluatedToErr),
+                    (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => span_bug!(
+                        obligation.cause.span(self.tcx()),
+                        "ConstEquate: const_eval_resolve returned an unexpected error"
+                    ),
+                    (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
+                        Ok(EvaluatedToAmbig)
+                    }
                 }
             }
         }
