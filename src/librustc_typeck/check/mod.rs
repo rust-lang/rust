@@ -1458,7 +1458,7 @@ fn check_fn<'a, 'tcx>(
                 inherited.register_predicate(traits::Obligation::new(
                     cause,
                     param_env,
-                    trait_ref.without_const().to_predicate(),
+                    trait_ref.without_const().to_predicate(tcx),
                 ));
             }
         }

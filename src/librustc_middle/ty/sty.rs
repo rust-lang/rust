@@ -612,7 +612,7 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
         use crate::ty::ToPredicate;
         match *self.skip_binder() {
             ExistentialPredicate::Trait(tr) => {
-                Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate()
+                Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
             }
             ExistentialPredicate::Projection(p) => {
                 ty::PredicateKind::Projection(Binder(p.with_self_ty(tcx, self_ty)))
@@ -620,7 +620,7 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
             ExistentialPredicate::AutoTrait(did) => {
                 let trait_ref =
                     Binder(ty::TraitRef { def_id: did, substs: tcx.mk_substs_trait(self_ty, &[]) });
-                trait_ref.without_const().to_predicate()
+                trait_ref.without_const().to_predicate(tcx)
             }
         }
     }

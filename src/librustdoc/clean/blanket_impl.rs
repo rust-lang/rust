@@ -65,7 +65,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         match infcx.evaluate_obligation(&traits::Obligation::new(
                             cause,
                             param_env,
-                            trait_ref.without_const().to_predicate(),
+                            trait_ref.without_const().to_predicate(infcx.tcx),
                         )) {
                             Ok(eval_result) => eval_result.may_apply(),
                             Err(traits::OverflowError) => true, // overflow doesn't mean yes *or* no

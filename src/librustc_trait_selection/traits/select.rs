@@ -3031,7 +3031,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     cause,
                     obligation.recursion_depth + 1,
                     obligation.param_env,
-                    ty::Binder::bind(outlives).to_predicate(),
+                    ty::Binder::bind(outlives).to_predicate(tcx),
                 ));
             }
 
@@ -3074,12 +3074,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
                     tcx.mk_substs_trait(source, &[]),
                 );
-                nested.push(predicate_to_obligation(tr.without_const().to_predicate()));
+                nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
 
                 // If the type is `Foo + 'a`, ensure that the type
                 // being cast to `Foo + 'a` outlives `'a`:
                 let outlives = ty::OutlivesPredicate(source, r);
-                nested.push(predicate_to_obligation(ty::Binder::dummy(outlives).to_predicate()));
+                nested.push(predicate_to_obligation(ty::Binder::dummy(outlives).to_predicate(tcx)));
             }
 
             // `[T; n]` -> `[T]`

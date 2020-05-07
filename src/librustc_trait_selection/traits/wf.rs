@@ -292,7 +292,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         self.compute_trait_ref(&trait_ref, Elaborate::None);
 
         if !data.has_escaping_bound_vars() {
-            let predicate = trait_ref.without_const().to_predicate();
+            let predicate = trait_ref.without_const().to_predicate(self.infcx.tcx);
             let cause = self.cause(traits::ProjectionWf(data));
             self.out.push(traits::Obligation::new(cause, self.param_env, predicate));
         }
@@ -323,7 +323,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             self.out.push(traits::Obligation::new(
                 cause,
                 self.param_env,
-                trait_ref.without_const().to_predicate(),
+                trait_ref.without_const().to_predicate(self.infcx.tcx),
             ));
         }
     }
@@ -610,7 +610,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 self.out.push(traits::Obligation::new(
                     cause,
                     self.param_env,
-                    outlives.to_predicate(),
+                    outlives.to_predicate(self.infcx.tcx),
                 ));
             }
         }

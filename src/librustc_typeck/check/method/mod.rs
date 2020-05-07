@@ -324,7 +324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             self.body_id,
             self.param_env,
-            poly_trait_ref.without_const().to_predicate(),
+            poly_trait_ref.without_const().to_predicate(self.tcx),
         );
 
         // Now we want to know if this can be matched

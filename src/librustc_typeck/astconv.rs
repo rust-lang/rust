@@ -3042,7 +3042,7 @@ impl<'tcx> Bounds<'tcx> {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[]),
                 });
-                (trait_ref.without_const().to_predicate(), span)
+                (trait_ref.without_const().to_predicate(tcx), span)
             })
         });
 
@@ -3057,16 +3057,16 @@ impl<'tcx> Bounds<'tcx> {
                         // or it's a generic associated type that deliberately has escaping bound vars.
                         let region_bound = ty::fold::shift_region(tcx, region_bound, 1);
                         let outlives = ty::OutlivesPredicate(param_ty, region_bound);
-                        (ty::Binder::bind(outlives).to_predicate(), span)
+                        (ty::Binder::bind(outlives).to_predicate(tcx), span)
                     })
                     .chain(self.trait_bounds.iter().map(|&(bound_trait_ref, span, constness)| {
-                        let predicate = bound_trait_ref.with_constness(constness).to_predicate();
+                        let predicate = bound_trait_ref.with_constness(constness).to_predicate(tcx);
                         (predicate, span)
                     }))
                     .chain(
                         self.projection_bounds
                             .iter()
-                            .map(|&(projection, span)| (projection.to_predicate(), span)),
+                            .map(|&(projection, span)| (projection.to_predicate(tcx), span)),
                     ),
             )
             .collect()

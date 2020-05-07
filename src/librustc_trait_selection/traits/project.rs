@@ -432,7 +432,7 @@ pub fn normalize_projection_type<'a, 'b, 'tcx>(
         });
         let projection = ty::Binder::dummy(ty::ProjectionPredicate { projection_ty, ty: ty_var });
         let obligation =
-            Obligation::with_depth(cause, depth + 1, param_env, projection.to_predicate());
+            Obligation::with_depth(cause, depth + 1, param_env, projection.to_predicate(tcx));
         obligations.push(obligation);
         ty_var
     })
@@ -722,7 +722,7 @@ fn get_paranoid_cache_value_obligation<'a, 'tcx>(
         cause,
         recursion_depth: depth,
         param_env,
-        predicate: trait_ref.without_const().to_predicate(),
+        predicate: trait_ref.without_const().to_predicate(infcx.tcx),
     }
 }
 
@@ -757,7 +757,7 @@ fn normalize_to_error<'a, 'tcx>(
         cause,
         recursion_depth: depth,
         param_env,
-        predicate: trait_ref.without_const().to_predicate(),
+        predicate: trait_ref.without_const().to_predicate(selcx.tcx()),
     };
     let tcx = selcx.infcx().tcx;
     let def_id = projection_ty.item_def_id;
@@ -1158,8 +1158,9 @@ fn confirm_object_candidate<'cx, 'tcx>(
             object_ty
         ),
     };
-    let env_predicates =
-        data.projection_bounds().map(|p| p.with_self_ty(selcx.tcx(), object_ty).to_predicate());
+    let env_predicates = data
+        .projection_bounds()
+        .map(|p| p.with_self_ty(selcx.tcx(), object_ty).to_predicate(selcx.tcx()));
     let env_predicate = {
         let env_predicates = elaborate_predicates(selcx.tcx(), env_predicates);
 

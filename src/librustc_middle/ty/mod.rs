@@ -1295,11 +1295,11 @@ impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
 }
 
 pub trait ToPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx>;
+    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx>;
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
+    fn to_predicate(&self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::PredicateKind::Trait(
             ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.value }),
             self.constness,
@@ -1308,7 +1308,7 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&TraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
+    fn to_predicate(&self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::PredicateKind::Trait(
             ty::Binder::dummy(ty::TraitPredicate { trait_ref: *self.value }),
             self.constness,
@@ -1317,31 +1317,31 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&TraitRef<'tcx>> {
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
+    fn to_predicate(&self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&PolyTraitRef<'tcx>> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
+    fn to_predicate(&self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
+    fn to_predicate(&self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         PredicateKind::RegionOutlives(*self)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
+    fn to_predicate(&self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         PredicateKind::TypeOutlives(*self)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
-    fn to_predicate(&self) -> Predicate<'tcx> {
+    fn to_predicate(&self, _tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         PredicateKind::Projection(*self)
     }
 }
@@ -1619,7 +1619,7 @@ pub struct ConstnessAnd<T> {
     pub value: T,
 }
 
-// FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate()` to ensure that
+// FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
 // the constness of trait bounds is being propagated correctly.
 pub trait WithConstness: Sized {
     #[inline]
