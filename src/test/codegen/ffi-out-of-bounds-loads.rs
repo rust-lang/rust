@@ -1,5 +1,8 @@
-// compile-flags: -C no-prepopulate-passes
 // Regression test for #29988
+
+// compile-flags: -C no-prepopulate-passes
+// only-x86_64
+// ignore-windows
 
 #[repr(C)]
 struct S {
