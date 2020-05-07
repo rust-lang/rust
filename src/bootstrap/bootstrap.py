@@ -144,13 +144,13 @@ def run(args, verbose=False, exception=False, **kwargs):
         sys.exit(err)
 
 
-def require(cmd, exit=True):
+def require(cmd, exit=True, encoding=sys.getdefaultencoding()):
     '''Run a command, returning its output.
     On error,
         If `exit` is `True`, exit the process.
         Otherwise, return None.'''
     try:
-        return subprocess.check_output(cmd).strip()
+        return subprocess.check_output(cmd).strip().decode(encoding)
     except (subprocess.CalledProcessError, OSError) as exc:
         if not exit:
             return None
@@ -179,10 +179,10 @@ def format_build_time(duration):
 
 def default_build_triple():
     """Build triple as in LLVM"""
-    default_encoding = sys.getdefaultencoding()
     required = not sys.platform == 'win32'
-    ostype = require(["uname", "-s"], exit=required).decode(default_encoding)
-    cputype = require(['uname', '-m'], exit=required).decode(default_encoding)
+    default_encoding = sys.getdefaultencoding()
+    ostype = require(["uname", "-s"], exit=required, encoding=default_encoding)
+    cputype = require(['uname', '-m'], exit=required, encoding=default_encoding)
 
     if ostype is None or cputype is None:
         return 'x86_64-pc-windows-msvc'
@@ -215,7 +215,7 @@ def default_build_triple():
         # output from that option is too generic for our purposes (it will
         # always emit 'i386' on x86/amd64 systems).  As such, isainfo -k
         # must be used instead.
-        cputype = require(['isainfo', '-k']).decode(default_encoding)
+        cputype = require(['isainfo', '-k'])
     elif ostype.startswith('MINGW'):
         # msys' `uname` does not print gcc configuration, but prints msys
         # configuration. so we cannot believe `uname -m`:
@@ -770,10 +770,8 @@ class RustBuild(object):
                 self.get_toml('submodules') == "false":
             return
 
-        default_encoding = sys.getdefaultencoding()
-
         # check the existence and version of 'git' command
-        git_version_str = require(['git', '--version']).split()[2].decode(default_encoding)
+        git_version_str = require(['git', '--version']).split()[2]
         self.git_version = distutils.version.LooseVersion(git_version_str)
 
         slow_submodules = self.get_toml('fast-submodules') == "false"
