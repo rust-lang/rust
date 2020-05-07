@@ -51,6 +51,7 @@ use self::path_utils::*;
 mod borrow_set;
 mod constraint_generation;
 mod constraints;
+mod def_use;
 mod diagnostics;
 mod facts;
 mod invalidation;
