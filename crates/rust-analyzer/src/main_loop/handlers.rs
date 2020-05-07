@@ -42,6 +42,7 @@ use crate::{
     world::WorldSnapshot,
     LspError, Result,
 };
+use ra_project_model::TargetKind;
 
 pub fn handle_analyzer_status(world: WorldSnapshot, _: ()) -> Result<String> {
     let _p = profile("handle_analyzer_status");
@@ -384,16 +385,27 @@ pub fn handle_runnables(
     let offset = params.position.map(|it| it.conv_with(&line_index));
     let mut res = Vec::new();
     let workspace_root = world.workspace_root_for(file_id);
+    let cargo_spec = CargoTargetSpec::for_file(&world, file_id)?;
     for runnable in world.analysis().runnables(file_id)? {
         if let Some(offset) = offset {
             if !runnable.range.contains_inclusive(offset) {
                 continue;
             }
         }
+        // Do not suggest binary run on other target than binary
+        if let RunnableKind::Bin = runnable.kind {
+            if let Some(spec) = &cargo_spec {
+                match spec.target_kind {
+                    TargetKind::Bin => {}
+                    _ => continue,
+                }
+            }
+        }
         res.push(to_lsp_runnable(&world, file_id, runnable)?);
     }
+
     // Add `cargo check` and `cargo test` for the whole package
-    match CargoTargetSpec::for_file(&world, file_id)? {
+    match cargo_spec {
         Some(spec) => {
             for &cmd in ["check", "test"].iter() {
                 res.push(req::Runnable {
@@ -831,13 +843,23 @@ pub fn handle_code_lens(
 
     let mut lenses: Vec<CodeLens> = Default::default();
 
+    let cargo_spec = CargoTargetSpec::for_file(&world, file_id)?;
     // Gather runnables
     for runnable in world.analysis().runnables(file_id)? {
         let title = match &runnable.kind {
             RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => "▶️\u{fe0e}Run Test",
             RunnableKind::DocTest { .. } => "▶️\u{fe0e}Run Doctest",
             RunnableKind::Bench { .. } => "Run Bench",
-            RunnableKind::Bin => "Run",
+            RunnableKind::Bin => {
+                // Do not suggest binary run on other target than binary
+                match &cargo_spec {
+                    Some(spec) => match spec.target_kind {
+                        TargetKind::Bin => "Run",
+                        _ => continue,
+                    },
+                    None => continue,
+                }
+            }
         }
         .to_string();
         let mut r = to_lsp_runnable(&world, file_id, runnable)?;
