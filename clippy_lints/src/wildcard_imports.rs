@@ -102,7 +102,7 @@ impl LateLintPass<'_, '_> for WildcardImports {
             self.test_modules_deep += 1;
         }
         if_chain! {
-            if !in_macro(item.span);
+            if self.warn_on_all || !in_macro(item.span);
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
             if self.warn_on_all || !self.check_exceptions(use_path.segments);
             let used_imports = cx.tcx.names_imported_by_glob_use(item.hir_id.owner);
