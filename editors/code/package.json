@@ -427,7 +427,7 @@
                 "rust-analyzer.debug.engineSettings": {
                     "type": "object",
                     "default": {},
-                    "description": "Optional settings passed to the debug engine."
+                    "description": "Optional settings passed to the debug engine. Example:\n{ \"lldb\": { \"terminal\":\"external\"} }"
                 }
             }
         },

@@ -134,9 +134,12 @@ export function debugSingle(ctx: Ctx): Cmd {
         }
 
         const executable = await getDebugExecutable(config);
-        let debugConfig = knownEngines[debugEngine.id](config, executable, debugOptions.sourceFileMap);
-        for (var key in debugOptions.engineSettings) {
-            debugConfig[key] = (debugOptions.engineSettings as any)[key];
+        const debugConfig = knownEngines[debugEngine.id](config, executable, debugOptions.sourceFileMap);
+        if (debugConfig.type in debugOptions.engineSettings) {
+            const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
+            for (var key in settingsMap) {
+                debugConfig[key] = settingsMap[key];
+            }
         }
 
         debugOutput.appendLine("Launching debug configuration:");
