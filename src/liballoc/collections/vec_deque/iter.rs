@@ -1,10 +1,10 @@
-use core::{fmt};
-use core::ptr::{self, NonNull};
-use core::mem;
+use core::fmt;
 use core::iter::FusedIterator;
+use core::mem;
 use core::ops::Try;
+use core::ptr::{self, NonNull};
 
-use super::{count, RingSlices, VecDeque, wrap_index};
+use super::{count, wrap_index, RingSlices, VecDeque};
 use crate::alloc::{AllocRef, Global};
 
 /// An iterator over the elements of a `VecDeque`.
@@ -321,8 +321,6 @@ impl<T, A: AllocRef> ExactSizeIterator for IntoIter<T, A> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: AllocRef> FusedIterator for IntoIter<T, A> {}
-
-
 
 /// A draining iterator over the elements of a `VecDeque`.
 ///
