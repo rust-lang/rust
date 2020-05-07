@@ -5,7 +5,7 @@ RUN sh /scripts/android-base-apt-get.sh
 
 COPY scripts/android-ndk.sh /scripts/
 RUN . /scripts/android-ndk.sh && \
-    download_and_make_toolchain android-ndk-r15c-linux-x86_64.zip arm 16
+    download_and_make_toolchain android-ndk-r19c-linux-x86_64.zip arm 17
 
 RUN dpkg --add-architecture i386 && \
     apt-get update && \
@@ -29,7 +29,7 @@ ENV PATH=$PATH:/android/sdk/platform-tools
 
 ENV TARGETS=arm-linux-androideabi
 
-ENV RUST_CONFIGURE_ARGS --arm-linux-androideabi-ndk=/android/ndk/arm-16
+ENV RUST_CONFIGURE_ARGS --arm-linux-androideabi-ndk=/android/ndk/arm-17
 
 ENV SCRIPT python3 ../x.py test --target $TARGETS
 

@@ -796,6 +796,18 @@ impl Build {
                 base.push(format!("-fdebug-prefix-map={}", map));
             }
         }
+
+        // For Android we're building against API level 17 (Android 4.2).
+        // Due to unified headers and the NDK-shipped compilers being cross-compilers
+        // we need to explictely say so.
+        //
+        // Also see:
+        // * https://source.android.com/setup/start/build-numbers
+        // * https://android.googlesource.com/platform/ndk.git/+/master/docs/UnifiedHeaders.md
+        if target.contains("android") {
+            base.push("-D__ANDROID_API__=17".into());
+        }
+
         base
     }
 
