@@ -26,7 +26,7 @@ use crate::{
 pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let tree: ast::UseTree = ctx.find_node_at_offset()?;
     let mut rewriter = SyntaxRewriter::default();
-    let mut offset = ctx.frange.range.start();
+    let mut offset = ctx.offset();
 
     if let Some(use_item) = tree.syntax().parent().and_then(ast::UseItem::cast) {
         let (merged, to_delete) = next_prev()
