@@ -330,7 +330,10 @@ pub struct FromUtf8Error<A: AllocRef = Global> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: AllocRef> fmt::Debug for FromUtf8Error<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FromUtf8Error").field("bytes", &self.bytes).field("error", &self.error).finish()
+        f.debug_struct("FromUtf8Error")
+            .field("bytes", &self.bytes)
+            .field("error", &self.error)
+            .finish()
     }
 }
 
