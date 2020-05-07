@@ -273,6 +273,7 @@ Definite bugs found:
 * [`EbrCell` using uninitialized memory incorrectly](https://github.com/Firstyear/concread/commit/b15be53b6ec076acb295a5c0483cdb4bf9be838f#diff-6282b2fc8e98bd089a1f0c86f648157cR229)
 * [TiKV performing an unaligned pointer access](https://github.com/tikv/tikv/issues/7613)
 * [`servo_arc` creating a dangling shared reference](https://github.com/servo/servo/issues/26357)
+* [TiKV constructing out-of-bounds pointers (and overlapping mutable references)](https://github.com/tikv/tikv/pull/7751)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
