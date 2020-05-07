@@ -188,7 +188,7 @@ def default_build_triple():
         return 'x86_64-pc-windows-msvc'
     
     ostype = ostype.decode(default_encoding)
-    cputype = ostype.decode(default_encoding)
+    cputype = cputype.decode(default_encoding)
 
     # The goal here is to come up with the same triple as LLVM would,
     # at least for the subset of platforms we're willing to target.
