@@ -594,7 +594,7 @@ impl<T: ?Sized, A: AllocRef> Box<T, A> {
     /// Behaves like [`into_raw`] but also returns the allocator
     ///
     /// [`into_raw`]: #method.into_raw
-    #[stable(feature = "box_raw", since = "1.4.0")]
+    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn into_raw_with_alloc(b: Self) -> (*mut T, A) {
         let (leaked, alloc) = Box::into_unique_with_alloc(b);
@@ -659,6 +659,11 @@ impl<T: ?Sized, A: AllocRef> Box<T, A> {
     #[inline]
     #[doc(hidden)]
     pub fn into_unique_with_alloc(b: Self) -> (Unique<T>, A) {
+        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
+        // raw pointer for the type system. Turning it directly into a raw pointer would not be
+        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
+        // so all raw pointer methods go through `leak` which creates a (unique)
+        // mutable reference. Turning *that* to a raw pointer behaves correctly.
         let (leaked, alloc) = Box::leak_with_alloc(b);
         (leaked.into(), alloc)
     }
