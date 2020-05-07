@@ -602,7 +602,7 @@ impl<T, A: AllocRef> Vec<T, A> {
 
     /// Behaves like [`into_raw_parts`] but also returns the allocator.
     ///
-    /// [`into_raw_parts`]: Self::into_raw_parts
+    /// [`into_raw_parts`]: #method.into_raw_parts
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {
         let mut me = ManuallyDrop::new(self);

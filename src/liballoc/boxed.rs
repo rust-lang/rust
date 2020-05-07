@@ -366,7 +366,9 @@ impl<T> Box<[T]> {
 }
 
 impl<T, A: AllocRef> Box<[T], A> {
-    /// Behaves like [`new_uninit_slice`] but generic over the allocator
+    /// Behaves like [`new_uninit_slice`] but generic over the allocator.
+    ///
+    /// [`new_uninit_slice`]: #method.new_uninit_slice
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
         unsafe { RawVec::with_capacity_in(len, alloc).into_box(len) }
@@ -590,6 +592,8 @@ impl<T: ?Sized, A: AllocRef> Box<T, A> {
     }
 
     /// Behaves like [`into_raw`] but also returns the allocator
+    ///
+    /// [`into_raw`]: #method.into_raw
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw_with_alloc(b: Self) -> (*mut T, A) {
@@ -707,7 +711,7 @@ impl<T: ?Sized, A: AllocRef> Box<T, A> {
 
     /// Behaves like [`leak`] but also returns the allocator
     ///
-    /// [`leak`]: Self::leak
+    /// [`leak`]: #method.leak
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn leak_with_alloc<'a>(b: Self) -> (&'a mut T, A)
