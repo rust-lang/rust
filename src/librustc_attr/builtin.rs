@@ -652,9 +652,12 @@ pub fn eval_condition(
                     return false;
                 }
             };
-            let version = Version::parse(env!("CFG_VERSION")).unwrap();
+            let channel = env!("CFG_RELEASE_CHANNEL");
+            let nightly = channel == "nightly" || channel == "dev";
+            let rustc_version = Version::parse(env!("CFG_RELEASE")).unwrap();
 
-            version >= min_version
+            // See https://github.com/rust-lang/rust/issues/64796#issuecomment-625474439 for details
+            if nightly { rustc_version > min_version } else { rustc_version >= min_version }
         }
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
