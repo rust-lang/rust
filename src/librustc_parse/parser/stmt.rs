@@ -145,12 +145,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_local_mk(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, Stmt> {
-        let local = self.parse_local(attrs)?;
+        let local = self.parse_local(lo, attrs)?;
         Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Local(local)))
     }
 
     /// Parses a local variable declaration.
-    fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
+    fn parse_local(&mut self, let_span: Span, attrs: AttrVec) -> PResult<'a, P<Local>> {
         let lo = self.prev_token.span;
         let pat = self.parse_top_pat(GateOr::Yes)?;
 
@@ -174,7 +174,7 @@ impl<'a> Parser<'a> {
         } else {
             (None, None)
         };
-        let init = match (self.parse_initializer(err.is_some()), err) {
+        let init = match (self.parse_initializer(let_span, ty.is_some(), err.is_some()), err) {
             (Ok(init), None) => {
                 // init parsed, ty parsed
                 init
@@ -216,23 +216,43 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the RHS of a local variable declaration (e.g., '= 14;').
-    fn parse_initializer(&mut self, skip_eq: bool) -> PResult<'a, Option<P<Expr>>> {
+    fn parse_initializer(
+        &mut self,
+        let_span: Span,
+        has_ty: bool,
+        skip_eq: bool,
+    ) -> PResult<'a, Option<P<Expr>>> {
         let parse = if !self.eat(&token::Eq) && !skip_eq {
             // Error recovery for `let x += 1`
             if matches!(self.token.kind, TokenKind::BinOpEq(_)) {
-                struct_span_err!(
+                let mut err = struct_span_err!(
                     self.sess.span_diagnostic,
                     self.token.span,
                     E0067,
                     "can't reassign to a uninitialized variable"
-                )
-                .span_suggestion_short(
+                );
+                err.span_suggestion_short(
                     self.token.span,
                     "replace with `=` to initialize the variable",
                     "=".to_string(),
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+                    if has_ty {
+                        // for `let x: i8 += 1` it's highly likely that the `+` is a typo
+                        Applicability::MachineApplicable
+                    } else {
+                        // for `let x += 1` it's a bit less likely that the `+` is a typo
+                        Applicability::MaybeIncorrect
+                    },
+                );
+                // In case of code like `let x += 1` it's possible the user may have meant to write `x += 1`
+                if !has_ty {
+                    err.span_suggestion_short(
+                        let_span,
+                        "remove to reassign to a previously initialized variable",
+                        "".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                err.emit();
                 self.bump();
                 true
             } else {
