@@ -143,7 +143,7 @@ impl<T: ?Sized> NonNull<T> {
 }
 
 impl<T> NonNull<[T]> {
-    /// Create a non-null raw slice from a thin pointer and a length.
+    /// Creates a non-null raw slice from a thin pointer and a length.
     ///
     /// The `len` argument is the number of **elements**, not the number of bytes.
     ///
@@ -171,12 +171,12 @@ impl<T> NonNull<[T]> {
     #[unstable(feature = "nonnull_slice_from_raw_parts", issue = "71941")]
     #[rustc_const_unstable(feature = "const_nonnull_slice_from_raw_parts", issue = "71941")]
     #[inline]
-    pub const fn slice_from_raw_parts(data: NonNull<T>, size: usize) -> Self {
+    pub const fn slice_from_raw_parts(data: NonNull<T>, len: usize) -> Self {
         // SAFETY: `data` is a `NonNull` pointer which is necessarily non-null
-        unsafe { Self::new_unchecked(super::slice_from_raw_parts_mut(data.as_ptr(), size)) }
+        unsafe { Self::new_unchecked(super::slice_from_raw_parts_mut(data.as_ptr(), len)) }
     }
 
-    /// Return the length and a non-null raw slice.
+    /// Returns the length of a non-null raw slice.
     ///
     /// The returned value is the number of **elements**, not the number of bytes.
     ///
