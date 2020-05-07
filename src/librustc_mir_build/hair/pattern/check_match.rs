@@ -1,9 +1,9 @@
 use super::_match::Usefulness::*;
 use super::_match::WitnessPreference::*;
 use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack};
-
 use super::{PatCtxt, PatKind, PatternError};
 
+use arena::TypedArena;
 use rustc_ast::ast::Mutability;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -17,7 +17,6 @@ use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERN
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::{sym, Span};
-
 use std::slice;
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
@@ -26,8 +25,12 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
         Some(id) => tcx.hir().body_owned_by(tcx.hir().as_local_hir_id(id)),
     };
 
-    let mut visitor =
-        MatchVisitor { tcx, tables: tcx.body_tables(body_id), param_env: tcx.param_env(def_id) };
+    let mut visitor = MatchVisitor {
+        tcx,
+        tables: tcx.body_tables(body_id),
+        param_env: tcx.param_env(def_id),
+        pattern_arena: TypedArena::default(),
+    };
     visitor.visit_body(tcx.hir().body(body_id));
 }
 
@@ -39,6 +42,7 @@ struct MatchVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    pattern_arena: TypedArena<super::Pat<'tcx>>,
 }
 
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, 'tcx> {
@@ -145,7 +149,13 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
 
     fn check_in_cx(&self, hir_id: HirId, f: impl FnOnce(MatchCheckCtxt<'_, 'tcx>)) {
         let module = self.tcx.parent_module(hir_id);
-        MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module.to_def_id(), |cx| f(cx));
+        MatchCheckCtxt::create_and_enter(
+            self.tcx,
+            self.param_env,
+            &self.pattern_arena,
+            module.to_def_id(),
+            f,
+        );
     }
 
     fn check_match(

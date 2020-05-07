@@ -588,12 +588,11 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     crate fn create_and_enter<R>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        pattern_arena: &'a TypedArena<Pat<'tcx>>,
         module: DefId,
-        f: impl FnOnce(MatchCheckCtxt<'_, 'tcx>) -> R,
+        f: impl FnOnce(MatchCheckCtxt<'a, 'tcx>) -> R,
     ) -> R {
-        let pattern_arena = TypedArena::default();
-
-        f(MatchCheckCtxt { tcx, param_env, module, pattern_arena: &pattern_arena })
+        f(MatchCheckCtxt { tcx, param_env, module, pattern_arena })
     }
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
