@@ -175,10 +175,10 @@ There are a lot of related types, and we’ll cover them in time (e.g regions/li
 There are a bunch of variants on the `TyKind` enum, which you can see by looking at the rustdocs.
 Here is a sampling:
 
-[**Algebraic Data Types (ADTs)**]() An [*algebraic Data Type*][wikiadt] is a  `struct`, `enum` or
-`union`.  Under the hood, `struct`, `enum` and `union` are actually implemented the same way: they
-are all [`ty::TyKind::Adt`][kindadt].  It’s basically a user defined type. We will talk more about
-these later.
+[**Algebraic Data Types (ADTs)**][kindadt] An [*algebraic Data Type*][wikiadt] is a  `struct`,
+`enum` or `union`.  Under the hood, `struct`, `enum` and `union` are actually implemented
+the same way: they are all [`ty::TyKind::Adt`][kindadt].  It’s basically a user defined type.
+We will talk more about these later.
 
 [**Foreign**][kindforeign] Corresponds to `extern type T`.
 
