@@ -651,10 +651,10 @@ pub(crate) unsafe fn codegen(
                     "LLVM_module_codegen_embed_bitcode",
                     &module.name[..],
                 );
-                embed_bitcode(cgcx, llcx, llmod, Some(data));
+                embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, Some(data));
             }
         } else if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Marker) {
-            embed_bitcode(cgcx, llcx, llmod, None);
+            embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, None);
         }
 
         if config.emit_ir {
@@ -777,8 +777,8 @@ pub(crate) unsafe fn codegen(
 /// * __LLVM,__cmdline
 ///
 /// It appears *both* of these sections are necessary to get the linker to
-/// recognize what's going on. For us though we just always throw in an empty
-/// cmdline section.
+/// recognize what's going on. A suitable cmdline value is taken from the
+/// target spec.
 ///
 /// Furthermore debug/O1 builds don't actually embed bitcode but rather just
 /// embed an empty section.
@@ -789,6 +789,7 @@ unsafe fn embed_bitcode(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     llcx: &llvm::Context,
     llmod: &llvm::Module,
+    cmdline: &str,
     bitcode: Option<&[u8]>,
 ) {
     let llconst = common::bytes_in_context(llcx, bitcode.unwrap_or(&[]));
@@ -800,14 +801,15 @@ unsafe fn embed_bitcode(
     llvm::LLVMSetInitializer(llglobal, llconst);
 
     let is_apple = cgcx.opts.target_triple.triple().contains("-ios")
-        || cgcx.opts.target_triple.triple().contains("-darwin");
+        || cgcx.opts.target_triple.triple().contains("-darwin")
+        || cgcx.opts.target_triple.triple().contains("-tvos");
 
     let section = if is_apple { "__LLVM,__bitcode\0" } else { ".llvmbc\0" };
     llvm::LLVMSetSection(llglobal, section.as_ptr().cast());
     llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
     llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
-    let llconst = common::bytes_in_context(llcx, &[]);
+    let llconst = common::bytes_in_context(llcx, cmdline.as_bytes());
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
         common::val_ty(llconst),

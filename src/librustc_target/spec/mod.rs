@@ -785,6 +785,8 @@ pub struct TargetOptions {
     pub obj_is_bitcode: bool,
     /// Whether the target requires that emitted object code includes bitcode.
     pub forces_embed_bitcode: bool,
+    /// Content of the LLVM cmdline section associated with embedded bitcode.
+    pub bitcode_llvm_cmdline: String,
 
     /// Don't use this field; instead use the `.min_atomic_width()` method.
     pub min_atomic_width: Option<u64>,
@@ -942,6 +944,7 @@ impl Default for TargetOptions {
             has_elf_tls: false,
             obj_is_bitcode: false,
             forces_embed_bitcode: false,
+            bitcode_llvm_cmdline: String::new(),
             min_atomic_width: None,
             max_atomic_width: None,
             atomic_cas: true,
@@ -1282,6 +1285,7 @@ impl Target {
         key!(has_elf_tls, bool);
         key!(obj_is_bitcode, bool);
         key!(forces_embed_bitcode, bool);
+        key!(bitcode_llvm_cmdline);
         key!(max_atomic_width, Option<u64>);
         key!(min_atomic_width, Option<u64>);
         key!(atomic_cas, bool);
@@ -1510,6 +1514,7 @@ impl ToJson for Target {
         target_option_val!(has_elf_tls);
         target_option_val!(obj_is_bitcode);
         target_option_val!(forces_embed_bitcode);
+        target_option_val!(bitcode_llvm_cmdline);
         target_option_val!(min_atomic_width);
         target_option_val!(max_atomic_width);
         target_option_val!(atomic_cas);

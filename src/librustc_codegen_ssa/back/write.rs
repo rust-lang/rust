@@ -101,6 +101,7 @@ pub struct ModuleConfig {
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
+    pub bc_cmdline: String,
 
     // Miscellaneous flags.  These are mostly copied from command-line
     // options.
@@ -213,6 +214,7 @@ impl ModuleConfig {
                 false
             ),
             emit_obj,
+            bc_cmdline: sess.target.target.options.bitcode_llvm_cmdline.clone(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
             no_prepopulate_passes: sess.opts.cg.no_prepopulate_passes,
