@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// ```rust
     /// use std::future::Future;
     ///
-    /// fn foo() -> Future<Output = i32> { async { 42 } }
+    /// fn foo() -> impl Future<Output = i32> { async { 42 } }
     /// ```
     /// Use instead:
     /// ```rust
