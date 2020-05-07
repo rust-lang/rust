@@ -157,10 +157,10 @@ fn test_weird_formatting() {
     foo();
 }
 
-mod test_super_imports {
+mod super_imports {
     fn foofoo() {}
 
-    mod use_super_should_be_replaced {
+    mod should_be_replaced {
         use super::*;
 
         fn with_super() {
@@ -168,16 +168,23 @@ mod test_super_imports {
         }
     }
 
-    mod use_super_in_test_should_pass {
+    mod test_should_pass {
         use super::*;
 
         fn with_super() {
+            let _ = foofoo();
+        }
+    }
+
+    mod inner {
+        fn test_should_pass() {
+            use super::*;
             let _ = foofoo();
         }
     }
 
     mod use_explicit_should_be_replaced {
-        use test_super_imports::*;
+        use super_imports::*;
 
         fn with_explicit() {
             let _ = foofoo();
@@ -195,7 +202,7 @@ mod test_super_imports {
     }
 
     mod use_super_explicit_should_be_replaced {
-        use super::super::test_super_imports::*;
+        use super::super::super_imports::*;
 
         fn with_super_explicit() {
             let _ = foofoo();

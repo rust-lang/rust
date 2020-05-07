@@ -99,22 +99,22 @@ LL |         use super::*;
    |             ^^^^^^^^ help: try: `super::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:180:13
+  --> $DIR/wildcard_imports.rs:187:13
    |
-LL |         use test_super_imports::*;
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `test_super_imports::foofoo`
+LL |         use super_imports::*;
+   |             ^^^^^^^^^^^^^^^^ help: try: `super_imports::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:189:17
+  --> $DIR/wildcard_imports.rs:196:17
    |
 LL |             use super::super::*;
    |                 ^^^^^^^^^^^^^^^ help: try: `super::super::foofoo`
 
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:198:13
+  --> $DIR/wildcard_imports.rs:205:13
    |
-LL |         use super::super::test_super_imports::*;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::test_super_imports::foofoo`
+LL |         use super::super::super_imports::*;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::super_imports::foofoo`
 
 error: aborting due to 19 previous errors
 

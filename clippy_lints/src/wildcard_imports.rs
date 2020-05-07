@@ -6,7 +6,7 @@ use rustc_hir::{
     Item, ItemKind, PathSegment, UseKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::BytePos;
 
 declare_clippy_lint! {
@@ -73,18 +73,38 @@ declare_clippy_lint! {
     "lint `use _::*` statements"
 }
 
-declare_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
+#[derive(Default)]
+pub struct WildcardImports {
+    warn_on_all: bool,
+    is_test_module: bool,
+    test_modules_deep: u32,
+}
+
+impl WildcardImports {
+    pub fn new(warn_on_all: bool) -> Self {
+        Self {
+            warn_on_all,
+            is_test_module: false,
+            test_modules_deep: 0,
+        }
+    }
+}
+
+impl_lint_pass!(WildcardImports => [ENUM_GLOB_USE, WILDCARD_IMPORTS]);
 
 impl LateLintPass<'_, '_> for WildcardImports {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &Item<'_>) {
         if item.vis.node.is_pub() || item.vis.node.is_pub_restricted() {
             return;
         }
+        if is_test_module(item) {
+            self.is_test_module = true;
+            self.test_modules_deep += 1;
+        }
         if_chain! {
             if !in_macro(item.span);
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
-            if !is_prelude_import(use_path.segments);
-            if !(is_super_only_import(use_path.segments) && is_in_test_module(cx, item));
+            if self.warn_on_all || !self.check_exceptions(use_path.segments);
             let used_imports = cx.tcx.names_imported_by_glob_use(item.hir_id.owner);
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
@@ -152,6 +172,19 @@ impl LateLintPass<'_, '_> for WildcardImports {
             }
         }
     }
+
+    fn check_item_post(&mut self, _: &LateContext<'_, '_>, _: &Item<'_>) {
+        if self.is_test_module {
+            self.is_test_module = false;
+            self.test_modules_deep -= 1;
+        }
+    }
+}
+
+impl WildcardImports {
+    fn check_exceptions(&self, segments: &[PathSegment<'_>]) -> bool {
+        is_prelude_import(segments) || (is_super_only_import(segments) && self.test_modules_deep > 0)
+    }
 }
 
 // Allow "...prelude::*" imports.
@@ -168,9 +201,6 @@ fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
     segments.len() == 1 && segments[0].ident.as_str() == "super"
 }
 
-fn is_in_test_module(cx: &LateContext<'_, '_>, item: &Item<'_>) -> bool {
-    let parent = cx.tcx.hir().get_parent_node(item.hir_id);
-    let parent_item = cx.tcx.hir().expect_item(parent);
-    let parent_name = parent_item.ident.name.as_str();
-    parent_name.contains("test")
+fn is_test_module(item: &Item<'_>) -> bool {
+    item.ident.name.as_str().contains("test")
 }
