@@ -33,7 +33,6 @@ pub struct StructData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub name: Name,
-    pub visibility: RawVisibility,
     pub variants: Arena<EnumVariantData>,
 }
 
@@ -92,8 +91,7 @@ impl EnumData {
         let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let mut trace = Trace::new_for_arena();
         lower_enum(db, &mut trace, &src, e.lookup(db).container.module(db));
-        let visibility = RawVisibility::from_ast(db, src.with_value(src.value.visibility()));
-        Arc::new(EnumData { name, visibility, variants: trace.into_arena() })
+        Arc::new(EnumData { name, variants: trace.into_arena() })
     }
 
     pub fn variant(&self, name: &Name) -> Option<LocalEnumVariantId> {

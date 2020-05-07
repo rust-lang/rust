@@ -474,13 +474,6 @@ impl EnumVariant {
     }
 }
 
-impl HasVisibility for EnumVariant {
-    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let visibility = &db.enum_data(self.parent.id).visibility;
-        visibility.resolve(db.upcast(), &self.parent.id.resolver(db.upcast()))
-    }
-}
-
 /// A Data Type
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Adt {
