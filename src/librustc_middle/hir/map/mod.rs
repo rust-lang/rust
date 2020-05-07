@@ -408,6 +408,9 @@ impl<'hir> Map<'hir> {
         })
     }
 
+    /// Returns the `BodyOwnerKind` of this `LocalDefId`.
+    ///
+    /// Panics if `LocalDefId` does not have an associated body.
     pub fn body_owner_kind(&self, id: HirId) -> BodyOwnerKind {
         match self.get(id) {
             Node::Item(&Item { kind: ItemKind::Const(..), .. })
@@ -422,6 +425,23 @@ impl<'hir> Map<'hir> {
             Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => BodyOwnerKind::Closure,
             node => bug!("{:#?} is not a body node", node),
         }
+    }
+
+    /// Returns the `ConstContext` of the body associated with this `LocalDefId`.
+    ///
+    /// Panics if `LocalDefId` does not have an associated body.
+    pub fn body_const_context(&self, did: LocalDefId) -> Option<ConstContext> {
+        let hir_id = self.local_def_id_to_hir_id(did);
+        let ccx = match self.body_owner_kind(hir_id) {
+            BodyOwnerKind::Const => ConstContext::Const,
+            BodyOwnerKind::Static(mt) => ConstContext::Static(mt),
+
+            BodyOwnerKind::Fn if self.tcx.is_constructor(did.to_def_id()) => return None,
+            BodyOwnerKind::Fn if self.tcx.is_const_fn_raw(did.to_def_id()) => ConstContext::ConstFn,
+            BodyOwnerKind::Fn | BodyOwnerKind::Closure => return None,
+        };
+
+        Some(ccx)
     }
 
     pub fn ty_param_owner(&self, id: HirId) -> HirId {
