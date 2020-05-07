@@ -178,7 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match expected_ty.kind {
             ty::Dynamic(ref object_type, ..) => {
                 let sig = object_type.projection_bounds().find_map(|pb| {
-                    let pb = pb.with_self_ty(self.tcx, self.tcx.types.err);
+                    let pb = pb.with_self_ty(self.tcx, self.tcx.types.trait_object_dummy_self);
                     self.deduce_sig_from_projection(None, &pb)
                 });
                 let kind = object_type
