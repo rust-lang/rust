@@ -978,7 +978,10 @@ function getSearchElement() {
             }
 
             function handleAliases(ret, query, filterCrates) {
+                // We separate aliases and crate aliases because we want to have current crate
+                // aliases to be before the others in the displayed results.
                 var aliases = [];
+                var crateAliases = [];
                 var i;
                 if (filterCrates !== undefined &&
                         ALIASES[filterCrates] &&
@@ -990,25 +993,28 @@ function getSearchElement() {
                 } else {
                     Object.keys(ALIASES).forEach(function(crate) {
                         if (ALIASES[crate][query.search]) {
+                            var pushTo = crate === window.currentCrate ? crateAliases : aliases;
                             for (i = 0; i < ALIASES[crate][query.search].length; ++i) {
-                                aliases.push(
+                                pushTo.push(
                                     createAliasFromItem(
                                         searchIndex[ALIASES[crate][query.search][i]]));
                             }
                         }
                     });
                 }
-                aliases.sort(function(aaa, bbb) {
+
+                var sortFunc = function(aaa, bbb) {
                     if (aaa.path < bbb.path) {
                         return 1;
                     } else if (aaa.path === bbb.path) {
                         return 0;
                     }
                     return -1;
-                });
-                for (i = 0; i < aliases.length; ++i) {
-                    var alias = aliases[i];
+                };
+                crateAliases.sort(sortFunc);
+                aliases.sort(sortFunc);
 
+                var pushFunc = function(alias) {
                     alias.alias = query.raw;
                     var res = buildHrefAndPath(alias);
                     alias.displayPath = pathSplitter(res[0]);
@@ -1019,7 +1025,9 @@ function getSearchElement() {
                     if (ret.others.length > MAX_RESULTS) {
                         ret.others.pop();
                     }
-                }
+                };
+                onEach(aliases, pushFunc);
+                onEach(crateAliases, pushFunc);
             }
 
             // quoted values mean literal search

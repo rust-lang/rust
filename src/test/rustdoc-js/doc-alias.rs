@@ -19,7 +19,6 @@ impl Trait for Struct {
     #[doc(alias = "ImplAssociatedConstItem")]
     const AssociatedConst: i32 = 12;
 
-    // Shouldn't be listed in aliases!
     #[doc(alias = "ImplTraitFunction")]
     fn function() -> Self::Target { 0 }
 }
