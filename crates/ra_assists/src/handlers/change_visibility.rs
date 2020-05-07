@@ -7,9 +7,9 @@ use ra_syntax::{
     },
     SyntaxNode, TextSize, T,
 };
-
-use crate::{Assist, AssistCtx, AssistId};
 use test_utils::tested_by;
+
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: change_visibility
 //
@@ -22,14 +22,14 @@ use test_utils::tested_by;
 // ```
 // pub(crate) fn frobnicate() {}
 // ```
-pub(crate) fn change_visibility(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn change_visibility(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     if let Some(vis) = ctx.find_node_at_offset::<ast::Visibility>() {
-        return change_vis(ctx, vis);
+        return change_vis(acc, vis);
     }
-    add_vis(ctx)
+    add_vis(acc, ctx)
 }
 
-fn add_vis(ctx: AssistCtx) -> Option<Assist> {
+fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let item_keyword = ctx.token_at_offset().find(|leaf| match leaf.kind() {
         T![const] | T![fn] | T![mod] | T![struct] | T![enum] | T![trait] => true,
         _ => false,
@@ -66,15 +66,10 @@ fn add_vis(ctx: AssistCtx) -> Option<Assist> {
         return None;
     };
 
-    ctx.add_assist(
-        AssistId("change_visibility"),
-        "Change visibility to pub(crate)",
-        target,
-        |edit| {
-            edit.insert(offset, "pub(crate) ");
-            edit.set_cursor(offset);
-        },
-    )
+    acc.add(AssistId("change_visibility"), "Change visibility to pub(crate)", target, |edit| {
+        edit.insert(offset, "pub(crate) ");
+        edit.set_cursor(offset);
+    })
 }
 
 fn vis_offset(node: &SyntaxNode) -> TextSize {
@@ -88,10 +83,10 @@ fn vis_offset(node: &SyntaxNode) -> TextSize {
         .unwrap_or_else(|| node.text_range().start())
 }
 
-fn change_vis(ctx: AssistCtx, vis: ast::Visibility) -> Option<Assist> {
+fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
     if vis.syntax().text() == "pub" {
         let target = vis.syntax().text_range();
-        return ctx.add_assist(
+        return acc.add(
             AssistId("change_visibility"),
             "Change Visibility to pub(crate)",
             target,
@@ -103,7 +98,7 @@ fn change_vis(ctx: AssistCtx, vis: ast::Visibility) -> Option<Assist> {
     }
     if vis.syntax().text() == "pub(crate)" {
         let target = vis.syntax().text_range();
-        return ctx.add_assist(
+        return acc.add(
             AssistId("change_visibility"),
             "Change visibility to pub",
             target,

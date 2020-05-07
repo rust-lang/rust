@@ -1,6 +1,6 @@
 use ra_syntax::ast::{AstNode, BinExpr, BinOp};
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: flip_binexpr
 //
@@ -17,7 +17,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     let _ = 2 + 90;
 // }
 // ```
-pub(crate) fn flip_binexpr(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let expr = ctx.find_node_at_offset::<BinExpr>()?;
     let lhs = expr.lhs()?.syntax().clone();
     let rhs = expr.rhs()?.syntax().clone();
@@ -33,7 +33,7 @@ pub(crate) fn flip_binexpr(ctx: AssistCtx) -> Option<Assist> {
         return None;
     }
 
-    ctx.add_assist(AssistId("flip_binexpr"), "Flip binary expression", op_range, |edit| {
+    acc.add(AssistId("flip_binexpr"), "Flip binary expression", op_range, |edit| {
         if let FlipAction::FlipAndReplaceOp(new_op) = action {
             edit.replace(op_range, new_op);
         }

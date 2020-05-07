@@ -4,7 +4,7 @@ use ra_syntax::{
     TextSize,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_derive
 //
@@ -24,11 +24,11 @@ use crate::{Assist, AssistCtx, AssistId};
 //     y: u32,
 // }
 // ```
-pub(crate) fn add_derive(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_derive(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
     let node_start = derive_insertion_offset(&nominal)?;
     let target = nominal.syntax().text_range();
-    ctx.add_assist(AssistId("add_derive"), "Add `#[derive]`", target, |edit| {
+    acc.add(AssistId("add_derive"), "Add `#[derive]`", target, |edit| {
         let derive_attr = nominal
             .attrs()
             .filter_map(|x| x.as_simple_call())
@@ -57,8 +57,9 @@ fn derive_insertion_offset(nominal: &ast::NominalDef) -> Option<TextSize> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::tests::{check_assist, check_assist_target};
+
+    use super::*;
 
     #[test]
     fn add_derive_new() {

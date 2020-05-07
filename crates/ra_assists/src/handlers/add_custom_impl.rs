@@ -6,7 +6,10 @@ use ra_syntax::{
 };
 use stdx::SepBy;
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    AssistId,
+};
 
 // Assist: add_custom_impl
 //
@@ -25,7 +28,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //
 // }
 // ```
-pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let input = ctx.find_node_at_offset::<ast::AttrInput>()?;
     let attr = input.syntax().parent().and_then(ast::Attr::cast)?;
 
@@ -49,7 +52,7 @@ pub(crate) fn add_custom_impl(ctx: AssistCtx) -> Option<Assist> {
         format!("Add custom impl '{}' for '{}'", trait_token.text().as_str(), annotated_name);
 
     let target = attr.syntax().text_range();
-    ctx.add_assist(AssistId("add_custom_impl"), label, target, |edit| {
+    acc.add(AssistId("add_custom_impl"), label, target, |edit| {
         let new_attr_input = input
             .syntax()
             .descendants_with_tokens()

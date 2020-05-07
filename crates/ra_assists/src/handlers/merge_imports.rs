@@ -6,7 +6,10 @@ use ra_syntax::{
     AstNode, Direction, InsertPosition, SyntaxElement, T,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    AssistId,
+};
 
 // Assist: merge_imports
 //
@@ -20,7 +23,7 @@ use crate::{Assist, AssistCtx, AssistId};
 // ```
 // use std::{fmt::Formatter, io};
 // ```
-pub(crate) fn merge_imports(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let tree: ast::UseTree = ctx.find_node_at_offset()?;
     let mut rewriter = SyntaxRewriter::default();
     let mut offset = ctx.frange.range.start();
@@ -53,10 +56,10 @@ pub(crate) fn merge_imports(ctx: AssistCtx) -> Option<Assist> {
     };
 
     let target = tree.syntax().text_range();
-    ctx.add_assist(AssistId("merge_imports"), "Merge imports", target, |edit| {
-        edit.rewrite(rewriter);
+    acc.add(AssistId("merge_imports"), "Merge imports", target, |builder| {
+        builder.rewrite(rewriter);
         // FIXME: we only need because our diff is imprecise
-        edit.set_cursor(offset);
+        builder.set_cursor(offset);
     })
 }
 

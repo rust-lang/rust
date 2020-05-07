@@ -10,7 +10,7 @@ macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
 }
 
-mod assist_ctx;
+mod assist_context;
 mod marks;
 #[cfg(test)]
 mod tests;
@@ -22,7 +22,7 @@ use ra_db::FileRange;
 use ra_ide_db::{source_change::SourceChange, RootDatabase};
 use ra_syntax::TextRange;
 
-pub(crate) use crate::assist_ctx::{Assist, AssistCtx};
+pub(crate) use crate::assist_context::{AssistContext, Assists};
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
@@ -68,13 +68,12 @@ pub struct ResolvedAssist {
 /// returned, without actual edits.
 pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabel> {
     let sema = Semantics::new(db);
-    let ctx = AssistCtx::new(&sema, range, false);
-    handlers::all()
-        .iter()
-        .filter_map(|f| f(ctx.clone()))
-        .flat_map(|it| it.0)
-        .map(|a| a.label)
-        .collect()
+    let ctx = AssistContext::new(sema, range);
+    let mut acc = Assists::new_unresolved(&ctx);
+    handlers::all().iter().for_each(|handler| {
+        handler(&mut acc, &ctx);
+    });
+    acc.finish_unresolved()
 }
 
 /// Return all the assists applicable at the given position.
@@ -83,31 +82,30 @@ pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabe
 /// computed.
 pub fn resolved_assists(db: &RootDatabase, range: FileRange) -> Vec<ResolvedAssist> {
     let sema = Semantics::new(db);
-    let ctx = AssistCtx::new(&sema, range, true);
-    let mut a = handlers::all()
-        .iter()
-        .filter_map(|f| f(ctx.clone()))
-        .flat_map(|it| it.0)
-        .map(|it| it.into_resolved().unwrap())
-        .collect::<Vec<_>>();
-    a.sort_by_key(|it| it.label.target.len());
-    a
+    let ctx = AssistContext::new(sema, range);
+    let mut acc = Assists::new_resolved(&ctx);
+    handlers::all().iter().for_each(|handler| {
+        handler(&mut acc, &ctx);
+    });
+    acc.finish_resolved()
 }
 
 mod handlers {
-    use crate::{Assist, AssistCtx};
+    use crate::{AssistContext, Assists};
 
-    pub(crate) type Handler = fn(AssistCtx) -> Option<Assist>;
+    pub(crate) type Handler = fn(&mut Assists, &AssistContext) -> Option<()>;
 
     mod add_custom_impl;
     mod add_derive;
     mod add_explicit_type;
+    mod add_from_impl_for_enum;
     mod add_function;
     mod add_impl;
     mod add_missing_impl_members;
     mod add_new;
     mod apply_demorgan;
     mod auto_import;
+    mod change_return_type_to_result;
     mod change_visibility;
     mod early_return;
     mod fill_match_arms;
@@ -124,14 +122,12 @@ mod handlers {
     mod raw_string;
     mod remove_dbg;
     mod remove_mut;
+    mod reorder_fields;
     mod replace_if_let_with_match;
     mod replace_let_with_if_let;
     mod replace_qualified_name_with_use;
     mod replace_unwrap_with_match;
     mod split_import;
-    mod change_return_type_to_result;
-    mod add_from_impl_for_enum;
-    mod reorder_fields;
     mod unwrap_block;
 
     pub(crate) fn all() -> &'static [Handler] {

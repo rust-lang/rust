@@ -4,9 +4,9 @@ use ra_syntax::{
     TextSize,
 };
 use stdx::format_to;
-
-use crate::{utils::FamousDefs, Assist, AssistCtx, AssistId};
 use test_utils::tested_by;
+
+use crate::{utils::FamousDefs, AssistContext, AssistId, Assists};
 
 // Assist add_from_impl_for_enum
 //
@@ -25,7 +25,7 @@ use test_utils::tested_by;
 //     }
 // }
 // ```
-pub(crate) fn add_from_impl_for_enum(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::EnumVariant>()?;
     let variant_name = variant.name()?;
     let enum_name = variant.parent_enum().name()?;
@@ -42,13 +42,13 @@ pub(crate) fn add_from_impl_for_enum(ctx: AssistCtx) -> Option<Assist> {
         _ => return None,
     };
 
-    if existing_from_impl(ctx.sema, &variant).is_some() {
+    if existing_from_impl(&ctx.sema, &variant).is_some() {
         tested_by!(test_add_from_impl_already_exists);
         return None;
     }
 
     let target = variant.syntax().text_range();
-    ctx.add_assist(
+    acc.add(
         AssistId("add_from_impl_for_enum"),
         "Add From impl for this enum variant",
         target,

@@ -4,7 +4,7 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::{Assist, AssistCtx, AssistId};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_explicit_type
 //
@@ -21,7 +21,7 @@ use crate::{Assist, AssistCtx, AssistId};
 //     let x: i32 = 92;
 // }
 // ```
-pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
+pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let stmt = ctx.find_node_at_offset::<LetStmt>()?;
     let expr = stmt.initializer()?;
     let pat = stmt.pat()?;
@@ -59,7 +59,7 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx) -> Option<Assist> {
 
     let db = ctx.db;
     let new_type_string = ty.display_truncated(db, None).to_string();
-    ctx.add_assist(
+    acc.add(
         AssistId("add_explicit_type"),
         format!("Insert explicit type '{}'", new_type_string),
         pat_range,
