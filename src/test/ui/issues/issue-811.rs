@@ -1,5 +1,6 @@
 // run-fail
 // error-pattern:quux
+// ignore-emscripten no processes
 
 use std::marker::PhantomData;
 

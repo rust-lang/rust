@@ -1,5 +1,6 @@
 // run-fail
 // error-pattern:meep
+// ignore-emscripten no processes
 
 #![feature(box_syntax)]
 

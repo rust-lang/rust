@@ -3,6 +3,7 @@
 
 // run-fail
 // error-pattern:bye
+// ignore-emscripten no processes
 
 #![allow(unreachable_code)]
 #![allow(unused_variables)]

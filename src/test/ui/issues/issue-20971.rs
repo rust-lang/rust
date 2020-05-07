@@ -2,6 +2,7 @@
 
 // run-fail
 // error-pattern:Hello, world!
+// ignore-emscripten no processes
 
 pub trait Parser {
     type Input;

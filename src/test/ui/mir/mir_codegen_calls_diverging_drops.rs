@@ -1,6 +1,7 @@
 // run-fail
 // error-pattern:diverging_fn called
 // error-pattern:0 dropped
+// ignore-emscripten no processes
 
 struct Droppable(u8);
 impl Drop for Droppable {

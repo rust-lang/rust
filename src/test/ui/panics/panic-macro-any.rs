@@ -1,5 +1,6 @@
 // run-fail
 // error-pattern:panicked at 'Box<Any>'
+// ignore-emscripten no processes
 
 #![feature(box_syntax)]
 

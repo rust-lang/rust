@@ -2,6 +2,7 @@
 // error-pattern:nonzero
 // exec-env:RUST_NEWRT=1
 // ignore-cloudabi no std::env
+// ignore-emscripten no processes
 
 use std::env;
 

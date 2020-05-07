@@ -1,5 +1,6 @@
 // run-fail
 // error-pattern:thread 'main' panicked at 'attempt to multiply with overflow'
+// ignore-emscripten no processes
 // compile-flags: -C debug-assertions
 
 #![allow(arithmetic_overflow)]

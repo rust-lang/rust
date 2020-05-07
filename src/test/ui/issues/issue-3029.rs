@@ -1,5 +1,6 @@
 // run-fail
 // error-pattern:so long
+// ignore-emscripten no processes
 
 #![allow(unused_allocation)]
 #![allow(unreachable_code)]

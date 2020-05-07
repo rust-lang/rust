@@ -5,6 +5,7 @@
 // revisions: foo bar
 //[foo] error-pattern:foo
 //[bar] error-pattern:bar
+// ignore-emscripten no processes
 
 #[cfg(foo)]
 fn die() {

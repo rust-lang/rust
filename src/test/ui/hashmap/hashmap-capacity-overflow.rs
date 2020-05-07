@@ -1,5 +1,6 @@
 // run-fail
 // error-pattern:capacity overflow
+// ignore-emscripten no processes
 
 use std::collections::hash_map::HashMap;
 use std::usize;
