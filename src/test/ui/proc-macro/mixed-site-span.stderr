@@ -27,7 +27,7 @@ LL | pass_dollar_crate!();
    | ^^^^^^^^^^^^^^^^^^^^^ not found in `$crate`
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this struct
    |
 LL | use ItemUse;
    |

@@ -47,6 +47,7 @@ impl TypoSuggestion {
 /// A free importable items suggested in case of resolution failure.
 crate struct ImportSuggestion {
     pub did: Option<DefId>,
+    pub descr: &'static str,
     pub path: Path,
 }
 
@@ -652,7 +653,7 @@ impl<'a> Resolver<'a> {
                                 Res::Def(DefKind::Ctor(..), did) => this.parent(did),
                                 _ => res.opt_def_id(),
                             };
-                            candidates.push(ImportSuggestion { did, path });
+                            candidates.push(ImportSuggestion { did, descr: res.descr(), path });
                         }
                     }
                 }
@@ -1445,7 +1446,7 @@ fn find_span_immediately_after_crate_name(
 crate fn show_candidates(
     err: &mut DiagnosticBuilder<'_>,
     // This is `None` if all placement locations are inside expansions
-    span: Option<Span>,
+    use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
     better: bool,
     found_use: bool,
@@ -1453,6 +1454,7 @@ crate fn show_candidates(
     if candidates.is_empty() {
         return;
     }
+
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
     let mut path_strings: Vec<_> =
@@ -1460,14 +1462,15 @@ crate fn show_candidates(
     path_strings.sort();
     path_strings.dedup();
 
-    let better = if better { "better " } else { "" };
-    let msg_diff = match path_strings.len() {
-        1 => " is found in another module, you can import it",
-        _ => "s are found in other modules, you can import them",
+    let (determiner, kind) = if candidates.len() == 1 {
+        ("this", candidates[0].descr)
+    } else {
+        ("one of these", "items")
     };
-    let msg = format!("possible {}candidate{} into scope", better, msg_diff);
+    let instead = if better { " instead" } else { "" };
+    let msg = format!("consider importing {} {}{}", determiner, kind, instead);
 
-    if let Some(span) = span {
+    if let Some(span) = use_placement_span {
         for candidate in &mut path_strings {
             // produce an additional newline to separate the new use statement
             // from the directly following item.

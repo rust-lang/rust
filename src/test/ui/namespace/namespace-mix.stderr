@@ -12,7 +12,7 @@ help: a tuple struct with a similar name exists
    |
 LL |     check(m1::TS);
    |               ^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use m2::S;
    |
@@ -35,7 +35,7 @@ help: a tuple struct with a similar name exists
    |
 LL |     check(xm1::TS);
    |                ^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use m2::S;
    |
@@ -57,7 +57,7 @@ help: a tuple variant with a similar name exists
    |
 LL |     check(m7::TV);
    |               ^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use m8::V;
    |
@@ -79,7 +79,7 @@ help: a tuple variant with a similar name exists
    |
 LL |     check(xm7::TV);
    |                ^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use m8::V;
    |

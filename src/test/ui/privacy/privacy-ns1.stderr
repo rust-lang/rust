@@ -11,7 +11,7 @@ help: a unit struct with a similar name exists
    |
 LL |     Baz();
    |     ^^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use foo1::Bar;
    |
@@ -33,7 +33,7 @@ help: a unit struct with a similar name exists
    |
 LL |     Baz();
    |     ^^^
-help: possible candidates are found in other modules, you can import them into scope
+help: consider importing one of these items
    |
 LL | use foo1::Bar;
    |
@@ -55,7 +55,7 @@ help: a struct with a similar name exists
    |
 LL |     let _x: Box<Baz>;
    |                 ^^^
-help: possible candidates are found in other modules, you can import them into scope
+help: consider importing one of these items
    |
 LL | use foo1::Bar;
    |
