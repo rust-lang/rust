@@ -549,6 +549,53 @@ pub trait Iterator {
         Zip::new(self, other.into_iter())
     }
 
+    /// Checks if an iterator starts with a given iterator.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_starts_with)]
+    /// let mut a1 = (0..1000).filter(|i|i % 2 == 0);
+    /// let a2 = (0..3).map(|i|i*2); // 0, 2, 4
+    /// assert_eq!(a1.starts_with(a2), true);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(iter_starts_with)]
+    /// let s = "a b c d";
+    /// assert!(s.chars().filter(|c|!c.is_whitespace()).starts_with("abc".chars()));
+    /// ```
+    ///
+    /// `starts_with` exists to avoid needing to `collect::<Vec<_>>` when comparing prefixes of
+    /// iterators.
+    ///
+    #[inline]
+    #[unstable(feature = "iter_starts_with", reason = "recently added", issue = "none")]
+    fn starts_with<I>(&mut self, other: I) -> bool
+    where
+        I: IntoIterator,
+        Self::Item: PartialEq<I::Item>,
+        Self: Sized,
+    {
+        let mut other = other.into_iter();
+        loop {
+            let patt = match other.next() {
+                Some(el) => el,
+                None => return true,
+            };
+            match self.next() {
+                None => return false,
+                Some(us) => {
+                    if us != patt {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
     /// Takes a closure and creates an iterator which calls that closure on each
     /// element.
     ///

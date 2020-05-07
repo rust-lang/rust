@@ -3125,3 +3125,14 @@ fn test_flatten_non_fused_inner() {
     assert_eq!(iter.next(), Some(1));
     assert_eq!(iter.next(), None);
 }
+
+#[test]
+fn test_iter_starts_with() {
+    let v = vec![1, 2, 3, 4];
+    assert!(v.iter().starts_with(&[1, 2]));
+    assert_eq!(v.iter().starts_with(&[2, 3, 4]), false);
+    assert_eq!(v.iter().filter(|x| x != &&1).starts_with([1, 2, 3, 4, 5].iter()), false);
+    assert!((0..1000).filter(|x| x % 2 == 0).starts_with((0..5).map(|i| i * 2)));
+
+    assert!("a b c d     efg".chars().filter(|c| !c.is_whitespace()).starts_with("abc".chars()))
+}
