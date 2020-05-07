@@ -776,6 +776,79 @@ impl<T: ?Sized> Arc<T> {
         this.inner().strong.load(SeqCst)
     }
 
+    /// Increments the strong reference count on the `Arc<T>` associated with the
+    /// provided pointer by one.
+    ///
+    /// # Safety
+    ///
+    /// The pointer must have been obtained through `Arc::into_raw`, and the
+    /// associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// least 1) for the duration of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(arc_mutate_strong_count)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let five = Arc::new(5);
+    ///
+    /// unsafe {
+    ///     let ptr = Arc::into_raw(five);
+    ///     Arc::incr_strong_count(ptr);
+    ///
+    ///     // This assertion is deterministic because we haven't shared
+    ///     // the `Arc` between threads.
+    ///     let five = Arc::from_raw(ptr);
+    ///     assert_eq!(2, Arc::strong_count(&five));
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "arc_mutate_strong_count", issue = "71983")]
+    pub unsafe fn incr_strong_count(ptr: *const T) {
+        // Retain Arc, but don't touch refcount by wrapping in ManuallyDrop
+        let arc = mem::ManuallyDrop::new(Arc::<T>::from_raw(ptr));
+        // Now increase refcount, but don't drop new refcount either
+        let _arc_clone: mem::ManuallyDrop<_> = arc.clone();
+    }
+
+    /// Decrements the strong reference count on the `Arc<T>` associated with the
+    /// provided pointer by one.
+    ///
+    /// # Safety
+    ///
+    /// The pointer must have been obtained through `Arc::into_raw`, and the
+    /// associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// least 1) when invoking this method. This method can be used to release the final
+    /// `Arc` and backing storage, but **should not** be called after the final `Arc` has been
+    /// released.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(arc_mutate_strong_count)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let five = Arc::new(5);
+    ///
+    /// unsafe {
+    ///     let ptr = Arc::into_raw(five);
+    ///     Arc::decr_strong_count(ptr);
+    ///
+    ///     // This assertion is deterministic because we haven't shared
+    ///     // the `Arc` between threads.
+    ///     let five = Arc::from_raw(ptr);
+    ///     assert_eq!(0, Arc::strong_count(&five));
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "arc_mutate_strong_count", issue = "71983")]
+    pub unsafe fn decr_strong_count(ptr: *const T) {
+        mem::drop(Arc::from_raw(ptr));
+    }
+
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // This unsafety is ok because while this arc is alive we're guaranteed
