@@ -37,6 +37,7 @@ use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::project::ProjectionCacheKeyExt;
 use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items;
@@ -2365,13 +2366,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.infcx.commit_unconditionally(|_| {
                     let (skol_ty, _) = self.infcx.replace_bound_vars_with_placeholders(&ty);
                     let Normalized { value: normalized_ty, mut obligations } =
-                        project::normalize_with_depth(
-                            self,
-                            param_env,
-                            cause.clone(),
-                            recursion_depth,
-                            &skol_ty,
-                        );
+                        ensure_sufficient_stack(|| {
+                            project::normalize_with_depth(
+                                self,
+                                param_env,
+                                cause.clone(),
+                                recursion_depth,
+                                &skol_ty,
+                            )
+                        });
                     let skol_obligation = predicate_for_trait_def(
                         self.tcx(),
                         param_env,
@@ -2525,13 +2528,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             };
 
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
-            self.collect_predicates_for_types(
-                obligation.param_env,
-                cause,
-                obligation.recursion_depth + 1,
-                trait_def,
-                nested,
-            )
+            ensure_sufficient_stack(|| {
+                self.collect_predicates_for_types(
+                    obligation.param_env,
+                    cause,
+                    obligation.recursion_depth + 1,
+                    trait_def,
+                    nested,
+                )
+            })
         } else {
             vec![]
         };
@@ -2568,38 +2573,39 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         nested: ty::Binder<Vec<Ty<'tcx>>>,
     ) -> VtableAutoImplData<PredicateObligation<'tcx>> {
         debug!("vtable_auto_impl: nested={:?}", nested);
+        ensure_sufficient_stack(|| {
+            let cause = obligation.derived_cause(BuiltinDerivedObligation);
+            let mut obligations = self.collect_predicates_for_types(
+                obligation.param_env,
+                cause,
+                obligation.recursion_depth + 1,
+                trait_def_id,
+                nested,
+            );
 
-        let cause = obligation.derived_cause(BuiltinDerivedObligation);
-        let mut obligations = self.collect_predicates_for_types(
-            obligation.param_env,
-            cause,
-            obligation.recursion_depth + 1,
-            trait_def_id,
-            nested,
-        );
+            let trait_obligations: Vec<PredicateObligation<'_>> =
+                self.infcx.commit_unconditionally(|_| {
+                    let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
+                    let (trait_ref, _) =
+                        self.infcx.replace_bound_vars_with_placeholders(&poly_trait_ref);
+                    let cause = obligation.derived_cause(ImplDerivedObligation);
+                    self.impl_or_trait_obligations(
+                        cause,
+                        obligation.recursion_depth + 1,
+                        obligation.param_env,
+                        trait_def_id,
+                        &trait_ref.substs,
+                    )
+                });
 
-        let trait_obligations: Vec<PredicateObligation<'_>> =
-            self.infcx.commit_unconditionally(|_| {
-                let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-                let (trait_ref, _) =
-                    self.infcx.replace_bound_vars_with_placeholders(&poly_trait_ref);
-                let cause = obligation.derived_cause(ImplDerivedObligation);
-                self.impl_or_trait_obligations(
-                    cause,
-                    obligation.recursion_depth + 1,
-                    obligation.param_env,
-                    trait_def_id,
-                    &trait_ref.substs,
-                )
-            });
+            // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
+            // predicate as usual.  It won't have any effect since auto traits are coinductive.
+            obligations.extend(trait_obligations);
 
-        // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
-        // predicate as usual.  It won't have any effect since auto traits are coinductive.
-        obligations.extend(trait_obligations);
+            debug!("vtable_auto_impl: obligations={:?}", obligations);
 
-        debug!("vtable_auto_impl: obligations={:?}", obligations);
-
-        VtableAutoImplData { trait_def_id, nested: obligations }
+            VtableAutoImplData { trait_def_id, nested: obligations }
+        })
     }
 
     fn confirm_impl_candidate(
@@ -2615,13 +2621,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let substs = self.rematch_impl(impl_def_id, obligation, snapshot);
             debug!("confirm_impl_candidate: substs={:?}", substs);
             let cause = obligation.derived_cause(ImplDerivedObligation);
-            self.vtable_impl(
-                impl_def_id,
-                substs,
-                cause,
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-            )
+            ensure_sufficient_stack(|| {
+                self.vtable_impl(
+                    impl_def_id,
+                    substs,
+                    cause,
+                    obligation.recursion_depth + 1,
+                    obligation.param_env,
+                )
+            })
         })
     }
 
@@ -2734,13 +2742,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )
         .map_bound(|(trait_ref, _)| trait_ref);
 
-        let Normalized { value: trait_ref, obligations } = project::normalize_with_depth(
-            self,
-            obligation.param_env,
-            obligation.cause.clone(),
-            obligation.recursion_depth + 1,
-            &trait_ref,
-        );
+        let Normalized { value: trait_ref, obligations } = ensure_sufficient_stack(|| {
+            project::normalize_with_depth(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                &trait_ref,
+            )
+        });
 
         self.confirm_poly_trait_refs(
             obligation.cause.clone(),
@@ -2798,13 +2808,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("confirm_generator_candidate({:?},{:?},{:?})", obligation, generator_def_id, substs);
 
         let trait_ref = self.generator_trait_ref_unnormalized(obligation, substs);
-        let Normalized { value: trait_ref, mut obligations } = normalize_with_depth(
-            self,
-            obligation.param_env,
-            obligation.cause.clone(),
-            obligation.recursion_depth + 1,
-            &trait_ref,
-        );
+        let Normalized { value: trait_ref, mut obligations } = ensure_sufficient_stack(|| {
+            normalize_with_depth(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                &trait_ref,
+            )
+        });
 
         debug!(
             "confirm_generator_candidate(generator_def_id={:?}, \
@@ -2843,13 +2855,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         let trait_ref = self.closure_trait_ref_unnormalized(obligation, substs);
-        let Normalized { value: trait_ref, mut obligations } = normalize_with_depth(
-            self,
-            obligation.param_env,
-            obligation.cause.clone(),
-            obligation.recursion_depth + 1,
-            &trait_ref,
-        );
+        let Normalized { value: trait_ref, mut obligations } = ensure_sufficient_stack(|| {
+            normalize_with_depth(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                &trait_ref,
+            )
+        });
 
         debug!(
             "confirm_closure_candidate(closure_def_id={:?}, trait_ref={:?}, obligations={:?})",
@@ -3139,15 +3153,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested.extend(obligations);
 
                 // Construct the nested `T: Unsize<U>` predicate.
-                nested.push(predicate_for_trait_def(
-                    tcx,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.predicate.def_id(),
-                    obligation.recursion_depth + 1,
-                    a_last.expect_ty(),
-                    &[b_last],
-                ));
+                nested.push(ensure_sufficient_stack(|| {
+                    predicate_for_trait_def(
+                        tcx,
+                        obligation.param_env,
+                        obligation.cause.clone(),
+                        obligation.predicate.def_id(),
+                        obligation.recursion_depth + 1,
+                        a_last.expect_ty(),
+                        &[b_last],
+                    )
+                }));
             }
 
             _ => bug!(),
@@ -3208,13 +3224,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(), impl_substs);
 
         let Normalized { value: impl_trait_ref, obligations: mut nested_obligations } =
-            project::normalize_with_depth(
-                self,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                &impl_trait_ref,
-            );
+            ensure_sufficient_stack(|| {
+                project::normalize_with_depth(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    &impl_trait_ref,
+                )
+            });
 
         debug!(
             "match_impl(impl_def_id={:?}, obligation={:?}, \

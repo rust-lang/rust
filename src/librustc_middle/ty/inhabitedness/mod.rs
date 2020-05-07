@@ -6,6 +6,7 @@ use crate::ty::TyKind::*;
 use crate::ty::{AdtDef, FieldDef, Ty, TyS, VariantDef};
 use crate::ty::{AdtKind, Visibility};
 use crate::ty::{DefId, SubstsRef};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 
 mod def_id_forest;
 
@@ -196,7 +197,9 @@ impl<'tcx> TyS<'tcx> {
     /// Calculates the forest of `DefId`s from which this type is visibly uninhabited.
     fn uninhabited_from(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> DefIdForest {
         match self.kind {
-            Adt(def, substs) => def.uninhabited_from(tcx, substs, param_env),
+            Adt(def, substs) => {
+                ensure_sufficient_stack(|| def.uninhabited_from(tcx, substs, param_env))
+            }
 
             Never => DefIdForest::full(tcx),
 

@@ -2640,6 +2640,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "psm"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "659ecfea2142a458893bb7673134bad50b752fea932349c213d6a23874ce3aa7"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "publicsuffix"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3708,6 +3717,7 @@ dependencies = [
  "serialize",
  "smallvec 1.4.0",
  "stable_deref_trait",
+ "stacker",
  "winapi 0.3.8",
 ]
 
@@ -4668,6 +4678,19 @@ name = "stable_deref_trait"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ffbc596e092fe5f598b12ef46cc03754085ac2f4d8c739ad61c4ae266cc3b3fa"
+
+[[package]]
+name = "stacker"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32c2467b8abbb417e4e62fd62229719b9c9d77714a7fa989f1afad16ba9c9743"
+dependencies = [
+ "cc",
+ "cfg-if",
+ "libc",
+ "psm",
+ "winapi 0.3.8",
+]
 
 [[package]]
 name = "std"

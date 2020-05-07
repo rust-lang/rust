@@ -80,6 +80,7 @@ pub mod stable_set;
 #[macro_use]
 pub mod stable_hasher;
 pub mod sharded;
+pub mod stack;
 pub mod sync;
 pub mod thin_vec;
 pub mod tiny_list;

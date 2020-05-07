@@ -3,6 +3,7 @@
 use crate::build::scope::DropKind;
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
@@ -21,7 +22,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let expr = self.hir.mirror(expr);
-        self.expr_as_temp(block, temp_lifetime, expr, mutability)
+        //
+        // this is the only place in mir building that we need to truly need to worry about
+        // infinite recursion. Everything else does recurse, too, but it always gets broken up
+        // at some point by inserting an intermediate temporary
+        ensure_sufficient_stack(|| self.expr_as_temp(block, temp_lifetime, expr, mutability))
     }
 
     fn expr_as_temp(
