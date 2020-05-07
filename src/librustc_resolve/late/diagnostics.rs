@@ -877,7 +877,10 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     let module_def_id = module.def_id().unwrap();
                     if module_def_id == def_id {
                         let path = Path { span: name_binding.span, segments: path_segments };
-                        result = Some((module, ImportSuggestion { did: Some(def_id), path }));
+                        result = Some((
+                            module,
+                            ImportSuggestion { did: Some(def_id), descr: "module", path },
+                        ));
                     } else {
                         // add the module to the lookup
                         if seen_modules.insert(module_def_id) {

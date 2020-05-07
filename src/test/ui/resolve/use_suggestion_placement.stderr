@@ -4,7 +4,7 @@ error[E0412]: cannot find type `Path` in this scope
 LL |     type Bar = Path;
    |                ^^^^ not found in this scope
    |
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this struct
    |
 LL |     use std::path::Path;
    |
@@ -15,7 +15,7 @@ error[E0425]: cannot find value `A` in this scope
 LL |     let _ = A;
    |             ^ not found in this scope
    |
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this constant
    |
 LL | use m::A;
    |
@@ -26,7 +26,7 @@ error[E0412]: cannot find type `HashMap` in this scope
 LL |     type Dict<K, V> = HashMap<K, V>;
    |                       ^^^^^^^ not found in this scope
    |
-help: possible candidates are found in other modules, you can import them into scope
+help: consider importing one of these items
    |
 LL | use std::collections::HashMap;
    |

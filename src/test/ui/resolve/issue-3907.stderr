@@ -9,7 +9,7 @@ help: you might have meant to use `#![feature(trait_alias)]` instead of a `type`
    |
 LL | type Foo = dyn issue_3907::Foo;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: possible better candidate is found in another module, you can import it into scope
+help: consider importing this trait instead
    |
 LL | use issue_3907::Foo;
    |
