@@ -7,6 +7,7 @@ use libc;
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
+#[allow(non_camel_case_types)]
 mod libc {
     pub use libc::c_int;
     pub type socklen_t = u32;
