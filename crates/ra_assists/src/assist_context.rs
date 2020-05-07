@@ -15,7 +15,7 @@ use ra_syntax::{
 };
 use ra_text_edit::TextEditBuilder;
 
-use crate::{AssistId, AssistLabel, GroupLabel, ResolvedAssist};
+use crate::{Assist, AssistId, GroupLabel, ResolvedAssist};
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
 ///
@@ -91,7 +91,7 @@ impl<'a> AssistContext<'a> {
 pub(crate) struct Assists {
     resolve: bool,
     file: FileId,
-    buf: Vec<(AssistLabel, Option<SourceChange>)>,
+    buf: Vec<(Assist, Option<SourceChange>)>,
 }
 
 impl Assists {
@@ -102,7 +102,7 @@ impl Assists {
         Assists { resolve: false, file: ctx.frange.file_id, buf: Vec::new() }
     }
 
-    pub(crate) fn finish_unresolved(self) -> Vec<AssistLabel> {
+    pub(crate) fn finish_unresolved(self) -> Vec<Assist> {
         assert!(!self.resolve);
         self.finish()
             .into_iter()
@@ -117,7 +117,7 @@ impl Assists {
         assert!(self.resolve);
         self.finish()
             .into_iter()
-            .map(|(label, edit)| ResolvedAssist { label, source_change: edit.unwrap() })
+            .map(|(label, edit)| ResolvedAssist { assist: label, source_change: edit.unwrap() })
             .collect()
     }
 
@@ -128,7 +128,7 @@ impl Assists {
         target: TextRange,
         f: impl FnOnce(&mut AssistBuilder),
     ) -> Option<()> {
-        let label = AssistLabel::new(id, label.into(), None, target);
+        let label = Assist::new(id, label.into(), None, target);
         self.add_impl(label, f)
     }
     pub(crate) fn add_group(
@@ -139,10 +139,10 @@ impl Assists {
         target: TextRange,
         f: impl FnOnce(&mut AssistBuilder),
     ) -> Option<()> {
-        let label = AssistLabel::new(id, label.into(), Some(group.clone()), target);
+        let label = Assist::new(id, label.into(), Some(group.clone()), target);
         self.add_impl(label, f)
     }
-    fn add_impl(&mut self, label: AssistLabel, f: impl FnOnce(&mut AssistBuilder)) -> Option<()> {
+    fn add_impl(&mut self, label: Assist, f: impl FnOnce(&mut AssistBuilder)) -> Option<()> {
         let change_label = label.label.clone();
         let source_change = if self.resolve {
             let mut builder = AssistBuilder::new(self.file);
@@ -156,7 +156,7 @@ impl Assists {
         Some(())
     }
 
-    fn finish(mut self) -> Vec<(AssistLabel, Option<SourceChange>)> {
+    fn finish(mut self) -> Vec<(Assist, Option<SourceChange>)> {
         self.buf.sort_by_key(|(label, _edit)| label.target.len());
         self.buf
     }

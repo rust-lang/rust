@@ -475,9 +475,9 @@ impl Analysis {
             ra_assists::resolved_assists(db, frange)
                 .into_iter()
                 .map(|assist| Assist {
-                    id: assist.label.id,
-                    label: assist.label.label,
-                    group_label: assist.label.group.map(|it| it.0),
+                    id: assist.assist.id,
+                    label: assist.assist.label,
+                    group_label: assist.assist.group.map(|it| it.0),
                     source_change: assist.source_change,
                 })
                 .collect()

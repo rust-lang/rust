@@ -30,7 +30,7 @@ pub(crate) use crate::assist_context::{AssistContext, Assists};
 pub struct AssistId(pub &'static str);
 
 #[derive(Debug, Clone)]
-pub struct AssistLabel {
+pub struct Assist {
     pub id: AssistId,
     /// Short description of the assist, as shown in the UI.
     pub label: String,
@@ -43,22 +43,22 @@ pub struct AssistLabel {
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);
 
-impl AssistLabel {
+impl Assist {
     pub(crate) fn new(
         id: AssistId,
         label: String,
         group: Option<GroupLabel>,
         target: TextRange,
-    ) -> AssistLabel {
+    ) -> Assist {
         // FIXME: make fields private, so that this invariant can't be broken
         assert!(label.starts_with(|c: char| c.is_uppercase()));
-        AssistLabel { id, label, group, target }
+        Assist { id, label, group, target }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ResolvedAssist {
-    pub label: AssistLabel,
+    pub assist: Assist,
     pub source_change: SourceChange,
 }
 
@@ -66,7 +66,7 @@ pub struct ResolvedAssist {
 ///
 /// Assists are returned in the "unresolved" state, that is only labels are
 /// returned, without actual edits.
-pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<AssistLabel> {
+pub fn unresolved_assists(db: &RootDatabase, range: FileRange) -> Vec<Assist> {
     let sema = Semantics::new(db);
     let ctx = AssistContext::new(sema, range);
     let mut acc = Assists::new_unresolved(&ctx);
