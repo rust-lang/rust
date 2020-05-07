@@ -1,8 +1,8 @@
-error[E0067]: can't reassign to a uninitialized variable
+error[E0067]: can't reassign to an uninitialized variable
   --> $DIR/let-binop-plus.rs:4:16
    |
 LL |     let a: i8 += 1;
-   |                ^ help: replace with `=` to initialize the variable
+   |                ^ help: initialize the variable
 
 error[E0404]: expected trait, found builtin type `i8`
   --> $DIR/let-binop-plus.rs:4:12

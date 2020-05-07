@@ -174,7 +174,10 @@ impl<'a> Parser<'a> {
         } else {
             (None, None)
         };
-        let init = match (self.parse_initializer(let_span, ty.is_some(), err.is_some()), err) {
+        let init = match (
+            self.parse_initializer(let_span.until(pat.span), ty.is_some(), err.is_some()),
+            err,
+        ) {
             (Ok(init), None) => {
                 // init parsed, ty parsed
                 init
@@ -231,25 +234,19 @@ impl<'a> Parser<'a> {
                 self.sess.span_diagnostic,
                 self.token.span,
                 E0067,
-                "can't reassign to a uninitialized variable"
+                "can't reassign to an uninitialized variable"
             );
             err.span_suggestion_short(
                 self.token.span,
-                "replace with `=` to initialize the variable",
+                "initialize the variable",
                 "=".to_string(),
-                if has_ty {
-                    // for `let x: i8 += 1` it's highly likely that the `+` is a typo
-                    Applicability::MachineApplicable
-                } else {
-                    // for `let x += 1` it's a bit less likely that the `+` is a typo
-                    Applicability::MaybeIncorrect
-                },
+                Applicability::MaybeIncorrect,
             );
             // In case of code like `let x += 1` it's possible the user may have meant to write `x += 1`
             if !has_ty {
                 err.span_suggestion_short(
                     let_span,
-                    "remove to reassign to a previously initialized variable",
+                    "otherwise, reassign to a previously initialized variable",
                     "".to_string(),
                     Applicability::MaybeIncorrect,
                 );
