@@ -651,10 +651,8 @@ pub(crate) unsafe fn codegen(
                     "LLVM_module_codegen_embed_bitcode",
                     &module.name[..],
                 );
-                embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, Some(data));
+                embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
             }
-        } else if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Marker) {
-            embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, None);
         }
 
         if config.emit_ir {
@@ -790,9 +788,9 @@ unsafe fn embed_bitcode(
     llcx: &llvm::Context,
     llmod: &llvm::Module,
     cmdline: &str,
-    bitcode: Option<&[u8]>,
+    bitcode: &[u8],
 ) {
-    let llconst = common::bytes_in_context(llcx, bitcode.unwrap_or(&[]));
+    let llconst = common::bytes_in_context(llcx, bitcode);
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
         common::val_ty(llconst),
