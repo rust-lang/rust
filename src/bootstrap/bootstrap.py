@@ -180,12 +180,15 @@ def format_build_time(duration):
 def default_build_triple():
     """Build triple as in LLVM"""
     default_encoding = sys.getdefaultencoding()
-    required = not sys.platform == 'win32'
-    ostype = require(["uname", "-s"], exit=required).decode(default_encoding)
-    cputype = require(['uname', '-m'], exit=required).decode(default_encoding)
+    required = sys.platform != 'win32'
+    ostype = require(["uname", "-s"], exit=required)
+    cputype = require(['uname', '-m'], exit=required)
 
     if ostype is None or cputype is None:
         return 'x86_64-pc-windows-msvc'
+
+    ostype = ostype.decode(default_encoding)
+    cputype = cputype.decode(default_encoding)
 
     # The goal here is to come up with the same triple as LLVM would,
     # at least for the subset of platforms we're willing to target.
