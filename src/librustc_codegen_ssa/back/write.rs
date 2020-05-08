@@ -68,10 +68,6 @@ pub enum BitcodeSection {
     // No bitcode section.
     None,
 
-    // An empty bitcode section (to placate tools such as the iOS linker that
-    // require this section even if they don't use it).
-    Marker,
-
     // A full, uncompressed bitcode section.
     Full,
 }
@@ -101,6 +97,7 @@ pub struct ModuleConfig {
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
+    pub bc_cmdline: String,
 
     // Miscellaneous flags.  These are mostly copied from command-line
     // options.
@@ -147,14 +144,8 @@ impl ModuleConfig {
             || sess.opts.cg.linker_plugin_lto.enabled()
         {
             EmitObj::Bitcode
-        } else if need_crate_bitcode_for_rlib(sess) {
-            let force_full = need_crate_bitcode_for_rlib(sess);
-            match sess.opts.optimize {
-                config::OptLevel::No | config::OptLevel::Less if !force_full => {
-                    EmitObj::ObjectCode(BitcodeSection::Marker)
-                }
-                _ => EmitObj::ObjectCode(BitcodeSection::Full),
-            }
+        } else if need_bitcode_in_object(sess) {
+            EmitObj::ObjectCode(BitcodeSection::Full)
         } else {
             EmitObj::ObjectCode(BitcodeSection::None)
         };
@@ -211,6 +202,7 @@ impl ModuleConfig {
                 false
             ),
             emit_obj,
+            bc_cmdline: sess.target.target.options.bitcode_llvm_cmdline.clone(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
             no_prepopulate_passes: sess.opts.cg.no_prepopulate_passes,
@@ -372,10 +364,12 @@ pub struct CompiledModules {
     pub allocator_module: Option<CompiledModule>,
 }
 
-fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
-    sess.opts.cg.embed_bitcode
+fn need_bitcode_in_object(sess: &Session) -> bool {
+    let requested_for_rlib = sess.opts.cg.embed_bitcode
         && sess.crate_types.borrow().contains(&CrateType::Rlib)
-        && sess.opts.output_types.contains_key(&OutputType::Exe)
+        && sess.opts.output_types.contains_key(&OutputType::Exe);
+    let forced_by_target = sess.target.target.options.forces_embed_bitcode;
+    requested_for_rlib || forced_by_target
 }
 
 fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {

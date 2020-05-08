@@ -28,6 +28,7 @@ use std::str;
 
 use crate::clean::Attributes;
 use crate::config::Options;
+use crate::core::init_lints;
 use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
 use crate::passes::span_of_attrs;
 
@@ -45,44 +46,19 @@ pub struct TestOptions {
 pub fn run(options: Options) -> i32 {
     let input = config::Input::File(options.input.clone());
 
-    let warnings_lint_name = lint::builtin::WARNINGS.name;
     let invalid_codeblock_attribute_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTE.name;
 
     // In addition to those specific lints, we also need to whitelist those given through
     // command line, otherwise they'll get ignored and we don't want that.
-    let mut whitelisted_lints =
-        vec![warnings_lint_name.to_owned(), invalid_codeblock_attribute_name.to_owned()];
+    let whitelisted_lints = vec![invalid_codeblock_attribute_name.to_owned()];
 
-    whitelisted_lints.extend(options.lint_opts.iter().map(|(lint, _)| lint).cloned());
-
-    let lints = || {
-        lint::builtin::HardwiredLints::get_lints()
-            .into_iter()
-            .chain(rustc_lint::SoftLints::get_lints().into_iter())
-    };
-
-    let lint_opts = lints()
-        .filter_map(|lint| {
-            if lint.name == warnings_lint_name || lint.name == invalid_codeblock_attribute_name {
-                None
-            } else {
-                Some((lint.name_lower(), lint::Allow))
-            }
-        })
-        .chain(options.lint_opts.clone().into_iter())
-        .collect::<Vec<_>>();
-
-    let lint_caps = lints()
-        .filter_map(|lint| {
-            // We don't want to whitelist *all* lints so let's
-            // ignore those ones.
-            if whitelisted_lints.iter().any(|l| lint.name == l) {
-                None
-            } else {
-                Some((lint::LintId::of(lint), lint::Allow))
-            }
-        })
-        .collect();
+    let (lint_opts, lint_caps) = init_lints(whitelisted_lints, options.lint_opts.clone(), |lint| {
+        if lint.name == invalid_codeblock_attribute_name {
+            None
+        } else {
+            Some((lint.name_lower(), lint::Allow))
+        }
+    });
 
     let crate_types =
         if options.proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };

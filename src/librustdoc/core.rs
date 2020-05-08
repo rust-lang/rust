@@ -204,6 +204,56 @@ pub fn new_handler(
     )
 }
 
+/// This function is used to setup the lint initialization. By default, in rustdoc, everything
+/// is "allowed". Depending if we run in test mode or not, we want some of them to be at their
+/// default level. For example, the "INVALID_CODEBLOCK_ATTRIBUTE" lint is activated in both
+/// modes.
+///
+/// A little detail easy to forget is that there is a way to set the lint level for all lints
+/// through the "WARNINGS" lint. To prevent this to happen, we set it back to its "normal" level
+/// inside this function.
+///
+/// It returns a tuple containing:
+///  * Vector of tuples of lints' name and their associated "max" level
+///  * HashMap of lint id with their associated "max" level
+pub fn init_lints<F>(
+    mut whitelisted_lints: Vec<String>,
+    lint_opts: Vec<(String, lint::Level)>,
+    filter_call: F,
+) -> (Vec<(String, lint::Level)>, FxHashMap<lint::LintId, lint::Level>)
+where
+    F: Fn(&lint::Lint) -> Option<(String, lint::Level)>,
+{
+    let warnings_lint_name = lint::builtin::WARNINGS.name;
+
+    whitelisted_lints.push(warnings_lint_name.to_owned());
+    whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
+
+    let lints = || {
+        lint::builtin::HardwiredLints::get_lints()
+            .into_iter()
+            .chain(rustc_lint::SoftLints::get_lints().into_iter())
+    };
+
+    let lint_opts = lints()
+        .filter_map(|lint| if lint.name == warnings_lint_name { None } else { filter_call(lint) })
+        .chain(lint_opts.into_iter())
+        .collect::<Vec<_>>();
+
+    let lint_caps = lints()
+        .filter_map(|lint| {
+            // We don't want to whitelist *all* lints so let's
+            // ignore those ones.
+            if whitelisted_lints.iter().any(|l| lint.name == l) {
+                None
+            } else {
+                Some((lint::LintId::of(lint), lint::Allow))
+            }
+        })
+        .collect();
+    (lint_opts, lint_caps)
+}
+
 pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions) {
     // Parse, resolve, and typecheck the given crate.
 
@@ -247,7 +297,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     let input = Input::File(input);
 
     let intra_link_resolution_failure_name = lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE.name;
-    let warnings_lint_name = lint::builtin::WARNINGS.name;
     let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
     let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
     let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
@@ -256,8 +305,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
     // In addition to those specific lints, we also need to whitelist those given through
     // command line, otherwise they'll get ignored and we don't want that.
-    let mut whitelisted_lints = vec![
-        warnings_lint_name.to_owned(),
+    let whitelisted_lints = vec![
         intra_link_resolution_failure_name.to_owned(),
         missing_docs.to_owned(),
         missing_doc_example.to_owned(),
@@ -266,39 +314,15 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         invalid_codeblock_attribute_name.to_owned(),
     ];
 
-    whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
-
-    let lints = || {
-        lint::builtin::HardwiredLints::get_lints()
-            .into_iter()
-            .chain(rustc_lint::SoftLints::get_lints().into_iter())
-    };
-
-    let lint_opts = lints()
-        .filter_map(|lint| {
-            if lint.name == warnings_lint_name
-                || lint.name == intra_link_resolution_failure_name
-                || lint.name == invalid_codeblock_attribute_name
-            {
-                None
-            } else {
-                Some((lint.name_lower(), lint::Allow))
-            }
-        })
-        .chain(lint_opts.into_iter())
-        .collect::<Vec<_>>();
-
-    let lint_caps = lints()
-        .filter_map(|lint| {
-            // We don't want to whitelist *all* lints so let's
-            // ignore those ones.
-            if whitelisted_lints.iter().any(|l| lint.name == l) {
-                None
-            } else {
-                Some((lint::LintId::of(lint), lint::Allow))
-            }
-        })
-        .collect();
+    let (lint_opts, lint_caps) = init_lints(whitelisted_lints, lint_opts, |lint| {
+        if lint.name == intra_link_resolution_failure_name
+            || lint.name == invalid_codeblock_attribute_name
+        {
+            None
+        } else {
+            Some((lint.name_lower(), lint::Allow))
+        }
+    });
 
     let crate_types =
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
